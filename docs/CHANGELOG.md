@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.47.0] - 2026-06-06
+
+### Added
+
+- Offline push batch resolver for future queue replay route handlers.
+- Batch-level response payloads, operation result rows, conflict rows, audit
+  payloads, and accepted/conflict/rejected counts.
+- Server snapshot lookup by operation ID, entity key, or operation index so
+  future repositories can feed deterministic resolver inputs.
+- Unit coverage for mixed accepted/conflict batches, conflict row enrichment,
+  per-operation runtime options, missing server snapshots, invalid options, and
+  invalid server timestamps.
+
+### Not Added
+
+- Live push route registration, database queue replay, canonical entity
+  mutation writes, conflict insertion, idempotent operation-result persistence,
+  registered-device permission wiring, and cursor advancement remain disabled
+  for later staging-gated phases.
+
 ## [0.46.0] - 2026-06-06
 
 ### Added

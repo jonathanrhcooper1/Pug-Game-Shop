@@ -249,10 +249,11 @@ route contracts and offline push payload validation exist for pairing, push,
 pull request validation, pull response presentation, device pairing validation,
 device registration planning, device access policy checks, conflict list
 filters, conflict resolution requests, conflict list response presentation, and
-conflict resolution planning. Offline push operation resolution planning now
-prepares future queue result rows and conflict rows for accepted, rejected, and
-manager-reviewed operation outcomes, but live provider workers and offline
-device/queue/conflict writes remain disabled until later phases.
+conflict resolution planning. Offline push operation and batch resolution
+planning now prepares future queue result rows, conflict rows, response counts,
+and audit payloads for accepted, rejected, and manager-reviewed operation
+outcomes, but live provider workers and offline device/queue/conflict writes
+remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

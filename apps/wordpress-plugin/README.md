@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.46.0`
+Version: `0.47.0`
 
 ## Implemented Features
 
@@ -99,6 +99,9 @@ Version: `0.46.0`
 - Offline push operation resolution planning for future queue replay outcomes,
   response payloads, operation result rows, manager-reviewed conflict rows,
   deterministic conflict IDs, and redacted audit payloads.
+- Offline push batch resolution planning for future route handlers,
+  per-operation results, operation result rows, enriched conflict rows, batch
+  counts, server snapshot lookup, and redacted batch audit payloads.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

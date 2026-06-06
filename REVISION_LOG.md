@@ -3,6 +3,82 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Batch Resolution Planning
+
+### What Changed
+
+- Added a WordPress offline push batch resolver for future queue replay route
+  handlers.
+- Added an immutable push batch resolution plan exposing per-operation plans,
+  future operation result rows, future conflict rows, API response payloads,
+  and redacted batch audit payloads.
+- Added server snapshot lookup by client operation ID, entity key, or operation
+  index so future repositories can feed deterministic operation snapshots into
+  the resolver.
+- Added batch counts for accepted, conflict, and rejected operations while
+  preserving per-operation response payloads.
+- Added unit coverage for mixed accepted/conflict batches, conflict row
+  enrichment, per-operation runtime options, missing snapshots, invalid options,
+  and invalid server timestamps.
+- Updated project, plugin, and offline app package versions to `0.47.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+The push route must resolve a bounded operation batch and produce deterministic
+response, operation result, conflict, and audit plans before live persistence is
+enabled. This slice bridges single-operation resolution into batch-level queue
+replay planning while still requiring repository-provided server snapshots.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushBatchResolutionPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushBatchResolver.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushBatchResolverTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds push batch resolution planning only.
+
+### Tests Added
+
+- Offline push batch resolver tests for mixed accepted/conflict batches,
+  operation result rows, conflict row enrichment, response counts,
+  per-operation runtime options, missing snapshots, invalid options, and
+  invalid server timestamps.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline push batch resolver, value object,
+  tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live push route registration, database queue replay, canonical entity
+  mutation writes, conflict insertion, idempotent operation-result persistence,
+  registered-device permission wiring, and cursor advancement remain disabled
+  both before and after rollback.
+
 ## 2026-06-06 - Offline Push Operation Resolution Planning
 
 ### What Changed

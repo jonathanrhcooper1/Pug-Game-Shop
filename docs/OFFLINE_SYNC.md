@@ -106,7 +106,10 @@ into accepted, rejected, or conflict plans with operation result rows,
 deterministic conflict IDs, manager-reviewed conflict rows, response payloads,
 and redacted audit payloads. Live queue replay, canonical entity mutations,
 conflict persistence, permission callback wiring, and cursor advancement remain
-disabled until staging integration tests pass.
+disabled until staging integration tests pass. Offline push batch resolution
+planning now wraps those operation plans into batch-level response counts,
+future operation result rows, enriched conflict rows, and redacted batch audit
+payloads after repository-provided server snapshots are available.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

@@ -204,7 +204,10 @@ payload hashes before live conflict writes are enabled. Offline push operation
 resolution planning is implemented so future queue replay can produce
 accepted/rejected outcomes, operation result rows, response payloads,
 manager-reviewed conflict rows, deterministic conflict IDs, and redacted audit
-payload hashes before live push persistence is enabled.
+payload hashes before live push persistence is enabled. Offline push batch
+resolution planning now aggregates those per-operation plans into future route
+responses, operation result rows, conflict rows, counts, and batch audit
+payloads without enabling live database writes.
 
 ## Storefront Product Strategy
 

@@ -103,6 +103,14 @@ handlers, queue replay writes, canonical entity mutations, conflict
 persistence, permission wiring, and cursor advancement are still disabled until
 staging integration tests pass.
 
+Version `0.47.0` adds the offline push batch resolution boundary. Future route
+handlers can now resolve a bounded batch into per-operation plans, operation
+result rows, enriched conflict rows, response counts, and redacted batch audit
+payloads after repositories provide server snapshots. Live push route
+registration, queue replay writes, canonical entity mutations, conflict
+insertion, permission wiring, and cursor advancement are still disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

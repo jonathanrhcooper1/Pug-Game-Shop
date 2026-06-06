@@ -253,7 +253,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.46.0",
+  "app_version": "0.47.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -312,6 +312,28 @@ Conflict outcomes additionally include a deterministic `conflict_id` in
 device payload, row versions, severity, summary, and manager resolution
 options. Live operation result persistence, canonical entity mutation, conflict
 row insertion, and cursor advancement remain disabled until staging tests pass.
+
+The planned batch response wraps per-operation results with stable counts:
+
+```json
+{
+  "batch_id": "batch-main-01",
+  "device_id": "device-main-01",
+  "server_time_utc": "2026-06-06T20:00:00Z",
+  "operation_count": 3,
+  "counts": {
+    "accepted": 2,
+    "conflict": 1,
+    "rejected": 0
+  },
+  "results": []
+}
+```
+
+The batch planner requires server snapshots keyed by client operation ID,
+`entity_type:entity_id`, or operation index before resolving operations. Live
+push route handlers and repository-backed snapshot loading remain disabled
+until staging tests pass.
 
 Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,
