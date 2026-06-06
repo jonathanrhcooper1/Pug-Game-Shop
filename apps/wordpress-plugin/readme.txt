@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.13.0
+Stable tag: 0.14.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -22,8 +22,8 @@ Phase 3.2 adds local free/pay-at-store event registration writes.
 Phase 6.1 adds customer credit schema, ledger policy helpers, and idempotent
 posting internals.
 Phase 6.2 adds buylist schema and submission status helpers.
-Phase 4 foundations add exact inventory reservation schema and active-claim
-service checks.
+Phase 4 foundations add exact inventory reservation schema plus active-claim,
+release, and conversion service checks.
 
 Inventory and commerce modules remain disabled until their implementation phases.
 
@@ -35,6 +35,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.14.0 =
+
+* Added reservation lifecycle service helpers for conversion to sold and release back to available.
+* Added idempotent transition handling and inventory-state mismatch protection.
+* Added lifecycle tests for reservation conversion, release, idempotent replay, and mismatch rejection.
 
 = 0.13.0 =
 

@@ -51,8 +51,10 @@
 - Local unit coverage now includes reservation schema contracts and
   transaction-oriented reservation service behavior for successful exact-item
   claims, idempotency replay, unavailable inventory rejection, and active claim
-  collision rejection. WordPress integration smoke coverage asserts schema
-  version `7` and reservation tables.
+  collision rejection. Lifecycle coverage includes conversion to sold, release
+  to available, idempotent conversion replay, and inventory-state mismatch
+  rejection. WordPress integration smoke coverage asserts schema version `7`
+  and reservation tables.
 
 ## Required Test Backlog
 

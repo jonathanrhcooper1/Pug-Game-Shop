@@ -3,6 +3,56 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Reservation Lifecycle Foundation
+
+### What Changed
+
+- Added reservation lifecycle helpers for converting active reservations to
+  sold inventory and releasing active reservations back to available inventory.
+- Added idempotent replay handling for already-converted reservations.
+- Added inventory-state mismatch protection so release/conversion cannot
+  silently overwrite sold or otherwise unexpected inventory state.
+- Expanded reservation service unit coverage for conversion, release,
+  idempotent conversion replay, and inventory-state mismatch rejection.
+
+### Why
+
+WooCommerce checkout and payment hooks need a tested reservation lifecycle
+contract before they can safely convert held serialized items to sold records or
+release abandoned/failed carts. This slice builds those pure service rules while
+leaving live hook registration and cleanup workers disabled until staging
+acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Reservations/ReservationResult.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationService.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationStorage.php`
+- `apps/wordpress-plugin/tests/Unit/ReservationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Reservation lifecycle tests for active reservation conversion to sold,
+  release back to available, idempotent already-converted replay, and
+  inventory-state mismatch rejection.
+
+### Rollback Notes
+
+- Revert this revision to remove reservation lifecycle helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- WooCommerce checkout hooks, payment-complete hook wiring, cart release hooks,
+  and expiry workers remain disabled after rollback.
+
 ## 2026-06-06 - Reservation Double-Sell Prevention Foundation
 
 ### What Changed

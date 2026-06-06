@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.14.0] - 2026-06-06
+
+### Added
+
+- Reservation lifecycle service helpers for converting active reservations to
+  sold inventory and releasing active reservations back to available inventory.
+- Idempotent replay behavior for already-converted lifecycle transitions.
+- Inventory-state mismatch protection so release/conversion cannot silently
+  overwrite sold or otherwise unexpected inventory state.
+- Unit coverage for conversion, release, idempotent conversion replay, and
+  inventory-state mismatch rejection.
+
+### Not Added
+
+- WooCommerce add-to-cart/checkout hooks, order line metadata writes,
+  payment-complete hook wiring, cart release hooks, expiry cleanup workers, and
+  database race integration tests remain disabled for later staging-gated
+  phases.
+
 ## [0.13.0] - 2026-06-06
 
 ### Added

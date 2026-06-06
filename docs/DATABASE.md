@@ -159,10 +159,10 @@ Indexes:
 
 ## Reservation Invariants
 
-Status: schema migration `0007_reservations` and transaction-oriented service
-helpers are implemented. WooCommerce checkout hooks, kiosk cart write APIs,
-expiry workers, payment conversion, and database integration race tests remain
-disabled until staging acceptance.
+Status: schema migration `0007_reservations` and transaction-oriented
+reserve/release/convert service helpers are implemented. WooCommerce checkout
+hooks, kiosk cart write APIs, expiry workers, and database integration race
+tests remain disabled until staging acceptance.
 
 1. Lock the inventory row with `SELECT ... FOR UPDATE`.
 2. Confirm status is `available` and visibility/source rules permit reservation.
@@ -171,7 +171,8 @@ disabled until staging acceptance.
 4. A nullable active claim column, `active_inventory_id`, equals `inventory_id`
    only for active reservations and has a unique index. This enforces at most
    one active reservation in MySQL without relying on a partial index.
-5. Conversion to sale, release, and expiry lock both rows and are idempotent.
+5. Conversion to sale and release lock both rows and are idempotent. Expiry
+   follows the same lifecycle pattern when cleanup workers are enabled.
 6. A POS/offline conflict never overwrites `sold`; it creates a conflict record.
 
 ## Pricing Invariants

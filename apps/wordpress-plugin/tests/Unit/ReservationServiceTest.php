@@ -120,6 +120,81 @@ final class ReservationServiceTest extends TestCase {
 		$this->assert_same( 0, $storage->begin_count );
 	}
 
+	public function test_service_converts_active_reservation_to_sold(): void {
+		$storage = new FakeReservationStorage(
+			array(
+				'inventory_id' => 42,
+				'status'       => InventoryStatus::RESERVED,
+			),
+			$this->active_reservation()
+		);
+		$result  = ( new ReservationService( $storage ) )->convert_to_sale( 55 );
+
+		$this->assert_true( $result->is_accepted() );
+		$this->assert_same( 'converted', $result->code() );
+		$this->assert_same( InventoryStatus::SOLD, $storage->inventory['status'] );
+		$this->assert_same( ReservationStatus::CONVERTED, $storage->active_reservation['status'] );
+		$this->assert_same( null, $storage->active_reservation['active_inventory_id'] );
+		$this->assert_same( 1, $storage->update_count );
+		$this->assert_same( 1, $storage->reservation_update_count );
+	}
+
+	public function test_service_releases_active_reservation_to_available(): void {
+		$storage = new FakeReservationStorage(
+			array(
+				'inventory_id' => 42,
+				'status'       => InventoryStatus::RESERVED,
+			),
+			$this->active_reservation()
+		);
+		$result  = ( new ReservationService( $storage ) )->release( 55, 'cart_removed' );
+
+		$this->assert_true( $result->is_accepted() );
+		$this->assert_same( 'released', $result->code() );
+		$this->assert_same( InventoryStatus::AVAILABLE, $storage->inventory['status'] );
+		$this->assert_same( ReservationStatus::RELEASED, $storage->active_reservation['status'] );
+		$this->assert_same( null, $storage->active_reservation['active_inventory_id'] );
+		$this->assert_same( 'cart_removed', $storage->active_reservation['release_reason'] );
+	}
+
+	public function test_service_replays_already_converted_reservation(): void {
+		$reservation                        = $this->active_reservation();
+		$reservation['status']              = ReservationStatus::CONVERTED;
+		$reservation['active_inventory_id'] = null;
+		$storage                            = new FakeReservationStorage(
+			array(
+				'inventory_id' => 42,
+				'status'       => InventoryStatus::SOLD,
+			),
+			$reservation
+		);
+		$result                             = ( new ReservationService( $storage ) )->convert_to_sale( 55 );
+
+		$this->assert_true( $result->is_accepted() );
+		$this->assert_true( $result->is_idempotent() );
+		$this->assert_same( 'already_converted', $result->code() );
+		$this->assert_same( 0, $storage->update_count );
+		$this->assert_same( 0, $storage->reservation_update_count );
+		$this->assert_same( 1, $storage->commit_count );
+	}
+
+	public function test_service_rejects_transition_when_inventory_state_mismatches(): void {
+		$storage = new FakeReservationStorage(
+			array(
+				'inventory_id' => 42,
+				'status'       => InventoryStatus::SOLD,
+			),
+			$this->active_reservation()
+		);
+		$result  = ( new ReservationService( $storage ) )->release( 55 );
+
+		$this->assert_false( $result->is_accepted() );
+		$this->assert_same( 'inventory_state_mismatch', $result->code() );
+		$this->assert_same( 0, $storage->update_count );
+		$this->assert_same( 0, $storage->reservation_update_count );
+		$this->assert_same( 1, $storage->rollback_count );
+	}
+
 	private function request(): ReservationRequest {
 		return new ReservationRequest(
 			42,
@@ -132,6 +207,19 @@ final class ReservationServiceTest extends TestCase {
 			null,
 			'12.9900',
 			'USD'
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function active_reservation(): array {
+		return array(
+			'reservation_id'      => 55,
+			'inventory_id'        => 42,
+			'active_inventory_id' => 42,
+			'status'              => ReservationStatus::ACTIVE,
+			'idempotency_key'     => 'cart-abc-42',
 		);
 	}
 }
@@ -152,6 +240,7 @@ final class FakeReservationStorage implements ReservationStorage {
 	public int $rollback_count = 0;
 	public int $insert_count   = 0;
 	public int $update_count   = 0;
+	public int $reservation_update_count = 0;
 
 	/**
 	 * @param array<string, mixed>      $inventory Inventory row.
@@ -197,7 +286,18 @@ final class FakeReservationStorage implements ReservationStorage {
 
 	public function has_active_reservation_for_inventory( int $inventory_id ): bool {
 		return null !== $this->active_reservation
+			&& ReservationStatus::ACTIVE === (string) $this->active_reservation['status']
 			&& $inventory_id === (int) $this->active_reservation['active_inventory_id'];
+	}
+
+	/**
+	 * @return array<string, mixed>|null
+	 */
+	public function get_reservation_for_update( int $reservation_id ): ?array {
+		return null !== $this->active_reservation
+			&& $reservation_id === (int) $this->active_reservation['reservation_id']
+				? $this->active_reservation
+				: null;
 	}
 
 	/**
@@ -238,6 +338,34 @@ final class FakeReservationStorage implements ReservationStorage {
 		}
 
 		$this->inventory['status'] = $to_status;
+
+		return true;
+	}
+
+	/**
+	 * @param array<string, mixed> $updates Reservation field updates.
+	 */
+	public function update_reservation_status(
+		int $reservation_id,
+		string $from_status,
+		string $to_status,
+		array $updates
+	): bool {
+		++$this->reservation_update_count;
+
+		if (
+			null === $this->active_reservation
+			|| $reservation_id !== (int) $this->active_reservation['reservation_id']
+			|| $from_status !== (string) $this->active_reservation['status']
+		) {
+			return false;
+		}
+
+		foreach ( $updates as $key => $value ) {
+			$this->active_reservation[ $key ] = $value;
+		}
+
+		$this->active_reservation['status'] = $to_status;
 
 		return true;
 	}

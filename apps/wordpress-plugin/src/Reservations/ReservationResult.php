@@ -43,6 +43,24 @@ final class ReservationResult {
 		);
 	}
 
+	/**
+	 * @param array<string, mixed> $reservation Reservation row.
+	 */
+	public static function transitioned(
+		string $code,
+		string $message,
+		array $reservation,
+		bool $idempotent = false
+	): self {
+		return new self(
+			true,
+			$code,
+			$message,
+			$idempotent,
+			isset( $reservation['reservation_id'] ) ? (int) $reservation['reservation_id'] : null
+		);
+	}
+
 	public static function rejected( string $code, string $message ): self {
 		return new self( false, $code, $message, false, null );
 	}
