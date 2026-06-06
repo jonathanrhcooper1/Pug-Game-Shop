@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline REST Request Adapter
+
+### What Changed
+
+- Added `OfflineRestRequestAdapter` to normalize future WordPress REST requests
+  and local array fixtures into one offline request data boundary.
+- Added `OfflineRestRequestData` for body params, query params, route params,
+  normalized headers, route parameter lookup, and idempotency-key extraction.
+- Updated `OfflineController` to dispatch to explicitly injected route handlers
+  after request normalization while preserving fail-closed default behavior.
+- Added tests proving array fixtures and WordPress-style request objects are
+  normalized, idempotency headers are read, injected handlers receive normalized
+  request data, and unhandled callbacks remain disabled.
+- Updated project, plugin, and offline app package versions to `0.68.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The guarded route registrar can now call WordPress registration only for future
+ready plans, and the controller exposes planned route callbacks. This revision
+adds the next route-handler boundary: normalized request data can reach
+explicitly injected handlers in tests and future staging bootstrap code without
+enabling any current live offline route or database mutation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRestRequestAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRestRequestData.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineController.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRestRequestAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrarTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline REST request adapter tests for wrapped array fixtures, unwrapped body
+  payloads, WordPress-style request objects, route params, query params, and
+  idempotency header normalization.
+- Offline controller dispatch tests for injected handler receipt of normalized
+  request data and continued fail-closed behavior for unhandled callbacks.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline request adapter, normalized
+  request data value, controller handler dispatch, tests, version bump, and
+  docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Current offline route contracts register zero routes before and after
+  rollback.
+
 ## 2026-06-06 - Offline Route Registrar Guard
 
 ### What Changed

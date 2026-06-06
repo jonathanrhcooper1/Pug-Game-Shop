@@ -244,6 +244,12 @@ Version `0.67.0` adds the guarded offline route registrar. Current offline route
 contracts register zero routes by default; future route plans register only
 when both live flags and callbacks are ready.
 
+Version `0.68.0` adds offline REST request adaptation for future WordPress route
+handlers. Body params, query params, route params, headers, and idempotency keys
+can now be normalized before injected controller handlers run in tests, while
+the default controller and current route contracts remain disabled until staging
+integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

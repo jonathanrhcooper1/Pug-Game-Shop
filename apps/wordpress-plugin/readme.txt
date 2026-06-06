@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.67.0
+Stable tag: 0.68.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -128,6 +128,8 @@ Phase 7.32 adds a fail-closed offline controller scaffold while keeping REST
 route registration disabled.
 Phase 7.33 adds a guarded offline route registrar while keeping current REST
 route registration disabled.
+Phase 7.34 adds offline REST request adaptation and injected controller
+dispatch while keeping current REST route registration disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -145,6 +147,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.68.0 =
+
+* Added offline REST request adapter and normalized request data for future route handlers.
+* Added body, query, route, header, and idempotency-key extraction for array fixtures and WordPress-style requests.
+* Added optional injected controller handler dispatch while keeping default controller callbacks fail-closed.
+* Kept current live offline route registration and database mutation disabled until staging integration tests pass.
 
 = 0.67.0 =
 

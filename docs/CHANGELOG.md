@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.68.0] - 2026-06-06
+
+### Added
+
+- Offline REST request adapter for future WordPress route handlers.
+- Normalized offline request data value for body params, query params, route
+  params, headers, and idempotency-key extraction.
+- Optional offline controller handler dispatch for staging-gated route
+  adapters, while default controller construction still fails closed.
+- Unit coverage for array fixtures, WordPress-style request objects,
+  idempotency header normalization, injected controller handlers, and
+  unhandled controller callbacks remaining disabled.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.67.0] - 2026-06-06
 
 ### Added

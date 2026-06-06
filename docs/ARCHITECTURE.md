@@ -252,6 +252,11 @@ handlers are implemented and staging-gated.
 The guarded offline route registrar now calls route registration only for plans
 marked ready and enabled; the current offline contracts produce zero registered
 routes by default.
+Offline REST request adaptation now gives the controller a route-ready request
+data boundary for body params, query params, route params, headers, and
+idempotency keys. Controller handler dispatch is explicit and injected, so the
+default controller still returns disabled responses while future staging code
+can test route handlers without changing route contracts.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

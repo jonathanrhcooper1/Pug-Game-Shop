@@ -8,39 +8,67 @@
 namespace TCGStorePlatform\Api\V1;
 
 final class OfflineController {
+	private OfflineRestRequestAdapter $request_adapter;
+
+	/**
+	 * @var array<string, callable(OfflineRestRequestData): array<string, mixed>>
+	 */
+	private array $handlers;
+
+	/**
+	 * @param array<string, callable(OfflineRestRequestData): array<string, mixed>> $handlers Route handlers.
+	 */
+	public function __construct( ?OfflineRestRequestAdapter $request_adapter = null, array $handlers = array() ) {
+		$this->request_adapter = $request_adapter ?? new OfflineRestRequestAdapter();
+		$this->handlers        = $handlers;
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function register_offline_device( mixed $request ): array {
-		return $this->disabled_response( 'register_offline_device', $request );
+		return $this->dispatch( 'register_offline_device', $request );
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function pull_offline_changes( mixed $request ): array {
-		return $this->disabled_response( 'pull_offline_changes', $request );
+		return $this->dispatch( 'pull_offline_changes', $request );
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function push_offline_operations( mixed $request ): array {
-		return $this->disabled_response( 'push_offline_operations', $request );
+		return $this->dispatch( 'push_offline_operations', $request );
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function list_offline_conflicts( mixed $request ): array {
-		return $this->disabled_response( 'list_offline_conflicts', $request );
+		return $this->dispatch( 'list_offline_conflicts', $request );
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	public function resolve_offline_conflict( mixed $request ): array {
-		return $this->disabled_response( 'resolve_offline_conflict', $request );
+		return $this->dispatch( 'resolve_offline_conflict', $request );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function dispatch( string $callback, mixed $request ): array {
+		$handler = $this->handlers[ $callback ] ?? null;
+
+		if ( is_callable( $handler ) ) {
+			return $handler( $this->request_adapter->from_request( $request ) );
+		}
+
+		return $this->disabled_response( $callback, $request );
 	}
 
 	/**

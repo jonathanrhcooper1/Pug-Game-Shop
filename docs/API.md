@@ -70,6 +70,11 @@ route callback proceeds.
 The planned registered-device permission callback adapter now turns
 WordPress-style request headers into that resolver call and returns a boolean
 permission result while preserving the last resolution for audits.
+Offline REST request adaptation now normalizes body params, query params, route
+params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
+headers for future offline controller handlers. The default controller remains
+fail-closed unless a future staging-gated bootstrap explicitly injects a
+handler for a route callback.
 
 ### Inventory And Search
 
@@ -307,7 +312,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.67.0",
+  "app_version": "0.68.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -397,6 +402,9 @@ permission callbacks and repository-backed handlers are wired through staging.
 Offline push persistence planning now maps accepted/rejected/conflict batch
 results into future queue rows, conflict rows, idempotent replay rows, and
 redacted audit payloads before any live database writes are enabled.
+Offline REST request adaptation now provides the future handler bridge for
+request bodies, query filters, route params such as `conflict_id`, and
+idempotency headers without enabling those handlers by default.
 
 Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,
