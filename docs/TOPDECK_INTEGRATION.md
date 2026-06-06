@@ -44,6 +44,14 @@ createEvent(eventData)
 exposes WordPress-style snake_case wrappers for internal use. Tests run against
 an injected transport so no live TopDeck API key is needed.
 
+`EventTopDeckRegistrationAdapter` maps local event registration rows to
+`registerPlayers()` calls for future queue workers. It validates TopDeck TID
+and registration email, normalizes TopDeck/customer email fallback, passes
+manager-approved capacity overrides through explicitly, maps provider outcomes
+to local registration statuses, and marks transient provider failures for retry.
+The queued worker that reads `tcg_event_topdeck_sync_log`, persists updates, and
+performs live provider calls remains disabled until staging acceptance.
+
 Standings, rounds, webhook, and provider capability discovery methods remain
 future extension points once product flows need them.
 
@@ -78,7 +86,8 @@ For website reserve-and-push:
    present.
 5. A later worker phase calls TopDeck from the queue after sandbox/staging
    acceptance.
-6. Map provider outcomes to explicit local statuses.
+6. Map provider outcomes to explicit local statuses through the tested
+   registration adapter.
 7. If provider registration fails after payment, retain payment and set
    `staff_review_required`; never silently cancel or refund.
 8. On `409`, move to waitlist when configured or create capacity conflict.

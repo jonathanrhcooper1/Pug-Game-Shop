@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.18.0`
+Version: `0.19.0`
 
 ## Implemented Features
 
@@ -50,6 +50,7 @@ Version: `0.18.0`
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent
   current-schema rerun, and rollback order.
+- TopDeck registration push adapter and result mapping for later queue workers.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

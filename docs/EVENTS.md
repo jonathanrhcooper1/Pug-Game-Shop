@@ -8,8 +8,10 @@ modes, capacity-consuming statuses, seats remaining, public status, and badges.
 Read-only public REST endpoints and shortcodes are implemented for published
 events. Local registration writes are implemented for free and pay-at-store
 reservations. WooCommerce event-entry products, online payment capture, TopDeck
-registration push, and the staff dashboard are still behind the disabled
-`events_topdeck` feature flag until staging acceptance.
+registration push worker execution, and the staff dashboard are still behind
+the disabled `events_topdeck` feature flag until staging acceptance. TopDeck
+registration adapter mapping is implemented and unit-tested for future queued
+workers.
 
 ## Public Read Surface
 
@@ -41,6 +43,9 @@ registration link. Paid events are accepted only when `allow_pay_at_store` is
 enabled. Online payment capture and TopDeck registration push are not performed
 by this route yet. Eligible free website-push registrations write a local
 pending TopDeck sync-log record; a later worker phase will process that queue.
+The worker will use the tested TopDeck registration adapter to map provider
+registered, pending invitation, already registered, capacity conflict, failed,
+and retryable outage outcomes to explicit local statuses.
 
 ## Registration Modes
 

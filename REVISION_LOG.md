@@ -3,6 +3,55 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - TopDeck Registration Adapter Mapping
+
+### What Changed
+
+- Added a TopDeck registration push adapter for future queued event
+  registration workers.
+- Added a sync result object that maps provider results to explicit local
+  registration update fields and retry flags.
+- Added unit coverage for TopDeck email selection, customer email fallback,
+  override-cap pass-through, registered and pending invite outcomes, capacity
+  conflicts, missing TID/email guards, and retryable provider failure.
+
+### Why
+
+Website-push event registrations already create local pending TopDeck sync-log
+records. The next safe step is to define and test the adapter mapping that a
+future worker will use before enabling live provider execution, payment-complete
+pushes, or staff recovery screens.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Events/EventTopDeckRegistrationAdapter.php`
+- `apps/wordpress-plugin/src/Events/EventTopDeckRegistrationSyncResult.php`
+- `apps/wordpress-plugin/tests/Unit/EventTopDeckRegistrationAdapterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/EVENTS.md`
+- `docs/TOPDECK_INTEGRATION.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- TopDeck registration adapter tests for provider call shape, email
+  normalization/fallback, override-cap pass-through, provider outcome mapping,
+  missing input short-circuiting, and retryable provider failure updates.
+
+### Rollback Notes
+
+- Revert this revision to remove the TopDeck registration push adapter, sync
+  result mapping, and tests.
+- No schema rollback is required; database target remains `7`.
+- Pending local TopDeck sync-log records remain local-only after rollback; no
+  live provider calls are enabled by this revision.
+
 ## 2026-06-06 - Migration Runner Plan Coverage
 
 ### What Changed

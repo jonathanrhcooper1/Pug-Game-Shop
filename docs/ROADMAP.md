@@ -93,8 +93,9 @@ Exit criteria: test POS sales and refunds reconcile exact items idempotently.
 
 ## Phase 9: Events And TopDeck
 
-Status: In progress; schema, public read surface, TopDeck adapter contract, and
-local free/pay-at-store registration writes implemented
+Status: In progress; schema, public read surface, TopDeck adapter contract,
+local free/pay-at-store registration writes, and TopDeck registration adapter
+mapping implemented
 
 Deliver public events UI, local registration, Woo event products, TopDeck
 link/import/sync/register, waitlist, check-in, QR, attribution, and offline event

@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.19.0] - 2026-06-06
+
+### Added
+
+- TopDeck registration push adapter for mapping local event registration rows
+  to provider registration calls.
+- TopDeck sync result mapping for registered, pending invitation, capacity
+  conflict, missing configuration/input, and retryable provider failures.
+- Unit coverage for TopDeck email selection, customer email fallback,
+  override-cap pass-through, capacity conflicts, missing TID/email guards, and
+  retryable failure updates.
+
+### Not Added
+
+- Queued TopDeck worker execution, live provider calls, payment-complete push,
+  and staff recovery UI remain disabled for later staging-gated phases.
+
 ## [0.18.0] - 2026-06-06
 
 ### Added

@@ -67,6 +67,9 @@
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.
+- Local unit coverage now includes TopDeck registration adapter mapping for
+  provider call shape, email normalization/fallback, override-cap pass-through,
+  provider outcome mapping, missing input guards, and retryable failures.
 
 ## Required Test Backlog
 
@@ -82,7 +85,8 @@ corresponding modules are implemented:
 - Customer credit ledger database integration and replay tests.
 - Manager override persistence, manager reauthentication, and audit tests.
 - ScryDex worker integration tests.
-- TopDeck registration adapter tests.
+- TopDeck registration worker integration tests and live sandbox contract
+  verification.
 - WooCommerce add-to-cart, checkout, payment, order-line, cart release, and
   refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
