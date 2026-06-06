@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.43.0] - 2026-06-06
+
+### Added
+
+- Offline conflict list request parser for the planned conflict-center route.
+- Offline conflict resolution request parser for the planned manager resolution
+  route.
+- Validation for conflict statuses, entity types, cursors, page-size bounds,
+  include-resolved filters, idempotent resolution IDs, manager IDs, resolution
+  actions, notes, expected conflict versions, UTC timestamps, adjustment
+  payloads, and schema version `1`.
+- Unit coverage for normalized list filters, default filters, invalid filter
+  shapes, unsupported filters, valid resolution payloads, idempotency fallback,
+  missing fields, and invalid manager-adjust requests.
+
+### Not Added
+
+- Live conflict repository reads, conflict mutation writes, manager audit
+  persistence, REST callback wiring, and resolved-state propagation remain
+  disabled for later staging-gated phases.
+
 ## [0.42.0] - 2026-06-06
 
 ### Added

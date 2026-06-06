@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Conflict Request Validation
+
+### What Changed
+
+- Added a WordPress offline conflict list request parser for the planned
+  conflict-center route.
+- Added a WordPress offline conflict resolution request parser for the planned
+  manager resolution route.
+- Added immutable request and validation result value objects for list and
+  resolution payloads.
+- Added validation for conflict statuses, entity types, cursors, page-size
+  bounds, include-resolved filters, idempotent resolution IDs, manager IDs,
+  resolution actions, notes, expected conflict versions, UTC resolution
+  timestamps, adjustment payloads, and schema version `1`.
+- Added unit coverage for normalized conflict filters, default filters, invalid
+  filter shapes, unsupported filters, valid resolution payloads, idempotency
+  fallback, missing fields, and invalid manager-adjust requests.
+- Updated project, plugin, and offline app package versions to `0.43.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+The future conflict center needs deterministic request boundaries before live
+repository reads or manager mutation writes are enabled. This slice lets the
+planned routes reject malformed filters and unsafe resolution submissions while
+keeping conflict persistence, audit writes, and route callback wiring disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineConflictListRequest.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictListRequestParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictListRequestValidationResult.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionRequest.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionRequestParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictListRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictResolutionRequestParserTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds conflict request validation only.
+
+### Tests Added
+
+- Offline conflict list parser tests for normalized filters, default filters,
+  invalid shapes, unsupported statuses/entity types, cursor validation,
+  page-size bounds, and schema gating.
+- Offline conflict resolution parser tests for valid manager resolutions,
+  idempotency fallback, missing fields, invalid IDs, invalid timestamps,
+  unsupported actions, manager-adjust notes, and adjustment payload requirements.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline conflict request parsers, value
+  objects, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live conflict repository reads, manager mutation writes, conflict audit
+  persistence, route callback wiring, push/pull execution, and conflict
+  resolved-state propagation remain disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Device Access Policy
 
 ### What Changed

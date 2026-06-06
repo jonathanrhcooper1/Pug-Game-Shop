@@ -249,7 +249,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.42.0",
+  "app_version": "0.43.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -293,6 +293,43 @@ revocation timestamps, token expiry, required scopes, supported modes/scopes,
 location IDs, and UTC timestamps before a pull, push, or conflict request can
 proceed. Live bearer token lookup, token hash comparison, last-seen updates,
 and REST permission callback wiring remain disabled until staging tests pass.
+
+The planned conflict list request accepts query/body filters shaped as:
+
+```json
+{
+  "device_id": "device-main-01",
+  "statuses": ["open", "assigned", "resolving"],
+  "entity_types": ["inventory", "event", "customer_credit"],
+  "cursor": "conflict-cursor-10",
+  "page_size": 50,
+  "include_resolved": false,
+  "schema_version": 1
+}
+```
+
+The planned conflict resolution body is shaped as:
+
+```json
+{
+  "resolution_id": "resolution-main-01",
+  "device_id": "device-main-01",
+  "manager_id": 15,
+  "resolution_action": "manager_adjust",
+  "resolution_note": "Adjusted after staff verified scan",
+  "expected_conflict_version": 12,
+  "resolved_at_utc": "2026-06-06T17:00:00Z",
+  "resolution_payload": {
+    "accepted_inventory_status": "sold"
+  },
+  "schema_version": 1
+}
+```
+
+Supported conflict resolution actions are `accept_server`, `accept_device`,
+`manager_adjust`, `retry_operation`, and `dismiss`. Live conflict repository
+reads, mutation writes, manager audit persistence, and resolved-state
+propagation remain disabled until staging integration tests pass.
 
 ## WooCommerce Hook Map
 

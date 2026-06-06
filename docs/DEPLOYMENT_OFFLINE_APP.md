@@ -72,6 +72,15 @@ location IDs, and UTC timestamps. Live bearer-token lookup, token hash
 comparison, route permission callback wiring, last-seen updates, and revocation
 persistence are still disabled until staging integration tests pass.
 
+Version `0.43.0` adds the conflict-center request validation boundary for
+future list and manager resolution routes. Conflict filters validate statuses,
+entity types, cursors, page-size bounds, include-resolved flags, and schema
+version. Resolution requests validate idempotent resolution IDs, manager IDs,
+actions, notes, expected conflict versions, UTC resolution timestamps,
+adjustment payloads, and schema version. Live conflict repository reads,
+manager mutation writes, audit persistence, and resolved-state propagation are
+still disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

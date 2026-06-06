@@ -88,7 +88,12 @@ scopes, supported modes/scopes, location IDs, and UTC timestamps for future
 pull/push/conflict permission callbacks. Those endpoints are not registered
 live yet, accepted operations are not persisted or replayed yet, live bearer
 token lookup and token hash comparison are disabled, live pull queries are not
-executed yet, and pull cursors are not advanced yet.
+executed yet, and pull cursors are not advanced yet. Conflict list and
+resolution request validation now covers status/entity filters, cursors,
+page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,
+notes, expected conflict versions, UTC resolution timestamps, adjustment
+payloads, and schema version. Live conflict repository reads, manager mutation
+writes, audit persistence, and resolved-state propagation remain disabled.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,
