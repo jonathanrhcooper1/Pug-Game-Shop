@@ -178,6 +178,10 @@
   lookup-query integration for lookup-required query args, invalid scope/time
   query rejection, loaded-row authorization without query args, and permission
   audit summaries without token-hash leakage.
+- Local unit coverage now includes offline registered-device lookup query
+  building for prepared SQL templates, safe table-prefix validation,
+  UTC-to-MySQL expiry arguments, tampered query contracts, invalid lookup
+  plans, and query audits without token-hash leakage.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

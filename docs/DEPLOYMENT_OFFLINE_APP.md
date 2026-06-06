@@ -178,6 +178,13 @@ before a repository call is attempted. Live device row repository queries, route
 registration, permission callback wiring, last-seen writes, queue replay, and
 database writes remain disabled until staging integration tests pass.
 
+Version `0.57.0` adds the registered-device lookup query building boundary.
+Future WordPress repositories can now transform a valid lookup-query contract
+into a whitelisted prepared-SQL template, safe prefixed table name, and prepared
+arguments without executing `$wpdb` reads. Live device row repository execution,
+route registration, permission callback wiring, last-seen writes, queue replay,
+and database writes remain disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

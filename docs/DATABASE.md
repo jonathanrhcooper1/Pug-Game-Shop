@@ -270,9 +270,11 @@ device lookup-query planning now defines the future `tcg_offline_devices`
 selected columns, active/revocation/expiry filters, row-normalizer metadata,
 lock intent, and deferred scope checks without executing SQL. Permission
 planning now exposes that query contract in lookup-required outcomes before any
-live repository call. Live provider workers, device row repository queries,
-permission callback wiring, last-seen database writes, and offline route writes
-remain disabled until later phases.
+live repository call. Registered device lookup query building now validates
+that contract and produces a prepared SQL template plus arguments without
+executing the live repository query. Live provider workers, device row
+repository queries, permission callback wiring, last-seen database writes, and
+offline route writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

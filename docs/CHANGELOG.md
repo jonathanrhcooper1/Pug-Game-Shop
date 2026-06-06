@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.57.0] - 2026-06-06
+
+### Added
+
+- Offline registered-device lookup query builder for future repository-backed
+  permission callbacks.
+- Query plan value object exposing a safe table name, selected columns,
+  prepared SQL template, prepared arguments, row-normalizer metadata, stable
+  errors, and secret-free audit payloads.
+- Validation for WordPress table prefixes, supported device-table contracts,
+  whitelisted selected columns, active/revocation/expiry filters, deferred
+  scope checks, supported row normalizers, and one-row lookup limits.
+- Unit coverage for prepared SQL templates, UTC-to-MySQL expiry argument
+  conversion, invalid upstream lookup plans, invalid table prefixes, tampered
+  query contracts, and audit payloads without raw tokens or token hashes.
+
+### Not Added
+
+- Live `$wpdb` execution, device row repository reads, REST route registration,
+  WordPress `permission_callback` wiring, last-seen writes, queue replay
+  workers, and live database writes remain disabled for later staging-gated
+  phases.
+
 ## [0.56.0] - 2026-06-06
 
 ### Changed

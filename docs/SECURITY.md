@@ -52,9 +52,12 @@ repository rows without exposing token hashes in audit payloads. Registered
 device lookup-query planning derives selected columns and active/revocation/
 expiry filters from token lookup plans without exposing raw tokens in audit
 payloads. Permission planning now carries lookup-query summaries without
-exposing token hashes in permission audits. Live device row repository queries,
-permission callback wiring, last-seen database writes, and route callback
-wiring remain staging-gated.
+exposing token hashes in permission audits. Registered-device lookup query
+building validates table prefixes and whitelisted query contracts before
+producing prepared SQL metadata, and its audits expose counts rather than raw
+tokens or token hashes. Live device row repository queries, permission callback
+wiring, last-seen database writes, and route callback wiring remain
+staging-gated.
 
 ## Secret Storage
 

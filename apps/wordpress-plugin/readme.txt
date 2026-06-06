@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.56.0
+Stable tag: 0.57.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -101,6 +101,9 @@ disabled.
 Phase 7.22 integrates registered-device lookup-query planning into permission
 planning while keeping live device row repository queries, route registration,
 and database writes disabled.
+Phase 7.23 adds registered-device lookup query building while keeping live
+device row repository execution, route registration, permission callback wiring,
+and database writes disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -118,6 +121,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.57.0 =
+
+* Added registered-device lookup query building for future repository-backed permission callbacks.
+* Added safe table-prefix validation, whitelisted selected columns, prepared SQL templates, UTC-to-MySQL expiry arguments, and secret-free query audit payloads.
+* Added tests for prepared query templates, invalid lookup plans, invalid table prefixes, tampered query contracts, and token-hash redaction from audits.
+* Kept live device row repository execution, route registration, permission callbacks, last-seen writes, queue replay, and database writes disabled until staging integration tests pass.
 
 = 0.56.0 =
 

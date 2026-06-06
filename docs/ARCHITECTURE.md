@@ -214,6 +214,9 @@ execution is enabled.
 Registered-device permission planning now carries that lookup-query plan in
 lookup-required outcomes and rejects invalid query-planning inputs before live
 repositories are called.
+Registered-device lookup query building now validates the planned contract,
+safe WordPress table prefixes, selected columns, and deferred scope behavior
+before producing a prepared-SQL template and arguments for future repositories.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

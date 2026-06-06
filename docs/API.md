@@ -50,7 +50,9 @@ consumes them. Registered device lookup-query planning now converts valid token
 lookup plans into future repository query arguments without executing SQL.
 Registered device permission planning now includes those lookup-query arguments
 on lookup-required outcomes and denies invalid scope/time query plans before a
-future repository call.
+future repository call. Registered device lookup query building now transforms
+valid lookup query contracts into whitelisted prepared-SQL templates and
+prepared arguments for future repositories without executing live SQL.
 
 ### Inventory And Search
 
@@ -285,7 +287,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.56.0",
+  "app_version": "0.57.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

@@ -102,11 +102,13 @@ the row. Registered device lookup-query planning now prepares selected columns,
 active/revocation/expiry filters, row-normalizer metadata, lock intent, and
 deferred scope checks for future repositories without executing SQL. Permission
 planning now carries those query arguments in lookup-required outcomes and
-rejects invalid scope/time query plans before a future repository call. Those
-endpoints are not registered live yet, accepted operations are not persisted or
-replayed yet, live device row repository queries, permission callback wiring,
-and last-seen database writes are disabled, live pull queries are not executed
-yet, and pull cursors are not advanced yet.
+rejects invalid scope/time query plans before a future repository call.
+Registered-device lookup query building now validates those query contracts and
+produces prepared SQL templates plus arguments without executing live SQL.
+Those endpoints are not registered live yet, accepted operations are not
+persisted or replayed yet, live device row repository queries, permission
+callback wiring, and last-seen database writes are disabled, live pull queries
+are not executed yet, and pull cursors are not advanced yet.
 Conflict list and
 resolution request validation now covers status/entity filters, cursors,
 page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,
