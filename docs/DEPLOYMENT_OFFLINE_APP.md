@@ -81,6 +81,12 @@ adjustment payloads, and schema version. Live conflict repository reads,
 manager mutation writes, audit persistence, and resolved-state propagation are
 still disabled until staging integration tests pass.
 
+Version `0.44.0` adds the conflict-list response presentation boundary. Future
+repository rows can now be shaped into stable conflict-center payloads with
+filters, cursors, has-more state, severity, row versions, payload objects, and
+available manager resolution options. Live conflict repository reads and
+manager mutation writes are still disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

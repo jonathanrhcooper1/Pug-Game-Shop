@@ -195,6 +195,9 @@ conflict work runs. Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and
 unsafe adjustment payloads before live conflict reads or writes are enabled.
+Conflict list response presentation is implemented so repository-backed rows
+can later be shaped into stable conflict-center payloads without changing the
+offline app contract.
 
 ## Storefront Product Strategy
 

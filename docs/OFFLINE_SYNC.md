@@ -94,6 +94,9 @@ page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,
 notes, expected conflict versions, UTC resolution timestamps, adjustment
 payloads, and schema version. Live conflict repository reads, manager mutation
 writes, audit persistence, and resolved-state propagation remain disabled.
+Conflict list response presentation now shapes repository rows into stable
+filters, cursors, conflict rows, row versions, payload objects, severity, and
+available resolution options for the future conflict center.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

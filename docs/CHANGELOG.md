@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.44.0] - 2026-06-06
+
+### Added
+
+- Offline conflict list response presenter for the planned conflict-center
+  list route.
+- Stable response shaping for device IDs, schema version, server time, filters,
+  cursors, `has_more`, conflict rows, severities, row versions, payload objects,
+  and available manager resolution options.
+- Validation for conflict IDs, statuses, entity types, entity IDs, conflict
+  types, severity, summaries, UTC timestamps, row versions, response cursors,
+  payload objects, and supported resolution options.
+- Unit coverage for empty conflict responses, normalized conflict rows,
+  duplicate action cleanup, payload preservation, and invalid response contract
+  inputs.
+
+### Not Added
+
+- Live conflict repository reads, conflict mutation writes, manager audit
+  persistence, REST callback wiring, and resolved-state propagation remain
+  disabled for later staging-gated phases.
+
 ## [0.43.0] - 2026-06-06
 
 ### Added

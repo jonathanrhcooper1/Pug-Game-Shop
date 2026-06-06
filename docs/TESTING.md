@@ -145,6 +145,10 @@
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution
   actions, notes, expected conflict versions, UTC timestamps, adjustment
   payloads, and schema version gating.
+- Local unit coverage now includes offline conflict list response presentation
+  for empty responses, filters, cursors, normalized conflict rows, severity, row
+  versions, payload objects, duplicate action cleanup, and invalid response
+  contract inputs.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

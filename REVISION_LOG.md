@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Conflict Response Presentation
+
+### What Changed
+
+- Added a WordPress offline conflict list response presenter for the planned
+  conflict-center list route.
+- Added stable response shaping for device IDs, schema version, server time,
+  filters, cursors, `has_more`, conflict rows, severities, row versions,
+  payload objects, and available manager resolution options.
+- Added validation for conflict IDs, statuses, entity types, entity IDs,
+  conflict types, severity, summaries, UTC timestamps, row versions, response
+  cursors, payload objects, and supported resolution options.
+- Added unit coverage for empty conflict responses, normalized conflict rows,
+  duplicate action cleanup, payload preservation, and invalid response contract
+  inputs.
+- Updated project, plugin, and offline app package versions to `0.44.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+After conflict request validation, the future conflict-center route needs a
+stable response payload before repository-backed reads are enabled. This slice
+lets the Windows app contract settle around conflict filters, pagination,
+payloads, row versions, and manager actions while keeping live reads and
+mutations disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineConflictListResponsePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictListResponsePresenterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds conflict response presentation only.
+
+### Tests Added
+
+- Offline conflict list response presenter tests for empty responses, normalized
+  conflict rows, filters, cursors, duplicate resolution action cleanup, payload
+  preservation, invalid timestamps, invalid cursors, invalid row fields, invalid
+  payload objects, and unsupported resolution options.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline conflict response presenter, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live conflict repository reads, manager mutation writes, conflict audit
+  persistence, route callback wiring, and resolved-state propagation remain
+  disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Conflict Request Validation
 
 ### What Changed

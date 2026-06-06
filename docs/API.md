@@ -249,7 +249,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.43.0",
+  "app_version": "0.44.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -330,6 +330,42 @@ Supported conflict resolution actions are `accept_server`, `accept_device`,
 `manager_adjust`, `retry_operation`, and `dismiss`. Live conflict repository
 reads, mutation writes, manager audit persistence, and resolved-state
 propagation remain disabled until staging integration tests pass.
+
+The planned conflict list response is shaped as:
+
+```json
+{
+  "device_id": "device-main-01",
+  "schema_version": 1,
+  "server_time_utc": "2026-06-06T18:00:00Z",
+  "cursor": "conflict-cursor-11",
+  "has_more": true,
+  "filters": {
+    "statuses": ["open", "assigned"],
+    "entity_types": ["inventory", "event"],
+    "include_resolved": false
+  },
+  "conflicts": [
+    {
+      "conflict_id": "conflict-main-01",
+      "status": "open",
+      "entity_type": "inventory",
+      "entity_id": "inv-1001",
+      "conflict_type": "double_sell",
+      "severity": "blocking",
+      "summary": "Online sale and offline sale both claimed item",
+      "row_version": 7,
+      "server_row_version": 12,
+      "device_row_version": 11,
+      "detected_at_utc": "2026-06-06T17:50:00Z",
+      "updated_at_utc": "2026-06-06T17:55:00Z",
+      "server_payload": {},
+      "device_payload": {},
+      "resolution_options": ["accept_server", "accept_device"]
+    }
+  ]
+}
+```
 
 ## WooCommerce Hook Map
 
