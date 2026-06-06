@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.47.0`
+Version: `0.48.0`
 
 ## Implemented Features
 
@@ -102,6 +102,8 @@ Version: `0.47.0`
 - Offline push batch resolution planning for future route handlers,
   per-operation results, operation result rows, enriched conflict rows, batch
   counts, server snapshot lookup, and redacted batch audit payloads.
+- Offline sync persistence schema for registered devices, idempotent operation
+  queue/result rows, manager-reviewed conflicts, and per-device pull cursors.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent
@@ -154,7 +156,7 @@ versions.
    `wp-content/plugins/tcg-store-platform`.
 3. Activate **TCG Store Platform**.
 4. Open **TCG Store > System Status**.
-5. Confirm schema version `7 / 7`, WooCommerce, Action Scheduler, and the next
+5. Confirm schema version `8 / 8`, WooCommerce, Action Scheduler, and the next
    daily UTC run.
 6. Authenticate as a manager/admin and request
    `/wp-json/tcg-store/v1/health`.

@@ -3,6 +3,95 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Sync Persistence Schema
+
+### What Changed
+
+- Added schema migration `0008_offline-sync` for future live offline sync
+  persistence.
+- Added custom WordPress tables for registered offline devices, offline
+  operation queue/result rows, manager-reviewed sync conflicts, and per-device
+  pull cursors.
+- Added indexes and unique keys for device tokens, active/revoked device lookup,
+  idempotent client operation replay, per-device operation ordering, conflict
+  center filtering, entity conflict lookup, and per-device/domain cursor
+  advancement.
+- Updated migration runner planning so clean installs, upgrades, current-schema
+  no-ops, and rollback plans include schema version `8`.
+- Updated WordPress integration smoke verification to require plugin
+  `0.48.0`, database target `8`, database option `8`, and the new offline sync
+  persistence tables.
+- Added dependency-free schema tests for offline devices, operation queue rows,
+  conflict rows, pull cursors, and drop order.
+- Updated project, plugin, and offline app package versions to `0.48.0`.
+- Updated API, database, offline sync, testing, deployment, changelog, and
+  plugin docs.
+
+### Why
+
+The future `/offline/push`, `/offline/pull`, and conflict-center handlers need
+stable custom tables before route registration can be enabled. This migration
+creates the database boundary for device authentication, idempotent queue
+replay, conflict review, and cursor advancement while keeping live route writes
+disabled until staging integration tests and repository adapters are added.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/OfflineSyncSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0008OfflineSync.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineSyncSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- `0008_offline-sync`
+  - Adds `tcg_offline_devices`.
+  - Adds `tcg_offline_sync_queue`.
+  - Adds `tcg_sync_conflicts`.
+  - Adds `tcg_offline_pull_cursors`.
+
+### Tests Added
+
+- Offline sync schema tests for registered devices, queue/result rows, conflict
+  rows, pull cursors, and reversible drop order.
+- Migration runner plan assertions for clean install, upgrade from schema `5`,
+  current-schema no-op, rollback from `8` to `4`, and no-op rollback plans.
+- WordPress integration smoke assertions for schema target `8` and offline sync
+  tables.
+
+### Rollback Notes
+
+- Roll back schema version `8` to `7` with
+  `MigrationRunner::rollback_to(7)` in a controlled maintenance window.
+- The rollback drops `tcg_offline_pull_cursors`, `tcg_sync_conflicts`,
+  `tcg_offline_sync_queue`, and `tcg_offline_devices` in dependency order.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline route registration, database queue replay, canonical entity
+  mutation writes, conflict mutation writes, bearer-token lookup, token hash
+  comparison, and cursor advancement remain disabled both before and after
+  rollback.
+
 ## 2026-06-06 - Offline Push Batch Resolution Planning
 
 ### What Changed

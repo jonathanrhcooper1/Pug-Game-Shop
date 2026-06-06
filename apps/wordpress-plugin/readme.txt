@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.47.0
+Stable tag: 0.48.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -79,6 +79,9 @@ Phase 7.12 adds offline push operation resolution planning while keeping live
 queue replay and conflict persistence disabled.
 Phase 7.13 adds offline push batch resolution planning while keeping live route
 handlers and queue persistence disabled.
+Phase 7.14 adds offline sync persistence schema while keeping live offline route
+handlers, token lookup, queue replay, conflict writes, and cursor advancement
+disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -96,6 +99,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.48.0 =
+
+* Added offline sync persistence migration for registered offline devices, idempotent operation queue/result rows, manager-reviewed conflict rows, and per-device pull cursors.
+* Added schema tests for device token/revocation fields, operation idempotency, conflict lookups, cursor uniqueness, and reversible drop order.
+* Updated migration planning and WordPress integration smoke coverage for database target 8.
+* Kept live offline route handlers, bearer-token lookup, token hash comparison, queue replay workers, conflict mutation writes, and cursor advancement disabled until staging integration tests pass.
 
 = 0.47.0 =
 

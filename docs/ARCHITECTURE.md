@@ -207,7 +207,9 @@ manager-reviewed conflict rows, deterministic conflict IDs, and redacted audit
 payload hashes before live push persistence is enabled. Offline push batch
 resolution planning now aggregates those per-operation plans into future route
 responses, operation result rows, conflict rows, counts, and batch audit
-payloads without enabling live database writes.
+payloads without enabling live database writes. WordPress-side offline sync
+persistence schema now exists for registered devices, idempotent operation
+queue/result rows, manager-reviewed conflicts, and per-device pull cursors.
 
 ## Storefront Product Strategy
 

@@ -253,7 +253,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.47.0",
+  "app_version": "0.48.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -334,6 +334,12 @@ The batch planner requires server snapshots keyed by client operation ID,
 `entity_type:entity_id`, or operation index before resolving operations. Live
 push route handlers and repository-backed snapshot loading remain disabled
 until staging tests pass.
+
+Schema migration `0008_offline-sync` now defines the future persistence tables
+for registered offline devices, idempotent operation queue/result rows,
+manager-reviewed conflicts, and per-device pull cursors. The REST route
+contracts still report the offline endpoints as disabled by default until the
+permission callbacks and repository-backed handlers are wired through staging.
 
 Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,

@@ -68,8 +68,13 @@
   claims, idempotency replay, unavailable inventory rejection, and active claim
   collision rejection. Lifecycle coverage includes conversion to sold, release
   to available, idempotent conversion replay, and inventory-state mismatch
-  rejection. WordPress integration smoke coverage asserts schema version `7`
-  and reservation tables.
+  rejection. WordPress integration smoke coverage asserts reservation tables
+  as part of the full schema.
+- Local unit coverage now includes offline sync persistence schema contracts for
+  registered devices, idempotent operation queue/result rows, manager-reviewed
+  conflicts, per-device pull cursors, and reversible drop order. WordPress
+  integration smoke coverage asserts schema version `8` and offline sync
+  persistence tables.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

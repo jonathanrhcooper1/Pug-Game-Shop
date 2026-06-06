@@ -244,16 +244,18 @@ disabled until staging acceptance.
 ## Sync And Offline
 
 Status: schema migration `0006_sync` is implemented for server sync jobs,
-logs, checkpoints, errors, and provider webhook events. Planned offline REST
-route contracts and offline push payload validation exist for pairing, push,
-pull request validation, pull response presentation, device pairing validation,
-device registration planning, device access policy checks, conflict list
-filters, conflict resolution requests, conflict list response presentation, and
-conflict resolution planning. Offline push operation and batch resolution
-planning now prepares future queue result rows, conflict rows, response counts,
-and audit payloads for accepted, rejected, and manager-reviewed operation
-outcomes, but live provider workers and offline device/queue/conflict writes
-remain disabled until later phases.
+logs, checkpoints, errors, and provider webhook events. Schema migration
+`0008_offline-sync` is implemented for registered offline devices, idempotent
+operation queue/result rows, manager-reviewed sync conflicts, and per-device
+pull cursors. Planned offline REST route contracts and offline push payload
+validation exist for pairing, push, pull request validation, pull response
+presentation, device pairing validation, device registration planning, device
+access policy checks, conflict list filters, conflict resolution requests,
+conflict list response presentation, and conflict resolution planning. Offline
+push operation and batch resolution planning now prepares future queue result
+rows, conflict rows, response counts, and audit payloads for accepted, rejected,
+and manager-reviewed operation outcomes, but live provider workers and
+offline route writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |
@@ -262,9 +264,10 @@ remain disabled until later phases.
 | `tcg_sync_checkpoints` | job/resource partition, page/cursor, high-water mark, payload hash |
 | `tcg_sync_errors` | classification, retryability, request fingerprint, masked payload, resolution |
 | `tcg_webhook_events` | provider event ID unique, signature status, payload hash/body, processing state |
-| `tcg_offline_sync_queue` | device, client operation UUID unique, operation type, entity/version, payload, acceptance state |
-| `tcg_offline_devices` | device public ID, location, mode, token hash, capabilities, revoked/last-seen timestamps |
-| `tcg_sync_conflicts` | entity, server/client versions and payloads, conflict type, resolution and manager |
+| `tcg_offline_devices` | device public ID, location, mode, token hash, scopes/capabilities, status, revoked/last-seen timestamps |
+| `tcg_offline_sync_queue` | device, client operation UUID unique, sequence, operation type, entity/version, payload, acceptance state/result |
+| `tcg_sync_conflicts` | entity, server/client versions and payloads, conflict type, severity, resolution and manager |
+| `tcg_offline_pull_cursors` | device/domain cursor, last server time, last pull timestamp, row count |
 
 ## POS And Payments
 

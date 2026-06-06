@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.48.0] - 2026-06-06
+
+### Added
+
+- Offline sync database migration `0008_offline-sync` for registered device
+  rows, idempotent operation queue/result rows, manager-reviewed conflict rows,
+  and per-device pull cursors.
+- Offline sync schema contract tests for token/revocation fields, operation
+  idempotency, conflict lookups, cursor uniqueness, and reversible drop order.
+- WordPress integration smoke coverage for database target `8` and the new
+  offline persistence tables.
+
+### Not Added
+
+- Live offline route registration, bearer-token lookup, token hash comparison,
+  queue replay workers, canonical entity mutations, conflict mutation writes,
+  and cursor advancement remain disabled for later staging-gated phases.
+
 ## [0.47.0] - 2026-06-06
 
 ### Added

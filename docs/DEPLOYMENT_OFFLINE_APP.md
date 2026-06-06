@@ -111,6 +111,13 @@ registration, queue replay writes, canonical entity mutations, conflict
 insertion, permission wiring, and cursor advancement are still disabled until
 staging integration tests pass.
 
+Version `0.48.0` adds the server-side offline sync persistence schema. Future
+WordPress handlers now have planned custom tables for registered offline
+devices, idempotent operation queue/result rows, manager-reviewed conflicts,
+and per-device pull cursors. Live route callbacks, bearer-token lookup, token
+hash comparison, queue replay workers, conflict mutation writes, and cursor
+advancement remain disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

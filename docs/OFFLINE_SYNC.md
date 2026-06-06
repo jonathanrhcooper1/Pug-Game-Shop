@@ -109,7 +109,13 @@ conflict persistence, permission callback wiring, and cursor advancement remain
 disabled until staging integration tests pass. Offline push batch resolution
 planning now wraps those operation plans into batch-level response counts,
 future operation result rows, enriched conflict rows, and redacted batch audit
-payloads after repository-provided server snapshots are available.
+payloads after repository-provided server snapshots are available. WordPress
+schema migration `0008_offline-sync` now adds the server-side tables for
+registered devices, idempotent operation queue/result rows, manager-reviewed
+sync conflicts, and per-device pull cursors. Live route callbacks, bearer-token
+lookup, token hash comparison, queue replay workers, canonical entity
+mutations, conflict mutation writes, and cursor advancement remain disabled
+until staging integration tests pass.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,
