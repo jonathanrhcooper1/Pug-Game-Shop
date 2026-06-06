@@ -263,6 +263,11 @@ before any registrar is called. Current route contracts still report no
 registerable routes, and route registration, persistence, and queue replay
 remain disabled.
 
+Version `0.71.0` surfaces that bootstrap state through authenticated health and
+admin System Status. Staging checks can now confirm the offline route bootstrap
+is blocked by default and that offline pull/push routes remain unregistered
+before any future route-enablement slice proceeds.
+
 ## Hardware Gate
 
 Before production, test the actual:

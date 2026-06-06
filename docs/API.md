@@ -84,6 +84,9 @@ Offline route bootstrap planning now summarizes feature-gate state, planned
 route counts, registerable route counts, registerable route keys,
 route-registration metadata, and bootstrap block reasons before any future
 staging bootstrap attempts live route registration.
+Authenticated health responses now include `offline_route_bootstrap` with
+blocked/gated/ready status, route counts, registerable route keys, per-route
+summaries, and bootstrap block reasons for staging readiness checks.
 
 ### Inventory And Search
 
@@ -321,7 +324,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.70.0",
+  "app_version": "0.71.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

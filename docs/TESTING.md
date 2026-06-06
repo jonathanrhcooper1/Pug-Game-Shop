@@ -207,6 +207,12 @@
   invocation, stale update denial, missing-header denial before database access,
   get-header style requests, plan-only resolver compatibility, and redacted
   last-resolution audits.
+- Local unit coverage now includes offline route bootstrap status presentation
+  for blocked default state, gated feature-enabled state, ready future route
+  plans, and admin summary output.
+- WordPress integration smoke coverage now asserts offline pull/push routes
+  remain unregistered and authenticated health reports blocked offline route
+  bootstrap status by default.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

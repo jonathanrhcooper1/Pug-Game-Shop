@@ -265,6 +265,9 @@ Offline route bootstrap planning now summarizes whether the offline feature
 gate and planned route metadata allow registration, including route counts,
 registerable route keys, per-route summaries, and block reasons, before any
 future staging bootstrap calls the registrar.
+That bootstrap state is now surfaced through authenticated health output and
+admin System Status so staging can inspect readiness without opening the live
+offline route boundary.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

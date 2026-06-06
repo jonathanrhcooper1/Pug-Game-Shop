@@ -7,6 +7,7 @@
 
 namespace TCGStorePlatform\Admin;
 
+use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
@@ -109,6 +110,9 @@ final class AdminMenu {
 		$scheduler = new DailyScheduler( $this->logger );
 		$status    = DependencyChecker::status();
 		$branding  = BrandingSettings::public_config( Settings::all() );
+		$offline   = ( new OfflineRouteBootstrapStatusPresenter() )->admin_summary(
+			FeatureFlags::is_enabled( 'offline_sync' )
+		);
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
@@ -144,6 +148,11 @@ final class AdminMenu {
 			__( 'Branding profile', 'tcg-store-platform' ),
 			(string) $branding['company']['name'],
 			'configured'
+		);
+		$this->render_status_row(
+			__( 'Offline route bootstrap', 'tcg-store-platform' ),
+			$offline['value'],
+			$offline['status']
 		);
 
 		echo '</tbody></table></div>';

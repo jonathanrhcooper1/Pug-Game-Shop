@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.71.0] - 2026-06-06
+
+### Added
+
+- Offline route bootstrap status presenter for authenticated health output and
+  admin System Status.
+- Health payload status values for blocked, gated, and ready bootstrap states,
+  while preserving route summaries and block reasons for staging inspection.
+- Admin summary text for offline route bootstrap counts and block reasons.
+- WordPress integration smoke assertions proving offline pull/push routes
+  remain unregistered and health reports blocked bootstrap state by default.
+- Unit coverage for blocked, gated, ready, and admin-summary bootstrap status
+  payloads.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.70.0] - 2026-06-06
 
 ### Added

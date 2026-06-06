@@ -70,6 +70,9 @@ final class HealthController {
 		$dependencies = DependencyChecker::status();
 		$features     = array();
 		$overall      = 'ok';
+		$offline      = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
+			FeatureFlags::is_enabled( 'offline_sync' )
+		);
 
 		foreach ( $dependencies as $dependency ) {
 			if ( 'blocked' === $dependency['status'] ) {
@@ -96,17 +99,18 @@ final class HealthController {
 
 		return new \WP_REST_Response(
 			array(
-				'status'       => $overall,
-				'version'      => Version::PLUGIN,
-				'database'     => array(
+				'status'                  => $overall,
+				'version'                 => Version::PLUGIN,
+				'database'                => array(
 					'current' => $runner->current_version(),
 					'target'  => Version::DATABASE,
 				),
-				'dependencies' => $dependencies,
-				'scheduler'    => $this->scheduler->status(),
-				'hpos'         => Compatibility::hpos_status(),
-				'features'     => $features,
-				'timestamp'    => gmdate( 'c' ),
+				'dependencies'            => $dependencies,
+				'scheduler'               => $this->scheduler->status(),
+				'hpos'                    => Compatibility::hpos_status(),
+				'features'                => $features,
+				'offline_route_bootstrap' => $offline,
+				'timestamp'               => gmdate( 'c' ),
 			),
 			200
 		);

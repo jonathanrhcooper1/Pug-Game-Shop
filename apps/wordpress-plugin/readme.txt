@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.70.0
+Stable tag: 0.71.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -134,6 +134,8 @@ Phase 7.35 adds parser-only offline route validation handlers while keeping
 route registration and live database writes disabled.
 Phase 7.36 adds offline route bootstrap planning while keeping route
 registration and live database writes disabled.
+Phase 7.37 adds offline route bootstrap status reporting to health and admin
+System Status while keeping route registration disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -151,6 +153,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.71.0 =
+
+* Added offline route bootstrap status presentation for authenticated health output and admin System Status.
+* Added health smoke assertions proving offline routes remain unregistered and bootstrap status remains blocked by default.
+* Added tests for blocked, gated, ready, and admin-summary bootstrap status payloads.
+* Kept current live offline route registration and database mutation disabled until staging integration tests pass.
 
 = 0.70.0 =
 

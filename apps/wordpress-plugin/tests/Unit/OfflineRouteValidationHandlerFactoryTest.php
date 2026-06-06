@@ -137,7 +137,7 @@ final class OfflineRouteValidationHandlerFactoryTest extends TestCase {
 			'device_mode'      => 'KIOSK',
 			'location_id'      => '2',
 			'manager_id'       => 15,
-			'app_version'      => '0.70.0',
+			'app_version'      => '0.71.0',
 			'platform'         => 'Windows',
 			'capabilities'     => array(
 				'barcode_scanner' => true,

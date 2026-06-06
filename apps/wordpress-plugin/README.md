@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.70.0`
+Version: `0.71.0`
 
 ## Implemented Features
 
@@ -155,6 +155,9 @@ Version: `0.70.0`
   including feature-gate status, registerable route counts, route keys,
   route-registration summaries, and bootstrap block reasons without registering
   live routes.
+- Offline route bootstrap status presentation in authenticated health output
+  and admin System Status for staging readiness checks while live offline
+  routes remain unregistered.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and

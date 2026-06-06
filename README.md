@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.70.0`
+Version: `0.71.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -159,6 +159,9 @@ deferred and routes remain gated.
 Offline route bootstrap planning now summarizes the current route-registration
 state, feature-gate state, registerable route keys, and block reasons before
 any future staging bootstrap can call live route registration.
+The authenticated health response and admin System Status screen now surface
+that offline route bootstrap status for staging readiness checks while the
+offline routes remain unregistered.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,

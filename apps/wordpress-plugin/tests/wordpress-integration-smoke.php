@@ -39,7 +39,7 @@ $assert = static function ( bool $condition, string $message ) use ( $fail ): vo
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.70.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.71.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -82,6 +82,8 @@ $assert( isset( $routes['/tcg-store/v1/health'] ), 'Health REST route was not re
 $assert( isset( $routes['/tcg-store/v1/events'] ), 'Events REST list route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)'] ), 'Events REST detail route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/register'] ), 'Events REST registration route was not registered.' );
+$assert( ! isset( $routes['/tcg-store/v1/offline/pull'] ), 'Offline pull route should remain unregistered.' );
+$assert( ! isset( $routes['/tcg-store/v1/offline/push'] ), 'Offline push route should remain unregistered.' );
 
 $response = rest_do_request( '/tcg-store/v1/health' );
 $assert( ! $response->is_error(), 'Health REST route returned an error.' );
@@ -89,10 +91,15 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.70.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.71.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
 $assert( false === ( $data['features']['inventory_pricing']['enabled'] ?? null ), 'Inventory feature flag should remain disabled.' );
+$assert( 'blocked' === ( $data['offline_route_bootstrap']['status'] ?? null ), 'Offline route bootstrap should remain blocked.' );
+$assert( false === ( $data['offline_route_bootstrap']['feature_enabled'] ?? null ), 'Offline route feature should remain disabled.' );
+$assert( 5 === (int) ( $data['offline_route_bootstrap']['planned_route_count'] ?? 0 ), 'Offline route bootstrap should report planned routes.' );
+$assert( 0 === (int) ( $data['offline_route_bootstrap']['registerable_route_count'] ?? -1 ), 'Offline route bootstrap should report zero registerable routes.' );
+$assert( false === ( $data['offline_route_bootstrap']['should_register_routes'] ?? null ), 'Offline route bootstrap should not register routes.' );
 
 echo "PASS WordPress integration smoke test\n";
