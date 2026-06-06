@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.16.0
+Stable tag: 0.17.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -27,6 +27,8 @@ release, and conversion service checks.
 Phase 2.2 adds manager override policy helpers for below-minimum sale approval.
 Phase 4.2 adds serialized cart item metadata validation for WooCommerce
 checkout hook preparation.
+Phase 1.3 adds dependency-free REST route contract coverage for health and
+public Events endpoints.
 
 Inventory and commerce modules remain disabled until their implementation phases.
 
@@ -38,6 +40,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.17.0 =
+
+* Added REST route contract coverage for health and public Events endpoints.
+* Reused those contracts during route registration to reduce route/test drift.
+* Kept unimplemented customer, buylist, inventory, offline, and POS write routes disabled.
 
 = 0.16.0 =
 

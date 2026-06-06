@@ -61,13 +61,17 @@
 - Local unit coverage now includes WooCommerce serialized cart item metadata
   validation for exact inventory/reservation identifiers, owner token hashes,
   quantity-one enforcement, reservation expiry, price snapshots, and currency.
+- Local unit coverage now includes REST route contracts for health and public
+  Events endpoints, including namespace/method/callback/access-mode checks and
+  guards that unimplemented write modules are not registered.
 
 ## Required Test Backlog
 
 The following areas must graduate from scaffold docs to automated tests as the
 corresponding modules are implemented:
 
-- REST API tests.
+- WordPress REST permission, nonce, request/response, and write-flow integration
+  tests.
 - Database migration tests.
 - Pricing engine tests.
 - Reservation database integration and concurrent double-sell prevention tests.

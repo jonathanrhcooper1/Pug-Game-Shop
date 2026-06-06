@@ -2,8 +2,8 @@
 
 ## Status
 
-Implementation complete; target WordPress/WooCommerce integration acceptance is
-pending a staging environment.
+Implementation complete with REST route contract coverage; target
+WordPress/WooCommerce integration acceptance is pending a staging environment.
 
 ## Delivered
 
@@ -24,6 +24,8 @@ pending a staging environment.
 - Audit append service.
 - Daylight-saving-safe one-shot 9:00 AM Eastern scheduler.
 - Authenticated REST health endpoint.
+- Dependency-free REST route contract tests for health and public Events
+  endpoints.
 - Admin dashboard and system status.
 - GitHub PHP matrix CI.
 - Dependency-free local syntax and unit tests.

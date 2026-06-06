@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - REST Route Contract Foundation
+
+### What Changed
+
+- Added dependency-free REST route contract coverage for the health and public
+  Events endpoints.
+- Reused controller route contracts during route registration to reduce drift
+  between documented/tested route shapes and registered WordPress routes.
+- Added guard coverage proving unimplemented customer, buylist, inventory,
+  offline, and POS write routes remain unregistered.
+
+### Why
+
+The platform needs automated REST API coverage before more write routes are
+enabled. This slice pins the currently available route namespace, methods,
+callbacks, and access mode while preserving full WordPress request/permission
+integration tests for staging-gated route implementations.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ApiRouteContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- REST route contract tests for namespace consistency, unique method/path
+  registration, authenticated health access, public Events route methods, and
+  absent unimplemented write modules.
+
+### Rollback Notes
+
+- Revert this revision to remove dependency-free REST route contract tests and
+  inline controller route contract helpers.
+- No schema rollback is required; database target remains `7`.
+- The WordPress integration smoke test remains the fallback route registration
+  check after rollback.
+
 ## 2026-06-06 - WooCommerce Serialized Cart Metadata Foundation
 
 ### What Changed

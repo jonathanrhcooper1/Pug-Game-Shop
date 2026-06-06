@@ -29,14 +29,31 @@ final class HealthController {
 	}
 
 	public function register_routes(): void {
-		register_rest_route(
-			self::NAMESPACE,
-			'/health',
+		foreach ( self::route_contracts() as $route ) {
+			register_rest_route(
+				$route['namespace'],
+				$route['path'],
+				array(
+					'methods'             => self::rest_method( $route['method'] ),
+					'callback'            => array( $this, $route['callback'] ),
+					'permission_callback' => array( $this, 'can_view_health' ),
+				)
+			);
+		}
+	}
+
+	/**
+	 * @return list<array{namespace:string,path:string,method:string,callback:string,permission:string}>
+	 */
+	public static function route_contracts(): array {
+		return array(
 			array(
-				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => array( $this, 'get_health' ),
-				'permission_callback' => array( $this, 'can_view_health' ),
-			)
+				'namespace'  => self::NAMESPACE,
+				'path'       => '/health',
+				'method'     => 'GET',
+				'callback'   => 'get_health',
+				'permission' => 'authenticated',
+			),
 		);
 	}
 
@@ -93,5 +110,13 @@ final class HealthController {
 			),
 			200
 		);
+	}
+
+	private static function rest_method( string $method ): string {
+		return match ( $method ) {
+			'GET'   => \WP_REST_Server::READABLE,
+			'POST'  => \WP_REST_Server::CREATABLE,
+			default => $method,
+		};
 	}
 }

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.16.0`
+Version: `0.17.0`
 
 ## Implemented Features
 
@@ -46,6 +46,8 @@ Version: `0.16.0`
 - Manager override policy helpers for below-minimum sale authorization.
 - WooCommerce serialized cart item metadata validator for exact inventory
   checkout lines.
+- Dependency-free REST route contract tests for health and public Events
+  endpoints.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

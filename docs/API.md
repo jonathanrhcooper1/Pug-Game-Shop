@@ -15,6 +15,12 @@
 
 ## Route Map
 
+Current implementation status: dependency-free route contract tests cover the
+health endpoint plus public Events list/detail/registration routes. WordPress
+integration smoke tests verify those routes register in a real WordPress
+process. Full permission, nonce, request/response, and write-flow REST tests
+remain staging-gated as each route family is implemented.
+
 ### Inventory And Search
 
 | Method | Route | Minimum permission |

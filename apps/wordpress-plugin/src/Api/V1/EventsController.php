@@ -23,34 +23,45 @@ final class EventsController {
 	}
 
 	public function register_routes(): void {
-		register_rest_route(
-			self::NAMESPACE,
-			'/events',
-			array(
-				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => array( $this, 'list_events' ),
-				'permission_callback' => '__return_true',
-			)
-		);
+		foreach ( self::route_contracts() as $route ) {
+			register_rest_route(
+				$route['namespace'],
+				$route['path'],
+				array(
+					'methods'             => self::rest_method( $route['method'] ),
+					'callback'            => array( $this, $route['callback'] ),
+					'permission_callback' => '__return_true',
+				)
+			);
+		}
+	}
 
-		register_rest_route(
-			self::NAMESPACE,
-			'/events/(?P<slug>[a-zA-Z0-9_-]+)',
+	/**
+	 * @return list<array{namespace:string,path:string,method:string,callback:string,permission:string}>
+	 */
+	public static function route_contracts(): array {
+		return array(
 			array(
-				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => array( $this, 'get_event' ),
-				'permission_callback' => '__return_true',
-			)
-		);
-
-		register_rest_route(
-			self::NAMESPACE,
-			'/events/(?P<slug>[a-zA-Z0-9_-]+)/register',
+				'namespace'  => self::NAMESPACE,
+				'path'       => '/events',
+				'method'     => 'GET',
+				'callback'   => 'list_events',
+				'permission' => 'public',
+			),
 			array(
-				'methods'             => \WP_REST_Server::CREATABLE,
-				'callback'            => array( $this, 'register_event' ),
-				'permission_callback' => '__return_true',
-			)
+				'namespace'  => self::NAMESPACE,
+				'path'       => '/events/(?P<slug>[a-zA-Z0-9_-]+)',
+				'method'     => 'GET',
+				'callback'   => 'get_event',
+				'permission' => 'public',
+			),
+			array(
+				'namespace'  => self::NAMESPACE,
+				'path'       => '/events/(?P<slug>[a-zA-Z0-9_-]+)/register',
+				'method'     => 'POST',
+				'callback'   => 'register_event',
+				'permission' => 'public',
+			),
 		);
 	}
 
@@ -125,5 +136,13 @@ final class EventsController {
 		global $wpdb;
 
 		return new EventRegistrationService( new EventRegistrationRepository( $wpdb ) );
+	}
+
+	private static function rest_method( string $method ): string {
+		return match ( $method ) {
+			'GET'   => \WP_REST_Server::READABLE,
+			'POST'  => \WP_REST_Server::CREATABLE,
+			default => $method,
+		};
 	}
 }

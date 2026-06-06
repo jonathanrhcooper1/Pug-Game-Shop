@@ -2,6 +2,22 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.17.0] - 2026-06-06
+
+### Added
+
+- Dependency-free REST route contract coverage for the health endpoint and
+  public Events list/detail/registration endpoints.
+- Shared controller route contract definitions used by both unit tests and
+  WordPress route registration.
+- Guard coverage proving unimplemented customer, buylist, inventory, offline,
+  and POS write routes are not registered yet.
+
+### Not Added
+
+- Full WordPress REST permission, nonce, request/response, and write-flow
+  integration tests remain staged for the WordPress integration suite.
+
 ## [0.16.0] - 2026-06-06
 
 ### Added
