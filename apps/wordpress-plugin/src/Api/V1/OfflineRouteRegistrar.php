@@ -61,9 +61,9 @@ final class OfflineRouteRegistrar {
 			return $this->register_route_callback;
 		}
 
-		return static function ( string $namespace, string $route, array $args ): mixed {
+		return static function ( string $route_namespace, string $route, array $args ): mixed {
 			if ( function_exists( 'register_rest_route' ) ) {
-				return register_rest_route( $namespace, $route, $args );
+				return register_rest_route( $route_namespace, $route, $args );
 			}
 
 			return false;
