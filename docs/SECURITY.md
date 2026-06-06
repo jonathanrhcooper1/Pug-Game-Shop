@@ -45,7 +45,10 @@ and short audit fingerprints while keeping raw tokens and full hashes out of
 audit payloads. Offline device registration service orchestration now keeps
 the one-time token in the response path only, passes the full token hash only
 to the planned insert path, and emits service audits that contain fingerprints
-and component summaries rather than raw tokens or token hashes.
+and component summaries rather than raw tokens or token hashes. The opt-in
+registration route handler retains only that secret-free audit payload after a
+controller dispatch; raw one-time tokens and full token hashes are not stored
+in handler audit state.
 Offline bearer-token authentication planning now normalizes request headers,
 validates token shape, compares SHA-256 token hashes with `hash_equals`, and
 delegates active/revoked/expired/scope checks to the shared device access

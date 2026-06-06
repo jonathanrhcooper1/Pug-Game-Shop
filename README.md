@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.77.0`
+Version: `0.78.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -85,7 +85,12 @@ returns inserted or rejected outcomes with the one-time pairing response kept
 out of audit logs; live route wiring remains disabled. Offline device
 registration service orchestration now composes pairing validation, credential
 issuance, registration planning, and explicit repository insertion behind a
-testable boundary while keeping live route wiring disabled. Offline device access
+testable boundary while keeping live route wiring disabled. An opt-in offline
+device registration route handler adapter can now map that service into the
+offline controller's `register_offline_device` callback when explicitly
+injected, returning stable registered/invalid/rejected response envelopes and
+retaining secret-free audit payloads while the default controller remains
+disabled. Offline device access
 policy checks are implemented for future registered-device permission
 callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp

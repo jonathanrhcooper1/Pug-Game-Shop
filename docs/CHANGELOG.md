@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.78.0] - 2026-06-06
+
+### Added
+
+- Opt-in offline device registration route handler adapter for the
+  `register_offline_device` controller callback.
+- Injected handler response mapping for registered, invalid, and rejected
+  service outcomes, including stable status codes, response codes, callback
+  names, one-time device-token response payloads on successful registration,
+  and validation/repository errors.
+- Unit coverage proving injected controller dispatch, invalid payload
+  short-circuiting without repository calls, repository rejection mapping, and
+  retained audit redaction for raw device tokens and token hashes.
+
+### Not Added
+
+- No live offline pairing route is enabled. Default controller callbacks,
+  route registration, production token issuance, queue replay, and production
+  database mutation remain disabled.
+
 ## [0.77.0] - 2026-06-06
 
 ### Added

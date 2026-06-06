@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.77.0`
+Version: `0.78.0`
 
 ## Implemented Features
 
@@ -101,6 +101,10 @@ Version: `0.77.0`
   including pairing validation, credential issuance, registration planning,
   explicit repository insertion, stable result envelopes, and secret-free
   service audits without live route wiring.
+- Offline device registration route handler adaptation for the
+  `register_offline_device` controller callback, including injected handler
+  dispatch, registered/invalid/rejected response envelopes, and retained
+  secret-free audit payloads without default route enablement.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

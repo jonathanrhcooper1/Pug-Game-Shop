@@ -96,7 +96,9 @@ one-time tokens and token
 hashes out of audit payloads. Device registration service orchestration now
 composes pairing validation, credential issuance, registration planning, and
 explicit repository insertion with stable result envelopes and secret-free
-audits while live pairing route wiring remains disabled.
+audits. An opt-in registration route handler adapter now maps those outcomes
+into injected offline controller responses for staged tests while live pairing
+route wiring remains disabled.
 Registered-device access policy checks now validate active state, revocation
 timestamps, token expiry, required scopes, supported modes/scopes, location IDs,
 and UTC timestamps for future pull/push/conflict permission callbacks. Offline

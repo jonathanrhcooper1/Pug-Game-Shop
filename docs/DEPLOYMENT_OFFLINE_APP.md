@@ -296,6 +296,12 @@ future pairing flows. It composes pairing validation, credential issuance,
 registration planning, and explicit repository insertion while live pairing
 routes and route-connected writes remain disabled.
 
+Version `0.78.0` adds an opt-in offline device registration route handler
+adapter for staged pairing tests. It maps service outcomes into
+`register_offline_device` controller responses and retains secret-free audit
+payloads while default controller callbacks, route registration, production
+token issuance, and route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

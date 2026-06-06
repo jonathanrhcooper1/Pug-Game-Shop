@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Registration Route Handler Adapter
+
+### What Changed
+
+- Added `OfflineDeviceRegistrationRouteHandler` for opt-in staged pairing
+  handler dispatch through `OfflineController`.
+- Mapped `OfflineDeviceRegistrationService` registered, invalid, and rejected
+  outcomes into stable `register_offline_device` response envelopes.
+- Stored only the service's secret-free audit payload for later diagnostics.
+- Added unit tests for injected controller dispatch, invalid payload
+  short-circuiting without repository access, repository rejection mapping, and
+  audit redaction of raw device tokens and token hashes.
+- Updated project, plugin, and offline app package versions to `0.78.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The registration service is now route-ready but must remain opt-in until
+staging verifies pairing, authentication, and rollback behavior. This revision
+adds a small handler adapter future staging bootstraps can inject into the
+offline controller without changing the default fail-closed route posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDeviceRegistrationRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device registration route handler tests for successful injected
+  controller registration, invalid pairing payload handling without repository
+  calls, repository rejection mapping, response-code stability, and
+  secret-free retained audit payloads.
+
+### Rollback Notes
+
+- Revert this revision to remove the opt-in route handler adapter, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default offline controller callbacks, live pairing routes, production token
+  issuance, and route-connected device registration writes remain disabled
+  before and after rollback.
+
 ## 2026-06-06 - Offline Device Registration Service Orchestration
 
 ### What Changed

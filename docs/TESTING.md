@@ -164,6 +164,11 @@
   planning, explicit repository insertion, missing repository configuration,
   repository rejection, stable result envelopes, and service audit redaction
   for raw device tokens and token hashes.
+- Local unit coverage now includes the opt-in offline device registration
+  route handler adapter, proving injected controller dispatch, registered,
+  invalid, and rejected response envelopes, repository short-circuiting for
+  invalid payloads, and retained audit redaction for raw device tokens and
+  token hashes.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

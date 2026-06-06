@@ -201,8 +201,10 @@ or rejected outcomes, insert IDs, and the one-time pairing response while
 keeping raw tokens and token hashes out of audits. Device registration service
 orchestration now composes pairing validation, credential issuance,
 registration planning, and explicit repository insertion into a route-ready
-boundary with secret-free service audits. The service is not wired to live
-pairing routes yet. Device access policy checks are implemented so
+boundary with secret-free service audits. An opt-in route handler adapter can
+now dispatch that service through the offline controller's
+`register_offline_device` callback for staged tests while default controller
+behavior and route registration remain disabled. Device access policy checks are implemented so
 future registered-device route permission callbacks can validate active state,
 revocation, token expiry, required scopes, supported modes/scopes, location
 IDs, and UTC timestamps before pull, push, or conflict work runs. Device

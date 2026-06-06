@@ -48,7 +48,11 @@ hashes out of repository audits. Offline device registration service
 orchestration now composes pairing validation, credential issuance,
 registration planning, and explicit repository insertion into stable
 registered/invalid/rejected result envelopes with secret-free service audits.
-Live pairing route wiring remains disabled.
+An opt-in route handler adapter now maps that service to the offline
+controller's `register_offline_device` callback when explicitly injected,
+returning stable response envelopes and retaining secret-free audits while the
+default controller remains fail-closed. Live pairing route wiring remains
+disabled.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -346,7 +350,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.77.0",
+  "app_version": "0.78.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -439,6 +443,9 @@ redacted audit payloads before any live database writes are enabled.
 Offline REST request adaptation now provides the future handler bridge for
 request bodies, query filters, route params such as `conflict_id`, and
 idempotency headers without enabling those handlers by default.
+Offline device registration route handler adaptation now exercises that bridge
+for staged pairing tests through injected controller callbacks, but default
+controller callbacks and route registration remain disabled.
 Parser-only validation handlers now exercise that bridge through injected
 controller callbacks and explicitly report `write_deferred` and
 `route_still_gated` in accepted validation summaries.

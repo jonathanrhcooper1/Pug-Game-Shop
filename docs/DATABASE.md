@@ -292,7 +292,10 @@ registration repository adaptation can now apply the planned
 rejected outcomes with insert IDs and secret-free audits. Offline device
 registration service orchestration can now call that repository after pairing
 validation, credential issuance, and registration planning while keeping
-service audits free of raw tokens and token hashes. Live provider
+service audits free of raw tokens and token hashes. A route handler adapter can
+now invoke that service only when explicitly injected into the offline
+controller, so route-connected registration writes remain disabled by default.
+Live provider
 workers, route permission callback wiring, route-connected registration writes,
 route-connected last-seen writes, and offline route writes remain disabled
 until later phases. The planned
