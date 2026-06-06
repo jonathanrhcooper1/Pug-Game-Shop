@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Persistence Planning
+
+### What Changed
+
+- Added an offline push persistence planner for future `/offline/push` route
+  handlers.
+- Added an immutable persistence plan exposing future operation insert rows,
+  idempotent replay rows, future conflict insert rows, and redacted audit
+  payloads.
+- Mapped parsed operations plus batch resolution output into rows compatible
+  with `tcg_offline_sync_queue` and `tcg_sync_conflicts`.
+- Added registered-device row validation for offline device ID and public device
+  ID matching before persistence planning.
+- Added idempotent replay validation for already-stored operation results so
+  duplicate client operation IDs must match the planned status and result code.
+- Added JSON shaping for operation payloads, result details, conflict server and
+  device payloads, and conflict resolution options.
+- Added unit coverage for queue rows, conflict inserts, idempotent replay rows,
+  mismatched device rows, mismatched batch IDs, invalid timestamps, and stale
+  replay rows.
+- Updated project, plugin, and offline app package versions to `0.49.0`.
+- Updated API, offline sync, architecture, deployment, testing, roadmap,
+  changelog, and plugin docs.
+
+### Why
+
+The server-side offline sync tables now exist, but live route handlers still
+need deterministic write plans before `$wpdb` transactions are enabled. This
+slice bridges batch resolution into concrete persistence row shapes and
+idempotent replay handling without mutating the database.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistencePlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistencePlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline push persistence planner tests for operation insert rows, conflict
+  insert rows, JSON payload shaping, idempotent replay rows, mismatched device
+  rows, mismatched batch IDs, invalid timestamps, and stale replay rows.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline push persistence planner, value
+  object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live `$wpdb` transactions, offline route registration, bearer-token lookup,
+  token hash comparison, canonical entity mutation writes, operation result
+  inserts, conflict inserts, and cursor advancement remain disabled both before
+  and after rollback.
+
 ## 2026-06-06 - Offline Sync Persistence Schema
 
 ### What Changed

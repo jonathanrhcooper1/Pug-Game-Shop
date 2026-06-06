@@ -115,7 +115,10 @@ registered devices, idempotent operation queue/result rows, manager-reviewed
 sync conflicts, and per-device pull cursors. Live route callbacks, bearer-token
 lookup, token hash comparison, queue replay workers, canonical entity
 mutations, conflict mutation writes, and cursor advancement remain disabled
-until staging integration tests pass.
+until staging integration tests pass. Offline push persistence planning now
+maps a parsed payload and batch resolution into future queue/result rows,
+manager-reviewed conflict insert rows, idempotent replay rows, and redacted
+audit payloads without performing live `$wpdb` writes.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

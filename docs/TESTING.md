@@ -75,6 +75,10 @@
   conflicts, per-device pull cursors, and reversible drop order. WordPress
   integration smoke coverage asserts schema version `8` and offline sync
   persistence tables.
+- Local unit coverage now includes offline push persistence planning for future
+  queue/result rows, conflict insert rows, JSON payload shaping, idempotent
+  replay rows, mismatched device rows, mismatched batch IDs, invalid timestamps,
+  and stale replay rows.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

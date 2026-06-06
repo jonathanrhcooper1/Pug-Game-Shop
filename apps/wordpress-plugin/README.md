@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.48.0`
+Version: `0.49.0`
 
 ## Implemented Features
 
@@ -104,6 +104,8 @@ Version: `0.48.0`
   counts, server snapshot lookup, and redacted batch audit payloads.
 - Offline sync persistence schema for registered devices, idempotent operation
   queue/result rows, manager-reviewed conflicts, and per-device pull cursors.
+- Offline push persistence planning for future queue/result inserts, conflict
+  inserts, idempotent operation replay rows, and redacted audit payloads.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

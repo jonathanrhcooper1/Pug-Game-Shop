@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.49.0] - 2026-06-06
+
+### Added
+
+- Offline push persistence planner that maps parsed push operations and batch
+  resolution output into future `tcg_offline_sync_queue` and
+  `tcg_sync_conflicts` insert rows.
+- Idempotent replay planning for operations that already have matching stored
+  result rows.
+- Validation for registered-device row identity, batch/device mismatches,
+  result-row presence, stale replay rows, UTC timestamps, and JSON payload
+  shaping.
+- Unit coverage for queue row mapping, conflict insert mapping, idempotent
+  replay, and rejected stale/mismatched persistence inputs.
+
+### Not Added
+
+- Live `$wpdb` transactions, REST route registration, bearer-token lookup,
+  canonical inventory/event/credit mutation writes, conflict inserts, operation
+  result inserts, and cursor advancement remain disabled for later
+  staging-gated phases.
+
 ## [0.48.0] - 2026-06-06
 
 ### Added

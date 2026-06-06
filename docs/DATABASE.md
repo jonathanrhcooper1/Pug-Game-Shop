@@ -254,8 +254,10 @@ access policy checks, conflict list filters, conflict resolution requests,
 conflict list response presentation, and conflict resolution planning. Offline
 push operation and batch resolution planning now prepares future queue result
 rows, conflict rows, response counts, and audit payloads for accepted, rejected,
-and manager-reviewed operation outcomes, but live provider workers and
-offline route writes remain disabled until later phases.
+and manager-reviewed operation outcomes. Offline push persistence planning now
+maps those plans into future queue/result rows, conflict insert rows, and
+idempotent replay rows, but live provider workers and offline route writes
+remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

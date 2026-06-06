@@ -253,7 +253,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.48.0",
+  "app_version": "0.49.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -340,6 +340,9 @@ for registered offline devices, idempotent operation queue/result rows,
 manager-reviewed conflicts, and per-device pull cursors. The REST route
 contracts still report the offline endpoints as disabled by default until the
 permission callbacks and repository-backed handlers are wired through staging.
+Offline push persistence planning now maps accepted/rejected/conflict batch
+results into future queue rows, conflict rows, idempotent replay rows, and
+redacted audit payloads before any live database writes are enabled.
 
 Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,

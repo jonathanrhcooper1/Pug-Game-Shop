@@ -210,6 +210,9 @@ responses, operation result rows, conflict rows, counts, and batch audit
 payloads without enabling live database writes. WordPress-side offline sync
 persistence schema now exists for registered devices, idempotent operation
 queue/result rows, manager-reviewed conflicts, and per-device pull cursors.
+Offline push persistence planning now maps resolved batches into deterministic
+queue rows, conflict rows, idempotent replay rows, and redacted audit payloads
+before live `$wpdb` writes are enabled.
 
 ## Storefront Product Strategy
 

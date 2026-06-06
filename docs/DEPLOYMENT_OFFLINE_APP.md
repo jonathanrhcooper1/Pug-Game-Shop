@@ -118,6 +118,13 @@ and per-device pull cursors. Live route callbacks, bearer-token lookup, token
 hash comparison, queue replay workers, conflict mutation writes, and cursor
 advancement remain disabled until staging integration tests pass.
 
+Version `0.49.0` adds the offline push persistence planning boundary. Future
+WordPress handlers can now map resolved push batches into queue/result insert
+rows, conflict insert rows, idempotent replay rows, and redacted audit payloads.
+Live `$wpdb` transactions, route callbacks, token lookup, canonical entity
+mutations, conflict writes, and cursor advancement remain disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:
