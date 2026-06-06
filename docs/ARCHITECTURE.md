@@ -198,8 +198,11 @@ registration insert query planning now maps those rows into prepared
 secret-free audit metadata. Device registration repository adaptation now
 executes that prepared insert only when explicitly called and returns inserted
 or rejected outcomes, insert IDs, and the one-time pairing response while
-keeping raw tokens and token hashes out of audits. The repository is not wired
-to live pairing routes yet. Device access policy checks are implemented so
+keeping raw tokens and token hashes out of audits. Device registration service
+orchestration now composes pairing validation, credential issuance,
+registration planning, and explicit repository insertion into a route-ready
+boundary with secret-free service audits. The service is not wired to live
+pairing routes yet. Device access policy checks are implemented so
 future registered-device route permission callbacks can validate active state,
 revocation, token expiry, required scopes, supported modes/scopes, location
 IDs, and UTC timestamps before pull, push, or conflict work runs. Device

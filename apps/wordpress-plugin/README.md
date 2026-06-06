@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.76.0`
+Version: `0.77.0`
 
 ## Implemented Features
 
@@ -97,6 +97,10 @@ Version: `0.76.0`
   `tcg_offline_devices` writes, including planned `$wpdb` insert execution,
   inserted/rejected outcomes, insert ID capture, and secret-free repository
   audits without live route wiring.
+- Offline device registration service orchestration for future pairing flows,
+  including pairing validation, credential issuance, registration planning,
+  explicit repository insertion, stable result envelopes, and secret-free
+  service audits without live route wiring.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

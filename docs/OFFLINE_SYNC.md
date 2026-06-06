@@ -93,7 +93,10 @@ out of audit payloads without executing a database write. Device registration
 repository adaptation now executes that prepared insert only when explicitly
 called, reports inserted or rejected outcomes, captures insert IDs, and keeps
 one-time tokens and token
-hashes out of audit payloads while live pairing route wiring remains disabled.
+hashes out of audit payloads. Device registration service orchestration now
+composes pairing validation, credential issuance, registration planning, and
+explicit repository insertion with stable result envelopes and secret-free
+audits while live pairing route wiring remains disabled.
 Registered-device access policy checks now validate active state, revocation
 timestamps, token expiry, required scopes, supported modes/scopes, location IDs,
 and UTC timestamps for future pull/push/conflict permission callbacks. Offline

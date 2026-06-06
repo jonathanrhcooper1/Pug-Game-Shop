@@ -289,7 +289,10 @@ applied, stale, or rejected outcomes. Permission resolution can now opt in to
 that update and fail closed on stale or rejected write results. Offline device
 registration repository adaptation can now apply the planned
 `tcg_offline_devices` insert when explicitly called and report inserted or
-rejected outcomes with insert IDs and secret-free audits. Live provider
+rejected outcomes with insert IDs and secret-free audits. Offline device
+registration service orchestration can now call that repository after pairing
+validation, credential issuance, and registration planning while keeping
+service audits free of raw tokens and token hashes. Live provider
 workers, route permission callback wiring, route-connected registration writes,
 route-connected last-seen writes, and offline route writes remain disabled
 until later phases. The planned

@@ -44,7 +44,11 @@ device registration insert query planning now maps those rows into prepared
 secret-free audits. Offline device registration repository adaptation now
 executes that prepared insert only when explicitly called, returns inserted or
 rejected outcomes, captures insert IDs, and keeps raw device tokens and token
-hashes out of repository audits. Live pairing route wiring remains disabled.
+hashes out of repository audits. Offline device registration service
+orchestration now composes pairing validation, credential issuance,
+registration planning, and explicit repository insertion into stable
+registered/invalid/rejected result envelopes with secret-free service audits.
+Live pairing route wiring remains disabled.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -342,7 +346,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.76.0",
+  "app_version": "0.77.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

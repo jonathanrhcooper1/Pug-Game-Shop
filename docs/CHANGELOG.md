@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.77.0] - 2026-06-06
+
+### Added
+
+- Offline device registration service orchestration for future pairing flows.
+- Service result object with registered, invalid, and rejected outcomes,
+  stable status codes, one-time response payloads, validation/repository
+  errors, and secret-free audit payloads.
+- Unit coverage proving pairing validation, credential issuance, registration
+  planning, explicit repository insertion, missing repository configuration,
+  repository rejection, and audit redaction for raw device tokens and token
+  hashes.
+
+### Not Added
+
+- No live offline pairing route is enabled. Route registration,
+  route-connected database writes, production token issuance, queue replay, and
+  production database mutation remain disabled.
+
 ## [0.76.0] - 2026-06-06
 
 ### Added

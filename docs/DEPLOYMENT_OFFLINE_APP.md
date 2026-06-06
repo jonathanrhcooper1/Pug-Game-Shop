@@ -291,6 +291,11 @@ future pairing flows. It generates device IDs, one-time tokens, token hashes,
 UTC issue/expiry timestamps, and TTL metadata for planned handlers; live pairing
 routes and production token issuance remain disabled.
 
+Version `0.77.0` adds offline device registration service orchestration for
+future pairing flows. It composes pairing validation, credential issuance,
+registration planning, and explicit repository insertion while live pairing
+routes and route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -42,7 +42,10 @@ stored server-side. Tokens are scoped, expiring, rotatable, and revocable.
 Offline device registration credential issuance now generates UUID device IDs,
 one-time hex device tokens, SHA-256 token hashes, UTC issue/expiry timestamps,
 and short audit fingerprints while keeping raw tokens and full hashes out of
-audit payloads.
+audit payloads. Offline device registration service orchestration now keeps
+the one-time token in the response path only, passes the full token hash only
+to the planned insert path, and emits service audits that contain fingerprints
+and component summaries rather than raw tokens or token hashes.
 Offline bearer-token authentication planning now normalizes request headers,
 validates token shape, compares SHA-256 token hashes with `hash_equals`, and
 delegates active/revoked/expired/scope checks to the shared device access

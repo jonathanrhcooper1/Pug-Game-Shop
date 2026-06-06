@@ -159,6 +159,11 @@
   rejection, failed database inserts, zero-row and unexpected row-count
   rejection, insert ID reporting, response payload return, and audit redaction
   for raw device tokens and token hashes.
+- Local unit coverage now includes offline device registration service
+  orchestration for pairing validation, credential issuance, registration
+  planning, explicit repository insertion, missing repository configuration,
+  repository rejection, stable result envelopes, and service audit redaction
+  for raw device tokens and token hashes.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

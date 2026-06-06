@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Registration Service Orchestration
+
+### What Changed
+
+- Added `OfflineDeviceRegistrationService` for future pairing-flow
+  orchestration.
+- Added `OfflineDeviceRegistrationServiceResult` for registered, invalid, and
+  rejected outcomes with status codes, one-time response payloads,
+  validation/repository errors, and secret-free service audits.
+- Composed pairing request validation, credential issuance, registration
+  planning, and explicitly injected repository insertion behind a testable
+  boundary.
+- Added unit tests for successful registration, invalid payload short-circuit,
+  missing repository configuration, repository rejection, and audit redaction
+  of raw device tokens and token hashes.
+- Updated project, plugin, and offline app package versions to `0.77.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+Credential issuance and repository insertion now exist as separate guarded
+pieces. This revision adds the orchestration boundary future staging-only route
+handlers can inject, while preserving the current fail-closed posture: no live
+route wiring, no route-connected writes, and no production token issuance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationService.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationServiceResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device registration service tests for successful pairing
+  orchestration, invalid payload handling, missing repository configuration,
+  repository rejection, stable result envelopes, and secret-free audits.
+
+### Rollback Notes
+
+- Revert this revision to remove offline device registration service
+  orchestration, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live pairing routes and production token issuance remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - Offline Device Registration Credential Issuance
 
 ### What Changed
