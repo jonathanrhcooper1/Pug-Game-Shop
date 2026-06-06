@@ -225,6 +225,9 @@ Registered-device permission resolution now composes initial token planning,
 repository-backed lookup, loaded-row authorization, session update planning,
 and redacted resolution audits into one route-ready boundary without writing
 last-seen state or registering callbacks.
+Offline device session update query building now converts the planned
+last-seen update row into a prepared SQL template with an optimistic
+row-version guard before any live write path is enabled.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

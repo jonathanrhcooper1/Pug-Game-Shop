@@ -276,9 +276,12 @@ executing the live repository query. Registered device repository adaptation
 now executes the planned `tcg_offline_devices` read when called and normalizes
 the returned row before future permission callbacks consume it. Registered
 device permission resolution now can authorize that normalized row and prepare
-the future last-seen update row without writing it. Live provider workers,
-route permission callback wiring, last-seen database writes, and offline route
-writes remain disabled until later phases.
+the future last-seen update row without writing it. Offline device session
+update query building now converts that row into an optimistic
+`tcg_offline_devices` update template with `offline_device_id`, `public_id`,
+and expected `row_version` guards. Live provider workers, route permission
+callback wiring, last-seen database writes, and offline route writes remain
+disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

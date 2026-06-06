@@ -112,6 +112,9 @@ Registered-device permission resolution now composes that lookup with
 loaded-row authentication, not-found denial, malformed-row rejection, and
 session update planning without registering route callbacks or writing
 last-seen state.
+Offline device session update query building now converts the planned
+last-seen update into a prepared SQL template with expected row-version guards
+without executing it.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and last-seen database writes are disabled, live

@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.60.0] - 2026-06-06
+
+### Added
+
+- Offline device session update query builder for future permission callback
+  last-seen writes.
+- Session update query plan value object exposing a safe table name, prepared
+  SQL template, prepared arguments, optimistic row-version metadata, stable
+  errors, and secret-free audit payloads.
+- Validation for safe WordPress table prefixes, offline device IDs, public
+  device IDs, UTC last-seen/update timestamps, next row versions, expected row
+  versions, and previous-row-version consistency.
+- Unit coverage for valid prepared update templates, invalid table prefixes,
+  invalid session rows, row-version increment guards, string row versions, and
+  audit payloads without raw tokens or token hashes.
+
+### Not Added
+
+- Live REST route registration, WordPress `permission_callback` wiring,
+  last-seen `$wpdb` writes, queue replay workers, push/pull route handlers,
+  canonical entity writes, and production database mutation remain disabled for
+  later staging-gated phases.
+
 ## [0.59.0] - 2026-06-06
 
 ### Added

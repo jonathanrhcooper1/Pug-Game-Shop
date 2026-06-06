@@ -199,6 +199,12 @@ into one route-ready result. Route registration, permission callback wiring,
 last-seen writes, queue replay, and database writes remain disabled until
 staging integration tests pass.
 
+Version `0.60.0` adds the offline device session update query building
+boundary. Future WordPress permission callbacks can now transform planned
+last-seen updates into prepared SQL templates with expected row-version guards.
+Route registration, permission callback wiring, last-seen writes, queue replay,
+and database writes remain disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

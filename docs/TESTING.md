@@ -190,6 +190,10 @@
   resolution for invalid tokens before repository access, repository-backed
   authorization, not-found denials, malformed-row rejection, denied scopes,
   session update planning, and audit redaction.
+- Local unit coverage now includes offline device session update query building
+  for prepared last-seen update SQL templates, safe table prefixes, invalid
+  session rows, string row versions, optimistic row-version guards, and
+  secret-free audits.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

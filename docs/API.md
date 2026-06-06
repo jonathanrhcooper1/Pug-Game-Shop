@@ -58,6 +58,9 @@ returned rows, reports not-found rows, and rejects invalid plans or malformed
 rows. Registered device permission resolution now composes token planning,
 repository lookup, loaded-row authentication, and session planning into a
 route-ready result without registering live REST permission callbacks.
+Offline device session update query building now converts planned last-seen
+updates into prepared SQL templates with optimistic row-version guards without
+executing live database writes.
 
 ### Inventory And Search
 
@@ -292,7 +295,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.59.0",
+  "app_version": "0.60.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

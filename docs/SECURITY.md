@@ -63,6 +63,9 @@ keeps raw tokens and full token hashes out of resolution audits while composing
 repository-backed authorization and future session update planning. Live
 permission callback wiring, last-seen database writes, and route callback
 wiring remain staging-gated.
+Offline session update query building validates table prefixes, public device
+IDs, UTC timestamps, and optimistic row-version guards before a future
+last-seen write can be enabled.
 
 ## Secret Storage
 
