@@ -10,8 +10,8 @@ namespace TCGStorePlatform\Offline;
 use InvalidArgumentException;
 
 final class OfflineConflictResolutionPlanner {
-	private const MUTABLE_STATUSES = array( 'open', 'assigned', 'resolving' );
-	private const TERMINAL_ACTIONS = array(
+	private const MUTABLE_STATUSES  = array( 'open', 'assigned', 'resolving' );
+	private const TERMINAL_ACTIONS  = array(
 		'accept_server',
 		'accept_device',
 		'manager_adjust',
@@ -62,7 +62,7 @@ final class OfflineConflictResolutionPlanner {
 			throw new InvalidArgumentException( 'resolution_action is not available for current conflict row.' );
 		}
 
-		$target_status     = $this->target_status( $request->resolution_action() );
+		$target_status    = $this->target_status( $request->resolution_action() );
 		$next_row_version = $current['row_version'] + 1;
 		$payload_hash     = $this->payload_hash( $request->resolution_payload() );
 
