@@ -49,7 +49,7 @@ final class OfflineDeviceSessionPlanner {
 			throw new InvalidArgumentException( 'device row does not match authenticated offline_device_id.' );
 		}
 
-		if ( $public_id !== trim( (string) ( $context['device_id'] ?? '' ) ) ) {
+		if ( trim( (string) ( $context['device_id'] ?? '' ) ) !== $public_id ) {
 			throw new InvalidArgumentException( 'device row does not match authenticated device_id.' );
 		}
 
