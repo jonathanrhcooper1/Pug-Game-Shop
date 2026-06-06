@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.28.0`
+Version: `0.29.0`
 
 ## Implemented Features
 
@@ -54,6 +54,9 @@ Version: `0.28.0`
   below-minimum approvals.
 - WooCommerce serialized cart item metadata validator for exact inventory
   checkout lines.
+- WooCommerce order-line metadata planner for exact inventory, reservation,
+  owner-token, price snapshot, expiry, optional card descriptor, and snapshot
+  hash persistence.
 - WooCommerce serialized inventory hook contracts for cart, checkout, payment,
   refund, cart removal, and Store API validation lifecycle coverage.
 - Dependency-free REST route contract tests for health and public Events

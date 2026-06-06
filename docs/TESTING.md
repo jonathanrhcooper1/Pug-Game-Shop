@@ -74,6 +74,10 @@
 - Local unit coverage now includes WooCommerce serialized cart item metadata
   validation for exact inventory/reservation identifiers, owner token hashes,
   quantity-one enforcement, reservation expiry, price snapshots, and currency.
+- Local unit coverage now includes WooCommerce order-line metadata planning for
+  exact inventory, reservation, owner-token, price snapshot, currency, expiry,
+  optional card descriptors, deterministic snapshot hashes, and zero-price
+  snapshots.
 - Local unit coverage now includes WooCommerce serialized inventory hook
   contracts for cart, checkout, payment, order, refund, cart removal, and Store
   API validation lifecycle coverage, with live registration gated off by
@@ -144,6 +148,8 @@ corresponding modules are implemented:
 - Exact item reservation is atomic.
 - Two parallel carts cannot reserve one item.
 - Expiry and manual release restore availability.
+- Order-line metadata snapshots preserve exact inventory, reservation, owner,
+  price, expiry, and card descriptor identity.
 - Payment completion converts once, including replay.
 - Failed/cancelled payment releases according to policy.
 - Refund moves item to configured review/return state.

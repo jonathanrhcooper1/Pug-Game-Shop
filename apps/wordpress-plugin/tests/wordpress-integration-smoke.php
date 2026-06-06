@@ -38,7 +38,7 @@ $assert = static function ( bool $condition, string $message ) use ( $fail ): vo
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.28.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.29.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 7 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 7 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );

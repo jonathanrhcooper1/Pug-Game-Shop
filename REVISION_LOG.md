@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - WooCommerce Order-Line Metadata Planning Foundation
+
+### What Changed
+
+- Added a WooCommerce order-line metadata planner for serialized inventory cart
+  items.
+- Added an order-line metadata plan result object for planned metadata payloads
+  and propagated validation errors.
+- Planned exact inventory, reservation, owner-token, minor-unit price snapshot,
+  formatted decimal price, currency, reservation expiry, and deterministic
+  snapshot hash metadata.
+- Added optional cart, WooCommerce product, barcode, condition, provider, card,
+  set, and card-number descriptor metadata copying.
+- Added unit coverage for valid metadata payloads, invalid cart item errors,
+  descriptor normalization, deterministic snapshot hashes, and zero-price
+  promotional snapshots.
+
+### Why
+
+Serialized checkout needs stable order-line snapshots before live WooCommerce
+hook execution can safely persist exact item ownership, pricing, and
+reservation state into orders. This slice defines that metadata boundary
+without enabling order writes, payment conversion, or refund lifecycle hooks.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/SerializedOrderLineMetadataPlan.php`
+- `apps/wordpress-plugin/src/WooCommerce/SerializedOrderLineMetadataPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SerializedOrderLineMetadataPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- WooCommerce order-line metadata planner tests for valid payloads, validator
+  error propagation, optional descriptor normalization, deterministic snapshot
+  hashes, and zero-price snapshots.
+
+### Rollback Notes
+
+- Revert this revision to remove WooCommerce order-line metadata planning
+  helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Live WooCommerce checkout hook execution, order writes, payment lifecycle
+  conversion, cart release hooks, and refund lifecycle handling remain disabled
+  after rollback.
+
 ## 2026-06-06 - Reservation Expiry Cleanup Planning Foundation
 
 ### What Changed

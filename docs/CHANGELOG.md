@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.29.0] - 2026-06-06
+
+### Added
+
+- WooCommerce order-line metadata planner for serialized inventory checkout
+  lines.
+- Exact inventory, reservation, owner-token, minor-unit price snapshot,
+  formatted decimal price, currency, reservation expiry, and deterministic
+  snapshot hash payload planning.
+- Optional WooCommerce/card descriptor metadata copying for cart IDs, cart item
+  keys, barcodes, condition codes, provider IDs, card names, set names, card
+  numbers, product IDs, and variation IDs.
+- Unit coverage for valid metadata payloads, validator error propagation,
+  optional descriptor normalization, deterministic snapshot hashes, and
+  zero-price snapshots.
+
+### Not Added
+
+- Live WooCommerce checkout hook execution, HPOS order writes, Store API order
+  mutation, payment lifecycle conversion, cart release hooks, and refund
+  lifecycle handling remain disabled for later staging-gated phases.
+
 ## [0.28.0] - 2026-06-06
 
 ### Added
