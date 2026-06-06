@@ -43,19 +43,19 @@ final class ManagerOverridePersistencePlanner {
 		);
 
 		$audit_data = array(
-			'action'              => 'manager_override.approved',
-			'override_type'       => $row_data['override_type'],
-			'inventory_id'        => $row_data['inventory_id'],
-			'employee_user_id'    => $row_data['employee_user_id'],
-			'manager_user_id'     => $row_data['manager_user_id'],
-			'original_price'      => $row_data['original_price'],
-			'override_price'      => $row_data['override_price'],
-			'minimum_sale_price'  => $this->format_minor_units( $request->minimum_sale_price_minor_units() ),
-			'currency'            => $row_data['currency'],
-			'reason_hash'         => hash( 'sha256', $row_data['reason'] ),
-			'decision_code'       => $decision->code(),
-			'order_id'            => $row_data['order_id'],
-			'location_id'         => $row_data['location_id'],
+			'action'             => 'manager_override.approved',
+			'override_type'      => $row_data['override_type'],
+			'inventory_id'       => $row_data['inventory_id'],
+			'employee_user_id'   => $row_data['employee_user_id'],
+			'manager_user_id'    => $row_data['manager_user_id'],
+			'original_price'     => $row_data['original_price'],
+			'override_price'     => $row_data['override_price'],
+			'minimum_sale_price' => $this->format_minor_units( $request->minimum_sale_price_minor_units() ),
+			'currency'           => $row_data['currency'],
+			'reason_hash'        => hash( 'sha256', $row_data['reason'] ),
+			'decision_code'      => $decision->code(),
+			'order_id'           => $row_data['order_id'],
+			'location_id'        => $row_data['location_id'],
 		);
 
 		return ManagerOverridePersistencePlan::persist( $row_data, $audit_data );
