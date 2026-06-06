@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Conflict Resolution Planning
+
+### What Changed
+
+- Added a WordPress offline conflict resolution planner for future
+  manager-reviewed conflict mutation flows.
+- Added an immutable resolution plan value object exposing future conflict
+  update rows, API response payloads, and redacted audit payloads.
+- Added guards for stale expected row versions, terminal conflicts, unavailable
+  resolution actions, invalid current rows, and invalid server timestamps.
+- Added deterministic resolution payload hashing for audit records without
+  storing full adjustment payloads in the audit payload.
+- Added unit coverage for manager-adjust plans, dismiss and retry status
+  mapping, redacted audit hashes, stale versions, terminal rows, unavailable
+  actions, bad current rows, and bad server time.
+- Updated project, plugin, and offline app package versions to `0.45.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+The conflict-center resolution route needs a deterministic write plan before it
+can mutate database rows. This slice defines the future row update, response,
+and audit payloads while enforcing optimistic version checks and keeping live
+conflict writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictResolutionPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds conflict resolution planning only.
+
+### Tests Added
+
+- Offline conflict resolution planner tests for planned row updates, response
+  payloads, redacted audit payload hashes, manager-adjust resolutions, dismiss
+  and retry status mapping, stale row versions, terminal conflicts, unavailable
+  actions, invalid current rows, and invalid server timestamps.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline conflict resolution planner, value
+  object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live conflict mutation writes, manager audit persistence, route callback
+  wiring, resolved-state propagation, and device sync fanout remain disabled
+  both before and after rollback.
+
 ## 2026-06-06 - Offline Conflict Response Presentation
 
 ### What Changed

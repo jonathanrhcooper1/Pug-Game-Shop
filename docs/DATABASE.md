@@ -249,8 +249,8 @@ route contracts and offline push payload validation exist for pairing, push,
 pull request validation, pull response presentation, device pairing validation,
 device registration planning, device access policy checks, conflict list
 filters, conflict resolution requests, conflict list response presentation, and
-conflicts, but live provider workers and offline device/queue/conflict writes
-remain disabled until later phases.
+conflict resolution planning, but live provider workers and offline
+device/queue/conflict writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

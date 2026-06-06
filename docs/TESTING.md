@@ -149,6 +149,10 @@
   for empty responses, filters, cursors, normalized conflict rows, severity, row
   versions, payload objects, duplicate action cleanup, and invalid response
   contract inputs.
+- Local unit coverage now includes offline conflict resolution planning for
+  row updates, response payloads, redacted audit hashes, stale row versions,
+  terminal conflicts, unavailable actions, invalid current rows, and invalid
+  server timestamps.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

@@ -87,6 +87,13 @@ filters, cursors, has-more state, severity, row versions, payload objects, and
 available manager resolution options. Live conflict repository reads and
 manager mutation writes are still disabled until staging integration tests pass.
 
+Version `0.45.0` adds the conflict resolution planning boundary. Future manager
+actions can now produce deterministic conflict update rows, API response
+payloads, optimistic row-version checks, terminal-status guards, action
+availability checks, and redacted audit payload hashes. Live conflict mutation
+writes, audit persistence, route callback wiring, and resolved-state fanout are
+still disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

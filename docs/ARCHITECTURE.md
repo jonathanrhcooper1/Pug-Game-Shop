@@ -198,6 +198,9 @@ unsafe adjustment payloads before live conflict reads or writes are enabled.
 Conflict list response presentation is implemented so repository-backed rows
 can later be shaped into stable conflict-center payloads without changing the
 offline app contract.
+Conflict resolution planning is implemented so future manager-reviewed actions
+can produce deterministic row updates, response payloads, and redacted audit
+payload hashes before live conflict writes are enabled.
 
 ## Storefront Product Strategy
 

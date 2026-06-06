@@ -249,7 +249,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.44.0",
+  "app_version": "0.45.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -366,6 +366,26 @@ The planned conflict list response is shaped as:
   ]
 }
 ```
+
+When a future conflict resolution request is accepted, the planner prepares a
+response shaped as:
+
+```json
+{
+  "conflict_id": "conflict-main-01",
+  "resolution_id": "resolution-main-01",
+  "status": "resolved",
+  "row_version": 13,
+  "resolution_action": "manager_adjust",
+  "resolved_at_utc": "2026-06-06T18:00:00Z",
+  "server_time_utc": "2026-06-06T18:05:00Z",
+  "schema_version": 1
+}
+```
+
+The corresponding planned audit payload records a deterministic hash of the
+resolution payload instead of storing the full adjustment payload. Live conflict
+mutation writes and audit persistence remain disabled until staging tests pass.
 
 ## WooCommerce Hook Map
 

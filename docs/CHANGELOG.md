@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.45.0] - 2026-06-06
+
+### Added
+
+- Offline conflict resolution planner for future manager-reviewed conflict
+  mutation flows.
+- Planned conflict update rows, API response payloads, and redacted audit
+  payloads with deterministic resolution payload hashes.
+- Guards for stale expected row versions, terminal conflicts, unavailable
+  resolution actions, invalid current rows, and invalid server timestamps.
+- Unit coverage for manager-adjust plans, dismiss and retry status mapping,
+  redacted audit hashes, stale versions, terminal rows, unavailable actions,
+  bad current rows, and bad server time.
+
+### Not Added
+
+- Live conflict mutation writes, manager audit persistence, REST callback
+  wiring, resolved-state propagation, and device sync fanout remain disabled
+  for later staging-gated phases.
+
 ## [0.44.0] - 2026-06-06
 
 ### Added

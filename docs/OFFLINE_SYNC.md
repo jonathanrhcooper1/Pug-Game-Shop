@@ -97,6 +97,10 @@ writes, audit persistence, and resolved-state propagation remain disabled.
 Conflict list response presentation now shapes repository rows into stable
 filters, cursors, conflict rows, row versions, payload objects, severity, and
 available resolution options for the future conflict center.
+Conflict resolution planning now prepares future conflict row updates, response
+payloads, optimistic row-version checks, terminal-status guards, action
+availability checks, and redacted audit payload hashes without mutating live
+state.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,
