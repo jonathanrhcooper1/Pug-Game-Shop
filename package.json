@@ -1,6 +1,6 @@
 {
   "name": "pug-game-shop-tcg-store-platform",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "private": true,
   "description": "Trading card store platform development, testing, staging, and deployment tooling.",
   "scripts": {
@@ -11,8 +11,9 @@
     "wp-env:reset": "wp-env clean all && wp-env start",
     "wp-env:seed": "node scripts/wp-env/seed-dev-data.mjs",
     "wp-env:test": "wp-env run tests-cli phpunit || node scripts/wp-env/report-pending-phpunit.mjs",
-    "test": "npm run test:local && npm run test:required-matrix",
+    "test": "npm run test:local && npm run test:sync-engine && npm run test:required-matrix",
     "test:local": "cd apps/wordpress-plugin && php tests/run.php && php tests/bootstrap-smoke.php && php tests/lint.php",
+    "test:sync-engine": "node packages/sync-engine/tests/offline-conflict-policy.mjs",
     "test:required-matrix": "node scripts/wp-env/check-required-test-plan.mjs",
     "test:e2e": "playwright test",
     "test:wordpress": "npm run wp-env:start && npm run wp-env:test",

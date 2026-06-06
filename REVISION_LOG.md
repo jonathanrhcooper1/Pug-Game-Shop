@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Sync Conflict Policy Foundation
+
+### What Changed
+
+- Added a shared sync-engine offline conflict policy module.
+- Added executable Node tests for offline inventory reservations, event
+  reservations, customer credit redemptions, and device revocation.
+- Wired sync-engine tests into the root `npm run test` gate.
+
+### Why
+
+The offline app cannot safely queue inventory, event, or credit operations until
+the server-side conflict outcomes are deterministic. This slice pins the first
+shared policy rules while leaving Tauri, SQLite queue persistence, device auth
+routes, and live WordPress pull/push workers for later phases.
+
+### Files Affected
+
+- `packages/sync-engine/src/offlineConflictPolicy.mjs`
+- `packages/sync-engine/tests/offline-conflict-policy.mjs`
+- `package.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+- `tests/offline-sync/README.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Offline sync conflict policy tests for accepted inventory reservations,
+  unavailable inventory conflicts, accepted event reservations, event waitlist,
+  event capacity conflicts, accepted credit redemptions, offline credit local
+  limit rejection, server credit overspend conflict, and revoked-device push
+  rejection.
+
+### Rollback Notes
+
+- Revert this revision to remove the shared sync-engine offline conflict policy,
+  Node tests, and root test wiring.
+- No schema rollback is required; database target remains `7`.
+- No live offline devices, queues, or sync endpoints are enabled by this
+  revision.
+
 ## 2026-06-06 - TopDeck Registration Adapter Mapping
 
 ### What Changed

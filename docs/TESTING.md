@@ -70,6 +70,9 @@
 - Local unit coverage now includes TopDeck registration adapter mapping for
   provider call shape, email normalization/fallback, override-cap pass-through,
   provider outcome mapping, missing input guards, and retryable failures.
+- Root automation now includes sync-engine offline conflict policy tests for
+  inventory reservations, event reservations, customer credit redemption, and
+  device revocation.
 
 ## Required Test Backlog
 
@@ -91,7 +94,8 @@ corresponding modules are implemented:
   refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
   credit flows.
-- Offline app sync conflict tests.
+- Offline app SQLite queue, WordPress push/pull, device auth, and full
+  reconnect integration tests.
 
 ## Critical Business Tests
 

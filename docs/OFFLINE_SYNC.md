@@ -59,6 +59,17 @@ local integrity checks fail.
 No last-write-wins policy is used for money, inventory status, identity merges,
 minimum price, or manager-controlled fields.
 
+The first shared sync-engine policy module is implemented and tested for:
+
+- Offline inventory reservation acceptance and unavailable-item conflict.
+- Offline event reservation acceptance, waitlist, and capacity conflict.
+- Offline credit redemption acceptance, cached-limit rejection, and server
+  overspend conflict.
+- Revoked device push rejection before operation handling.
+
+The Tauri app, SQLite operation queue, WordPress offline push/pull endpoints,
+and full reconnect integration tests remain future phases.
+
 ## Offline Reservations
 
 Offline reservations are local claims only and cannot guarantee global

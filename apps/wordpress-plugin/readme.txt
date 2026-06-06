@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.19.0
+Stable tag: 0.20.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -33,6 +33,8 @@ Phase 1.4 adds migration runner plan coverage for clean install, upgrade,
 idempotent current-schema rerun, and rollback order.
 Phase 9.2 adds TopDeck registration push adapter mapping for queued event
 registration workers.
+Phase 7.1 adds shared offline sync conflict policy tests for inventory, events,
+customer credit, and device revocation.
 
 Inventory and commerce modules remain disabled until their implementation phases.
 
@@ -44,6 +46,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.20.0 =
+
+* Added shared sync-engine offline conflict policy module.
+* Added Node tests for offline inventory reservations, event reservations, customer credit redemption, and device revocation.
+* Wired sync-engine tests into the root `npm run test` gate.
 
 = 0.19.0 =
 

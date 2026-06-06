@@ -2,6 +2,22 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.20.0] - 2026-06-06
+
+### Added
+
+- Shared sync-engine offline conflict policy module.
+- Node-based offline sync tests for inventory reservation acceptance/conflict,
+  event reservation acceptance/waitlist/capacity conflict, customer credit
+  redemption acceptance/local-limit rejection/overspend conflict, and device
+  revocation rejection.
+- Root `npm run test` wiring for sync-engine tests.
+
+### Not Added
+
+- Tauri app, SQLite queue persistence, WordPress offline REST endpoints, device
+  auth API, and live pull/push sync workers remain disabled for later phases.
+
 ## [0.19.0] - 2026-06-06
 
 ### Added
