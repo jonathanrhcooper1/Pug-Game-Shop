@@ -106,7 +106,7 @@ final class OfflineRegisteredDevicePermissionPlanner {
 			'is_authorized'          => 'authorized' === $stage,
 			'requires_device_lookup' => 'device_lookup_required' === $stage,
 			'required_scope'         => $required_scope,
-			'token_fingerprint'     => $lookup_plan->token_fingerprint(),
+			'token_fingerprint'      => $lookup_plan->token_fingerprint(),
 			'has_lookup_filter'      => array() !== $lookup_plan->lookup_filters(),
 			'offline_device_id'      => $this->positive_int( $context['offline_device_id'] ?? null ),
 			'device_id'              => trim( (string) ( $context['device_id'] ?? '' ) ),
