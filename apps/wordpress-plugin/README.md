@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.25.0`
+Version: `0.26.0`
 
 ## Implemented Features
 
@@ -48,6 +48,8 @@ Version: `0.25.0`
 - Reservation lifecycle service helpers for idempotent conversion to sold and
   release back to available.
 - Manager override policy helpers for below-minimum sale authorization.
+- Manager override persistence/audit payload planning for future stored
+  below-minimum approvals.
 - WooCommerce serialized cart item metadata validator for exact inventory
   checkout lines.
 - WooCommerce serialized inventory hook contracts for cart, checkout, payment,

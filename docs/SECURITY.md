@@ -21,7 +21,10 @@ WordPress capabilities gate UI and REST actions:
 `sync_topdeck`, `manage_settings`, `view_reports`, and `resolve_conflicts`.
 
 Capabilities can be location-scoped. Manager approval is a second authorization
-event, not a boolean supplied by the employee request.
+event, not a boolean supplied by the employee request. Current local coverage
+plans manager override row and audit payloads for accepted below-minimum sale
+approvals, but live manager PIN/password reauthentication and writes remain
+disabled until staging acceptance.
 
 ## Authentication
 
@@ -30,6 +33,8 @@ event, not a boolean supplied by the employee request.
 - Kiosk: device token restricted to public search, cart, buylist intake, event
   view/reserve, and limited customer lookup.
 - Manager PIN/password: stored with `password_hash`; rate limited and audited.
+- Below-minimum sale approvals: manager and employee must be distinct, and the
+  reason is stored in the override row while audit payloads use a reason hash.
 - External webhooks: provider signature and replay protection.
 
 Device tokens are random high-entropy values. Only a hash and fingerprint are

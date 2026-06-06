@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.25.0`
+Version: `0.26.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -24,8 +24,10 @@ planning helpers, mock-backed provider adapter, and card/price normalization are
 implemented. Exact inventory reservation schema and
 transaction-oriented reservation reserve/release/convert service foundations
 are implemented for double-sell prevention. Manager override policy helpers are
-implemented for below-minimum sale authorization. WooCommerce serialized cart
-item metadata validation is implemented for future checkout hooks. WooCommerce
+implemented for below-minimum sale authorization, and manager override
+persistence/audit payload planning is implemented for future stored approvals.
+WooCommerce serialized cart item metadata validation is implemented for future
+checkout hooks. WooCommerce
 serialized inventory hook contracts are defined and unit-tested for classic
 cart, checkout, payment, refund, cart removal, and Store API validation flows.
 REST route contracts for health and public event endpoints are unit-tested

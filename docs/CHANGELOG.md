@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.26.0] - 2026-06-06
+
+### Added
+
+- Manager override persistence planner for accepted below-minimum sale
+  approvals that require stored override rows.
+- Manager override row payload planning for employee, manager, inventory,
+  order, location, cart, price, currency, expiration, and reason fields.
+- Audit-safe payload planning with decision code, minimum sale price, reason
+  hash, and minor-unit to decimal price conversion.
+- Unit coverage for persisted override payloads, policy-rejected skip results,
+  no-row-required skip results, and invalid optional context IDs.
+
+### Not Added
+
+- Live manager PIN/password reauthentication, database inserts, audit service
+  writes, WooCommerce/POS hook wiring, and rate limiting remain disabled for
+  later staging-gated phases.
+
 ## [0.25.0] - 2026-06-06
 
 ### Added

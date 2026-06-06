@@ -3,6 +3,60 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Manager Override Persistence Payload Foundation
+
+### What Changed
+
+- Added a manager override persistence planner for accepted below-minimum sale
+  approvals.
+- Added a persistence plan result object with row payload and audit-safe payload
+  accessors.
+- Added unit coverage for row payload construction, audit reason hashing,
+  minor-unit to decimal conversion, policy-rejected skips, no-row-required
+  skips, and invalid optional context IDs.
+
+### Why
+
+Below-minimum sale approvals need auditable persistence before WooCommerce/POS
+hook wiring can safely use them. This slice defines the row and audit payloads
+without enabling manager PIN reauthentication, database inserts, rate limiting,
+or live checkout/POS flows.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePersistencePlan.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverridePersistencePlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Manager override persistence planner tests for approved below-minimum row and
+  audit payloads, rejected decisions, no-row-required decisions, invalid
+  optional context IDs, and price formatting.
+
+### Rollback Notes
+
+- Revert this revision to remove manager override persistence/audit payload
+  helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Live manager reauthentication, database inserts, audit writes, WooCommerce/POS
+  hook wiring, and rate limiting remain disabled after rollback.
+
 ## 2026-06-06 - Buylist REST Intake Boundary Foundation
 
 ### What Changed

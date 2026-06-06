@@ -54,6 +54,11 @@ implemented.
 | GET | `/pricing/floor-hits` | `view_reports` |
 | POST | `/pricing/override` | employee plus manager reauthorization |
 
+Manager override policy and persistence/audit payload planning are implemented
+locally for below-minimum sale approvals. Live `/pricing/override` route
+registration, manager reauthentication, rate limiting, database writes, and
+WooCommerce/POS hook wiring remain disabled.
+
 ### Sync And Webhooks
 
 | Method | Route | Permission |

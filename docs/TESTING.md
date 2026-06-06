@@ -64,6 +64,9 @@
 - Local unit coverage now includes manager override policy behavior for
   below-minimum sale approval, distinct manager checks, required reasons,
   invalid amounts, and override-row persistence requirements.
+- Local unit coverage now includes manager override persistence/audit payload
+  planning for accepted below-minimum approvals, rejected decisions,
+  no-row-required decisions, optional context IDs, and price formatting.
 - Local unit coverage now includes WooCommerce serialized cart item metadata
   validation for exact inventory/reservation identifiers, owner token hashes,
   quantity-one enforcement, reservation expiry, price snapshots, and currency.

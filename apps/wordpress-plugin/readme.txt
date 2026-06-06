@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.25.0
+Stable tag: 0.26.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -29,6 +29,7 @@ validation while keeping live write APIs disabled.
 Phase 4 foundations add exact inventory reservation schema plus active-claim,
 release, and conversion service checks.
 Phase 2.2 adds manager override policy helpers for below-minimum sale approval.
+Phase 2.2.1 adds manager override persistence and audit payload planning.
 Phase 4.2 adds serialized cart item metadata validation for WooCommerce
 checkout hook preparation.
 Phase 4.3 adds WooCommerce serialized inventory hook contracts for cart,
@@ -56,6 +57,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.26.0 =
+
+* Added manager override persistence planner for accepted below-minimum approvals.
+* Added audit-safe payload planning with reason hashing and minor-unit to decimal conversion.
+* Kept live manager PIN reauthentication, database writes, and WooCommerce/POS hook wiring disabled.
 
 = 0.25.0 =
 
