@@ -39,14 +39,14 @@ final class ScryDexPersistencePlanner {
 			);
 		}
 
-		$now                 = $this->safe_timestamp( $now );
-		$existing_by_key     = $this->index_existing_reference_rows( $existing_reference_rows );
-		$planned_keys        = array();
-		$reference_inserts   = array();
-		$reference_updates   = array();
-		$unchanged_keys      = array();
-		$price_observations  = array();
-		$errors              = $page_plan->errors();
+		$now                = $this->safe_timestamp( $now );
+		$existing_by_key    = $this->index_existing_reference_rows( $existing_reference_rows );
+		$planned_keys       = array();
+		$reference_inserts  = array();
+		$reference_updates  = array();
+		$unchanged_keys     = array();
+		$price_observations = array();
+		$errors             = $page_plan->errors();
 
 		foreach ( $page_plan->reference_rows() as $index => $row ) {
 			$key = $this->provider_key_from_row( $row );
