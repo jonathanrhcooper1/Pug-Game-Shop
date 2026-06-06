@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Lookup Query Planning
+
+### What Changed
+
+- Added an offline registered-device lookup-query planner for future
+  repository-backed `registered_device` REST permission callback wiring.
+- Added a lookup plan value object that exposes future repository lookup
+  filters, query arguments, selected columns, lock intent, stable errors, and
+  secret-free audit payloads.
+- Added query planning for `tcg_offline_devices` selected columns,
+  active/revocation/expiry filters, row-normalizer metadata, deferred scope
+  checks, deterministic one-row lookup, and optimistic last-seen update intent.
+- Added rejection handling for invalid token lookup plans, unsupported required
+  scopes, and invalid server timestamps before future repository execution.
+- Added unit coverage for query contract shape, row normalizer selected-column
+  coverage, invalid token lookup plans, unsupported scopes, invalid server
+  times, deferred scope checks, and audit payloads without raw device tokens.
+- Updated project, plugin, and offline app package versions to `0.55.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The token lookup, row normalization, loaded-row authentication, and session
+planning boundaries now exist. Future live WordPress repositories need a
+deterministic query contract that explains which row to load and how the raw
+row will be normalized before authorization. This revision adds that contract
+without querying WordPress tables, mutating device rows, or registering live
+offline routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDeviceLookupPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDeviceLookupPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceLookupPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device lookup-query planner tests for query argument
+  shape, selected-column coverage for the row normalizer, invalid token lookup
+  plans, unsupported required scopes, invalid server times, deferred scope
+  checks, lock intent, and secret-free audit payloads.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline registered-device lookup-query
+  planner/value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row repository queries, route registration, WordPress permission
+  callbacks, last-seen writes, queue replay workers, and `$wpdb` writes remain
+  disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Registered Device Row Normalization
 
 ### What Changed

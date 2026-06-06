@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.55.0] - 2026-06-06
+
+### Added
+
+- Offline registered-device lookup-query planner for future repository-backed
+  permission callbacks.
+- Lookup plan value object exposing future repository filters, query arguments,
+  selected columns, lock intent, stable errors, and secret-free audit payloads.
+- Query planning for selected `tcg_offline_devices` columns,
+  active/revocation/expiry filters, row-normalizer metadata, deferred scope
+  checks, and deterministic one-row lookup arguments from a valid token lookup
+  plan.
+- Unit coverage for query contract shape, row normalizer selected-column
+  coverage, invalid token lookup plans, unsupported scopes, invalid server
+  times, deferred scope checks, and audit payloads without raw tokens.
+
+### Not Added
+
+- Live device row repository queries, REST route registration, WordPress
+  `permission_callback` wiring, last-seen `$wpdb` writes, queue replay workers,
+  and live database writes remain disabled for later staging-gated phases.
+
 ## [0.54.0] - 2026-06-06
 
 ### Added

@@ -170,6 +170,10 @@
   for raw database identity fields, decoded scopes/capabilities, UTC timestamp
   normalization, explicit null date overrides, invalid JSON shapes, invalid
   identity/hash fields, and secret-free audit payloads.
+- Local unit coverage now includes offline registered-device lookup-query
+  planning for selected columns, token-hash filters, active/revocation/expiry
+  query constraints, lock intent, deferred scope checks, invalid token lookup
+  plans, unsupported scopes, invalid server times, and secret-free audits.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

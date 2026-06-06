@@ -98,10 +98,13 @@ and authorized outcomes for future REST permission callbacks without querying
 or mutating device rows. Registered device row normalization now validates raw
 future `tcg_offline_devices` rows, decodes scopes/capabilities, normalizes UTC
 timestamps, and emits secret-free audits before auth/session planning consumes
-the row. Those endpoints are not registered live yet, accepted operations are
-not persisted or replayed yet, live device row repository queries, permission
-callback wiring, and last-seen database writes are disabled, live pull queries
-are not executed yet, and pull cursors are not advanced yet.
+the row. Registered device lookup-query planning now prepares selected columns,
+active/revocation/expiry filters, row-normalizer metadata, lock intent, and
+deferred scope checks for future repositories without executing SQL. Those
+endpoints are not registered live yet, accepted operations are not persisted or
+replayed yet, live device row repository queries, permission callback wiring,
+and last-seen database writes are disabled, live pull queries are not executed
+yet, and pull cursors are not advanced yet.
 Conflict list and
 resolution request validation now covers status/entity filters, cursors,
 page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,

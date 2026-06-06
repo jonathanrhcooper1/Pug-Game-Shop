@@ -207,6 +207,10 @@ Registered device row normalization now defines how future repository results
 are coerced into auth/session-ready rows with decoded scopes/capabilities, UTC
 timestamps, validation errors, and secret-free audits before those planners
 consume them.
+Registered device lookup-query planning now defines the future repository
+query arguments, selected columns, active/revocation/expiry filters,
+row-normalizer metadata, lock intent, and deferred scope checks before live SQL
+execution is enabled.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

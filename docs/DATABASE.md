@@ -265,7 +265,10 @@ and `row_version` updates. Registered-device permission planning now composes
 lookup, loaded-row authentication, and session update plans for future
 permission callbacks without live queries or writes. Registered device row
 normalization now validates and coerces raw `tcg_offline_devices` query results
-into auth/session-ready rows without performing the live query. Live provider
+into auth/session-ready rows without performing the live query. Registered
+device lookup-query planning now defines the future `tcg_offline_devices`
+selected columns, active/revocation/expiry filters, row-normalizer metadata,
+lock intent, and deferred scope checks without executing SQL. Live provider
 workers, device row repository queries, permission callback wiring, last-seen
 database writes, and offline route writes remain disabled until later phases.
 

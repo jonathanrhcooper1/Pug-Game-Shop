@@ -163,6 +163,14 @@ device row repository queries, route registration, permission callback wiring,
 last-seen writes, queue replay, and database writes remain disabled until
 staging integration tests pass.
 
+Version `0.55.0` adds the registered-device lookup-query planning boundary.
+Future WordPress repositories can now consume selected columns,
+active/revocation/expiry filters, row-normalizer metadata, lock intent, and
+deferred scope checks derived from a valid token lookup plan without executing
+SQL. Live device row repository queries, route registration, permission
+callback wiring, last-seen writes, queue replay, and database writes remain
+disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

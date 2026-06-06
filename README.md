@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.54.0`
+Version: `0.55.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -109,7 +109,10 @@ and session update planning into lookup-needed, denied, or authorized plan
 states for future REST permission callbacks. Registered device row
 normalization now converts raw future repository rows into auth/session-ready
 device rows with decoded scopes/capabilities, UTC timestamps, validation
-errors, and secret-free audits.
+errors, and secret-free audits. Registered device lookup-query planning now
+turns valid token lookup plans into future repository query arguments with
+selected columns, active/revocation/expiry filters, row-normalizer metadata,
+lock intent, deferred scope checks, and secret-free audits.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,

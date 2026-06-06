@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.54.0`
+Version: `0.55.0`
 
 ## Implemented Features
 
@@ -104,6 +104,9 @@ Version: `0.54.0`
 - Offline registered-device row normalization for future repositories,
   including database identity coercion, decoded scopes/capabilities, UTC
   timestamp normalization, validation errors, and secret-free audit payloads.
+- Offline registered-device lookup-query planning for future repositories,
+  including selected columns, active/revocation/expiry filters, row-normalizer
+  metadata, lock intent, deferred scope checks, and secret-free audit payloads.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.
