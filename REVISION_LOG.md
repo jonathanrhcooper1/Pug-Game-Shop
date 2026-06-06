@@ -68,3 +68,5 @@ production deployment.
   `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`.
 - Fixed WordPress integration workflow WP-CLI download URL and made the download
   fail fast with `curl -fsSL`.
+- Removed strict-types declaration from the WP-CLI integration smoke script so
+  it can run through `wp eval-file` in GitHub Actions.

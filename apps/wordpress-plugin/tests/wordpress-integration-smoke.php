@@ -8,8 +8,6 @@
  * @package TCGStorePlatform
  */
 
-declare(strict_types=1);
-
 use TCGStorePlatform\Auth\RoleManager;
 use TCGStorePlatform\Migrations\FoundationSchema;
 use TCGStorePlatform\Migrations\InventoryPricingSchema;
