@@ -82,10 +82,13 @@ pairing codes, installation IDs, device modes, manager/location IDs,
 capabilities, requested scopes, Windows app versions, and schema version. Those
 requests can now be turned into a planned device row, one-time registration
 response, token hash storage fields, sync route map, first-sync flags, and
-redacted audit payload without live writes. Those endpoints are not registered
-live yet, accepted operations are not persisted or replayed yet, live token
-issuance is disabled, live pull queries are not executed yet, and pull cursors
-are not advanced yet.
+redacted audit payload without live writes. Registered-device access policy
+checks now validate active state, revocation timestamps, token expiry, required
+scopes, supported modes/scopes, location IDs, and UTC timestamps for future
+pull/push/conflict permission callbacks. Those endpoints are not registered
+live yet, accepted operations are not persisted or replayed yet, live bearer
+token lookup and token hash comparison are disabled, live pull queries are not
+executed yet, and pull cursors are not advanced yet.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

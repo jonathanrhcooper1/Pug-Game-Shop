@@ -249,7 +249,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.41.0",
+  "app_version": "0.42.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -286,6 +286,13 @@ When the future route is enabled, the planned successful response body is:
 
 The planned audit payload intentionally excludes `device_token` and
 `token_hash`; live persistence remains disabled.
+
+Registered-device access policy checks are implemented for the future
+`registered_device` permission boundary. The policy validates active status,
+revocation timestamps, token expiry, required scopes, supported modes/scopes,
+location IDs, and UTC timestamps before a pull, push, or conflict request can
+proceed. Live bearer token lookup, token hash comparison, last-seen updates,
+and REST permission callback wiring remain disabled until staging tests pass.
 
 ## WooCommerce Hook Map
 

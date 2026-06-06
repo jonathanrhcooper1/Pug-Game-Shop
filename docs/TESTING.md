@@ -136,6 +136,10 @@
   future device rows, one-time response payloads, redacted audit payloads,
   scope/capability preservation, generated credential validation, and token
   expiry windows.
+- Local unit coverage now includes offline device access policy checks for
+  active allowed devices, revoked/inactive/expired devices, required and
+  unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp
+  validation.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.
@@ -168,7 +172,8 @@ corresponding modules are implemented:
   refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
   credit flows.
-- Offline app SQLite queue, WordPress push/pull, device auth, and full
+- Offline app SQLite queue, WordPress push/pull, live bearer-token lookup,
+  registered-device permission callback wiring, device auth, and full
   reconnect integration tests.
 - Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
   and provider webhook reconciliation tests.

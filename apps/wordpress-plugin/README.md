@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.41.0`
+Version: `0.42.0`
 
 ## Implemented Features
 
@@ -84,6 +84,9 @@ Version: `0.41.0`
 - Offline device registration planning for future device rows, one-time
   response payloads, token hashes, sync routes, first-sync flags, and audit
   payloads without live writes.
+- Offline device access policy checks for future registered-device permission
+  callbacks, including active/revoked/expired state, required scopes, supported
+  modes/scopes, location IDs, and UTC timestamp validation.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.42.0] - 2026-06-06
+
+### Added
+
+- Offline device access policy for future registered-device permission
+  callbacks.
+- Validation for active device status, revocation timestamps, token expiry,
+  required scopes, supported modes/scopes, location IDs, and UTC timestamps.
+- Unit coverage for allowed active devices, revoked/inactive/expired devices,
+  missing or unsupported scopes, and malformed device context.
+
+### Not Added
+
+- Live bearer token lookup, token hash comparison, REST permission callback
+  wiring, device last-seen updates, revocation persistence, and live route
+  registration remain disabled for later staging-gated phases.
+
 ## [0.41.0] - 2026-06-06
 
 ### Added

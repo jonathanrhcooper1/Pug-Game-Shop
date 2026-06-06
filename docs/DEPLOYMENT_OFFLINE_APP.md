@@ -65,6 +65,13 @@ fields, and redacted audit payload. Real token generation, storage, device row
 writes, revocation checks, and first-sync execution are still disabled until
 staging integration tests pass.
 
+Version `0.42.0` adds the registered-device access policy boundary for later
+pull, push, and conflict requests. The policy validates active state,
+revocation timestamps, token expiry, required scopes, supported modes/scopes,
+location IDs, and UTC timestamps. Live bearer-token lookup, token hash
+comparison, route permission callback wiring, last-seen updates, and revocation
+persistence are still disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

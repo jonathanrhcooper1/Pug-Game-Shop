@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Access Policy
+
+### What Changed
+
+- Added a WordPress offline device access policy for future registered-device
+  permission callbacks.
+- Added an immutable access decision value object exposing accepted context or
+  rejection errors.
+- Added validation for active device status, revocation timestamps, token
+  expiry, required scopes, supported modes/scopes, location IDs, and UTC
+  timestamps.
+- Added unit coverage for allowed active devices, revoked/inactive/expired
+  devices, missing or unsupported scopes, and malformed device context.
+- Updated project, plugin, and offline app package versions to `0.42.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+Registered-device routes need a deterministic authorization boundary before
+live bearer-token lookup and route permission callbacks are enabled. This slice
+documents and tests the rules that will allow or reject future device pull,
+push, and conflict requests while keeping live token storage, revocation
+persistence, and last-seen writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceAccessDecision.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceAccessPolicy.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceAccessPolicyTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds access-policy validation only.
+
+### Tests Added
+
+- Offline device access policy tests for active allowed devices,
+  revoked/inactive/expired devices, denied and unsupported scopes, unsupported
+  row scopes, invalid device IDs, invalid modes, invalid locations, invalid
+  UTC timestamps, and missing scopes.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline device access policy, decision
+  value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live bearer token lookup, token hash comparison, REST permission callback
+  wiring, last-seen writes, revocation persistence, push/pull execution, and
+  conflict writes remain disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Device Registration Planning
 
 ### What Changed

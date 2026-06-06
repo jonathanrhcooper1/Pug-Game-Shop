@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.41.0`
+Version: `0.42.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -72,7 +72,11 @@ manager/location IDs, app versions, Windows platform checks, hardware
 capabilities, requested scopes, and schema version gating. Offline device
 registration planning is implemented for future device rows, one-time response
 payloads, token-hash storage fields, sync routes, first-sync flags, and audit
-payloads without persisting or issuing real credentials yet.
+payloads without persisting or issuing real credentials yet. Offline device
+access policy checks are implemented for future registered-device permission
+callbacks, covering active status, revocation timestamps, token expiry,
+required scopes, supported modes/scopes, location IDs, and UTC timestamp
+validation.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
