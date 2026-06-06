@@ -33,6 +33,9 @@
 - Local unit coverage now includes event registration input validation,
   registration policy outcomes, and registration response shaping. WordPress
   integration smoke coverage asserts the local registration route is registered.
+- Local unit coverage now includes customer credit schema, entry type sign and
+  manager-approval rules, and posting policy previews. WordPress integration
+  smoke coverage asserts schema version `4` and customer credit tables.
 
 ## Required Test Backlog
 
@@ -84,6 +87,13 @@ corresponding modules are implemented:
 
 ### Credit
 
+- Customer credit schema includes customers, contacts, immutable ledger, merge
+  log, and note tables.
+- Entry types map to expected positive, negative, or either signs.
+- Manual adjustments, corrections, voids, and transfers require manager
+  approval.
+- Posting preview records signed amount and before/after balances with
+  four-decimal precision.
 - Ledger sum equals cached balance.
 - Duplicate idempotency key posts once.
 - Concurrent redemption cannot overspend.

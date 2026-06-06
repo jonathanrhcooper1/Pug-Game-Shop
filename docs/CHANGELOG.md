@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.7.0] - 2026-06-06
+
+### Added
+
+- Schema migration `0004_customer_credit`.
+- Customer, contact, credit ledger, merge log, and customer note table
+  contracts.
+- Customer credit entry type helper with typical signs and manager-approval
+  requirements.
+- Customer credit posting policy helper with four-decimal signed amount
+  previews, before/after balances, manager approval checks, and negative
+  balance rejection.
+- Unit coverage for customer credit schema, entry type rules, and posting
+  policy decisions.
+- WordPress integration smoke verification for schema version `4` and customer
+  credit tables.
+
+### Not Added
+
+- Customer credit REST endpoints, WooCommerce redemption hooks, offline credit
+  conflict processing, and staff UI remain disabled for later phases.
+
 ## [0.6.0] - 2026-06-06
 
 ### Added

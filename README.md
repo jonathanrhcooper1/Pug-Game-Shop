@@ -6,14 +6,15 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.6.0`
+Version: `0.7.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
 public Events REST/shortcode surface are implemented and locally verified.
 Local event registration writes are available for free and pay-at-store
 reservations with idempotency, capacity checks, waitlist placement, and
-registration logs. WooCommerce event-ticket flows, online payment capture,
+registration logs. Customer credit schema and ledger posting policy helpers are
+implemented. WooCommerce event-ticket flows, online payment capture, live
 TopDeck registration push, and production TopDeck credentials remain disabled
 until staging acceptance.
 

@@ -3,6 +3,70 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Customer Credit Ledger Foundation
+
+### What Changed
+
+- Added schema migration `0004_customer_credit`.
+- Added customer, customer contact, customer credit ledger, customer merge log,
+  and customer note table contracts.
+- Added customer credit entry type helpers for typical signs and manager
+  approval requirements.
+- Added a customer credit posting policy that previews signed ledger amounts,
+  before/after balances, manager approval requirements, and negative-balance
+  rejection with four-decimal fixed arithmetic.
+- Updated WordPress integration smoke verification to assert schema version `4`
+  and customer credit tables.
+
+### Why
+
+Customer credit must be an immutable liability ledger before buylist payouts,
+checkout redemption, offline credit conflict handling, and manager adjustments
+can safely ship. This slice adds the durable table contracts and deterministic
+posting rules while leaving live credit writes and UI disabled until staging
+acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Credit/CustomerCreditEntryType.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditPostingDecision.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditPostingPolicy.php`
+- `apps/wordpress-plugin/src/Migrations/CustomerCreditSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0004CustomerCredit.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditEntryTypeTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditPostingPolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditSchemaTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/CUSTOMER_CREDIT.md`
+- `docs/DATABASE.md`
+
+### Migrations Added
+
+- `0004_customer_credit`, reversible through
+  `Version0004CustomerCredit::down()`.
+
+### Tests Added
+
+- Customer credit schema contract tests.
+- Customer credit entry type sign and manager-approval tests.
+- Customer credit posting policy tests for buylist credit, purchase
+  redemption, overspend rejection, manual adjustment manager approval,
+  correction signed amounts, invalid entry type, and invalid amount.
+- WordPress integration smoke assertions for schema version `4` and all
+  customer credit tables.
+
+### Rollback Notes
+
+- Roll back schema version `4` to `3` with
+  `MigrationRunner::rollback_to(3)` in a controlled maintenance window.
+- Revert this revision to remove credit schema and policy helpers.
+- Do not roll back customer credit tables in production if real credit entries
+  exist; export and reconcile liability first.
+- No production customer or credit data is committed by this revision.
+
 ## 2026-06-06 - Local Event Registration Writes
 
 ### What Changed

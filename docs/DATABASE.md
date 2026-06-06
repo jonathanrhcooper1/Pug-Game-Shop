@@ -202,6 +202,10 @@ else:
 
 ## Customers And Credit
 
+Status: schema migration `0004_customer_credit` is implemented. Write APIs,
+WooCommerce redemption hooks, offline conflict handling, and staff UI remain
+disabled until staging acceptance.
+
 | Table | Key fields |
 | --- | --- |
 | `tcg_customers` | names, normalized phone, display phone, normalized email, barcode, cached credit balance/version, status |

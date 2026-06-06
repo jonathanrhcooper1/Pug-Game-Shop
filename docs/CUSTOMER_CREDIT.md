@@ -1,5 +1,13 @@
 # Customer Credit
 
+## Implementation Status
+
+Schema migration `0004` creates customer, contact, credit ledger, merge log, and
+customer note tables. Local policy helpers define entry types, typical signs,
+manager-approval requirements, signed ledger previews, and negative-balance
+rejection. REST endpoints, WooCommerce redemption hooks, offline credit conflict
+processing, and staff UI remain disabled until staging acceptance.
+
 ## Rules
 
 - Credit is a customer liability ledger, not a gift card.
@@ -31,10 +39,12 @@
 3. Lock customer credit projection row.
 4. Deduplicate idempotency key.
 5. Recompute/verify current balance from projection version.
-6. Reject redemption that exceeds available balance.
-7. Insert immutable ledger entry with before/after values.
-8. Update cached balance and version in the same transaction.
-9. Append audit event.
+6. Preview signed amount and before/after balances with fixed four-decimal
+   arithmetic.
+7. Reject redemption or adjustment that would make balance negative.
+8. Insert immutable ledger entry with before/after values.
+9. Update cached balance and version in the same transaction.
+10. Append audit event.
 
 Nightly and on-demand reconciliation recalculates balances from the ledger and
 flags any projection mismatch.
