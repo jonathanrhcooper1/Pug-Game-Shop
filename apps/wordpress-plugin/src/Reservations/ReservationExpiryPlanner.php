@@ -90,15 +90,15 @@ final class ReservationExpiryPlanner {
 		DateTimeImmutable $expires_at
 	): array {
 		return array(
-			'reservation_id'           => $reservation_id,
-			'inventory_id'             => $inventory_id,
-			'cart_id'                  => $this->nullable_string( $reservation['cart_id'] ?? null ),
-			'source'                   => $this->nullable_string( $reservation['source'] ?? null ),
-			'expires_at'               => $expires_at->format( 'Y-m-d H:i:s' ),
-			'release_reason'           => 'expired',
+			'reservation_id'            => $reservation_id,
+			'inventory_id'              => $inventory_id,
+			'cart_id'                   => $this->nullable_string( $reservation['cart_id'] ?? null ),
+			'source'                    => $this->nullable_string( $reservation['source'] ?? null ),
+			'expires_at'                => $expires_at->format( 'Y-m-d H:i:s' ),
+			'release_reason'            => 'expired',
 			'target_reservation_status' => ReservationStatus::EXPIRED,
-			'target_inventory_status'  => InventoryStatus::AVAILABLE,
-			'idempotency_key'          => $this->idempotency_key( $reservation_id, $expires_at ),
+			'target_inventory_status'   => InventoryStatus::AVAILABLE,
+			'idempotency_key'           => $this->idempotency_key( $reservation_id, $expires_at ),
 		);
 	}
 
