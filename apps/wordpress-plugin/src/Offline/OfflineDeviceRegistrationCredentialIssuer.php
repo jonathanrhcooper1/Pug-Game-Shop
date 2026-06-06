@@ -15,8 +15,8 @@ final class OfflineDeviceRegistrationCredentialIssuer {
 	public const DEFAULT_TOKEN_TTL_SECONDS = 86400;
 	private const MIN_TOKEN_TTL_SECONDS    = 300;
 	private const MAX_TOKEN_TTL_SECONDS    = 31536000;
-	private const DEVICE_ID_BYTE_LENGTH     = 16;
-	private const DEVICE_TOKEN_BYTE_LENGTH  = 32;
+	private const DEVICE_ID_BYTE_LENGTH    = 16;
+	private const DEVICE_TOKEN_BYTE_LENGTH = 32;
 
 	/**
 	 * @var callable(int): string
