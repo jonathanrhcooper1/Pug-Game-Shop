@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.32.0] - 2026-06-06
+
+### Added
+
+- Buylist offer planner for reviewed item offer payloads.
+- Submission-level cash and credit total planning with target submission
+  status selection.
+- Item and submission manager approval threshold planning for cash and credit
+  offers.
+- Deterministic offer fingerprints for replay/review stability.
+- Unit coverage for normal offer payloads, manager approval thresholds,
+  invalid submissions/items, zero-value offers, and stable fingerprints.
+
+### Not Added
+
+- Live buylist offer write APIs, permission callbacks, staff review UI,
+  approval persistence, customer acceptance writes, credit payout posting, and
+  inventory conversion workers remain disabled for later staging-gated phases.
+
 ## [0.31.0] - 2026-06-06
 
 ### Added

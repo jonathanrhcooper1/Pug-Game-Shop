@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Buylist Offer Planning Foundation
+
+### What Changed
+
+- Added a buylist offer planner for reviewed submission item rows.
+- Added an offer plan result object for submission offer payloads, item offers,
+  manager approval requests, and validation errors.
+- Planned cash and credit totals, target submission status selection,
+  offer-version retention, expiry, and deterministic offer fingerprints.
+- Added item-level and submission-level manager approval threshold planning for
+  cash and credit offers.
+- Added unit coverage for normal offer payloads, manager approval thresholds,
+  invalid submissions/items, zero-value offers, and stable offer fingerprints.
+
+### Why
+
+Buylist route contracts and intake validation are already present, but staff
+offer workflows need a deterministic planning boundary before live review APIs,
+approval persistence, customer acceptance, credit payouts, and inventory
+conversion workers can safely ship.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Buylist/BuylistOfferPlan.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistOfferPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/BuylistOfferPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/BUYLIST.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Buylist offer planner tests for reviewed offer payloads, manager approval
+  thresholds, invalid submissions/items, zero-value offers, and deterministic
+  offer fingerprints.
+
+### Rollback Notes
+
+- Revert this revision to remove buylist offer planning helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Live buylist offer write APIs, permission callbacks, staff review UI,
+  approval persistence, customer acceptance writes, credit payout posting, and
+  inventory conversion workers remain disabled after rollback.
+
 ## 2026-06-06 - Customer Credit REST Presentation Foundation
 
 ### What Changed

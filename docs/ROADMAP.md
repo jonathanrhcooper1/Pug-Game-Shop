@@ -67,8 +67,8 @@ temporary network loss.
 
 Status: In progress; customer credit schema, local ledger posting policy
 helpers, idempotent credit ledger posting internals, REST contracts,
-validation, response presentation, buylist schema, and buylist status helpers
-implemented
+validation, response presentation, buylist schema, status helpers, and offer
+planning implemented
 
 Deliver customer profiles, immutable credit ledger, online/in-store redemption,
 approval workflows, liability reports, buylist intake/review/offers, and

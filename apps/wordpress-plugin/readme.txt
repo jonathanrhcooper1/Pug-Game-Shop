@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.31.0
+Stable tag: 0.32.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -28,6 +28,8 @@ metadata redaction while keeping live endpoints disabled.
 Phase 6.2 adds buylist schema and submission status helpers.
 Phase 6.2.1 adds buylist REST route contracts and submission intake payload
 validation while keeping live write APIs disabled.
+Phase 6.2.2 adds buylist offer planning for reviewed item offers, totals,
+approval thresholds, and deterministic offer fingerprints.
 Phase 4 foundations add exact inventory reservation schema plus active-claim,
 release, and conversion service checks.
 Phase 4.1 adds reservation expiry cleanup planning and explicit expired-hold
@@ -67,6 +69,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.32.0 =
+
+* Added buylist offer planner for reviewed item offers, cash/credit totals, approval thresholds, target submission statuses, and deterministic offer fingerprints.
+* Added tests for offer payloads, manager approval thresholds, invalid submissions/items, zero-value offers, and stable fingerprints.
+* Kept live buylist offer write APIs, permission callbacks, staff review UI, approval persistence, customer acceptance writes, credit payout posting, and inventory conversion workers disabled.
 
 = 0.31.0 =
 

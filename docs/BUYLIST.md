@@ -6,9 +6,11 @@ Schema migration `0005_buylist` is implemented for submissions, items, offers,
 manager approvals, and conversion logs. The submission status helper is covered
 by unit tests. Planned REST route contracts and submission intake payload
 validation now cover public/staff intake, review, offer, acceptance, and
-conversion surfaces before live route registration. Live buylist write APIs,
-staff review UI, customer credit payout posting, and inventory conversion
-workers remain disabled until staging acceptance.
+conversion surfaces before live route registration. Offer planning now covers
+reviewed item offers, cash/credit totals, configured manager approval
+thresholds, target submission statuses, and deterministic offer fingerprints.
+Live buylist write APIs, staff review UI, customer credit payout posting, and
+inventory conversion workers remain disabled until staging acceptance.
 
 ## State Flow
 
@@ -52,7 +54,9 @@ Staff confirms:
 - Current provider reference data and its timestamp/currency.
 
 Offer rules are versioned configuration. Suggested cash and credit offers retain
-the formula/configuration snapshot used.
+the formula/configuration snapshot used. Current local planning covers reviewed
+item offer rows, totals, threshold-driven manager approval requests, offer
+expiry, and deterministic fingerprints for replay/review stability.
 
 ## Approval
 

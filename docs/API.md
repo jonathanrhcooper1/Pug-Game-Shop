@@ -136,7 +136,10 @@ Buylist route contracts for intake, listing, detail, review, offer, acceptance,
 and conversion exist locally with live registration disabled. Submission intake
 payload validation requires source, idempotency key, customer phone, valid
 currency, at least one item, card identity per item, positive quantity, valid
-owner token hash when supplied, and grading details for graded cards.
+owner token hash when supplied, and grading details for graded cards. Offer
+planning is implemented for reviewed item offer rows, cash/credit totals,
+manager approval thresholds, target submission status, expiry, and
+deterministic offer fingerprints.
 
 ### Events
 

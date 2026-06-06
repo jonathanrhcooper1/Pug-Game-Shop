@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.31.0`
+Version: `0.32.0`
 
 ## Implemented Features
 
@@ -39,6 +39,8 @@ Version: `0.31.0`
 - Buylist submission status transition helper.
 - Buylist planned REST route contracts and submission intake payload validation
   for customer identity, idempotency, source, owner token, and item rows.
+- Buylist offer planner for reviewed item offers, totals, manager approval
+  thresholds, target submission statuses, and deterministic offer fingerprints.
 - Generic sync job/checkpoint/error/webhook schema migration.
 - ScryDex checkpoint/resume value and request planning helpers.
 - ScryDex provider adapter contract and HTTP provider with mock-backed tests,
