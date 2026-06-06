@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.58.0`
+Version: `0.59.0`
 
 ## Implemented Features
 
@@ -118,6 +118,10 @@ Version: `0.58.0`
   including planned `$wpdb` lookup execution, not-found handling, row
   normalization, malformed-row rejection, and secret-free query/normalization
   audits without live route wiring.
+- Offline registered-device permission resolver for future permission
+  callbacks, including initial token planning, repository-backed lookup,
+  loaded-row authentication, session update planning, not-found denial, and
+  secret-free resolution audits without live route wiring or last-seen writes.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

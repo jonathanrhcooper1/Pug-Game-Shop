@@ -2,6 +2,30 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.59.0] - 2026-06-06
+
+### Added
+
+- Offline registered-device permission resolver for future REST permission
+  callbacks.
+- Resolution value object exposing initial permission planning, optional
+  repository lookup results, final loaded-row permission planning, session
+  plans, stable errors, and secret-free audit payloads.
+- Repository-backed authorization flow that denies bad bearer tokens before
+  database access, maps not-found rows to explicit denials, rejects malformed
+  rows, authenticates found rows, and plans last-seen update rows without
+  writing them.
+- Fake-`wpdb` unit coverage for authorized repository-backed resolution,
+  not-found devices, invalid tokens before lookup, malformed rows, denied
+  scopes, and redacted audit payloads.
+
+### Not Added
+
+- Live REST route registration, WordPress `permission_callback` wiring,
+  last-seen writes, queue replay workers, push/pull route handlers, canonical
+  entity writes, and production database mutation remain disabled for later
+  staging-gated phases.
+
 ## [0.58.0] - 2026-06-06
 
 ### Added

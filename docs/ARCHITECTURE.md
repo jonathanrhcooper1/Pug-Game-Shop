@@ -221,6 +221,10 @@ Registered-device repository adaptation now composes the query builder, `$wpdb`,
 row normalizer, and repository result object so future permission callbacks can
 load a planned device row as found, not found, or rejected without live route
 wiring.
+Registered-device permission resolution now composes initial token planning,
+repository-backed lookup, loaded-row authorization, session update planning,
+and redacted resolution audits into one route-ready boundary without writing
+last-seen state or registering callbacks.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

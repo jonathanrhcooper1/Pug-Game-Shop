@@ -108,6 +108,10 @@ produces prepared SQL templates plus arguments. Registered-device repository
 adaptation now executes a planned lookup when called, normalizes the returned
 row, and emits found/not-found/rejected results with redacted audits before any
 REST route wiring is enabled.
+Registered-device permission resolution now composes that lookup with
+loaded-row authentication, not-found denial, malformed-row rejection, and
+session update planning without registering route callbacks or writing
+last-seen state.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and last-seen database writes are disabled, live

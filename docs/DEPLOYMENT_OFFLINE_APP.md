@@ -192,6 +192,13 @@ or rejected outcomes with redacted audits. Route registration, permission
 callback wiring, last-seen writes, queue replay, and database writes remain
 disabled until staging integration tests pass.
 
+Version `0.59.0` adds the registered-device permission resolver boundary.
+Future WordPress permission callbacks can now compose token planning,
+repository-backed lookup, loaded-row authorization, and session update planning
+into one route-ready result. Route registration, permission callback wiring,
+last-seen writes, queue replay, and database writes remain disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

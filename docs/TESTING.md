@@ -186,6 +186,10 @@
   adaptation for prepared `$wpdb` lookup execution, found/not-found outcomes,
   invalid query plan rejection before database access, malformed-row rejection,
   row normalization, and redacted query/normalization audits.
+- Local unit coverage now includes offline registered-device permission
+  resolution for invalid tokens before repository access, repository-backed
+  authorization, not-found denials, malformed-row rejection, denied scopes,
+  session update planning, and audit redaction.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

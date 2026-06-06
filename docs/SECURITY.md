@@ -58,8 +58,11 @@ producing prepared SQL metadata, and its audits expose counts rather than raw
 tokens or token hashes. Registered-device repository adaptation keeps the full
 token hash inside prepared arguments only, reports query and normalization
 audits without raw tokens or token hashes, and rejects malformed rows before
-auth/session planners consume them. Live permission callback wiring,
-last-seen database writes, and route callback wiring remain staging-gated.
+auth/session planners consume them. Registered-device permission resolution
+keeps raw tokens and full token hashes out of resolution audits while composing
+repository-backed authorization and future session update planning. Live
+permission callback wiring, last-seen database writes, and route callback
+wiring remain staging-gated.
 
 ## Secret Storage
 

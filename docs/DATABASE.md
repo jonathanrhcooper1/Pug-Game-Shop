@@ -274,9 +274,11 @@ live repository call. Registered device lookup query building now validates
 that contract and produces a prepared SQL template plus arguments without
 executing the live repository query. Registered device repository adaptation
 now executes the planned `tcg_offline_devices` read when called and normalizes
-the returned row before future permission callbacks consume it. Live provider
-workers, route permission callback wiring, last-seen database writes, and
-offline route writes remain disabled until later phases.
+the returned row before future permission callbacks consume it. Registered
+device permission resolution now can authorize that normalized row and prepare
+the future last-seen update row without writing it. Live provider workers,
+route permission callback wiring, last-seen database writes, and offline route
+writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

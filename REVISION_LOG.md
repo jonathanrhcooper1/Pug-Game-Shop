@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Permission Resolver
+
+### What Changed
+
+- Added a registered-device permission resolver for the future offline REST
+  permission callback boundary.
+- Added a permission resolution value object that exposes initial token
+  planning, optional repository lookup results, final loaded-row permission
+  planning, session plans, stable errors, and secret-free audit payloads.
+- Composed token lookup planning, repository-backed device loading, row
+  normalization, loaded-row authentication, not-found denial, malformed-row
+  rejection, scope denial, and session update planning into one route-ready
+  result.
+- Kept the future last-seen update row as a plan only; no database write is
+  performed by this resolver.
+- Added dependency-free fake-`wpdb` tests for authorized resolution, not-found
+  devices, invalid bearer tokens before repository access, malformed rows,
+  denied scopes, and audit redaction.
+- Updated project, plugin, and offline app package versions to `0.59.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The repository adapter can now load and normalize a registered offline device
+row, but future REST permission callbacks still need a single boundary that
+starts from request headers and ends with an authorization/session outcome. This
+revision adds that bridge while keeping route wiring, last-seen writes, queue
+replay, and offline route handlers disabled until staging integration tests can
+exercise the live path.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionResolver.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionResolution.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device permission resolver tests for repository-backed
+  authorization, not-found denial, invalid bearer-token rejection before
+  database access, malformed-row rejection, final permission denials, session
+  update planning, and secret-free resolution audits.
+
+### Rollback Notes
+
+- Revert this revision to remove the permission resolver, resolution result
+  object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, WordPress permission callback wiring, last-seen
+  writes, queue replay workers, and live database writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Registered Device Repository Adapter
 
 ### What Changed
