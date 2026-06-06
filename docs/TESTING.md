@@ -58,6 +58,9 @@
 - Local unit coverage now includes manager override policy behavior for
   below-minimum sale approval, distinct manager checks, required reasons,
   invalid amounts, and override-row persistence requirements.
+- Local unit coverage now includes WooCommerce serialized cart item metadata
+  validation for exact inventory/reservation identifiers, owner token hashes,
+  quantity-one enforcement, reservation expiry, price snapshots, and currency.
 
 ## Required Test Backlog
 
@@ -72,7 +75,8 @@ corresponding modules are implemented:
 - Manager override persistence, manager reauthentication, and audit tests.
 - ScryDex worker integration tests.
 - TopDeck registration adapter tests.
-- WooCommerce checkout hook tests.
+- WooCommerce add-to-cart, checkout, payment, order-line, cart release, and
+  refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
   credit flows.
 - Offline app sync conflict tests.

@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - WooCommerce Serialized Cart Metadata Foundation
+
+### What Changed
+
+- Added a WooCommerce serialized cart item metadata validator.
+- Added exact-item metadata checks for single serialized quantity, positive
+  inventory and reservation IDs, owner token hash presence, immutable price
+  snapshot, ISO currency, and future reservation expiry.
+- Added unit coverage for valid cart metadata, missing exact-item metadata,
+  quantity-one enforcement, expired reservations, invalid price snapshots, and
+  invalid currencies.
+
+### Why
+
+WooCommerce add-to-cart and checkout hooks need a deterministic cart metadata
+contract before live reservation, order-line, payment, and release hooks are
+enabled. This slice pins the validation surface while leaving all WooCommerce
+hook registration disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/SerializedCartItemValidator.php`
+- `apps/wordpress-plugin/tests/Unit/SerializedCartItemValidatorTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- WooCommerce serialized cart item validator tests for exact inventory and
+  reservation metadata, owner token hash presence, single serialized quantity,
+  reservation expiry, immutable price snapshot, and currency validation.
+
+### Rollback Notes
+
+- Revert this revision to remove the WooCommerce serialized cart item metadata
+  validator and tests.
+- No schema rollback is required; database target remains `7`.
+- Live WooCommerce add-to-cart, checkout, payment-complete, order-line, cart
+  removal, and refund hooks remain disabled after rollback.
+
 ## 2026-06-06 - Manager Override Policy Foundation
 
 ### What Changed

@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.16.0] - 2026-06-06
+
+### Added
+
+- WooCommerce serialized cart item metadata validator for exact inventory
+  checkout line preparation.
+- Validation for one-item serialized quantities, required inventory and
+  reservation IDs, owner token hashes, immutable price snapshots, ISO currency,
+  and unexpired reservations.
+- Unit coverage for valid cart metadata, missing exact-item metadata, quantity
+  enforcement, expired reservations, and invalid price/currency snapshots.
+
+### Not Added
+
+- Live WooCommerce add-to-cart, cart-session, checkout, payment-complete,
+  order-line, Store API, cart removal, and refund hook wiring remain disabled
+  for later staging-gated phases.
+
 ## [0.15.0] - 2026-06-06
 
 ### Added

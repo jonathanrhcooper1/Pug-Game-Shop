@@ -43,8 +43,8 @@ full pulls resume without duplication.
 
 ## Phase 4: WooCommerce Storefront And Reservations
 
-Status: In progress; exact reservation schema plus reserve/release/convert
-service foundations implemented
+Status: In progress; exact reservation schema, reserve/release/convert service
+foundations, and serialized cart metadata validation implemented
 
 Deliver catalog projection, exact-item cart metadata, atomic reservation,
 checkout validation, payment conversion, cancellation/failure release, pickup,
