@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.14.0`
+Version: `0.15.0`
 
 ## Implemented Features
 
@@ -43,6 +43,7 @@ Version: `0.14.0`
   inventory active-claim enforcement.
 - Reservation lifecycle service helpers for idempotent conversion to sold and
   release back to available.
+- Manager override policy helpers for below-minimum sale authorization.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

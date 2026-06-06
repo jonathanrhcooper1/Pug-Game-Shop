@@ -23,6 +23,8 @@ staging database acceptance remains pending.
   active item barcode/location, and listed item reference identity.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
+- Manager override policy helper for below-minimum sale approval, distinct
+  manager requirement, required reason, and override-row persistence signal.
 
 ## Verification Performed
 
@@ -43,5 +45,5 @@ On PHP 8.2.29:
 4. Seeded inventory intake tests using real WordPress database writes.
 5. Barcode collision and SKU collision handling through service-layer tests.
 6. Pricing change log persistence once inventory write services are added.
-7. Manager override persistence and below-minimum sale authorization tests.
+7. Manager override persistence and reauthentication tests.
 8. Search and pagination benchmarks after the 50,000-item seed fixture exists.

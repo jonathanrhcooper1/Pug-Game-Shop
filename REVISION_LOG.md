@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Manager Override Policy Foundation
+
+### What Changed
+
+- Added manager override request, decision, and policy helpers.
+- Added below-minimum sale authorization rules requiring a distinct manager,
+  non-empty reason, valid non-negative amounts, and a persisted override row
+  when an override is accepted.
+- Added unit coverage for no-override-needed sales, missing manager approval,
+  same-user manager rejection, missing reason rejection, valid manager approval,
+  and invalid amount rejection.
+
+### Why
+
+Pricing and checkout flows need a deterministic manager approval policy before
+below-minimum sale hooks or POS override writes are enabled. This slice pins the
+authorization behavior while leaving persistence, reauthentication, and commerce
+hook integration disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideDecision.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePolicy.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRequest.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverridePolicyTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Manager override policy tests for no-override-needed pricing, missing manager
+  approval, same-user approval rejection, missing reason rejection, accepted
+  below-minimum approval, and invalid amount rejection.
+
+### Rollback Notes
+
+- Revert this revision to remove manager override policy helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Manager override persistence, manager PIN reauthentication, WooCommerce/POS
+  hook wiring, and audit writes remain disabled after rollback.
+
 ## 2026-06-06 - Reservation Lifecycle Foundation
 
 ### What Changed

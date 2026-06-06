@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.15.0] - 2026-06-06
+
+### Added
+
+- Manager override request, decision, and policy helpers for below-minimum sale
+  authorization.
+- Policy enforcement for distinct manager approval, required reason, invalid
+  amount rejection, and override-row persistence requirement.
+- Unit coverage for no-override-needed sales, missing manager approval,
+  same-user approval rejection, missing reason rejection, valid approval, and
+  invalid amount rejection.
+
+### Not Added
+
+- Manager override persistence, manager PIN reauthentication, WooCommerce/POS
+  below-minimum hook wiring, and audit log writes remain disabled for later
+  staging-gated phases.
+
 ## [0.14.0] - 2026-06-06
 
 ### Added

@@ -55,6 +55,9 @@
   to available, idempotent conversion replay, and inventory-state mismatch
   rejection. WordPress integration smoke coverage asserts schema version `7`
   and reservation tables.
+- Local unit coverage now includes manager override policy behavior for
+  below-minimum sale approval, distinct manager checks, required reasons,
+  invalid amounts, and override-row persistence requirements.
 
 ## Required Test Backlog
 
@@ -66,7 +69,7 @@ corresponding modules are implemented:
 - Pricing engine tests.
 - Reservation database integration and concurrent double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.
-- Manager override tests.
+- Manager override persistence, manager reauthentication, and audit tests.
 - ScryDex worker integration tests.
 - TopDeck registration adapter tests.
 - WooCommerce checkout hook tests.

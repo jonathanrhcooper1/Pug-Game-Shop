@@ -20,7 +20,7 @@ endpoint on the target WordPress/WooCommerce versions.
 
 ## Phase 2: Inventory And Pricing
 
-Status: In progress
+Status: In progress; manager override policy helpers implemented
 
 Deliver reference/inventory/location tables, intake, barcode generation, label
 contracts, required minimum price, pricing policy, movement log, price log, and
