@@ -73,8 +73,10 @@ WordPress offline push/pull handlers, live pairing, and full reconnect
 integration tests remain future phases. The WordPress plugin now includes
 planned route contracts for device pairing, pull, push, conflict listing, and
 conflict resolution, plus offline push operation envelope validation for the
-same queued fields SQLite stores. Those endpoints are not registered live yet,
-and accepted operations are not persisted or replayed yet.
+same queued fields SQLite stores. Offline pull request validation also exists
+for cached domain selection, cursors, page-size bounds, tombstones, and schema
+version. Those endpoints are not registered live yet, accepted operations are
+not persisted or replayed yet, and pull cursors are not advanced yet.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

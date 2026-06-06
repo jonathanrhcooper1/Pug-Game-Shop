@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.38.0] - 2026-06-06
+
+### Added
+
+- Offline pull request parser for devices requesting cached read-model changes.
+- Validation for device IDs, cached domain selection, domain cursors,
+  page-size bounds, tombstone inclusion, and schema version `1`.
+- Unit coverage for requested domains/cursors, default pull settings, invalid
+  top-level shapes, unsupported domains, bad cursors, and unsupported schema
+  versions.
+
+### Not Added
+
+- Live offline pull route registration, device token validation, change-query
+  repositories, tombstone reads, cursor advancement, and reconnect integration
+  tests remain disabled for later staging-gated phases.
+
 ## [0.37.0] - 2026-06-06
 
 ### Added

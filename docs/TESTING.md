@@ -121,6 +121,9 @@
   IDs, required operation envelope fields, device matching, duplicate client
   operation IDs, supported operation/entity pairs, timestamps, JSON-object
   payloads, authorization context, and schema version gating.
+- Local unit coverage now includes offline pull request validation for cached
+  domain selection, cursors, page-size bounds, tombstone inclusion, device IDs,
+  and schema version gating.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

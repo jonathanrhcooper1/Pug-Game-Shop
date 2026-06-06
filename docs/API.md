@@ -26,7 +26,9 @@ but not registered live. Offline push payload validation is implemented for
 operation envelope shape, duplicate operation IDs, device matching, supported
 operation/entity pairs, timestamps, and schema version gating. Full permission,
 nonce, request/response, and write-flow REST tests remain staging-gated as each
-route family is implemented.
+route family is implemented. Offline pull request validation is implemented for
+device IDs, requested cached domains, domain cursors, page-size bounds,
+tombstone inclusion, and schema version gating.
 
 ### Inventory And Search
 
@@ -193,7 +195,10 @@ matching, client operation IDs, supported `inventory_reservation`,
 timestamps, JSON-object payloads, authorization context, duplicate IDs, and
 schema version `1`. Live device pairing, bearer token validation, push/pull
 workers, queue replay, and conflict persistence remain disabled until
-staging-gated WordPress/offline integration tests pass.
+staging-gated WordPress/offline integration tests pass. Offline pull request
+validation also exists for the SQLite cached domains `branding`, `inventory`,
+`customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
+limits, tombstone inclusion, and schema version `1`.
 
 ## WooCommerce Hook Map
 

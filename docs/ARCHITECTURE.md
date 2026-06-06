@@ -175,7 +175,9 @@ pull, push, conflict listing, and conflict resolution. The routes stay disabled
 until device authentication, queue replay, and conflict persistence pass
 staging integration tests. Push payload validation is implemented separately so
 the route handler can reject malformed operation batches before persistence or
-conflict resolution is enabled.
+conflict resolution is enabled. Pull request validation is also implemented so
+devices can ask for known cached domains and cursors before live change queries
+or cursor advancement are enabled.
 
 ## Storefront Product Strategy
 

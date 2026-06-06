@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Pull Request Validation
+
+### What Changed
+
+- Added a WordPress offline pull request parser for devices requesting cached
+  read-model changes.
+- Added an immutable parsed pull request value object and validation result.
+- Added validation for device IDs, cached domain selection, domain cursors,
+  page-size bounds, tombstone inclusion, and schema version `1`.
+- Added unit coverage for requested domains/cursors, default pull settings,
+  missing top-level fields, invalid shapes, unsupported domains, bad cursors,
+  page-size limits, and unsupported schema versions.
+- Updated project, plugin, and offline app package versions to `0.38.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap, and
+  plugin docs.
+
+### Why
+
+The offline app needs a safe server-side pull boundary before live change
+queries or cursor advancement are enabled. This slice lets the future route
+handler validate the requested cached domains and cursors deterministically
+without reading or mutating WordPress, inventory, customer credit, events, or
+conflict state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePullRequest.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullRequestParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullRequestValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRequestParserTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds request validation only.
+
+### Tests Added
+
+- Offline pull request parser tests for accepted requested domains/cursors,
+  default pull domains/page size/tombstones, missing device/schema values,
+  invalid top-level shapes, unsupported domains, bad cursors, page-size limits,
+  and unsupported schema versions.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline pull parser, value object, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live offline endpoints, pull query execution, cursor advancement, queue
+  replay, and conflict writes remain disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Push Payload Validation
 
 ### What Changed
