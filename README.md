@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.34.0`
+Version: `0.35.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -54,7 +54,9 @@ responses, exact scanned item sales, refunds, declines, and unmapped line
 conflicts.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
-workflow for unsigned installer builds.
+workflow for unsigned installer builds. Its first SQLite schema contract is
+also implemented for device identity, sync cursors, operation queue, logs,
+cached branding/inventory/credit/events, and conflicts.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,

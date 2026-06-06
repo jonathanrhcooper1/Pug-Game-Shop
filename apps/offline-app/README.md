@@ -10,8 +10,10 @@ the future offline sync app.
 - React/Vite shell.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
-- Contract test for package metadata, sync routes, branding tokens, and secret
-  safety.
+- SQLite schema migration for device identity, cursors, queued operations,
+  cached branding/inventory/credit/events, sync logs, and conflicts.
+- Contract tests for package metadata, sync routes, branding tokens, local
+  schema shape, and secret safety.
 
 The app does not yet implement live pairing, SQLite persistence, push/pull sync,
 printer/scanner adapters, kiosk lockdown, or signed updater behavior.

@@ -1,6 +1,6 @@
 {
   "name": "@pug-game-shop/offline-app",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "private": true,
   "description": "Windows offline sync app for the TCG Store Platform.",
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:windows": "tauri build --target x86_64-pc-windows-msvc --bundles nsis",
     "package:windows": "npm run build:windows",
-    "test:package-contract": "node tests/windows-package-contract.mjs"
+    "test:package-contract": "node tests/windows-package-contract.mjs && node tests/sqlite-schema-contract.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.5.0",

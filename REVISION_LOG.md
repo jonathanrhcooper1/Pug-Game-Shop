@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline App SQLite Schema Foundation
+
+### What Changed
+
+- Added the first offline app SQLite migration contract.
+- Added local schema manifest coverage for device identity, sync cursors,
+  operation queue, sync logs, cached branding, cached inventory, cached
+  customer credit, cached events, and conflicts.
+- Added operation queue envelope fields matching the offline sync contract.
+- Added a dependency-free SQLite schema contract test and wired it into root
+  `npm run test`.
+- Updated offline app, offline sync, architecture, database, deployment,
+  roadmap, and testing docs.
+
+### Why
+
+The Windows offline app needs a local read model and durable operation queue
+before live pairing, push/pull sync, kiosk mode, staff mode, and conflict UI can
+ship. This slice establishes the SQLite shape while keeping WordPress
+authoritative after sync acceptance.
+
+### Files Affected
+
+- `apps/offline-app/config/sqlite-schema.manifest.json`
+- `apps/offline-app/src-tauri/migrations/0001_offline_foundation.sql`
+- `apps/offline-app/tests/sqlite-schema-contract.mjs`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/README.md`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- `apps/offline-app/src-tauri/migrations/0001_offline_foundation.sql`
+
+### Tests Added
+
+- Offline app SQLite schema contract test for migration presence, local table
+  names, required indexes, operation envelope fields, status checks,
+  SQLite-only syntax guards, no direct MySQL access, and no production
+  endpoint markers.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline app SQLite schema manifest,
+  migration, contract test, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No deployed SQLite rollback is required unless a manually built test app has
+  already initialized local files. In that case, discard the test app data or
+  reinstall before continuing.
+- Live device pairing, push/pull workers, and queue replay remain disabled
+  after rollback.
+
 ## 2026-06-06 - Windows Offline App Packaging Foundation
 
 ### What Changed

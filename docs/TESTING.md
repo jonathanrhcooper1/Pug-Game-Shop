@@ -110,6 +110,10 @@
 - Root automation now includes the offline app Windows package contract test
   for Tauri metadata, `x86_64-pc-windows-msvc`, NSIS `.exe` output, offline
   sync routes, required branding tokens, and secret-safety markers.
+- Root automation now includes the offline app SQLite schema contract test for
+  local device identity, cursors, operation queue envelope fields, sync logs,
+  cached branding/inventory/credit/events, conflicts, and SQLite-only syntax
+  guards.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

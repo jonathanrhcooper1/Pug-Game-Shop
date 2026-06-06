@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.35.0] - 2026-06-06
+
+### Added
+
+- Offline app SQLite schema manifest and first local migration contract.
+- Local tables for app metadata, device identity, sync cursors, operation
+  queue, sync logs, cached branding, cached inventory, cached customer credit,
+  cached events, and sync conflicts.
+- Operation queue envelope fields matching the offline sync contract.
+- SQLite schema contract test wired into root `npm run test`.
+- Documentation for local SQLite ownership and rollback boundaries.
+
+### Not Added
+
+- Live SQLite service execution, encryption integration, FTS/search virtual
+  tables, device pairing, WordPress offline REST endpoints, push/pull workers,
+  queue replay, conflict UI, and full reconnect integration tests remain
+  disabled for later staging-gated phases.
+
 ## [0.34.0] - 2026-06-06
 
 ### Added

@@ -67,10 +67,15 @@ The first shared sync-engine policy module is implemented and tested for:
   overspend conflict.
 - Revoked device push rejection before operation handling.
 
-The Tauri app packaging scaffold and Windows `.exe` installer contract are now
-implemented. SQLite operation queue persistence, WordPress offline push/pull
-endpoints, live pairing, and full reconnect integration tests remain future
-phases.
+The Tauri app packaging scaffold, Windows `.exe` installer contract, and first
+SQLite schema contract are now implemented. Live SQLite persistence services,
+WordPress offline push/pull endpoints, live pairing, and full reconnect
+integration tests remain future phases.
+
+The first SQLite migration defines local tables for device identity, sync
+cursors, queued operations, sync logs, cached branding, cached inventory,
+cached customer credit, cached events, and sync conflicts. Direct MySQL access
+is explicitly disallowed.
 
 ## Offline Reservations
 

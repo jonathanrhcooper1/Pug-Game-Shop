@@ -166,6 +166,11 @@ The initial packaging scaffold targets a Tauri NSIS installer for
 distribution remains blocked until signing, hardware gates, and offline sync
 integration tests pass.
 
+The first local SQLite schema contract covers device identity, sync cursors,
+the operation queue, sync logs, cached branding, cached inventory, cached
+customer credit, cached events, and sync conflicts. These tables are a local
+read model and queue only; WordPress remains authoritative after sync.
+
 ## Storefront Product Strategy
 
 Serialized singles use a WooCommerce catalog shell product for a card

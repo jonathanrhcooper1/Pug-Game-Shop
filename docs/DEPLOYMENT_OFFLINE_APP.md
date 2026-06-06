@@ -35,6 +35,12 @@ The GitHub Actions workflow exposes a manual `workflow_dispatch` build that
 uploads the unsigned NSIS `.exe` artifact. Production release still requires
 manual approval, code signing, and the hardware gate below.
 
+Version `0.35.0` adds the first local SQLite schema contract in
+`src-tauri/migrations/0001_offline_foundation.sql`. It defines local device
+identity, sync cursors, queued operations, sync logs, cached branding,
+inventory, customer credit, events, and conflict tables. The schema is local
+state only; WordPress remains authoritative once operations sync.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

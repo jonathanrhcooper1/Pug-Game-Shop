@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "migration": "src-tauri/migrations/0001_offline_foundation.sql",
+  "authority": "wordpress_after_sync_acceptance",
+  "direct_mysql_access": false,
+  "tables": [
+    "app_metadata",
+    "device_identity",
+    "sync_cursors",
+    "operation_queue",
+    "sync_log",
+    "cached_branding",
+    "cached_inventory",
+    "cached_customer_credit",
+    "cached_events",
+    "sync_conflicts"
+  ],
+  "indexes": [
+    "idx_operation_queue_status",
+    "idx_operation_queue_entity",
+    "idx_sync_log_sequence",
+    "idx_cached_inventory_status",
+    "idx_cached_inventory_barcode",
+    "idx_cached_events_starts",
+    "idx_sync_conflicts_status"
+  ],
+  "operation_envelope": [
+    "client_operation_id",
+    "device_id",
+    "location_id",
+    "actor_id",
+    "operation_type",
+    "entity_type",
+    "entity_id",
+    "base_row_version",
+    "occurred_at_local",
+    "queued_at_utc",
+    "payload_json",
+    "authorization_context_json",
+    "schema_version"
+  ],
+  "cached_domains": [
+    "branding",
+    "inventory",
+    "customer_credit",
+    "events",
+    "conflicts"
+  ]
+}

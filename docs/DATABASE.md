@@ -290,6 +290,27 @@ registration success are separate states.
 | `tcg_role_permissions` | role/capability, location scope, allow/deny |
 | `tcg_audit_log` | immutable action, entity, actor/manager/device, request ID, before/after hash/diff, IP metadata |
 
+## Offline App SQLite
+
+The Windows offline app uses local SQLite as a read model and operation queue.
+WordPress remains authoritative after sync acceptance; the app never connects
+directly to MySQL.
+
+Version `0.35.0` adds the first local migration contract:
+
+- `app_metadata`
+- `device_identity`
+- `sync_cursors`
+- `operation_queue`
+- `sync_log`
+- `cached_branding`
+- `cached_inventory`
+- `cached_customer_credit`
+- `cached_events`
+- `sync_conflicts`
+
+No SQLite migrations are executed by the WordPress plugin.
+
 ## Retention
 
 - Credit, manager override, inventory movement, sale, and sensitive audit records
