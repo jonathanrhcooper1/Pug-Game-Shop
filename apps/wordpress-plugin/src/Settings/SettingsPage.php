@@ -82,6 +82,29 @@ final class SettingsPage {
 		);
 
 		add_settings_section(
+			'tcg_store_platform_topdeck',
+			__( 'TopDeck', 'tcg-store-platform' ),
+			array( $this, 'render_topdeck_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'topdeck_api_key',
+			__( 'API key', 'tcg-store-platform' ),
+			array( $this, 'render_topdeck_api_key' ),
+			'tcg-store-platform',
+			'tcg_store_platform_topdeck'
+		);
+
+		add_settings_field(
+			'topdeck_base_url',
+			__( 'API base URL', 'tcg-store-platform' ),
+			array( $this, 'render_topdeck_base_url' ),
+			'tcg-store-platform',
+			'tcg_store_platform_topdeck'
+		);
+
+		add_settings_section(
 			'tcg_store_platform_features',
 			__( 'Feature flags', 'tcg-store-platform' ),
 			array( $this, 'render_feature_description' ),
@@ -137,6 +160,36 @@ final class SettingsPage {
 		echo '<p class="description">';
 		echo esc_html__( 'Leave disabled in production unless a verified backup and deletion approval exist.', 'tcg-store-platform' );
 		echo '</p>';
+	}
+
+	public function render_topdeck_description(): void {
+		echo '<p>';
+		echo esc_html__( 'TopDeck credentials must be sandbox or approved staging credentials outside production. Event creation remains disabled until a create endpoint is explicitly configured.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_topdeck_api_key(): void {
+		$settings = Settings::all();
+
+		echo '<input type="password" autocomplete="new-password" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[topdeck_api_key]" value="" class="regular-text" />';
+
+		if ( '' !== (string) $settings['topdeck_api_key'] ) {
+			echo '<p class="description">';
+			echo esc_html__( 'A TopDeck API key is stored. Enter a replacement key to rotate it.', 'tcg-store-platform' );
+			echo '</p>';
+		}
+	}
+
+	public function render_topdeck_base_url(): void {
+		$settings = Settings::all();
+
+		echo '<input type="url" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[topdeck_base_url]" value="'
+			. esc_attr( (string) $settings['topdeck_base_url'] )
+			. '" class="regular-text" />';
 	}
 
 	public function render_feature_description(): void {

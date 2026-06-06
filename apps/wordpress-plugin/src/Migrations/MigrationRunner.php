@@ -124,6 +124,7 @@ final class MigrationRunner {
 		return array(
 			new Version0001Foundation(),
 			new Version0002InventoryPricing(),
+			new Version0003EventsTopDeck(),
 		);
 	}
 

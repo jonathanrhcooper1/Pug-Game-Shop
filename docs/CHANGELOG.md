@@ -2,6 +2,22 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.4.0] - 2026-06-06
+
+### Added
+
+- Phase 3 Events and TopDeck schema migration `0003`.
+- Event, registration, waitlist, check-in, TopDeck sync log, and template table
+  contracts.
+- Event registration mode, status, capacity, seat, and public badge helpers.
+- TopDeck provider adapter with prompt-required methods, injectable transport,
+  register-player response mapping, key redaction context, and default
+  `createEvent()` `not_supported` behavior.
+- TopDeck settings defaults for sandbox credentials, base URL, rate limit, and
+  create-event safety.
+- Unit coverage for Events/TopDeck schema, status rules, TopDeck adapter
+  outcomes, and settings sanitization.
+
 ## [0.3.0] - 2026-06-06
 
 ### Added

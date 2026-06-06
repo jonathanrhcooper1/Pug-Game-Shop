@@ -1,5 +1,13 @@
 # Events
 
+## Implementation Status
+
+Schema migration `0003` creates durable event, registration, waitlist, check-in,
+TopDeck sync log, and template tables. Local helper classes define registration
+modes, capacity-consuming statuses, seats remaining, public status, and badges.
+The public UI, WooCommerce event-entry products, and staff dashboard are still
+behind the disabled `events_topdeck` feature flag until staging acceptance.
+
 ## Registration Modes
 
 ### TopDeck Hosted

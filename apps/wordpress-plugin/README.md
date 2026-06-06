@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.3.0`
+Version: `0.4.0`
 
 ## Implemented Features
 
@@ -17,6 +17,10 @@ Version: `0.3.0`
 - Action Scheduler integration for 9:00 AM Eastern daily dispatch.
 - Authenticated `/wp-json/tcg-store/v1/health` endpoint.
 - Local inventory status, intake validation, and pricing policy helpers.
+- Events and TopDeck schema migration.
+- Event registration status, public event badge, and capacity helpers.
+- TopDeck provider adapter with owned tournament, tournament info, attendee,
+  register-player, import, sync, and default-disabled create-event contract.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 
@@ -60,7 +64,7 @@ versions.
    `wp-content/plugins/tcg-store-platform`.
 3. Activate **TCG Store Platform**.
 4. Open **TCG Store > System Status**.
-5. Confirm schema version `2 / 2`, WooCommerce, Action Scheduler, and the next
+5. Confirm schema version `3 / 3`, WooCommerce, Action Scheduler, and the next
    daily UTC run.
 6. Authenticate as a manager/admin and request
    `/wp-json/tcg-store/v1/health`.

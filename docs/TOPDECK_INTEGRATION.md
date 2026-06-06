@@ -28,21 +28,24 @@ Verified against official TopDeck Tournaments V2 documentation on June 6, 2026:
 No public tournament-creation endpoint was documented in the reviewed V2 API.
 No public webhook contract was found in that documentation.
 
-## Interface
+## Implemented Adapter Interface
 
 ```text
 getMyTournaments()
 getTournamentInfo(tid)
-getTournament(tid)
 getAttendees(tid)
-getStandings(tid)
-getRounds(tid)
 registerPlayers(tid, emails, overrideCap)
 syncEventFromTopDeck(tid)
 importOwnedEvents()
 createEvent(eventData)
-capabilityCheck()
 ```
+
+`TopDeckHttpProvider` implements the prompt-required methods above and also
+exposes WordPress-style snake_case wrappers for internal use. Tests run against
+an injected transport so no live TopDeck API key is needed.
+
+Standings, rounds, webhook, and provider capability discovery methods remain
+future extension points once product flows need them.
 
 Default results:
 

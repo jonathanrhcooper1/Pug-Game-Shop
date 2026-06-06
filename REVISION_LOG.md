@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Events And TopDeck Foundation
+
+### What Changed
+
+- Added schema migration `0003` for event, registration, waitlist, check-in,
+  TopDeck sync log, and event template tables.
+- Added event registration mode/status helpers, capacity counting, public badge
+  helpers, and seat remaining calculations.
+- Added a TopDeck provider adapter with prompt-required methods, injectable
+  transport, register-player outcome mapping, redacted auth context, and a
+  default `createEvent()` `not_supported` result.
+- Added TopDeck settings defaults for API key, base URL, rate limit, and
+  create-event safety.
+- Updated WordPress integration smoke verification to require schema version
+  `3` and all Events/TopDeck tables.
+
+### Why
+
+The Events module needs a durable local source of truth before public pages,
+WooCommerce event-entry products, offline reservations, and staff check-in flows
+can safely ship. TopDeck event creation remains explicitly disabled because the
+reviewed public API does not document a create-tournament endpoint.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/EventsTopDeckSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0003EventsTopDeck.php`
+- `apps/wordpress-plugin/src/Events/**`
+- `apps/wordpress-plugin/src/TopDeck/**`
+- `apps/wordpress-plugin/src/Settings/**`
+- `apps/wordpress-plugin/tests/Unit/*Event*Test.php`
+- `apps/wordpress-plugin/tests/Unit/TopDeckHttpProviderTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `fixtures/mocks/topdeck/**`
+- `docs/CHANGELOG.md`
+- `docs/EVENTS.md`
+- `docs/TOPDECK_INTEGRATION.md`
+
+### Migrations Added
+
+- `0003_events_topdeck`, reversible through
+  `Version0003EventsTopDeck::down()`.
+
+### Tests Added
+
+- Events/TopDeck schema contract tests.
+- Event registration status and capacity tests.
+- Event public status/badge tests.
+- TopDeck adapter method, response mapping, and redaction tests.
+- TopDeck settings sanitization tests.
+
+### Rollback Notes
+
+- Roll back schema version `3` to `2` with `MigrationRunner::rollback_to(2)` in
+  a controlled maintenance window.
+- Revert the Events/TopDeck code and fixtures if the module must be removed
+  from staging.
+- No production TopDeck keys are committed or required by this revision.
+
 ## 2026-06-06 - Development, Staging, Deployment Foundation
 
 ### What Changed
