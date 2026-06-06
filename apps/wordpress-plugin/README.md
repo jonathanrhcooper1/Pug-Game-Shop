@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.51.0`
+Version: `0.52.0`
 
 ## Implemented Features
 
@@ -94,6 +94,9 @@ Version: `0.51.0`
 - Offline device token lookup planning for future repositories, including
   hashed token lookup filters, short audit fingerprints, normalized
   WordPress-style headers, and no raw token retention.
+- Offline device session planning for future permission callbacks, including
+  authenticated row matching, last-seen update rows, row-version increments,
+  session context, and secret-free audit payloads.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

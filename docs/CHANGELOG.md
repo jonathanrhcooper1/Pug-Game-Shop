@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.52.0] - 2026-06-06
+
+### Added
+
+- Offline device session planner for future repository-backed permission
+  callbacks.
+- Session plan value object exposing future device last-seen update rows,
+  authenticated session context, row-version increments, and secret-free audit
+  payloads.
+- Validation that accepted access decisions match the loaded device row by
+  persisted offline device ID and public device ID before planning updates.
+- Unit coverage for last-seen update rows, audit payloads, string database IDs,
+  denied decisions, mismatched device rows, invalid timestamps, invalid device
+  IDs, and invalid row versions.
+
+### Not Added
+
+- Live last-seen `$wpdb` writes, device row repository queries, REST route
+  registration, permission callback wiring, queue replay workers, and live
+  database writes remain disabled for later staging-gated phases.
+
 ## [0.51.0] - 2026-06-06
 
 ### Added

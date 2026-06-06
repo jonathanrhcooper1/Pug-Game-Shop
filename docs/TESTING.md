@@ -158,6 +158,10 @@
   hashed lookup filters, token fingerprints, normalized WordPress header arrays,
   missing/malformed/short tokens, and audit payloads without raw token or full
   token hash leakage.
+- Local unit coverage now includes offline device session planning for
+  last-seen update rows, session context, row-version increments, audit
+  payloads, string database IDs, denied decisions, mismatched device rows,
+  invalid timestamps, invalid device IDs, and invalid row versions.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution
@@ -213,8 +217,8 @@ corresponding modules are implemented:
   credit flows.
 - Offline app SQLite queue, WordPress push/pull, live device row repository
   queries, registered-device permission callback wiring, device last-seen
-  updates, live conflict reads/writes, conflict audit persistence, device auth,
-  and full reconnect integration tests.
+  database writes, live conflict reads/writes, conflict audit persistence,
+  device auth, and full reconnect integration tests.
 - Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
   and provider webhook reconciliation tests.
 

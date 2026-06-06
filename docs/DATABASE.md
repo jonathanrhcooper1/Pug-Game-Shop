@@ -260,8 +260,10 @@ idempotent replay rows. Offline bearer-token authentication planning now
 verifies future request headers and stored token hashes before queue/conflict
 work proceeds. Offline token lookup planning now prepares the hashed
 `token_hash` filter future repositories will use to load registered devices,
-but live provider workers, device row repository queries, and offline route
-writes remain disabled until later phases.
+and offline session planning now prepares future `last_seen_at`, `updated_at`,
+and `row_version` updates. Live provider workers, device row repository
+queries, last-seen database writes, and offline route writes remain disabled
+until later phases.
 
 | Table | Key fields |
 | --- | --- |

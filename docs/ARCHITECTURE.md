@@ -197,6 +197,9 @@ shape, compare SHA-256 token hashes, require persisted offline-device IDs, and
 return secret-free accepted contexts before conflict or queue work starts.
 Device token lookup planning now derives the hashed repository lookup filter
 and short audit fingerprint before live row loading is enabled.
+Device session planning now prepares a future last-seen update row, normalized
+session context, row-version increment, and audit payload after the loaded row
+matches an accepted access decision.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

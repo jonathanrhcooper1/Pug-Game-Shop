@@ -43,8 +43,10 @@ Offline bearer-token authentication planning now normalizes request headers,
 validates token shape, compares SHA-256 token hashes with `hash_equals`, and
 delegates active/revoked/expired/scope checks to the shared device access
 policy. Offline token lookup planning derives repository filters and short
-audit fingerprints without retaining raw tokens. Live device row repository
-queries, last-seen updates, and route callback wiring remain staging-gated.
+audit fingerprints without retaining raw tokens. Offline session planning
+prepares last-seen update rows and session context after an accepted device row
+match. Live device row repository queries, last-seen database writes, and route
+callback wiring remain staging-gated.
 
 ## Secret Storage
 

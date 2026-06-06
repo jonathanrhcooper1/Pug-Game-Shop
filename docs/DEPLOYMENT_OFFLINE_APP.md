@@ -140,6 +140,13 @@ the raw token. Live device row repository queries, last-seen updates, route
 registration, queue replay, and database writes remain disabled until staging
 integration tests pass.
 
+Version `0.52.0` adds the offline device session planning boundary. Future
+WordPress permission callbacks can now prepare authenticated session context,
+last-seen update rows, optimistic row-version increments, and secret-free audit
+payloads after a device row is authenticated. Live last-seen database writes,
+route registration, queue replay, and database writes remain disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

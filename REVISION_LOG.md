@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Session Planning
+
+### What Changed
+
+- Added an offline device session planner for future repository-backed
+  `registered_device` REST permission callbacks.
+- Added a session plan value object exposing future last-seen update rows,
+  authenticated session context, and secret-free audit payloads.
+- Added validation that accepted access decisions match the loaded registered
+  device row by persisted offline device ID and public device ID before
+  planning updates.
+- Added optimistic row-version planning for future `tcg_offline_devices`
+  `last_seen_at`, `updated_at`, and `row_version` updates.
+- Added unit coverage for update row shape, audit payloads, string database
+  IDs, denied decisions, mismatched rows, invalid timestamps, invalid device
+  IDs, and invalid row versions.
+- Updated project, plugin, and offline app package versions to `0.52.0`.
+- Updated API, offline sync, architecture, deployment, testing, roadmap,
+  changelog, and plugin docs.
+
+### Why
+
+After token lookup and row authentication, future live permission callbacks need
+a deterministic plan for recording device activity and carrying a normalized
+session context into route handlers. This slice adds that boundary without
+writing to the database or registering live offline routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceSessionPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceSessionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceSessionPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device session planner tests for last-seen update rows, session
+  context, audit payloads, string database IDs, denied decisions, mismatched
+  rows, invalid timestamps, invalid device IDs, and invalid row versions.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline device session planner/value
+  object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row repository queries, last-seen writes, route registration,
+  permission callback wiring, queue replay workers, and `$wpdb` writes remain
+  disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Device Token Lookup Planning
 
 ### What Changed
