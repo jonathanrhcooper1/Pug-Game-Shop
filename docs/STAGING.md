@@ -18,6 +18,9 @@ complete.
 - Staging disables real POS inventory changes unless explicitly enabled for a
   controlled sandbox test.
 - Staging displays a visible `STAGING` banner to staff and admin users.
+- Staging banner color, company name, support URL, logo URL, receipt footer,
+  and theme colors come from staging branding settings rather than production
+  hardcoded values.
 
 ## Environment Flags
 

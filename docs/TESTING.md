@@ -51,6 +51,9 @@
 - Local unit coverage now includes buylist offer planning for reviewed item
   offers, cash/credit totals, manager approval thresholds, invalid submissions
   and item rows, zero-value offers, and deterministic offer fingerprints.
+- Local unit coverage now includes branding settings sanitization for company
+  identity, HTTPS URLs, hex color normalization, safe existing-value
+  preservation, client-safe public config export, and CSS variable output.
 - Local unit coverage now includes sync schema and ScryDex checkpoint/resume
   planning against sanitized mock fixtures. WordPress integration smoke coverage
   asserts schema version `6` and sync tables.

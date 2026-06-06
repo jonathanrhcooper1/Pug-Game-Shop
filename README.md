@@ -6,11 +6,14 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.32.0`
+Version: `0.33.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
 public Events REST/shortcode surface are implemented and locally verified.
+White-label company branding settings are implemented for configurable company
+names, support/logo URLs, receipt footer text, theme colors, staging banner
+color, and client-safe CSS variable export.
 Local event registration writes are available for free and pay-at-store
 reservations with idempotency, capacity checks, waitlist placement, and
 registration logs. Customer credit schema, ledger posting policy helpers, and
@@ -80,6 +83,7 @@ disabled until staging acceptance.
 - [UI Flows](docs/UI_FLOWS.md)
 - [Security](docs/SECURITY.md)
 - [Offline Sync](docs/OFFLINE_SYNC.md)
+- [Branding](docs/BRANDING.md)
 - [ScryDex Integration](docs/SCRYDEX_INTEGRATION.md)
 - [TopDeck Integration](docs/TOPDECK_INTEGRATION.md)
 - [Payments and POS](docs/PAYMENTS_POS.md)

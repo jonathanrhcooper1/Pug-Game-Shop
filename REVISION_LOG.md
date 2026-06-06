@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - White-Label Branding Settings Foundation
+
+### What Changed
+
+- Added shared branding settings for company identity, optional HTTPS logo and
+  support URLs, receipt footer text, and color tokens.
+- Added client-safe public branding config and CSS variable export helpers.
+- Exposed branding controls in the WordPress Settings API screen.
+- Updated the admin dashboard and system status screens to read the configured
+  company profile.
+- Added documentation for white-label/multi-company branding behavior and
+  safety rules.
+- Added unit coverage for branding sanitization, existing-value preservation,
+  public config safety, and CSS variable output.
+
+### Why
+
+The platform may be deployed for multiple companies, so brand names, colors,
+logo/support URLs, receipt copy, and staging banner colors must be configurable
+instead of hardcoded in WordPress, kiosk, receipt, and offline app surfaces.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/BrandingSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/BRANDING.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `docs/UI_FLOWS.md`
+
+### Migrations Added
+
+- None. Branding is stored in the existing WordPress option and uses existing
+  schema version `7`.
+
+### Tests Added
+
+- Branding tests for submitted setting sanitization, existing safe value
+  preservation, public config redaction boundaries, and CSS variable output.
+
+### Rollback Notes
+
+- Revert this revision to remove white-label branding helpers, Settings API
+  fields, admin profile usage, docs, and tests.
+- No schema rollback is required; database target remains `7`.
+- Existing WordPress option data can retain unused `branding` keys safely after
+  rollback, or be removed manually during a settings cleanup if approved.
+- Live storefront/kiosk/offline app rendering, public branding REST endpoint,
+  receipt template rendering, email template theming, and offline app branding
+  sync remain disabled after rollback.
+
 ## 2026-06-06 - Buylist Offer Planning Foundation
 
 ### What Changed

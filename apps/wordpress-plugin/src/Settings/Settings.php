@@ -23,6 +23,7 @@ final class Settings {
 			'delete_data_on_uninstall' => false,
 			'daily_run_time'           => '09:00',
 			'daily_timezone'           => 'America/New_York',
+			'branding'                 => BrandingSettings::defaults(),
 			'topdeck_api_key'          => '',
 			'topdeck_base_url'         => 'https://topdeck.gg/api',
 			'topdeck_create_enabled'   => false,
@@ -36,7 +37,13 @@ final class Settings {
 	public static function all(): array {
 		$value = get_option( self::OPTION_NAME, self::defaults() );
 
-		return array_merge( self::defaults(), is_array( $value ) ? $value : array() );
+		$settings             = array_merge( self::defaults(), is_array( $value ) ? $value : array() );
+		$settings['branding'] = BrandingSettings::sanitize(
+			$settings['branding'] ?? array(),
+			BrandingSettings::defaults()
+		);
+
+		return $settings;
 	}
 
 	public static function get( string $key, mixed $fallback = null ): mixed {
@@ -61,6 +68,10 @@ final class Settings {
 		$api_key        = isset( $value['topdeck_api_key'] ) ? trim( (string) $value['topdeck_api_key'] ) : (string) ( $existing['topdeck_api_key'] ?? '' );
 		$base_url       = isset( $value['topdeck_base_url'] ) ? trim( (string) $value['topdeck_base_url'] ) : 'https://topdeck.gg/api';
 		$rate_limit     = isset( $value['topdeck_rate_limit'] ) ? (int) $value['topdeck_rate_limit'] : 60;
+		$branding       = BrandingSettings::sanitize(
+			$value['branding'] ?? array(),
+			is_array( $existing['branding'] ?? null ) ? $existing['branding'] : BrandingSettings::defaults()
+		);
 
 		if ( ! in_array( $level, $allowed_levels, true ) ) {
 			$level = 'warning';
@@ -83,6 +94,7 @@ final class Settings {
 			'delete_data_on_uninstall' => ! empty( $value['delete_data_on_uninstall'] ),
 			'daily_run_time'           => '09:00',
 			'daily_timezone'           => 'America/New_York',
+			'branding'                 => $branding,
 			'topdeck_api_key'          => $api_key,
 			'topdeck_base_url'         => $base_url,
 			'topdeck_create_enabled'   => ! empty( $value['topdeck_create_enabled'] ),

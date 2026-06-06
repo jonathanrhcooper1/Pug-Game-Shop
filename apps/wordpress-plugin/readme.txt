@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.32.0
+Stable tag: 0.33.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -11,6 +11,9 @@ Serialized trading-card inventory and store operations for WooCommerce.
 Phase 1 provides the platform foundation: migrations, roles and capabilities,
 settings, structured logging, audit logging, REST health checks, feature flags,
 Action Scheduler integration, and WooCommerce HPOS compatibility reporting.
+Phase 1.5 adds white-label company branding settings for configurable company
+identity, URLs, receipt text, theme colors, staging banner color, and CSS
+variable export.
 Phase 2 foundations add inventory/pricing schema contracts and local business
 rule helpers.
 Phase 3 foundations add Events and TopDeck schema contracts, event status
@@ -69,6 +72,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.33.0 =
+
+* Added white-label company branding settings for configurable company name, short name, logo/support URLs, receipt footer text, and color tokens.
+* Added client-safe branding config and CSS variable export for WordPress, kiosk, staging banner, and future Windows offline app surfaces.
+* Added tests for branding sanitization, existing-value preservation, public config safety, and CSS variable output.
+* Kept live storefront/kiosk/offline app rendering changes gated for later UI phases.
 
 = 0.32.0 =
 

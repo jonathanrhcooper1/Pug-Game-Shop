@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.33.0] - 2026-06-06
+
+### Added
+
+- White-label company branding settings for company name, short name, logo URL,
+  support URL, receipt footer text, and theme color tokens.
+- Sanitized client-safe branding config export for future WordPress, kiosk,
+  staging banner, receipt, and Windows offline app consumers.
+- CSS variable export for primary, accent, background, surface, text, success,
+  warning, danger, and staging banner color tokens.
+- Settings API fields for company identity, HTTPS brand URLs, receipt footer,
+  and color token inputs.
+- Admin dashboard and system status usage of the configured company profile.
+- Unit coverage for branding sanitization, existing-value preservation,
+  client-safe public config export, and CSS variable output.
+
+### Not Added
+
+- Live storefront/kiosk/offline app rendering, public branding REST endpoint,
+  receipt template rendering, email template theming, and offline app branding
+  sync remain disabled for later staging-gated UI phases.
+
 ## [0.32.0] - 2026-06-06
 
 ### Added

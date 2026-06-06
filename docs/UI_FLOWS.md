@@ -6,6 +6,9 @@ The visual system is a premium collector-vault theme with high contrast,
 responsive layouts, game accent chips, clear availability/status, and reusable
 card/slab tiles. Shared tokens and TypeScript component contracts live in
 `apps/shared-ui`; WordPress rendering may use equivalent PHP/block wrappers.
+Company name, logo, support URL, receipt footer, staging banner color, and
+interface color tokens come from branding settings so the same UI can be
+deployed for multiple companies without source changes.
 
 Required components:
 

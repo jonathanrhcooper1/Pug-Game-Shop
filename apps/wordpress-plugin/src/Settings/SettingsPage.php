@@ -82,6 +82,61 @@ final class SettingsPage {
 		);
 
 		add_settings_section(
+			'tcg_store_platform_branding',
+			__( 'Branding', 'tcg-store-platform' ),
+			array( $this, 'render_branding_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'branding_company_name',
+			__( 'Company name', 'tcg-store-platform' ),
+			array( $this, 'render_branding_company_name' ),
+			'tcg-store-platform',
+			'tcg_store_platform_branding'
+		);
+
+		add_settings_field(
+			'branding_company_short_name',
+			__( 'Short name', 'tcg-store-platform' ),
+			array( $this, 'render_branding_company_short_name' ),
+			'tcg-store-platform',
+			'tcg_store_platform_branding'
+		);
+
+		add_settings_field(
+			'branding_logo_url',
+			__( 'Logo URL', 'tcg-store-platform' ),
+			array( $this, 'render_branding_logo_url' ),
+			'tcg-store-platform',
+			'tcg_store_platform_branding'
+		);
+
+		add_settings_field(
+			'branding_support_url',
+			__( 'Support URL', 'tcg-store-platform' ),
+			array( $this, 'render_branding_support_url' ),
+			'tcg-store-platform',
+			'tcg_store_platform_branding'
+		);
+
+		add_settings_field(
+			'branding_receipt_footer',
+			__( 'Receipt footer', 'tcg-store-platform' ),
+			array( $this, 'render_branding_receipt_footer' ),
+			'tcg-store-platform',
+			'tcg_store_platform_branding'
+		);
+
+		add_settings_field(
+			'branding_colors',
+			__( 'Color tokens', 'tcg-store-platform' ),
+			array( $this, 'render_branding_colors' ),
+			'tcg-store-platform',
+			'tcg_store_platform_branding'
+		);
+
+		add_settings_section(
 			'tcg_store_platform_topdeck',
 			__( 'TopDeck', 'tcg-store-platform' ),
 			array( $this, 'render_topdeck_description' ),
@@ -160,6 +215,72 @@ final class SettingsPage {
 		echo '<p class="description">';
 		echo esc_html__( 'Leave disabled in production unless a verified backup and deletion approval exist.', 'tcg-store-platform' );
 		echo '</p>';
+	}
+
+	public function render_branding_description(): void {
+		echo '<p>';
+		echo esc_html__( 'White-label settings are shared by WordPress, kiosk, receipt, staging banner, and offline app surfaces so each company can use its own identity without code changes.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_branding_company_name(): void {
+		$this->render_branding_input( 'company_name' );
+	}
+
+	public function render_branding_company_short_name(): void {
+		$this->render_branding_input( 'company_short_name' );
+	}
+
+	public function render_branding_logo_url(): void {
+		$this->render_branding_input( 'logo_url', 'url' );
+		echo '<p class="description">';
+		echo esc_html__( 'Use an HTTPS URL from the current site media library or approved brand asset host.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_branding_support_url(): void {
+		$this->render_branding_input( 'support_url', 'url' );
+	}
+
+	public function render_branding_receipt_footer(): void {
+		$branding = $this->branding();
+
+		echo '<textarea name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[branding][receipt_footer]" rows="2" class="large-text">';
+		echo esc_textarea( (string) $branding['receipt_footer'] );
+		echo '</textarea>';
+	}
+
+	public function render_branding_colors(): void {
+		$branding = $this->branding();
+		$labels   = array(
+			'primary_color'        => __( 'Primary', 'tcg-store-platform' ),
+			'accent_color'         => __( 'Accent', 'tcg-store-platform' ),
+			'background_color'     => __( 'Background', 'tcg-store-platform' ),
+			'surface_color'        => __( 'Surface', 'tcg-store-platform' ),
+			'text_color'           => __( 'Text', 'tcg-store-platform' ),
+			'success_color'        => __( 'Success', 'tcg-store-platform' ),
+			'warning_color'        => __( 'Warning', 'tcg-store-platform' ),
+			'danger_color'         => __( 'Danger', 'tcg-store-platform' ),
+			'staging_banner_color' => __( 'Staging banner', 'tcg-store-platform' ),
+		);
+
+		echo '<fieldset>';
+
+		foreach ( $labels as $key => $label ) {
+			echo '<label>';
+			echo esc_html( $label ) . ' ';
+			echo '<input type="color" name="'
+				. esc_attr( Settings::OPTION_NAME )
+				. '[branding][' . esc_attr( $key ) . ']" value="'
+				. esc_attr( (string) $branding[ $key ] )
+				. '" /> ';
+			echo '<code>' . esc_html( (string) $branding[ $key ] ) . '</code>';
+			echo '</label><br />';
+		}
+
+		echo '</fieldset>';
 	}
 
 	public function render_topdeck_description(): void {
@@ -257,5 +378,24 @@ final class SettingsPage {
 				'after'  => $new_value,
 			)
 		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function branding(): array {
+		$settings = Settings::all();
+
+		return BrandingSettings::from_settings( $settings );
+	}
+
+	private function render_branding_input( string $key, string $type = 'text' ): void {
+		$branding = $this->branding();
+
+		echo '<input type="' . esc_attr( $type ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[branding][' . esc_attr( $key ) . ']" value="'
+			. esc_attr( (string) $branding[ $key ] )
+			. '" class="regular-text" />';
 	}
 }

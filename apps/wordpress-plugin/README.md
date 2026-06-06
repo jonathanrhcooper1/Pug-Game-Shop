@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.32.0`
+Version: `0.33.0`
 
 ## Implemented Features
 
@@ -8,6 +8,9 @@ Version: `0.32.0`
 - Versioned, reversible foundation migration.
 - Inventory and pricing schema migration.
 - Foundation settings, role-permission, audit, and migration tables.
+- White-label company branding settings for company identity, support/logo
+  URLs, receipt copy, theme colors, staging banner color, and CSS variable
+  export.
 - Reference card/variant, inventory location/item, movement, barcode, price
   change, and manager override tables.
 - Least-privilege staff, manager, kiosk, and system roles.

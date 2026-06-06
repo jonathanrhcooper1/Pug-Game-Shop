@@ -13,6 +13,8 @@ use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Scheduler\DailyScheduler;
+use TCGStorePlatform\Settings\BrandingSettings;
+use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
 
@@ -71,8 +73,10 @@ final class AdminMenu {
 			wp_die( esc_html__( 'You do not have permission to view this page.', 'tcg-store-platform' ) );
 		}
 
+		$branding = BrandingSettings::public_config( Settings::all() );
+
 		echo '<div class="wrap"><h1>';
-		echo esc_html__( 'TCG Store Platform', 'tcg-store-platform' );
+		echo esc_html( (string) $branding['company']['name'] );
 		echo '</h1><p>';
 		echo esc_html__( 'Phase 1 foundation is active. Business modules remain protected by feature flags until their implementation phases are accepted.', 'tcg-store-platform' );
 		echo '</p>';
@@ -104,6 +108,7 @@ final class AdminMenu {
 		$runner    = new MigrationRunner( $this->logger );
 		$scheduler = new DailyScheduler( $this->logger );
 		$status    = DependencyChecker::status();
+		$branding  = BrandingSettings::public_config( Settings::all() );
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
@@ -134,6 +139,11 @@ final class AdminMenu {
 			__( 'WooCommerce HPOS declaration', 'tcg-store-platform' ),
 			Compatibility::hpos_status(),
 			'verified' === Compatibility::hpos_status() ? 'ok' : 'degraded'
+		);
+		$this->render_status_row(
+			__( 'Branding profile', 'tcg-store-platform' ),
+			(string) $branding['company']['name'],
+			'configured'
 		);
 
 		echo '</tbody></table></div>';
