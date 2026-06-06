@@ -87,6 +87,8 @@ events, and bounded credit redemption.
 
 ## Phase 8: POS And Payment Adapters
 
+Status: In progress; POS/payment reconciliation policy tests implemented
+
 Deliver Square connection, transaction ingestion, barcode scan gate, optional
 catalog projection, reconciliation, refunds, conflict logs, and configurable
 fee comparison. Add payment adapters only where a supported integration exists.

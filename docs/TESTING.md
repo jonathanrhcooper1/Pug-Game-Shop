@@ -73,6 +73,9 @@
 - Root automation now includes sync-engine offline conflict policy tests for
   inventory reservations, event reservations, customer credit redemption, and
   device revocation.
+- Root automation now includes POS/payment reconciliation policy tests for
+  sandbox payment responses, scan-gated sales, declined payments, unmapped line
+  conflicts, and refunds to pending review.
 
 ## Required Test Backlog
 
@@ -96,6 +99,8 @@ corresponding modules are implemented:
   credit flows.
 - Offline app SQLite queue, WordPress push/pull, device auth, and full
   reconnect integration tests.
+- Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
+  and provider webhook reconciliation tests.
 
 ## Critical Business Tests
 

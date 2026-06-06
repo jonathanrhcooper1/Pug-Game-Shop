@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Reconciliation Policy Foundation
+
+### What Changed
+
+- Added a POS/payment reconciliation policy module in the shared validation
+  package.
+- Added executable Node tests for approved sandbox payments, exact scanned item
+  sale reconciliation, declined payments, unmapped POS line conflicts, and
+  refunds moving inventory to pending review.
+- Wired POS/payment policy tests into the root `npm run test` gate.
+
+### Why
+
+POS and payment providers must never become the source of truth for serialized
+inventory. This slice pins the policy that provider responses record payment
+state while plugin-owned exact barcode scans drive inventory transitions.
+
+### Files Affected
+
+- `packages/validation/src/posPaymentPolicy.mjs`
+- `packages/validation/tests/pos-payment-policy.mjs`
+- `package.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- POS/payment policy tests for payment normalization, provider inventory write
+  blocking, scan-gated sale transitions, declined payment rejection, unmapped
+  POS line conflict creation, and refund transitions to pending review.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment policy helpers, Node tests, and
+  root test wiring.
+- No schema rollback is required; database target remains `7`.
+- No live payment gateway, POS adapter, webhook, or provider inventory write is
+  enabled by this revision.
+
 ## 2026-06-06 - Offline Sync Conflict Policy Foundation
 
 ### What Changed

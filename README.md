@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.20.0`
+Version: `0.21.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -31,6 +31,9 @@ queue workers.
 Offline sync conflict policy tests are implemented in the shared sync engine
 for inventory reservations, event reservations, customer credit redemption, and
 device revocation.
+POS/payment reconciliation policy tests are implemented for sanitized sandbox
+responses, exact scanned item sales, refunds, declines, and unmapped line
+conflicts.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hooks, credit REST endpoints, buylist
 write APIs, scheduled ScryDex workers, and production provider credentials

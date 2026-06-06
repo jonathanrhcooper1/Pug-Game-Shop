@@ -115,6 +115,22 @@ Daily reconciliation compares:
 
 Mismatches create durable exceptions; they never silently modify exact inventory.
 
+## Implemented Policy Tests
+
+The shared validation package now tests POS/payment reconciliation policy with
+sanitized sandbox fixtures:
+
+- Approved provider payment responses normalize amount/currency and still block
+  provider-side inventory writes.
+- Scan-gated POS sales transition only exact scanned inventory lines to `sold`.
+- Declined payments never transition inventory.
+- Provider-only or unmapped POS lines create staff-review conflicts.
+- Refunds move exact items to `pending_review`, not directly back to
+  `available`.
+
+Live Square/POS connections, payment webhooks, WooCommerce gateway capture, and
+production credentials remain disabled until staging acceptance.
+
 ## Sources
 
 - https://developer.squareup.com/docs/catalog-api/what-it-does

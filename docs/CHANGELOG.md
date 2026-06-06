@@ -2,6 +2,21 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.21.0] - 2026-06-06
+
+### Added
+
+- POS/payment reconciliation policy module for sanitized sandbox provider
+  responses.
+- Node tests for approved payment normalization, scan-gated exact item sales,
+  declined payments, unmapped POS line conflicts, and refund-to-review behavior.
+- Root `npm run test` wiring for POS/payment policy tests.
+
+### Not Added
+
+- Live Square/POS connection, WooCommerce gateway capture, payment webhooks,
+  provider inventory writes, and production payment credentials remain disabled.
+
 ## [0.20.0] - 2026-06-06
 
 ### Added
