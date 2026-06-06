@@ -7,7 +7,9 @@ customer note tables. Local policy helpers define entry types, typical signs,
 manager-approval requirements, signed ledger previews, and negative-balance
 rejection. A transaction-backed posting service and `wpdb` repository now
 support idempotency-key replay, customer row locking, immutable ledger inserts,
-and cached balance/version updates. REST endpoints, WooCommerce redemption
+and cached balance/version updates. Planned REST route contracts and posting
+payload validation now cover balance, ledger, adjustment, and redemption
+surfaces before live route registration. REST endpoints, WooCommerce redemption
 hooks, offline credit conflict processing, and staff UI remain disabled until
 staging acceptance.
 
@@ -53,6 +55,8 @@ Nightly and on-demand reconciliation recalculates balances from the ledger and
 flags any projection mismatch.
 
 Current implementation covers steps 3 through 9 for server-side internals.
+Payload validation now covers route/customer matching, idempotency keys,
+currency, optional linked IDs, metadata shape, and manager approval inputs.
 Capability checks, normalized-phone enforcement, route permissions, and audit
 events are added when staff and WooCommerce write surfaces are enabled.
 

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.23.0`
+Version: `0.24.0`
 
 ## Implemented Features
 
@@ -31,6 +31,8 @@ Version: `0.23.0`
   previews, manager approval, and negative-balance rejection.
 - Customer credit ledger posting service and repository with idempotency,
   customer row locking, cached balance updates, and replay handling.
+- Customer credit planned REST route contracts and posting payload validation
+  for idempotent ledger writes, manager approvals, and route-customer matching.
 - Buylist submission, item, offer, approval, and conversion schema migration.
 - Buylist submission status transition helper.
 - Generic sync job/checkpoint/error/webhook schema migration.

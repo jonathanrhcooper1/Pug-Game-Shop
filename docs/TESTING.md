@@ -37,6 +37,9 @@
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit
   tables.
+- Local unit coverage now includes customer credit planned REST route contracts
+  and posting payload validation for route/customer matching, idempotency,
+  currency, metadata, optional linked IDs, and manager-approved adjustments.
 - Local unit coverage now includes buylist schema and submission status
   transitions. WordPress integration smoke coverage asserts buylist tables.
 - Local unit coverage now includes sync schema and ScryDex checkpoint/resume

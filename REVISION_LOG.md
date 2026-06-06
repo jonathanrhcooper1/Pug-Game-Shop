@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Customer Credit REST Boundary Foundation
+
+### What Changed
+
+- Added planned customer credit REST route contracts for credit balance, ledger,
+  adjustment, and redemption surfaces.
+- Added a customer credit REST posting parser that turns validated payloads into
+  ledger posting requests.
+- Added unit coverage for route permissions, disabled-by-default live status,
+  redemption parsing, route/customer mismatches, manager approval requirements,
+  invalid linked IDs, and metadata validation.
+
+### Why
+
+Customer credit writes are financial-liability operations and need a strict REST
+boundary before live route registration. This slice validates the request shape
+and route contract while keeping permission callbacks, controller writes,
+WooCommerce redemption hooks, and staff UI disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/CustomerCreditRouteContracts.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditRestPostingParser.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditRestPostingValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRestPostingParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRouteContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/CUSTOMER_CREDIT.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Customer credit REST parser tests for valid redemption payloads, header
+  idempotency precedence, customer mismatch, missing idempotency, invalid
+  currency, manager approval requirements, invalid optional IDs, and metadata
+  shape.
+- Customer credit route contract tests for planned route count, permissions,
+  namespace, and disabled live registration.
+
+### Rollback Notes
+
+- Revert this revision to remove customer credit REST boundary helpers and
+  tests.
+- No schema rollback is required; database target remains `7`.
+- Live customer credit REST endpoints, WooCommerce redemption hooks, staff UI,
+  and audit writes remain disabled after rollback.
+
 ## 2026-06-06 - WooCommerce Hook Contract Foundation
 
 ### What Changed

@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.24.0] - 2026-06-06
+
+### Added
+
+- Customer credit planned REST route contracts for balance, ledger, adjustment,
+  and redemption flows.
+- Customer credit REST posting payload parser for route/customer matching,
+  idempotency keys, amount format, currency normalization, optional linked IDs,
+  metadata object validation, and manager-approved adjustments.
+- Unit coverage for the planned route permissions, disabled-by-default live
+  status, valid redemption parsing, customer mismatch rejection, manager
+  approval requirements, and invalid optional request fields.
+
+### Not Added
+
+- Live customer credit REST route registration, nonce/capability callbacks,
+  staff UI, WooCommerce redemption hooks, and audit writes remain disabled for
+  later staging-gated phases.
+
 ## [0.23.0] - 2026-06-06
 
 ### Added

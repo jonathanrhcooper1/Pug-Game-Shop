@@ -18,8 +18,10 @@
 Current implementation status: dependency-free route contract tests cover the
 health endpoint plus public Events list/detail/registration routes. WordPress
 integration smoke tests verify those routes register in a real WordPress
-process. Full permission, nonce, request/response, and write-flow REST tests
-remain staging-gated as each route family is implemented.
+process. Planned customer credit route contracts and posting payload validation
+are implemented but not registered live. Full permission, nonce,
+request/response, and write-flow REST tests remain staging-gated as each route
+family is implemented.
 
 ### Inventory And Search
 
@@ -103,6 +105,12 @@ after target GoDaddy proxy buffering and connection limits are verified.
 | POST | `/customers/{id}/credit/redeem` | staff or online checkout |
 | POST | `/customers/merge` | manager |
 
+Customer credit route contracts for balance, ledger, adjustment, and redemption
+exist locally with live registration disabled. Posting payload validation
+requires a matching route customer, `Idempotency-Key` header or
+`idempotency_key` body field, valid amount/currency, object metadata, positive
+linked IDs, and manager ID plus reason for manager-approved entry types.
+
 ### Buylist
 
 | Method | Route | Permission |
@@ -158,19 +166,19 @@ across another event or email return `idempotency_conflict`.
 
 | Hook / interface | Responsibility |
 | --- | --- |
-| `woocommerce_add_to_cart_validation` | Require exact `inventory_id`; atomically reserve; reject unavailable/different-price items |
+| `woocommerce_add_to_cart_validation` | Require `inventory_id`, reserve atomically, reject unavailable items |
 | `woocommerce_add_cart_item_data` | Store reservation ID, inventory ID, barcode, and immutable display snapshot |
 | `woocommerce_get_cart_item_from_session` | Restore metadata and revalidate reservation ownership/expiry |
 | `woocommerce_check_cart_items` | Revalidate every exact item before cart/checkout |
 | `woocommerce_before_calculate_totals` | Set server-authoritative serialized item price; never trust client price |
-| `woocommerce_checkout_create_order_line_item` | Persist inventory/reservation/barcode/condition/grade/location snapshots via CRUD |
-| `woocommerce_store_api_checkout_update_order_from_request` | Apply Store API checkout metadata where current Woo contract requires it |
+| `woocommerce_checkout_create_order_line_item` | Persist inventory/reservation snapshots via CRUD |
+| `woocommerce_store_api_checkout_update_order_from_request` | Apply required Store API checkout metadata |
 | `woocommerce_store_api_checkout_order_processed` | Final pre-payment reservation/order linkage for Checkout Blocks |
 | `woocommerce_payment_complete` | Convert active reservations to sold idempotently |
 | `woocommerce_order_status_changed` | Reconcile processing/completed/cancelled/failed/refunded transitions |
 | `woocommerce_order_status_cancelled` | Release eligible reservations |
 | `woocommerce_order_status_failed` | Release eligible reservations after payment failure |
-| `woocommerce_refund_created` / `woocommerce_order_refunded` | Move exact items to configured returned or pending-review state |
+| `woocommerce_refund_created` / `woocommerce_order_refunded` | Move exact items to returned or pending review |
 | `woocommerce_cart_item_removed` | Release reservation unless retained by another valid cart/order state |
 | `woocommerce_cart_emptied` | Release all cart-owned active reservations |
 | Action Scheduler cleanup action | Expire orphaned reservations and reconcile Woo sessions |
