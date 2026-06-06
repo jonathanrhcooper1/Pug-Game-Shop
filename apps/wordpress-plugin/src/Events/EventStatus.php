@@ -66,7 +66,7 @@ final class EventStatus {
 		string $topdeck_sync_status,
 		?DateTimeImmutable $now = null
 	): array {
-		$now ??= new DateTimeImmutable( 'now', $start_datetime->getTimezone() );
+		$now  ??= new DateTimeImmutable( 'now', $start_datetime->getTimezone() );
 		$badges = array( $registration_status );
 
 		if ( $start_datetime->format( 'Y-m-d' ) === $now->format( 'Y-m-d' ) ) {

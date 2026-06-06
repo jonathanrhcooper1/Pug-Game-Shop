@@ -62,6 +62,13 @@ reviewed public API does not document a create-tournament endpoint.
   from staging.
 - No production TopDeck keys are committed or required by this revision.
 
+### CI Fix Notes
+
+- Fixed WordPress coding standards assignment alignment in the Events/TopDeck
+  schema and event status helpers.
+- Corrected the WordPress integration smoke test target schema assertion from
+  `2` to `3`.
+
 ## 2026-06-06 - Development, Staging, Deployment Foundation
 
 ### What Changed

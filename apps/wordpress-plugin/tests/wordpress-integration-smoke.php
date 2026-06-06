@@ -78,7 +78,7 @@ $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
 $assert( '0.4.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 3 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
-$assert( 2 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
+$assert( 3 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
 $assert( false === ( $data['features']['inventory_pricing']['enabled'] ?? null ), 'Inventory feature flag should remain disabled.' );
 

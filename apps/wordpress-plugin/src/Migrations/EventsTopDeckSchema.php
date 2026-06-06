@@ -14,13 +14,13 @@ final class EventsTopDeckSchema {
 	 * @return array<string, string>
 	 */
 	public static function tables( string $prefix, string $collation ): array {
-		$events_table                 = $prefix . 'tcg_events';
-		$registrations_table          = $prefix . 'tcg_event_registrations';
-		$registration_logs_table      = $prefix . 'tcg_event_registration_logs';
-		$topdeck_sync_log_table       = $prefix . 'tcg_event_topdeck_sync_log';
-		$waitlist_table               = $prefix . 'tcg_event_waitlist';
-		$checkins_table               = $prefix . 'tcg_event_checkins';
-		$event_templates_table        = $prefix . 'tcg_event_templates';
+		$events_table            = $prefix . 'tcg_events';
+		$registrations_table     = $prefix . 'tcg_event_registrations';
+		$registration_logs_table = $prefix . 'tcg_event_registration_logs';
+		$topdeck_sync_log_table  = $prefix . 'tcg_event_topdeck_sync_log';
+		$waitlist_table          = $prefix . 'tcg_event_waitlist';
+		$checkins_table          = $prefix . 'tcg_event_checkins';
+		$event_templates_table   = $prefix . 'tcg_event_templates';
 
 		return array(
 			$events_table            => "CREATE TABLE {$events_table} (
