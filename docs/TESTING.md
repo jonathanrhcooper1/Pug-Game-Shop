@@ -78,6 +78,10 @@
   exact inventory, reservation, owner-token, price snapshot, currency, expiry,
   optional card descriptors, deterministic snapshot hashes, and zero-price
   snapshots.
+- Local unit coverage now includes WooCommerce order lifecycle planning for
+  checkout linkage, payment-complete conversion, failed/cancelled release,
+  refund review, non-serialized line skips, invalid metadata, duplicate
+  reservation lines, invalid actions, and invalid orders.
 - Local unit coverage now includes WooCommerce serialized inventory hook
   contracts for cart, checkout, payment, order, refund, cart removal, and Store
   API validation lifecycle coverage, with live registration gated off by
@@ -150,6 +154,8 @@ corresponding modules are implemented:
 - Expiry and manual release restore availability.
 - Order-line metadata snapshots preserve exact inventory, reservation, owner,
   price, expiry, and card descriptor identity.
+- Order lifecycle planning maps checkout, paid, failed/cancelled, and refunded
+  order events to the correct reservation/inventory target states.
 - Payment completion converts once, including replay.
 - Failed/cancelled payment releases according to policy.
 - Refund moves item to configured review/return state.

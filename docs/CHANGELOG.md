@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.30.0] - 2026-06-06
+
+### Added
+
+- WooCommerce order lifecycle planner for serialized inventory order-line
+  metadata.
+- Checkout linkage, payment-complete conversion, failed/cancelled release, and
+  refund review transition payload planning.
+- Duplicate reservation line guards, non-serialized line skipping, invalid
+  metadata reporting, and deterministic lifecycle idempotency keys.
+- Unit coverage for checkout, payment, failed/cancelled, refund, invalid line,
+  duplicate reservation, invalid action, and invalid order planning.
+
+### Not Added
+
+- Live WooCommerce checkout hook execution, order mutation, payment lifecycle
+  conversion, Store API execution, cart release hooks, and refund hooks remain
+  disabled for later staging-gated phases.
+
 ## [0.29.0] - 2026-06-06
 
 ### Added

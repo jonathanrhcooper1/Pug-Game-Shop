@@ -204,9 +204,12 @@ implemented and tested for exact inventory/reservation IDs, owner token hashes,
 single-item quantities, price snapshots, ISO currency, and unexpired
 reservations. The order-line metadata planner is implemented and tested for
 exact inventory, reservation, owner-token, price snapshot, currency, expiry,
-optional card descriptors, and deterministic snapshot hashes. The live
-WooCommerce hooks listed above remain disabled until the full staging checkout
-lifecycle suite passes.
+optional card descriptors, and deterministic snapshot hashes. The order
+lifecycle planner is implemented and tested for checkout order linkage,
+payment-complete conversion, failed/cancelled release, refund return-review
+planning, duplicate reservation guards, and non-serialized line skipping. The
+live WooCommerce hooks listed above remain disabled until the full staging
+checkout lifecycle suite passes.
 
 ## Authentication
 

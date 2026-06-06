@@ -47,7 +47,7 @@ full pulls resume without duplication.
 
 Status: In progress; exact reservation schema, reserve/release/convert service
 foundations, expiry cleanup planning, serialized cart metadata validation, and
-order-line metadata snapshot planning implemented
+order-line metadata plus order lifecycle transition planning implemented
 
 Deliver catalog projection, exact-item cart metadata, atomic reservation,
 checkout validation, payment conversion, cancellation/failure release, pickup,

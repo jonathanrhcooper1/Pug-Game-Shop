@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - WooCommerce Order Lifecycle Planning Foundation
+
+### What Changed
+
+- Added a WooCommerce order lifecycle planner for serialized inventory lines.
+- Added a lifecycle plan result object for transition payloads, skipped
+  non-serialized lines, invalid serialized line errors, and work counts.
+- Planned checkout order linkage, payment-complete sale conversion,
+  failed/cancelled reservation release, and refund return-review transitions.
+- Added duplicate reservation line guards and deterministic lifecycle
+  idempotency keys.
+- Added unit coverage for checkout, payment, failed/cancelled, refund, invalid
+  metadata, non-serialized skips, duplicate reservation lines, invalid actions,
+  and invalid orders.
+
+### Why
+
+Exact-item order lifecycle behavior must be deterministic before live
+WooCommerce hooks mutate reservation and inventory rows. This slice defines
+the order event planning boundary using persisted order-line metadata without
+enabling checkout, payment, cancellation, or refund hooks yet.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/SerializedOrderLifecyclePlan.php`
+- `apps/wordpress-plugin/src/WooCommerce/SerializedOrderLifecyclePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SerializedOrderLifecyclePlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- WooCommerce order lifecycle planner tests for checkout linkage,
+  payment-complete conversion, failed/cancelled release, refund review,
+  non-serialized skips, invalid metadata, duplicate reservation lines, invalid
+  actions, and invalid orders.
+
+### Rollback Notes
+
+- Revert this revision to remove WooCommerce order lifecycle planning helpers
+  and tests.
+- No schema rollback is required; database target remains `7`.
+- Live WooCommerce checkout hook execution, order mutation, payment lifecycle
+  conversion, Store API execution, cart release hooks, and refund hooks remain
+  disabled after rollback.
+
 ## 2026-06-06 - WooCommerce Order-Line Metadata Planning Foundation
 
 ### What Changed
