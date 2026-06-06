@@ -105,13 +105,13 @@ final class OfflinePushPayloadParser {
 		string $route_device_id,
 		array &$errors
 	): ?OfflineOperationEnvelope {
-		$client_operation_id  = trim( (string) ( $operation['client_operation_id'] ?? '' ) );
-		$device_id            = trim( (string) ( $operation['device_id'] ?? '' ) );
-		$operation_type       = strtolower( trim( (string) ( $operation['operation_type'] ?? '' ) ) );
-		$entity_type          = strtolower( trim( (string) ( $operation['entity_type'] ?? '' ) ) );
-		$entity_id            = trim( (string) ( $operation['entity_id'] ?? '' ) );
-		$occurred_at_local    = trim( (string) ( $operation['occurred_at_local'] ?? '' ) );
-		$queued_at_utc        = trim( (string) ( $operation['queued_at_utc'] ?? '' ) );
+		$client_operation_id   = trim( (string) ( $operation['client_operation_id'] ?? '' ) );
+		$device_id             = trim( (string) ( $operation['device_id'] ?? '' ) );
+		$operation_type        = strtolower( trim( (string) ( $operation['operation_type'] ?? '' ) ) );
+		$entity_type           = strtolower( trim( (string) ( $operation['entity_type'] ?? '' ) ) );
+		$entity_id             = trim( (string) ( $operation['entity_id'] ?? '' ) );
+		$occurred_at_local     = trim( (string) ( $operation['occurred_at_local'] ?? '' ) );
+		$queued_at_utc         = trim( (string) ( $operation['queued_at_utc'] ?? '' ) );
 		$payload               = $operation['payload'] ?? null;
 		$authorization_context = $operation['authorization_context'] ?? array();
 		$location_id           = $this->optional_positive_int(
