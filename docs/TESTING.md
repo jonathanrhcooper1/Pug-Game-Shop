@@ -36,6 +36,9 @@
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, and posting policy previews. WordPress integration
   smoke coverage asserts schema version `4` and customer credit tables.
+- Local unit coverage now includes buylist schema and submission status
+  transitions. WordPress integration smoke coverage asserts schema version `5`
+  and buylist tables.
 
 ## Required Test Backlog
 
@@ -99,6 +102,18 @@ corresponding modules are implemented:
 - Concurrent redemption cannot overspend.
 - Manager approval for adjustment/void/merge.
 - Offline conflict cannot create silent negative balance.
+
+### Buylist
+
+- Buylist schema includes submissions, items, offers, manager approvals, and
+  conversion logs.
+- Submission status transitions only follow the approved intake/review/offer/
+  acceptance/payout/conversion flow.
+- Terminal rejected, expired, completed, and cancelled submissions do not
+  reopen without a documented manager workflow.
+- Accepted items convert to pending inventory idempotently.
+- Credit payouts post once through the customer credit ledger.
+- Manager approval is required for configured high-value or exception offers.
 
 ### Sync
 

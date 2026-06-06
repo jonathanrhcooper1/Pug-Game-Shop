@@ -1,5 +1,13 @@
 # Buylist
 
+## Implementation Status
+
+Schema migration `0005_buylist` is implemented for submissions, items, offers,
+manager approvals, and conversion logs. The submission status helper is covered
+by unit tests. Live buylist write APIs, staff review UI, customer credit payout
+posting, and inventory conversion workers remain disabled until staging
+acceptance.
+
 ## State Flow
 
 ```mermaid

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.7.0`
+Version: `0.8.0`
 
 ## Implemented Features
 
@@ -29,6 +29,8 @@ Version: `0.7.0`
 - Customer, contact, credit ledger, merge, and note schema migration.
 - Customer credit entry type and posting policy helpers for signed ledger
   previews, manager approval, and negative-balance rejection.
+- Buylist submission, item, offer, approval, and conversion schema migration.
+- Buylist submission status transition helper.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 
@@ -72,7 +74,7 @@ versions.
    `wp-content/plugins/tcg-store-platform`.
 3. Activate **TCG Store Platform**.
 4. Open **TCG Store > System Status**.
-5. Confirm schema version `4 / 4`, WooCommerce, Action Scheduler, and the next
+5. Confirm schema version `5 / 5`, WooCommerce, Action Scheduler, and the next
    daily UTC run.
 6. Authenticate as a manager/admin and request
    `/wp-json/tcg-store/v1/health`.

@@ -219,6 +219,10 @@ flagged rather than silently merged.
 
 ## Buylist
 
+Status: schema migration `0005_buylist` is implemented. Write APIs, staff
+review UI, credit payout posting, and inventory conversion workers remain
+disabled until staging acceptance.
+
 | Table | Key fields |
 | --- | --- |
 | `tcg_buylist_submissions` | customer, source, status, device/location, totals, timestamps |

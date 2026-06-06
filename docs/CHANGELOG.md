@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.8.0] - 2026-06-06
+
+### Added
+
+- Schema migration `0005_buylist`.
+- Buylist submission, item, offer, approval, and inventory conversion log table
+  contracts.
+- Buylist submission status helper for draft, review, offer, acceptance,
+  payout, conversion, completion, cancellation, rejection, and expiry flows.
+- Unit coverage for buylist schema contracts and status transitions.
+- WordPress integration smoke verification for schema version `5` and buylist
+  tables.
+
+### Not Added
+
+- Buylist REST write endpoints, staff review UI, customer credit payout posting,
+  and inventory conversion workers remain disabled for later staging-gated
+  phases.
+
 ## [0.7.0] - 2026-06-06
 
 ### Added

@@ -126,6 +126,7 @@ final class MigrationRunner {
 			new Version0002InventoryPricing(),
 			new Version0003EventsTopDeck(),
 			new Version0004CustomerCredit(),
+			new Version0005Buylist(),
 		);
 	}
 

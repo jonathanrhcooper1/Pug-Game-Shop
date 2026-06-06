@@ -56,8 +56,8 @@ temporary network loss.
 
 ## Phase 6: Customer Credit And Buylist
 
-Status: In progress; customer credit schema and local ledger posting policy
-helpers implemented
+Status: In progress; customer credit schema, local ledger posting policy
+helpers, buylist schema, and buylist status helpers implemented
 
 Deliver customer profiles, immutable credit ledger, online/in-store redemption,
 approval workflows, liability reports, buylist intake/review/offers, and

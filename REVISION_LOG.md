@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Buylist Foundation
+
+### What Changed
+
+- Added schema migration `0005_buylist`.
+- Added buylist submission, item, offer, approval, and conversion log table
+  contracts.
+- Added a buylist submission status helper covering intake, review, offer,
+  acceptance, payout/conversion, completion, cancellation, rejection, and expiry.
+- Updated WordPress integration smoke verification to assert schema version `5`
+  and buylist tables.
+
+### Why
+
+Buylist intake must preserve customer submissions, staff review decisions,
+manager approvals, accepted offers, and inventory conversion provenance before
+live write APIs or payout hooks can safely ship. This slice adds the durable
+contracts and deterministic state flow while keeping buylist writes, credit
+payout posting, and inventory conversion workers disabled until staging
+acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Buylist/BuylistSubmissionStatus.php`
+- `apps/wordpress-plugin/src/Migrations/BuylistSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0005Buylist.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/BuylistSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/BuylistSubmissionStatusTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/BUYLIST.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+
+### Migrations Added
+
+- `0005_buylist`, reversible through `Version0005Buylist::down()`.
+
+### Tests Added
+
+- Buylist schema contract tests for submissions, items, offers, approvals,
+  conversion log indexes, and rollback order.
+- Buylist submission status tests for allowed transitions and terminal states.
+- WordPress integration smoke assertions for schema version `5` and all buylist
+  tables.
+
+### Rollback Notes
+
+- Roll back schema version `5` to `4` with
+  `MigrationRunner::rollback_to(4)` in a controlled maintenance window.
+- Revert this revision to remove buylist schema and status helpers.
+- Do not roll back buylist tables in production if real submissions, offers, or
+  conversion logs exist; export and reconcile intake records first.
+- No production customer, payout, or inventory data is committed by this
+  revision.
+
 ## 2026-06-06 - Customer Credit Ledger Foundation
 
 ### What Changed
