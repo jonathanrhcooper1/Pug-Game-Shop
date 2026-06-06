@@ -182,6 +182,9 @@
   setup, proving staged pairing callbacks can be attached without a
   registered-device resolver while pull/push permission callbacks stay locked
   until that resolver is supplied.
+- Local unit coverage now includes pairing permission authorizer-readiness
+  checks, proving unconfigured pairing adapters deny directly and are not
+  attached as route-ready permission callbacks by the factory or planner.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

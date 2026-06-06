@@ -62,6 +62,9 @@ fail-closed controller methods alone are not registerable.
 The permission callback factory can now stage the pairing permission callback
 without a registered-device resolver, but registered-device pull/push
 callbacks still require that resolver and fail closed when it is absent.
+Pairing permission readiness now requires the adapter to have an injected
+authorizer; unconfigured pairing adapters are not exposed as route permission
+callbacks.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -362,7 +365,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.81.0",
+  "app_version": "0.82.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

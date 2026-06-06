@@ -14,6 +14,13 @@ use TCGStorePlatform\Tests\TestCase;
 final class OfflineDevicePairingPermissionCallbackAdapterTest extends TestCase {
 	private const PAIRING_CODE = 'PAIR-2026-READY';
 
+	public function test_callback_reports_authorizer_configuration(): void {
+		$this->assert_false( ( new OfflineDevicePairingPermissionCallbackAdapter() )->is_configured() );
+		$this->assert_true(
+			( new OfflineDevicePairingPermissionCallbackAdapter( null, static fn (): bool => true ) )->is_configured()
+		);
+	}
+
 	public function test_callback_authorizes_valid_pairing_request_with_injected_authorizer(): void {
 		$authorizer_calls = 0;
 		$adapter          = new OfflineDevicePairingPermissionCallbackAdapter(
@@ -138,7 +145,7 @@ final class OfflineDevicePairingPermissionCallbackAdapterTest extends TestCase {
 			'device_mode'      => 'kiosk',
 			'location_id'      => 2,
 			'manager_id'       => 42,
-			'app_version'      => '0.81.0',
+			'app_version'      => '0.82.0',
 			'platform'         => 'windows',
 			'capabilities'     => array(
 				'barcode_scanner' => true,

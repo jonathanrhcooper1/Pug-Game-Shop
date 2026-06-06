@@ -264,6 +264,8 @@ construction.
 Pairing permission callbacks can now be staged without constructing the
 registered-device resolver; pull and push permission callbacks still require
 that resolver before the factory returns them.
+The pairing permission adapter also reports whether its authorizer is
+configured, and the factory only returns configured pairing callbacks.
 The planned offline route registration planner now emits disabled registration
 metadata with fail-closed callbacks, callback readiness, controller readiness,
 and block reasons before any WordPress REST route can be registered.

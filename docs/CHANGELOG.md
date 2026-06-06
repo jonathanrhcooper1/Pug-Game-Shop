@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.82.0] - 2026-06-06
+
+### Added
+
+- Pairing permission authorizer-readiness checks for staged offline route
+  planning.
+- `OfflineDevicePairingPermissionCallbackAdapter::is_configured()` so factories
+  can distinguish configured pairing permission callbacks from deny-only
+  adapters.
+- Unit coverage proving unconfigured pairing callbacks are not attached by the
+  permission factory and planner readiness remains fail-closed.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.81.0] - 2026-06-06
 
 ### Added

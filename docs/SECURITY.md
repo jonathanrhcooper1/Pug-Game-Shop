@@ -93,6 +93,8 @@ becoming live routes when permission readiness metadata is staged.
 Pairing permission callback construction can now be isolated from the
 registered-device resolver, and registered-device pull/push callbacks still
 fail closed unless that resolver is configured.
+Unconfigured pairing permission adapters are no longer treated as route-ready;
+they still deny direct calls but are not exposed by the permission factory.
 
 ## Secret Storage
 

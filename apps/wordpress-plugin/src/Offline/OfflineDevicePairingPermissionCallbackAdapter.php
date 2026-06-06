@@ -33,6 +33,10 @@ final class OfflineDevicePairingPermissionCallbackAdapter {
 		return $this->authorize( $request );
 	}
 
+	public function is_configured(): bool {
+		return is_callable( $this->authorizer );
+	}
+
 	public function authorize( mixed $request ): bool {
 		$body   = $this->body_from_request( $request );
 		$result = $this->parser->parse( $body );
@@ -150,7 +154,7 @@ final class OfflineDevicePairingPermissionCallbackAdapter {
 			'action'                => 'offline_device_pairing_permission_callback',
 			'status'                => $status,
 			'errors'                => array_values( array_unique( $errors ) ),
-			'authorizer_configured' => is_callable( $this->authorizer ),
+			'authorizer_configured' => $this->is_configured(),
 		);
 
 		if ( null === $request ) {

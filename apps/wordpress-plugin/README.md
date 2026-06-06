@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.81.0`
+Version: `0.82.0`
 
 ## Implemented Features
 
@@ -162,6 +162,8 @@ Version: `0.81.0`
 - Pairing-only route permission factory planning, allowing staged pairing
   permission callbacks without requiring a registered-device resolver while
   registered-device routes remain fail-closed until that resolver is present.
+- Pairing permission authorizer-readiness checks, keeping unconfigured pairing
+  adapters out of planned route permission callbacks.
 - Offline route registration planner for future WordPress REST wiring,
   including disabled-by-default route plans, fail-closed permission callbacks,
   registered-device callback metadata, controller-readiness gates, and no

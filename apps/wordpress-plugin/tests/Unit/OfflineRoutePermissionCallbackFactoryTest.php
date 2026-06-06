@@ -119,6 +119,16 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
+		public function test_factory_does_not_attach_unconfigured_pairing_permission_callback(): void {
+			$factory = $this->factory(
+				new \wpdb( $this->database_row() ),
+				new OfflineDevicePairingPermissionCallbackAdapter()
+			);
+			$routes  = OfflineRouteContracts::route_contracts();
+
+			$this->assert_same( null, $factory->callback_for_route_contract( $routes[0] ) );
+		}
+
 		public function test_factory_can_attach_pairing_permission_without_registered_device_resolver(): void {
 			$pairing_callback = new OfflineDevicePairingPermissionCallbackAdapter(
 				null,

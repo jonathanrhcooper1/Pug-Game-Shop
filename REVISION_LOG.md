@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pairing Permission Authorizer Readiness
+
+### What Changed
+
+- Added `OfflineDevicePairingPermissionCallbackAdapter::is_configured()` to
+  report whether a pairing authorizer has been injected.
+- Updated `OfflineRoutePermissionCallbackFactory` so unconfigured pairing
+  permission adapters are not returned as route permission callbacks.
+- Added adapter, factory, and planner tests proving unconfigured pairing
+  callbacks deny direct calls but are not treated as route-ready.
+- Updated project, plugin, and offline app package versions to `0.82.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+A pairing permission adapter without an authorizer is callable but cannot allow
+any real request. Route-readiness metadata should represent configured staging
+dependencies, not merely the existence of an invokable object. This revision
+keeps unconfigured pairing adapters fail-closed before route registration.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Pairing permission adapter tests for authorizer configuration reporting.
+- Permission callback factory tests proving unconfigured pairing callbacks are
+  not attached.
+- Route registration planner tests proving unconfigured pairing callbacks keep
+  permission readiness fail-closed.
+
+### Rollback Notes
+
+- Revert this revision to remove the authorizer-readiness guard and tests.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pairing-Only Permission Factory Decoupling
 
 ### What Changed

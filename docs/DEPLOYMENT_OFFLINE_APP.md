@@ -318,6 +318,11 @@ registered-device resolver. Pull and push permission callbacks still require
 that resolver and remain unavailable when it is absent, so pairing checks can
 advance independently without opening registered-device sync routes.
 
+Version `0.82.0` requires a configured pairing authorizer before the pairing
+permission callback is treated as route-ready. Unconfigured pairing adapters
+still deny direct calls, but the route factory no longer exposes them as ready
+permission callbacks.
+
 ## Hardware Gate
 
 Before production, test the actual:

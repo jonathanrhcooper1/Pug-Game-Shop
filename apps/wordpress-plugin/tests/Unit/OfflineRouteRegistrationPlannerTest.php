@@ -137,6 +137,28 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $plans['POST /offline/push']['permission_callback_ready'] );
 		}
 
+		public function test_planner_requires_configured_pairing_authorizer_for_permission_readiness(): void {
+			$plans = ( new OfflineRouteRegistrationPlanner(
+				new OfflineRoutePermissionCallbackFactory(
+					null,
+					null,
+					new OfflineDevicePairingPermissionCallbackAdapter()
+				),
+				new OfflineController(
+					null,
+					array(
+						'register_offline_device' => static fn (): array => array( 'status' => 'ready' ),
+					)
+				)
+			) )->planned_registration_args();
+			$plan  = $plans['POST /offline/devices/register'];
+
+			$this->assert_same( '__return_false', $plan['permission_callback'] );
+			$this->assert_false( $plan['permission_callback_ready'] );
+			$this->assert_true( $plan['controller_callback_ready'] );
+			$this->assert_true( in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true ) );
+		}
+
 		public function test_planner_requires_injected_handlers_for_controller_readiness(): void {
 			$plans = ( new OfflineRouteRegistrationPlanner( null, new OfflineController() ) )->planned_registration_args();
 

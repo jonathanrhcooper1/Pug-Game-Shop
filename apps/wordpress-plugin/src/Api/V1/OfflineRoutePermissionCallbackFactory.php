@@ -55,6 +55,10 @@ final class OfflineRoutePermissionCallbackFactory {
 	 */
 	public function callback_for_route_contract( array $route_contract ): ?callable {
 		if ( 'pairing_code_plus_manager' === self::route_permission( $route_contract ) ) {
+			if ( null === $this->pairing_callback || ! $this->pairing_callback->is_configured() ) {
+				return null;
+			}
+
 			return $this->pairing_callback;
 		}
 
