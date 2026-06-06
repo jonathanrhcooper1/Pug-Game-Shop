@@ -12,8 +12,8 @@ use DateTimeZone;
 use Exception;
 
 final class OfflineDeviceRegistrationInsertQueryBuilder {
-	private const DEVICE_TABLE = 'tcg_offline_devices';
-	private const COLUMNS      = array(
+	private const DEVICE_TABLE    = 'tcg_offline_devices';
+	private const COLUMNS         = array(
 		'public_id',
 		'location_id',
 		'manager_user_id',
