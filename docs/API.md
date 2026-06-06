@@ -67,6 +67,9 @@ callbacks.
 Registered device permission resolution can now opt in to applying that
 session update and denies stale or rejected update results before a future
 route callback proceeds.
+The planned registered-device permission callback adapter now turns
+WordPress-style request headers into that resolver call and returns a boolean
+permission result while preserving the last resolution for audits.
 
 ### Inventory And Search
 
@@ -304,7 +307,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.62.0",
+  "app_version": "0.63.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

@@ -284,7 +284,9 @@ adaptation can apply that prepared update when explicitly called and report
 applied, stale, or rejected outcomes. Permission resolution can now opt in to
 that update and fail closed on stale or rejected write results. Live provider
 workers, route permission callback wiring, route-connected last-seen writes,
-and offline route writes remain disabled until later phases.
+and offline route writes remain disabled until later phases. The planned
+permission callback adapter does not add tables; it only composes request
+headers into the resolver boundary.
 
 | Table | Key fields |
 | --- | --- |

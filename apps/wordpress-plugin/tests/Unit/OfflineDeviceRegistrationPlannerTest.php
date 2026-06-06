@@ -141,7 +141,7 @@ final class OfflineDeviceRegistrationPlannerTest extends TestCase {
 				'device_mode'      => 'kiosk',
 				'location_id'      => 2,
 				'manager_id'       => 15,
-				'app_version'      => '0.62.0',
+				'app_version'      => '0.63.0',
 				'platform'         => 'windows',
 				'capabilities'     => array(
 					'barcode_scanner' => true,

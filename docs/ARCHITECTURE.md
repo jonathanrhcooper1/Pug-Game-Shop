@@ -234,6 +234,9 @@ without registering REST permission callbacks.
 Registered-device permission resolution now has an opt-in path that applies
 that session update and denies stale or rejected update results before any
 future route handler work can continue.
+The planned registered-device permission callback adapter now maps
+WordPress-style request headers into that resolver boundary and preserves the
+last resolution for future audit logging without registering routes.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

@@ -92,7 +92,8 @@ planning plus registered device row normalization and lookup-query planning
 plus permission lookup-query integration plus registered-device lookup query
 building plus registered-device repository adaptation and permission resolution
 plus session update query building, repository adaptation, and
-permission-resolution session update application implemented
+permission-resolution session update application plus planned permission
+callback adapter implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
 operation queue, pull cursor, conflict center, kiosk/staff/admin modes, labels,

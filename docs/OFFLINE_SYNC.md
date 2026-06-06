@@ -121,6 +121,9 @@ outcomes with redacted audit data.
 Registered-device permission resolution now exposes an opt-in path that applies
 that update and denies stale or rejected results before a future route callback
 continues.
+The planned registered-device permission callback adapter now accepts
+WordPress-style request headers and returns a boolean permission result while
+keeping route registration disabled.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

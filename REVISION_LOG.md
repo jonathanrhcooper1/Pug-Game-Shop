@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Permission Callback Adapter
+
+### What Changed
+
+- Added a planned registered-device permission callback adapter for future
+  WordPress REST `permission_callback` wiring.
+- Added request header extraction for direct header arrays, wrapped `headers`
+  arrays, `get_headers()` request objects, and `get_header()` request objects.
+- Added boolean `__invoke()` support plus `authorize()` and
+  `last_resolution()` access so future route callbacks can return a simple
+  permission result while still preserving audit detail.
+- Added fixed-clock injection for deterministic tests and future callback
+  composition.
+- Added tests for authorized WordPress-style requests, stale update denial,
+  missing headers without database access, get-header style requests, plan-only
+  resolver compatibility, and audit redaction.
+- Updated project, plugin, and offline app package versions to `0.63.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+Permission resolution can now load, authenticate, and optionally update
+last-seen state, but live REST routes still need a WordPress-shaped callback
+boundary. This adapter adds that boundary without registering the offline
+routes or changing public behavior.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device permission callback adapter tests for
+  WordPress-style header extraction, boolean callback invocation,
+  last-resolution access, stale update denial, missing-header denial before
+  database access, get-header style requests, plan-only resolver compatibility,
+  and secret-free audits.
+
+### Rollback Notes
+
+- Revert this revision to remove the planned permission callback adapter,
+  callback adapter tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, WordPress permission callback wiring, queue replay
+  workers, and route-connected database writes remain disabled both before and
+  after rollback.
+
 ## 2026-06-06 - Offline Permission Resolution Session Update Application
 
 ### What Changed

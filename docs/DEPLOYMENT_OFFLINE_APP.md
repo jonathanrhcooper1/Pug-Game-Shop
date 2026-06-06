@@ -218,6 +218,12 @@ can now load, authenticate, apply last-seen state, and fail closed on stale or
 failed update results through one resolution boundary. Route registration and
 permission callback wiring remain disabled until staging integration tests pass.
 
+Version `0.63.0` adds a planned registered-device permission callback adapter
+that extracts WordPress-style request headers, invokes the resolver boundary,
+returns a boolean permission result, and preserves the last resolution for
+future audit diagnostics. Route registration remains disabled until staging
+integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

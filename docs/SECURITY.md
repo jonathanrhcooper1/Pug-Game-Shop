@@ -72,6 +72,9 @@ without exposing bearer-token material.
 Registered-device permission resolution can now fail closed when the opt-in
 session update is stale or rejected, reducing the chance that a route trusts a
 device row that changed between lookup and last-seen update.
+The planned permission callback adapter keeps raw bearer tokens inside the
+resolver path and exposes only the redacted last resolution for future audit
+logging.
 
 ## Secret Storage
 

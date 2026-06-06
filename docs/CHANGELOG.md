@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.63.0] - 2026-06-06
+
+### Added
+
+- Planned registered-device permission callback adapter for future REST
+  `permission_callback` wiring.
+- WordPress-style request header extraction from `get_headers()`,
+  `get_header()`, direct header arrays, and wrapped `headers` arrays.
+- Boolean callback invocation with last-resolution access for future audit and
+  diagnostics, plus fixed-clock support for deterministic tests.
+- Fake-`wpdb` unit coverage for authorized callback requests, stale update
+  denial, missing headers without database access, get-header style requests,
+  plan-only resolver compatibility, and audit redaction.
+
+### Not Added
+
+- Live REST route registration, WordPress `permission_callback` wiring, queue
+  replay workers, push/pull route handlers, canonical entity writes, and
+  route-connected production database mutation remain disabled for later
+  staging-gated phases.
+
 ## [0.62.0] - 2026-06-06
 
 ### Added

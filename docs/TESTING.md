@@ -202,6 +202,11 @@
   resolution session update application for applied updates, stale update
   denial, failed update denial, denied-device skip behavior, and redacted
   session update audits.
+- Local unit coverage now includes the planned registered-device permission
+  callback adapter for WordPress-style header extraction, boolean callback
+  invocation, stale update denial, missing-header denial before database access,
+  get-header style requests, plan-only resolver compatibility, and redacted
+  last-resolution audits.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution
