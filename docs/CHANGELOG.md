@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.40.0] - 2026-06-06
+
+### Added
+
+- Offline device pairing request parser for the planned
+  `/offline/devices/register` route.
+- Validation for pairing codes, installation IDs, device labels, device modes,
+  manager/location IDs, app versions, Windows platform checks, hardware
+  capabilities, requested scopes, and schema version `1`.
+- Unit coverage for normalized pairing requests, missing core fields, invalid
+  shapes, unsupported scopes/capabilities, unsupported platform/mode, and
+  staff/admin scope combinations.
+
+### Not Added
+
+- Live device token issuance, token hashing/storage, registration route writes,
+  revocation checks, first-sync execution, and reconnect integration tests
+  remain disabled for later staging-gated phases.
+
 ## [0.39.0] - 2026-06-06
 
 ### Added

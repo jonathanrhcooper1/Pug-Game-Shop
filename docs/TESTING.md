@@ -128,6 +128,10 @@
   domain responses, request cursor carry-forward, normalized data rows,
   tombstone inclusion/exclusion, UTC timestamps, entity IDs, row versions, and
   invalid response contract inputs.
+- Local unit coverage now includes offline device pairing request validation
+  for pairing codes, installation IDs, device modes, manager/location IDs, app
+  versions, Windows platform checks, hardware capabilities, requested scopes,
+  unsupported capabilities/scopes, and schema version gating.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

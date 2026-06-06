@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.39.0
+Stable tag: 0.40.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -63,6 +63,8 @@ Phase 7.4 adds offline pull request validation while keeping live pull workers
 disabled.
 Phase 7.5 adds offline pull response presentation while keeping live pull
 queries and cursor advancement disabled.
+Phase 7.6 adds offline device pairing request validation while keeping live
+device token issuance disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -80,6 +82,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.40.0 =
+
+* Added offline device pairing request validation for pairing codes, installation IDs, device modes, manager/location IDs, app versions, Windows platform checks, hardware capabilities, requested scopes, and schema version gating.
+* Added tests for normalized pairing requests, missing core pairing fields, invalid pairing shapes, and staff/admin scope combinations.
+* Kept live offline device token issuance, token hashing, registration route writes, device revocation, and first-sync execution disabled until staging integration tests pass.
 
 = 0.39.0 =
 

@@ -50,6 +50,14 @@ state only; WordPress remains authoritative once operations sync.
 5. App performs first full sync and integrity check.
 6. Manager validates kiosk/staff/admin mode and revocation.
 
+Version `0.40.0` adds the WordPress request validation boundary for step 2.
+The planned registration route validates pairing codes, app installation IDs,
+device labels, kiosk/staff/admin mode, location and manager IDs, Windows app
+version, supported hardware capability flags, requested scopes, and schema
+version `1`. Live token issuance, token hashing/storage, device row writes,
+revocation checks, and first-sync execution remain disabled until staging
+integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

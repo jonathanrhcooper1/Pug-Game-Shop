@@ -30,7 +30,10 @@ route family is implemented. Offline pull request validation is implemented for
 device IDs, requested cached domains, domain cursors, page-size bounds,
 tombstone inclusion, and schema version gating. Offline pull response
 presentation is implemented for stable per-domain cursors, data rows,
-tombstones, server timestamps, and `has_more` pagination flags.
+tombstones, server timestamps, and `has_more` pagination flags. Offline device
+pairing request validation is implemented for pairing codes, installation IDs,
+device modes, manager/location IDs, app versions, Windows platform checks,
+hardware capabilities, requested scopes, and schema version gating.
 
 ### Inventory And Search
 
@@ -191,7 +194,10 @@ across another event or email return `idempotency_conflict`.
 Offline route contracts now exist locally for the five offline routes listed
 above. They document callback names, route permissions, the shared
 `tcg-store/v1` namespace, and disabled-live defaults for the Windows app
-integration. The offline push payload parser now validates batch IDs, device
+integration. The offline device pairing parser now validates pairing codes,
+installation IDs, device labels, device modes, manager/location IDs, app
+versions, Windows platform checks, hardware capabilities, requested scopes, and
+schema version `1`. The offline push payload parser now validates batch IDs, device
 matching, client operation IDs, supported `inventory_reservation`,
 `event_reservation`, and `credit_redemption` operation envelopes, ISO
 timestamps, JSON-object payloads, authorization context, duplicate IDs, and
@@ -229,6 +235,31 @@ presentation now shapes accepted pull results as:
 
 Live database change queries, tombstone repositories, and cursor advancement
 remain disabled until device authentication and reconnect tests pass.
+
+The planned pairing request body is shaped as:
+
+```json
+{
+  "pairing_code": "PAIR-1234",
+  "installation_id": "install-main-01",
+  "device_label": "Front Counter Kiosk",
+  "device_mode": "kiosk",
+  "location_id": 2,
+  "manager_id": 15,
+  "app_version": "0.40.0",
+  "platform": "windows",
+  "capabilities": {
+    "barcode_scanner": true,
+    "label_printer": false,
+    "touchscreen": true
+  },
+  "requested_scopes": ["offline_pull", "kiosk"],
+  "schema_version": 1
+}
+```
+
+Live token issuance, token hashing/storage, revocation checks, and first-sync
+execution remain disabled until staging tests pass.
 
 ## WooCommerce Hook Map
 

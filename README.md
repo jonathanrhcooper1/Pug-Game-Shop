@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.39.0`
+Version: `0.40.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -66,7 +66,10 @@ Offline pull request validation is implemented for device IDs, cached domain
 selection, domain cursors, page-size bounds, tombstone inclusion, and schema
 version gating. Offline pull response presentation is implemented for stable
 per-domain cursors, change rows, tombstones, server timestamps, and
-`has_more` pagination flags.
+`has_more` pagination flags. Offline device pairing request validation is
+implemented for short-lived pairing codes, installation IDs, device modes,
+manager/location IDs, app versions, Windows platform checks, hardware
+capabilities, requested scopes, and schema version gating.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,

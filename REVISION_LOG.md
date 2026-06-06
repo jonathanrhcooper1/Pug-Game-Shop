@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Pairing Validation
+
+### What Changed
+
+- Added a WordPress offline device pairing request parser for the planned
+  `/offline/devices/register` route.
+- Added an immutable parsed pairing request value object and validation result.
+- Added validation for pairing codes, installation IDs, device labels, device
+  modes, manager/location IDs, app versions, Windows platform checks, hardware
+  capabilities, requested scopes, and schema version `1`.
+- Added unit coverage for normalized pairing requests, missing core fields,
+  invalid pairing shapes, unsupported scopes/capabilities, unsupported
+  platform/mode, and staff/admin scope combinations.
+- Updated project, plugin, and offline app package versions to `0.40.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+The offline app needs a deterministic enrollment boundary before live device
+token issuance or first sync can be enabled. This slice lets the future
+registration route reject malformed or unsupported device pairing requests
+without creating device rows, issuing bearer tokens, or mutating sync state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingRequest.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingRequestParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds request validation only.
+
+### Tests Added
+
+- Offline device pairing request parser tests for normalized pairing requests,
+  missing core pairing fields, invalid pairing shapes, unsupported
+  capabilities/scopes, unsupported platform/mode, and staff/admin scope
+  combinations.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline device pairing parser, value
+  object, validation result, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live device registration, token issuance, token hashing/storage, revocation,
+  first sync, push/pull execution, and conflict writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Pull Response Presentation
 
 ### What Changed

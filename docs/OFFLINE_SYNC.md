@@ -77,9 +77,12 @@ same queued fields SQLite stores. Offline pull request validation also exists
 for cached domain selection, cursors, page-size bounds, tombstones, and schema
 version. Offline pull response presentation is implemented for per-domain
 cursors, change rows, tombstones, server timestamps, and `has_more` pagination
-flags. Those endpoints are not registered live yet, accepted operations are not
-persisted or replayed yet, live pull queries are not executed yet, and pull
-cursors are not advanced yet.
+flags. Offline device pairing request validation now exists for short-lived
+pairing codes, installation IDs, device modes, manager/location IDs,
+capabilities, requested scopes, Windows app versions, and schema version. Those
+endpoints are not registered live yet, accepted operations are not persisted or
+replayed yet, live token issuance is disabled, live pull queries are not
+executed yet, and pull cursors are not advanced yet.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,
