@@ -73,15 +73,15 @@ final class BuylistOfferPlanner {
 			: BuylistSubmissionStatus::OFFER_PENDING_APPROVAL;
 
 		$offer_payload = array(
-			'submission_id'              => $submission_id,
-			'target_submission_status'   => $target_status,
-			'total_cash_offer'           => $this->format_units( $total_cash_units ),
-			'total_credit_offer'         => $this->format_units( $total_credit_units ),
-			'currency'                   => $currency,
-			'offer_version'              => max( 1, (int) ( $submission['offer_version'] ?? 1 ) ),
-			'requires_manager_approval'  => array() !== $approval_requests,
-			'expires_at'                 => $this->nullable_string( $options['expires_at'] ?? null ),
-			'offer_fingerprint'          => $this->offer_fingerprint( $submission_id, $item_offers ),
+			'submission_id'             => $submission_id,
+			'target_submission_status'  => $target_status,
+			'total_cash_offer'          => $this->format_units( $total_cash_units ),
+			'total_credit_offer'        => $this->format_units( $total_credit_units ),
+			'currency'                  => $currency,
+			'offer_version'             => max( 1, (int) ( $submission['offer_version'] ?? 1 ) ),
+			'requires_manager_approval' => array() !== $approval_requests,
+			'expires_at'                => $this->nullable_string( $options['expires_at'] ?? null ),
+			'offer_fingerprint'         => $this->offer_fingerprint( $submission_id, $item_offers ),
 		);
 
 		return BuylistOfferPlan::from_parts( $offer_payload, $item_offers, $approval_requests, array() );
