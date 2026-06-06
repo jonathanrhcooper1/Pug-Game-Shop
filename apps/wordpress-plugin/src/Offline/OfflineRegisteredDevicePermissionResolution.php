@@ -90,17 +90,17 @@ final class OfflineRegisteredDevicePermissionResolution {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'              => 'offline_registered_device_permission_resolved',
-			'status'              => $this->is_authorized() ? 'authorized' : 'denied',
-			'stage'               => $this->stage(),
-			'is_authorized'       => $this->is_authorized(),
-			'lookup_attempted'    => $this->lookup_attempted(),
-			'repository_status'   => null !== $this->repository_result ? $this->repository_result->status() : '',
-			'has_session_plan'    => null !== $this->session_plan(),
-			'initial_permission'  => $this->initial_permission_plan->audit_payload(),
-			'repository'          => null !== $this->repository_result ? $this->repository_result->audit_payload() : array(),
-			'final_permission'    => null !== $this->final_permission_plan ? $this->final_permission_plan->audit_payload() : array(),
-			'errors'              => $this->errors,
+			'action'             => 'offline_registered_device_permission_resolved',
+			'status'             => $this->is_authorized() ? 'authorized' : 'denied',
+			'stage'              => $this->stage(),
+			'is_authorized'      => $this->is_authorized(),
+			'lookup_attempted'   => $this->lookup_attempted(),
+			'repository_status'  => null !== $this->repository_result ? $this->repository_result->status() : '',
+			'has_session_plan'   => null !== $this->session_plan(),
+			'initial_permission' => $this->initial_permission_plan->audit_payload(),
+			'repository'         => null !== $this->repository_result ? $this->repository_result->audit_payload() : array(),
+			'final_permission'   => null !== $this->final_permission_plan ? $this->final_permission_plan->audit_payload() : array(),
+			'errors'             => $this->errors,
 		);
 	}
 
