@@ -52,7 +52,10 @@ Registered device permission planning now includes those lookup-query arguments
 on lookup-required outcomes and denies invalid scope/time query plans before a
 future repository call. Registered device lookup query building now transforms
 valid lookup query contracts into whitelisted prepared-SQL templates and
-prepared arguments for future repositories without executing live SQL.
+prepared arguments for future repositories. Registered device repository
+adaptation now executes those planned `$wpdb` lookups when called, normalizes
+returned rows, reports not-found rows, and rejects invalid plans or malformed
+rows without registering live REST permission callbacks.
 
 ### Inventory And Search
 
@@ -240,9 +243,9 @@ lookup-query planning now prepares selected columns, active/revocation/expiry
 filters, row-normalizer metadata, lock intent, and deferred scope checks for
 future repositories. Permission planning now carries that query contract in
 lookup-required outcomes before live repositories are wired. Live device
-pairing route writes, device row repository queries, permission callback wiring,
-last-seen database writes, push/pull workers, queue replay, canonical entity
-writes, and conflict persistence remain disabled until staging-gated
+pairing route writes, route-connected device permission checks, permission
+callback wiring, last-seen database writes, push/pull workers, queue replay,
+canonical entity writes, and conflict persistence remain disabled until staging-gated
 WordPress/offline integration tests pass. Offline
 pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
@@ -287,7 +290,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.57.0",
+  "app_version": "0.58.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

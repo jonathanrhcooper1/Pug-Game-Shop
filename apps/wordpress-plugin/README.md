@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.57.0`
+Version: `0.58.0`
 
 ## Implemented Features
 
@@ -114,6 +114,10 @@ Version: `0.57.0`
   including safe table-prefix validation, whitelisted selected columns,
   prepared SQL templates, UTC-to-MySQL expiry arguments, and secret-free audit
   payloads without executing live database queries.
+- Offline registered-device repository adapter for future permission callbacks,
+  including planned `$wpdb` lookup execution, not-found handling, row
+  normalization, malformed-row rejection, and secret-free query/normalization
+  audits without live route wiring.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

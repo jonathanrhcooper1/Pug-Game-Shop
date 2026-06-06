@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Repository Adapter
+
+### What Changed
+
+- Added a registered-device repository adapter for the future offline REST
+  permission callback boundary.
+- Added a repository result value object for found, not-found, and rejected
+  outcomes.
+- Composed the registered-device lookup query builder, `$wpdb` prepared reads,
+  row normalization, and redacted query/normalization audit payloads.
+- Rejected invalid lookup query plans before database access and rejected
+  malformed database rows before auth/session planners consume them.
+- Added dependency-free fake-`wpdb` tests for prepared query execution,
+  not-found results, invalid lookup plans, malformed rows, and audit redaction.
+- Updated project, plugin, and offline app package versions to `0.58.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The previous revision produced a safe prepared-SQL contract for registered
+offline-device lookup. The next boundary needs an adapter that can execute that
+planned read and normalize the returned `tcg_offline_devices` row without
+wiring live REST permissions or enabling last-seen writes. This makes the
+repository behavior testable and reviewable before staging connects it to
+request traffic.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDeviceRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDeviceRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device repository tests for prepared `$wpdb` lookup
+  execution, normalized found results, not-found handling, invalid lookup-plan
+  rejection before database access, malformed-row rejection, and secret-free
+  repository audits.
+
+### Rollback Notes
+
+- Revert this revision to remove the repository adapter, repository result
+  object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, WordPress permission callback wiring, last-seen
+  writes, queue replay workers, and live database writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Registered Device Lookup Query Building
 
 ### What Changed

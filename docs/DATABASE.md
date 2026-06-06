@@ -272,8 +272,10 @@ lock intent, and deferred scope checks without executing SQL. Permission
 planning now exposes that query contract in lookup-required outcomes before any
 live repository call. Registered device lookup query building now validates
 that contract and produces a prepared SQL template plus arguments without
-executing the live repository query. Live provider workers, device row
-repository queries, permission callback wiring, last-seen database writes, and
+executing the live repository query. Registered device repository adaptation
+now executes the planned `tcg_offline_devices` read when called and normalizes
+the returned row before future permission callbacks consume it. Live provider
+workers, route permission callback wiring, last-seen database writes, and
 offline route writes remain disabled until later phases.
 
 | Table | Key fields |

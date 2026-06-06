@@ -217,6 +217,10 @@ repositories are called.
 Registered-device lookup query building now validates the planned contract,
 safe WordPress table prefixes, selected columns, and deferred scope behavior
 before producing a prepared-SQL template and arguments for future repositories.
+Registered-device repository adaptation now composes the query builder, `$wpdb`,
+row normalizer, and repository result object so future permission callbacks can
+load a planned device row as found, not found, or rejected without live route
+wiring.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

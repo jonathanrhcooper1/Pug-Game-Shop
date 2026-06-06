@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.57.0`
+Version: `0.58.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -118,14 +118,17 @@ on lookup-required outcomes and rejects invalid scope/time query plans before a
 future repository call. Registered device lookup query building now validates
 the planned query contract, prefixes safe WordPress table names, converts UTC
 expiry filters into MySQL `datetime(6)` arguments, and emits a prepared-SQL
-template without executing it.
+template. Registered device repository adaptation now composes that query
+builder with `$wpdb` reads and row normalization for future permission
+callbacks, returning found, not-found, or rejected outcomes with redacted
+audits when called, but it is not wired into live REST routes yet.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
 live reservation cleanup workers, live offline route registration, live device
-row lookup, route permission callback wiring, device last-seen database writes,
-live offline push handlers, live batch queue replay, and production provider
-credentials remain disabled until staging acceptance.
+row permission checks, route permission callback wiring, device last-seen
+database writes, live offline push handlers, live batch queue replay, and
+production provider credentials remain disabled until staging acceptance.
 
 ## Source Of Truth
 

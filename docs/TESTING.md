@@ -182,6 +182,10 @@
   building for prepared SQL templates, safe table-prefix validation,
   UTC-to-MySQL expiry arguments, tampered query contracts, invalid lookup
   plans, and query audits without token-hash leakage.
+- Local unit coverage now includes offline registered-device repository
+  adaptation for prepared `$wpdb` lookup execution, found/not-found outcomes,
+  invalid query plan rejection before database access, malformed-row rejection,
+  row normalization, and redacted query/normalization audits.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution
@@ -235,10 +239,10 @@ corresponding modules are implemented:
   refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
   credit flows.
-- Offline app SQLite queue, WordPress push/pull, live device row repository
-  queries, registered-device permission callback wiring, device last-seen
-  database writes, live conflict reads/writes, conflict audit persistence,
-  device auth, and full reconnect integration tests.
+- Offline app SQLite queue, WordPress push/pull, registered-device permission
+  callback wiring, device last-seen database writes, live conflict reads/writes,
+  conflict audit persistence, device auth, and full reconnect integration
+  tests.
 - Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
   and provider webhook reconciliation tests.
 

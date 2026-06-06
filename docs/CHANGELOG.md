@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.58.0] - 2026-06-06
+
+### Added
+
+- Offline registered-device repository adapter for future REST permission
+  callbacks.
+- Repository result value object exposing found, not-found, and rejected
+  outcomes with query-plan audit data, row-normalization audit data, stable
+  errors, and no raw token or token-hash leakage.
+- Planned `$wpdb` lookup execution from the whitelisted query builder,
+  invalid-plan rejection before database access, not-found handling, and
+  malformed-row rejection before auth/session planners consume repository data.
+- Fake-`wpdb` unit coverage for prepared query execution, result normalization,
+  not-found rows, invalid lookup plans, malformed database rows, and redacted
+  audit payloads.
+
+### Not Added
+
+- Live REST route registration, WordPress `permission_callback` wiring,
+  last-seen writes, queue replay workers, push/pull route handlers, canonical
+  entity writes, and production database mutation remain disabled for later
+  staging-gated phases.
+
 ## [0.57.0] - 2026-06-06
 
 ### Added

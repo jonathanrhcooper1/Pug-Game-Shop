@@ -104,11 +104,14 @@ deferred scope checks for future repositories without executing SQL. Permission
 planning now carries those query arguments in lookup-required outcomes and
 rejects invalid scope/time query plans before a future repository call.
 Registered-device lookup query building now validates those query contracts and
-produces prepared SQL templates plus arguments without executing live SQL.
+produces prepared SQL templates plus arguments. Registered-device repository
+adaptation now executes a planned lookup when called, normalizes the returned
+row, and emits found/not-found/rejected results with redacted audits before any
+REST route wiring is enabled.
 Those endpoints are not registered live yet, accepted operations are not
-persisted or replayed yet, live device row repository queries, permission
-callback wiring, and last-seen database writes are disabled, live pull queries
-are not executed yet, and pull cursors are not advanced yet.
+persisted or replayed yet, route-connected device permission checks,
+permission callback wiring, and last-seen database writes are disabled, live
+pull queries are not executed yet, and pull cursors are not advanced yet.
 Conflict list and
 resolution request validation now covers status/entity filters, cursors,
 page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,

@@ -185,6 +185,13 @@ arguments without executing `$wpdb` reads. Live device row repository execution,
 route registration, permission callback wiring, last-seen writes, queue replay,
 and database writes remain disabled until staging integration tests pass.
 
+Version `0.58.0` adds the registered-device repository adapter boundary.
+Future WordPress permission callbacks can now execute a planned `$wpdb` lookup,
+normalize the returned `tcg_offline_devices` row, and report found, not-found,
+or rejected outcomes with redacted audits. Route registration, permission
+callback wiring, last-seen writes, queue replay, and database writes remain
+disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:
