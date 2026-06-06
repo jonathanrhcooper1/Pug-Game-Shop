@@ -210,6 +210,9 @@
 - Local unit coverage now includes offline route bootstrap status presentation
   for blocked default state, gated feature-enabled state, ready future route
   plans, and admin summary output.
+- Local unit coverage now includes offline route bootstrapper execution for
+  disabled feature-gate deferral, gated current route plans, future-ready
+  registrar execution, and feature-blocked future-ready plans.
 - WordPress integration smoke coverage now asserts offline pull/push routes
   remain unregistered and authenticated health reports blocked offline route
   bootstrap status by default.

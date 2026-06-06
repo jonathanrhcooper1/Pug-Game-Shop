@@ -52,7 +52,8 @@ Before major database migrations:
 - Plugin activates cleanly.
 - System status reports expected plugin and database versions.
 - System status and authenticated health report blocked offline route bootstrap
-  by default, with offline pull/push routes still unregistered.
+  by default, with the bootstrapper hook deferred and offline pull/push routes
+  still unregistered.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

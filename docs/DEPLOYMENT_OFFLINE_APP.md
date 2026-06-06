@@ -268,6 +268,11 @@ admin System Status. Staging checks can now confirm the offline route bootstrap
 is blocked by default and that offline pull/push routes remain unregistered
 before any future route-enablement slice proceeds.
 
+Version `0.72.0` wires the offline route bootstrapper to WordPress
+`rest_api_init` while keeping the guarded registrar deferred unless the offline
+feature gate and future route-readiness plan both allow registration. Current
+offline routes remain unregistered by default.
+
 ## Hardware Gate
 
 Before production, test the actual:

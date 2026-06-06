@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.72.0] - 2026-06-06
+
+### Added
+
+- Offline route bootstrapper for WordPress `rest_api_init` wiring.
+- Guarded bootstrap execution that consults the offline feature gate and
+  route-readiness plan before calling the offline route registrar.
+- Registration result summaries for bootstrap attempts, including registered
+  route count, registered route keys, deferred status, and block reasons.
+- Unit coverage for disabled, gated, future-ready, and feature-blocked
+  bootstrapper execution.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.71.0] - 2026-06-06
 
 ### Added

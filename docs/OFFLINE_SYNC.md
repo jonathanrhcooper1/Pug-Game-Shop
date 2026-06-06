@@ -150,6 +150,9 @@ bootstrap block reasons before any future staging bootstrap can register live
 offline routes.
 Authenticated health output and admin System Status now expose that bootstrap
 state so staging checks can prove the default remains blocked and unregistered.
+The WordPress bootstrapper now hooks into `rest_api_init`, but it still defers
+the guarded registrar unless both the offline feature gate and route readiness
+plan allow registration.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

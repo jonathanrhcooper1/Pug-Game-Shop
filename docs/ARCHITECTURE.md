@@ -268,6 +268,9 @@ future staging bootstrap calls the registrar.
 That bootstrap state is now surfaced through authenticated health output and
 admin System Status so staging can inspect readiness without opening the live
 offline route boundary.
+The bootstrapper is now wired to WordPress `rest_api_init`, but it defers the
+guarded registrar unless the offline feature gate and route-readiness plan both
+allow registration.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and
