@@ -355,7 +355,7 @@ final class OfflinePushOperationResolver {
 	/**
 	 * @param array<string, mixed> $data Source data.
 	 */
-	private function value( array $data, string $camel_key, string $snake_key, mixed $default ): mixed {
+	private function value( array $data, string $camel_key, string $snake_key, mixed $fallback ): mixed {
 		if ( array_key_exists( $camel_key, $data ) ) {
 			return $data[ $camel_key ];
 		}
@@ -364,7 +364,7 @@ final class OfflinePushOperationResolver {
 			return $data[ $snake_key ];
 		}
 
-		return $default;
+		return $fallback;
 	}
 
 	/**
