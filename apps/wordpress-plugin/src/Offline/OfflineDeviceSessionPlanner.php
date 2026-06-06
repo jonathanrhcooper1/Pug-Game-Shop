@@ -28,7 +28,7 @@ final class OfflineDeviceSessionPlanner {
 			throw new InvalidArgumentException( 'server_time_utc must be an ISO-8601 UTC timestamp.' );
 		}
 
-		$context            = $decision->context();
+		$context           = $decision->context();
 		$offline_device_id = $this->positive_int( $device_row['offline_device_id'] ?? null );
 		$public_id         = trim( (string) ( $device_row['public_id'] ?? '' ) );
 		$row_version       = $this->positive_int( $device_row['row_version'] ?? null );
@@ -45,7 +45,7 @@ final class OfflineDeviceSessionPlanner {
 			throw new InvalidArgumentException( 'device row has an invalid row_version.' );
 		}
 
-		if ( $offline_device_id !== $this->positive_int( $context['offline_device_id'] ?? null ) ) {
+		if ( $this->positive_int( $context['offline_device_id'] ?? null ) !== $offline_device_id ) {
 			throw new InvalidArgumentException( 'device row does not match authenticated offline_device_id.' );
 		}
 
