@@ -51,7 +51,7 @@ final class OfflinePushBatchResolver {
 			$operation_plans[]       = $plan;
 			$operation_result_rows[] = $this->operation_result_row( $payload, $plan );
 			$response_results[]      = $plan->response_payload();
-			$counts[ $plan->status() ]++;
+			++$counts[ $plan->status() ];
 
 			if ( null !== $plan->conflict_row() ) {
 				$conflict_rows[] = $this->conflict_row( $payload, $operation, $plan->conflict_row() );
@@ -68,15 +68,15 @@ final class OfflinePushBatchResolver {
 		);
 
 		$audit_payload = array(
-			'action'           => 'offline_push_batch_resolved',
-			'batch_id'         => $payload->batch_id(),
-			'device_id'        => $payload->device_id(),
-			'server_time_utc'  => $server_time_utc,
-			'operation_count'  => count( $operation_plans ),
-			'accepted_count'   => $counts['accepted'],
-			'conflict_count'   => $counts['conflict'],
-			'rejected_count'   => $counts['rejected'],
-			'operation_ids'    => $this->operation_ids( $payload ),
+			'action'          => 'offline_push_batch_resolved',
+			'batch_id'        => $payload->batch_id(),
+			'device_id'       => $payload->device_id(),
+			'server_time_utc' => $server_time_utc,
+			'operation_count' => count( $operation_plans ),
+			'accepted_count'  => $counts['accepted'],
+			'conflict_count'  => $counts['conflict'],
+			'rejected_count'  => $counts['rejected'],
+			'operation_ids'   => $this->operation_ids( $payload ),
 		);
 
 		return new OfflinePushBatchResolutionPlan(
