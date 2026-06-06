@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.66.0`
+Version: `0.67.0`
 
 ## Implemented Features
 
@@ -142,6 +142,9 @@ Version: `0.66.0`
 - Offline controller scaffold for future offline REST route handlers, including
   callback method coverage for every planned route and stable disabled
   responses while live handlers remain blocked.
+- Offline route registrar guard for future WordPress REST wiring, including
+  zero default offline route registration, injected registrar tests, and
+  ready-and-enabled plan filtering.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and

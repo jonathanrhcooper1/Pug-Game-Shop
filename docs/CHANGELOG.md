@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.67.0] - 2026-06-06
+
+### Added
+
+- Guarded offline REST route registrar for future WordPress route wiring.
+- Registrar support for injecting a route registration callable in tests and
+  calling WordPress `register_rest_route()` only for plans marked
+  `should_register`.
+- Unit coverage proving current offline route contracts register zero routes by
+  default, simulated future enabled pull plans register once with controller
+  and permission callbacks, and live-flagged routes without ready callbacks do
+  not register.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.66.0] - 2026-06-06
 
 ### Added

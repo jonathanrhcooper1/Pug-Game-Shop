@@ -249,6 +249,9 @@ and block reasons before any WordPress REST route can be registered.
 The fail-closed offline controller scaffold now provides callback methods for
 every planned offline route and returns disabled responses until the live route
 handlers are implemented and staging-gated.
+The guarded offline route registrar now calls route registration only for plans
+marked ready and enabled; the current offline contracts produce zero registered
+routes by default.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

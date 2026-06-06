@@ -133,6 +133,8 @@ disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.
 The fail-closed offline controller scaffold now exposes the planned route
 callback methods and returns disabled responses until live handlers are wired.
+The guarded offline route registrar now filters planned routes so the current
+offline contracts register zero routes by default.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

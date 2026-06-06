@@ -240,6 +240,10 @@ methods for every planned offline route. The callbacks return disabled
 responses and remain unregistered until live handlers pass staging integration
 tests.
 
+Version `0.67.0` adds the guarded offline route registrar. Current offline route
+contracts register zero routes by default; future route plans register only
+when both live flags and callbacks are ready.
+
 ## Hardware Gate
 
 Before production, test the actual:

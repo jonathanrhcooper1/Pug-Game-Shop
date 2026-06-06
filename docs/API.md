@@ -307,7 +307,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.66.0",
+  "app_version": "0.67.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
