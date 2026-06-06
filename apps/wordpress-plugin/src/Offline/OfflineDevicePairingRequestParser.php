@@ -33,26 +33,26 @@ final class OfflineDevicePairingRequestParser {
 	 * @param array<string, mixed> $payload Request body.
 	 */
 	public function parse( array $payload ): OfflineDevicePairingValidationResult {
-		$errors             = array();
-		$pairing_code       = strtoupper( trim( (string) ( $payload['pairing_code'] ?? '' ) ) );
-		$installation_id    = trim( (string) ( $payload['installation_id'] ?? '' ) );
-		$device_label       = $this->normalize_label( (string) ( $payload['device_label'] ?? '' ) );
-		$device_mode        = strtolower( trim( (string) ( $payload['device_mode'] ?? '' ) ) );
-		$app_version        = trim( (string) ( $payload['app_version'] ?? '' ) );
-		$platform           = strtolower( trim( (string) ( $payload['platform'] ?? '' ) ) );
-		$capabilities       = $this->parse_capabilities( $payload['capabilities'] ?? null, $errors );
-		$requested_scopes   = $this->parse_scopes( $payload['requested_scopes'] ?? null, $errors );
-		$location_id        = $this->required_positive_int(
+		$errors           = array();
+		$pairing_code     = strtoupper( trim( (string) ( $payload['pairing_code'] ?? '' ) ) );
+		$installation_id  = trim( (string) ( $payload['installation_id'] ?? '' ) );
+		$device_label     = $this->normalize_label( (string) ( $payload['device_label'] ?? '' ) );
+		$device_mode      = strtolower( trim( (string) ( $payload['device_mode'] ?? '' ) ) );
+		$app_version      = trim( (string) ( $payload['app_version'] ?? '' ) );
+		$platform         = strtolower( trim( (string) ( $payload['platform'] ?? '' ) ) );
+		$capabilities     = $this->parse_capabilities( $payload['capabilities'] ?? null, $errors );
+		$requested_scopes = $this->parse_scopes( $payload['requested_scopes'] ?? null, $errors );
+		$location_id      = $this->required_positive_int(
 			$payload['location_id'] ?? null,
 			'location_id',
 			$errors
 		);
-		$manager_id         = $this->required_positive_int(
+		$manager_id       = $this->required_positive_int(
 			$payload['manager_id'] ?? null,
 			'manager_id',
 			$errors
 		);
-		$schema_version     = $this->required_positive_int(
+		$schema_version   = $this->required_positive_int(
 			$payload['schema_version'] ?? null,
 			'schema_version',
 			$errors
