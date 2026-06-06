@@ -34,7 +34,7 @@ $assert = static function ( bool $condition, string $message ) use ( $fail ): vo
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.5.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.6.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 3 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 3 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -71,6 +71,7 @@ $routes = rest_get_server()->get_routes();
 $assert( isset( $routes['/tcg-store/v1/health'] ), 'Health REST route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events'] ), 'Events REST list route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)'] ), 'Events REST detail route was not registered.' );
+$assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/register'] ), 'Events REST registration route was not registered.' );
 
 $response = rest_do_request( '/tcg-store/v1/health' );
 $assert( ! $response->is_error(), 'Health REST route returned an error.' );
@@ -78,7 +79,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.5.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.6.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 3 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 3 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );

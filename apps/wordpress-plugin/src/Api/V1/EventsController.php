@@ -10,6 +10,9 @@ namespace TCGStorePlatform\Api\V1;
 use DateTimeImmutable;
 use TCGStorePlatform\Events\EventFilters;
 use TCGStorePlatform\Events\EventPresenter;
+use TCGStorePlatform\Events\EventRegistrationInput;
+use TCGStorePlatform\Events\EventRegistrationRepository;
+use TCGStorePlatform\Events\EventRegistrationService;
 use TCGStorePlatform\Events\EventRepository;
 
 final class EventsController {
@@ -36,6 +39,16 @@ final class EventsController {
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_event' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/events/(?P<slug>[a-zA-Z0-9_-]+)/register',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'register_event' ),
 				'permission_callback' => '__return_true',
 			)
 		);
@@ -83,9 +96,34 @@ final class EventsController {
 		);
 	}
 
+	public function register_event( \WP_REST_Request $request ): \WP_REST_Response {
+		$body = $request->get_json_params();
+
+		if ( ! is_array( $body ) ) {
+			$body = $request->get_body_params();
+		}
+
+		$input  = EventRegistrationInput::from_array(
+			$body,
+			(string) $request->get_header( 'idempotency-key' )
+		);
+		$result = $this->registration_service()->register_by_slug(
+			(string) $request->get_param( 'slug' ),
+			$input
+		);
+
+		return new \WP_REST_Response( $result->to_response(), $result->status_code() );
+	}
+
 	private function repository(): EventRepository {
 		global $wpdb;
 
 		return new EventRepository( $wpdb );
+	}
+
+	private function registration_service(): EventRegistrationService {
+		global $wpdb;
+
+		return new EventRegistrationService( new EventRegistrationRepository( $wpdb ) );
 	}
 }

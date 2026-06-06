@@ -69,13 +69,16 @@ Default results:
 For website reserve-and-push:
 
 1. Lock local event capacity and create local registration.
-2. If paid, create/link Woo order and wait for payment completion.
-3. Enqueue TopDeck registration after local commit.
-4. Map provider outcomes to explicit local statuses.
-5. If provider registration fails after payment, retain payment and set
+2. In the current local route, accept paid entries only when pay-at-store is
+   enabled.
+3. In a later WooCommerce phase, create/link Woo order and wait for payment
+   completion.
+4. Enqueue TopDeck registration after local commit.
+5. Map provider outcomes to explicit local statuses.
+6. If provider registration fails after payment, retain payment and set
    `staff_review_required`; never silently cancel or refund.
-6. On `409`, move to waitlist when configured or create capacity conflict.
-7. Log masked request/response details and keep the raw provider response under
+7. On `409`, move to waitlist when configured or create capacity conflict.
+8. Log masked request/response details and keep the raw provider response under
    restricted retention.
 
 Attendee emails are never returned by public event endpoints.

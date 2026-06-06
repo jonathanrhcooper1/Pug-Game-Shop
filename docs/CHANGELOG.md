@@ -2,6 +2,31 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.6.0] - 2026-06-06
+
+### Added
+
+- Public local event registration route:
+  `POST /wp-json/tcg-store/v1/events/{slug}/register`.
+- Event registration input validation and sanitization for name, email,
+  TopDeck email, phone, and idempotency keys.
+- Registration acceptance policy for local-only and website-push events,
+  including registration deadline checks, sold-out rejection, waitlist
+  placement, TopDeck-hosted rejection, and pay-at-store gating for paid events.
+- Transaction-backed registration service and repository with event-row locking,
+  idempotency reuse, registration inserts, waitlist rows, count/status updates,
+  and registration logs.
+- Unit coverage for registration input validation, registration policy outcomes,
+  and REST result response shaping.
+- WordPress integration smoke assertion for the registration REST route.
+
+### Not Added
+
+- WooCommerce event-ticket products, online payment capture, paid order
+  lifecycle hooks, and TopDeck registration push remain disabled for later
+  staging-gated phases.
+- No schema migration was added; this release uses existing schema version `3`.
+
 ## [0.5.0] - 2026-06-06
 
 ### Added

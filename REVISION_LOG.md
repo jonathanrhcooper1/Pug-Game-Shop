@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Local Event Registration Writes
+
+### What Changed
+
+- Added `POST /wp-json/tcg-store/v1/events/{slug}/register` for public local
+  event registration.
+- Added request validation for first name, last name, email, optional phone,
+  optional TopDeck email, and idempotency keys.
+- Added a registration policy that rejects TopDeck-hosted local writes, blocks
+  closed/sold-out events, supports waitlist placement, and accepts paid events
+  only when pay-at-store is enabled.
+- Added a transaction-backed registration service and write repository that
+  locks the event row, reuses idempotency keys, inserts registrations, creates
+  waitlist rows, recomputes capacity counts, updates public event status, and
+  writes registration logs.
+- Updated WordPress integration smoke verification to assert the registration
+  route is registered.
+
+### Why
+
+The public Events surface needs a safe local write path before WooCommerce
+payment capture or TopDeck push is connected. This slice accepts only free and
+pay-at-store reservations, leaving online payment and provider-side writes
+closed until staging can verify the full commerce and TopDeck lifecycle.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `apps/wordpress-plugin/src/Events/EventPaymentStatus.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationDecision.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationInput.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationPolicy.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationRepository.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationResult.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationService.php`
+- `apps/wordpress-plugin/tests/Unit/EventRegistrationInputTest.php`
+- `apps/wordpress-plugin/tests/Unit/EventRegistrationPolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/EventRegistrationResultTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/EVENTS.md`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. This revision uses schema version `3`.
+
+### Tests Added
+
+- Registration input sanitization and validation tests.
+- Registration policy tests for TopDeck-hosted rejection, waitlist placement,
+  paid pay-at-store acceptance, online-payment-required rejection, and deadline
+  closure.
+- Registration result response tests for validation errors and idempotent
+  success responses.
+- WordPress integration smoke route assertion for the registration endpoint.
+
+### Rollback Notes
+
+- Revert this revision to remove public local event registration writes.
+- No database rollback is required because no migration was added.
+- Existing registration rows created during staging tests can be deleted from
+  staging tables after confirming they are not linked to real customers,
+  payments, or TopDeck pushes.
+- Production deployment remains manual and should not enable payment capture or
+  TopDeck push from this revision alone.
+
 ## 2026-06-06 - Read-Only Public Events Surface
 
 ### What Changed

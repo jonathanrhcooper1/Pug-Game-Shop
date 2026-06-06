@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.5.0`
+Version: `0.6.0`
 
 ## Implemented Features
 
@@ -23,6 +23,9 @@ Version: `0.5.0`
   register-player, import, sync, and default-disabled create-event contract.
 - Public read-only event REST endpoints and shortcodes for event list/detail
   pages.
+- Public local event registration endpoint for free and pay-at-store
+  reservations with idempotency, event-row locking, capacity checks, waitlist
+  insertion, count updates, and registration logs.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

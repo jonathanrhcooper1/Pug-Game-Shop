@@ -115,15 +115,21 @@ after target GoDaddy proxy buffering and connection limits are verified.
 | --- | --- | --- |
 | GET | `/events` | public |
 | GET | `/events/{slug}` | public |
+| POST | `/events/{slug}/register` | public local registration |
 | POST | `/events` | `manage_events` |
 | PUT | `/events/{id}` | `manage_events` |
-| POST | `/events/{id}/register` | customer/kiosk/staff |
 | POST | `/events/{id}/cancel` | owner or staff |
 | POST | `/events/{id}/check-in` | event staff |
 | GET | `/events/{id}/attendees` | event staff |
 | POST | `/events/{id}/sync-topdeck` | `sync_topdeck` |
 | POST | `/events/import-topdeck` | `sync_topdeck` |
 | POST | `/webhooks/topdeck` | disabled until documented/configured |
+
+`POST /events/{slug}/register` accepts free and pay-at-store local
+reservations only. It uses the `Idempotency-Key` header or `idempotency_key`
+body field, rejects TopDeck-hosted local writes, writes waitlist rows when
+capacity is full and waitlist is enabled, and does not capture online payments
+or push registrations to TopDeck yet.
 
 ### Offline And POS
 

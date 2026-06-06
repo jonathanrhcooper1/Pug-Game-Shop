@@ -30,6 +30,9 @@
   On Windows, `wp-now` may fail while installing WordPress.org plugins from a
   Blueprint; in that case, run plain plugin mode locally and use the GitHub
   Actions WordPress integration job for the WooCommerce-backed gate.
+- Local unit coverage now includes event registration input validation,
+  registration policy outcomes, and registration response shaping. WordPress
+  integration smoke coverage asserts the local registration route is registered.
 
 ## Required Test Backlog
 
@@ -100,6 +103,8 @@ corresponding modules are implemented:
 ### Events And TopDeck
 
 - All three registration modes.
+- Local free/pay-at-store event registration route validation, idempotency, and
+  waitlist policy.
 - Paid registration with successful and failed TopDeck push.
 - Pending invitation, already registered, banned/failed, and capacity conflict.
 - Waitlist promotion and check-in.
