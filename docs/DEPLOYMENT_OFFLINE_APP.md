@@ -281,6 +281,11 @@ Version `0.74.0` adds offline device registration insert query planning for
 future `tcg_offline_devices` writes. It prepares SQL templates and arguments
 only; live device row writes and route registration remain disabled.
 
+Version `0.75.0` adds offline device registration repository adaptation for
+future `tcg_offline_devices` writes. It can execute the planned prepared insert
+only when explicitly called; live pairing routes, route-connected device writes,
+and production token issuance remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

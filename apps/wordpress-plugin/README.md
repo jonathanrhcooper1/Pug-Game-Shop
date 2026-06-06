@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.74.0`
+Version: `0.75.0`
 
 ## Implemented Features
 
@@ -89,6 +89,10 @@ Version: `0.74.0`
   `tcg_offline_devices` writes, including prepared SQL templates, JSON field
   normalization, UTC timestamp conversion, and secret-free audits without live
   database execution.
+- Offline device registration repository adaptation for future
+  `tcg_offline_devices` writes, including planned `$wpdb` insert execution,
+  inserted/rejected outcomes, insert ID capture, and secret-free repository
+  audits without live route wiring.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

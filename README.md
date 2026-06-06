@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.74.0`
+Version: `0.75.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -76,8 +76,11 @@ payloads, token-hash storage fields, sync routes, first-sync flags, and audit
 payloads without persisting or issuing real credentials yet. Offline device
 registration insert query planning now maps those rows into prepared
 `tcg_offline_devices` SQL templates with JSON/timestamp normalization and
-secret-free audits, without executing writes yet. Offline device access policy
-checks are implemented for future registered-device permission
+secret-free audits. Offline device registration repository adaptation now
+executes that planned insert only when explicitly called and returns inserted
+or rejected outcomes with the one-time pairing response kept out of audit logs;
+live route wiring remains disabled. Offline device access policy checks are
+implemented for future registered-device permission
 callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp
 validation. Offline conflict list and resolution request validation is

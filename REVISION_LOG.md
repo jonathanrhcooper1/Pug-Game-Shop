@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Registration Repository Adaptation
+
+### What Changed
+
+- Added `OfflineDeviceRegistrationRepository` for explicitly called future
+  `tcg_offline_devices` insert execution.
+- Added `OfflineDeviceRegistrationRepositoryResult` for inserted/rejected
+  outcomes, rows affected, insert ID capture, one-time response payloads, and
+  secret-free audit metadata.
+- Added unit tests for successful prepared inserts, invalid registration plans,
+  failed database inserts, zero-row inserts, unexpected row counts, and audit
+  redaction of raw device tokens and token hashes.
+- Updated project, plugin, and offline app package versions to `0.75.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+Offline device registration now has a validated row plan and prepared insert
+query. The next persistence boundary needs a repository result contract so
+future staging-only pairing handlers can execute inserts and fail closed
+without exposing one-time credentials in audit logs. This revision adds that
+adapter while keeping live routes and route-connected writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device registration repository tests for accepted `$wpdb` insert
+  execution, invalid pre-query rejection, failed insert rejection, zero-row
+  rejection, unexpected row-count rejection, insert ID reporting, and
+  secret-free repository audits.
+
+### Rollback Notes
+
+- Revert this revision to remove offline device registration repository
+  adaptation, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live pairing routes and route-connected device registration writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Offline Device Registration Insert Query Planning
 
 ### What Changed

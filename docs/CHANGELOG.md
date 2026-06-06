@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.75.0] - 2026-06-06
+
+### Added
+
+- Offline device registration repository adapter for future
+  `tcg_offline_devices` writes.
+- Repository result object for inserted and rejected registration outcomes,
+  insert ID capture, one-time pairing response return, and secret-free audit
+  payloads.
+- Unit coverage proving valid registration plans execute prepared `$wpdb`
+  inserts when explicitly called, invalid plans do not query, failed inserts
+  are rejected, unexpected row counts fail closed, and audit payloads omit raw
+  device tokens and token hashes.
+
+### Not Added
+
+- No live offline pairing route is enabled. Token issuance, route registration,
+  route-connected database writes, queue replay, and production database
+  mutation remain disabled.
+
 ## [0.74.0] - 2026-06-06
 
 ### Added

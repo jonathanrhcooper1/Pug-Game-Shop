@@ -86,13 +86,17 @@ redacted audit payload without live writes. Device registration insert query
 planning now maps those planned rows into prepared `tcg_offline_devices` insert
 templates, normalizes scopes and capabilities to JSON, converts UTC timestamps
 to MySQL datetime values, and keeps token secrets out of audit payloads without
-executing a database write. Registered-device access policy
-checks now validate active state, revocation timestamps, token expiry, required
-scopes, supported modes/scopes, location IDs, and UTC timestamps for future
-pull/push/conflict permission callbacks. Offline bearer-token authentication
-planning now validates Authorization headers, device token shape, SHA-256 token
-hashes, persisted offline device IDs, active/revoked/expired state, and
-required scopes without exposing raw tokens in accepted contexts. Offline token
+executing a database write. Device registration repository adaptation now
+executes that prepared insert only when explicitly called, reports inserted or
+rejected outcomes, captures insert IDs, and keeps one-time tokens and token
+hashes out of audit payloads while live pairing route wiring remains disabled.
+Registered-device access policy checks now validate active state, revocation
+timestamps, token expiry, required scopes, supported modes/scopes, location IDs,
+and UTC timestamps for future pull/push/conflict permission callbacks. Offline
+bearer-token authentication planning now validates Authorization headers,
+device token shape, SHA-256 token hashes, persisted offline device IDs,
+active/revoked/expired state, and required scopes without exposing raw tokens
+in accepted contexts. Offline token
 lookup planning now exposes a hashed lookup filter and short audit fingerprint
 for the future device repository without retaining raw tokens. Offline device
 session planning now prepares future last-seen update rows, row-version

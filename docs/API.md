@@ -38,8 +38,12 @@ device registration planning is implemented for future device rows, one-time
 response payloads, token hash storage fields, sync routes, first-sync flags,
 and redacted audit payloads. Offline device registration insert query planning
 now maps those rows into prepared `tcg_offline_devices` SQL templates with
-JSON/timestamp normalization and secret-free audits, without executing writes
-yet. Offline device bearer-token authentication
+JSON/timestamp normalization and secret-free audits. Offline device
+registration repository adaptation now executes that prepared insert only when
+explicitly called, returns inserted or rejected outcomes, captures insert IDs,
+and keeps raw device tokens and token hashes out of repository audits. Live
+pairing route wiring remains disabled. Offline device bearer-token
+authentication
 planning is implemented for future registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
 persisted device ID checks, and secret-free accepted contexts. Offline token
@@ -333,7 +337,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.74.0",
+  "app_version": "0.75.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

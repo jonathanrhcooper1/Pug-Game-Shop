@@ -192,14 +192,18 @@ sync route map, first-sync flags, token hash storage fields, and redacted audit
 payload before live token generation or persistence is enabled. Device
 registration insert query planning now maps those rows into prepared
 `tcg_offline_devices` insert SQL with JSON/timestamp normalization and
-secret-free audit metadata, without wiring repository execution. Device access
-policy checks are implemented so future registered-device route permission
-callbacks can validate active state, revocation, token expiry, required scopes,
-supported modes/scopes, location IDs, and UTC timestamps before pull, push, or
-conflict work runs. Device bearer-token authentication planning is implemented
-so future permission callbacks can normalize request headers, validate token
-shape, compare SHA-256 token hashes, require persisted offline-device IDs, and
-return secret-free accepted contexts before conflict or queue work starts.
+secret-free audit metadata. Device registration repository adaptation now
+executes that prepared insert only when explicitly called and returns inserted
+or rejected outcomes, insert IDs, and the one-time pairing response while
+keeping raw tokens and token hashes out of audits. The repository is not wired
+to live pairing routes yet. Device access policy checks are implemented so
+future registered-device route permission callbacks can validate active state,
+revocation, token expiry, required scopes, supported modes/scopes, location
+IDs, and UTC timestamps before pull, push, or conflict work runs. Device
+bearer-token authentication planning is implemented so future permission
+callbacks can normalize request headers, validate token shape, compare SHA-256
+token hashes, require persisted offline-device IDs, and return secret-free
+accepted contexts before conflict or queue work starts.
 Device token lookup planning now derives the hashed repository lookup filter
 and short audit fingerprint before live row loading is enabled.
 Device session planning now prepares a future last-seen update row, normalized

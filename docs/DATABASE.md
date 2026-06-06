@@ -282,9 +282,13 @@ update query building now converts that row into an optimistic
 and expected `row_version` guards. Offline device session update repository
 adaptation can apply that prepared update when explicitly called and report
 applied, stale, or rejected outcomes. Permission resolution can now opt in to
-that update and fail closed on stale or rejected write results. Live provider
-workers, route permission callback wiring, route-connected last-seen writes,
-and offline route writes remain disabled until later phases. The planned
+that update and fail closed on stale or rejected write results. Offline device
+registration repository adaptation can now apply the planned
+`tcg_offline_devices` insert when explicitly called and report inserted or
+rejected outcomes with insert IDs and secret-free audits. Live provider
+workers, route permission callback wiring, route-connected registration writes,
+route-connected last-seen writes, and offline route writes remain disabled
+until later phases. The planned
 permission callback adapter does not add tables; it only composes request
 headers into the resolver boundary.
 
