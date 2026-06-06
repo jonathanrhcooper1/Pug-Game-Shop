@@ -1,0 +1,41 @@
+{
+  "provider": "scrydex",
+  "fixture": "cards-page-1",
+  "api_key": "sandbox-placeholder-never-production",
+  "page": 1,
+  "next_cursor": "mock-cursor-page-2",
+  "cards": [
+    {
+      "id": "sdx-pkm-001",
+      "game": "pokemon",
+      "name": "Charizard",
+      "set": {
+        "code": "BS",
+        "name": "Base Set"
+      },
+      "number": "4",
+      "rarity": "Rare Holo",
+      "market_price": {
+        "amount": "120.00",
+        "currency": "USD"
+      },
+      "updated_at": "2026-06-06T09:00:00Z"
+    },
+    {
+      "id": "sdx-mtg-001",
+      "game": "magic",
+      "name": "Lightning Bolt",
+      "set": {
+        "code": "M11",
+        "name": "Magic 2011"
+      },
+      "number": "149",
+      "rarity": "Common",
+      "market_price": {
+        "amount": "2.00",
+        "currency": "USD"
+      },
+      "updated_at": "2026-06-06T09:00:00Z"
+    }
+  ]
+}

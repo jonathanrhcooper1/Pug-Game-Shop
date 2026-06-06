@@ -1,0 +1,58 @@
+name: WordPress Plugin
+
+on:
+  push:
+    paths:
+      - "apps/wordpress-plugin/**"
+      - ".github/workflows/php.yml"
+  pull_request:
+    paths:
+      - "apps/wordpress-plugin/**"
+      - ".github/workflows/php.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "8.1"
+          - "8.2"
+          - "8.3"
+
+    defaults:
+      run:
+        working-directory: apps/wordpress-plugin
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Validate Composer metadata
+        run: composer validate --strict
+
+      - name: Install development tools
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Audit locked dependencies
+        run: composer audit --locked
+
+      - name: Syntax check
+        run: composer lint
+
+      - name: Unit tests
+        run: composer test
+
+      - name: WordPress coding standards
+        run: composer standards

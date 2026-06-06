@@ -1,0 +1,25 @@
+{
+  "provider": "square-sandbox",
+  "api_key": "sandbox-placeholder-never-production",
+  "responses": {
+    "approved_card_present": {
+      "status": "approved",
+      "transaction_id": "sandbox-pos-txn-001",
+      "amount": "125.00",
+      "currency": "USD",
+      "inventory_write_permitted": false
+    },
+    "refund_success": {
+      "status": "refunded",
+      "transaction_id": "sandbox-pos-refund-001",
+      "amount": "125.00",
+      "currency": "USD",
+      "inventory_write_permitted": false
+    },
+    "declined": {
+      "status": "declined",
+      "transaction_id": "sandbox-pos-txn-002",
+      "reason": "sandbox_decline"
+    }
+  }
+}

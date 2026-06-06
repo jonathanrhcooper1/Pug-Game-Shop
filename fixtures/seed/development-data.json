@@ -1,0 +1,169 @@
+{
+  "fixture_version": "2026-06-06-dev-001",
+  "notes": "Local development data only. Do not replace with production customer, credit, payment, inventory, or provider data.",
+  "cards": [
+    {
+      "provider_name": "scrydex",
+      "provider_card_id": "sdx-pkm-001",
+      "game": "pokemon",
+      "name": "Charizard",
+      "set_code": "BS",
+      "card_number": "4",
+      "rarity": "Rare Holo",
+      "language_code": "en"
+    },
+    {
+      "provider_name": "scrydex",
+      "provider_card_id": "sdx-mtg-001",
+      "game": "magic",
+      "name": "Lightning Bolt",
+      "set_code": "M11",
+      "card_number": "149",
+      "rarity": "Common",
+      "language_code": "en"
+    },
+    {
+      "provider_name": "scrydex",
+      "provider_card_id": "sdx-spo-001",
+      "game": "sports",
+      "name": "Rookie Forward Silver",
+      "set_code": "HOOPS24",
+      "card_number": "17",
+      "rarity": "Silver",
+      "language_code": "en"
+    }
+  ],
+  "inventory": [
+    {
+      "barcode": "PCS-DEV-000001",
+      "sku": "PKM-BS-CHAR-004-NM",
+      "card_name": "Charizard",
+      "game": "pokemon",
+      "raw_or_graded": "raw",
+      "condition_code": "NM",
+      "minimum_sale_price": "75.00",
+      "sale_price": "125.00",
+      "sale_currency": "USD",
+      "status": "available",
+      "location_code": "CASE-01"
+    },
+    {
+      "barcode": "PCS-DEV-000002",
+      "sku": "MTG-M11-BOLT-149-LP",
+      "card_name": "Lightning Bolt",
+      "game": "magic",
+      "raw_or_graded": "raw",
+      "condition_code": "LP",
+      "minimum_sale_price": "1.00",
+      "sale_price": "2.50",
+      "sale_currency": "USD",
+      "status": "reserved",
+      "location_code": "CASE-02"
+    },
+    {
+      "barcode": "PCS-DEV-000003",
+      "sku": "SPORT-HOOPS24-17-PSA9",
+      "card_name": "Rookie Forward Silver",
+      "game": "sports",
+      "raw_or_graded": "graded",
+      "grading_company": "PSA",
+      "grade": "9",
+      "minimum_sale_price": "20.00",
+      "sale_price": "39.99",
+      "sale_currency": "USD",
+      "status": "pending_intake",
+      "location_code": "INTAKE"
+    }
+  ],
+  "customers": [
+    {
+      "customer_id": "cust-dev-001",
+      "first_name": "Avery",
+      "last_name": "Collector",
+      "phone": "+1555010001",
+      "email": "avery@example.test",
+      "credit_balance": "22.50"
+    },
+    {
+      "customer_id": "cust-dev-002",
+      "first_name": "Morgan",
+      "last_name": "Player",
+      "phone": "+1555010002",
+      "email": "morgan@example.test",
+      "credit_balance": "0.00"
+    }
+  ],
+  "store_credit_ledger": [
+    {
+      "customer_id": "cust-dev-001",
+      "entry_type": "buylist_credit",
+      "amount": "25.00",
+      "balance_after": "25.00",
+      "idempotency_key": "seed-credit-001"
+    },
+    {
+      "customer_id": "cust-dev-001",
+      "entry_type": "redemption",
+      "amount": "-2.50",
+      "balance_after": "22.50",
+      "idempotency_key": "seed-credit-002"
+    }
+  ],
+  "kiosk_carts": [
+    {
+      "cart_id": "kiosk-dev-001",
+      "customer_id": "cust-dev-001",
+      "status": "submitted",
+      "items": [
+        "PCS-DEV-000002"
+      ]
+    }
+  ],
+  "buylist_submissions": [
+    {
+      "submission_id": "buy-dev-001",
+      "customer_id": "cust-dev-001",
+      "status": "review",
+      "items": [
+        {
+          "card_name": "Pikachu",
+          "condition_code": "LP",
+          "offer_credit": "5.00"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "event_id": "event-dev-001",
+      "title": "Friday Night Commander",
+      "event_type": "casual",
+      "game": "magic",
+      "format": "Commander",
+      "entry_fee": "5.00",
+      "currency": "USD",
+      "player_cap": 32,
+      "registered_count": 12,
+      "registration_mode": "local_only"
+    },
+    {
+      "event_id": "event-dev-002",
+      "title": "Pokemon Prerelease",
+      "event_type": "prerelease",
+      "game": "pokemon",
+      "format": "Sealed",
+      "entry_fee": "30.00",
+      "currency": "USD",
+      "player_cap": 48,
+      "registered_count": 40,
+      "registration_mode": "website_push_topdeck",
+      "topdeck_tid": "td-dev-1001"
+    }
+  ],
+  "topdeck": {
+    "owned_tournaments": [
+      "td-dev-1001",
+      "td-dev-1002"
+    ]
+  }
+}

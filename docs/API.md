@@ -1,0 +1,181 @@
+# REST API
+
+## Contract Rules
+
+- Namespace: `/wp-json/tcg-store/v1`.
+- JSON request and response bodies use `snake_case`.
+- Every write accepts `Idempotency-Key`; offline writes require it.
+- Mutable resources expose `row_version`; updates may require `If-Match`.
+- Pagination uses `page`, `page_size`, and opaque `cursor` where appropriate.
+- Errors use `{ code, message, details, request_id }`.
+- Collection responses use `{ data, paging, meta }`.
+- Permissions are checked in each route `permission_callback`.
+- Device endpoints require scoped device credentials, never administrator
+  application passwords.
+
+## Route Map
+
+### Inventory And Search
+
+| Method | Route | Minimum permission |
+| --- | --- | --- |
+| GET | `/inventory` | `view_inventory` |
+| GET | `/inventory/{id}` | public visibility or `view_inventory` |
+| POST | `/inventory` | `create_inventory` |
+| PUT | `/inventory/{id}` | `edit_inventory` |
+| POST | `/inventory/{id}/reserve` | source-specific authenticated principal |
+| POST | `/inventory/{id}/release` | reservation owner or staff |
+| POST | `/inventory/{id}/mark-sold` | staff/POS device |
+| POST | `/inventory/{id}/move` | `edit_inventory` |
+| POST | `/inventory/{id}/price-lock` | `edit_prices` |
+| POST | `/inventory/bulk-intake` | `create_inventory` |
+| POST | `/inventory/import` | manager/admin |
+| POST | `/inventory/export` | `view_reports` |
+| GET | `/search` | public filtered response |
+| GET | `/reference/search` | public/configured limits |
+| GET | `/inventory/search` | public or staff fields by capability |
+| GET | `/search/versions` | public |
+
+### Pricing And Overrides
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| POST | `/pricing/recalculate` | `edit_prices` |
+| GET | `/pricing/history/{inventory_id}` | public/configured or staff |
+| GET | `/pricing/floor-hits` | `view_reports` |
+| POST | `/pricing/override` | employee plus manager reauthorization |
+
+### Sync And Webhooks
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| POST | `/sync/full` | `manage_settings` |
+| POST | `/sync/resume` | `manage_settings` |
+| POST | `/sync/prices` | `edit_prices` |
+| POST | `/sync/images` | `manage_settings` |
+| POST | `/sync/game/{game}` | `manage_settings` |
+| POST | `/sync/set/{set_id}` | `manage_settings` |
+| POST | `/sync/pause/{job_id}` | `manage_settings` |
+| POST | `/sync/cancel/{job_id}` | `manage_settings` |
+| GET | `/sync/jobs` | staff sync visibility |
+| GET | `/sync/jobs/{job_id}` | staff sync visibility |
+| GET | `/sync/jobs/{job_id}/logs` | staff sync visibility |
+| GET | `/sync/jobs/{job_id}/events` | staff sync visibility |
+| POST | `/webhooks/scrydex` | verified provider signature |
+
+The events route may use polling first. Server-sent events are enabled only
+after target GoDaddy proxy buffering and connection limits are verified.
+
+### Kiosk And Pick Queue
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| POST | `/kiosk/cart` | kiosk device |
+| GET | `/kiosk/cart/{cart_id}` | cart token or staff |
+| POST | `/kiosk/cart/{cart_id}/items` | cart token |
+| DELETE | `/kiosk/cart/{cart_id}/items/{item_id}` | cart token |
+| POST | `/kiosk/cart/{cart_id}/submit` | cart token |
+| POST | `/kiosk/cart/{cart_id}/release` | cart token or staff |
+| GET | `/kiosk/config` | kiosk device |
+| GET | `/pick-queue` | staff |
+| POST | `/pick-queue/{id}/start` | staff |
+| POST | `/pick-queue/{id}/ready` | staff |
+| POST | `/pick-queue/{id}/assign` | staff |
+| POST | `/pick-queue/{id}/conflict` | staff |
+
+### Customers And Credit
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| GET | `/customers/search` | staff |
+| GET | `/customers/{id}` | staff or verified self |
+| POST | `/customers` | staff/kiosk limited |
+| PUT | `/customers/{id}` | staff or verified self-limited |
+| GET | `/customers/{id}/credit` | staff or verified self |
+| GET | `/customers/{id}/ledger` | staff or verified self |
+| POST | `/customers/{id}/credit/adjust` | manager approval |
+| POST | `/customers/{id}/credit/redeem` | staff or online checkout |
+| POST | `/customers/merge` | manager |
+
+### Buylist
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| POST | `/buylist/submissions` | kiosk/customer/staff |
+| GET | `/buylist/submissions` | staff |
+| GET | `/buylist/submissions/{id}` | owner token or staff |
+| POST | `/buylist/submissions/{id}/review` | staff |
+| POST | `/buylist/submissions/{id}/offer` | staff/manager threshold |
+| POST | `/buylist/submissions/{id}/accept` | verified customer/staff |
+| POST | `/buylist/items/{id}/convert-to-inventory` | `create_inventory` |
+
+### Events
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| GET | `/events` | public |
+| GET | `/events/{id}` | public |
+| POST | `/events` | `manage_events` |
+| PUT | `/events/{id}` | `manage_events` |
+| POST | `/events/{id}/register` | customer/kiosk/staff |
+| POST | `/events/{id}/cancel` | owner or staff |
+| POST | `/events/{id}/check-in` | event staff |
+| GET | `/events/{id}/attendees` | event staff |
+| POST | `/events/{id}/sync-topdeck` | `sync_topdeck` |
+| POST | `/events/import-topdeck` | `sync_topdeck` |
+| POST | `/webhooks/topdeck` | disabled until documented/configured |
+
+### Offline And POS
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| POST | `/offline/devices/register` | pairing code plus manager |
+| POST | `/offline/pull` | registered device |
+| POST | `/offline/push` | registered device |
+| GET | `/offline/conflicts` | `resolve_conflicts` |
+| POST | `/offline/conflicts/{id}/resolve` | `resolve_conflicts` |
+| POST | `/pos/sale` | POS/staff device |
+| POST | `/pos/refund` | POS/staff device |
+| POST | `/pos/sync` | POS adapter |
+| GET | `/pos/logs` | manager/report permission |
+
+## WooCommerce Hook Map
+
+| Hook / interface | Responsibility |
+| --- | --- |
+| `woocommerce_add_to_cart_validation` | Require exact `inventory_id`; atomically reserve; reject unavailable/different-price items |
+| `woocommerce_add_cart_item_data` | Store reservation ID, inventory ID, barcode, and immutable display snapshot |
+| `woocommerce_get_cart_item_from_session` | Restore metadata and revalidate reservation ownership/expiry |
+| `woocommerce_check_cart_items` | Revalidate every exact item before cart/checkout |
+| `woocommerce_before_calculate_totals` | Set server-authoritative serialized item price; never trust client price |
+| `woocommerce_checkout_create_order_line_item` | Persist inventory/reservation/barcode/condition/grade/location snapshots via CRUD |
+| `woocommerce_store_api_checkout_update_order_from_request` | Apply Store API checkout metadata where current Woo contract requires it |
+| `woocommerce_store_api_checkout_order_processed` | Final pre-payment reservation/order linkage for Checkout Blocks |
+| `woocommerce_payment_complete` | Convert active reservations to sold idempotently |
+| `woocommerce_order_status_changed` | Reconcile processing/completed/cancelled/failed/refunded transitions |
+| `woocommerce_order_status_cancelled` | Release eligible reservations |
+| `woocommerce_order_status_failed` | Release eligible reservations after payment failure |
+| `woocommerce_refund_created` / `woocommerce_order_refunded` | Move exact items to configured returned or pending-review state |
+| `woocommerce_cart_item_removed` | Release reservation unless retained by another valid cart/order state |
+| `woocommerce_cart_emptied` | Release all cart-owned active reservations |
+| Action Scheduler cleanup action | Expire orphaned reservations and reconcile Woo sessions |
+
+Checkout Blocks support is tested explicitly. Legacy hooks are used only where
+WooCommerce documents them as migrated/supported; block extension interfaces
+are preferred for client-visible UI.
+
+## Authentication
+
+- Same-origin WordPress admin/staff UI: secure cookies plus `X-WP-Nonce`.
+- External trusted admin tools: WordPress Application Passwords over HTTPS where
+  appropriate.
+- Offline/kiosk devices: plugin-issued scoped bearer token with hashed server
+  storage, device ID, location, mode, expiry, and rotation.
+- Provider webhooks: raw-body signature verification, timestamp tolerance,
+  provider event ID deduplication, then asynchronous processing.
+
+## API Versioning
+
+Breaking changes require `/v2` or an explicit compatibility layer. Additive
+fields are allowed in `/v1`. Enum additions must be treated as unknown by
+clients rather than crashing.

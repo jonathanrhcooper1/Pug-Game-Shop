@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ruleset name="TCG Store Platform">
+	<description>WordPress coding standards for TCG Store Platform.</description>
+	<file>tcg-store-platform.php</file>
+	<file>uninstall.php</file>
+	<file>src</file>
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+	<config name="testVersion" value="8.1-"/>
+	<rule ref="WordPress-Core"/>
+	<rule ref="PHPCompatibilityWP"/>
+	<rule ref="WordPress.Files.FileName">
+		<exclude-pattern>src/*</exclude-pattern>
+	</rule>
+	<exclude-pattern>vendor/*</exclude-pattern>
+</ruleset>

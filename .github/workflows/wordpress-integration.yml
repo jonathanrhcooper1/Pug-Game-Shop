@@ -1,0 +1,92 @@
+name: WordPress Integration
+
+on:
+  push:
+    paths:
+      - "apps/wordpress-plugin/**"
+      - ".github/workflows/wordpress-integration.yml"
+  pull_request:
+    paths:
+      - "apps/wordpress-plugin/**"
+      - ".github/workflows/wordpress-integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  wordpress:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: wordpress
+          MYSQL_PASSWORD: wordpress
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=wordpress --password=wordpress"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mysqli, mbstring, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Install WP-CLI
+        run: |
+          curl -L https://github.com/wp-cli/wp-cli/releases/latest/download/wp-cli.phar -o wp
+          php wp --info
+          chmod +x wp
+          sudo mv wp /usr/local/bin/wp
+
+      - name: Create WordPress site
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+        run: |
+          wp core download --path="$WP_DIR" --version=latest --force
+          wp config create \
+            --path="$WP_DIR" \
+            --dbname=wordpress \
+            --dbuser=wordpress \
+            --dbpass=wordpress \
+            --dbhost=127.0.0.1:3306 \
+            --skip-check
+          wp db check --path="$WP_DIR"
+          wp core install \
+            --path="$WP_DIR" \
+            --url=http://localhost \
+            --title="TCG Store Platform Smoke" \
+            --admin_user=admin \
+            --admin_password=admin-password-123 \
+            --admin_email=admin@example.test
+
+      - name: Install WooCommerce
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+        run: wp plugin install woocommerce --activate --path="$WP_DIR"
+
+      - name: Install TCG Store Platform plugin
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+        run: |
+          mkdir -p "$WP_DIR/wp-content/plugins/tcg-store-platform"
+          rsync -a --delete apps/wordpress-plugin/ "$WP_DIR/wp-content/plugins/tcg-store-platform/" --exclude=vendor
+          wp plugin activate tcg-store-platform --path="$WP_DIR"
+
+      - name: Verify plugin in WordPress
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+        run: wp eval-file apps/wordpress-plugin/tests/wordpress-integration-smoke.php --path="$WP_DIR"
