@@ -273,6 +273,10 @@ Version `0.72.0` wires the offline route bootstrapper to WordPress
 feature gate and future route-readiness plan both allow registration. Current
 offline routes remain unregistered by default.
 
+Version `0.73.0` adds explicit deferred bootstrap reporting to authenticated
+health and WordPress smoke coverage for the `rest_api_init` bootstrapper hook.
+Current offline routes remain unregistered by default.
+
 ## Hardware Gate
 
 Before production, test the actual:

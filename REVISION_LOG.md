@@ -3,6 +3,82 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Route Bootstrap Deferred Smoke Coverage
+
+### What Changed
+
+- Added `registration_deferred` to offline route bootstrap status payloads.
+- Added unit assertions for deferred state in blocked, gated, and future-ready
+  bootstrap health payloads.
+- Added WordPress integration smoke inspection for the
+  `OfflineRouteBootstrapper::bootstrap_current_routes` callback on
+  `rest_api_init` priority `20`.
+- Added WordPress integration smoke assertion that authenticated health reports
+  deferred offline route bootstrap state by default.
+- Updated project, plugin, and offline app package versions to `0.73.0`.
+- Updated API, offline sync, architecture, staging, deployment, changelog, and
+  plugin docs.
+
+### Why
+
+The bootstrapper is now wired to WordPress, so staging needs an explicit smoke
+check proving the hook exists while the health payload still reports that
+registration is deferred. This keeps route-enablement readiness visible without
+opening live offline endpoints.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteBootstrapStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteValidationHandlerFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline route bootstrap status presenter assertions for deferred registration
+  state.
+- WordPress integration smoke assertions for the offline route bootstrapper
+  `rest_api_init` hook and deferred health output.
+
+### Rollback Notes
+
+- Revert this revision to remove deferred bootstrap health reporting, hook
+  smoke assertions, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Current offline route contracts register zero routes before and after
+  rollback.
+
 ## 2026-06-06 - Offline Route Bootstrapper Wiring
 
 ### What Changed

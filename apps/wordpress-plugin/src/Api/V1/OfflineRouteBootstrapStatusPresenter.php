@@ -74,6 +74,7 @@ final class OfflineRouteBootstrapStatusPresenter {
 			'planned_route_count'        => (int) $plan['planned_route_count'],
 			'registerable_route_count'   => (int) $plan['registerable_route_count'],
 			'should_register_routes'     => true === $plan['should_register_routes'],
+			'registration_deferred'      => true !== $plan['should_register_routes'],
 			'bootstrap_block_reasons'    => $this->list_values( $plan['bootstrap_block_reasons'] ?? array() ),
 			'registerable_route_keys'    => $this->list_values( $plan['registerable_route_keys'] ?? array() ),
 			'route_registration_summary' => is_array( $plan['route_registration_summary'] ?? null )

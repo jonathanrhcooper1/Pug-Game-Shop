@@ -8,6 +8,7 @@
  * @package TCGStorePlatform
  */
 
+use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
 use TCGStorePlatform\Auth\RoleManager;
 use TCGStorePlatform\Migrations\BuylistSchema;
 use TCGStorePlatform\Migrations\CustomerCreditSchema;
@@ -36,10 +37,57 @@ $assert = static function ( bool $condition, string $message ) use ( $fail ): vo
 	}
 };
 
+$has_hook_callback = static function (
+	string $hook_name,
+	string $class_name,
+	string $method_name,
+	?int $expected_priority = null
+): bool {
+	global $wp_filter;
+
+	$hook = $wp_filter[ $hook_name ] ?? null;
+	if ( ! is_object( $hook ) || ! isset( $hook->callbacks ) || ! is_array( $hook->callbacks ) ) {
+		return false;
+	}
+
+	foreach ( $hook->callbacks as $priority => $callbacks ) {
+		if ( null !== $expected_priority && (int) $priority !== $expected_priority ) {
+			continue;
+		}
+
+		if ( ! is_array( $callbacks ) ) {
+			continue;
+		}
+
+		foreach ( $callbacks as $callback ) {
+			$function = is_array( $callback ) && array_key_exists( 'function', $callback )
+				? $callback['function']
+				: $callback;
+
+			if ( ! is_array( $function ) || 2 !== count( $function ) || ! is_string( $function[1] ) ) {
+				continue;
+			}
+
+			$target = $function[0];
+			if (
+				$method_name === $function[1]
+				&& (
+					( is_object( $target ) && $target instanceof $class_name )
+					|| ( is_string( $target ) && is_a( $target, $class_name, true ) )
+				)
+			) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+};
+
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.72.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.73.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -73,6 +121,10 @@ $assert( null !== $kiosk, 'Kiosk role was not created.' );
 $assert( $manager->has_cap( 'override_minimum_price' ), 'Manager role cannot override minimum price.' );
 $assert( $staff->has_cap( 'view_inventory' ), 'Staff role cannot view inventory.' );
 $assert( ! $staff->has_cap( 'override_minimum_price' ), 'Staff role can override minimum price.' );
+$assert(
+	$has_hook_callback( 'rest_api_init', OfflineRouteBootstrapper::class, 'bootstrap_current_routes', 20 ),
+	'Offline route bootstrapper was not registered on rest_api_init.'
+);
 
 wp_set_current_user( 1 );
 do_action( 'rest_api_init' );
@@ -91,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.72.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.73.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -101,5 +153,6 @@ $assert( false === ( $data['offline_route_bootstrap']['feature_enabled'] ?? null
 $assert( 5 === (int) ( $data['offline_route_bootstrap']['planned_route_count'] ?? 0 ), 'Offline route bootstrap should report planned routes.' );
 $assert( 0 === (int) ( $data['offline_route_bootstrap']['registerable_route_count'] ?? -1 ), 'Offline route bootstrap should report zero registerable routes.' );
 $assert( false === ( $data['offline_route_bootstrap']['should_register_routes'] ?? null ), 'Offline route bootstrap should not register routes.' );
+$assert( true === ( $data['offline_route_bootstrap']['registration_deferred'] ?? null ), 'Offline route bootstrap should remain deferred.' );
 
 echo "PASS WordPress integration smoke test\n";

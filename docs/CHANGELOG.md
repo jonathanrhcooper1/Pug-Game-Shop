@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.73.0] - 2026-06-06
+
+### Added
+
+- `registration_deferred` reporting in offline route bootstrap health/status
+  payloads.
+- Unit coverage proving blocked and gated bootstrap plans report deferred
+  registration and future-ready plans do not.
+- WordPress integration smoke coverage proving the offline route bootstrapper
+  is registered on `rest_api_init`.
+- WordPress integration smoke coverage proving authenticated health reports
+  deferred offline route bootstrap state while offline pull/push routes remain
+  unregistered by default.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.72.0] - 2026-06-06
 
 ### Added

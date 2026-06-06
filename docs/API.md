@@ -87,6 +87,8 @@ staging bootstrap attempts live route registration.
 Authenticated health responses now include `offline_route_bootstrap` with
 blocked/gated/ready status, route counts, registerable route keys, per-route
 summaries, and bootstrap block reasons for staging readiness checks.
+The payload also reports `registration_deferred` so staging can distinguish
+safe gated readiness checks from a future route-registration pass.
 The offline route bootstrapper is wired to `rest_api_init`, but it calls the
 guarded offline route registrar only when the feature gate and route-readiness
 plan report `should_register_routes = true`; the current default plan still
@@ -328,7 +330,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.72.0",
+  "app_version": "0.73.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

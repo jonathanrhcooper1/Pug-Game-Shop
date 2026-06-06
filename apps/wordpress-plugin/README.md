@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.72.0`
+Version: `0.73.0`
 
 ## Implemented Features
 
@@ -156,8 +156,8 @@ Version: `0.72.0`
   route-registration summaries, and bootstrap block reasons without registering
   live routes.
 - Offline route bootstrap status presentation in authenticated health output
-  and admin System Status for staging readiness checks while live offline
-  routes remain unregistered.
+  and admin System Status for staging readiness checks, including deferred
+  registration state, while live offline routes remain unregistered.
 - Offline route bootstrapper wiring on `rest_api_init` with guarded registrar
   deferral unless the offline feature gate and route-readiness plan are ready.
 - Offline device session update query building for future permission

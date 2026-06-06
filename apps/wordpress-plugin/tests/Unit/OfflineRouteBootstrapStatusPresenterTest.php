@@ -19,6 +19,7 @@ final class OfflineRouteBootstrapStatusPresenterTest extends TestCase {
 		$this->assert_same( 5, $payload['planned_route_count'] );
 		$this->assert_same( 0, $payload['registerable_route_count'] );
 		$this->assert_false( $payload['should_register_routes'] );
+		$this->assert_true( $payload['registration_deferred'] );
 		$this->assert_same(
 			array( 'offline_sync_feature_disabled', 'no_registerable_offline_routes' ),
 			$payload['bootstrap_block_reasons']
@@ -33,6 +34,7 @@ final class OfflineRouteBootstrapStatusPresenterTest extends TestCase {
 		$this->assert_true( $payload['feature_enabled'] );
 		$this->assert_same( array( 'no_registerable_offline_routes' ), $payload['bootstrap_block_reasons'] );
 		$this->assert_false( $payload['should_register_routes'] );
+		$this->assert_true( $payload['registration_deferred'] );
 	}
 
 	public function test_future_registerable_payload_reports_ready_status(): void {
@@ -45,6 +47,7 @@ final class OfflineRouteBootstrapStatusPresenterTest extends TestCase {
 
 		$this->assert_same( 'ready', $payload['status'] );
 		$this->assert_true( $payload['should_register_routes'] );
+		$this->assert_false( $payload['registration_deferred'] );
 		$this->assert_same( 1, $payload['registerable_route_count'] );
 		$this->assert_same( array( 'POST /offline/pull' ), $payload['registerable_route_keys'] );
 		$this->assert_same( array(), $payload['bootstrap_block_reasons'] );

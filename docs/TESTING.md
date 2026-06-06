@@ -209,13 +209,14 @@
   last-resolution audits.
 - Local unit coverage now includes offline route bootstrap status presentation
   for blocked default state, gated feature-enabled state, ready future route
-  plans, and admin summary output.
+  plans, deferred registration state, and admin summary output.
 - Local unit coverage now includes offline route bootstrapper execution for
   disabled feature-gate deferral, gated current route plans, future-ready
   registrar execution, and feature-blocked future-ready plans.
 - WordPress integration smoke coverage now asserts offline pull/push routes
-  remain unregistered and authenticated health reports blocked offline route
-  bootstrap status by default.
+  remain unregistered, the offline route bootstrapper hook is registered on
+  `rest_api_init`, and authenticated health reports blocked/deferred offline
+  route bootstrap status by default.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution
