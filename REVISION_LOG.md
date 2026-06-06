@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - WordPress Offline Route Contracts
+
+### What Changed
+
+- Added planned WordPress REST route contracts for offline device pairing,
+  pull, push, conflict listing, and conflict resolution.
+- Added unit coverage for route namespace, live-disabled defaults, documented
+  permission labels, and callback names expected by the Windows app boundary.
+- Updated project, plugin, and offline app package versions to `0.36.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap, and
+  plugin docs.
+
+### Why
+
+The Windows offline app now has a local SQLite queue contract, so the next
+boundary is the WordPress REST surface it will eventually pair with and sync
+against. This slice fixes the API shape while keeping endpoints disabled until
+device authentication, push/pull workers, queue replay, and conflict writes are
+ready for staging integration tests.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteContracts.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds route contracts only.
+
+### Tests Added
+
+- Offline route contract tests for the planned pairing, pull, push, conflict
+  list, and conflict resolution routes, including permissions, callbacks,
+  namespace, and disabled-live defaults.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline route contract class, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the offline app SQLite schema contract remains
+  unchanged.
+- Live offline endpoints remain disabled both before and after rollback.
+
 ## 2026-06-06 - Offline App SQLite Schema Foundation
 
 ### What Changed

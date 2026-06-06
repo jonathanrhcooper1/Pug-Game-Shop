@@ -170,6 +170,10 @@ The first local SQLite schema contract covers device identity, sync cursors,
 the operation queue, sync logs, cached branding, cached inventory, cached
 customer credit, cached events, and sync conflicts. These tables are a local
 read model and queue only; WordPress remains authoritative after sync.
+The WordPress plugin now defines planned offline route contracts for pairing,
+pull, push, conflict listing, and conflict resolution. The routes stay disabled
+until device authentication, queue replay, and conflict persistence pass
+staging integration tests.
 
 ## Storefront Product Strategy
 

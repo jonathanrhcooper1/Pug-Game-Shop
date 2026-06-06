@@ -244,8 +244,10 @@ disabled until staging acceptance.
 ## Sync And Offline
 
 Status: schema migration `0006_sync` is implemented for server sync jobs,
-logs, checkpoints, errors, and provider webhook events. Live provider workers
-and offline device/queue/conflict tables remain disabled until later phases.
+logs, checkpoints, errors, and provider webhook events. Planned offline REST
+route contracts exist for pairing, push, pull, and conflicts, but live provider
+workers and offline device/queue/conflict writes remain disabled until later
+phases.
 
 | Table | Key fields |
 | --- | --- |

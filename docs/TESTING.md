@@ -114,6 +114,9 @@
   local device identity, cursors, operation queue envelope fields, sync logs,
   cached branding/inventory/credit/events, conflicts, and SQLite-only syntax
   guards.
+- Local unit coverage now includes WordPress offline route contracts for
+  device pairing, pull, push, conflict listing, conflict resolution,
+  permissions, callbacks, namespace, and disabled-live defaults.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

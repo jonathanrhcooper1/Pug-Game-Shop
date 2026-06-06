@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.36.0] - 2026-06-06
+
+### Added
+
+- WordPress planned offline REST route contracts for device pairing, pull,
+  push, conflict listing, and conflict resolution.
+- Contract coverage for offline route permissions, callback names, namespace,
+  and disabled-live defaults.
+- Documentation linking the offline Windows app API boundary to the WordPress
+  route contracts.
+
+### Not Added
+
+- Live offline REST route registration, device token validation, push/pull
+  workers, queue replay, conflict persistence, and reconnect integration tests
+  remain disabled for later staging-gated phases.
+
 ## [0.35.0] - 2026-06-06
 
 ### Added

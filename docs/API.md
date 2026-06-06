@@ -20,9 +20,10 @@ health endpoint plus public Events list/detail/registration routes. WordPress
 integration smoke tests verify those routes register in a real WordPress
 process. Planned customer credit route contracts and posting payload validation
 and planned buylist route contracts plus intake payload validation are
-implemented but not registered live. Full permission, nonce, request/response,
-and write-flow REST tests remain staging-gated as each route family is
-implemented.
+implemented but not registered live. Planned offline device pairing, push,
+pull, conflict list, and conflict resolution route contracts are implemented
+but not registered live. Full permission, nonce, request/response, and
+write-flow REST tests remain staging-gated as each route family is implemented.
 
 ### Inventory And Search
 
@@ -179,6 +180,13 @@ across another event or email return `idempotency_conflict`.
 | POST | `/pos/refund` | POS/staff device |
 | POST | `/pos/sync` | POS adapter |
 | GET | `/pos/logs` | manager/report permission |
+
+Offline route contracts now exist locally for the five offline routes listed
+above. They document callback names, route permissions, the shared
+`tcg-store/v1` namespace, and disabled-live defaults for the Windows app
+integration. Live device pairing, bearer token validation, push/pull workers,
+queue replay, and conflict persistence remain disabled until staging-gated
+WordPress/offline integration tests pass.
 
 ## WooCommerce Hook Map
 
