@@ -17,23 +17,39 @@ final class CustomerCreditRestPostingParser {
 		?string $idempotency_header = null,
 		?int $actor_user_id = null
 	): CustomerCreditRestPostingValidationResult {
-		$errors       = array();
-		$customer_id  = $path_customer_id;
-		$entry_type   = trim( (string) ( $payload['entry_type'] ?? '' ) );
-		$amount       = trim( (string) ( $payload['amount'] ?? '' ) );
-		$currency     = strtoupper( trim( (string) ( $payload['currency'] ?? 'USD' ) ) );
-		$reason       = trim( (string) ( $payload['reason'] ?? '' ) );
-		$metadata     = $payload['metadata'] ?? array();
-		$idempotency  = trim( (string) ( $idempotency_header ?: ( $payload['idempotency_key'] ?? '' ) ) );
-		$manager_id   = $this->optional_positive_int( $payload['manager_user_id'] ?? null, 'manager_user_id', $errors );
-		$order_id     = $this->optional_positive_int( $payload['order_id'] ?? null, 'order_id', $errors );
-		$buylist_id   = $this->optional_positive_int(
+		$errors      = array();
+		$customer_id = $path_customer_id;
+		$entry_type  = trim( (string) ( $payload['entry_type'] ?? '' ) );
+		$amount      = trim( (string) ( $payload['amount'] ?? '' ) );
+		$currency    = strtoupper( trim( (string) ( $payload['currency'] ?? 'USD' ) ) );
+		$reason      = trim( (string) ( $payload['reason'] ?? '' ) );
+		$metadata    = $payload['metadata'] ?? array();
+
+		$idempotency_source = $idempotency_header;
+
+		if ( null === $idempotency_source || '' === trim( $idempotency_source ) ) {
+			$idempotency_source = (string) ( $payload['idempotency_key'] ?? '' );
+		}
+
+		$idempotency = trim( $idempotency_source );
+
+		$manager_id  = $this->optional_positive_int(
+			$payload['manager_user_id'] ?? null,
+			'manager_user_id',
+			$errors
+		);
+		$order_id    = $this->optional_positive_int(
+			$payload['order_id'] ?? null,
+			'order_id',
+			$errors
+		);
+		$buylist_id  = $this->optional_positive_int(
 			$payload['buylist_submission_id'] ?? null,
 			'buylist_submission_id',
 			$errors
 		);
-		$location_id  = $this->optional_positive_int( $payload['location_id'] ?? null, 'location_id', $errors );
-		$offline_id   = trim( (string) ( $payload['offline_operation_id'] ?? '' ) );
+		$location_id = $this->optional_positive_int( $payload['location_id'] ?? null, 'location_id', $errors );
+		$offline_id  = trim( (string) ( $payload['offline_operation_id'] ?? '' ) );
 
 		if ( $customer_id <= 0 ) {
 			$errors[] = 'customer_id_required';
