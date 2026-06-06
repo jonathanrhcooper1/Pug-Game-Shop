@@ -50,9 +50,9 @@ final class ScryDexCardNormalizer {
 			return ScryDexCardNormalizationResult::invalid( $errors );
 		}
 
-		$set                = is_array( $raw['set'] ?? null ) ? $raw['set'] : array();
+		$set                 = is_array( $raw['set'] ?? null ) ? $raw['set'] : array();
 		$provider_updated_at = $this->normalize_datetime( $raw['updated_at'] ?? '' );
-		$card               = array(
+		$card                = array(
 			'provider_name'       => self::PROVIDER,
 			'provider_card_id'    => $provider_card_id,
 			'game'                => $game,
