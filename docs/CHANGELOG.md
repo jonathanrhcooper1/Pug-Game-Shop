@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.64.0] - 2026-06-06
+
+### Added
+
+- Planned offline route permission callback factory for future registered-device
+  REST `permission_callback` wiring.
+- Route-level `required_scope` metadata for `/offline/pull` and
+  `/offline/push`, mapping them to `offline_pull` and `offline_push`.
+- Stable route permission strategy metadata for pairing, registered-device, and
+  manager conflict routes while preserving disabled-by-default live routing.
+- Unit coverage for registered-device route scope maps, permission strategies,
+  planned callback construction, non-device route exclusion, session update
+  application through factory callbacks, and audit redaction.
+
+### Not Added
+
+- Live REST route registration, route-connected callback registration, queue
+  replay workers, push/pull route handlers, canonical entity writes, and live
+  conflict persistence remain disabled for later staging-gated phases.
+
 ## [0.63.0] - 2026-06-06
 
 ### Added

@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Route Permission Callback Factory
+
+### What Changed
+
+- Added `required_scope` and `permission_strategy` metadata to the planned
+  offline REST route contracts.
+- Added `OfflineRoutePermissionCallbackFactory` for future WordPress REST
+  `permission_callback` wiring of registered-device routes.
+- Added scope-map generation for registered-device routes, currently mapping
+  `POST /offline/pull` to `offline_pull` and `POST /offline/push` to
+  `offline_push`.
+- Added factory behavior that builds registered-device callback adapters only
+  for route contracts with registered-device permissions and required scopes.
+- Added `required_scope()` access to the registered-device permission callback
+  adapter for route wiring verification.
+- Added tests for route scope metadata, permission strategy metadata,
+  registered-device callback maps, non-device route exclusion, factory-created
+  callback authorization, session update application, and audit redaction.
+- Updated project, plugin, and offline app package versions to `0.64.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The resolver and callback adapter can now authenticate devices and apply
+last-seen updates, but future REST registration needs a stable bridge from
+route contracts to required device scopes. This revision adds that bridge while
+keeping every offline route disabled by default.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteContracts.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline route contract tests for registered-device required scopes and stable
+  permission strategies.
+- Offline route permission callback factory tests for scope maps, callback
+  construction, non-device route exclusion, factory-created authorization,
+  session update application, and redacted audits.
+
+### Rollback Notes
+
+- Revert this revision to remove planned route permission callback factory
+  wiring, route scope metadata, factory tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, live WordPress permission callback wiring, queue
+  replay workers, and route-connected database writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Registered Device Permission Callback Adapter
 
 ### What Changed

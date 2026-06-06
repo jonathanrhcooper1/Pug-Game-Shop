@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.63.0`
+Version: `0.64.0`
 
 ## Implemented Features
 
@@ -70,7 +70,8 @@ Version: `0.63.0`
 - WooCommerce serialized inventory hook contracts for cart, checkout, payment,
   refund, cart removal, and Store API validation lifecycle coverage.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
-  planned REST route contracts with live registration disabled.
+  planned REST route contracts with permission strategy metadata,
+  registered-device required scopes, and live registration disabled.
 - Offline push payload validation for batch IDs, device matching, operation
   envelopes, supported operation/entity pairs, timestamps, row versions,
   payload objects, authorization context, duplicates, and schema version.
@@ -130,6 +131,10 @@ Version: `0.63.0`
   `permission_callback` wiring, including WordPress-style header extraction,
   boolean callback results, last-resolution access, opt-in session update
   application, and plan-only resolver compatibility without route registration.
+- Offline route permission callback factory for future registered-device REST
+  route wiring, including `offline_pull`/`offline_push` scope maps, adapter
+  construction, non-device route exclusion, and route registration kept
+  disabled.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and

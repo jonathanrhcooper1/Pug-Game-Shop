@@ -224,6 +224,12 @@ returns a boolean permission result, and preserves the last resolution for
 future audit diagnostics. Route registration remains disabled until staging
 integration tests pass.
 
+Version `0.64.0` adds planned route permission callback factory wiring for the
+registered-device offline routes. Pull maps to `offline_pull`, push maps to
+`offline_push`, and pairing/conflict routes remain outside device-token
+callback construction. Route registration remains disabled until staging
+integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

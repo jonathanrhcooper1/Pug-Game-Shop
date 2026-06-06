@@ -21,6 +21,8 @@ final class OfflineRouteContracts {
 				'method'                  => 'POST',
 				'callback'                => 'register_offline_device',
 				'permission'              => 'pairing_code_plus_manager',
+				'required_scope'          => '',
+				'permission_strategy'     => 'pairing_code_plus_manager_callback',
 				'live_enabled_by_default' => false,
 			),
 			array(
@@ -29,6 +31,8 @@ final class OfflineRouteContracts {
 				'method'                  => 'POST',
 				'callback'                => 'pull_offline_changes',
 				'permission'              => 'registered_device',
+				'required_scope'          => 'offline_pull',
+				'permission_strategy'     => 'registered_device_permission_callback',
 				'live_enabled_by_default' => false,
 			),
 			array(
@@ -37,6 +41,8 @@ final class OfflineRouteContracts {
 				'method'                  => 'POST',
 				'callback'                => 'push_offline_operations',
 				'permission'              => 'registered_device',
+				'required_scope'          => 'offline_push',
+				'permission_strategy'     => 'registered_device_permission_callback',
 				'live_enabled_by_default' => false,
 			),
 			array(
@@ -45,6 +51,8 @@ final class OfflineRouteContracts {
 				'method'                  => 'GET',
 				'callback'                => 'list_offline_conflicts',
 				'permission'              => 'resolve_conflicts',
+				'required_scope'          => '',
+				'permission_strategy'     => 'manager_conflict_resolution_callback',
 				'live_enabled_by_default' => false,
 			),
 			array(
@@ -53,6 +61,8 @@ final class OfflineRouteContracts {
 				'method'                  => 'POST',
 				'callback'                => 'resolve_offline_conflict',
 				'permission'              => 'resolve_conflicts',
+				'required_scope'          => '',
+				'permission_strategy'     => 'manager_conflict_resolution_callback',
 				'live_enabled_by_default' => false,
 			),
 		);

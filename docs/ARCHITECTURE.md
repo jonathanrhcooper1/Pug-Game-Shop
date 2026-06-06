@@ -171,9 +171,11 @@ the operation queue, sync logs, cached branding, cached inventory, cached
 customer credit, cached events, and sync conflicts. These tables are a local
 read model and queue only; WordPress remains authoritative after sync.
 The WordPress plugin now defines planned offline route contracts for pairing,
-pull, push, conflict listing, and conflict resolution. The routes stay disabled
-until device authentication, queue replay, and conflict persistence pass
-staging integration tests. Push payload validation is implemented separately so
+pull, push, conflict listing, and conflict resolution. Pull/push contracts now
+carry registered-device required scopes and planned permission strategy
+metadata, but the routes stay disabled until device authentication, queue
+replay, and conflict persistence pass staging integration tests. Push payload
+validation is implemented separately so
 the route handler can reject malformed operation batches before persistence or
 conflict resolution is enabled. Pull request validation is also implemented so
 devices can ask for known cached domains and cursors before live change queries
@@ -237,6 +239,10 @@ future route handler work can continue.
 The planned registered-device permission callback adapter now maps
 WordPress-style request headers into that resolver boundary and preserves the
 last resolution for future audit logging without registering routes.
+The planned offline route permission callback factory now maps registered-device
+route contracts to `offline_pull` and `offline_push` callback adapters while
+excluding pairing and manager conflict routes from device-token callback
+construction.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

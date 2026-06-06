@@ -46,6 +46,10 @@ final class OfflineRegisteredDevicePermissionCallbackAdapter {
 		return $this->last_resolution;
 	}
 
+	public function required_scope(): string {
+		return $this->required_scope;
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */

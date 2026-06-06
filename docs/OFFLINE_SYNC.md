@@ -124,6 +124,10 @@ continues.
 The planned registered-device permission callback adapter now accepts
 WordPress-style request headers and returns a boolean permission result while
 keeping route registration disabled.
+The planned offline route permission callback factory now maps registered-device
+pull and push route contracts to their required scopes and callback adapters,
+while keeping pairing and manager conflict routes out of device-token callback
+construction.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

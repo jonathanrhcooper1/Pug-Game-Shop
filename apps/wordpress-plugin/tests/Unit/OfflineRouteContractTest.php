@@ -48,6 +48,29 @@ final class OfflineRouteContractTest extends TestCase {
 		);
 	}
 
+	public function test_registered_device_routes_publish_required_scopes(): void {
+		$this->assert_same(
+			array(
+				'POST /offline/pull' => 'offline_pull',
+				'POST /offline/push' => 'offline_push',
+			),
+			$this->registered_device_scope_map()
+		);
+	}
+
+	public function test_offline_route_permission_strategies_are_stable(): void {
+		$this->assert_same(
+			array(
+				'POST /offline/devices/register'                                             => 'pairing_code_plus_manager_callback',
+				'POST /offline/pull'                                                         => 'registered_device_permission_callback',
+				'POST /offline/push'                                                         => 'registered_device_permission_callback',
+				'GET /offline/conflicts'                                                     => 'manager_conflict_resolution_callback',
+				'POST /offline/conflicts/(?P<conflict_id>[a-zA-Z0-9_-]+)/resolve'            => 'manager_conflict_resolution_callback',
+			),
+			$this->permission_strategy_map()
+		);
+	}
+
 	/**
 	 * @return array<string, string>
 	 */
@@ -69,6 +92,36 @@ final class OfflineRouteContractTest extends TestCase {
 
 		foreach ( OfflineRouteContracts::route_contracts() as $route ) {
 			$map[ $route['method'] . ' ' . $route['path'] ] = $route['callback'];
+		}
+
+		return $map;
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	private function registered_device_scope_map(): array {
+		$map = array();
+
+		foreach ( OfflineRouteContracts::route_contracts() as $route ) {
+			if ( 'registered_device' !== $route['permission'] ) {
+				continue;
+			}
+
+			$map[ $route['method'] . ' ' . $route['path'] ] = $route['required_scope'];
+		}
+
+		return $map;
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	private function permission_strategy_map(): array {
+		$map = array();
+
+		foreach ( OfflineRouteContracts::route_contracts() as $route ) {
+			$map[ $route['method'] . ' ' . $route['path'] ] = $route['permission_strategy'];
 		}
 
 		return $map;

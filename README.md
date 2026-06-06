@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.63.0`
+Version: `0.64.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -58,7 +58,8 @@ workflow for unsigned installer builds. Its first SQLite schema contract is
 also implemented for device identity, sync cursors, operation queue, logs,
 cached branding/inventory/credit/events, and conflicts. WordPress-side planned
 offline device pairing, push, pull, and conflict REST route contracts are
-implemented with live registration disabled. Offline push operation envelope
+implemented with route-level permission strategies, registered-device pull/push
+scopes, and live registration disabled. Offline push operation envelope
 validation is implemented for client operation IDs, device matching,
 operation/entity pairs, row-version metadata, timestamps, payload objects,
 authorization context, batch IDs, and schema version gating.
@@ -136,6 +137,9 @@ session updates before a future live route proceeds. A planned registered
 device permission callback adapter now extracts headers from WordPress-style
 requests, invokes that resolver boundary, returns a boolean callback result,
 and stores the last resolution for audits without registering routes live.
+Offline route permission callback factory planning now maps the registered
+device pull/push routes to `offline_pull` and `offline_push` callback adapters
+without registering routes live.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
