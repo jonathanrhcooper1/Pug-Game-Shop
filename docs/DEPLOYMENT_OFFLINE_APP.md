@@ -230,6 +230,11 @@ registered-device offline routes. Pull maps to `offline_pull`, push maps to
 callback construction. Route registration remains disabled until staging
 integration tests pass.
 
+Version `0.65.0` adds planned offline route registration metadata with
+fail-closed permission callbacks, callback/controller readiness flags, and
+block reasons. No WordPress offline route is eligible for live registration
+until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

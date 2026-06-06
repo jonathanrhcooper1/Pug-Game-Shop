@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Route Registration Planner
+
+### What Changed
+
+- Added `OfflineRouteRegistrationPlanner` for planned offline WordPress REST
+  route registration metadata.
+- Added disabled-by-default route plans with namespace, path, methods,
+  callback names, permission labels, permission strategies, required scopes,
+  permission callback readiness, controller callback readiness, and block
+  reasons.
+- Added fail-closed `__return_false` permission callbacks for routes that do
+  not yet have a registered-device callback adapter.
+- Added registered-device permission callback adapter attachment for pull/push
+  routes as planned metadata only.
+- Added tests proving all planned offline routes remain unregistered by
+  default, pull/push callbacks attach as metadata, pairing/conflict routes stay
+  locked, and no plan uses a public `__return_true` permission bypass.
+- Updated project, plugin, and offline app package versions to `0.65.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The previous checkpoint mapped offline route contracts to registered-device
+permission callbacks. This revision adds the next bridge toward WordPress REST
+registration while preserving the staging gate: routes can be inspected as
+planned registration metadata, but no offline route is eligible for live
+registration.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline route registration planner tests for disabled-by-default route plans,
+  planned registered-device permission callback metadata, locked pairing and
+  conflict routes, and no public permission bypasses.
+
+### Rollback Notes
+
+- Revert this revision to remove planned route registration metadata, route
+  registration planner tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, live WordPress permission callback wiring, queue
+  replay workers, and route-connected database writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Route Permission Callback Factory
 
 ### What Changed

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.64.0`
+Version: `0.65.0`
 
 ## Implemented Features
 
@@ -135,6 +135,10 @@ Version: `0.64.0`
   route wiring, including `offline_pull`/`offline_push` scope maps, adapter
   construction, non-device route exclusion, and route registration kept
   disabled.
+- Offline route registration planner for future WordPress REST wiring,
+  including disabled-by-default route plans, fail-closed permission callbacks,
+  registered-device callback metadata, controller-readiness gates, and no
+  public permission bypasses.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and

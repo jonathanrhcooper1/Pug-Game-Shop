@@ -128,6 +128,9 @@ The planned offline route permission callback factory now maps registered-device
 pull and push route contracts to their required scopes and callback adapters,
 while keeping pairing and manager conflict routes out of device-token callback
 construction.
+The planned offline route registration planner now turns those contracts into
+disabled route registration metadata with fail-closed callbacks and block
+reasons, without calling WordPress route registration.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

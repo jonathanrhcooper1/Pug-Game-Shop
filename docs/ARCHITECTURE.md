@@ -243,6 +243,9 @@ The planned offline route permission callback factory now maps registered-device
 route contracts to `offline_pull` and `offline_push` callback adapters while
 excluding pairing and manager conflict routes from device-token callback
 construction.
+The planned offline route registration planner now emits disabled registration
+metadata with fail-closed callbacks, callback readiness, controller readiness,
+and block reasons before any WordPress REST route can be registered.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

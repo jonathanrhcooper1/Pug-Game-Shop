@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.65.0] - 2026-06-06
+
+### Added
+
+- Planned offline route registration planner for future WordPress REST route
+  wiring.
+- Disabled-by-default registration metadata for all planned offline routes,
+  including route methods, callback names, permission strategies, required
+  scopes, callback readiness, controller readiness, and block reasons.
+- Planned registered-device permission callback attachment for pull/push routes
+  as inert metadata while pairing and manager conflict routes remain locked.
+- Unit coverage proving no offline route should register by default, no route
+  uses public `__return_true` permission bypasses, registered-device callbacks
+  attach only as metadata, and non-device routes stay fail-closed.
+
+### Not Added
+
+- Live WordPress `register_rest_route()` calls, route controller callbacks,
+  queue replay workers, push/pull handlers, canonical entity writes, live
+  conflict persistence, and production database mutation remain disabled.
+
 ## [0.64.0] - 2026-06-06
 
 ### Added

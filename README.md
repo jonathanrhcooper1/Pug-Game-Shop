@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.64.0`
+Version: `0.65.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -140,6 +140,9 @@ and stores the last resolution for audits without registering routes live.
 Offline route permission callback factory planning now maps the registered
 device pull/push routes to `offline_pull` and `offline_push` callback adapters
 without registering routes live.
+Offline route registration planning now emits disabled-by-default registration
+metadata, fail-closed permission callbacks for unwired routes, and block
+reasons proving offline routes remain staging-gated.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
