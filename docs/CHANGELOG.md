@@ -2,6 +2,20 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.22.0] - 2026-06-06
+
+### Added
+
+- ScryDex sync page processor and page plan result.
+- Fixture-backed planning for normalized reference-card rows, current price
+  rows, normalization errors, checkpoint advancement, and retryable provider
+  failures.
+
+### Not Added
+
+- Database upsert workers, scheduled pulls, image downloads, usage-budget
+  enforcement, and webhook processing remain disabled for later phases.
+
 ## [0.21.0] - 2026-06-06
 
 ### Added

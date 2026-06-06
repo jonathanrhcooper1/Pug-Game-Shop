@@ -12,6 +12,11 @@ provider credential configuration, database upsert workers, image workers,
 usage-budget enforcement, and webhook route handling remain disabled until
 staging acceptance.
 
+The sync page processor now plans normalized reference-card rows, current price
+rows, normalization errors, retryability, and next checkpoint state from a
+provider page response. It does not write to the database or schedule follow-up
+jobs yet.
+
 ## Role
 
 ScryDex supplies card reference, expansion, variant, image, price, price-history,
@@ -91,7 +96,8 @@ webhook registration based only on marketing copy.
 5. Fetch cards in provider-supported pages.
 6. Store sanitized raw payload and hash.
 7. Normalize/upsert card, set, variant, image metadata, and current prices.
-8. Checkpoint after each committed page.
+8. Use the sync page processor to plan normalized row writes and checkpoint
+   after each committed page.
 9. Queue image downloads separately.
 10. Queue optional price-history/population pulls only for supported scope.
 11. Rebuild affected search projections.

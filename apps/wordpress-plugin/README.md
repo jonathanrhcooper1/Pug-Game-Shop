@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.21.0`
+Version: `0.22.0`
 
 ## Implemented Features
 
@@ -51,6 +51,8 @@ Version: `0.21.0`
 - Migration runner planning coverage for clean install, upgrade, idempotent
   current-schema rerun, and rollback order.
 - TopDeck registration push adapter and result mapping for later queue workers.
+- ScryDex sync page processor for normalized card/price upsert planning and
+  checkpoint advancement.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

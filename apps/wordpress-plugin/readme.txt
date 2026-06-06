@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.21.0
+Stable tag: 0.22.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -37,6 +37,8 @@ Phase 7.1 adds shared offline sync conflict policy tests for inventory, events,
 customer credit, and device revocation.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
+Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
+checkpoint advancement.
 
 Inventory and commerce modules remain disabled until their implementation phases.
 
@@ -48,6 +50,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.22.0 =
+
+* Added ScryDex sync page processor and page plan result.
+* Added tests for fixture-backed card/price upsert planning, invalid-card errors, and retryable rate-limit failures.
+* Kept database upsert workers, scheduled pulls, images, usage-budget enforcement, and webhooks disabled.
 
 = 0.21.0 =
 

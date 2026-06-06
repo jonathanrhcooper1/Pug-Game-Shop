@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - ScryDex Sync Page Processor Foundation
+
+### What Changed
+
+- Added a ScryDex sync page processor that ties provider results, card/price
+  normalization, and checkpoint advancement together.
+- Added a page plan result object for normalized reference rows, price rows,
+  normalization errors, retryability, and next checkpoint state.
+- Added unit coverage for fixture-backed page planning, invalid-card
+  normalization errors, and retryable rate-limit failures.
+
+### Why
+
+ScryDex scheduled workers need a deterministic per-page planning step before
+database upserts, image jobs, usage-budget enforcement, and webhook refreshes
+are enabled. This slice verifies the local mapping and checkpoint behavior while
+leaving all live worker writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPagePlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPageProcessor.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncPageProcessorTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- ScryDex sync page processor tests for normalized reference-card and price row
+  planning, checkpoint advancement after committed rows, invalid-card error
+  reporting, and retryable rate-limit failure handling.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex sync page processing helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- ScryDex database upserts, scheduled workers, usage-budget enforcement, image
+  jobs, and webhook processing remain disabled after rollback.
+
 ## 2026-06-06 - POS Payment Reconciliation Policy Foundation
 
 ### What Changed
