@@ -5,8 +5,21 @@
 Schema migration `0003` creates durable event, registration, waitlist, check-in,
 TopDeck sync log, and template tables. Local helper classes define registration
 modes, capacity-consuming statuses, seats remaining, public status, and badges.
-The public UI, WooCommerce event-entry products, and staff dashboard are still
-behind the disabled `events_topdeck` feature flag until staging acceptance.
+Read-only public REST endpoints and shortcodes are implemented for published
+events. Registration writes, WooCommerce event-entry products, and the staff
+dashboard are still behind the disabled `events_topdeck` feature flag until
+staging acceptance.
+
+## Public Read Surface
+
+- `GET /wp-json/tcg-store/v1/events`
+- `GET /wp-json/tcg-store/v1/events/{slug}`
+- `[tcg_events]`
+- `[tcg_event_detail slug="event-slug"]`
+
+The public response includes seats remaining, entry fee/free state, status
+badges, TopDeck attribution, and hosted registration links when the event is
+configured for TopDeck-hosted registration.
 
 ## Registration Modes
 

@@ -6,13 +6,13 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.4.0`
+Version: `0.5.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
-inventory/pricing schema, and Events/TopDeck schema and adapter contracts are
-implemented and locally verified. Public event UI, WooCommerce event-ticket
-flows, and production TopDeck credentials remain disabled until staging
-acceptance.
+inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
+read-only public Events REST/shortcode surface are implemented and locally
+verified. Event registration, WooCommerce event-ticket flows, and production
+TopDeck credentials remain disabled until staging acceptance.
 
 ## Source Of Truth
 

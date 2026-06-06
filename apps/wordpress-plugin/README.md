@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.4.0`
+Version: `0.5.0`
 
 ## Implemented Features
 
@@ -21,6 +21,8 @@ Version: `0.4.0`
 - Event registration status, public event badge, and capacity helpers.
 - TopDeck provider adapter with owned tournament, tournament info, attendee,
   register-player, import, sync, and default-disabled create-event contract.
+- Public read-only event REST endpoints and shortcodes for event list/detail
+  pages.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

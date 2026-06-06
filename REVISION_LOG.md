@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Read-Only Public Events Surface
+
+### What Changed
+
+- Added public read-only Events REST endpoints for event lists and slug-based
+  event details.
+- Added event filter sanitization and public presentation helpers for seats
+  remaining, registration status, badges, TopDeck attribution, and hosted
+  registration links.
+- Added `[tcg_events]` and `[tcg_event_detail]` shortcodes for WordPress list
+  and detail pages.
+- Updated WordPress integration smoke verification to assert the Events routes
+  are registered.
+
+### Why
+
+The public Events page and detail pages need a safe read path before the system
+accepts registrations, payment, waitlist changes, or TopDeck writes. This slice
+lets staging review event display and filtering while leaving all write flows
+closed.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `apps/wordpress-plugin/src/Events/EventFilters.php`
+- `apps/wordpress-plugin/src/Events/EventPresenter.php`
+- `apps/wordpress-plugin/src/Events/EventRepository.php`
+- `apps/wordpress-plugin/src/Events/EventShortcodes.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/EventFiltersTest.php`
+- `apps/wordpress-plugin/tests/Unit/EventPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/EVENTS.md`
+
+### Migrations Added
+
+- None. This revision uses schema version `3`.
+
+### Tests Added
+
+- Event filter sanitization tests.
+- Public event presenter tests for status, seats remaining, badges, TopDeck
+  attribution, and hosted-registration links.
+- WordPress integration smoke route assertions for public event endpoints.
+
+### Rollback Notes
+
+- Revert this revision to remove read-only public Events routes and shortcodes.
+- No database rollback is required.
+- Existing event rows remain untouched because no write paths are added.
+
 ## 2026-06-06 - Events And TopDeck Foundation
 
 ### What Changed

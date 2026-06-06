@@ -114,7 +114,7 @@ after target GoDaddy proxy buffering and connection limits are verified.
 | Method | Route | Permission |
 | --- | --- | --- |
 | GET | `/events` | public |
-| GET | `/events/{id}` | public |
+| GET | `/events/{slug}` | public |
 | POST | `/events` | `manage_events` |
 | PUT | `/events/{id}` | `manage_events` |
 | POST | `/events/{id}/register` | customer/kiosk/staff |

@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.5.0] - 2026-06-06
+
+### Added
+
+- Public read-only Events REST endpoints:
+  `/wp-json/tcg-store/v1/events` and `/wp-json/tcg-store/v1/events/{slug}`.
+- Event listing filter sanitization for game, format, event type, date,
+  free/paid, competitive/casual, featured, and registration status filters.
+- Public event presenter that derives seats remaining, public status, badges,
+  TopDeck attribution, and hosted registration links.
+- `[tcg_events]` and `[tcg_event_detail]` shortcodes for public list/detail
+  pages.
+- Unit coverage for event filters and public event presentation.
+
+### Not Added
+
+- Event registration writes, WooCommerce event ticket products, payment capture,
+  waitlist mutation, and TopDeck push remain disabled for a later phase.
+
 ## [0.4.0] - 2026-06-06
 
 ### Added
