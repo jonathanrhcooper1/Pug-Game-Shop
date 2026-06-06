@@ -119,6 +119,29 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
+		public function test_factory_can_attach_pairing_permission_without_registered_device_resolver(): void {
+			$pairing_callback = new OfflineDevicePairingPermissionCallbackAdapter(
+				null,
+				static fn (): bool => true
+			);
+			$factory          = new OfflineRoutePermissionCallbackFactory( null, null, $pairing_callback );
+			$callbacks        = $factory->callbacks_for_contracts();
+
+			$this->assert_same( 1, count( $callbacks ) );
+			$this->assert_same( $pairing_callback, $callbacks['POST /offline/devices/register'] );
+			$this->assert_false( isset( $callbacks['POST /offline/pull'] ) );
+			$this->assert_false( isset( $callbacks['POST /offline/push'] ) );
+		}
+
+		public function test_factory_requires_registered_device_resolver_for_registered_device_callbacks(): void {
+			$factory = new OfflineRoutePermissionCallbackFactory();
+			$routes  = OfflineRouteContracts::route_contracts();
+
+			$this->assert_same( array(), $factory->callbacks_for_contracts() );
+			$this->assert_same( null, $factory->callback_for_route_contract( $routes[1] ) );
+			$this->assert_same( null, $factory->callback_for_route_contract( $routes[2] ) );
+		}
+
 		public function test_factory_ignores_non_registered_device_route_contracts(): void {
 			$factory = $this->factory( new \wpdb( $this->database_row() ) );
 			$routes  = OfflineRouteContracts::route_contracts();

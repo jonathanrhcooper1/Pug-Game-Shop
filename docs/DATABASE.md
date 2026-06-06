@@ -304,8 +304,10 @@ route-connected last-seen writes, and offline route writes remain disabled
 until later phases. The pairing permission callback adapter does not add
 tables; it validates request bodies and delegates authorization to an injected
 callback before any future route registration can proceed. The planned
-permission callback adapter does not add tables; it only composes request
-headers into the resolver boundary.
+permission callback factory can now expose pairing callbacks without a
+registered-device resolver and still returns no pull/push permission callbacks
+until that resolver is present. The planned permission callback adapter does
+not add tables; it only composes request headers into the resolver boundary.
 
 | Table | Key fields |
 | --- | --- |

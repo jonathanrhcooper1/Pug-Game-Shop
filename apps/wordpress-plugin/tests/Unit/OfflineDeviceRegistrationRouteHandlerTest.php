@@ -181,7 +181,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'device_mode'      => 'kiosk',
 				'location_id'      => 2,
 				'manager_id'       => 42,
-				'app_version'      => '0.80.0',
+				'app_version'      => '0.81.0',
 				'platform'         => 'windows',
 				'capabilities'     => array(
 					'barcode_scanner' => true,

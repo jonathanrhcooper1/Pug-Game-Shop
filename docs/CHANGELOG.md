@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.81.0] - 2026-06-06
+
+### Added
+
+- Pairing-only offline route permission factory setup for staged pairing route
+  checks.
+- Unit coverage proving pairing permission callbacks can be attached without a
+  registered-device resolver while registered-device pull/push callbacks remain
+  unavailable until that resolver is supplied.
+- Planner coverage proving the pairing route can report permission readiness
+  independently while pull/push permission callbacks stay fail-closed.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  registered-device pull/push permission wiring, queue replay, route-connected
+  device writes, and production database mutation remain disabled.
+
 ## [0.80.0] - 2026-06-06
 
 ### Added

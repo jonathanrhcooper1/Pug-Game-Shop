@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pairing-Only Permission Factory Decoupling
+
+### What Changed
+
+- Made `OfflineRoutePermissionCallbackFactory` accept an optional
+  `OfflineRegisteredDevicePermissionResolver`.
+- Kept registered-device pull/push permission callbacks fail-closed when the
+  resolver is absent.
+- Added factory coverage proving pairing callbacks can be staged without a
+  registered-device resolver.
+- Added planner coverage proving pairing route permission readiness can be
+  tracked independently while pull/push permission callbacks remain unavailable.
+- Updated project, plugin, and offline app package versions to `0.81.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The pairing route is the first staged offline route to move toward local
+verification, and it should not require registered-device pull/push resolver
+wiring before its own permission boundary can be tested. This revision decouples
+that setup while preserving fail-closed behavior for registered-device routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline route permission callback factory tests for pairing-only setup
+  without a registered-device resolver.
+- Offline route permission callback factory tests proving registered-device
+  callbacks require a resolver.
+- Offline route registration planner tests proving pairing readiness can be
+  tracked independently while pull/push permissions stay locked.
+
+### Rollback Notes
+
+- Revert this revision to restore the registered-device resolver as a required
+  factory dependency and remove the pairing-only readiness tests.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, registered-device
+  pull/push permission wiring, queue replay, and route-connected database
+  writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Route Handler Readiness Enforcement
 
 ### What Changed

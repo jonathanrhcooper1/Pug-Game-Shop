@@ -261,6 +261,9 @@ The planned offline route permission callback factory now maps registered-device
 route contracts to `offline_pull` and `offline_push` callback adapters while
 excluding pairing and manager conflict routes from device-token callback
 construction.
+Pairing permission callbacks can now be staged without constructing the
+registered-device resolver; pull and push permission callbacks still require
+that resolver before the factory returns them.
 The planned offline route registration planner now emits disabled registration
 metadata with fail-closed callbacks, callback readiness, controller readiness,
 and block reasons before any WordPress REST route can be registered.

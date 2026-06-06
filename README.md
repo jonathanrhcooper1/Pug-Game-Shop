@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.80.0`
+Version: `0.81.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -96,7 +96,10 @@ an injected callback while keeping the default route permission locked. Offline
 route registration planning now also requires an explicitly injected
 controller handler before a controller callback is marked ready, so default
 disabled controller methods cannot become live routes by readiness metadata
-alone. Offline device access
+alone. The offline route permission callback factory can now build pairing
+permission callbacks without requiring a registered-device resolver, while
+registered-device pull/push callbacks still fail closed until that resolver is
+configured. Offline device access
 policy checks are implemented for future registered-device permission
 callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp

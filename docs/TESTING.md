@@ -178,6 +178,10 @@
   proving controller callbacks require explicit injected handlers before route
   plans can mark them ready and the guarded registrar will not register a
   future-enabled route backed only by default disabled controller methods.
+- Local unit coverage now includes pairing-only offline permission factory
+  setup, proving staged pairing callbacks can be attached without a
+  registered-device resolver while pull/push permission callbacks stay locked
+  until that resolver is supplied.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

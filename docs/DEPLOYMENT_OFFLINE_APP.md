@@ -313,6 +313,11 @@ injected controller handler before a planned route callback is considered ready.
 Default disabled controller methods remain non-registerable, so staged
 permission readiness cannot open a route without the matching handler.
 
+Version `0.81.0` lets staging assemble pairing permission callbacks without a
+registered-device resolver. Pull and push permission callbacks still require
+that resolver and remain unavailable when it is absent, so pairing checks can
+advance independently without opening registered-device sync routes.
+
 ## Hardware Gate
 
 Before production, test the actual:

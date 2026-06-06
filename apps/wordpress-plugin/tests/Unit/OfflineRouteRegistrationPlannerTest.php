@@ -125,6 +125,18 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
+		public function test_planner_can_track_pairing_readiness_without_registered_device_resolver(): void {
+			$plans = $this->planner_with_pairing_only_callback()->planned_registration_args();
+			$plan  = $plans['POST /offline/devices/register'];
+
+			$this->assert_true( $plan['permission_callback'] instanceof OfflineDevicePairingPermissionCallbackAdapter );
+			$this->assert_true( $plan['permission_callback_ready'] );
+			$this->assert_true( $plan['controller_callback_ready'] );
+			$this->assert_false( $plan['should_register'] );
+			$this->assert_false( $plans['POST /offline/pull']['permission_callback_ready'] );
+			$this->assert_false( $plans['POST /offline/push']['permission_callback_ready'] );
+		}
+
 		public function test_planner_requires_injected_handlers_for_controller_readiness(): void {
 			$plans = ( new OfflineRouteRegistrationPlanner( null, new OfflineController() ) )->planned_registration_args();
 
@@ -175,6 +187,25 @@ namespace TCGStorePlatform\Tests\Unit {
 		private function planner_with_pairing_callback(): OfflineRouteRegistrationPlanner {
 			return new OfflineRouteRegistrationPlanner(
 				$this->permission_callback_factory(
+					new OfflineDevicePairingPermissionCallbackAdapter(
+						null,
+						static fn (): bool => true
+					)
+				),
+				new OfflineController(
+					null,
+					array(
+						'register_offline_device' => static fn (): array => array( 'status' => 'ready' ),
+					)
+				)
+			);
+		}
+
+		private function planner_with_pairing_only_callback(): OfflineRouteRegistrationPlanner {
+			return new OfflineRouteRegistrationPlanner(
+				new OfflineRoutePermissionCallbackFactory(
+					null,
+					null,
 					new OfflineDevicePairingPermissionCallbackAdapter(
 						null,
 						static fn (): bool => true

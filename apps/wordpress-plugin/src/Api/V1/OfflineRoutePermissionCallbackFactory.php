@@ -12,7 +12,7 @@ use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionCallbackAdapter;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 
 final class OfflineRoutePermissionCallbackFactory {
-	private OfflineRegisteredDevicePermissionResolver $registered_device_resolver;
+	private ?OfflineRegisteredDevicePermissionResolver $registered_device_resolver;
 	private ?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback;
 	private mixed $server_time_provider;
 
@@ -20,7 +20,7 @@ final class OfflineRoutePermissionCallbackFactory {
 	 * @param callable(): string|null $server_time_provider Optional UTC clock.
 	 */
 	public function __construct(
-		OfflineRegisteredDevicePermissionResolver $registered_device_resolver,
+		?OfflineRegisteredDevicePermissionResolver $registered_device_resolver = null,
 		?callable $server_time_provider = null,
 		?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback = null
 	) {
@@ -59,6 +59,10 @@ final class OfflineRoutePermissionCallbackFactory {
 		}
 
 		if ( 'registered_device' !== self::route_permission( $route_contract ) ) {
+			return null;
+		}
+
+		if ( null === $this->registered_device_resolver ) {
 			return null;
 		}
 

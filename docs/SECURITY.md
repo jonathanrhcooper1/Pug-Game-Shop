@@ -90,6 +90,9 @@ logging.
 Offline route registration readiness now requires explicitly injected
 controller handlers, preventing default disabled controller callbacks from
 becoming live routes when permission readiness metadata is staged.
+Pairing permission callback construction can now be isolated from the
+registered-device resolver, and registered-device pull/push callbacks still
+fail closed unless that resolver is configured.
 
 ## Secret Storage
 
