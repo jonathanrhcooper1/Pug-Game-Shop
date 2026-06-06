@@ -39,7 +39,8 @@ An idempotency key reused for another event or email returns an
 TopDeck-hosted events return a rejection with instructions to use the hosted
 registration link. Paid events are accepted only when `allow_pay_at_store` is
 enabled. Online payment capture and TopDeck registration push are not performed
-by this route yet.
+by this route yet. Eligible free website-push registrations write a local
+pending TopDeck sync-log record; a later worker phase will process that queue.
 
 ## Registration Modes
 
@@ -87,7 +88,8 @@ local registrations.
 3. In a later WooCommerce phase, create a Woo order line linked to
    event/registration.
 4. On payment complete, set local paid.
-5. Queue TopDeck registration if configured.
+5. Queue a local pending TopDeck sync-log record when the registration is free,
+   website-push mode is configured, and a TopDeck TID is present.
 6. Map immediate, pending invite, already registered, banned/failed, or capacity
    conflict.
 7. Escalate failed provider registration after payment to staff review.

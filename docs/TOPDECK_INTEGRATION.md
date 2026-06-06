@@ -73,12 +73,16 @@ For website reserve-and-push:
    enabled.
 3. In a later WooCommerce phase, create/link Woo order and wait for payment
    completion.
-4. Enqueue TopDeck registration after local commit.
-5. Map provider outcomes to explicit local statuses.
-6. If provider registration fails after payment, retain payment and set
+4. Enqueue a local pending TopDeck sync-log record after local commit when the
+   registration is free, website-push mode is configured, and a TopDeck TID is
+   present.
+5. A later worker phase calls TopDeck from the queue after sandbox/staging
+   acceptance.
+6. Map provider outcomes to explicit local statuses.
+7. If provider registration fails after payment, retain payment and set
    `staff_review_required`; never silently cancel or refund.
-7. On `409`, move to waitlist when configured or create capacity conflict.
-8. Log masked request/response details and keep the raw provider response under
+8. On `409`, move to waitlist when configured or create capacity conflict.
+9. Log masked request/response details and keep the raw provider response under
    restricted retention.
 
 Attendee emails are never returned by public event endpoints.

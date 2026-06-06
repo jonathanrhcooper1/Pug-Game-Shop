@@ -62,9 +62,7 @@ final class EventRegistrationPolicy {
 		return EventRegistrationDecision::accepted(
 			EventRegistrationStatus::RESERVED,
 			$entry_fee > 0 ? EventPaymentStatus::PAY_AT_STORE : EventPaymentStatus::NOT_REQUIRED,
-			EventRegistrationMode::WEBSITE_PUSH_TOPDECK === $mode
-				? 'Local reservation accepted. TopDeck push is queued for a later phase.'
-				: 'Local reservation accepted.'
+			'Local reservation accepted.'
 		);
 	}
 

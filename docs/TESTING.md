@@ -105,6 +105,7 @@ corresponding modules are implemented:
 - All three registration modes.
 - Local free/pay-at-store event registration route validation, idempotency, and
   waitlist policy.
+- Pending TopDeck queue planner for eligible free website-push registrations.
 - Paid registration with successful and failed TopDeck push.
 - Pending invitation, already registered, banned/failed, and capacity conflict.
 - Waitlist promotion and check-in.

@@ -19,8 +19,10 @@ All notable changes follow Semantic Versioning.
 - Same-event/email duplicate prevention for active registrations, plus
   idempotency-key conflict handling when a key is reused for a different event
   or email.
+- Pending TopDeck sync-log queue records for eligible free website-push
+  registrations, without live provider calls.
 - Unit coverage for registration input validation, registration policy outcomes,
-  duplicate detection, and REST result response shaping.
+  duplicate detection, TopDeck queue planning, and REST result response shaping.
 - WordPress integration smoke assertion for the registration REST route.
 
 ### Not Added

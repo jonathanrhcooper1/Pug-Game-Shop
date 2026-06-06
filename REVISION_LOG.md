@@ -21,6 +21,9 @@ review, staging approval, deployment approval, and rollback planning.
 - Added active same-event/email duplicate prevention and scoped idempotency
   conflict handling so reused keys do not expose or mutate unrelated
   registrations.
+- Added safe pending TopDeck sync-log queue records for eligible free
+  website-push registrations. The queue writes local intent only and does not
+  call the TopDeck API.
 - Updated WordPress integration smoke verification to assert the registration
   route is registered.
 
@@ -42,10 +45,12 @@ closed until staging can verify the full commerce and TopDeck lifecycle.
 - `apps/wordpress-plugin/src/Events/EventRegistrationRepository.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationResult.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationService.php`
+- `apps/wordpress-plugin/src/Events/EventTopDeckRegistrationPlanner.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationDuplicateGuardTest.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationInputTest.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationPolicyTest.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationResultTest.php`
+- `apps/wordpress-plugin/tests/Unit/EventTopDeckRegistrationPlannerTest.php`
 - `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
 - `docs/API.md`
 - `docs/EVENTS.md`
@@ -64,6 +69,9 @@ closed until staging can verify the full commerce and TopDeck lifecycle.
 - Registration result response tests for validation errors and idempotent
   success responses.
 - Duplicate guard and duplicate-blocking registration status tests.
+- TopDeck queue planner tests for free website-push eligibility, local-only
+  exclusion, missing TID/disabled provider exclusion, waitlist exclusion, and
+  pay-at-store exclusion.
 - WordPress integration smoke route assertion for the registration endpoint.
 
 ### Rollback Notes
