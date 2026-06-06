@@ -265,7 +265,7 @@ final class OfflinePushPersistencePlanner {
 	): void {
 		$operation_id = $operation->client_operation_id();
 
-		if ( $operation_id !== (string) ( $existing['client_operation_id'] ?? '' ) ) {
+		if ( (string) ( $existing['client_operation_id'] ?? '' ) !== $operation_id ) {
 			throw new InvalidArgumentException( "Existing operation row for {$operation_id} has the wrong ID." );
 		}
 
