@@ -257,6 +257,10 @@ data boundary for body params, query params, route params, headers, and
 idempotency keys. Controller handler dispatch is explicit and injected, so the
 default controller still returns disabled responses while future staging code
 can test route handlers without changing route contracts.
+Parser-only offline route validation handlers now sit behind that injected
+dispatch point, validating pairing, pull, push, conflict list, and conflict
+resolution payloads and returning safe summaries before any persistence or live
+registration boundary is opened.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

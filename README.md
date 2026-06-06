@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.68.0`
+Version: `0.69.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -152,6 +152,10 @@ Offline REST request adaptation now normalizes body params, query params,
 route params, headers, and idempotency keys for future route handlers, and the
 controller can dispatch to explicitly injected handlers while default behavior
 still fails closed.
+Parser-only offline route validation handlers can now be injected into the
+controller for device pairing, pull, push, conflict list, and conflict
+resolution callbacks, returning safe validation summaries while writes remain
+deferred and routes remain gated.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,

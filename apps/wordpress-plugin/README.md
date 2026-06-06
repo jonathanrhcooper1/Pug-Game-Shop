@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.68.0`
+Version: `0.69.0`
 
 ## Implemented Features
 
@@ -148,6 +148,9 @@ Version: `0.68.0`
 - Offline REST request adapter and normalized request data for future route
   handlers, including body/query/route params, header/idempotency extraction,
   and injected controller dispatch while defaults remain disabled.
+- Offline route validation handler factory for parser-only controller
+  injection, covering pairing, pull, push, conflict list, conflict resolution,
+  safe response summaries, and stable validation errors without writes.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and

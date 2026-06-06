@@ -250,6 +250,12 @@ can now be normalized before injected controller handlers run in tests, while
 the default controller and current route contracts remain disabled until staging
 integration tests pass.
 
+Version `0.69.0` adds parser-only offline route validation handlers behind the
+injected controller dispatch boundary. Future staging checks can validate
+pairing, pull, push, conflict list, and conflict resolution requests and inspect
+safe response summaries while route registration, persistence, and queue replay
+remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

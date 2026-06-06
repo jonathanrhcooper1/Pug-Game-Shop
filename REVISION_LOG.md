@@ -3,6 +3,80 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Route Validation Handlers
+
+### What Changed
+
+- Added `OfflineRouteValidationHandlerFactory` for parser-only offline route
+  handlers that can be explicitly injected into `OfflineController`.
+- Added validation handlers for device pairing, offline pull, offline push,
+  conflict listing, and conflict resolution request shapes.
+- Added stable validation response envelopes with callback names, status codes,
+  safe summary data, deferred-write flags, route-gated flags, and validation
+  errors.
+- Added tests proving injected handlers validate through the controller, read
+  idempotency headers, read route/query parameters, return safe summaries, keep
+  writes deferred, keep routes gated, and return stable invalid responses.
+- Updated project, plugin, and offline app package versions to `0.69.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The request adapter now gives controller callbacks normalized request data. This
+revision adds the next route-handler boundary: future staging code can exercise
+parser-only handlers through the controller before any repository-backed writes,
+queue replay, conflict mutation, or live route registration is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteValidationHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteValidationHandlerFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrarTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline route validation handler tests for parser-only device pairing, push,
+  conflict list, conflict resolution, and rejected push responses through the
+  injected controller handler map.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline route validation handler factory,
+  route-handler validation tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Current offline route contracts register zero routes before and after
+  rollback.
+
 ## 2026-06-06 - Offline REST Request Adapter
 
 ### What Changed

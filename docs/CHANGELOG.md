@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.69.0] - 2026-06-06
+
+### Added
+
+- Parser-only offline route validation handler factory for future controller
+  wiring.
+- Injected handler map support for device pairing, pull, push, conflict list,
+  and conflict resolution callbacks.
+- Stable validation response envelopes for accepted and rejected offline route
+  requests, including route callback names, status metadata, safe summaries,
+  and validation error codes.
+- Unit coverage proving handlers validate through the controller, read
+  idempotency headers and route/query params, defer writes, keep routes gated,
+  and return stable invalid responses for malformed push batches.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.68.0] - 2026-06-06
 
 ### Added

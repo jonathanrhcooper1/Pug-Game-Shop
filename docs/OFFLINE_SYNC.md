@@ -139,6 +139,11 @@ Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and idempotency keys for future offline route handlers, and the
 controller can dispatch to explicitly injected handlers while the default
 controller remains fail-closed.
+Parser-only offline route validation handlers now exercise those normalized
+requests through the controller for pairing, pull, push, conflict list, and
+conflict resolution callbacks. The responses expose validation status, safe
+summaries, deferred-write markers, and route-gated markers without persisting or
+replaying operations.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

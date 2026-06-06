@@ -75,6 +75,11 @@ params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
 fail-closed unless a future staging-gated bootstrap explicitly injects a
 handler for a route callback.
+Parser-only offline validation handlers can now be injected for device pairing,
+pull, push, conflict list, and conflict resolution callbacks. They return
+`offline_request_validated` or `offline_request_invalid` envelopes with callback
+names, status metadata, safe summaries, and validation error codes, while
+database writes and live route registration remain disabled.
 
 ### Inventory And Search
 
@@ -312,7 +317,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.68.0",
+  "app_version": "0.69.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -405,6 +410,9 @@ redacted audit payloads before any live database writes are enabled.
 Offline REST request adaptation now provides the future handler bridge for
 request bodies, query filters, route params such as `conflict_id`, and
 idempotency headers without enabling those handlers by default.
+Parser-only validation handlers now exercise that bridge through injected
+controller callbacks and explicitly report `write_deferred` and
+`route_still_gated` in accepted validation summaries.
 
 Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,
