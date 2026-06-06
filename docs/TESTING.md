@@ -64,6 +64,9 @@
 - Local unit coverage now includes REST route contracts for health and public
   Events endpoints, including namespace/method/callback/access-mode checks and
   guards that unimplemented write modules are not registered.
+- Local unit coverage now includes migration runner planning for clean install,
+  prior-schema upgrade, current-schema idempotency, rollback order, and no-op
+  rollback plans.
 
 ## Required Test Backlog
 
@@ -72,7 +75,8 @@ corresponding modules are implemented:
 
 - WordPress REST permission, nonce, request/response, and write-flow integration
   tests.
-- Database migration tests.
+- Live database migration integration tests for `dbDelta`, transactional
+  execution, schema option writes, rollback, and restore drills.
 - Pricing engine tests.
 - Reservation database integration and concurrent double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.

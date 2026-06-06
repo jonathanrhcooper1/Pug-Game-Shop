@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.17.0`
+Version: `0.18.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -24,7 +24,8 @@ are implemented for double-sell prevention. Manager override policy helpers are
 implemented for below-minimum sale authorization. WooCommerce serialized cart
 item metadata validation is implemented for future checkout hooks. REST route
 contracts for health and public event endpoints are unit-tested alongside the
-WordPress smoke route registration check.
+WordPress smoke route registration check. Migration planning is unit-tested for
+clean install, upgrade, idempotent current-schema reruns, and rollback order.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hooks, credit REST endpoints, buylist
 write APIs, scheduled ScryDex workers, and production provider credentials

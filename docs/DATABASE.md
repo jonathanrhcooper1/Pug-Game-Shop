@@ -14,6 +14,10 @@
   configuration is verified to support them reliably. Application-level
   integrity checks remain mandatory.
 - Every schema change is a numbered, reversible migration where practical.
+- Migration runner planning is unit-tested for clean install, prior-version
+  upgrade, idempotent current-schema rerun, and rollback order. Live MySQL,
+  `dbDelta`, backup/restore, and row-lock migration tests remain required in
+  staging.
 
 ## Relationship Overview
 

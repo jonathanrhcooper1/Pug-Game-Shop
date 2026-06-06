@@ -26,6 +26,8 @@ WordPress/WooCommerce integration acceptance is pending a staging environment.
 - Authenticated REST health endpoint.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
+- Migration runner plan tests for clean install, upgrade, idempotent rerun, and
+  rollback order.
 - Admin dashboard and system status.
 - GitHub PHP matrix CI.
 - Dependency-free local syntax and unit tests.

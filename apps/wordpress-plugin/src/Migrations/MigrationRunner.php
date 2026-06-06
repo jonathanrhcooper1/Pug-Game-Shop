@@ -41,11 +41,7 @@ final class MigrationRunner {
 		$applied         = array();
 
 		try {
-			foreach ( $this->migrations() as $migration ) {
-				if ( $migration->version() <= $current_version ) {
-					continue;
-				}
-
+			foreach ( $this->pending_migrations( $current_version ) as $migration ) {
 				try {
 					$migration->up( $wpdb );
 					$this->record_applied_migration( $wpdb, $migration );
@@ -101,13 +97,7 @@ final class MigrationRunner {
 	public function rollback_to( int $target_version ): void {
 		global $wpdb;
 
-		$migrations = array_reverse( $this->migrations() );
-
-		foreach ( $migrations as $migration ) {
-			if ( $migration->version() <= $target_version || $migration->version() > $this->current_version() ) {
-				continue;
-			}
-
+		foreach ( $this->rollback_migrations( $this->current_version(), $target_version ) as $migration ) {
 			$migration->down( $wpdb );
 			update_option( self::VERSION_OPTION, $migration->version() - 1, false );
 		}
@@ -115,6 +105,26 @@ final class MigrationRunner {
 		if ( 0 === $target_version ) {
 			delete_option( self::VERSION_OPTION );
 		}
+	}
+
+	/**
+	 * @return list<int>
+	 */
+	public function pending_versions( int $current_version ): array {
+		return array_map(
+			static fn ( Migration $migration ): int => $migration->version(),
+			$this->pending_migrations( $current_version )
+		);
+	}
+
+	/**
+	 * @return list<int>
+	 */
+	public function rollback_versions( int $current_version, int $target_version ): array {
+		return array_map(
+			static fn ( Migration $migration ): int => $migration->version(),
+			$this->rollback_migrations( $current_version, $target_version )
+		);
 	}
 
 	/**
@@ -129,6 +139,31 @@ final class MigrationRunner {
 			new Version0005Buylist(),
 			new Version0006Sync(),
 			new Version0007Reservations(),
+		);
+	}
+
+	/**
+	 * @return list<Migration>
+	 */
+	private function pending_migrations( int $current_version ): array {
+		return array_values(
+			array_filter(
+				$this->migrations(),
+				static fn ( Migration $migration ): bool => $migration->version() > $current_version
+			)
+		);
+	}
+
+	/**
+	 * @return list<Migration>
+	 */
+	private function rollback_migrations( int $current_version, int $target_version ): array {
+		return array_values(
+			array_filter(
+				array_reverse( $this->migrations() ),
+				static fn ( Migration $migration ): bool => $migration->version() > $target_version
+					&& $migration->version() <= $current_version
+			)
 		);
 	}
 

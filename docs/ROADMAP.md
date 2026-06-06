@@ -9,8 +9,8 @@ capabilities marked verified or unsupported; acceptance gate recorded.
 
 ## Phase 1: WordPress Plugin Foundation
 
-Status: Implemented; REST route contract tests added, staging integration
-acceptance pending
+Status: Implemented; REST route contract and migration runner plan tests added,
+staging integration acceptance pending
 
 Deliver plugin bootstrap, dependency checks, migration runner, roles and
 capabilities, settings, audit/logging, Action Scheduler integration, REST base,

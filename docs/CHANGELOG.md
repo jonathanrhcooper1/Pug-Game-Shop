@@ -2,6 +2,19 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.18.0] - 2026-06-06
+
+### Added
+
+- Migration runner pending-version and rollback-version planning helpers.
+- Unit coverage for clean install, prior-schema upgrade, current-schema
+  idempotent rerun, rollback order, and no-op rollback plans.
+
+### Not Added
+
+- Live MySQL migration transaction, row-lock, `dbDelta`, backup/restore, and
+  rollback integration tests remain staged for WordPress/staging environments.
+
 ## [0.17.0] - 2026-06-06
 
 ### Added

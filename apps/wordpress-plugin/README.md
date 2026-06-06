@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.17.0`
+Version: `0.18.0`
 
 ## Implemented Features
 
@@ -48,6 +48,8 @@ Version: `0.17.0`
   checkout lines.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
+- Migration runner planning coverage for clean install, upgrade, idempotent
+  current-schema rerun, and rollback order.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

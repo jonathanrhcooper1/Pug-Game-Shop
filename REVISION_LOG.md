@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Migration Runner Plan Coverage
+
+### What Changed
+
+- Added migration runner helpers that expose pending migration version plans and
+  rollback version plans without requiring a live WordPress database.
+- Reused the same migration list for runtime migration/rollback execution and
+  dependency-free plan tests.
+- Added unit coverage for clean install, upgrade from schema `5`, current
+  schema idempotency, rollback from `7` to `4`, and no-op rollback plans.
+
+### Why
+
+Database migrations need automated clean-install, upgrade, idempotency, and
+rollback coverage before staging runs the live MySQL integration suite. This
+slice verifies migration ordering and rollback planning locally while keeping
+transaction, row-lock, `dbDelta`, and backup/restore tests in the integration
+lane.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Migration runner plan tests for clean install ordering, upgrade-only pending
+  migrations, current-schema idempotency, rollback ordering, and no-op rollback
+  plans.
+
+### Rollback Notes
+
+- Revert this revision to remove migration plan helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Existing migration classes and live migration/rollback behavior remain
+  governed by prior migration revisions after rollback.
+
 ## 2026-06-06 - REST Route Contract Foundation
 
 ### What Changed
