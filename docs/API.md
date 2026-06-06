@@ -48,6 +48,9 @@ is authenticated. Registered device row normalization now validates and coerces
 raw future repository rows before loaded-row authentication or session planning
 consumes them. Registered device lookup-query planning now converts valid token
 lookup plans into future repository query arguments without executing SQL.
+Registered device permission planning now includes those lookup-query arguments
+on lookup-required outcomes and denies invalid scope/time query plans before a
+future repository call.
 
 ### Inventory And Search
 
@@ -233,8 +236,9 @@ scopes/capabilities, UTC timestamps, stable validation errors, and secret-free
 audits before auth/session planners consume them. Registered device
 lookup-query planning now prepares selected columns, active/revocation/expiry
 filters, row-normalizer metadata, lock intent, and deferred scope checks for
-future repositories. Live device pairing route writes, device row repository
-queries, permission callback wiring,
+future repositories. Permission planning now carries that query contract in
+lookup-required outcomes before live repositories are wired. Live device
+pairing route writes, device row repository queries, permission callback wiring,
 last-seen database writes, push/pull workers, queue replay, canonical entity
 writes, and conflict persistence remain disabled until staging-gated
 WordPress/offline integration tests pass. Offline
@@ -281,7 +285,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.55.0",
+  "app_version": "0.56.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -387,8 +391,9 @@ querying the database or mutating device rows. Registered device row
 normalization now defines the repository-row input contract for that assembly
 boundary without performing the repository query itself. Registered device
 lookup-query planning now defines the future repository lookup arguments while
-still leaving SQL execution disabled. Live device row repository queries,
-permission callback wiring, last-seen database writes, and REST route
+still leaving SQL execution disabled. Permission planning now exposes those
+arguments when a device row has not been loaded yet. Live device row repository
+queries, permission callback wiring, last-seen database writes, and REST route
 registration remain disabled until staging tests pass.
 
 The planned conflict list request accepts query/body filters shaped as:

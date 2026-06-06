@@ -211,6 +211,9 @@ Registered device lookup-query planning now defines the future repository
 query arguments, selected columns, active/revocation/expiry filters,
 row-normalizer metadata, lock intent, and deferred scope checks before live SQL
 execution is enabled.
+Registered-device permission planning now carries that lookup-query plan in
+lookup-required outcomes and rejects invalid query-planning inputs before live
+repositories are called.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

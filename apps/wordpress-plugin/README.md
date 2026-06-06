@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.55.0`
+Version: `0.56.0`
 
 ## Implemented Features
 
@@ -107,6 +107,9 @@ Version: `0.55.0`
 - Offline registered-device lookup-query planning for future repositories,
   including selected columns, active/revocation/expiry filters, row-normalizer
   metadata, lock intent, deferred scope checks, and secret-free audit payloads.
+- Offline registered-device permission lookup-query integration, including
+  lookup-required query args, rejected invalid scope/time query plans, and
+  permission audit summaries without live repository calls.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

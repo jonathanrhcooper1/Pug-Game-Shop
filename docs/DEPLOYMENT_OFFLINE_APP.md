@@ -171,6 +171,13 @@ SQL. Live device row repository queries, route registration, permission
 callback wiring, last-seen writes, queue replay, and database writes remain
 disabled until staging integration tests pass.
 
+Version `0.56.0` integrates registered-device lookup-query planning into the
+permission planning boundary. Lookup-required outcomes now carry the future
+repository query arguments, while invalid scope/time query plans are rejected
+before a repository call is attempted. Live device row repository queries, route
+registration, permission callback wiring, last-seen writes, queue replay, and
+database writes remain disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -153,7 +153,7 @@ final class OfflineRegisteredDeviceRowNormalizerTest extends TestCase {
 				'token_expires_at'     => '2026-06-07 16:00:00.123456',
 				'scopes_json'          => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json'    => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'          => '0.55.0',
+				'app_version'          => '0.56.0',
 				'platform'             => 'windows',
 				'status'               => 'ACTIVE',
 				'last_seen_at'         => '2026-06-06 15:30:00',

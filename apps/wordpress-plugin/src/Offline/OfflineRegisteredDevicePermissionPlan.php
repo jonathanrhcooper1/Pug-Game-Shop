@@ -16,6 +16,7 @@ final class OfflineRegisteredDevicePermissionPlan {
 		private bool $authorized,
 		private bool $requires_device_lookup,
 		private OfflineDeviceTokenLookupPlan $lookup_plan,
+		private ?OfflineRegisteredDeviceLookupPlan $device_lookup_plan,
 		private ?OfflineDeviceAccessDecision $access_decision,
 		private ?OfflineDeviceSessionPlan $session_plan,
 		private array $errors,
@@ -28,9 +29,10 @@ final class OfflineRegisteredDevicePermissionPlan {
 	 */
 	public static function lookup_required(
 		OfflineDeviceTokenLookupPlan $lookup_plan,
+		OfflineRegisteredDeviceLookupPlan $device_lookup_plan,
 		array $audit_payload
 	): self {
-		return new self( false, true, $lookup_plan, null, null, array(), $audit_payload );
+		return new self( false, true, $lookup_plan, $device_lookup_plan, null, null, array(), $audit_payload );
 	}
 
 	/**
@@ -41,12 +43,14 @@ final class OfflineRegisteredDevicePermissionPlan {
 		OfflineDeviceTokenLookupPlan $lookup_plan,
 		array $errors,
 		array $audit_payload,
+		?OfflineRegisteredDeviceLookupPlan $device_lookup_plan = null,
 		?OfflineDeviceAccessDecision $access_decision = null
 	): self {
 		return new self(
 			false,
 			false,
 			$lookup_plan,
+			$device_lookup_plan,
 			$access_decision,
 			null,
 			array_values( array_unique( $errors ) ),
@@ -63,7 +67,7 @@ final class OfflineRegisteredDevicePermissionPlan {
 		OfflineDeviceSessionPlan $session_plan,
 		array $audit_payload
 	): self {
-		return new self( true, false, $lookup_plan, $access_decision, $session_plan, array(), $audit_payload );
+		return new self( true, false, $lookup_plan, null, $access_decision, $session_plan, array(), $audit_payload );
 	}
 
 	public function is_authorized(): bool {
@@ -76,6 +80,10 @@ final class OfflineRegisteredDevicePermissionPlan {
 
 	public function lookup_plan(): OfflineDeviceTokenLookupPlan {
 		return $this->lookup_plan;
+	}
+
+	public function device_lookup_plan(): ?OfflineRegisteredDeviceLookupPlan {
+		return $this->device_lookup_plan;
 	}
 
 	public function access_decision(): ?OfflineDeviceAccessDecision {
@@ -91,6 +99,17 @@ final class OfflineRegisteredDevicePermissionPlan {
 	 */
 	public function lookup_filters(): array {
 		return $this->lookup_plan->lookup_filters();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function lookup_query_args(): array {
+		if ( null === $this->device_lookup_plan ) {
+			return array();
+		}
+
+		return $this->device_lookup_plan->query_args();
 	}
 
 	/**

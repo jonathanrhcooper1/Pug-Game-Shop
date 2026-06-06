@@ -25,15 +25,25 @@ final class OfflineRegisteredDevicePermissionPlannerTest extends TestCase {
 
 		$expected_hash = OfflineDeviceTokenLookupPlanner::token_hash( self::DEVICE_TOKEN );
 		$audit         = $plan->audit_payload();
+		$query         = $plan->lookup_query_args();
 
 		$this->assert_false( $plan->is_authorized() );
 		$this->assert_true( $plan->requires_device_lookup() );
 		$this->assert_same( array( 'token_hash' => $expected_hash ), $plan->lookup_filters() );
+		$this->assert_false( null === $plan->device_lookup_plan() );
+		$this->assert_same( 'tcg_offline_devices', $query['table'] );
+		$this->assert_same( $expected_hash, $query['where']['token_hash'] );
+		$this->assert_same( 'offline_push', $query['where']['required_scope'] );
+		$this->assert_same( 'optimistic_last_seen_update', $query['lock_intent'] );
 		$this->assert_same( null, $plan->access_decision() );
 		$this->assert_same( null, $plan->session_plan() );
 		$this->assert_same( array(), $plan->errors() );
 		$this->assert_same( 'device_lookup_required', $audit['stage'] );
 		$this->assert_true( $audit['requires_device_lookup'] );
+		$this->assert_true( $audit['has_lookup_query_plan'] );
+		$this->assert_same( 19, $audit['selected_column_count'] );
+		$this->assert_same( 'optimistic_last_seen_update', $audit['lock_intent'] );
+		$this->assert_true( $audit['scope_check_deferred'] );
 		$this->assert_false( array_key_exists( 'device_token', $audit ) );
 		$this->assert_false( array_key_exists( 'token_hash', $audit ) );
 	}
@@ -51,6 +61,8 @@ final class OfflineRegisteredDevicePermissionPlannerTest extends TestCase {
 
 		$this->assert_true( $plan->is_authorized() );
 		$this->assert_false( $plan->requires_device_lookup() );
+		$this->assert_same( null, $plan->device_lookup_plan() );
+		$this->assert_same( array(), $plan->lookup_query_args() );
 		$this->assert_same( array(), $plan->errors() );
 		$this->assert_same( 42, $plan->access_decision()?->context()['offline_device_id'] );
 		$this->assert_same( 9, $update['row_version'] );
@@ -80,8 +92,34 @@ final class OfflineRegisteredDevicePermissionPlannerTest extends TestCase {
 		$this->assert_false( $plan->requires_device_lookup() );
 		$this->assert_same( array( 'device_token_invalid' ), $plan->errors() );
 		$this->assert_same( array(), $plan->lookup_filters() );
+		$this->assert_same( null, $plan->device_lookup_plan() );
+		$this->assert_same( array(), $plan->lookup_query_args() );
 		$this->assert_same( 'token_lookup_rejected', $audit['stage'] );
+		$this->assert_false( $audit['has_lookup_query_plan'] );
 		$this->assert_same( array( 'device_token_invalid' ), $audit['errors'] );
+	}
+
+	public function test_planner_rejects_invalid_lookup_query_before_repository_call(): void {
+		$plan = ( new OfflineRegisteredDevicePermissionPlanner() )->plan(
+			$this->headers(),
+			null,
+			'admin_secret',
+			'not-a-time'
+		);
+
+		$audit = $plan->audit_payload();
+
+		$this->assert_false( $plan->is_authorized() );
+		$this->assert_false( $plan->requires_device_lookup() );
+		$this->assert_false( null === $plan->device_lookup_plan() );
+		$this->assert_false( $plan->device_lookup_plan()?->is_valid() );
+		$this->assert_same( array(), $plan->lookup_query_args() );
+		$this->assert_true( in_array( 'required_scope_unsupported', $plan->errors(), true ) );
+		$this->assert_true( in_array( 'server_time_utc_invalid', $plan->errors(), true ) );
+		$this->assert_same( 'device_lookup_rejected', $audit['stage'] );
+		$this->assert_false( $audit['has_lookup_query_plan'] );
+		$this->assert_same( '', $audit['lock_intent'] );
+		$this->assert_false( $audit['scope_check_deferred'] );
 	}
 
 	public function test_planner_rejects_loaded_device_denials_without_session_plan(): void {

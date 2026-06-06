@@ -89,7 +89,7 @@ and batch resolution planning plus WordPress offline persistence schema
 and push persistence planning plus bearer-token authentication and token lookup
 planning plus device session planning plus registered-device permission
 planning plus registered device row normalization and lookup-query planning
-implemented
+plus permission lookup-query integration implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
 operation queue, pull cursor, conflict center, kiosk/staff/admin modes, labels,

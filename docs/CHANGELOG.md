@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.56.0] - 2026-06-06
+
+### Changed
+
+- Integrated offline registered-device lookup-query planning into the
+  registered-device permission planner.
+- Lookup-required permission outcomes now carry future repository query
+  arguments, selected-column metadata, lock intent, and deferred scope-check
+  summaries.
+- Invalid required-scope or server-time query plans are rejected before a
+  future repository call is attempted.
+- Unit coverage now verifies lookup-query args on permission plans, invalid
+  query planning, loaded-row authorization without query args, and secret-free
+  permission audits.
+
+### Not Added
+
+- Live device row repository queries, REST route registration, WordPress
+  `permission_callback` wiring, last-seen `$wpdb` writes, queue replay workers,
+  and live database writes remain disabled for later staging-gated phases.
+
 ## [0.55.0] - 2026-06-06
 
 ### Added

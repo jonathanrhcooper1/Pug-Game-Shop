@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Permission Lookup Query Integration
+
+### What Changed
+
+- Integrated registered-device lookup-query planning into the future
+  `registered_device` REST permission planning boundary.
+- Extended the permission plan value object to carry an optional device lookup
+  plan and expose future repository query arguments.
+- Updated the permission planner to build lookup-query plans after valid token
+  lookup and before declaring a device lookup required.
+- Added rejection handling for invalid required-scope or server-time query
+  plans before a future repository call is attempted.
+- Added permission audit summary fields for lookup-query plan presence,
+  selected-column count, lock intent, and deferred scope checks without
+  exposing raw tokens or token hashes.
+- Added unit coverage for lookup-required query args, invalid query planning,
+  loaded-row authorization without query args, and secret-free audit payloads.
+- Updated project, plugin, and offline app package versions to `0.56.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The repository query planner existed as a standalone contract. Future REST
+permission callbacks need that contract attached to lookup-required permission
+plans so a repository adapter can execute the planned query and then feed the
+normalized row back into authorization. This revision composes those boundaries
+without querying WordPress tables, mutating device rows, or registering live
+offline routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device permission planner tests for lookup-query args on
+  lookup-required outcomes, invalid scope/time query rejection, loaded-row
+  authorization without query args, and query summary audit fields without
+  token-hash leakage.
+
+### Rollback Notes
+
+- Revert this revision to remove lookup-query composition from the permission
+  planner/value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row repository queries, route registration, WordPress permission
+  callbacks, last-seen writes, queue replay workers, and `$wpdb` writes remain
+  disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Registered Device Lookup Query Planning
 
 ### What Changed
