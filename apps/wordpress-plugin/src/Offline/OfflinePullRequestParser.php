@@ -23,13 +23,13 @@ final class OfflinePullRequestParser {
 	 * @param array<string, mixed> $payload Request body.
 	 */
 	public function parse( array $payload ): OfflinePullRequestValidationResult {
-		$errors              = array();
-		$device_id           = trim( (string) ( $payload['device_id'] ?? '' ) );
-		$domains_payload     = $payload['domains'] ?? self::SUPPORTED_DOMAINS;
-		$cursors_payload     = $payload['cursors'] ?? array();
-		$page_size           = $this->page_size( $payload['page_size'] ?? self::DEFAULT_PAGE_SIZE, $errors );
+		$errors             = array();
+		$device_id          = trim( (string) ( $payload['device_id'] ?? '' ) );
+		$domains_payload    = $payload['domains'] ?? self::SUPPORTED_DOMAINS;
+		$cursors_payload    = $payload['cursors'] ?? array();
+		$page_size          = $this->page_size( $payload['page_size'] ?? self::DEFAULT_PAGE_SIZE, $errors );
 		$include_tombstones = $payload['include_tombstones'] ?? true;
-		$schema_version      = $this->required_positive_int(
+		$schema_version     = $this->required_positive_int(
 			$payload['schema_version'] ?? null,
 			'schema_version',
 			$errors
@@ -46,7 +46,7 @@ final class OfflinePullRequestParser {
 		}
 
 		if ( ! is_bool( $include_tombstones ) ) {
-			$errors[]             = 'include_tombstones_invalid';
+			$errors[]           = 'include_tombstones_invalid';
 			$include_tombstones = true;
 		}
 
