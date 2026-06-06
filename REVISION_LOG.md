@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Windows Offline App Packaging Foundation
+
+### What Changed
+
+- Added the initial Tauri/React/TypeScript offline app scaffold.
+- Added Windows packaging metadata for `x86_64-pc-windows-msvc` and NSIS
+  `.exe` installer output.
+- Added a package manifest that records offline sync routes, no direct MySQL
+  access, manual production release approval, code-signing requirements, and
+  required branding tokens.
+- Added a dependency-free Node package contract test and wired it into root
+  `npm run test`.
+- Added a pull request quality-gate step for the offline app package contract.
+- Added a manual-only GitHub Actions workflow that can build and upload an
+  unsigned Windows installer artifact.
+- Updated offline app deployment, offline sync, architecture, roadmap, and
+  testing docs.
+
+### Why
+
+The offline sync app must be a Windows executable. This slice establishes the
+Tauri-first packaging path, keeps production release manual, and verifies that
+the app consumes WordPress/offline sync and branding contracts without storing
+production credentials or using direct database access.
+
+### Files Affected
+
+- `.github/workflows/offline-app-windows.yml`
+- `.github/workflows/pull-request-quality-gates.yml`
+- `apps/offline-app/.gitignore`
+- `apps/offline-app/README.md`
+- `apps/offline-app/config/windows-package.manifest.json`
+- `apps/offline-app/index.html`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/main.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/build.rs`
+- `apps/offline-app/src-tauri/capabilities/default.json`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src-tauri/src/main.rs`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `apps/offline-app/tsconfig.json`
+- `apps/offline-app/vite.config.ts`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision does not add WordPress or SQLite migrations.
+
+### Tests Added
+
+- Offline app Windows package contract test for app/Tauri version alignment,
+  Windows target, NSIS `.exe` packaging, manual production release rules,
+  code-signing requirement, offline sync routes, branding tokens, and forbidden
+  production secret markers.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline app Tauri scaffold, Windows
+  packaging workflow, root test wiring, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required because no SQLite migrations are included.
+- Manual unsigned installer builds should be discarded after rollback.
+
 ## 2026-06-06 - White-Label Branding Settings Foundation
 
 ### What Changed

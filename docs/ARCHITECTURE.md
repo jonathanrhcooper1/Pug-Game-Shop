@@ -161,6 +161,11 @@ Hardware access is implemented behind Tauri commands and device adapters.
 Keyboard-wedge scanners require no privileged driver. Printer integrations are
 capability-tested per configured model before being marked supported.
 
+The initial packaging scaffold targets a Tauri NSIS installer for
+`x86_64-pc-windows-msvc`, producing a Windows `.exe` artifact. Production
+distribution remains blocked until signing, hardware gates, and offline sync
+integration tests pass.
+
 ## Storefront Product Strategy
 
 Serialized singles use a WooCommerce catalog shell product for a card

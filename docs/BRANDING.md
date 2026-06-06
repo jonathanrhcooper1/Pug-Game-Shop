@@ -63,4 +63,5 @@ CSS variable keys use the `--tcg-*` prefix, for example:
 - Expose the public branding config through a dedicated REST endpoint after
   route permission and cache behavior are accepted in staging.
 - Sync branding config to the Windows offline app during device pairing and
-  pull refresh.
+  pull refresh. The offline app package manifest already records the required
+  token list so builds fail contract checks if future app changes omit them.

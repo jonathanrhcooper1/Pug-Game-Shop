@@ -79,7 +79,8 @@ requests cannot change liability twice.
 
 ## Phase 7: Offline App
 
-Status: In progress; shared offline sync conflict policy tests implemented
+Status: In progress; shared offline sync conflict policy tests and Tauri
+Windows packaging scaffold implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
 operation queue, pull cursor, conflict center, kiosk/staff/admin modes, labels,

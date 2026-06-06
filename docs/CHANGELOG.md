@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.34.0] - 2026-06-06
+
+### Added
+
+- Tauri/React/TypeScript offline app scaffold for the Windows app.
+- Windows packaging metadata for `x86_64-pc-windows-msvc` and NSIS `.exe`
+  installer output.
+- Offline app manifest covering WordPress offline sync routes, no direct MySQL
+  access, manual production release approval, code-signing requirement, and
+  required white-label branding tokens.
+- Dependency-free offline app package contract test wired into root
+  `npm run test`.
+- Pull request quality gate coverage for the offline app package contract.
+- Manual-only GitHub Actions workflow for building and uploading an unsigned
+  Windows installer artifact.
+
+### Not Added
+
+- Live SQLite queue persistence, device pairing, WordPress offline REST
+  endpoints, push/pull workers, printer/scanner adapters, kiosk lockdown,
+  updater, signed production installer, and full reconnect integration tests
+  remain disabled for later staging-gated phases.
+
 ## [0.33.0] - 2026-06-06
 
 ### Added

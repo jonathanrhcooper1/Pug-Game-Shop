@@ -6,6 +6,35 @@ The planned release is a signed Tauri Windows installer with versioned SQLite
 migrations and a controlled updater. Electron is a documented fallback only
 after failed hardware proof-of-concept.
 
+Version `0.34.0` adds the initial Tauri Windows packaging scaffold:
+
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/config/windows-package.manifest.json`
+- `.github/workflows/offline-app-windows.yml`
+
+The Windows target is `x86_64-pc-windows-msvc`, the installer target is `nsis`,
+and the expected installer artifact is an unsigned `.exe`.
+
+## Build Commands
+
+Validate the packaging contract:
+
+```sh
+npm run test:offline-app
+```
+
+Build locally from `apps/offline-app` after installing dependencies:
+
+```sh
+npm install
+npm run build:windows
+```
+
+The GitHub Actions workflow exposes a manual `workflow_dispatch` build that
+uploads the unsigned NSIS `.exe` artifact. Production release still requires
+manual approval, code signing, and the hardware gate below.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

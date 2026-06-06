@@ -68,6 +68,9 @@ jobs:
       - name: Production secret marker check
         run: node scripts/wp-env/verify-no-production-secrets.mjs
 
+      - name: Offline app Windows package contract
+        run: npm run test:offline-app
+
   wordpress-integration:
     name: WordPress integration workflow present
     runs-on: ubuntu-latest

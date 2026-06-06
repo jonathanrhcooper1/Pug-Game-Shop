@@ -107,6 +107,9 @@
 - Root automation now includes sync-engine offline conflict policy tests for
   inventory reservations, event reservations, customer credit redemption, and
   device revocation.
+- Root automation now includes the offline app Windows package contract test
+  for Tauri metadata, `x86_64-pc-windows-msvc`, NSIS `.exe` output, offline
+  sync routes, required branding tokens, and secret-safety markers.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.
