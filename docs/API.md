@@ -36,7 +36,10 @@ device modes, manager/location IDs, app versions, Windows platform checks,
 hardware capabilities, requested scopes, and schema version gating. Offline
 device registration planning is implemented for future device rows, one-time
 response payloads, token hash storage fields, sync routes, first-sync flags,
-and redacted audit payloads.
+and redacted audit payloads. Offline device bearer-token authentication
+planning is implemented for future registered-device permission callbacks,
+including header normalization, device token validation, token hash comparison,
+persisted device ID checks, and secret-free accepted contexts.
 
 ### Inventory And Search
 
@@ -207,10 +210,13 @@ timestamps, JSON-object payloads, authorization context, duplicate IDs, and
 schema version `1`. Parsed push operations can now be resolved into planned
 accepted, rejected, or conflict outcomes with future operation result rows,
 API response payloads, manager-reviewed conflict rows, deterministic conflict
-IDs, and redacted audit payloads. Live device pairing, bearer token validation,
-push/pull workers, queue replay, canonical entity writes, and conflict
-persistence remain disabled until staging-gated WordPress/offline integration
-tests pass. Offline pull request
+IDs, and redacted audit payloads. Offline bearer-token authentication planning
+now validates request headers, token shape, SHA-256 token hashes, persisted
+offline device IDs, revocation, expiry, and required scopes before future
+route handlers proceed. Live device pairing route writes, device row lookup,
+last-seen updates, push/pull workers, queue replay, canonical entity writes,
+and conflict persistence remain disabled until staging-gated WordPress/offline
+integration tests pass. Offline pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
 `customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
 limits, tombstone inclusion, and schema version `1`. Offline pull response
@@ -253,7 +259,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.49.0",
+  "app_version": "0.50.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -348,8 +354,11 @@ Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,
 revocation timestamps, token expiry, required scopes, supported modes/scopes,
 location IDs, and UTC timestamps before a pull, push, or conflict request can
-proceed. Live bearer token lookup, token hash comparison, last-seen updates,
-and REST permission callback wiring remain disabled until staging tests pass.
+proceed. Offline bearer-token authentication planning now adds header
+normalization, token shape validation, SHA-256 token hash comparison,
+persisted device ID validation, and secret-free accepted contexts. Live device
+row lookup, last-seen updates, and REST permission callback wiring remain
+disabled until staging tests pass.
 
 The planned conflict list request accepts query/body filters shaped as:
 

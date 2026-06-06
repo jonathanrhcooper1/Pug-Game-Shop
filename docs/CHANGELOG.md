@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.50.0] - 2026-06-06
+
+### Added
+
+- Offline device bearer-token authenticator for future REST permission
+  callbacks.
+- Authorization header normalization for direct and WordPress-style request
+  header arrays.
+- Device token shape validation, SHA-256 token hashing, stored token hash
+  comparison with `hash_equals`, and persisted `offline_device_id` enforcement.
+- Secret-free accepted authorization context containing device ID, persisted
+  offline device ID, required scope, auth type, and authentication timestamp.
+- Unit coverage for valid tokens, normalized header arrays, missing/malformed
+  tokens, short tokens, invalid stored hashes, wrong tokens, missing persisted
+  device IDs, revoked devices, and denied scopes.
+
+### Not Added
+
+- Live device row lookup, REST route registration, permission callback wiring,
+  device last-seen updates, queue replay workers, and live `$wpdb` writes remain
+  disabled for later staging-gated phases.
+
 ## [0.49.0] - 2026-06-06
 
 ### Added

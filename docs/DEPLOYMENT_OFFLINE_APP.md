@@ -125,6 +125,14 @@ Live `$wpdb` transactions, route callbacks, token lookup, canonical entity
 mutations, conflict writes, and cursor advancement remain disabled until
 staging integration tests pass.
 
+Version `0.50.0` adds the offline bearer-token authentication planning
+boundary. Future WordPress permission callbacks can now normalize
+Authorization headers, validate device token shape, compare SHA-256 token
+hashes, require persisted offline-device IDs, and delegate active/revoked/
+expired/scope checks to the shared device access policy. Live device row lookup,
+last-seen updates, route registration, queue replay, and database writes remain
+disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

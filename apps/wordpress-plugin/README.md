@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.49.0`
+Version: `0.50.0`
 
 ## Implemented Features
 
@@ -87,6 +87,10 @@ Version: `0.49.0`
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.
+- Offline device bearer-token authentication planning for future permission
+  callbacks, including header normalization, token shape validation, SHA-256
+  token hash comparison, persisted offline-device IDs, and secret-free accepted
+  contexts.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

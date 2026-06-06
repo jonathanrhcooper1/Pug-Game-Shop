@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Token Authentication Planning
+
+### What Changed
+
+- Added an offline device bearer-token authenticator for future
+  `registered_device` REST permission callbacks.
+- Added normalization for `Authorization`, `authorization`, and
+  WordPress-style `HTTP_AUTHORIZATION` header shapes.
+- Added device token shape validation, SHA-256 token hashing, stored token hash
+  comparison, and persisted offline-device ID validation.
+- Delegated accepted device rows to the existing offline device access policy
+  so active status, revocation, expiry, scopes, modes, location IDs, and UTC
+  timestamps continue through one shared decision path.
+- Added secret-free accepted authorization contexts that include device ID,
+  persisted offline device ID, required scope, auth type, token verification,
+  and authentication timestamp without returning raw tokens or token hashes.
+- Added unit coverage for valid tokens, normalized WordPress header arrays,
+  missing and malformed tokens, invalid stored hashes, wrong tokens, missing
+  persisted device IDs, revoked devices, and denied scopes.
+- Updated project, plugin, and offline app package versions to `0.50.0`.
+- Updated API, offline sync, deployment, testing, changelog, roadmap, and
+  plugin docs.
+
+### Why
+
+Future live offline push/pull/conflict route handlers need a narrow,
+auditable permission boundary before they can safely load snapshots or write
+queue/conflict rows. This slice implements the token parsing and hash
+verification contract without registering live routes or querying the database.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceTokenAuthenticator.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceTokenAuthenticatorTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device token authenticator tests for valid bearer tokens, normalized
+  header arrays, missing/malformed tokens, invalid stored hashes, wrong tokens,
+  missing persisted device IDs, revocation, and denied scopes.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline device token authenticator, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row lookup, route registration, permission callback wiring,
+  queue replay workers, and `$wpdb` writes remain disabled both before and
+  after rollback.
+
 ## 2026-06-06 - Offline Push Persistence Planning
 
 ### What Changed

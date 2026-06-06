@@ -191,7 +191,11 @@ payload before live token generation or persistence is enabled. Device access
 policy checks are implemented so future registered-device route permission
 callbacks can validate active state, revocation, token expiry, required scopes,
 supported modes/scopes, location IDs, and UTC timestamps before pull, push, or
-conflict work runs. Conflict list and resolution request validation is
+conflict work runs. Device bearer-token authentication planning is implemented
+so future permission callbacks can normalize request headers, validate token
+shape, compare SHA-256 token hashes, require persisted offline-device IDs, and
+return secret-free accepted contexts before conflict or queue work starts.
+Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and
 unsafe adjustment payloads before live conflict reads or writes are enabled.

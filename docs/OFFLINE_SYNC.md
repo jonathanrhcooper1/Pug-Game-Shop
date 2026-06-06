@@ -85,10 +85,14 @@ response, token hash storage fields, sync route map, first-sync flags, and
 redacted audit payload without live writes. Registered-device access policy
 checks now validate active state, revocation timestamps, token expiry, required
 scopes, supported modes/scopes, location IDs, and UTC timestamps for future
-pull/push/conflict permission callbacks. Those endpoints are not registered
-live yet, accepted operations are not persisted or replayed yet, live bearer
-token lookup and token hash comparison are disabled, live pull queries are not
-executed yet, and pull cursors are not advanced yet. Conflict list and
+pull/push/conflict permission callbacks. Offline bearer-token authentication
+planning now validates Authorization headers, device token shape, SHA-256 token
+hashes, persisted offline device IDs, active/revoked/expired state, and
+required scopes without exposing raw tokens in accepted contexts. Those
+endpoints are not registered live yet, accepted operations are not persisted or
+replayed yet, live device row lookup and last-seen updates are disabled, live
+pull queries are not executed yet, and pull cursors are not advanced yet.
+Conflict list and
 resolution request validation now covers status/entity filters, cursors,
 page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,
 notes, expected conflict versions, UTC resolution timestamps, adjustment
@@ -113,9 +117,9 @@ payloads after repository-provided server snapshots are available. WordPress
 schema migration `0008_offline-sync` now adds the server-side tables for
 registered devices, idempotent operation queue/result rows, manager-reviewed
 sync conflicts, and per-device pull cursors. Live route callbacks, bearer-token
-lookup, token hash comparison, queue replay workers, canonical entity
-mutations, conflict mutation writes, and cursor advancement remain disabled
-until staging integration tests pass. Offline push persistence planning now
+database lookup, queue replay workers, canonical entity mutations, conflict
+mutation writes, and cursor advancement remain disabled until staging
+integration tests pass. Offline push persistence planning now
 maps a parsed payload and batch resolution into future queue/result rows,
 manager-reviewed conflict insert rows, idempotent replay rows, and redacted
 audit payloads without performing live `$wpdb` writes.

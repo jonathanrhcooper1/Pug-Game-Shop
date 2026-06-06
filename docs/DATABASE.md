@@ -256,8 +256,10 @@ push operation and batch resolution planning now prepares future queue result
 rows, conflict rows, response counts, and audit payloads for accepted, rejected,
 and manager-reviewed operation outcomes. Offline push persistence planning now
 maps those plans into future queue/result rows, conflict insert rows, and
-idempotent replay rows, but live provider workers and offline route writes
-remain disabled until later phases.
+idempotent replay rows. Offline bearer-token authentication planning now
+verifies future request headers and stored token hashes before queue/conflict
+work proceeds, but live provider workers, device row lookup, and offline route
+writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |
