@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Customer Credit Ledger Posting Internals
+
+### What Changed
+
+- Added customer credit posting request and result objects.
+- Added a customer credit ledger storage contract and `wpdb` repository.
+- Added a transaction-backed customer credit ledger posting service that
+  requires idempotency keys, locks the customer row, checks currency, applies
+  the existing posting policy, inserts immutable ledger rows, updates cached
+  balances, and returns duplicate idempotency-key replays without posting again.
+- Added unit coverage for successful buylist credit posting, duplicate
+  idempotency replay, overspend rejection, and missing idempotency-key
+  rejection.
+
+### Why
+
+The credit ledger now needs a persistence path before buylist payouts,
+WooCommerce redemptions, offline conflict processing, or staff adjustments can
+be wired to live routes. This slice adds deterministic server-side posting
+internals while keeping public credit APIs and commerce hooks disabled until
+staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Credit/CustomerCreditLedgerRepository.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditLedgerService.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditLedgerStorage.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditPostingRequest.php`
+- `apps/wordpress-plugin/src/Credit/CustomerCreditPostingResult.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditLedgerServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/CUSTOMER_CREDIT.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `5`.
+
+### Tests Added
+
+- Customer credit ledger service tests for successful posting and cached balance
+  version updates.
+- Duplicate idempotency-key replay test proving a retry does not insert or
+  update again.
+- Overspend rejection test proving no ledger insert occurs.
+- Missing idempotency-key rejection test proving no transaction starts.
+
+### Rollback Notes
+
+- Revert this revision to remove the credit posting service and repository.
+- No schema rollback is required; database target remains `5`.
+- Do not expose credit write routes or checkout hooks in production until
+  staging verifies ledger replay, duplicate prevention, and reconciliation.
+- No production customer or credit data is committed by this revision.
+
 ## 2026-06-06 - Buylist Foundation
 
 ### What Changed

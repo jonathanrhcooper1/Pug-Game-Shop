@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.8.0`
+Version: `0.9.0`
 
 ## Implemented Features
 
@@ -29,6 +29,8 @@ Version: `0.8.0`
 - Customer, contact, credit ledger, merge, and note schema migration.
 - Customer credit entry type and posting policy helpers for signed ledger
   previews, manager approval, and negative-balance rejection.
+- Customer credit ledger posting service and repository with idempotency,
+  customer row locking, cached balance updates, and replay handling.
 - Buylist submission, item, offer, approval, and conversion schema migration.
 - Buylist submission status transition helper.
 - Hard-disabled flags for unfinished modules.

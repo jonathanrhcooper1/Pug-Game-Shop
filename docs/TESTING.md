@@ -34,8 +34,9 @@
   registration policy outcomes, and registration response shaping. WordPress
   integration smoke coverage asserts the local registration route is registered.
 - Local unit coverage now includes customer credit schema, entry type sign and
-  manager-approval rules, and posting policy previews. WordPress integration
-  smoke coverage asserts schema version `4` and customer credit tables.
+  manager-approval rules, posting policy previews, and ledger posting service
+  idempotency. WordPress integration smoke coverage asserts schema version `5`
+  and customer credit tables.
 - Local unit coverage now includes buylist schema and submission status
   transitions. WordPress integration smoke coverage asserts schema version `5`
   and buylist tables.
@@ -49,7 +50,7 @@ corresponding modules are implemented:
 - Database migration tests.
 - Pricing engine tests.
 - Reservation/double-sell prevention tests.
-- Customer credit ledger tests.
+- Customer credit ledger database integration and replay tests.
 - Manager override tests.
 - ScryDex sync checkpoint/resume tests.
 - TopDeck registration adapter tests.

@@ -5,8 +5,11 @@
 Schema migration `0004` creates customer, contact, credit ledger, merge log, and
 customer note tables. Local policy helpers define entry types, typical signs,
 manager-approval requirements, signed ledger previews, and negative-balance
-rejection. REST endpoints, WooCommerce redemption hooks, offline credit conflict
-processing, and staff UI remain disabled until staging acceptance.
+rejection. A transaction-backed posting service and `wpdb` repository now
+support idempotency-key replay, customer row locking, immutable ledger inserts,
+and cached balance/version updates. REST endpoints, WooCommerce redemption
+hooks, offline credit conflict processing, and staff UI remain disabled until
+staging acceptance.
 
 ## Rules
 
@@ -48,6 +51,10 @@ processing, and staff UI remain disabled until staging acceptance.
 
 Nightly and on-demand reconciliation recalculates balances from the ledger and
 flags any projection mismatch.
+
+Current implementation covers steps 3 through 9 for server-side internals.
+Capability checks, normalized-phone enforcement, route permissions, and audit
+events are added when staff and WooCommerce write surfaces are enabled.
 
 ## Online Redemption
 

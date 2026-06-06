@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.8.0
+Stable tag: 0.9.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -17,7 +17,8 @@ Phase 3 foundations add Events and TopDeck schema contracts, event status
 helpers, and a TopDeck adapter with default-disabled event creation.
 Phase 3.1 adds read-only public event REST endpoints and shortcodes.
 Phase 3.2 adds local free/pay-at-store event registration writes.
-Phase 6.1 adds customer credit schema and ledger policy helpers.
+Phase 6.1 adds customer credit schema, ledger policy helpers, and idempotent
+posting internals.
 Phase 6.2 adds buylist schema and submission status helpers.
 
 Inventory and commerce modules remain disabled until their implementation phases.
@@ -30,6 +31,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.9.0 =
+
+* Added customer credit ledger posting service, storage contract, and wpdb repository.
+* Added idempotency replay handling and cached balance update tests.
+* Kept public credit APIs and WooCommerce redemption hooks disabled.
 
 = 0.8.0 =
 

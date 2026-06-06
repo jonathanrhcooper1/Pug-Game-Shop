@@ -202,9 +202,9 @@ else:
 
 ## Customers And Credit
 
-Status: schema migration `0004_customer_credit` is implemented. Write APIs,
-WooCommerce redemption hooks, offline conflict handling, and staff UI remain
-disabled until staging acceptance.
+Status: schema migration `0004_customer_credit` and idempotent ledger posting
+internals are implemented. Write APIs, WooCommerce redemption hooks, offline
+conflict handling, and staff UI remain disabled until staging acceptance.
 
 | Table | Key fields |
 | --- | --- |

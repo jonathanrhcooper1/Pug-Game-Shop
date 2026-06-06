@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.9.0] - 2026-06-06
+
+### Added
+
+- Customer credit ledger posting request/result objects.
+- Customer credit ledger storage contract and `wpdb` repository.
+- Transactional customer credit ledger posting service with required
+  idempotency keys, customer row locking, currency checks, cached balance
+  updates, and duplicate replay handling.
+- Unit coverage for successful credit posting, idempotency replay, overspend
+  rejection, and missing idempotency-key rejection.
+
+### Not Added
+
+- Customer credit REST endpoints, WooCommerce redemption hooks, offline credit
+  conflict processing, and staff UI remain disabled for later staging-gated
+  phases.
+
 ## [0.8.0] - 2026-06-06
 
 ### Added
