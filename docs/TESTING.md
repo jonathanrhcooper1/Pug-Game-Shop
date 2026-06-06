@@ -40,6 +40,9 @@
 - Local unit coverage now includes customer credit planned REST route contracts
   and posting payload validation for route/customer matching, idempotency,
   currency, metadata, optional linked IDs, and manager-approved adjustments.
+- Local unit coverage now includes customer credit REST response presentation
+  for balance payloads, ledger row shaping, metadata redaction, posting-result
+  payloads, and validation-error responses.
 - Local unit coverage now includes buylist schema and submission status
   transitions. WordPress integration smoke coverage asserts buylist tables.
 - Local unit coverage now includes buylist planned REST route contracts and

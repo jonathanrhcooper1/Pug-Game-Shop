@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.30.0
+Stable tag: 0.31.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -23,6 +23,8 @@ Phase 6.1 adds customer credit schema, ledger policy helpers, and idempotent
 posting internals.
 Phase 6.1.1 adds customer credit REST route contracts and posting payload
 validation while keeping live endpoints disabled.
+Phase 6.1.2 adds customer credit REST response presentation with safe ledger
+metadata redaction while keeping live endpoints disabled.
 Phase 6.2 adds buylist schema and submission status helpers.
 Phase 6.2.1 adds buylist REST route contracts and submission intake payload
 validation while keeping live write APIs disabled.
@@ -65,6 +67,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.31.0 =
+
+* Added customer credit REST presenter for balance, ledger, posting-result, and validation-error response payloads.
+* Added safe ledger metadata redaction using the existing structured redactor.
+* Kept live customer credit REST endpoint registration, permission callbacks, nonce handling, and staff UI disabled until staging-gated route tests pass.
 
 = 0.30.0 =
 

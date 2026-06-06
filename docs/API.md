@@ -115,7 +115,10 @@ Customer credit route contracts for balance, ledger, adjustment, and redemption
 exist locally with live registration disabled. Posting payload validation
 requires a matching route customer, `Idempotency-Key` header or
 `idempotency_key` body field, valid amount/currency, object metadata, positive
-linked IDs, and manager ID plus reason for manager-approved entry types.
+linked IDs, and manager ID plus reason for manager-approved entry types. REST
+response presentation is implemented for balance, ledger, posting-result, and
+validation-error payloads, including safe customer field selection and redacted
+ledger metadata.
 
 ### Buylist
 

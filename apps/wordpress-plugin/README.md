@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.30.0`
+Version: `0.31.0`
 
 ## Implemented Features
 
@@ -33,6 +33,8 @@ Version: `0.30.0`
   customer row locking, cached balance updates, and replay handling.
 - Customer credit planned REST route contracts and posting payload validation
   for idempotent ledger writes, manager approvals, and route-customer matching.
+- Customer credit REST response presenter for safe balance, ledger, posting,
+  and validation-error payloads with redacted ledger metadata.
 - Buylist submission, item, offer, approval, and conversion schema migration.
 - Buylist submission status transition helper.
 - Buylist planned REST route contracts and submission intake payload validation

@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.31.0] - 2026-06-06
+
+### Added
+
+- Customer credit REST response presenter for balance, ledger, posting-result,
+  and validation-error payloads.
+- Safe customer credit balance payload shaping that omits private contact
+  fields.
+- Ledger row shaping with amount/currency normalization, paging metadata, and
+  redacted structured metadata.
+- Unit coverage for balance payloads, ledger metadata redaction, posting-result
+  responses, and validation-error response shape.
+
+### Not Added
+
+- Live customer credit REST endpoint registration, permission callbacks, nonce
+  handling, database read repositories, staff UI, WooCommerce redemption hooks,
+  and audit writes remain disabled for later staging-gated phases.
+
 ## [0.30.0] - 2026-06-06
 
 ### Added

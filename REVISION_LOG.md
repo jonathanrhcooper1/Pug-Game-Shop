@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Customer Credit REST Presentation Foundation
+
+### What Changed
+
+- Added a customer credit REST presenter for balance, ledger, posting-result,
+  and validation-error response payloads.
+- Added safe customer balance shaping that excludes private contact fields.
+- Added ledger row shaping with amount/currency normalization, paging metadata,
+  and redacted metadata JSON.
+- Added posting-result response shaping for accepted, idempotent, and rejected
+  outcomes.
+- Added unit coverage for balance payloads, ledger metadata redaction,
+  posting-result responses, and validation-error response structure.
+
+### Why
+
+Customer credit route contracts and request parsing already exist, but live
+endpoints also need stable response shapes that do not leak private contact or
+secret metadata fields. This slice defines those response boundaries before
+enabling route registration or staff UI surfaces.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Credit/CustomerCreditRestPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRestPresenterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/CUSTOMER_CREDIT.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Customer credit REST presenter tests for safe balance payloads, ledger row
+  shaping, metadata redaction, posting-result payloads, and validation-error
+  responses.
+
+### Rollback Notes
+
+- Revert this revision to remove customer credit REST presentation helpers and
+  tests.
+- No schema rollback is required; database target remains `7`.
+- Live customer credit REST route registration, permission callbacks, nonce
+  handling, database read repositories, staff UI, WooCommerce redemption hooks,
+  and audit writes remain disabled after rollback.
+
 ## 2026-06-06 - WooCommerce Order Lifecycle Planning Foundation
 
 ### What Changed

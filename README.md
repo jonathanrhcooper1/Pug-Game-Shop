@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.30.0`
+Version: `0.31.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -15,11 +15,12 @@ Local event registration writes are available for free and pay-at-store
 reservations with idempotency, capacity checks, waitlist placement, and
 registration logs. Customer credit schema, ledger posting policy helpers, and
 idempotent ledger posting internals are implemented. Customer credit REST route
-contracts and posting payload validation are implemented but not registered live
-yet. Buylist submission, item, offer, approval, and inventory conversion schema
-plus the submission status state machine are implemented. Buylist planned REST
-route contracts and submission intake payload validation are implemented but not
-registered live yet. ScryDex sync job/checkpoint schema, checkpoint resume
+contracts, posting payload validation, and safe REST response presentation are
+implemented but not registered live yet. Buylist submission, item, offer,
+approval, and inventory conversion schema plus the submission status state
+machine are implemented. Buylist planned REST route contracts and submission
+intake payload validation are implemented but not registered live yet. ScryDex
+sync job/checkpoint schema, checkpoint resume
 planning helpers, mock-backed provider adapter, card/price normalization, sync
 page processing, and reference/price persistence planning are implemented. Exact
 inventory reservation schema and

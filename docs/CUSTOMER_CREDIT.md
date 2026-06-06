@@ -7,11 +7,11 @@ customer note tables. Local policy helpers define entry types, typical signs,
 manager-approval requirements, signed ledger previews, and negative-balance
 rejection. A transaction-backed posting service and `wpdb` repository now
 support idempotency-key replay, customer row locking, immutable ledger inserts,
-and cached balance/version updates. Planned REST route contracts and posting
-payload validation now cover balance, ledger, adjustment, and redemption
-surfaces before live route registration. REST endpoints, WooCommerce redemption
-hooks, offline credit conflict processing, and staff UI remain disabled until
-staging acceptance.
+and cached balance/version updates. Planned REST route contracts, posting
+payload validation, and safe response presentation now cover balance, ledger,
+adjustment, and redemption surfaces before live route registration. REST
+endpoints, WooCommerce redemption hooks, offline credit conflict processing,
+and staff UI remain disabled until staging acceptance.
 
 ## Rules
 
@@ -57,8 +57,10 @@ flags any projection mismatch.
 Current implementation covers steps 3 through 9 for server-side internals.
 Payload validation now covers route/customer matching, idempotency keys,
 currency, optional linked IDs, metadata shape, and manager approval inputs.
-Capability checks, normalized-phone enforcement, route permissions, and audit
-events are added when staff and WooCommerce write surfaces are enabled.
+Response presentation now covers safe balance payloads, ledger rows, metadata
+redaction, posting results, and validation errors. Capability checks,
+normalized-phone enforcement, route permissions, and audit events are added
+when staff and WooCommerce write surfaces are enabled.
 
 ## Online Redemption
 
