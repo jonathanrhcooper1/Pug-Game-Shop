@@ -152,18 +152,23 @@ Indexes:
 | `tcg_inventory_locations` | `location_id`, parent, type, code, name, timezone, active; supports store/case/box/binder/shelf hierarchy |
 | `tcg_inventory_movements` | item, from/to locations, reason, actor, device, idempotency key, timestamp |
 | `tcg_barcodes` | barcode, entity type/id, symbology, print state, template, generated/printed timestamps |
-| `tcg_reservations` | exact item, source, cart/order/customer, status, expiry, ownership token, generated active key |
+| `tcg_reservations` | exact item, source, cart/order/customer, status, expiry, ownership token hash, unique active key |
 | `tcg_price_change_log` | all old/new market/suggested/sale values, floor result, source, formula, actor/job, timestamp |
 | `tcg_manager_overrides` | override type, item/customer, employee, manager, prices, reason, cart/order/location |
 | `tcg_inventory_audit_log` | immutable before/after diff, action, actor, request/device IDs |
 
 ## Reservation Invariants
 
+Status: schema migration `0007_reservations` and transaction-oriented service
+helpers are implemented. WooCommerce checkout hooks, kiosk cart write APIs,
+expiry workers, payment conversion, and database integration race tests remain
+disabled until staging acceptance.
+
 1. Lock the inventory row with `SELECT ... FOR UPDATE`.
 2. Confirm status is `available` and visibility/source rules permit reservation.
 3. Insert an active reservation and update inventory to `reserved` in the same
    transaction.
-4. A generated nullable column, `active_inventory_id`, equals `inventory_id`
+4. A nullable active claim column, `active_inventory_id`, equals `inventory_id`
    only for active reservations and has a unique index. This enforces at most
    one active reservation in MySQL without relying on a partial index.
 5. Conversion to sale, release, and expiry lock both rows and are idempotent.

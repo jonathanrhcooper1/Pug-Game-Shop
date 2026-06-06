@@ -128,6 +128,7 @@ final class MigrationRunner {
 			new Version0004CustomerCredit(),
 			new Version0005Buylist(),
 			new Version0006Sync(),
+			new Version0007Reservations(),
 		);
 	}
 

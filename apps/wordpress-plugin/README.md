@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.12.0`
+Version: `0.13.0`
 
 ## Implemented Features
 
@@ -39,6 +39,8 @@ Version: `0.12.0`
   credential redaction, rate-limit mapping, and default-disabled webhook
   registration.
 - ScryDex card and market price normalization helpers for local reference rows.
+- Reservation schema migration and reservation service foundation for exact
+  inventory active-claim enforcement.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

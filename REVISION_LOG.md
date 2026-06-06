@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Reservation Double-Sell Prevention Foundation
+
+### What Changed
+
+- Added schema migration `0007_reservations`.
+- Added the `tcg_reservations` table contract with idempotency keys, owner
+  token hashes, expiry, source/cart/customer/order metadata, status, price
+  snapshot, and a unique nullable active inventory claim key.
+- Added reservation request, result, storage contract, status helper, and
+  transaction-oriented reservation service foundation.
+- Added unit coverage for successful reservations, idempotency replay,
+  unavailable inventory rejection, active-reservation collision rejection, and
+  missing idempotency-key validation before a transaction starts.
+- Updated WordPress integration smoke verification to assert schema version `7`
+  and reservation tables.
+
+### Why
+
+WooCommerce, kiosk, POS, and offline flows all need the same exact-item active
+claim invariant before checkout hooks or cart write APIs are enabled. This
+slice adds the reservation table and service boundary needed to prevent
+double-selling one serialized inventory item, while leaving live WooCommerce
+hook wiring and expiry workers disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/ReservationSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0007Reservations.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationRequest.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationResult.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationService.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationStatus.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationStorage.php`
+- `apps/wordpress-plugin/tests/Unit/ReservationSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/ReservationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- `0007_reservations`, reversible through `Version0007Reservations::down()`.
+
+### Tests Added
+
+- Reservation schema tests for table presence, active inventory uniqueness,
+  idempotency, expiry indexes, and rollback order.
+- Reservation service tests for successful exact item reservation, duplicate
+  idempotency replay, unavailable inventory rejection, active reservation
+  collision rejection, and pre-transaction idempotency-key validation.
+- WordPress integration smoke assertions for schema version `7` and reservation
+  tables.
+
+### Rollback Notes
+
+- Roll back schema version `7` to `6` with
+  `MigrationRunner::rollback_to(6)` in a controlled maintenance window.
+- Revert this revision to remove reservation schema and service helpers.
+- Do not roll back reservation tables in production if real reservations,
+  pending carts, checkout holds, POS holds, kiosk carts, or offline claims
+  exist; export and reconcile item state first.
+- WooCommerce checkout hooks, cart release hooks, expiry workers, and kiosk
+  reservation writes remain disabled after rollback.
+
 ## 2026-06-06 - ScryDex Card Normalization Foundation
 
 ### What Changed

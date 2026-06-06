@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.13.0] - 2026-06-06
+
+### Added
+
+- Schema migration `0007_reservations`.
+- Exact inventory reservation table contract with idempotency key, expiry,
+  ownership token hash, source/cart/customer/order metadata, and a unique
+  active inventory claim key.
+- Reservation request/result/storage/service foundation for transaction-backed
+  exact item reservations.
+- Unit coverage for reservation schema, successful reservation, idempotency
+  replay, unavailable inventory rejection, active-reservation collision
+  rejection, and pre-transaction idempotency validation.
+- WordPress integration smoke verification for schema version `7` and
+  reservation tables.
+
+### Not Added
+
+- WooCommerce add-to-cart/checkout hooks, payment-complete conversion, cart
+  removal release, expiry cleanup workers, kiosk cart write APIs, and database
+  integration race tests remain disabled for later staging-gated phases.
+
 ## [0.12.0] - 2026-06-06
 
 ### Added

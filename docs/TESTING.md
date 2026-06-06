@@ -48,6 +48,11 @@
 - Local unit coverage now includes ScryDex card and current market price
   normalization using sanitized mock fixtures, required-field errors, and safe
   nullable defaults.
+- Local unit coverage now includes reservation schema contracts and
+  transaction-oriented reservation service behavior for successful exact-item
+  claims, idempotency replay, unavailable inventory rejection, and active claim
+  collision rejection. WordPress integration smoke coverage asserts schema
+  version `7` and reservation tables.
 
 ## Required Test Backlog
 
@@ -57,7 +62,7 @@ corresponding modules are implemented:
 - REST API tests.
 - Database migration tests.
 - Pricing engine tests.
-- Reservation/double-sell prevention tests.
+- Reservation database integration and concurrent double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.
 - Manager override tests.
 - ScryDex worker integration tests.

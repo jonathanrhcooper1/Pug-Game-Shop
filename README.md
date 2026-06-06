@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.12.0`
+Version: `0.13.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -18,10 +18,13 @@ idempotent ledger posting internals are implemented. Buylist submission, item,
 offer, approval, and inventory conversion schema plus the submission status
 state machine are implemented. ScryDex sync job/checkpoint schema, checkpoint
 resume planning helpers, mock-backed provider adapter, and card/price
-normalization are implemented.
+normalization are implemented. Exact inventory reservation schema and a
+transaction-oriented reservation service foundation are implemented for
+double-sell prevention.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
-registration push, credit REST endpoints, buylist write APIs, scheduled ScryDex
-workers, and production provider credentials remain disabled until staging
+registration push, WooCommerce checkout hooks, credit REST endpoints, buylist
+write APIs, scheduled ScryDex workers, and production provider credentials
+remain disabled until staging
 acceptance.
 
 ## Source Of Truth
