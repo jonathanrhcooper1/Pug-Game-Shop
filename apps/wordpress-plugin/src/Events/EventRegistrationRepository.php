@@ -156,12 +156,12 @@ final class EventRegistrationRepository {
 		$this->database->insert(
 			$table_name,
 			array(
-				'event_id'         => $event_id,
-				'registration_id'  => $registration_id,
-				'position'         => max( 1, $position ),
-				'status'           => 'waiting',
-				'created_at'       => $now,
-				'updated_at'       => $now,
+				'event_id'        => $event_id,
+				'registration_id' => $registration_id,
+				'position'        => max( 1, $position ),
+				'status'          => 'waiting',
+				'created_at'      => $now,
+				'updated_at'      => $now,
 			),
 			array( '%d', '%d', '%d', '%s', '%s', '%s' )
 		);
@@ -183,10 +183,10 @@ final class EventRegistrationRepository {
 		$this->database->update(
 			$table_name,
 			array(
-				'registered_count'     => $capacity_count,
-				'registration_status'  => $status,
-				'updated_at'           => $this->now(),
-				'row_version'          => (int) ( $event['row_version'] ?? 1 ) + 1,
+				'registered_count'    => $capacity_count,
+				'registration_status' => $status,
+				'updated_at'          => $this->now(),
+				'row_version'         => (int) ( $event['row_version'] ?? 1 ) + 1,
 			),
 			array( 'event_id' => (int) $event['event_id'] ),
 			array( '%d', '%s', '%s', '%d' ),
@@ -203,14 +203,14 @@ final class EventRegistrationRepository {
 		$this->database->insert(
 			$table_name,
 			array(
-				'event_id'          => $event_id,
-				'registration_id'   => $registration_id,
-				'action'            => $action,
-				'actor_user_id'     => null,
-				'device_id'         => null,
-				'message'           => substr( $message, 0, 255 ),
-				'metadata_json'     => $this->encode_json( $metadata ),
-				'created_at'        => $this->now(),
+				'event_id'        => $event_id,
+				'registration_id' => $registration_id,
+				'action'          => $action,
+				'actor_user_id'   => null,
+				'device_id'       => null,
+				'message'         => substr( $message, 0, 255 ),
+				'metadata_json'   => $this->encode_json( $metadata ),
+				'created_at'      => $this->now(),
 			),
 			array( '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s' )
 		);
@@ -242,7 +242,7 @@ final class EventRegistrationRepository {
 			return wp_generate_uuid4();
 		}
 
-		$bytes = random_bytes( 16 );
+		$bytes    = random_bytes( 16 );
 		$bytes[6] = chr( ( ord( $bytes[6] ) & 0x0f ) | 0x40 );
 		$bytes[8] = chr( ( ord( $bytes[8] ) & 0x3f ) | 0x80 );
 
