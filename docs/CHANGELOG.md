@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.12.0] - 2026-06-06
+
+### Added
+
+- ScryDex card normalizer for mapping provider card payloads into local
+  reference-card row shapes.
+- ScryDex market price normalization for current provider price rows with
+  currency validation and observed timestamps.
+- Fixture-backed unit coverage for card rows, price rows, required-field
+  errors, and nullable optional fields.
+
+### Not Added
+
+- ScryDex database upserts, scheduled workers, image downloads, live provider
+  credential configuration, usage-budget enforcement, and webhook route
+  handling remain disabled for later staging-gated phases.
+
 ## [0.11.0] - 2026-06-06
 
 ### Added

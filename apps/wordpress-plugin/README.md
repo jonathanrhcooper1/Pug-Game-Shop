@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.11.0`
+Version: `0.12.0`
 
 ## Implemented Features
 
@@ -38,6 +38,7 @@ Version: `0.11.0`
 - ScryDex provider adapter contract and HTTP provider with mock-backed tests,
   credential redaction, rate-limit mapping, and default-disabled webhook
   registration.
+- ScryDex card and market price normalization helpers for local reference rows.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

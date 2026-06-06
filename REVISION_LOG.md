@@ -3,6 +3,55 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - ScryDex Card Normalization Foundation
+
+### What Changed
+
+- Added a ScryDex card normalizer that maps provider payloads into local
+  reference-card row shapes.
+- Added a ScryDex card normalization result object that separates valid rows,
+  optional price rows, and provider payload errors.
+- Added current market price normalization with decimal formatting, currency
+  validation, and observed timestamps.
+- Added unit coverage for fixture-backed reference-card rows, price rows,
+  required-field errors, and nullable optional fields.
+
+### Why
+
+ScryDex sync workers need a tested mapping contract before database upserts,
+image jobs, pricing selection, or scheduled pulls are enabled. This slice pins
+the local card and price row shapes while keeping write workers and live
+provider configuration disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizationResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `6`.
+
+### Tests Added
+
+- ScryDex card normalizer tests for fixture-backed card/reference rows,
+  current market price rows, required-field errors, and nullable optional set,
+  price, and timestamp fields.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex normalization helpers and tests.
+- No schema rollback is required; database target remains `6`.
+- ScryDex scheduled workers, database upserts, live provider credentials, image
+  downloads, and webhooks remain disabled after rollback.
+
 ## 2026-06-06 - ScryDex Provider Adapter Foundation
 
 ### What Changed

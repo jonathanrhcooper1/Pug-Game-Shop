@@ -6,8 +6,9 @@ Schema migration `0006_sync` is implemented for sync jobs, logs, checkpoints,
 errors, and webhook events. ScryDex checkpoint/resume helpers plan page/cursor
 requests and serialize committed checkpoints. The ScryDex provider adapter is
 implemented with injectable transport, credential redaction, and mock-backed
-card-search/rate-limit tests. Scheduled ScryDex workers, live provider
-credential configuration, normalization/upsert workers, image workers,
+card-search/rate-limit tests. Card and current market price normalization is
+implemented against sanitized fixtures. Scheduled ScryDex workers, live
+provider credential configuration, database upsert workers, image workers,
 usage-budget enforcement, and webhook route handling remain disabled until
 staging acceptance.
 
@@ -139,7 +140,9 @@ The provider returns dimensional prices. The pricing engine selects a configured
 record matching game, variant, raw condition or grading company/grade, and store
 currency. If there is no exact valid match, it displays available reference data
 but does not silently substitute a different condition, grade, variant, or
-currency.
+currency. The current foundation normalizes simple provider `market_price`
+payloads into explicit currency-scoped price rows; dimensional price selection
+remains staging-gated until provider capability fixtures are expanded.
 
 ## Sources
 

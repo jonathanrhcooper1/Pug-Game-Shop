@@ -45,6 +45,9 @@
 - Local unit coverage now includes ScryDex provider adapter behavior using
   sanitized mock fixtures, credential header assertions, rate-limit mapping, and
   auth-context redaction.
+- Local unit coverage now includes ScryDex card and current market price
+  normalization using sanitized mock fixtures, required-field errors, and safe
+  nullable defaults.
 
 ## Required Test Backlog
 
@@ -57,7 +60,7 @@ corresponding modules are implemented:
 - Reservation/double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.
 - Manager override tests.
-- ScryDex normalization and worker integration tests.
+- ScryDex worker integration tests.
 - TopDeck registration adapter tests.
 - WooCommerce checkout hook tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
