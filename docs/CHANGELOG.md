@@ -2,6 +2,32 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.51.0] - 2026-06-06
+
+### Added
+
+- Offline device token lookup planner for future repository-backed permission
+  callbacks.
+- Lookup plan value object exposing hashed token lookup filters, a short audit
+  fingerprint, validity state, parse errors, and secret-free audit payloads.
+- Shared token hash derivation between lookup planning and bearer-token
+  authentication.
+- Unit coverage for valid lookup plans, normalized WordPress header arrays,
+  missing/malformed/short tokens, lookup filters, fingerprints, and audit
+  payloads without raw tokens.
+
+### Changed
+
+- Refactored the offline device bearer-token authenticator to consume the shared
+  lookup planner before comparing stored hashes and delegating device policy
+  checks.
+
+### Not Added
+
+- Live device row repository queries, REST route registration, permission
+  callback wiring, device last-seen updates, queue replay workers, and live
+  `$wpdb` writes remain disabled for later staging-gated phases.
+
 ## [0.50.0] - 2026-06-06
 
 ### Added

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.50.0`
+Version: `0.51.0`
 
 ## Implemented Features
 
@@ -91,6 +91,9 @@ Version: `0.50.0`
   callbacks, including header normalization, token shape validation, SHA-256
   token hash comparison, persisted offline-device IDs, and secret-free accepted
   contexts.
+- Offline device token lookup planning for future repositories, including
+  hashed token lookup filters, short audit fingerprints, normalized
+  WordPress-style headers, and no raw token retention.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

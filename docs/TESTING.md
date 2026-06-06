@@ -154,6 +154,10 @@
   missing/malformed tokens, invalid stored hashes, wrong tokens, missing
   persisted device IDs, revocation, denied scopes, and secret-free accepted
   contexts.
+- Local unit coverage now includes offline device token lookup planning for
+  hashed lookup filters, token fingerprints, normalized WordPress header arrays,
+  missing/malformed/short tokens, and audit payloads without raw token or full
+  token hash leakage.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution
@@ -207,10 +211,10 @@ corresponding modules are implemented:
   refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
   credit flows.
-- Offline app SQLite queue, WordPress push/pull, live device row lookup,
-  registered-device permission callback wiring, device last-seen updates, live
-  conflict reads/writes, conflict audit persistence, device auth, and full
-  reconnect integration tests.
+- Offline app SQLite queue, WordPress push/pull, live device row repository
+  queries, registered-device permission callback wiring, device last-seen
+  updates, live conflict reads/writes, conflict audit persistence, device auth,
+  and full reconnect integration tests.
 - Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
   and provider webhook reconciliation tests.
 

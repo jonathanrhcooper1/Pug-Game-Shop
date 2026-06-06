@@ -195,6 +195,8 @@ conflict work runs. Device bearer-token authentication planning is implemented
 so future permission callbacks can normalize request headers, validate token
 shape, compare SHA-256 token hashes, require persisted offline-device IDs, and
 return secret-free accepted contexts before conflict or queue work starts.
+Device token lookup planning now derives the hashed repository lookup filter
+and short audit fingerprint before live row loading is enabled.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

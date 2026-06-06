@@ -42,8 +42,9 @@ stored server-side. Tokens are scoped, expiring, rotatable, and revocable.
 Offline bearer-token authentication planning now normalizes request headers,
 validates token shape, compares SHA-256 token hashes with `hash_equals`, and
 delegates active/revoked/expired/scope checks to the shared device access
-policy. Live device row lookup, last-seen updates, and route callback wiring
-remain staging-gated.
+policy. Offline token lookup planning derives repository filters and short
+audit fingerprints without retaining raw tokens. Live device row repository
+queries, last-seen updates, and route callback wiring remain staging-gated.
 
 ## Secret Storage
 

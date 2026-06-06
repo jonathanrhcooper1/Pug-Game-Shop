@@ -133,6 +133,13 @@ expired/scope checks to the shared device access policy. Live device row lookup,
 last-seen updates, route registration, queue replay, and database writes remain
 disabled until staging integration tests pass.
 
+Version `0.51.0` adds the offline device token lookup planning boundary. Future
+WordPress repositories can now receive a hashed `token_hash` lookup filter and
+short audit fingerprint from normalized Authorization headers without retaining
+the raw token. Live device row repository queries, last-seen updates, route
+registration, queue replay, and database writes remain disabled until staging
+integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

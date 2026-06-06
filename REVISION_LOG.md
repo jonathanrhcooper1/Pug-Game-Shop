@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Token Lookup Planning
+
+### What Changed
+
+- Added an offline device token lookup planner for future repository-backed
+  `registered_device` REST permission callbacks.
+- Added a lookup plan value object that exposes hashed token lookup filters, a
+  short token fingerprint for audits, parse errors, validity state, and
+  secret-free audit payloads.
+- Moved Authorization header normalization and token hash derivation into the
+  lookup planner so future route callbacks and authentication checks can share
+  one parsing boundary.
+- Refactored the offline device bearer-token authenticator to consume the
+  lookup planner before comparing stored token hashes and delegating
+  active/revoked/expired/scope checks to the device access policy.
+- Added unit coverage for valid lookup filters, normalized WordPress header
+  arrays, missing headers, malformed schemes, short tokens, token
+  fingerprints, and audit payloads without raw token or full token hash
+  leakage.
+- Updated project, plugin, and offline app package versions to `0.51.0`.
+- Updated API, offline sync, architecture, deployment, testing, roadmap,
+  changelog, and plugin docs.
+
+### Why
+
+The authenticator can now verify a loaded device row, but future live
+permission callbacks also need a deterministic, secret-safe way to derive the
+database lookup key from request headers before loading that row. This slice
+adds that boundary without querying WordPress tables or registering live
+offline routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceTokenLookupPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceTokenLookupPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceTokenAuthenticator.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceTokenLookupPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceTokenAuthenticatorTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device token lookup planner tests for hashed lookup filters,
+  normalized WordPress header arrays, missing/malformed/short tokens, audit
+  fingerprints, and secret-free audit payloads.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline device token lookup planner/value
+  object, authenticator refactor, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row repository queries, route registration, permission callback
+  wiring, queue replay workers, and `$wpdb` writes remain disabled both before
+  and after rollback.
+
 ## 2026-06-06 - Offline Device Token Authentication Planning
 
 ### What Changed

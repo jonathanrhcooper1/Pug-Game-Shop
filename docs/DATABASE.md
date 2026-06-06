@@ -258,7 +258,9 @@ and manager-reviewed operation outcomes. Offline push persistence planning now
 maps those plans into future queue/result rows, conflict insert rows, and
 idempotent replay rows. Offline bearer-token authentication planning now
 verifies future request headers and stored token hashes before queue/conflict
-work proceeds, but live provider workers, device row lookup, and offline route
+work proceeds. Offline token lookup planning now prepares the hashed
+`token_hash` filter future repositories will use to load registered devices,
+but live provider workers, device row repository queries, and offline route
 writes remain disabled until later phases.
 
 | Table | Key fields |

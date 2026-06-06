@@ -8,12 +8,15 @@
 namespace TCGStorePlatform\Offline;
 
 final class OfflineDeviceTokenAuthenticator {
-	private const HEADER_KEYS = array( 'authorization', 'http_authorization' );
+	private OfflineDeviceAccessPolicy $policy;
+	private OfflineDeviceTokenLookupPlanner $lookup_planner;
 
 	public function __construct(
-		private ?OfflineDeviceAccessPolicy $policy = null
+		?OfflineDeviceAccessPolicy $policy = null,
+		?OfflineDeviceTokenLookupPlanner $lookup_planner = null
 	) {
-		$this->policy ??= new OfflineDeviceAccessPolicy();
+		$this->policy         = $policy ?? new OfflineDeviceAccessPolicy();
+		$this->lookup_planner = $lookup_planner ?? new OfflineDeviceTokenLookupPlanner();
 	}
 
 	/**
@@ -26,8 +29,8 @@ final class OfflineDeviceTokenAuthenticator {
 		string $required_scope,
 		string $now_utc
 	): OfflineDeviceAccessDecision {
-		$parsed_token      = $this->parse_bearer_token( $headers );
-		$errors            = $parsed_token['errors'];
+		$lookup_plan       = $this->lookup_planner->plan( $headers );
+		$errors            = $lookup_plan->errors();
 		$offline_device_id = $this->positive_int( $device_row['offline_device_id'] ?? null );
 
 		if ( null === $offline_device_id ) {
@@ -44,7 +47,7 @@ final class OfflineDeviceTokenAuthenticator {
 			return OfflineDeviceAccessDecision::rejected( array( 'device_token_hash_invalid' ) );
 		}
 
-		if ( ! hash_equals( $stored_token_hash, self::token_hash( $parsed_token['token'] ) ) ) {
+		if ( ! hash_equals( $stored_token_hash, $lookup_plan->token_hash() ) ) {
 			return OfflineDeviceAccessDecision::rejected( array( 'device_token_mismatch' ) );
 		}
 
@@ -64,68 +67,7 @@ final class OfflineDeviceTokenAuthenticator {
 	}
 
 	public static function token_hash( string $device_token ): string {
-		return hash( 'sha256', trim( $device_token ) );
-	}
-
-	/**
-	 * @param array<string, mixed> $headers REST request headers.
-	 * @return array{token:string,errors:list<string>}
-	 */
-	private function parse_bearer_token( array $headers ): array {
-		$header_value = $this->authorization_header( $headers );
-
-		if ( '' === $header_value ) {
-			return array(
-				'token'  => '',
-				'errors' => array( 'authorization_header_required' ),
-			);
-		}
-
-		if ( 1 !== preg_match( '/^Bearer\s+(.+)$/i', $header_value, $matches ) ) {
-			return array(
-				'token'  => '',
-				'errors' => array( 'authorization_header_invalid' ),
-			);
-		}
-
-		$device_token = trim( (string) $matches[1] );
-
-		if ( 1 !== preg_match( '/^[a-zA-Z0-9._:-]{32,256}$/', $device_token ) ) {
-			return array(
-				'token'  => '',
-				'errors' => array( 'device_token_invalid' ),
-			);
-		}
-
-		return array(
-			'token'  => $device_token,
-			'errors' => array(),
-		);
-	}
-
-	/**
-	 * @param array<string, mixed> $headers REST request headers.
-	 */
-	private function authorization_header( array $headers ): string {
-		foreach ( $headers as $key => $value ) {
-			$normalized_key = strtolower( str_replace( '-', '_', trim( (string) $key ) ) );
-
-			if ( ! in_array( $normalized_key, self::HEADER_KEYS, true ) ) {
-				continue;
-			}
-
-			return $this->first_header_value( $value );
-		}
-
-		return '';
-	}
-
-	private function first_header_value( mixed $value ): string {
-		if ( is_array( $value ) ) {
-			$value = reset( $value );
-		}
-
-		return trim( (string) $value );
+		return OfflineDeviceTokenLookupPlanner::token_hash( $device_token );
 	}
 
 	private function positive_int( mixed $value ): ?int {

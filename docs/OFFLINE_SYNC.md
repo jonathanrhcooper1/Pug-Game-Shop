@@ -88,10 +88,12 @@ scopes, supported modes/scopes, location IDs, and UTC timestamps for future
 pull/push/conflict permission callbacks. Offline bearer-token authentication
 planning now validates Authorization headers, device token shape, SHA-256 token
 hashes, persisted offline device IDs, active/revoked/expired state, and
-required scopes without exposing raw tokens in accepted contexts. Those
-endpoints are not registered live yet, accepted operations are not persisted or
-replayed yet, live device row lookup and last-seen updates are disabled, live
-pull queries are not executed yet, and pull cursors are not advanced yet.
+required scopes without exposing raw tokens in accepted contexts. Offline token
+lookup planning now exposes a hashed lookup filter and short audit fingerprint
+for the future device repository without retaining raw tokens. Those endpoints
+are not registered live yet, accepted operations are not persisted or replayed
+yet, live device row repository queries and last-seen updates are disabled,
+live pull queries are not executed yet, and pull cursors are not advanced yet.
 Conflict list and
 resolution request validation now covers status/entity filters, cursors,
 page-size bounds, idempotent resolution IDs, manager IDs, resolution actions,
