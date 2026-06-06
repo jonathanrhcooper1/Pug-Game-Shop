@@ -69,6 +69,9 @@ last-seen write can be enabled.
 Offline session update repository adaptation only consumes the validated query
 plan, keeps token secrets out of update audits, and reports stale writes
 without exposing bearer-token material.
+Registered-device permission resolution can now fail closed when the opt-in
+session update is stale or rejected, reducing the chance that a route trusts a
+device row that changed between lookup and last-seen update.
 
 ## Secret Storage
 

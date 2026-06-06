@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.61.0`
+Version: `0.62.0`
 
 ## Implemented Features
 
@@ -122,6 +122,10 @@ Version: `0.61.0`
   callbacks, including initial token planning, repository-backed lookup,
   loaded-row authentication, session update planning, not-found denial, and
   secret-free resolution audits without live route wiring or last-seen writes.
+- Offline registered-device permission resolver opt-in session update
+  application, including applied update authorization, stale update denial,
+  failed update denial, skipped denied-device updates, and redacted
+  session-update audits without live route wiring.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and

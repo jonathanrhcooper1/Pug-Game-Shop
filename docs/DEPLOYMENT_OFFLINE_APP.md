@@ -212,6 +212,12 @@ Route registration, permission callback wiring, queue replay, and
 route-connected database writes remain disabled until staging integration tests
 pass.
 
+Version `0.62.0` adds opt-in session update application to the
+registered-device permission resolver. Future WordPress permission callbacks
+can now load, authenticate, apply last-seen state, and fail closed on stale or
+failed update results through one resolution boundary. Route registration and
+permission callback wiring remain disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -10,13 +10,16 @@ namespace TCGStorePlatform\Offline;
 final class OfflineRegisteredDevicePermissionResolver {
 	private OfflineRegisteredDeviceRepository $repository;
 	private OfflineRegisteredDevicePermissionPlanner $permission_planner;
+	private ?OfflineDeviceSessionUpdateRepository $session_update_repository;
 
 	public function __construct(
 		OfflineRegisteredDeviceRepository $repository,
-		?OfflineRegisteredDevicePermissionPlanner $permission_planner = null
+		?OfflineRegisteredDevicePermissionPlanner $permission_planner = null,
+		?OfflineDeviceSessionUpdateRepository $session_update_repository = null
 	) {
-		$this->repository         = $repository;
-		$this->permission_planner = $permission_planner ?? new OfflineRegisteredDevicePermissionPlanner();
+		$this->repository                = $repository;
+		$this->permission_planner        = $permission_planner ?? new OfflineRegisteredDevicePermissionPlanner();
+		$this->session_update_repository = $session_update_repository;
 	}
 
 	/**
@@ -83,6 +86,29 @@ final class OfflineRegisteredDevicePermissionResolver {
 			$initial_permission,
 			$repository_result,
 			$final_permission
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $headers REST request headers.
+	 */
+	public function resolve_and_apply_session_update(
+		array $headers,
+		string $required_scope,
+		string $server_time_utc
+	): OfflineRegisteredDevicePermissionResolution {
+		$resolution = $this->resolve( $headers, $required_scope, $server_time_utc );
+
+		if (
+			! $resolution->is_authorized()
+			|| null === $resolution->session_plan()
+			|| null === $this->session_update_repository
+		) {
+			return $resolution;
+		}
+
+		return $resolution->with_session_update_result(
+			$this->session_update_repository->apply( $resolution->session_plan() )
 		);
 	}
 }

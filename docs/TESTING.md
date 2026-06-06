@@ -198,6 +198,10 @@
   adaptation for prepared `$wpdb` update execution, stale optimistic
   row-version results, invalid plan rejection before database access, failed
   database updates, unexpected row counts, and redacted repository audits.
+- Local unit coverage now includes opt-in registered-device permission
+  resolution session update application for applied updates, stale update
+  denial, failed update denial, denied-device skip behavior, and redacted
+  session update audits.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

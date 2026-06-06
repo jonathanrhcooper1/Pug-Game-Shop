@@ -64,6 +64,9 @@ executing live database writes. Offline device session update repository
 adaptation now applies that prepared update when explicitly called and reports
 applied, stale, or rejected outcomes without registering live REST permission
 callbacks.
+Registered device permission resolution can now opt in to applying that
+session update and denies stale or rejected update results before a future
+route callback proceeds.
 
 ### Inventory And Search
 
@@ -252,11 +255,12 @@ filters, row-normalizer metadata, lock intent, and deferred scope checks for
 future repositories. Permission planning now carries that query contract in
 lookup-required outcomes before live repositories are wired. Offline device
 session update repository adaptation can apply validated last-seen updates when
-explicitly called. Live device pairing route writes, route-connected device
-permission checks, permission callback wiring, route-connected last-seen
-database writes, push/pull workers, queue replay, canonical entity writes, and
-conflict persistence remain disabled until staging-gated WordPress/offline
-integration tests pass. Offline
+explicitly called, and permission resolution can now opt in to that update
+while failing closed on stale or rejected results. Live device pairing route
+writes, route-connected device permission checks, permission callback wiring,
+route-connected last-seen database writes, push/pull workers, queue replay,
+canonical entity writes, and conflict persistence remain disabled until
+staging-gated WordPress/offline integration tests pass. Offline
 pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
 `customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
@@ -300,7 +304,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.61.0",
+  "app_version": "0.62.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

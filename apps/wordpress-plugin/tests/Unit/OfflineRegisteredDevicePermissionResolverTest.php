@@ -11,6 +11,7 @@ namespace {
 			public string $prefix = 'wp_';
 			public int $prepare_count = 0;
 			public int $get_row_count = 0;
+			public int $query_count = 0;
 			public string $last_prepare_query = '';
 			public string $last_query = '';
 			public string $last_output_type = '';
@@ -23,7 +24,10 @@ namespace {
 			/**
 			 * @param array<string, mixed>|null $row Row returned by get_row.
 			 */
-			public function __construct( private ?array $row = null ) {
+			public function __construct(
+				private ?array $row = null,
+				private int|false $query_result = 1
+			) {
 			}
 
 			/**
@@ -47,11 +51,19 @@ namespace {
 
 				return $this->row;
 			}
+
+			public function query( string $query ): int|false {
+				++$this->query_count;
+				$this->last_query = $query;
+
+				return $this->query_result;
+			}
 		}
 	}
 }
 
 namespace TCGStorePlatform\Tests\Unit {
+	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
 	use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 	use TCGStorePlatform\Offline\OfflineRegisteredDeviceRepository;
@@ -171,9 +183,107 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $audit['has_session_plan'] );
 		}
 
+		public function test_resolver_can_apply_session_update_for_authorized_devices(): void {
+			$database   = new \wpdb( $this->database_row(), 1 );
+			$resolution = $this->resolver_with_session_updates( $database )->resolve_and_apply_session_update(
+				$this->headers(),
+				'offline_push',
+				'2026-06-06T20:30:00Z'
+			);
+			$audit      = $resolution->audit_payload();
+
+			$this->assert_true( $resolution->is_authorized() );
+			$this->assert_true( $resolution->session_update_attempted() );
+			$this->assert_true( $resolution->session_update_result()?->is_applied() );
+			$this->assert_same( 'applied', $audit['session_update_status'] );
+			$this->assert_true( $audit['session_updated'] );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
+			$this->assert_same( 1, $database->query_count );
+			$this->assert_contains( 'prepared:UPDATE `wp_tcg_offline_devices`', $database->last_query );
+			$this->assert_same( array(), $resolution->errors() );
+			$this->assert_not_contains( self::DEVICE_TOKEN, (string) json_encode( $audit ) );
+			$this->assert_not_contains(
+				OfflineDeviceTokenAuthenticator::token_hash( self::DEVICE_TOKEN ),
+				(string) json_encode( $audit )
+			);
+		}
+
+		public function test_resolver_denies_stale_session_update_results(): void {
+			$database   = new \wpdb( $this->database_row(), 0 );
+			$resolution = $this->resolver_with_session_updates( $database )->resolve_and_apply_session_update(
+				$this->headers(),
+				'offline_push',
+				'2026-06-06T20:30:00Z'
+			);
+			$audit      = $resolution->audit_payload();
+
+			$this->assert_false( $resolution->is_authorized() );
+			$this->assert_true( $resolution->session_update_attempted() );
+			$this->assert_true( $resolution->session_update_result()?->is_stale() );
+			$this->assert_same( 'session_update_stale', $audit['stage'] );
+			$this->assert_same( 'stale', $audit['session_update_status'] );
+			$this->assert_false( $audit['session_updated'] );
+			$this->assert_true( in_array( 'session_update_stale', $resolution->errors(), true ) );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $database->query_count );
+		}
+
+		public function test_resolver_denies_failed_session_update_results(): void {
+			$database   = new \wpdb( $this->database_row(), false );
+			$resolution = $this->resolver_with_session_updates( $database )->resolve_and_apply_session_update(
+				$this->headers(),
+				'offline_push',
+				'2026-06-06T20:30:00Z'
+			);
+			$audit      = $resolution->audit_payload();
+
+			$this->assert_false( $resolution->is_authorized() );
+			$this->assert_true( $resolution->session_update_attempted() );
+			$this->assert_true( $resolution->session_update_result()?->is_rejected() );
+			$this->assert_same( 'session_update_rejected', $audit['stage'] );
+			$this->assert_same( 'rejected', $audit['session_update_status'] );
+			$this->assert_true( in_array( 'session_update_failed', $resolution->errors(), true ) );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $database->query_count );
+		}
+
+		public function test_resolver_skips_session_update_when_device_is_denied(): void {
+			$database   = new \wpdb(
+				$this->database_row(
+					array(
+						'scopes_json' => '["offline_pull"]',
+					)
+				),
+				1
+			);
+			$resolution = $this->resolver_with_session_updates( $database )->resolve_and_apply_session_update(
+				$this->headers(),
+				'offline_push',
+				'2026-06-06T20:30:00Z'
+			);
+
+			$this->assert_false( $resolution->is_authorized() );
+			$this->assert_false( $resolution->session_update_attempted() );
+			$this->assert_same( null, $resolution->session_update_result() );
+			$this->assert_same( 1, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
+			$this->assert_same( 0, $database->query_count );
+		}
+
 		private function resolver( \wpdb $database ): OfflineRegisteredDevicePermissionResolver {
 			return new OfflineRegisteredDevicePermissionResolver(
 				new OfflineRegisteredDeviceRepository( $database )
+			);
+		}
+
+		private function resolver_with_session_updates(
+			\wpdb $database
+		): OfflineRegisteredDevicePermissionResolver {
+			return new OfflineRegisteredDevicePermissionResolver(
+				new OfflineRegisteredDeviceRepository( $database ),
+				null,
+				new OfflineDeviceSessionUpdateRepository( $database )
 			);
 		}
 
@@ -203,7 +313,7 @@ namespace TCGStorePlatform\Tests\Unit {
 					'token_expires_at'  => '2026-06-07 16:00:00.123456',
 					'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 					'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-					'app_version'       => '0.61.0',
+					'app_version'       => '0.62.0',
 					'platform'          => 'windows',
 					'status'            => 'ACTIVE',
 					'last_seen_at'      => '2026-06-06 15:30:00',

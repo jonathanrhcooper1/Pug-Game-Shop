@@ -231,6 +231,9 @@ row-version guard before any live write path is enabled.
 Offline device session update repository adaptation now executes that prepared
 query when explicitly called and reports applied, stale, or rejected outcomes
 without registering REST permission callbacks.
+Registered-device permission resolution now has an opt-in path that applies
+that session update and denies stale or rejected update results before any
+future route handler work can continue.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

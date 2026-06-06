@@ -118,6 +118,9 @@ without executing it.
 Offline device session update repository adaptation now executes that prepared
 update only when explicitly called, returning applied, stale, or rejected
 outcomes with redacted audit data.
+Registered-device permission resolution now exposes an opt-in path that applies
+that update and denies stale or rejected results before a future route callback
+continues.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

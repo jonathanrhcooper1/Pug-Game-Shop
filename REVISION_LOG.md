@@ -3,6 +3,82 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Permission Resolution Session Update Application
+
+### What Changed
+
+- Added an opt-in session update application path to the registered-device
+  permission resolver for future REST permission callbacks.
+- Kept the existing `resolve()` method plan-only and added
+  `resolve_and_apply_session_update()` for the future live callback boundary.
+- Extended permission resolutions with optional session update results,
+  attempted/applied audit fields, update status, redacted update audit payloads,
+  and combined stale/failed update errors.
+- Made stale optimistic updates and failed database updates deny the resolution
+  so future live callers reload instead of trusting a changed device row.
+- Added tests for applied session updates, stale update denial, failed update
+  denial, denied-device skip behavior, and redacted audits.
+- Updated project, plugin, and offline app package versions to `0.62.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The previous checkpoint added the narrow `$wpdb` update adapter. This revision
+composes that adapter into the permission resolution boundary without changing
+live routes, giving the future `permission_callback` a single result that can
+load, authenticate, update last-seen state, and fail closed on stale rows.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionResolver.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionResolution.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device permission resolver tests for opt-in session update
+  application, stale optimistic update denial, failed update denial,
+  denied-device skip behavior, and secret-free session update audits.
+
+### Rollback Notes
+
+- Revert this revision to remove the opt-in session update application path,
+  resolution update-result fields, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, WordPress permission callback wiring, queue replay
+  workers, and route-connected database writes remain disabled both before and
+  after rollback.
+
 ## 2026-06-06 - Offline Device Session Update Repository Adapter
 
 ### What Changed

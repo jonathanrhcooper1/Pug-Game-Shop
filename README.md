@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.61.0`
+Version: `0.62.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -129,14 +129,18 @@ last-seen updates into optimistic, row-version guarded SQL templates and
 prepared arguments without executing live writes. Offline device session update
 repository adaptation now executes that prepared last-seen update only when
 explicitly called, returning applied, stale, or rejected outcomes while staying
-unwired from live REST permission callbacks.
+unwired from live REST permission callbacks. Registered device permission
+resolution can now opt in to applying that session update through the adapter,
+keeping the default `resolve()` path plan-only and denying stale or rejected
+session updates before a future live route proceeds.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
 live reservation cleanup workers, live offline route registration, live device
-row permission checks, route permission callback wiring, route-connected device
-last-seen database writes, live offline push handlers, live batch queue replay, and
-production provider credentials remain disabled until staging acceptance.
+row permission checks, route permission callback wiring, route-connected
+device last-seen database writes, live offline push handlers, live batch queue
+replay, and production provider credentials remain disabled until staging
+acceptance.
 
 ## Source Of Truth
 

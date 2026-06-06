@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.62.0] - 2026-06-06
+
+### Added
+
+- Opt-in session update application on the registered-device permission
+  resolver for future REST permission callbacks.
+- Permission resolution support for session update results, including
+  attempted/applied audit fields, update status, redacted update audit payloads,
+  and combined stale/failed update errors.
+- Safety behavior that keeps `resolve()` plan-only, while
+  `resolve_and_apply_session_update()` applies the prepared update only after
+  successful repository-backed authorization and denies stale or rejected
+  session updates.
+- Fake-`wpdb` unit coverage for applied session updates, stale update denial,
+  failed update denial, skipped denied-device updates, and redacted audits.
+
+### Not Added
+
+- Live REST route registration, WordPress `permission_callback` wiring, queue
+  replay workers, push/pull route handlers, canonical entity writes, and
+  route-connected production database mutation remain disabled for later
+  staging-gated phases.
+
 ## [0.61.0] - 2026-06-06
 
 ### Added
