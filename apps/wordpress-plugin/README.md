@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.9.0`
+Version: `0.10.0`
 
 ## Implemented Features
 
@@ -33,6 +33,8 @@ Version: `0.9.0`
   customer row locking, cached balance updates, and replay handling.
 - Buylist submission, item, offer, approval, and conversion schema migration.
 - Buylist submission status transition helper.
+- Generic sync job/checkpoint/error/webhook schema migration.
+- ScryDex checkpoint/resume value and request planning helpers.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 
@@ -76,7 +78,7 @@ versions.
    `wp-content/plugins/tcg-store-platform`.
 3. Activate **TCG Store Platform**.
 4. Open **TCG Store > System Status**.
-5. Confirm schema version `5 / 5`, WooCommerce, Action Scheduler, and the next
+5. Confirm schema version `6 / 6`, WooCommerce, Action Scheduler, and the next
    daily UTC run.
 6. Authenticate as a manager/admin and request
    `/wp-json/tcg-store/v1/health`.

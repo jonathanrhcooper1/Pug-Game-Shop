@@ -35,11 +35,13 @@
   integration smoke coverage asserts the local registration route is registered.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
-  idempotency. WordPress integration smoke coverage asserts schema version `5`
-  and customer credit tables.
+  idempotency. WordPress integration smoke coverage asserts customer credit
+  tables.
 - Local unit coverage now includes buylist schema and submission status
-  transitions. WordPress integration smoke coverage asserts schema version `5`
-  and buylist tables.
+  transitions. WordPress integration smoke coverage asserts buylist tables.
+- Local unit coverage now includes sync schema and ScryDex checkpoint/resume
+  planning against sanitized mock fixtures. WordPress integration smoke coverage
+  asserts schema version `6` and sync tables.
 
 ## Required Test Backlog
 
@@ -52,7 +54,7 @@ corresponding modules are implemented:
 - Reservation/double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.
 - Manager override tests.
-- ScryDex sync checkpoint/resume tests.
+- ScryDex provider adapter, normalization, and worker integration tests.
 - TopDeck registration adapter tests.
 - WooCommerce checkout hook tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer

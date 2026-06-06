@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - ScryDex Sync Checkpoint Foundation
+
+### What Changed
+
+- Added schema migration `0006_sync`.
+- Added sync job, log, checkpoint, error, and webhook event table contracts.
+- Added a ScryDex checkpoint value object for initial checkpoints, row resume,
+  successful page advancement, and storage-row serialization.
+- Added a ScryDex request planner that clamps page size and derives the next
+  page/cursor request from the latest checkpoint.
+- Updated WordPress integration smoke verification to assert schema version `6`
+  and sync tables.
+
+### Why
+
+ScryDex full pulls and webhook refreshes must be page/cursor checkpointed before
+any live provider calls are enabled. This slice adds durable sync table
+contracts and deterministic checkpoint/resume planning while keeping provider
+HTTP calls, normalization workers, image workers, and webhook routes disabled
+until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/SyncSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0006Sync.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncCheckpoint.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPlanner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncCheckpointTest.php`
+- `apps/wordpress-plugin/tests/Unit/SyncSchemaTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- `0006_sync`, reversible through `Version0006Sync::down()`.
+
+### Tests Added
+
+- Sync schema contract tests for jobs, logs, checkpoints, errors, webhooks, and
+  rollback order.
+- ScryDex checkpoint tests for first-page planning, successful page advancement,
+  payload hash storage, and fixture-backed resume cursor behavior.
+- WordPress integration smoke assertions for schema version `6` and all sync
+  tables.
+
+### Rollback Notes
+
+- Roll back schema version `6` to `5` with
+  `MigrationRunner::rollback_to(5)` in a controlled maintenance window.
+- Revert this revision to remove sync schema and checkpoint helpers.
+- Do not roll back sync tables in production if real sync jobs, webhook events,
+  errors, or checkpoint history exist; export and reconcile provider sync state
+  first.
+- No production provider credentials or raw provider payloads are committed by
+  this revision.
+
 ## 2026-06-06 - Customer Credit Ledger Posting Internals
 
 ### What Changed

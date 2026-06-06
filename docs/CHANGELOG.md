@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.10.0] - 2026-06-06
+
+### Added
+
+- Schema migration `0006_sync`.
+- Sync job, job log, checkpoint, error, and webhook event table contracts.
+- ScryDex checkpoint value object and request planner for page/cursor resume.
+- Unit coverage for sync schema contracts and ScryDex checkpoint resume behavior
+  using the sanitized mock checkpoint fixture.
+- WordPress integration smoke verification for schema version `6` and sync
+  tables.
+
+### Not Added
+
+- Live ScryDex HTTP adapter, normalization/upsert workers, image download
+  workers, usage-budget enforcement, and webhook route handling remain disabled
+  for later staging-gated phases.
+
 ## [0.9.0] - 2026-06-06
 
 ### Added

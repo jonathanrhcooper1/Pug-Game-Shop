@@ -233,6 +233,10 @@ disabled until staging acceptance.
 
 ## Sync And Offline
 
+Status: schema migration `0006_sync` is implemented for server sync jobs,
+logs, checkpoints, errors, and provider webhook events. Live provider workers
+and offline device/queue/conflict tables remain disabled until later phases.
+
 | Table | Key fields |
 | --- | --- |
 | `tcg_sync_jobs` | type/provider/status, endpoint/game/set/page/cursor checkpoints, counters, heartbeat, cancellation |
