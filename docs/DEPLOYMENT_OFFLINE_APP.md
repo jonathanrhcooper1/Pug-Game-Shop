@@ -302,6 +302,12 @@ adapter for staged pairing tests. It maps service outcomes into
 payloads while default controller callbacks, route registration, production
 token issuance, and route-connected writes remain disabled.
 
+Version `0.79.0` adds an opt-in offline device pairing permission callback
+adapter for staged route readiness checks. It validates pairing request bodies,
+delegates manager/pairing authorization to an injected callback, and keeps raw
+pairing codes out of audits while default route permissions and registration
+remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

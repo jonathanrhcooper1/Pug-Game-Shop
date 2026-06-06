@@ -52,7 +52,10 @@ An opt-in route handler adapter now maps that service to the offline
 controller's `register_offline_device` callback when explicitly injected,
 returning stable response envelopes and retaining secret-free audits while the
 default controller remains fail-closed. Live pairing route wiring remains
-disabled.
+disabled. An opt-in pairing permission callback adapter can now validate the
+pairing request body and delegate manager/pairing authorization to an injected
+authorizer for staged route tests while the default permission factory still
+keeps the pairing route locked.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -350,7 +353,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.78.0",
+  "app_version": "0.79.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -446,6 +449,10 @@ idempotency headers without enabling those handlers by default.
 Offline device registration route handler adaptation now exercises that bridge
 for staged pairing tests through injected controller callbacks, but default
 controller callbacks and route registration remain disabled.
+Offline device pairing permission callback adaptation now adds the matching
+opt-in permission boundary for staged pairing routes, including parser-backed
+request validation and injected manager/pairing authorization while the default
+factory returns no pairing callback.
 Parser-only validation handlers now exercise that bridge through injected
 controller callbacks and explicitly report `write_deferred` and
 `route_still_gated` in accepted validation summaries.

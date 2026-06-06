@@ -204,7 +204,10 @@ registration planning, and explicit repository insertion into a route-ready
 boundary with secret-free service audits. An opt-in route handler adapter can
 now dispatch that service through the offline controller's
 `register_offline_device` callback for staged tests while default controller
-behavior and route registration remain disabled. Device access policy checks are implemented so
+behavior and route registration remain disabled. An opt-in pairing permission
+callback adapter can now validate pairing request bodies and call an injected
+manager/pairing authorizer, but the default permission factory still leaves
+the pairing route locked. Device access policy checks are implemented so
 future registered-device route permission callbacks can validate active state,
 revocation, token expiry, required scopes, supported modes/scopes, location
 IDs, and UTC timestamps before pull, push, or conflict work runs. Device

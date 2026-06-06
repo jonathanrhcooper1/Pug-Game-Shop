@@ -47,6 +47,7 @@ namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineController;
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+	use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
 	use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionCallbackAdapter;
@@ -109,6 +110,19 @@ namespace TCGStorePlatform\Tests\Unit {
 			}
 		}
 
+		public function test_planner_can_track_pairing_permission_callback_readiness_without_enabling_route(): void {
+			$plans = $this->planner_with_pairing_callback()->planned_registration_args();
+			$plan  = $plans['POST /offline/devices/register'];
+
+			$this->assert_true( $plan['permission_callback'] instanceof OfflineDevicePairingPermissionCallbackAdapter );
+			$this->assert_true( $plan['permission_callback_ready'] );
+			$this->assert_false( $plan['should_register'] );
+			$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
+			$this->assert_false(
+				in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true )
+			);
+		}
+
 		public function test_planner_tracks_controller_callback_readiness_without_enabling_routes(): void {
 			$plans = $this->planner_with_controller()->planned_registration_args();
 
@@ -144,7 +158,21 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
-		private function permission_callback_factory(): OfflineRoutePermissionCallbackFactory {
+		private function planner_with_pairing_callback(): OfflineRouteRegistrationPlanner {
+			return new OfflineRouteRegistrationPlanner(
+				$this->permission_callback_factory(
+					new OfflineDevicePairingPermissionCallbackAdapter(
+						null,
+						static fn (): bool => true
+					)
+				),
+				new OfflineController()
+			);
+		}
+
+		private function permission_callback_factory(
+			?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback = null
+		): OfflineRoutePermissionCallbackFactory {
 			$database = new \wpdb( $this->database_row() );
 
 			return new OfflineRoutePermissionCallbackFactory(
@@ -153,7 +181,8 @@ namespace TCGStorePlatform\Tests\Unit {
 					null,
 					new OfflineDeviceSessionUpdateRepository( $database )
 				),
-				static fn (): string => '2026-06-06T20:30:00Z'
+				static fn (): string => '2026-06-06T20:30:00Z',
+				$pairing_callback
 			);
 		}
 

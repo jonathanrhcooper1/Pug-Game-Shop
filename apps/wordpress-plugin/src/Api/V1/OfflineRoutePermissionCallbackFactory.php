@@ -7,11 +7,13 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionCallbackAdapter;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 
 final class OfflineRoutePermissionCallbackFactory {
 	private OfflineRegisteredDevicePermissionResolver $registered_device_resolver;
+	private ?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback;
 	private mixed $server_time_provider;
 
 	/**
@@ -19,15 +21,17 @@ final class OfflineRoutePermissionCallbackFactory {
 	 */
 	public function __construct(
 		OfflineRegisteredDevicePermissionResolver $registered_device_resolver,
-		?callable $server_time_provider = null
+		?callable $server_time_provider = null,
+		?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback = null
 	) {
 		$this->registered_device_resolver = $registered_device_resolver;
 		$this->server_time_provider       = $server_time_provider;
+		$this->pairing_callback           = $pairing_callback;
 	}
 
 	/**
 	 * @param null|list<array<string, mixed>> $route_contracts Planned route contracts.
-	 * @return array<string, OfflineRegisteredDevicePermissionCallbackAdapter>
+	 * @return array<string, callable>
 	 */
 	public function callbacks_for_contracts( ?array $route_contracts = null ): array {
 		$callbacks       = array();
@@ -49,9 +53,11 @@ final class OfflineRoutePermissionCallbackFactory {
 	/**
 	 * @param array<string, mixed> $route_contract Planned route contract.
 	 */
-	public function callback_for_route_contract(
-		array $route_contract
-	): ?OfflineRegisteredDevicePermissionCallbackAdapter {
+	public function callback_for_route_contract( array $route_contract ): ?callable {
+		if ( 'pairing_code_plus_manager' === self::route_permission( $route_contract ) ) {
+			return $this->pairing_callback;
+		}
+
 		if ( 'registered_device' !== self::route_permission( $route_contract ) ) {
 			return null;
 		}

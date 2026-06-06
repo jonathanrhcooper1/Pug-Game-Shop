@@ -48,7 +48,9 @@ to the planned insert path, and emits service audits that contain fingerprints
 and component summaries rather than raw tokens or token hashes. The opt-in
 registration route handler retains only that secret-free audit payload after a
 controller dispatch; raw one-time tokens and full token hashes are not stored
-in handler audit state.
+in handler audit state. Pairing permission callback audits omit raw pairing
+codes and record only a short fingerprint plus non-secret request metadata
+after parser-backed validation.
 Offline bearer-token authentication planning now normalizes request headers,
 validates token shape, compares SHA-256 token hashes with `hash_equals`, and
 delegates active/revoked/expired/scope checks to the shared device access

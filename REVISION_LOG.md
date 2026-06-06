@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Pairing Permission Callback Adapter
+
+### What Changed
+
+- Added `OfflineDevicePairingPermissionCallbackAdapter` for opt-in staged
+  pairing route permission checks.
+- Added parser-backed request-body validation, injected manager/pairing
+  authorization, missing-authorizer denial, authorizer rejection handling, and
+  secret-free permission audit payloads.
+- Extended `OfflineRoutePermissionCallbackFactory` so a supplied pairing
+  callback can attach to the pairing route while default construction still
+  returns no pairing callback.
+- Updated route registration planning to treat injected invokable callbacks as
+  readiness metadata while `live_enabled_by_default` still blocks route
+  registration.
+- Added unit tests for callback authorization/denial behavior, factory
+  attachment, planner readiness metadata, and raw pairing-code audit redaction.
+- Updated project, plugin, and offline app package versions to `0.79.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The registration handler can now produce a staged pairing response, but a live
+route also needs a permission boundary that validates the pairing request and
+delegates manager/pairing-code authorization. This revision adds that boundary
+as an injectable dependency without changing the default fail-closed route
+state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device pairing permission callback tests for successful injected
+  authorization, invalid payload short-circuiting, missing-authorizer denial,
+  authorizer rejection, and secret-free audits.
+- Offline route permission factory and registration planner tests for optional
+  pairing callback attachment and readiness metadata while route registration
+  remains disabled.
+
+### Rollback Notes
+
+- Revert this revision to remove the opt-in pairing permission callback
+  adapter, factory/planner changes, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default offline pairing route permissions, live route registration,
+  production token issuance, and route-connected device registration writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Device Registration Route Handler Adapter
 
 ### What Changed

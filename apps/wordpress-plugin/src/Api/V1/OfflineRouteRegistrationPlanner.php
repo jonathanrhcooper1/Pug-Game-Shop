@@ -7,8 +7,6 @@
 
 namespace TCGStorePlatform\Api\V1;
 
-use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionCallbackAdapter;
-
 final class OfflineRouteRegistrationPlanner {
 	private const LOCKED_PERMISSION_CALLBACK = '__return_false';
 
@@ -59,7 +57,7 @@ final class OfflineRouteRegistrationPlanner {
 	 */
 	private function route_plan( array $route_contract ): array {
 		$permission_callback = $this->permission_callback( $route_contract );
-		$permission_ready    = $permission_callback instanceof OfflineRegisteredDevicePermissionCallbackAdapter;
+		$permission_ready    = ! is_string( $permission_callback ) && is_callable( $permission_callback );
 		$controller_callback = $this->controller_callback( $route_contract );
 		$controller_ready    = is_array( $controller_callback );
 

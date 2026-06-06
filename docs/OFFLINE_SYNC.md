@@ -98,7 +98,10 @@ composes pairing validation, credential issuance, registration planning, and
 explicit repository insertion with stable result envelopes and secret-free
 audits. An opt-in registration route handler adapter now maps those outcomes
 into injected offline controller responses for staged tests while live pairing
-route wiring remains disabled.
+route wiring remains disabled. An opt-in pairing permission callback adapter
+now validates staged pairing requests and delegates manager/pairing
+authorization to an injected callback while the default pairing permission
+route remains locked.
 Registered-device access policy checks now validate active state, revocation
 timestamps, token expiry, required scopes, supported modes/scopes, location IDs,
 and UTC timestamps for future pull/push/conflict permission callbacks. Offline

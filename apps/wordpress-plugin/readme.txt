@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.78.0
+Stable tag: 0.79.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -152,6 +152,8 @@ Phase 7.43 adds offline device registration service orchestration while
 keeping live pairing routes and route-connected writes disabled.
 Phase 7.44 adds an opt-in offline device registration route handler adapter
 while keeping default controller callbacks and route registration disabled.
+Phase 7.45 adds an opt-in offline device pairing permission callback adapter
+while keeping the default pairing route permission locked.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -169,6 +171,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.79.0 =
+
+* Added an opt-in offline device pairing permission callback adapter for future staged pairing routes.
+* Added request-body parsing, injected manager/pairing authorization, authorizer rejection handling, and secret-free audit payloads.
+* Kept the default pairing route permission locked and route registration disabled until staging integration tests pass.
 
 = 0.78.0 =
 

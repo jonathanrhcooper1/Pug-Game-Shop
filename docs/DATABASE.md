@@ -298,7 +298,9 @@ controller, so route-connected registration writes remain disabled by default.
 Live provider
 workers, route permission callback wiring, route-connected registration writes,
 route-connected last-seen writes, and offline route writes remain disabled
-until later phases. The planned
+until later phases. The pairing permission callback adapter does not add
+tables; it validates request bodies and delegates authorization to an injected
+callback before any future route registration can proceed. The planned
 permission callback adapter does not add tables; it only composes request
 headers into the resolver boundary.
 

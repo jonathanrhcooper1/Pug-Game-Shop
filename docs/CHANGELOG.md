@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.79.0] - 2026-06-06
+
+### Added
+
+- Opt-in offline device pairing permission callback adapter for future staged
+  pairing route readiness.
+- Parser-backed request validation, injected manager/pairing authorization,
+  missing-authorizer denial, authorizer rejection handling, and secret-free
+  pairing permission audit payloads.
+- Optional permission callback factory attachment for the pairing route plus
+  planner coverage proving readiness metadata can be tracked while the route
+  remains disabled by default.
+
+### Not Added
+
+- No live offline pairing route is enabled. Default pairing permissions, route
+  registration, production token issuance, queue replay, and production
+  database mutation remain disabled.
+
 ## [0.78.0] - 2026-06-06
 
 ### Added

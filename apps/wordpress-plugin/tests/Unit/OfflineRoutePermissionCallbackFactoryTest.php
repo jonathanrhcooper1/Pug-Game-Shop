@@ -65,6 +65,7 @@ namespace {
 namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineRouteContracts;
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
+	use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
 	use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionCallbackAdapter;
@@ -97,6 +98,25 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 			$this->assert_same( 'offline_pull', $callbacks['POST /offline/pull']->required_scope() );
 			$this->assert_same( 'offline_push', $callbacks['POST /offline/push']->required_scope() );
+		}
+
+		public function test_factory_can_attach_pairing_permission_callback_when_supplied(): void {
+			$pairing_callback = new OfflineDevicePairingPermissionCallbackAdapter(
+				null,
+				static fn (): bool => true
+			);
+			$factory          = $this->factory( new \wpdb( $this->database_row() ), $pairing_callback );
+			$callbacks        = $factory->callbacks_for_contracts();
+
+			$this->assert_same( 3, count( $callbacks ) );
+			$this->assert_same( $pairing_callback, $callbacks['POST /offline/devices/register'] );
+			$this->assert_same(
+				$pairing_callback,
+				$factory->callback_for_route_contract( OfflineRouteContracts::route_contracts()[0] )
+			);
+			$this->assert_true(
+				$callbacks['POST /offline/pull'] instanceof OfflineRegisteredDevicePermissionCallbackAdapter
+			);
 		}
 
 		public function test_factory_ignores_non_registered_device_route_contracts(): void {
@@ -133,14 +153,18 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
-		private function factory( \wpdb $database ): OfflineRoutePermissionCallbackFactory {
+		private function factory(
+			\wpdb $database,
+			?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback = null
+		): OfflineRoutePermissionCallbackFactory {
 			return new OfflineRoutePermissionCallbackFactory(
 				new OfflineRegisteredDevicePermissionResolver(
 					new OfflineRegisteredDeviceRepository( $database ),
 					null,
 					new OfflineDeviceSessionUpdateRepository( $database )
 				),
-				static fn (): string => '2026-06-06T20:30:00Z'
+				static fn (): string => '2026-06-06T20:30:00Z',
+				$pairing_callback
 			);
 		}
 
