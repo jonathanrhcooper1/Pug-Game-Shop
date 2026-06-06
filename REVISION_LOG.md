@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Pull Response Presentation
+
+### What Changed
+
+- Added a WordPress offline pull response presenter for stable server-to-device
+  payloads.
+- Added per-domain response shaping for cursors, `has_more`, cached data rows,
+  and tombstones.
+- Added validation for supported response domains, UTC timestamps, entity IDs,
+  row versions, payload objects, tombstone rows, and cursor shape.
+- Added unit coverage for empty domain responses, request cursor carry-forward,
+  normalized data rows, tombstone inclusion/exclusion, and invalid response
+  contract inputs.
+- Updated project, plugin, and offline app package versions to `0.39.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap, and
+  plugin docs.
+
+### Why
+
+The offline app needs the server pull response to be stable before live change
+queries are introduced. This slice lets future route handlers plug repository
+results into a deterministic presenter without changing the app payload shape
+or advancing cursors before staging proves the full sync path.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePullResponsePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullResponsePresenterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds response presentation only.
+
+### Tests Added
+
+- Offline pull response presenter tests for empty domain responses, request
+  cursor carry-forward, normalized data rows, tombstone inclusion/exclusion,
+  and invalid response contract inputs.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline pull response presenter, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live offline endpoints, pull query execution, cursor advancement, queue
+  replay, and conflict writes remain disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Pull Request Validation
 
 ### What Changed

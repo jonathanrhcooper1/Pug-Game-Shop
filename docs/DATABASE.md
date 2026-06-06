@@ -246,8 +246,9 @@ disabled until staging acceptance.
 Status: schema migration `0006_sync` is implemented for server sync jobs,
 logs, checkpoints, errors, and provider webhook events. Planned offline REST
 route contracts and offline push payload validation exist for pairing, push,
-pull request validation, and conflicts, but live provider workers and offline
-device/queue/conflict writes remain disabled until later phases.
+pull request validation, pull response presentation, and conflicts, but live
+provider workers and offline device/queue/conflict writes remain disabled until
+later phases.
 
 | Table | Key fields |
 | --- | --- |

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.38.0`
+Version: `0.39.0`
 
 ## Implemented Features
 
@@ -76,6 +76,8 @@ Version: `0.38.0`
   payload objects, authorization context, duplicates, and schema version.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
+- Offline pull response presentation for per-domain cursors, change rows,
+  tombstones, server timestamps, and `has_more` pagination flags.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

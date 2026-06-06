@@ -38,7 +38,7 @@ $assert = static function ( bool $condition, string $message ) use ( $fail ): vo
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.38.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.39.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 7 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 7 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -87,7 +87,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.38.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.39.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 7 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 7 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );

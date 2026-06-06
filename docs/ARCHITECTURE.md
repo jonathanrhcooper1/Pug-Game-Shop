@@ -177,7 +177,10 @@ staging integration tests. Push payload validation is implemented separately so
 the route handler can reject malformed operation batches before persistence or
 conflict resolution is enabled. Pull request validation is also implemented so
 devices can ask for known cached domains and cursors before live change queries
-or cursor advancement are enabled.
+or cursor advancement are enabled. Pull response presentation is implemented so
+repository-backed change sets can later be shaped into stable per-domain
+cursors, change rows, tombstones, server timestamps, and `has_more` pagination
+flags without changing the offline app contract.
 
 ## Storefront Product Strategy
 

@@ -28,7 +28,9 @@ operation/entity pairs, timestamps, and schema version gating. Full permission,
 nonce, request/response, and write-flow REST tests remain staging-gated as each
 route family is implemented. Offline pull request validation is implemented for
 device IDs, requested cached domains, domain cursors, page-size bounds,
-tombstone inclusion, and schema version gating.
+tombstone inclusion, and schema version gating. Offline pull response
+presentation is implemented for stable per-domain cursors, data rows,
+tombstones, server timestamps, and `has_more` pagination flags.
 
 ### Inventory And Search
 
@@ -198,7 +200,35 @@ workers, queue replay, and conflict persistence remain disabled until
 staging-gated WordPress/offline integration tests pass. Offline pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
 `customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
-limits, tombstone inclusion, and schema version `1`.
+limits, tombstone inclusion, and schema version `1`. Offline pull response
+presentation now shapes accepted pull results as:
+
+```json
+{
+  "device_id": "device-main-01",
+  "schema_version": 1,
+  "server_time_utc": "2026-06-06T15:45:00Z",
+  "domains": {
+    "inventory": {
+      "cursor": "inv-cursor-42",
+      "has_more": false,
+      "data": [
+        {
+          "entity_type": "inventory_item",
+          "entity_id": "inv-1001",
+          "row_version": 42,
+          "updated_at_utc": "2026-06-06T15:41:00Z",
+          "payload": {}
+        }
+      ],
+      "tombstones": []
+    }
+  }
+}
+```
+
+Live database change queries, tombstone repositories, and cursor advancement
+remain disabled until device authentication and reconnect tests pass.
 
 ## WooCommerce Hook Map
 

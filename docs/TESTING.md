@@ -124,6 +124,10 @@
 - Local unit coverage now includes offline pull request validation for cached
   domain selection, cursors, page-size bounds, tombstone inclusion, device IDs,
   and schema version gating.
+- Local unit coverage now includes offline pull response presentation for empty
+  domain responses, request cursor carry-forward, normalized data rows,
+  tombstone inclusion/exclusion, UTC timestamps, entity IDs, row versions, and
+  invalid response contract inputs.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

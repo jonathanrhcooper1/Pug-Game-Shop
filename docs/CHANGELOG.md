@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.39.0] - 2026-06-06
+
+### Added
+
+- Offline pull response presenter for stable server-to-device payloads.
+- Per-domain response shaping for cursors, `has_more`, cached data rows, and
+  tombstones.
+- Validation of response contract inputs, including supported domains, UTC
+  timestamps, entity IDs, row versions, payload objects, tombstone rows, and
+  cursor shape.
+- Unit coverage for empty pull responses, request cursor carry-forward,
+  normalized data rows, tombstone inclusion/exclusion, and invalid response
+  contract inputs.
+
+### Not Added
+
+- Live offline pull route registration, device token validation, database
+  change queries, cursor advancement, tombstone repositories, and reconnect
+  integration tests remain disabled for later staging-gated phases.
+
 ## [0.38.0] - 2026-06-06
 
 ### Added
