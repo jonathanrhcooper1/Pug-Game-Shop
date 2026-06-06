@@ -61,3 +61,10 @@ production deployment.
 - If a `wp-env` environment was started from this revision, run
   `npm run wp-env:clean` and `npm run wp-env:destroy` before returning to a
   previous local setup.
+
+### CI Fix Notes
+
+- Fixed WordPress coding standards alignment in
+  `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`.
+- Fixed WordPress integration workflow WP-CLI download URL and made the download
+  fail fast with `curl -fsSL`.
