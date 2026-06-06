@@ -145,6 +145,10 @@
   future device rows, one-time response payloads, redacted audit payloads,
   scope/capability preservation, generated credential validation, and token
   expiry windows.
+- Local unit coverage now includes offline device registration insert query
+  planning for prepared SQL templates, prepare args, schema-length public IDs,
+  JSON field normalization, UTC timestamp conversion, malformed rows, session
+  state rejection, and secret-free audits.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

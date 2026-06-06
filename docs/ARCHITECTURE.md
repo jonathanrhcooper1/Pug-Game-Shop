@@ -189,7 +189,10 @@ IDs, unsupported platforms, and schema mismatches before any token or device row
 is created. Device registration planning is also implemented so a validated
 pairing request can be shaped into a future device row, one-time response,
 sync route map, first-sync flags, token hash storage fields, and redacted audit
-payload before live token generation or persistence is enabled. Device access
+payload before live token generation or persistence is enabled. Device
+registration insert query planning now maps those rows into prepared
+`tcg_offline_devices` insert SQL with JSON/timestamp normalization and
+secret-free audit metadata, without wiring repository execution. Device access
 policy checks are implemented so future registered-device route permission
 callbacks can validate active state, revocation, token expiry, required scopes,
 supported modes/scopes, location IDs, and UTC timestamps before pull, push, or

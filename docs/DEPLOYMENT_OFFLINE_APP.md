@@ -277,6 +277,10 @@ Version `0.73.0` adds explicit deferred bootstrap reporting to authenticated
 health and WordPress smoke coverage for the `rest_api_init` bootstrapper hook.
 Current offline routes remain unregistered by default.
 
+Version `0.74.0` adds offline device registration insert query planning for
+future `tcg_offline_devices` writes. It prepares SQL templates and arguments
+only; live device row writes and route registration remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

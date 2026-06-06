@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.74.0] - 2026-06-06
+
+### Added
+
+- Offline device registration insert query planner for future
+  `tcg_offline_devices` writes.
+- Prepared SQL template and argument planning for public IDs, location and
+  manager IDs, token hashes, token expiry, scopes/capabilities JSON, app
+  version, platform, active status, issued/created/updated timestamps, and row
+  version.
+- Validation for table prefixes, schema-length public IDs, active registration
+  state, nullable session/revocation fields, supported device modes, Windows
+  platform, semver app versions, UTC timestamps, token expiry windows, scopes,
+  capabilities, and token hashes.
+- Unit coverage proving malformed registration rows do not produce SQL and
+  insert-query audit payloads do not expose token secrets.
+
+### Not Added
+
+- No live offline device row write is executed. Token issuance, route
+  registration, registered-device permission callbacks, queue replay, and
+  production database mutation remain disabled.
+
 ## [0.73.0] - 2026-06-06
 
 ### Added

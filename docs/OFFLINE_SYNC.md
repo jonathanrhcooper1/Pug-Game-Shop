@@ -82,7 +82,11 @@ pairing codes, installation IDs, device modes, manager/location IDs,
 capabilities, requested scopes, Windows app versions, and schema version. Those
 requests can now be turned into a planned device row, one-time registration
 response, token hash storage fields, sync route map, first-sync flags, and
-redacted audit payload without live writes. Registered-device access policy
+redacted audit payload without live writes. Device registration insert query
+planning now maps those planned rows into prepared `tcg_offline_devices` insert
+templates, normalizes scopes and capabilities to JSON, converts UTC timestamps
+to MySQL datetime values, and keeps token secrets out of audit payloads without
+executing a database write. Registered-device access policy
 checks now validate active state, revocation timestamps, token expiry, required
 scopes, supported modes/scopes, location IDs, and UTC timestamps for future
 pull/push/conflict permission callbacks. Offline bearer-token authentication

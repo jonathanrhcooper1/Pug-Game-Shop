@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Registration Insert Query Planning
+
+### What Changed
+
+- Added `OfflineDeviceRegistrationInsertQueryBuilder` for future
+  `tcg_offline_devices` insert planning.
+- Added `OfflineDeviceRegistrationInsertQueryPlan` for prepared SQL templates,
+  prepare arguments, insert columns, validation errors, and redacted audit
+  metadata.
+- Added validation for table prefixes, public ID length, location/manager IDs,
+  labels, modes, token hashes, token expiry timestamps, scopes/capabilities
+  JSON, app versions, platform, active status, nullable session/revocation
+  fields, issued timestamps, and token expiry windows.
+- Added unit tests for valid insert templates, invalid table prefixes,
+  malformed registration rows, unexpected session/revocation state, and
+  secret-free audit payloads.
+- Updated project, plugin, and offline app package versions to `0.74.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+Offline device registration already produces a safe planned device row, but the
+next persistence boundary needs a deterministic SQL contract before any live
+repository writes are enabled. This revision prepares and tests that insert
+contract while keeping live registration routes and database execution disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationInsertQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationInsertQueryPlan.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationInsertQueryBuilderTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteValidationHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device registration insert query builder tests for accepted prepared
+  inserts, invalid table prefixes, malformed rows, unexpected session state,
+  JSON normalization, UTC timestamp conversion, schema-length public IDs, and
+  secret-free audits.
+
+### Rollback Notes
+
+- Revert this revision to remove offline device registration insert query
+  planning, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device registration writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Route Bootstrap Deferred Smoke Coverage
 
 ### What Changed
