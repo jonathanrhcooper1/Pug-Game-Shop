@@ -55,6 +55,13 @@ closed.
 - No database rollback is required.
 - Existing event rows remain untouched because no write paths are added.
 
+### CI Fix Notes
+
+- Replaced a short ternary in the Events REST controller with explicit limit
+  normalization.
+- Fixed WordPress coding standards assignment alignment in the event detail
+  shortcode renderer.
+
 ## 2026-06-06 - Events And TopDeck Foundation
 
 ### What Changed

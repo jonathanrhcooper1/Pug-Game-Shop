@@ -91,7 +91,7 @@ final class EventShortcodes {
 	 * @param array<string, mixed> $event Public event.
 	 */
 	private function render_detail( array $event ): string {
-		$html = '<article class="tcg-event-detail">';
+		$html  = '<article class="tcg-event-detail">';
 		$html .= '<h2>' . esc_html( $event['title'] ) . '</h2>';
 		$html .= '<p>' . esc_html( $this->summary_line( $event ) ) . '</p>';
 		$html .= '<p>' . esc_html( $this->capacity_line( $event ) ) . '</p>';

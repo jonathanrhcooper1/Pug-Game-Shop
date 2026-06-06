@@ -43,7 +43,8 @@ final class EventsController {
 
 	public function list_events( \WP_REST_Request $request ): \WP_REST_Response {
 		$filters = EventFilters::from_array( $request->get_query_params() );
-		$limit   = max( 1, min( 100, (int) $request->get_param( 'per_page' ) ?: 20 ) );
+		$limit   = (int) $request->get_param( 'per_page' );
+		$limit   = max( 1, min( 100, 0 === $limit ? 20 : $limit ) );
 		$offset  = max( 0, ( (int) $request->get_param( 'page' ) - 1 ) * $limit );
 		$rows    = $this->repository()->list_public( $filters, $limit, $offset );
 		$now     = new DateTimeImmutable( 'now' );
