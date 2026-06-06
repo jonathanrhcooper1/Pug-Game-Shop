@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.25.0] - 2026-06-06
+
+### Added
+
+- Buylist planned REST route contracts for submission intake, staff listing,
+  owner/staff detail, review, offer, customer acceptance, and inventory
+  conversion flows.
+- Buylist submission intake parser for source, idempotency, customer identity,
+  currency, owner token hash, optional customer/location IDs, and card item rows.
+- Unit coverage for planned route permissions, disabled-by-default live status,
+  valid intake normalization, missing submission fields, invalid item rows, bad
+  owner tokens, and invalid optional IDs.
+
+### Not Added
+
+- Live buylist route registration, permission callbacks, staff review UI,
+  offer storage, customer acceptance writes, customer credit payout posting,
+  and inventory conversion workers remain disabled for later staging-gated
+  phases.
+
 ## [0.24.0] - 2026-06-06
 
 ### Added

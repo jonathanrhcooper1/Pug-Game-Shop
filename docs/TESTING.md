@@ -42,6 +42,9 @@
   currency, metadata, optional linked IDs, and manager-approved adjustments.
 - Local unit coverage now includes buylist schema and submission status
   transitions. WordPress integration smoke coverage asserts buylist tables.
+- Local unit coverage now includes buylist planned REST route contracts and
+  submission intake payload validation for customer identity, idempotency,
+  source, owner tokens, optional IDs, item identity, quantity, and graded cards.
 - Local unit coverage now includes sync schema and ScryDex checkpoint/resume
   planning against sanitized mock fixtures. WordPress integration smoke coverage
   asserts schema version `6` and sync tables.

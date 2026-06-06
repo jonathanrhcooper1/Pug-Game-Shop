@@ -19,9 +19,10 @@ Current implementation status: dependency-free route contract tests cover the
 health endpoint plus public Events list/detail/registration routes. WordPress
 integration smoke tests verify those routes register in a real WordPress
 process. Planned customer credit route contracts and posting payload validation
-are implemented but not registered live. Full permission, nonce,
-request/response, and write-flow REST tests remain staging-gated as each route
-family is implemented.
+and planned buylist route contracts plus intake payload validation are
+implemented but not registered live. Full permission, nonce, request/response,
+and write-flow REST tests remain staging-gated as each route family is
+implemented.
 
 ### Inventory And Search
 
@@ -122,6 +123,12 @@ linked IDs, and manager ID plus reason for manager-approved entry types.
 | POST | `/buylist/submissions/{id}/offer` | staff/manager threshold |
 | POST | `/buylist/submissions/{id}/accept` | verified customer/staff |
 | POST | `/buylist/items/{id}/convert-to-inventory` | `create_inventory` |
+
+Buylist route contracts for intake, listing, detail, review, offer, acceptance,
+and conversion exist locally with live registration disabled. Submission intake
+payload validation requires source, idempotency key, customer phone, valid
+currency, at least one item, card identity per item, positive quantity, valid
+owner token hash when supplied, and grading details for graded cards.
 
 ### Events
 

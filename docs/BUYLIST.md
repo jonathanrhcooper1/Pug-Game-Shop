@@ -4,9 +4,11 @@
 
 Schema migration `0005_buylist` is implemented for submissions, items, offers,
 manager approvals, and conversion logs. The submission status helper is covered
-by unit tests. Live buylist write APIs, staff review UI, customer credit payout
-posting, and inventory conversion workers remain disabled until staging
-acceptance.
+by unit tests. Planned REST route contracts and submission intake payload
+validation now cover public/staff intake, review, offer, acceptance, and
+conversion surfaces before live route registration. Live buylist write APIs,
+staff review UI, customer credit payout posting, and inventory conversion
+workers remain disabled until staging acceptance.
 
 ## State Flow
 
@@ -33,6 +35,11 @@ stateDiagram-v2
 Kiosk, website, staff, and offline app accept name, required phone, optional
 email, and card entries. Vision is an identification aid only. Customers do not
 set final condition, authenticity, grade, or offer.
+
+Current intake payload validation requires a source, idempotency key, phone,
+valid currency, and at least one card item. Each item must identify a card by
+reference ID or manual card name, use a positive quantity, and provide grading
+company plus grade when submitted as graded.
 
 ## Staff Review
 

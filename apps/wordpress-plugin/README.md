@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.24.0`
+Version: `0.25.0`
 
 ## Implemented Features
 
@@ -35,6 +35,8 @@ Version: `0.24.0`
   for idempotent ledger writes, manager approvals, and route-customer matching.
 - Buylist submission, item, offer, approval, and conversion schema migration.
 - Buylist submission status transition helper.
+- Buylist planned REST route contracts and submission intake payload validation
+  for customer identity, idempotency, source, owner token, and item rows.
 - Generic sync job/checkpoint/error/webhook schema migration.
 - ScryDex checkpoint/resume value and request planning helpers.
 - ScryDex provider adapter contract and HTTP provider with mock-backed tests,

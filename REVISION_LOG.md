@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Buylist REST Intake Boundary Foundation
+
+### What Changed
+
+- Added planned buylist REST route contracts for intake, listing, detail,
+  review, offer, acceptance, and conversion flows.
+- Added a buylist submission intake parser and normalized request object.
+- Added unit coverage for route permissions, disabled-by-default live status,
+  valid intake normalization, missing submission fields, invalid item rows, bad
+  owner tokens, and invalid optional IDs.
+
+### Why
+
+Buylist submissions can originate from public web, kiosk, staff, and offline
+contexts, so the payload boundary needs to reject malformed customer and item
+data before live writes, offer review, payout posting, and inventory conversion
+workers are enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/BuylistRouteContracts.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistSubmissionIntakeParser.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistSubmissionIntakeRequest.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistSubmissionIntakeValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/BuylistRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/BuylistSubmissionIntakeParserTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/BUYLIST.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Buylist route contract tests for planned route count, permissions, namespace,
+  and disabled live registration.
+- Buylist submission intake parser tests for valid normalized payloads, header
+  idempotency precedence, missing required fields, invalid item identity and
+  quantity, graded-card requirements, bad owner token hashes, and invalid
+  optional IDs.
+
+### Rollback Notes
+
+- Revert this revision to remove buylist REST intake boundary helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Live buylist write APIs, staff review UI, customer acceptance writes, credit
+  payout posting, and inventory conversion workers remain disabled after
+  rollback.
+
 ## 2026-06-06 - Customer Credit REST Boundary Foundation
 
 ### What Changed
