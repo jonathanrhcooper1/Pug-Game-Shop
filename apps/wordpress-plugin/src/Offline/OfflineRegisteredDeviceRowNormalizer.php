@@ -14,24 +14,24 @@ final class OfflineRegisteredDeviceRowNormalizer {
 	 * @param array<string, mixed> $row Raw repository row.
 	 */
 	public function normalize( array $row ): OfflineRegisteredDeviceRowNormalizationResult {
-		$errors                = array();
-		$offline_device_id     = $this->positive_int( $row['offline_device_id'] ?? null );
-		$public_id             = trim( (string) ( $row['public_id'] ?? '' ) );
-		$location_id           = $this->positive_int( $row['location_id'] ?? null );
-		$manager_user_id       = $this->optional_positive_int( $row['manager_user_id'] ?? null );
-		$device_label          = trim( (string) ( $row['device_label'] ?? '' ) );
-		$device_mode           = strtolower( trim( (string) ( $row['device_mode'] ?? '' ) ) );
-		$status                = strtolower( trim( (string) ( $row['status'] ?? '' ) ) );
-		$token_hash            = strtolower( trim( (string) ( $row['token_hash'] ?? '' ) ) );
-		$token_expires_at_utc  = $this->datetime_utc( $this->field_value( $row, 'token_expires_at_utc', 'token_expires_at' ) );
-		$revoked_at_utc        = $this->optional_datetime_utc( $this->field_value( $row, 'revoked_at_utc', 'revoked_at' ) );
-		$last_seen_at_utc      = $this->optional_datetime_utc( $this->field_value( $row, 'last_seen_at_utc', 'last_seen_at' ) );
-		$issued_at_utc         = $this->datetime_utc( $this->field_value( $row, 'issued_at_utc', 'issued_at' ) );
-		$created_at_utc        = $this->datetime_utc( $this->field_value( $row, 'created_at_utc', 'created_at' ) );
-		$updated_at_utc        = $this->datetime_utc( $this->field_value( $row, 'updated_at_utc', 'updated_at' ) );
-		$row_version           = $this->positive_int( $row['row_version'] ?? null );
-		$scopes                = $this->parse_string_list( $row['scopes'] ?? ( $row['scopes_json'] ?? null ), 'scopes', $errors );
-		$capabilities          = $this->parse_capabilities( $row['capabilities'] ?? ( $row['capabilities_json'] ?? null ), $errors );
+		$errors               = array();
+		$offline_device_id    = $this->positive_int( $row['offline_device_id'] ?? null );
+		$public_id            = trim( (string) ( $row['public_id'] ?? '' ) );
+		$location_id          = $this->positive_int( $row['location_id'] ?? null );
+		$manager_user_id      = $this->optional_positive_int( $row['manager_user_id'] ?? null );
+		$device_label         = trim( (string) ( $row['device_label'] ?? '' ) );
+		$device_mode          = strtolower( trim( (string) ( $row['device_mode'] ?? '' ) ) );
+		$status               = strtolower( trim( (string) ( $row['status'] ?? '' ) ) );
+		$token_hash           = strtolower( trim( (string) ( $row['token_hash'] ?? '' ) ) );
+		$token_expires_at_utc = $this->datetime_utc( $this->field_value( $row, 'token_expires_at_utc', 'token_expires_at' ) );
+		$revoked_at_utc       = $this->optional_datetime_utc( $this->field_value( $row, 'revoked_at_utc', 'revoked_at' ) );
+		$last_seen_at_utc     = $this->optional_datetime_utc( $this->field_value( $row, 'last_seen_at_utc', 'last_seen_at' ) );
+		$issued_at_utc        = $this->datetime_utc( $this->field_value( $row, 'issued_at_utc', 'issued_at' ) );
+		$created_at_utc       = $this->datetime_utc( $this->field_value( $row, 'created_at_utc', 'created_at' ) );
+		$updated_at_utc       = $this->datetime_utc( $this->field_value( $row, 'updated_at_utc', 'updated_at' ) );
+		$row_version          = $this->positive_int( $row['row_version'] ?? null );
+		$scopes               = $this->parse_string_list( $row['scopes'] ?? ( $row['scopes_json'] ?? null ), 'scopes', $errors );
+		$capabilities         = $this->parse_capabilities( $row['capabilities'] ?? ( $row['capabilities_json'] ?? null ), $errors );
 
 		if ( null === $offline_device_id ) {
 			$errors[] = 'offline_device_id_invalid';
@@ -117,8 +117,8 @@ final class OfflineRegisteredDeviceRowNormalizer {
 				'status'               => $status,
 				'token_hash'           => $token_hash,
 				'token_expires_at_utc' => $token_expires_at_utc,
-				'revoked_at_utc'       => $revoked_at_utc ?: null,
-				'last_seen_at_utc'     => $last_seen_at_utc ?: null,
+				'revoked_at_utc'       => false !== $revoked_at_utc ? $revoked_at_utc : null,
+				'last_seen_at_utc'     => false !== $last_seen_at_utc ? $last_seen_at_utc : null,
 				'issued_at_utc'        => $issued_at_utc,
 				'created_at_utc'       => $created_at_utc,
 				'updated_at_utc'       => $updated_at_utc,
