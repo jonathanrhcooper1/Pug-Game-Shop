@@ -15,6 +15,7 @@ final class RedactorTest extends TestCase {
 		$result = Redactor::redact(
 			array(
 				'api_key' => 'secret-value',
+				'x-team-id' => 'team-secret',
 				'nested'  => array(
 					'manager_pin' => '1234',
 					'safe'        => 'visible',
@@ -23,6 +24,7 @@ final class RedactorTest extends TestCase {
 		);
 
 		$this->assert_same( '[redacted]', $result['api_key'] );
+		$this->assert_same( '[redacted]', $result['x-team-id'] );
 		$this->assert_same( '[redacted]', $result['nested']['manager_pin'] );
 		$this->assert_same( 'visible', $result['nested']['safe'] );
 	}

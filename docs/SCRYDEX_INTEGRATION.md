@@ -4,9 +4,12 @@
 
 Schema migration `0006_sync` is implemented for sync jobs, logs, checkpoints,
 errors, and webhook events. ScryDex checkpoint/resume helpers plan page/cursor
-requests and serialize committed checkpoints. Live ScryDex HTTP calls,
-normalization/upsert workers, image workers, usage-budget enforcement, and
-webhook route handling remain disabled until staging acceptance.
+requests and serialize committed checkpoints. The ScryDex provider adapter is
+implemented with injectable transport, credential redaction, and mock-backed
+card-search/rate-limit tests. Scheduled ScryDex workers, live provider
+credential configuration, normalization/upsert workers, image workers,
+usage-budget enforcement, and webhook route handling remain disabled until
+staging acceptance.
 
 ## Role
 

@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.11.0] - 2026-06-06
+
+### Added
+
+- ScryDex provider result object and adapter contract.
+- ScryDex HTTP provider with injectable transport, card search, card detail,
+  usage request, default-disabled webhook registration, credential header
+  handling, rate-limit mapping, unauthorized mapping, and auth-context redaction.
+- Team ID redaction in the shared log redactor for provider auth contexts.
+- Unit coverage for missing ScryDex credentials, fixture-backed card search,
+  credential headers, rate-limit mapping, and ScryDex auth-context redaction.
+
+### Not Added
+
+- Scheduled ScryDex workers, live provider credential configuration,
+  normalization/upsert logic, image downloads, usage-budget enforcement, and
+  webhook route handling remain disabled for later staging-gated phases.
+
 ## [0.10.0] - 2026-06-06
 
 ### Added

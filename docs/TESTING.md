@@ -42,6 +42,9 @@
 - Local unit coverage now includes sync schema and ScryDex checkpoint/resume
   planning against sanitized mock fixtures. WordPress integration smoke coverage
   asserts schema version `6` and sync tables.
+- Local unit coverage now includes ScryDex provider adapter behavior using
+  sanitized mock fixtures, credential header assertions, rate-limit mapping, and
+  auth-context redaction.
 
 ## Required Test Backlog
 
@@ -54,7 +57,7 @@ corresponding modules are implemented:
 - Reservation/double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.
 - Manager override tests.
-- ScryDex provider adapter, normalization, and worker integration tests.
+- ScryDex normalization and worker integration tests.
 - TopDeck registration adapter tests.
 - WooCommerce checkout hook tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer

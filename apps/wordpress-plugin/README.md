@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.10.0`
+Version: `0.11.0`
 
 ## Implemented Features
 
@@ -35,6 +35,9 @@ Version: `0.10.0`
 - Buylist submission status transition helper.
 - Generic sync job/checkpoint/error/webhook schema migration.
 - ScryDex checkpoint/resume value and request planning helpers.
+- ScryDex provider adapter contract and HTTP provider with mock-backed tests,
+  credential redaction, rate-limit mapping, and default-disabled webhook
+  registration.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

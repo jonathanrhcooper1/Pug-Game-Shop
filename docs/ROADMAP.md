@@ -31,8 +31,8 @@ and intake benchmarks meet agreed targets.
 
 ## Phase 3: ScryDex Sync
 
-Status: In progress; generic sync schema and ScryDex checkpoint/resume helpers
-implemented
+Status: In progress; generic sync schema, ScryDex checkpoint/resume helpers, and
+mock-backed ScryDex provider adapter implemented
 
 Deliver adapter, capability discovery, card/expansion/price/image sync,
 checkpoints, resume, usage tracking, webhook verification, live logs, and daily

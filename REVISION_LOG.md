@@ -3,6 +3,61 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - ScryDex Provider Adapter Foundation
+
+### What Changed
+
+- Added a ScryDex provider result object and adapter contract.
+- Added a ScryDex HTTP provider with injectable transport for fixture-backed
+  tests, card search, card detail, usage request, default-disabled webhook
+  registration, credential headers, rate-limit mapping, unauthorized mapping,
+  and auth-context redaction.
+- Updated the shared redactor to treat provider team IDs as sensitive.
+- Added unit coverage for missing credentials, mock card search, credential
+  headers, rate-limit mapping, and ScryDex auth-context redaction.
+
+### Why
+
+ScryDex sync workers need a tested provider boundary before scheduled pulls,
+normalization, image download, or webhook processing can be enabled. This slice
+adds the adapter contract and mock-backed HTTP behavior while leaving live
+worker wiring and production credentials disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexResult.php`
+- `apps/wordpress-plugin/src/Logging/Redactor.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/RedactorTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `6`.
+
+### Tests Added
+
+- ScryDex provider tests for missing credentials, mock card search, credential
+  headers, rate-limit mapping, and redacted auth context.
+- Redactor test coverage for provider `X-Team-ID` style keys.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex provider adapter and team ID
+  redaction change.
+- No schema rollback is required; database target remains `6`.
+- Do not wire scheduled ScryDex workers or production credentials until staging
+  verifies sandbox calls, checkpoint resume, usage budgets, and payload masking.
+- No production ScryDex credentials or raw provider payloads are committed by
+  this revision.
+
 ## 2026-06-06 - ScryDex Sync Checkpoint Foundation
 
 ### What Changed

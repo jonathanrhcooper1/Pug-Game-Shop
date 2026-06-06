@@ -42,11 +42,10 @@ final class Redactor {
 
 	private static function is_sensitive_key( string $key ): bool {
 		$normalized = strtolower( str_replace( array( '-', ' ' ), '_', $key ) );
+		$pattern    = '/(^|_)(authorization|cookie|password|passwd|secret|api_key|team_id|'
+			. 'access_token|refresh_token|device_token|signature|manager_pin|pin)($|_)/';
 
-		return 1 === preg_match(
-			'/(^|_)(authorization|cookie|password|passwd|secret|api_key|access_token|refresh_token|device_token|signature|manager_pin|pin)($|_)/',
-			$normalized
-		);
+		return 1 === preg_match( $pattern, $normalized );
 	}
 
 	private static function redact_string( string $value ): string {

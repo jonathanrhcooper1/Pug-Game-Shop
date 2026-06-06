@@ -52,7 +52,8 @@ database exports, or diagnostic bundles.
 - TLS is required for all remote traffic.
 - No payment card data is stored.
 - Public responses exclude attendee email, full phone, staff notes, cost,
-  minimum price, cert data when configured private, and provider secrets.
+  minimum price, cert data when configured private, provider secrets, and
+  provider team IDs.
 - Logs use structured allowlists rather than dumping requests.
 - Customer lookup endpoints are rate limited and return minimal results.
 - Kiosk screens display phone last four only after submission.
