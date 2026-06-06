@@ -295,6 +295,9 @@ validation, credential issuance, and registration planning while keeping
 service audits free of raw tokens and token hashes. A route handler adapter can
 now invoke that service only when explicitly injected into the offline
 controller, so route-connected registration writes remain disabled by default.
+Route registration readiness also requires those explicit controller handler
+injections; default disabled controller methods alone cannot register an
+offline route and this revision adds no schema change.
 Live provider
 workers, route permission callback wiring, route-connected registration writes,
 route-connected last-seen writes, and offline route writes remain disabled

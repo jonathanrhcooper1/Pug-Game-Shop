@@ -68,6 +68,19 @@ final class OfflineControllerTest extends TestCase {
 		$this->assert_true( $seen instanceof OfflineRestRequestData );
 	}
 
+	public function test_controller_reports_injected_handler_readiness(): void {
+		$controller = new OfflineController(
+			null,
+			array(
+				'push_offline_operations' => static fn (): array => array( 'status' => 'handled' ),
+			)
+		);
+
+		$this->assert_true( $controller->has_handler( 'push_offline_operations' ) );
+		$this->assert_false( $controller->has_handler( 'pull_offline_changes' ) );
+		$this->assert_false( $controller->has_handler( 'unknown_callback' ) );
+	}
+
 	public function test_controller_keeps_unhandled_callbacks_disabled_with_injected_handlers(): void {
 		$controller = new OfflineController(
 			null,

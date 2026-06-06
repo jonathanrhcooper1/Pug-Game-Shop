@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Route Handler Readiness Enforcement
+
+### What Changed
+
+- Added `OfflineController::has_handler()` so route planning can distinguish a
+  controller method from an explicitly injected live handler.
+- Updated `OfflineRouteRegistrationPlanner` to mark controller callbacks ready
+  only when the controller method exists and an injected handler is callable.
+- Added registrar coverage proving a future live-flagged offline route is not
+  registered when it only has default disabled controller methods.
+- Updated project, plugin, and offline app package versions to `0.80.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+Permission readiness and controller method presence are not sufficient to open a
+route. This revision prevents a staged route from registering against the
+offline controller's disabled fallback methods unless the matching handler has
+been explicitly injected.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineController.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline controller readiness tests proving only injected handlers report
+  ready.
+- Offline route registration planner tests proving bare default controllers do
+  not satisfy controller callback readiness.
+- Offline route registrar tests proving a future enabled route is not
+  registered when the controller lacks the injected handler.
+
+### Rollback Notes
+
+- Revert this revision to remove the handler-readiness guard, tests, version
+  bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, production device registration writes, queue replay, and
+  route-connected permission/database writes remain disabled before and after
+  rollback.
+
 ## 2026-06-06 - Offline Device Pairing Permission Callback Adapter
 
 ### What Changed

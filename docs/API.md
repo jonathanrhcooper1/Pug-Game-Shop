@@ -56,6 +56,9 @@ disabled. An opt-in pairing permission callback adapter can now validate the
 pairing request body and delegate manager/pairing authorization to an injected
 authorizer for staged route tests while the default permission factory still
 keeps the pairing route locked.
+Offline route registration planning now requires controller callbacks to have
+explicitly injected handlers before they are considered ready; default
+fail-closed controller methods alone are not registerable.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -113,6 +116,9 @@ The offline route bootstrapper is wired to `rest_api_init`, but it calls the
 guarded offline route registrar only when the feature gate and route-readiness
 plan report `should_register_routes = true`; the current default plan still
 defers registration.
+Controller callback readiness now requires an injected handler in addition to a
+matching controller method, preventing disabled fallback methods from becoming
+registered routes during staged enablement.
 
 ### Inventory And Search
 
@@ -353,7 +359,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.79.0",
+  "app_version": "0.80.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -453,6 +459,8 @@ Offline device pairing permission callback adaptation now adds the matching
 opt-in permission boundary for staged pairing routes, including parser-backed
 request validation and injected manager/pairing authorization while the default
 factory returns no pairing callback.
+Route registration readiness also requires an injected controller handler for
+the route callback; default disabled controller methods remain non-registerable.
 Parser-only validation handlers now exercise that bridge through injected
 controller callbacks and explicitly report `write_deferred` and
 `route_still_gated` in accepted validation summaries.

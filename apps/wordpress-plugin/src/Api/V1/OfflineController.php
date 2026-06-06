@@ -58,6 +58,10 @@ final class OfflineController {
 		return $this->dispatch( 'resolve_offline_conflict', $request );
 	}
 
+	public function has_handler( string $callback ): bool {
+		return is_callable( $this->handlers[ $callback ] ?? null );
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */

@@ -174,6 +174,10 @@
   manager/pairing authorization, missing-authorizer denial, authorizer
   rejection, permission factory attachment, planner readiness metadata, and
   secret-free audit payloads.
+- Local unit coverage now includes offline route handler-readiness enforcement,
+  proving controller callbacks require explicit injected handlers before route
+  plans can mark them ready and the guarded registrar will not register a
+  future-enabled route backed only by default disabled controller methods.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

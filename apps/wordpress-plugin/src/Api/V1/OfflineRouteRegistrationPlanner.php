@@ -98,6 +98,10 @@ final class OfflineRouteRegistrationPlanner {
 			return null;
 		}
 
+		if ( ! $this->controller->has_handler( $callback ) ) {
+			return null;
+		}
+
 		return array( $this->controller, $callback );
 	}
 

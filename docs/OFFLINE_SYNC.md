@@ -153,6 +153,9 @@ disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.
 The fail-closed offline controller scaffold now exposes the planned route
 callback methods and returns disabled responses until live handlers are wired.
+Route readiness now requires explicit controller handler injection in addition
+to those callback methods, so default disabled handlers cannot be registered by
+mistake.
 The guarded offline route registrar now filters planned routes so the current
 offline contracts register zero routes by default.
 Offline REST request adaptation now normalizes body params, query params, route

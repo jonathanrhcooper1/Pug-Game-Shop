@@ -49,6 +49,7 @@ namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrar;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+	use TCGStorePlatform\Api\V1\OfflineRouteValidationHandlerFactory;
 	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
 	use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionCallbackAdapter;
@@ -115,6 +116,32 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( array(), $calls );
 		}
 
+		public function test_registrar_does_not_register_live_flagged_routes_without_injected_handlers(): void {
+			$calls     = array();
+			$database  = new \wpdb( $this->database_row() );
+			$registrar = new OfflineRouteRegistrar(
+				new OfflineRouteRegistrationPlanner(
+					new OfflineRoutePermissionCallbackFactory(
+						new OfflineRegisteredDevicePermissionResolver(
+							new OfflineRegisteredDeviceRepository( $database ),
+							null,
+							new OfflineDeviceSessionUpdateRepository( $database )
+						),
+						static fn (): string => '2026-06-06T20:30:00Z'
+					),
+					new OfflineController()
+				),
+				static function ( string $namespace, string $route, array $args ) use ( &$calls ): bool {
+					$calls[] = array( $namespace, $route, $args );
+
+					return true;
+				}
+			);
+
+			$this->assert_same( 0, $registrar->register_enabled_routes( $this->future_enabled_pull_route() ) );
+			$this->assert_same( array(), $calls );
+		}
+
 		private function planner(): OfflineRouteRegistrationPlanner {
 			$database = new \wpdb( $this->database_row() );
 
@@ -127,7 +154,7 @@ namespace TCGStorePlatform\Tests\Unit {
 					),
 					static fn (): string => '2026-06-06T20:30:00Z'
 				),
-				new OfflineController()
+				new OfflineController( null, ( new OfflineRouteValidationHandlerFactory() )->handlers() )
 			);
 		}
 

@@ -308,6 +308,11 @@ delegates manager/pairing authorization to an injected callback, and keeps raw
 pairing codes out of audits while default route permissions and registration
 remain disabled.
 
+Version `0.80.0` tightens offline route readiness by requiring an explicitly
+injected controller handler before a planned route callback is considered ready.
+Default disabled controller methods remain non-registerable, so staged
+permission readiness cannot open a route without the matching handler.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -47,6 +47,7 @@ namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineController;
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+	use TCGStorePlatform\Api\V1\OfflineRouteValidationHandlerFactory;
 	use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
@@ -116,6 +117,7 @@ namespace TCGStorePlatform\Tests\Unit {
 
 			$this->assert_true( $plan['permission_callback'] instanceof OfflineDevicePairingPermissionCallbackAdapter );
 			$this->assert_true( $plan['permission_callback_ready'] );
+			$this->assert_true( $plan['controller_callback_ready'] );
 			$this->assert_false( $plan['should_register'] );
 			$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
 			$this->assert_false(
@@ -123,8 +125,20 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
-		public function test_planner_tracks_controller_callback_readiness_without_enabling_routes(): void {
-			$plans = $this->planner_with_controller()->planned_registration_args();
+		public function test_planner_requires_injected_handlers_for_controller_readiness(): void {
+			$plans = ( new OfflineRouteRegistrationPlanner( null, new OfflineController() ) )->planned_registration_args();
+
+			foreach ( $plans as $plan ) {
+				$this->assert_false( $plan['controller_callback_ready'] );
+				$this->assert_same( null, $plan['controller_callback'] );
+				$this->assert_true(
+					in_array( 'controller_callback_not_ready', $plan['registration_block_reasons'], true )
+				);
+			}
+		}
+
+		public function test_planner_tracks_injected_handler_readiness_without_enabling_routes(): void {
+			$plans = $this->planner_with_controller_handlers()->planned_registration_args();
 
 			foreach ( $plans as $plan ) {
 				$this->assert_true( $plan['controller_callback_ready'] );
@@ -151,10 +165,10 @@ namespace TCGStorePlatform\Tests\Unit {
 			return new OfflineRouteRegistrationPlanner( $this->permission_callback_factory() );
 		}
 
-		private function planner_with_controller(): OfflineRouteRegistrationPlanner {
+		private function planner_with_controller_handlers(): OfflineRouteRegistrationPlanner {
 			return new OfflineRouteRegistrationPlanner(
 				$this->permission_callback_factory(),
-				new OfflineController()
+				new OfflineController( null, ( new OfflineRouteValidationHandlerFactory() )->handlers() )
 			);
 		}
 
@@ -166,7 +180,12 @@ namespace TCGStorePlatform\Tests\Unit {
 						static fn (): bool => true
 					)
 				),
-				new OfflineController()
+				new OfflineController(
+					null,
+					array(
+						'register_offline_device' => static fn (): array => array( 'status' => 'ready' ),
+					)
+				)
 			);
 		}
 

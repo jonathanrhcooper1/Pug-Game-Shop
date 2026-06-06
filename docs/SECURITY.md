@@ -87,6 +87,9 @@ device row that changed between lookup and last-seen update.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.
+Offline route registration readiness now requires explicitly injected
+controller handlers, preventing default disabled controller callbacks from
+becoming live routes when permission readiness metadata is staged.
 
 ## Secret Storage
 

@@ -264,6 +264,9 @@ construction.
 The planned offline route registration planner now emits disabled registration
 metadata with fail-closed callbacks, callback readiness, controller readiness,
 and block reasons before any WordPress REST route can be registered.
+Controller readiness now depends on explicitly injected route handlers, so the
+planner does not treat default disabled controller methods as live-ready
+callbacks.
 The fail-closed offline controller scaffold now provides callback methods for
 every planned offline route and returns disabled responses until the live route
 handlers are implemented and staging-gated.

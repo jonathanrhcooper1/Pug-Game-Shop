@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.80.0] - 2026-06-06
+
+### Added
+
+- Offline route handler-readiness enforcement for future staged route
+  registration.
+- `OfflineController::has_handler()` readiness checks so route plans require an
+  explicitly injected controller handler before a callback can be marked ready.
+- Unit coverage proving bare default controllers do not make future routes
+  registerable, even when the route permission side is ready.
+
+### Not Added
+
+- No live offline route is enabled. Default controller callbacks, route
+  registration, route-connected device writes, queue replay, and production
+  database mutation remain disabled.
+
 ## [0.79.0] - 2026-06-06
 
 ### Added
