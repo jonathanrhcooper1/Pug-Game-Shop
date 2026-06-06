@@ -12,7 +12,7 @@ use DateTimeZone;
 use Exception;
 
 final class OfflineRegisteredDeviceLookupQueryBuilder {
-	private const DEVICE_TABLE      = 'tcg_offline_devices';
+	private const DEVICE_TABLE     = 'tcg_offline_devices';
 	private const SELECTED_COLUMNS = array(
 		'offline_device_id',
 		'public_id',
