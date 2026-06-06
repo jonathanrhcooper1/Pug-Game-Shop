@@ -14,14 +14,14 @@ final class InventoryPricingSchema {
 	 * @return array<string, string>
 	 */
 	public static function tables( string $prefix, string $collation ): array {
-		$reference_cards_table     = $prefix . 'tcg_reference_cards';
-		$reference_variants_table  = $prefix . 'tcg_reference_variants';
-		$locations_table           = $prefix . 'tcg_inventory_locations';
-		$inventory_table           = $prefix . 'tcg_inventory_items';
-		$movements_table           = $prefix . 'tcg_inventory_movements';
-		$barcodes_table            = $prefix . 'tcg_barcodes';
-		$price_change_log_table    = $prefix . 'tcg_price_change_log';
-		$manager_overrides_table   = $prefix . 'tcg_manager_overrides';
+		$reference_cards_table    = $prefix . 'tcg_reference_cards';
+		$reference_variants_table = $prefix . 'tcg_reference_variants';
+		$locations_table          = $prefix . 'tcg_inventory_locations';
+		$inventory_table          = $prefix . 'tcg_inventory_items';
+		$movements_table          = $prefix . 'tcg_inventory_movements';
+		$barcodes_table           = $prefix . 'tcg_barcodes';
+		$price_change_log_table   = $prefix . 'tcg_price_change_log';
+		$manager_overrides_table  = $prefix . 'tcg_manager_overrides';
 
 		return array(
 			$reference_cards_table    => "CREATE TABLE {$reference_cards_table} (
