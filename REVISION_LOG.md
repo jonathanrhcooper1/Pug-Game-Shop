@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Payload Validation
+
+### What Changed
+
+- Added a WordPress offline push payload parser for queued operation batches.
+- Added immutable parsed payload and operation envelope value objects.
+- Added validation result handling for accepted/rejected offline push payloads.
+- Added unit coverage for valid batches, missing top-level fields, duplicate
+  client operation IDs, device mismatches, malformed operation envelopes,
+  unsupported operation types, invalid timestamps, invalid payload/context
+  shapes, and schema version gating.
+- Updated project, plugin, and offline app package versions to `0.37.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap, and
+  plugin docs.
+
+### Why
+
+The offline Windows app queue now has both a local SQLite schema and planned
+WordPress route contracts. Before live push handlers can store or replay queued
+operations, the server needs a deterministic validation boundary that rejects
+malformed batches and mismatched device envelopes without touching inventory,
+credit, event, or conflict state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineOperationEnvelope.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayload.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayloadParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayloadValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPayloadParserTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds request validation only.
+
+### Tests Added
+
+- Offline push payload parser tests for accepted batches, required top-level
+  fields, duplicate operation IDs, device mismatches, unsupported operation
+  types, malformed IDs, invalid row versions, timestamp validation, JSON-object
+  payload/context requirements, and schema version gating.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline push parser, value objects, tests,
+  version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live offline endpoints, queue replay, and conflict writes remain disabled
+  both before and after rollback.
+
 ## 2026-06-06 - WordPress Offline Route Contracts
 
 ### What Changed

@@ -117,6 +117,10 @@
 - Local unit coverage now includes WordPress offline route contracts for
   device pairing, pull, push, conflict listing, conflict resolution,
   permissions, callbacks, namespace, and disabled-live defaults.
+- Local unit coverage now includes offline push payload validation for batch
+  IDs, required operation envelope fields, device matching, duplicate client
+  operation IDs, supported operation/entity pairs, timestamps, JSON-object
+  payloads, authorization context, and schema version gating.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

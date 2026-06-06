@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.36.0`
+Version: `0.37.0`
 
 ## Implemented Features
 
@@ -71,6 +71,9 @@ Version: `0.36.0`
   refund, cart removal, and Store API validation lifecycle coverage.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with live registration disabled.
+- Offline push payload validation for batch IDs, device matching, operation
+  envelopes, supported operation/entity pairs, timestamps, row versions,
+  payload objects, authorization context, duplicates, and schema version.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

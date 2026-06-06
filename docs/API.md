@@ -22,8 +22,11 @@ process. Planned customer credit route contracts and posting payload validation
 and planned buylist route contracts plus intake payload validation are
 implemented but not registered live. Planned offline device pairing, push,
 pull, conflict list, and conflict resolution route contracts are implemented
-but not registered live. Full permission, nonce, request/response, and
-write-flow REST tests remain staging-gated as each route family is implemented.
+but not registered live. Offline push payload validation is implemented for
+operation envelope shape, duplicate operation IDs, device matching, supported
+operation/entity pairs, timestamps, and schema version gating. Full permission,
+nonce, request/response, and write-flow REST tests remain staging-gated as each
+route family is implemented.
 
 ### Inventory And Search
 
@@ -184,9 +187,13 @@ across another event or email return `idempotency_conflict`.
 Offline route contracts now exist locally for the five offline routes listed
 above. They document callback names, route permissions, the shared
 `tcg-store/v1` namespace, and disabled-live defaults for the Windows app
-integration. Live device pairing, bearer token validation, push/pull workers,
-queue replay, and conflict persistence remain disabled until staging-gated
-WordPress/offline integration tests pass.
+integration. The offline push payload parser now validates batch IDs, device
+matching, client operation IDs, supported `inventory_reservation`,
+`event_reservation`, and `credit_redemption` operation envelopes, ISO
+timestamps, JSON-object payloads, authorization context, duplicate IDs, and
+schema version `1`. Live device pairing, bearer token validation, push/pull
+workers, queue replay, and conflict persistence remain disabled until
+staging-gated WordPress/offline integration tests pass.
 
 ## WooCommerce Hook Map
 

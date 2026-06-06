@@ -173,7 +173,9 @@ read model and queue only; WordPress remains authoritative after sync.
 The WordPress plugin now defines planned offline route contracts for pairing,
 pull, push, conflict listing, and conflict resolution. The routes stay disabled
 until device authentication, queue replay, and conflict persistence pass
-staging integration tests.
+staging integration tests. Push payload validation is implemented separately so
+the route handler can reject malformed operation batches before persistence or
+conflict resolution is enabled.
 
 ## Storefront Product Strategy
 

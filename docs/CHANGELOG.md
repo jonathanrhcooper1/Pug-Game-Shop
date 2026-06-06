@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.37.0] - 2026-06-06
+
+### Added
+
+- Offline push payload parser for queued operation batches from the Windows
+  app.
+- Validation for batch IDs, device IDs, duplicate client operation IDs,
+  supported operation/entity pairs, timestamps, row-version metadata, JSON
+  payload objects, authorization context objects, and schema version `1`.
+- Unit coverage for valid batches, missing top-level fields, device mismatch,
+  duplicate operation IDs, and malformed operation envelopes.
+
+### Not Added
+
+- Live offline push route registration, device token validation, queue replay,
+  operation persistence, conflict writes, and reconnect integration tests remain
+  disabled for later staging-gated phases.
+
 ## [0.36.0] - 2026-06-06
 
 ### Added

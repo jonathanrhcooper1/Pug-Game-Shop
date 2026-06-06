@@ -72,7 +72,9 @@ SQLite schema contract are now implemented. Live SQLite persistence services,
 WordPress offline push/pull handlers, live pairing, and full reconnect
 integration tests remain future phases. The WordPress plugin now includes
 planned route contracts for device pairing, pull, push, conflict listing, and
-conflict resolution, but those endpoints are not registered live yet.
+conflict resolution, plus offline push operation envelope validation for the
+same queued fields SQLite stores. Those endpoints are not registered live yet,
+and accepted operations are not persisted or replayed yet.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

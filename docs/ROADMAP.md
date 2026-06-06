@@ -81,7 +81,7 @@ requests cannot change liability twice.
 
 Status: In progress; shared offline sync conflict policy tests, Tauri Windows
 packaging scaffold, first SQLite schema contract, and WordPress offline route
-contracts implemented
+contracts plus push payload validation implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
 operation queue, pull cursor, conflict center, kiosk/staff/admin modes, labels,
