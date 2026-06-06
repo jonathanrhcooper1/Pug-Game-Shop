@@ -122,7 +122,7 @@ final class ReservationService {
 			'released',
 			'Reservation was released and inventory was restored to available.',
 			array(
-				'released_at'     => $this->now(),
+				'released_at'    => $this->now(),
 				'release_reason' => trim( $reason ),
 			)
 		);
@@ -241,7 +241,7 @@ final class ReservationService {
 			}
 
 			$updates['active_inventory_id'] = null;
-			$reservation_updated           = $this->storage->update_reservation_status(
+			$reservation_updated            = $this->storage->update_reservation_status(
 				$reservation_id,
 				ReservationStatus::ACTIVE,
 				$target_reservation_status,
