@@ -67,6 +67,26 @@ final class EventRegistrationRepository {
 		return is_array( $row ) ? $row : null;
 	}
 
+	/**
+	 * @return array<string, mixed>|null
+	 */
+	public function find_active_by_event_email( int $event_id, string $email ): ?array {
+		$table_name   = $this->database->prefix . 'tcg_event_registrations';
+		$statuses     = EventRegistrationStatus::duplicate_blocking_statuses();
+		$placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
+		$args         = array_merge( array( $event_id, $email ), $statuses );
+
+		$row = $this->database->get_row(
+			$this->database->prepare(
+				"SELECT * FROM {$table_name} WHERE event_id = %d AND email = %s AND status IN ({$placeholders}) ORDER BY registration_id ASC LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$args
+			),
+			ARRAY_A
+		);
+
+		return is_array( $row ) ? $row : null;
+	}
+
 	public function capacity_count( int $event_id ): int {
 		$table_name   = $this->database->prefix . 'tcg_event_registrations';
 		$statuses     = EventRegistrationStatus::capacity_consuming_statuses();

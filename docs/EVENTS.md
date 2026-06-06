@@ -31,7 +31,10 @@ optional `topdeck_email`, and an `idempotency_key` field or `Idempotency-Key`
 header. The write path locks the local event row, validates capacity, reuses
 duplicate idempotency keys, inserts a local registration, creates a waitlist row
 when enabled, recomputes the public registered count/status, and writes a
-registration log.
+registration log. Active registrations with the same event and email are
+returned idempotently instead of creating a duplicate seat or waitlist row.
+An idempotency key reused for another event or email returns an
+`idempotency_conflict` error.
 
 TopDeck-hosted events return a rejection with instructions to use the hosted
 registration link. Paid events are accepted only when `allow_pay_at_store` is

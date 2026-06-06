@@ -129,7 +129,9 @@ after target GoDaddy proxy buffering and connection limits are verified.
 reservations only. It uses the `Idempotency-Key` header or `idempotency_key`
 body field, rejects TopDeck-hosted local writes, writes waitlist rows when
 capacity is full and waitlist is enabled, and does not capture online payments
-or push registrations to TopDeck yet.
+or push registrations to TopDeck yet. Active same-event/email registrations are
+returned as `already_registered`; idempotency keys reused across another event
+or email return `idempotency_conflict`.
 
 ### Offline And POS
 

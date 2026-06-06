@@ -27,6 +27,17 @@ final class EventRegistrationStatusTest extends TestCase {
 		$this->assert_false( EventRegistrationStatus::consumes_capacity( EventRegistrationStatus::TOPDECK_CAPACITY_CONFLICT ) );
 	}
 
+	public function test_duplicate_blocking_statuses_include_waitlist_and_exclude_closed_states(): void {
+		$statuses = EventRegistrationStatus::duplicate_blocking_statuses();
+
+		$this->assert_true( in_array( EventRegistrationStatus::RESERVED, $statuses, true ) );
+		$this->assert_true( in_array( EventRegistrationStatus::WAITLIST, $statuses, true ) );
+		$this->assert_true( in_array( EventRegistrationStatus::STAFF_REVIEW_REQUIRED, $statuses, true ) );
+		$this->assert_false( in_array( EventRegistrationStatus::CANCELLED, $statuses, true ) );
+		$this->assert_false( in_array( EventRegistrationStatus::REFUNDED, $statuses, true ) );
+		$this->assert_false( in_array( EventRegistrationStatus::FAILED, $statuses, true ) );
+	}
+
 	public function test_topdeck_outcomes_map_to_local_statuses(): void {
 		$this->assert_same(
 			EventRegistrationStatus::REGISTERED_TOPDECK,

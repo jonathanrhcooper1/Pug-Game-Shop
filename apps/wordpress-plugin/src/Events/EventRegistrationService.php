@@ -13,10 +13,16 @@ use Throwable;
 final class EventRegistrationService {
 	private EventRegistrationRepository $repository;
 	private EventRegistrationPolicy $policy;
+	private EventRegistrationDuplicateGuard $duplicate_guard;
 
-	public function __construct( EventRegistrationRepository $repository, ?EventRegistrationPolicy $policy = null ) {
-		$this->repository = $repository;
-		$this->policy     = $policy ?? new EventRegistrationPolicy();
+	public function __construct(
+		EventRegistrationRepository $repository,
+		?EventRegistrationPolicy $policy = null,
+		?EventRegistrationDuplicateGuard $duplicate_guard = null
+	) {
+		$this->repository      = $repository;
+		$this->policy          = $policy ?? new EventRegistrationPolicy();
+		$this->duplicate_guard = $duplicate_guard ?? new EventRegistrationDuplicateGuard();
 	}
 
 	public function register_by_slug( string $slug, EventRegistrationInput $input ): EventRegistrationResult {
@@ -60,11 +66,17 @@ final class EventRegistrationService {
 			$existing = $this->repository->find_by_idempotency_key( $input->idempotency_key() );
 
 			if ( null !== $existing ) {
+				return $this->existing_registration_result( $existing, $event, $input );
+			}
+
+			$duplicate = $this->repository->find_active_by_event_email( (int) $event['event_id'], $input->email() );
+
+			if ( null !== $duplicate && $this->duplicate_guard->blocks_duplicate_registration( $duplicate ) ) {
 				$this->repository->commit();
 
 				return EventRegistrationResult::success(
-					$this->present_registration( $existing ),
-					'Registration was already recorded for this idempotency key.',
+					$this->present_registration( $duplicate ),
+					'This email is already registered for the event.',
 					200,
 					'already_registered'
 				);
@@ -99,14 +111,7 @@ final class EventRegistrationService {
 				$existing = $this->repository->find_by_idempotency_key( $input->idempotency_key() );
 
 				if ( null !== $existing ) {
-					$this->repository->commit();
-
-					return EventRegistrationResult::success(
-						$this->present_registration( $existing ),
-						'Registration was already recorded for this idempotency key.',
-						200,
-						'already_registered'
-					);
+					return $this->existing_registration_result( $existing, $event, $input );
 				}
 
 				$this->repository->rollback();
@@ -170,11 +175,50 @@ final class EventRegistrationService {
 	private function status_for_rejection( string $code ): int {
 		return match ( $code ) {
 			'online_payment_required' => 402,
+			'idempotency_conflict',
 			'topdeck_hosted_registration',
 			'registration_closed',
 			'sold_out' => 409,
 			default => 400,
 		};
+	}
+
+	/**
+	 * @param array<string, mixed> $existing Existing registration row.
+	 * @param array<string, mixed> $event Event row.
+	 */
+	private function existing_registration_result(
+		array $existing,
+		array $event,
+		EventRegistrationInput $input
+	): EventRegistrationResult {
+		if ( ! $this->duplicate_guard->matches_request( $existing, $event, $input ) ) {
+			$this->repository->write_log(
+				(int) $event['event_id'],
+				null,
+				'registration_rejected',
+				'Idempotency key was already used for another registration.',
+				array(
+					'code' => 'idempotency_conflict',
+				)
+			);
+			$this->repository->commit();
+
+			return EventRegistrationResult::failure(
+				'idempotency_conflict',
+				'Idempotency key was already used for another registration.',
+				409
+			);
+		}
+
+		$this->repository->commit();
+
+		return EventRegistrationResult::success(
+			$this->present_registration( $existing ),
+			'Registration was already recorded for this idempotency key.',
+			200,
+			'already_registered'
+		);
 	}
 
 	/**

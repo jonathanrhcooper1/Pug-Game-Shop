@@ -16,8 +16,11 @@ All notable changes follow Semantic Versioning.
 - Transaction-backed registration service and repository with event-row locking,
   idempotency reuse, registration inserts, waitlist rows, count/status updates,
   and registration logs.
+- Same-event/email duplicate prevention for active registrations, plus
+  idempotency-key conflict handling when a key is reused for a different event
+  or email.
 - Unit coverage for registration input validation, registration policy outcomes,
-  and REST result response shaping.
+  duplicate detection, and REST result response shaping.
 - WordPress integration smoke assertion for the registration REST route.
 
 ### Not Added

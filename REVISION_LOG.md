@@ -18,6 +18,9 @@ review, staging approval, deployment approval, and rollback planning.
   locks the event row, reuses idempotency keys, inserts registrations, creates
   waitlist rows, recomputes capacity counts, updates public event status, and
   writes registration logs.
+- Added active same-event/email duplicate prevention and scoped idempotency
+  conflict handling so reused keys do not expose or mutate unrelated
+  registrations.
 - Updated WordPress integration smoke verification to assert the registration
   route is registered.
 
@@ -32,12 +35,14 @@ closed until staging can verify the full commerce and TopDeck lifecycle.
 
 - `apps/wordpress-plugin/src/Api/V1/EventsController.php`
 - `apps/wordpress-plugin/src/Events/EventPaymentStatus.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationDuplicateGuard.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationDecision.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationInput.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationPolicy.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationRepository.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationResult.php`
 - `apps/wordpress-plugin/src/Events/EventRegistrationService.php`
+- `apps/wordpress-plugin/tests/Unit/EventRegistrationDuplicateGuardTest.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationInputTest.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationPolicyTest.php`
 - `apps/wordpress-plugin/tests/Unit/EventRegistrationResultTest.php`
@@ -58,6 +63,7 @@ closed until staging can verify the full commerce and TopDeck lifecycle.
   closure.
 - Registration result response tests for validation errors and idempotent
   success responses.
+- Duplicate guard and duplicate-blocking registration status tests.
 - WordPress integration smoke route assertion for the registration endpoint.
 
 ### Rollback Notes

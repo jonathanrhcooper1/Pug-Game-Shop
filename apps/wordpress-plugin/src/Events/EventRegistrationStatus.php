@@ -55,6 +55,23 @@ final class EventRegistrationStatus {
 		);
 	}
 
+	/**
+	 * @return list<string>
+	 */
+	public static function duplicate_blocking_statuses(): array {
+		return array(
+			self::RESERVED,
+			self::PAID,
+			self::REGISTERED_TOPDECK,
+			self::PENDING_TOPDECK_INVITE,
+			self::ALREADY_REGISTERED,
+			self::WAITLIST,
+			self::CHECKED_IN,
+			self::TOPDECK_CAPACITY_CONFLICT,
+			self::STAFF_REVIEW_REQUIRED,
+		);
+	}
+
 	public static function consumes_capacity( string $status ): bool {
 		return in_array( $status, self::capacity_consuming_statuses(), true );
 	}
