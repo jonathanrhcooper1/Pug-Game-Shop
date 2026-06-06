@@ -153,6 +153,10 @@
   row updates, response payloads, redacted audit hashes, stale row versions,
   terminal conflicts, unavailable actions, invalid current rows, and invalid
   server timestamps.
+- Local unit coverage now includes offline push operation resolution planning
+  for accepted inventory/event/credit outcomes, sold-inventory conflicts,
+  TopDeck queue gating, event waitlisting, cached-limit rejection, overspend
+  conflicts, revoked devices, and invalid server timestamps.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

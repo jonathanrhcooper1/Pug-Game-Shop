@@ -200,7 +200,11 @@ can later be shaped into stable conflict-center payloads without changing the
 offline app contract.
 Conflict resolution planning is implemented so future manager-reviewed actions
 can produce deterministic row updates, response payloads, and redacted audit
-payload hashes before live conflict writes are enabled.
+payload hashes before live conflict writes are enabled. Offline push operation
+resolution planning is implemented so future queue replay can produce
+accepted/rejected outcomes, operation result rows, response payloads,
+manager-reviewed conflict rows, deterministic conflict IDs, and redacted audit
+payload hashes before live push persistence is enabled.
 
 ## Storefront Product Strategy
 

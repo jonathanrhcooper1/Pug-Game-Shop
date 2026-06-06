@@ -84,7 +84,8 @@ packaging scaffold, first SQLite schema contract, and WordPress offline route
 contracts plus push/pull payload validation, pull response presentation, device
 pairing validation/registration planning, and device access policy checks
 plus conflict list/resolution request validation and conflict response
-presentation/resolution planning implemented
+presentation/resolution planning plus offline push operation resolution
+planning implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
 operation queue, pull cursor, conflict center, kiosk/staff/admin modes, labels,

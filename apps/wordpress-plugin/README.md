@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.45.0`
+Version: `0.46.0`
 
 ## Implemented Features
 
@@ -96,6 +96,9 @@ Version: `0.45.0`
 - Offline conflict resolution planning for future row updates, response
   payloads, stale-version guards, terminal-status guards, action availability
   checks, and redacted audit payloads.
+- Offline push operation resolution planning for future queue replay outcomes,
+  response payloads, operation result rows, manager-reviewed conflict rows,
+  deterministic conflict IDs, and redacted audit payloads.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

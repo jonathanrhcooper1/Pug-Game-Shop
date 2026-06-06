@@ -94,6 +94,15 @@ availability checks, and redacted audit payload hashes. Live conflict mutation
 writes, audit persistence, route callback wiring, and resolved-state fanout are
 still disabled until staging integration tests pass.
 
+Version `0.46.0` adds the offline push operation resolution boundary. Future
+queue replay can now produce deterministic accepted/rejected outcomes,
+operation result rows, response payloads, manager-reviewed conflict rows,
+deterministic conflict IDs, and redacted audit payloads for inventory, event,
+credit, revoked-device, and unsupported-operation cases. Live push route
+handlers, queue replay writes, canonical entity mutations, conflict
+persistence, permission wiring, and cursor advancement are still disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

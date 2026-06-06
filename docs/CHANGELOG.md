@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.46.0] - 2026-06-06
+
+### Added
+
+- Offline push operation resolver for future queue replay and conflict
+  persistence flows.
+- Planned accepted, rejected, and conflict outcomes for inventory
+  reservations, event reservations, customer credit redemptions, revoked
+  devices, and unsupported operations.
+- Future operation result rows, response payloads, redacted audit payloads,
+  and deterministic conflict rows for manager-reviewed offline conflicts.
+- Unit coverage mirroring the shared sync-engine policy for available/sold
+  inventory, TopDeck queue gating, waitlist placement, credit limits,
+  overspend conflicts, device revocation, and invalid server timestamps.
+
+### Not Added
+
+- Live offline push route handlers, database queue replay, canonical entity
+  mutation writes, conflict persistence, registered-device permission wiring,
+  and device cursor advancement remain disabled for later staging-gated phases.
+
 ## [0.45.0] - 2026-06-06
 
 ### Added

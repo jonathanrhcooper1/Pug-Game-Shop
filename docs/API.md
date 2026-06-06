@@ -204,9 +204,13 @@ schema version `1`. The offline push payload parser now validates batch IDs, dev
 matching, client operation IDs, supported `inventory_reservation`,
 `event_reservation`, and `credit_redemption` operation envelopes, ISO
 timestamps, JSON-object payloads, authorization context, duplicate IDs, and
-schema version `1`. Live device pairing, bearer token validation, push/pull
-workers, queue replay, and conflict persistence remain disabled until
-staging-gated WordPress/offline integration tests pass. Offline pull request
+schema version `1`. Parsed push operations can now be resolved into planned
+accepted, rejected, or conflict outcomes with future operation result rows,
+API response payloads, manager-reviewed conflict rows, deterministic conflict
+IDs, and redacted audit payloads. Live device pairing, bearer token validation,
+push/pull workers, queue replay, canonical entity writes, and conflict
+persistence remain disabled until staging-gated WordPress/offline integration
+tests pass. Offline pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
 `customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
 limits, tombstone inclusion, and schema version `1`. Offline pull response
@@ -249,7 +253,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.45.0",
+  "app_version": "0.46.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -286,6 +290,28 @@ When the future route is enabled, the planned successful response body is:
 
 The planned audit payload intentionally excludes `device_token` and
 `token_hash`; live persistence remains disabled.
+
+The planned offline push operation response for an accepted operation is shaped
+as:
+
+```json
+{
+  "client_operation_id": "op-00001",
+  "status": "accepted",
+  "code": "inventory_reserved",
+  "details": {
+    "canonicalStatus": "reserved",
+    "rowVersion": 5
+  },
+  "server_time_utc": "2026-06-06T19:00:00Z"
+}
+```
+
+Conflict outcomes additionally include a deterministic `conflict_id` in
+`details` and a future `tcg_sync_conflicts` row containing server payload,
+device payload, row versions, severity, summary, and manager resolution
+options. Live operation result persistence, canonical entity mutation, conflict
+row insertion, and cursor advancement remain disabled until staging tests pass.
 
 Registered-device access policy checks are implemented for the future
 `registered_device` permission boundary. The policy validates active status,

@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Operation Resolution Planning
+
+### What Changed
+
+- Added a WordPress offline push operation resolver for future queue replay and
+  conflict persistence flows.
+- Added an immutable push operation resolution plan exposing accepted/rejected
+  outcomes, future operation result rows, response payloads, optional conflict
+  rows, and redacted audit payloads.
+- Mirrored the shared sync-engine outcomes for inventory reservations, event
+  reservations, customer credit redemptions, device revocation, and unsupported
+  operations.
+- Added deterministic conflict IDs and conflict rows for unavailable inventory,
+  event capacity changes, and customer credit overspend attempts.
+- Added unit coverage for accepted inventory/event/credit outcomes, sold-item
+  conflicts, TopDeck queue gating, waitlist placement, cached-limit rejection,
+  overspend conflicts, revoked devices, and invalid server timestamps.
+- Updated project, plugin, and offline app package versions to `0.46.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+The offline push route needs a deterministic decision boundary before live queue
+replay can mutate inventory, event registrations, or customer credit. This slice
+turns parsed operation envelopes plus server snapshots into durable operation
+plans while keeping database writes and route callbacks disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushOperationResolutionPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushOperationResolver.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushOperationResolverTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds push operation resolution planning only.
+
+### Tests Added
+
+- Offline push operation resolver tests for accepted inventory reservations,
+  sold-inventory conflicts, event TopDeck queue gating, event waitlisting,
+  accepted customer credit redemptions, cached-limit rejection, server overspend
+  conflicts, revoked devices, and invalid server timestamps.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline push operation resolver, value
+  object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live offline push route handlers, database queue replay, canonical entity
+  mutation writes, conflict persistence, registered-device permission wiring,
+  and device cursor advancement remain disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Conflict Resolution Planning
 
 ### What Changed

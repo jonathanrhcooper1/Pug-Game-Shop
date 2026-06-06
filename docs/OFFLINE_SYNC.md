@@ -100,7 +100,13 @@ available resolution options for the future conflict center.
 Conflict resolution planning now prepares future conflict row updates, response
 payloads, optimistic row-version checks, terminal-status guards, action
 availability checks, and redacted audit payload hashes without mutating live
-state.
+state. Offline push operation resolution planning now mirrors the shared
+sync-engine policy in PHP, turning parsed queue operations and server snapshots
+into accepted, rejected, or conflict plans with operation result rows,
+deterministic conflict IDs, manager-reviewed conflict rows, response payloads,
+and redacted audit payloads. Live queue replay, canonical entity mutations,
+conflict persistence, permission callback wiring, and cursor advancement remain
+disabled until staging integration tests pass.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

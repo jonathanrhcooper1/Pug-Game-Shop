@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.45.0`
+Version: `0.46.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -84,12 +84,15 @@ stable conflict rows, filters, cursors, severity, row versions, payload
 objects, and available manager resolution options. Offline conflict resolution
 planning is implemented for future row updates, response payloads, stale-version
 guards, terminal-status guards, action availability checks, and redacted audit
-payloads.
+payloads. Offline push operation resolution planning is implemented for future
+queue replay outcomes, covering accepted inventory/event/credit operations,
+rejections, manager-reviewed conflict rows, deterministic conflict IDs, and
+redacted audit payloads.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
-live reservation cleanup workers, and production provider credentials remain
-disabled until staging acceptance.
+live reservation cleanup workers, live offline push persistence, and production
+provider credentials remain disabled until staging acceptance.
 
 ## Source Of Truth
 
