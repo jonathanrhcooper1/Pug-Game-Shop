@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.54.0] - 2026-06-06
+
+### Added
+
+- Offline registered-device row normalizer for future repository-backed
+  permission callbacks.
+- Row normalization result value object exposing normalized device rows, stable
+  validation errors, and secret-free audit payloads.
+- Database identity coercion, decoded scope/capability payloads, UTC timestamp
+  normalization, explicit null handling for optional dates, token-hash shape
+  validation, and audit payloads that omit token hashes.
+- Unit coverage for valid database rows, decoded payloads, explicit null date
+  overrides, invalid identity/hash fields, invalid timestamps, invalid JSON,
+  and invalid JSON shapes.
+
+### Not Added
+
+- Live device row repository queries, REST route registration, WordPress
+  `permission_callback` wiring, last-seen `$wpdb` writes, queue replay workers,
+  and live database writes remain disabled for later staging-gated phases.
+
 ## [0.53.0] - 2026-06-06
 
 ### Added

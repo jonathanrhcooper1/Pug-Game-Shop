@@ -166,6 +166,10 @@
   planning for lookup-required states, authorized loaded devices, session
   update planning, malformed tokens, denied scopes, invalid session rows, and
   secret-free audit payloads.
+- Local unit coverage now includes offline registered-device row normalization
+  for raw database identity fields, decoded scopes/capabilities, UTC timestamp
+  normalization, explicit null date overrides, invalid JSON shapes, invalid
+  identity/hash fields, and secret-free audit payloads.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

@@ -154,6 +154,15 @@ authorized outcomes. Live device row repository queries, route registration,
 permission callback wiring, last-seen writes, queue replay, and database writes
 remain disabled until staging integration tests pass.
 
+Version `0.54.0` adds the registered-device row normalization boundary. Future
+WordPress repositories can now pass raw `tcg_offline_devices` rows through a
+deterministic normalizer that coerces database IDs, decodes scopes and
+capabilities, normalizes UTC timestamps, reports stable validation errors, and
+emits secret-free audits before auth/session planners consume the row. Live
+device row repository queries, route registration, permission callback wiring,
+last-seen writes, queue replay, and database writes remain disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

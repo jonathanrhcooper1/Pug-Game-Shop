@@ -47,9 +47,10 @@ audit fingerprints without retaining raw tokens. Offline session planning
 prepares last-seen update rows and session context after an accepted device row
 match. Registered-device permission planning now exposes lookup-needed, denied,
 and authorized callback outcomes while keeping token hashes and raw tokens out
-of audit payloads. Live device row repository queries, permission callback
-wiring, last-seen database writes, and route callback wiring remain
-staging-gated.
+of audit payloads. Registered device row normalization validates future
+repository rows without exposing token hashes in audit payloads. Live device
+row repository queries, permission callback wiring, last-seen database writes,
+and route callback wiring remain staging-gated.
 
 ## Secret Storage
 

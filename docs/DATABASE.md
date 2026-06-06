@@ -263,9 +263,11 @@ work proceeds. Offline token lookup planning now prepares the hashed
 and offline session planning now prepares future `last_seen_at`, `updated_at`,
 and `row_version` updates. Registered-device permission planning now composes
 lookup, loaded-row authentication, and session update plans for future
-permission callbacks without live queries or writes. Live provider workers,
-device row repository queries, permission callback wiring, last-seen database
-writes, and offline route writes remain disabled until later phases.
+permission callbacks without live queries or writes. Registered device row
+normalization now validates and coerces raw `tcg_offline_devices` query results
+into auth/session-ready rows without performing the live query. Live provider
+workers, device row repository queries, permission callback wiring, last-seen
+database writes, and offline route writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

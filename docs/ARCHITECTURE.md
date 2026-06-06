@@ -203,6 +203,10 @@ matches an accepted access decision.
 Registered-device permission planning now composes lookup-needed, denied, and
 authorized outcomes for future REST permission callbacks without registering
 routes, querying device rows, or mutating last-seen state.
+Registered device row normalization now defines how future repository results
+are coerced into auth/session-ready rows with decoded scopes/capabilities, UTC
+timestamps, validation errors, and secret-free audits before those planners
+consume them.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

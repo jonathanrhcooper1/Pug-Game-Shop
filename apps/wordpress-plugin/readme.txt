@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.53.0
+Stable tag: 0.54.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -93,6 +93,8 @@ database writes and route permission callback wiring disabled.
 Phase 7.19 adds registered-device permission planning while keeping live
 device row repository queries, route registration, and database writes
 disabled.
+Phase 7.20 adds registered-device row normalization while keeping live device
+row repository queries, route registration, and database writes disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -110,6 +112,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.54.0 =
+
+* Added registered-device row normalization for future repository-backed permission callbacks.
+* Added database identity coercion, decoded scopes/capabilities, UTC timestamp normalization, stable validation errors, and secret-free audit payloads.
+* Added tests for database row normalization, decoded payloads, explicit null date overrides, invalid identity/hash fields, invalid times, and invalid JSON shapes.
+* Kept live device row repository queries, route registration, permission callbacks, last-seen writes, queue replay, and database writes disabled until staging integration tests pass.
 
 = 0.53.0 =
 

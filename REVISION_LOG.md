@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Row Normalization
+
+### What Changed
+
+- Added an offline registered-device row normalizer for future repository-backed
+  `registered_device` REST permission callback wiring.
+- Added a row normalization result value object exposing normalized device rows,
+  stable validation errors, and secret-free audit payloads.
+- Added coercion for raw `tcg_offline_devices` database identity fields,
+  decoded `scopes_json` and `capabilities_json` payloads, UTC timestamp
+  normalization, optional null date overrides, token-hash validation, and
+  duplicate scope cleanup.
+- Added rejection handling for malformed public IDs, missing labels,
+  unsupported modes, invalid token hashes, invalid timestamps, invalid row
+  versions, invalid JSON, and invalid JSON shapes.
+- Added unit coverage for auth/session-ready database rows, decoded payloads,
+  explicit null date overrides, invalid identity/hash fields, invalid times,
+  invalid JSON, and invalid JSON shapes.
+- Updated project, plugin, and offline app package versions to `0.54.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The permission planner can authorize an already-loaded device row, but the
+future WordPress repository still needs a deterministic boundary between raw
+`$wpdb` results and auth/session planners. This revision adds that boundary
+without querying WordPress tables, mutating device rows, or registering live
+offline routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDeviceRowNormalizationResult.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDeviceRowNormalizer.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device row normalizer tests for raw database fields,
+  decoded payloads, ISO and MySQL UTC timestamps, explicit null date overrides,
+  invalid identity/hash fields, invalid row versions, invalid times, invalid
+  JSON, invalid JSON shapes, and secret-free audit payloads.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline registered-device row normalizer
+  value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row repository queries, route registration, WordPress permission
+  callbacks, last-seen writes, queue replay workers, and `$wpdb` writes remain
+  disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Registered Device Permission Planning
 
 ### What Changed

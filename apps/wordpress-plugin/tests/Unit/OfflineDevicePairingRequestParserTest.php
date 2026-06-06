@@ -20,7 +20,7 @@ final class OfflineDevicePairingRequestParserTest extends TestCase {
 				'device_mode'      => 'KIOSK',
 				'location_id'      => '2',
 				'manager_id'       => 15,
-				'app_version'      => '0.53.0',
+				'app_version'      => '0.54.0',
 				'platform'         => 'Windows',
 				'capabilities'     => array(
 					'barcode_scanner' => true,
@@ -43,7 +43,7 @@ final class OfflineDevicePairingRequestParserTest extends TestCase {
 		$this->assert_same( 'kiosk', $request->device_mode() );
 		$this->assert_same( 2, $request->location_id() );
 		$this->assert_same( 15, $request->manager_id() );
-		$this->assert_same( '0.53.0', $request->app_version() );
+		$this->assert_same( '0.54.0', $request->app_version() );
 		$this->assert_same( 'windows', $request->platform() );
 		$this->assert_true( $request->capabilities()['barcode_scanner'] );
 		$this->assert_false( $request->capabilities()['label_printer'] );
@@ -141,7 +141,7 @@ final class OfflineDevicePairingRequestParserTest extends TestCase {
 				'device_mode'      => 'kiosk',
 				'location_id'      => 2,
 				'manager_id'       => 15,
-				'app_version'      => '0.53.0',
+				'app_version'      => '0.54.0',
 				'platform'         => 'windows',
 				'capabilities'     => array(
 					'barcode_scanner' => true,
