@@ -39,6 +39,10 @@ disabled until staging acceptance.
 
 Device tokens are random high-entropy values. Only a hash and fingerprint are
 stored server-side. Tokens are scoped, expiring, rotatable, and revocable.
+Offline device registration credential issuance now generates UUID device IDs,
+one-time hex device tokens, SHA-256 token hashes, UTC issue/expiry timestamps,
+and short audit fingerprints while keeping raw tokens and full hashes out of
+audit payloads.
 Offline bearer-token authentication planning now normalizes request headers,
 validates token shape, compares SHA-256 token hashes with `hash_equals`, and
 delegates active/revoked/expired/scope checks to the shared device access

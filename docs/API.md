@@ -36,15 +36,17 @@ device modes, manager/location IDs, app versions, Windows platform checks,
 hardware capabilities, requested scopes, and schema version gating. Offline
 device registration planning is implemented for future device rows, one-time
 response payloads, token hash storage fields, sync routes, first-sync flags,
-and redacted audit payloads. Offline device registration insert query planning
-now maps those rows into prepared `tcg_offline_devices` SQL templates with
-JSON/timestamp normalization and secret-free audits. Offline device
-registration repository adaptation now executes that prepared insert only when
-explicitly called, returns inserted or rejected outcomes, captures insert IDs,
-and keeps raw device tokens and token hashes out of repository audits. Live
-pairing route wiring remains disabled. Offline device bearer-token
-authentication
-planning is implemented for future registered-device permission callbacks,
+and redacted audit payloads. Offline device registration credential issuance
+now generates future device IDs, one-time device tokens, SHA-256 token hashes,
+UTC issue/expiry timestamps, TTL policy, and secret-free fingerprints. Offline
+device registration insert query planning now maps those rows into prepared
+`tcg_offline_devices` SQL templates with JSON/timestamp normalization and
+secret-free audits. Offline device registration repository adaptation now
+executes that prepared insert only when explicitly called, returns inserted or
+rejected outcomes, captures insert IDs, and keeps raw device tokens and token
+hashes out of repository audits. Live pairing route wiring remains disabled.
+Offline device bearer-token authentication planning is implemented for future
+registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
 persisted device ID checks, and secret-free accepted contexts. Offline token
 lookup planning now exposes hashed lookup filters and short audit fingerprints
@@ -287,12 +289,15 @@ lookup-query planning now prepares selected columns, active/revocation/expiry
 filters, row-normalizer metadata, lock intent, and deferred scope checks for
 future repositories. Permission planning now carries that query contract in
 lookup-required outcomes before live repositories are wired. Offline device
-session update repository adaptation can apply validated last-seen updates when
-explicitly called, and permission resolution can now opt in to that update
-while failing closed on stale or rejected results. Live device pairing route
-writes, route-connected device permission checks, permission callback wiring,
-route-connected last-seen database writes, push/pull workers, queue replay,
-canonical entity writes, and conflict persistence remain disabled until
+registration credential issuance now supplies generated IDs/tokens/hashes and
+expiry timestamps for future staging-only pairing handlers, while the live
+pairing route remains disabled. Offline device session update repository
+adaptation can apply validated last-seen updates when explicitly called, and
+permission resolution can now opt in to that update while failing closed on
+stale or rejected results. Live device pairing route writes, route-connected
+device permission checks, permission callback wiring, route-connected last-seen
+database writes, push/pull workers, queue replay, canonical entity writes, and
+conflict persistence remain disabled until
 staging-gated WordPress/offline integration tests pass. Offline
 pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
@@ -337,7 +342,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.75.0",
+  "app_version": "0.76.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -349,8 +354,8 @@ The planned pairing request body is shaped as:
 }
 ```
 
-Live token issuance, token hashing/storage, revocation checks, and first-sync
-execution remain disabled until staging tests pass.
+Live route token issuance/storage, revocation checks, and first-sync execution
+remain disabled until staging tests pass.
 
 When the future route is enabled, the planned successful response body is:
 

@@ -286,6 +286,11 @@ future `tcg_offline_devices` writes. It can execute the planned prepared insert
 only when explicitly called; live pairing routes, route-connected device writes,
 and production token issuance remain disabled.
 
+Version `0.76.0` adds offline device registration credential issuance for
+future pairing flows. It generates device IDs, one-time tokens, token hashes,
+UTC issue/expiry timestamps, and TTL metadata for planned handlers; live pairing
+routes and production token issuance remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

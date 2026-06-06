@@ -82,13 +82,17 @@ pairing codes, installation IDs, device modes, manager/location IDs,
 capabilities, requested scopes, Windows app versions, and schema version. Those
 requests can now be turned into a planned device row, one-time registration
 response, token hash storage fields, sync route map, first-sync flags, and
-redacted audit payload without live writes. Device registration insert query
-planning now maps those planned rows into prepared `tcg_offline_devices` insert
-templates, normalizes scopes and capabilities to JSON, converts UTC timestamps
-to MySQL datetime values, and keeps token secrets out of audit payloads without
-executing a database write. Device registration repository adaptation now
-executes that prepared insert only when explicitly called, reports inserted or
-rejected outcomes, captures insert IDs, and keeps one-time tokens and token
+redacted audit payload without live route writes. Device registration
+credential issuance now generates UUIDv4 device IDs, one-time device tokens,
+SHA-256 token hashes, UTC issue/expiry timestamps, bounded TTL metadata, and
+secret-free audit fingerprints for future pairing handlers. Device
+registration insert query planning now maps those planned rows into prepared
+`tcg_offline_devices` insert templates, normalizes scopes and capabilities to
+JSON, converts UTC timestamps to MySQL datetime values, and keeps token secrets
+out of audit payloads without executing a database write. Device registration
+repository adaptation now executes that prepared insert only when explicitly
+called, reports inserted or rejected outcomes, captures insert IDs, and keeps
+one-time tokens and token
 hashes out of audit payloads while live pairing route wiring remains disabled.
 Registered-device access policy checks now validate active state, revocation
 timestamps, token expiry, required scopes, supported modes/scopes, location IDs,

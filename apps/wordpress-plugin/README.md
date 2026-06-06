@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.75.0`
+Version: `0.76.0`
 
 ## Implemented Features
 
@@ -85,6 +85,10 @@ Version: `0.75.0`
 - Offline device registration planning for future device rows, one-time
   response payloads, token hashes, sync routes, first-sync flags, and audit
   payloads without live writes.
+- Offline device registration credential issuance for future pairing flows,
+  including generated device IDs, one-time device tokens, SHA-256 token hashes,
+  UTC issue/expiry timestamps, TTL bounds, injectable byte sources for tests,
+  and secret-free audit fingerprints.
 - Offline device registration insert query planning for future
   `tcg_offline_devices` writes, including prepared SQL templates, JSON field
   normalization, UTC timestamp conversion, and secret-free audits without live

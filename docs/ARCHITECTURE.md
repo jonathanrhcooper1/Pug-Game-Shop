@@ -189,7 +189,10 @@ IDs, unsupported platforms, and schema mismatches before any token or device row
 is created. Device registration planning is also implemented so a validated
 pairing request can be shaped into a future device row, one-time response,
 sync route map, first-sync flags, token hash storage fields, and redacted audit
-payload before live token generation or persistence is enabled. Device
+payload before live route persistence is enabled. Device registration
+credential issuance now generates UUIDv4 device IDs, one-time device tokens,
+SHA-256 token hashes, UTC issue/expiry timestamps, bounded TTL metadata, and
+secret-free audit fingerprints for that future pairing flow. Device
 registration insert query planning now maps those rows into prepared
 `tcg_offline_devices` insert SQL with JSON/timestamp normalization and
 secret-free audit metadata. Device registration repository adaptation now

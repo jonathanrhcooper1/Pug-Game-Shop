@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Registration Credential Issuance
+
+### What Changed
+
+- Added `OfflineDeviceRegistrationCredentialIssuer` for future pairing-flow
+  credential issuance.
+- Added `OfflineDeviceRegistrationCredentials` for generated device IDs,
+  one-time device tokens, SHA-256 token hashes, UTC issue/expiry timestamps,
+  token TTL, and secret-free audit payloads.
+- Added TTL bounds, strict UTC issue-time validation, UUIDv4 byte shaping,
+  injectable byte generation for deterministic tests, and byte-length guards.
+- Added unit tests for deterministic credential generation, default/custom TTLs,
+  token hashing, audit fingerprints, invalid TTLs, invalid issue timestamps,
+  and malformed byte generators.
+- Updated project, plugin, and offline app package versions to `0.76.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The registration planner expects generated public IDs, one-time device tokens,
+token hashes, issue timestamps, and expiry timestamps. This revision creates a
+dedicated issuance boundary so future staging-only pairing handlers can compose
+credential issuance, registration planning, and repository insertion without
+putting raw tokens into audits or enabling production route writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationCredentialIssuer.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationCredentials.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationCredentialIssuerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device registration credential issuer tests for deterministic UUIDv4
+  device IDs, one-time hex tokens, SHA-256 token hashes, UTC issue/expiry
+  timestamps, default/custom TTLs, secret-free audit fingerprints, invalid TTL
+  rejection, invalid timestamp rejection, and byte-generator length guards.
+
+### Rollback Notes
+
+- Revert this revision to remove offline device credential issuance, version
+  bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live pairing routes and production token issuance remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - Offline Device Registration Repository Adaptation
 
 ### What Changed

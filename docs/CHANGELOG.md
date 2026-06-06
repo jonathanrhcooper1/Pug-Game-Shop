@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.76.0] - 2026-06-06
+
+### Added
+
+- Offline device registration credential issuer for future pairing flows.
+- Issued credential value object carrying generated device IDs, one-time
+  device tokens, SHA-256 token hashes, UTC issue/expiry timestamps, token TTL,
+  and secret-free audit payloads.
+- Unit coverage proving deterministic UUID/token generation with injected byte
+  sources, default and custom TTL handling, token hashing, audit fingerprints,
+  invalid TTL rejection, invalid issue-time rejection, and byte-generator length
+  guards.
+
+### Not Added
+
+- No live offline pairing route is enabled. Production token issuance, route
+  registration, route-connected database writes, queue replay, and production
+  database mutation remain disabled.
+
 ## [0.75.0] - 2026-06-06
 
 ### Added

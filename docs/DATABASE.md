@@ -256,7 +256,11 @@ push operation and batch resolution planning now prepares future queue result
 rows, conflict rows, response counts, and audit payloads for accepted, rejected,
 and manager-reviewed operation outcomes. Offline push persistence planning now
 maps those plans into future queue/result rows, conflict insert rows, and
-idempotent replay rows. Offline bearer-token authentication planning now
+idempotent replay rows. Offline device registration credential issuance now
+generates UUID device IDs, one-time tokens, SHA-256 token hashes, UTC
+issue/expiry timestamps, TTL metadata, and secret-free fingerprints before the
+existing planned `tcg_offline_devices` insert path is called. Offline
+bearer-token authentication planning now
 verifies future request headers and stored token hashes before queue/conflict
 work proceeds. Offline token lookup planning now prepares the hashed
 `token_hash` filter future repositories will use to load registered devices,

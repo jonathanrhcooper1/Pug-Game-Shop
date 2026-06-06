@@ -145,6 +145,11 @@
   future device rows, one-time response payloads, redacted audit payloads,
   scope/capability preservation, generated credential validation, and token
   expiry windows.
+- Local unit coverage now includes offline device registration credential
+  issuance for generated UUID device IDs, one-time hex tokens, SHA-256 token
+  hashes, UTC issue/expiry timestamps, default and custom TTLs, injected byte
+  sources, secret-free audit fingerprints, invalid TTLs, invalid timestamps,
+  and byte-length guards.
 - Local unit coverage now includes offline device registration insert query
   planning for prepared SQL templates, prepare args, schema-length public IDs,
   JSON field normalization, UTC timestamp conversion, malformed rows, session
