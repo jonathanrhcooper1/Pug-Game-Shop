@@ -44,6 +44,7 @@ namespace {
 }
 
 namespace TCGStorePlatform\Tests\Unit {
+	use TCGStorePlatform\Api\V1\OfflineController;
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
 	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
@@ -67,6 +68,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				$this->assert_false( $plan['should_register'] );
 				$this->assert_false( $plan['permission_callback_ready'] );
 				$this->assert_false( $plan['controller_callback_ready'] );
+				$this->assert_same( null, $plan['controller_callback'] );
 				$this->assert_same( '__return_false', $plan['permission_callback'] );
 				$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
 				$this->assert_true( in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true ) );
@@ -107,6 +109,20 @@ namespace TCGStorePlatform\Tests\Unit {
 			}
 		}
 
+		public function test_planner_tracks_controller_callback_readiness_without_enabling_routes(): void {
+			$plans = $this->planner_with_controller()->planned_registration_args();
+
+			foreach ( $plans as $plan ) {
+				$this->assert_true( $plan['controller_callback_ready'] );
+				$this->assert_true( is_callable( $plan['controller_callback'] ) );
+				$this->assert_false( $plan['should_register'] );
+				$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
+				$this->assert_false(
+					in_array( 'controller_callback_not_ready', $plan['registration_block_reasons'], true )
+				);
+			}
+		}
+
 		public function test_planner_never_uses_public_permission_bypass(): void {
 			$plans = $this->planner()->planned_registration_args();
 
@@ -118,17 +134,26 @@ namespace TCGStorePlatform\Tests\Unit {
 		}
 
 		private function planner(): OfflineRouteRegistrationPlanner {
+			return new OfflineRouteRegistrationPlanner( $this->permission_callback_factory() );
+		}
+
+		private function planner_with_controller(): OfflineRouteRegistrationPlanner {
+			return new OfflineRouteRegistrationPlanner(
+				$this->permission_callback_factory(),
+				new OfflineController()
+			);
+		}
+
+		private function permission_callback_factory(): OfflineRoutePermissionCallbackFactory {
 			$database = new \wpdb( $this->database_row() );
 
-			return new OfflineRouteRegistrationPlanner(
-				new OfflineRoutePermissionCallbackFactory(
-					new OfflineRegisteredDevicePermissionResolver(
-						new OfflineRegisteredDeviceRepository( $database ),
-						null,
-						new OfflineDeviceSessionUpdateRepository( $database )
-					),
-					static fn (): string => '2026-06-06T20:30:00Z'
-				)
+			return new OfflineRoutePermissionCallbackFactory(
+				new OfflineRegisteredDevicePermissionResolver(
+					new OfflineRegisteredDeviceRepository( $database ),
+					null,
+					new OfflineDeviceSessionUpdateRepository( $database )
+				),
+				static fn (): string => '2026-06-06T20:30:00Z'
 			);
 		}
 
@@ -147,7 +172,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.65.0',
+				'app_version'       => '0.66.0',
 				'platform'          => 'windows',
 				'status'            => 'ACTIVE',
 				'last_seen_at'      => '2026-06-06 15:30:00',

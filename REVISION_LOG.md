@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Controller Fail-Closed Scaffold
+
+### What Changed
+
+- Added `OfflineController` with callback methods for every planned offline
+  route contract.
+- Added stable fail-closed disabled responses for offline pairing, pull, push,
+  conflict list, and conflict resolution callbacks.
+- Updated `OfflineRouteRegistrationPlanner` to accept an optional offline
+  controller and expose controller callback metadata, controller readiness, and
+  callable controller targets without enabling route registration.
+- Updated registration block reasons so controller-not-ready is removed only
+  when the fail-closed controller scaffold is supplied.
+- Added tests for controller callback coverage, disabled responses, planner
+  controller readiness metadata, continued route disablement, and public
+  permission bypass prevention.
+- Updated project, plugin, and offline app package versions to `0.66.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The route registration planner can now describe permission callback readiness.
+The next safe bridge is proving that controller callback methods exist while
+still failing closed and keeping all offline routes blocked until staging
+integration tests and live handlers are ready.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineController.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline controller scaffold tests for complete callback coverage and
+  fail-closed disabled responses.
+- Offline route registration planner tests for controller callback readiness
+  metadata without live route enablement.
+
+### Rollback Notes
+
+- Revert this revision to remove the fail-closed offline controller scaffold,
+  controller callback readiness metadata, controller tests, version bump, and
+  docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, live WordPress permission callback wiring, queue
+  replay workers, and route-connected database writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Route Registration Planner
 
 ### What Changed

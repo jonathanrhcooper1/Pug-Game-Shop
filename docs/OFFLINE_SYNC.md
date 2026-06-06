@@ -131,6 +131,8 @@ construction.
 The planned offline route registration planner now turns those contracts into
 disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.
+The fail-closed offline controller scaffold now exposes the planned route
+callback methods and returns disabled responses until live handlers are wired.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

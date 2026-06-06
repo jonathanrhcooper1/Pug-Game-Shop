@@ -235,6 +235,11 @@ fail-closed permission callbacks, callback/controller readiness flags, and
 block reasons. No WordPress offline route is eligible for live registration
 until staging integration tests pass.
 
+Version `0.66.0` adds a fail-closed offline controller scaffold with callback
+methods for every planned offline route. The callbacks return disabled
+responses and remain unregistered until live handlers pass staging integration
+tests.
+
 ## Hardware Gate
 
 Before production, test the actual:

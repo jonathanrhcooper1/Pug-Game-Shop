@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.66.0] - 2026-06-06
+
+### Added
+
+- Fail-closed offline REST controller scaffold exposing every planned offline
+  route callback method.
+- Disabled controller callback responses that return stable `disabled` status,
+  `offline_route_disabled` codes, HTTP-style `501` status metadata, and the
+  callback name while live route registration remains blocked.
+- Route registration planner support for optional controller callback metadata,
+  controller readiness flags, callable controller targets, and updated block
+  reasons that clear only the controller-not-ready reason when the scaffold is
+  supplied.
+- Unit coverage for controller callback presence, fail-closed callback
+  responses, controller readiness metadata, and continued disabled-by-default
+  route registration.
+
+### Not Added
+
+- Live WordPress `register_rest_route()` calls, route handler business logic,
+  queue replay workers, push/pull persistence, conflict mutation writes, and
+  production database mutation remain disabled.
+
 ## [0.65.0] - 2026-06-06
 
 ### Added

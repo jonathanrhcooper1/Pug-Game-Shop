@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.65.0`
+Version: `0.66.0`
 
 ## Implemented Features
 
@@ -139,6 +139,9 @@ Version: `0.65.0`
   including disabled-by-default route plans, fail-closed permission callbacks,
   registered-device callback metadata, controller-readiness gates, and no
   public permission bypasses.
+- Offline controller scaffold for future offline REST route handlers, including
+  callback method coverage for every planned route and stable disabled
+  responses while live handlers remain blocked.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and
