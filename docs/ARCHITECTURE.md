@@ -184,7 +184,10 @@ flags without changing the offline app contract. Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location
 IDs, unsupported platforms, and schema mismatches before any token or device row
-is created.
+is created. Device registration planning is also implemented so a validated
+pairing request can be shaped into a future device row, one-time response,
+sync route map, first-sync flags, token hash storage fields, and redacted audit
+payload before live token generation or persistence is enabled.
 
 ## Storefront Product Strategy
 

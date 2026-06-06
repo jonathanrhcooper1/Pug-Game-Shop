@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.41.0] - 2026-06-06
+
+### Added
+
+- Offline device registration planner for the planned pairing flow.
+- Planned device row, one-time response payload, sync route map, first-sync
+  flags, token hash storage fields, and redacted audit payloads.
+- Validation for generated device IDs, one-time device tokens, token hashes,
+  UTC issue/expiry timestamps, and expiry-after-issue ordering.
+- Unit coverage for device row/response/audit payloads, scope/capability
+  preservation, invalid generated credentials, and invalid expiry windows.
+
+### Not Added
+
+- Live device row writes, token generation, token hashing, token storage,
+  registration route persistence, revocation checks, and first-sync execution
+  remain disabled for later staging-gated phases.
+
 ## [0.40.0] - 2026-06-06
 
 ### Added

@@ -58,6 +58,13 @@ version `1`. Live token issuance, token hashing/storage, device row writes,
 revocation checks, and first-sync execution remain disabled until staging
 integration tests pass.
 
+Version `0.41.0` adds the registration planning boundary for steps 3 through
+5. A validated pairing request can now be shaped into the future device row,
+one-time response payload, sync route map, first-sync flags, token hash storage
+fields, and redacted audit payload. Real token generation, storage, device row
+writes, revocation checks, and first-sync execution are still disabled until
+staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Registration Planning
+
+### What Changed
+
+- Added a WordPress offline device registration planner for the planned pairing
+  flow.
+- Added an immutable registration plan value object exposing future device row,
+  one-time response payload, and redacted audit payload data.
+- Added validation for generated device IDs, one-time device tokens, token
+  hashes, UTC issue/expiry timestamps, and expiry-after-issue ordering.
+- Added unit coverage for device row/response/audit payloads, scope and
+  capability preservation, invalid generated credentials, and invalid expiry
+  windows.
+- Updated project, plugin, and offline app package versions to `0.41.0`.
+- Updated REST API, offline sync, architecture, database, testing, roadmap,
+  offline app deployment, and plugin docs.
+
+### Why
+
+After request validation, the future registration route needs a deterministic
+plan for what would be stored and returned before it performs live writes. This
+slice documents and tests the device row, one-time token response, sync route
+map, first-sync flags, and audit payload while keeping real credential
+generation and persistence disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision adds registration planning only.
+
+### Tests Added
+
+- Offline device registration planner tests for device row, one-time response,
+  redacted audit payloads, scope/capability preservation, invalid generated
+  credentials, and invalid expiry windows.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline device registration planner,
+  value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `7`.
+- No SQLite rollback is required; the local SQLite schema is unchanged.
+- Live device registration, token issuance, token hashing/storage, revocation,
+  first sync, push/pull execution, and conflict writes remain disabled both
+  before and after rollback.
+
 ## 2026-06-06 - Offline Device Pairing Validation
 
 ### What Changed

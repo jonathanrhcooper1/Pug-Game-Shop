@@ -132,6 +132,10 @@
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,
   unsupported capabilities/scopes, and schema version gating.
+- Local unit coverage now includes offline device registration planning for
+  future device rows, one-time response payloads, redacted audit payloads,
+  scope/capability preservation, generated credential validation, and token
+  expiry windows.
 - Root automation now includes POS/payment reconciliation policy tests for
   sandbox payment responses, scan-gated sales, declined payments, unmapped line
   conflicts, and refunds to pending review.

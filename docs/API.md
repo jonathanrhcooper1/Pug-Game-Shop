@@ -33,7 +33,10 @@ presentation is implemented for stable per-domain cursors, data rows,
 tombstones, server timestamps, and `has_more` pagination flags. Offline device
 pairing request validation is implemented for pairing codes, installation IDs,
 device modes, manager/location IDs, app versions, Windows platform checks,
-hardware capabilities, requested scopes, and schema version gating.
+hardware capabilities, requested scopes, and schema version gating. Offline
+device registration planning is implemented for future device rows, one-time
+response payloads, token hash storage fields, sync routes, first-sync flags,
+and redacted audit payloads.
 
 ### Inventory And Search
 
@@ -246,7 +249,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.40.0",
+  "app_version": "0.41.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -260,6 +263,29 @@ The planned pairing request body is shaped as:
 
 Live token issuance, token hashing/storage, revocation checks, and first-sync
 execution remain disabled until staging tests pass.
+
+When the future route is enabled, the planned successful response body is:
+
+```json
+{
+  "device_id": "device-main-01",
+  "device_token": "returned-once-by-live-route",
+  "token_expires_at_utc": "2026-06-07T16:00:00Z",
+  "schema_version": 1,
+  "scopes": ["offline_pull", "offline_push", "kiosk"],
+  "sync_routes": {
+    "pull": "/wp-json/tcg-store/v1/offline/pull",
+    "push": "/wp-json/tcg-store/v1/offline/push",
+    "conflicts": "/wp-json/tcg-store/v1/offline/conflicts"
+  },
+  "first_sync_required": true,
+  "server_time_utc": "2026-06-06T16:00:00Z",
+  "branding_sync_required": true
+}
+```
+
+The planned audit payload intentionally excludes `device_token` and
+`token_hash`; live persistence remains disabled.
 
 ## WooCommerce Hook Map
 

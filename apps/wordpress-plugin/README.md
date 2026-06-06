@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.40.0`
+Version: `0.41.0`
 
 ## Implemented Features
 
@@ -81,6 +81,9 @@ Version: `0.40.0`
 - Offline device pairing request validation for pairing codes, installation
   IDs, device modes, manager/location IDs, app versions, hardware
   capabilities, requested scopes, and schema version.
+- Offline device registration planning for future device rows, one-time
+  response payloads, token hashes, sync routes, first-sync flags, and audit
+  payloads without live writes.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent
