@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.70.0] - 2026-06-06
+
+### Added
+
+- Offline route bootstrap planner for future staging bootstrap checks.
+- Feature-gate, registerable-route count, route-key, route-summary, and
+  bootstrap block-reason reporting before any live route registration is
+  attempted.
+- Deterministic planning from existing route registration metadata plus a
+  direct planned-args path for future route-readiness tests.
+- Unit coverage for disabled, gated, future-registerable, and feature-enabled
+  bootstrap outcomes.
+
+### Not Added
+
+- No current offline route is enabled for registration. Live route business
+  handlers, queue replay workers, push/pull persistence, conflict mutation
+  writes, and production database mutation remain disabled.
+
 ## [0.69.0] - 2026-06-06
 
 ### Added

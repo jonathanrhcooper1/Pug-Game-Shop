@@ -80,6 +80,10 @@ pull, push, conflict list, and conflict resolution callbacks. They return
 `offline_request_validated` or `offline_request_invalid` envelopes with callback
 names, status metadata, safe summaries, and validation error codes, while
 database writes and live route registration remain disabled.
+Offline route bootstrap planning now summarizes feature-gate state, planned
+route counts, registerable route counts, registerable route keys,
+route-registration metadata, and bootstrap block reasons before any future
+staging bootstrap attempts live route registration.
 
 ### Inventory And Search
 
@@ -317,7 +321,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.69.0",
+  "app_version": "0.70.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

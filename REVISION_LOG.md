@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Route Bootstrap Planner
+
+### What Changed
+
+- Added `OfflineRouteBootstrapPlanner` for future staging bootstrap checks.
+- Added route bootstrap summaries with feature-gate status, planned route
+  counts, registerable route counts, registerable route keys, route
+  registration summaries, and bootstrap block reasons.
+- Added deterministic planning from existing `OfflineRouteRegistrationPlanner`
+  metadata plus a direct planned-args path for future route-readiness tests.
+- Added tests proving the bootstrap remains blocked when the feature flag is
+  disabled, reports no-registerable-route gating for current contracts, and
+  can surface future registerable plans without opening live routes by default.
+- Updated project, plugin, and offline app package versions to `0.70.0`.
+- Updated API, offline sync, architecture, deployment, changelog, and plugin
+  docs.
+
+### Why
+
+The route registrar can already filter ready plans, and parser-only handlers
+can validate normalized requests. This revision adds the next safe bootstrap
+boundary: staging can inspect whether route registration should proceed before
+calling a registrar, while the current offline contracts still register zero
+routes and perform no database writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteBootstrapPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteValidationHandlerFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline route bootstrap planner tests for disabled feature-gate behavior,
+  no-registerable-route behavior, future registerable route reporting, and
+  feature-enabled registerability.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline route bootstrap planner,
+  bootstrap tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Current offline route contracts register zero routes before and after
+  rollback.
+
 ## 2026-06-06 - Offline Route Validation Handlers
 
 ### What Changed

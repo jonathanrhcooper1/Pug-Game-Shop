@@ -256,6 +256,13 @@ pairing, pull, push, conflict list, and conflict resolution requests and inspect
 safe response summaries while route registration, persistence, and queue replay
 remain disabled.
 
+Version `0.70.0` adds offline route bootstrap planning for future staging
+checks. Staging code can now inspect feature-gate state, registerable route
+counts, route keys, route-registration summaries, and bootstrap block reasons
+before any registrar is called. Current route contracts still report no
+registerable routes, and route registration, persistence, and queue replay
+remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

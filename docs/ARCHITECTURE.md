@@ -261,6 +261,10 @@ Parser-only offline route validation handlers now sit behind that injected
 dispatch point, validating pairing, pull, push, conflict list, and conflict
 resolution payloads and returning safe summaries before any persistence or live
 registration boundary is opened.
+Offline route bootstrap planning now summarizes whether the offline feature
+gate and planned route metadata allow registration, including route counts,
+registerable route keys, per-route summaries, and block reasons, before any
+future staging bootstrap calls the registrar.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

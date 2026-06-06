@@ -144,6 +144,10 @@ requests through the controller for pairing, pull, push, conflict list, and
 conflict resolution callbacks. The responses expose validation status, safe
 summaries, deferred-write markers, and route-gated markers without persisting or
 replaying operations.
+Offline route bootstrap planning now summarizes feature-gate state,
+registerable route counts, route keys, per-route registration metadata, and
+bootstrap block reasons before any future staging bootstrap can register live
+offline routes.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
 permission callback wiring, and route-connected last-seen database writes are

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.69.0`
+Version: `0.70.0`
 
 ## Implemented Features
 
@@ -151,6 +151,10 @@ Version: `0.69.0`
 - Offline route validation handler factory for parser-only controller
   injection, covering pairing, pull, push, conflict list, conflict resolution,
   safe response summaries, and stable validation errors without writes.
+- Offline route bootstrap planner for future staging bootstrap checks,
+  including feature-gate status, registerable route counts, route keys,
+  route-registration summaries, and bootstrap block reasons without registering
+  live routes.
 - Offline device session update query building for future permission
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and
