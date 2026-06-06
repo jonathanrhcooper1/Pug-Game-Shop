@@ -2,6 +2,30 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.61.0] - 2026-06-06
+
+### Added
+
+- Offline device session update repository adapter for future registered-device
+  permission callbacks.
+- Repository result value object exposing applied, stale, and rejected update
+  outcomes with affected-row counts, stable errors, query-plan audit data, and
+  no raw token or token-hash leakage.
+- Planned `$wpdb` update execution from the whitelisted session update query
+  builder, invalid-plan rejection before database access, stale optimistic
+  row-version handling, failed-write rejection, and unexpected-row-count
+  rejection.
+- Fake-`wpdb` unit coverage for prepared update execution, stale writes, invalid
+  session plans before database access, failed updates, unexpected row counts,
+  and redacted audit payloads.
+
+### Not Added
+
+- Live REST route registration, WordPress `permission_callback` wiring, queue
+  replay workers, push/pull route handlers, canonical entity writes, and
+  route-connected production database mutation remain disabled for later
+  staging-gated phases.
+
 ## [0.60.0] - 2026-06-06
 
 ### Added

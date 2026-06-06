@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Device Session Update Repository Adapter
+
+### What Changed
+
+- Added an offline device session update repository adapter for future
+  registered-device permission callbacks.
+- Added a session update repository result value object that exposes applied,
+  stale, and rejected outcomes with affected-row counts, stable errors, and
+  secret-free audit payloads.
+- Executed the planned session update SQL through `$wpdb->prepare()` and
+  `$wpdb->query()` only after the query builder accepts the session plan.
+- Added optimistic stale-row handling for zero affected rows, failed-write
+  rejection for database errors, and unexpected-row-count rejection for
+  defensive safety.
+- Added tests for prepared update execution, stale row-version guards, invalid
+  session plans before database access, failed writes, unexpected row counts,
+  and audit payloads without raw tokens or token hashes.
+- Updated project, plugin, and offline app package versions to `0.61.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The session update query builder established a safe SQL contract for future
+last-seen writes. This revision adds the narrow `$wpdb` execution adapter so
+the future permission callback can apply that contract and distinguish a fresh
+write from a stale row-version conflict without wiring any live routes yet.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceSessionUpdateRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceSessionUpdateRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceSessionUpdateRepositoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceRowNormalizerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline device session update repository tests for prepared `$wpdb` update
+  execution, stale optimistic row-version results, invalid session-plan
+  rejection before database access, failed database updates, unexpected affected
+  row counts, and secret-free repository audits.
+
+### Rollback Notes
+
+- Revert this revision to remove the session update repository adapter, result
+  value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- REST route registration, WordPress permission callback wiring, queue replay
+  workers, and route-connected database writes remain disabled both before and
+  after rollback.
+
 ## 2026-06-06 - Offline Device Session Update Query Building
 
 ### What Changed

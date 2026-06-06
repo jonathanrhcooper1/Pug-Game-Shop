@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.60.0`
+Version: `0.61.0`
 
 ## Implemented Features
 
@@ -126,6 +126,10 @@ Version: `0.60.0`
   callbacks, including safe table-prefix validation, last-seen timestamp
   conversion, optimistic row-version guards, prepared SQL templates, and
   secret-free audits without executing live writes.
+- Offline device session update repository adapter for future permission
+  callbacks, including planned `$wpdb` update execution, applied/stale/rejected
+  outcomes, failed-write rejection, unexpected-row-count rejection, and
+  secret-free audits without live route wiring.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

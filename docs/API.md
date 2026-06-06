@@ -60,7 +60,10 @@ repository lookup, loaded-row authentication, and session planning into a
 route-ready result without registering live REST permission callbacks.
 Offline device session update query building now converts planned last-seen
 updates into prepared SQL templates with optimistic row-version guards without
-executing live database writes.
+executing live database writes. Offline device session update repository
+adaptation now applies that prepared update when explicitly called and reports
+applied, stale, or rejected outcomes without registering live REST permission
+callbacks.
 
 ### Inventory And Search
 
@@ -247,11 +250,13 @@ audits before auth/session planners consume them. Registered device
 lookup-query planning now prepares selected columns, active/revocation/expiry
 filters, row-normalizer metadata, lock intent, and deferred scope checks for
 future repositories. Permission planning now carries that query contract in
-lookup-required outcomes before live repositories are wired. Live device
-pairing route writes, route-connected device permission checks, permission
-callback wiring, last-seen database writes, push/pull workers, queue replay,
-canonical entity writes, and conflict persistence remain disabled until
-staging-gated WordPress/offline integration tests pass. Offline
+lookup-required outcomes before live repositories are wired. Offline device
+session update repository adaptation can apply validated last-seen updates when
+explicitly called. Live device pairing route writes, route-connected device
+permission checks, permission callback wiring, route-connected last-seen
+database writes, push/pull workers, queue replay, canonical entity writes, and
+conflict persistence remain disabled until staging-gated WordPress/offline
+integration tests pass. Offline
 pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
 `customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
@@ -295,7 +300,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.60.0",
+  "app_version": "0.61.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -402,8 +407,10 @@ normalization now defines the repository-row input contract for that assembly
 boundary without performing the repository query itself. Registered device
 lookup-query planning now defines the future repository lookup arguments while
 still leaving SQL execution disabled. Permission planning now exposes those
-arguments when a device row has not been loaded yet. Live device row repository
-queries, permission callback wiring, last-seen database writes, and REST route
+arguments when a device row has not been loaded yet. Offline device session
+update repository adaptation now applies validated last-seen updates when
+explicitly called, but route-connected device row repository queries,
+permission callback wiring, route-connected last-seen writes, and REST route
 registration remain disabled until staging tests pass.
 
 The planned conflict list request accepts query/body filters shaped as:

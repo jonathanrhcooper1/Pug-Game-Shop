@@ -61,11 +61,14 @@ audits without raw tokens or token hashes, and rejects malformed rows before
 auth/session planners consume them. Registered-device permission resolution
 keeps raw tokens and full token hashes out of resolution audits while composing
 repository-backed authorization and future session update planning. Live
-permission callback wiring, last-seen database writes, and route callback
-wiring remain staging-gated.
+permission callback wiring, route-connected last-seen database writes, and
+route callback wiring remain staging-gated.
 Offline session update query building validates table prefixes, public device
 IDs, UTC timestamps, and optimistic row-version guards before a future
 last-seen write can be enabled.
+Offline session update repository adaptation only consumes the validated query
+plan, keeps token secrets out of update audits, and reports stale writes
+without exposing bearer-token material.
 
 ## Secret Storage
 

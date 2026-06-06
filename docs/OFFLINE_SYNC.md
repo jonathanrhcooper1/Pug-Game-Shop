@@ -115,9 +115,13 @@ last-seen state.
 Offline device session update query building now converts the planned
 last-seen update into a prepared SQL template with expected row-version guards
 without executing it.
+Offline device session update repository adaptation now executes that prepared
+update only when explicitly called, returning applied, stale, or rejected
+outcomes with redacted audit data.
 Those endpoints are not registered live yet, accepted operations are not
 persisted or replayed yet, route-connected device permission checks,
-permission callback wiring, and last-seen database writes are disabled, live
+permission callback wiring, and route-connected last-seen database writes are
+disabled, live
 pull queries are not executed yet, and pull cursors are not advanced yet.
 Conflict list and
 resolution request validation now covers status/entity filters, cursors,

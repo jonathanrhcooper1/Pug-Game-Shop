@@ -194,6 +194,10 @@
   for prepared last-seen update SQL templates, safe table prefixes, invalid
   session rows, string row versions, optimistic row-version guards, and
   secret-free audits.
+- Local unit coverage now includes offline device session update repository
+  adaptation for prepared `$wpdb` update execution, stale optimistic
+  row-version results, invalid plan rejection before database access, failed
+  database updates, unexpected row counts, and redacted repository audits.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

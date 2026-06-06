@@ -205,6 +205,13 @@ last-seen updates into prepared SQL templates with expected row-version guards.
 Route registration, permission callback wiring, last-seen writes, queue replay,
 and database writes remain disabled until staging integration tests pass.
 
+Version `0.61.0` adds the offline device session update repository adapter.
+Future WordPress permission callbacks can now apply the prepared last-seen
+update through `$wpdb` and distinguish applied, stale, and rejected outcomes.
+Route registration, permission callback wiring, queue replay, and
+route-connected database writes remain disabled until staging integration tests
+pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

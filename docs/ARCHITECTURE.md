@@ -228,6 +228,9 @@ last-seen state or registering callbacks.
 Offline device session update query building now converts the planned
 last-seen update row into a prepared SQL template with an optimistic
 row-version guard before any live write path is enabled.
+Offline device session update repository adaptation now executes that prepared
+query when explicitly called and reports applied, stale, or rejected outcomes
+without registering REST permission callbacks.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and
