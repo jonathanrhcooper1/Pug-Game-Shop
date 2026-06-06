@@ -61,6 +61,10 @@
 - Local unit coverage now includes WooCommerce serialized cart item metadata
   validation for exact inventory/reservation identifiers, owner token hashes,
   quantity-one enforcement, reservation expiry, price snapshots, and currency.
+- Local unit coverage now includes WooCommerce serialized inventory hook
+  contracts for cart, checkout, payment, order, refund, cart removal, and Store
+  API validation lifecycle coverage, with live registration gated off by
+  default.
 - Local unit coverage now includes REST route contracts for health and public
   Events endpoints, including namespace/method/callback/access-mode checks and
   guards that unimplemented write modules are not registered.

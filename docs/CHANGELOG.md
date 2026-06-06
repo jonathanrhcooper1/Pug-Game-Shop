@@ -2,6 +2,22 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.23.0] - 2026-06-06
+
+### Added
+
+- WooCommerce serialized inventory hook contract registry.
+- Unit coverage for exact inventory cart, checkout, payment, refund, cart
+  removal, and Store API validation hook contracts.
+- Stable hook metadata for handler method, lifecycle phase, priority, accepted
+  args, default live-gating, and purpose.
+
+### Not Added
+
+- Live WooCommerce hook registration, HPOS lifecycle verification,
+  order-reservation persistence, Store API execution, and payment/refund
+  integration remain disabled for later staging-gated phases.
+
 ## [0.22.0] - 2026-06-06
 
 ### Added

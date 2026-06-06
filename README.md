@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.22.0`
+Version: `0.23.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -22,12 +22,14 @@ normalization are implemented. Exact inventory reservation schema and
 transaction-oriented reservation reserve/release/convert service foundations
 are implemented for double-sell prevention. Manager override policy helpers are
 implemented for below-minimum sale authorization. WooCommerce serialized cart
-item metadata validation is implemented for future checkout hooks. REST route
-contracts for health and public event endpoints are unit-tested alongside the
-WordPress smoke route registration check. Migration planning is unit-tested for
-clean install, upgrade, idempotent current-schema reruns, and rollback order.
-TopDeck registration push mapping is implemented and unit-tested for later
-queue workers.
+item metadata validation is implemented for future checkout hooks. WooCommerce
+serialized inventory hook contracts are defined and unit-tested for classic
+cart, checkout, payment, refund, cart removal, and Store API validation flows.
+REST route contracts for health and public event endpoints are unit-tested
+alongside the WordPress smoke route registration check. Migration planning is
+unit-tested for clean install, upgrade, idempotent current-schema reruns, and
+rollback order. TopDeck registration push mapping is implemented and
+unit-tested for later queue workers.
 Offline sync conflict policy tests are implemented in the shared sync engine
 for inventory reservations, event reservations, customer credit redemption, and
 device revocation.

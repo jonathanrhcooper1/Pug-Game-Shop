@@ -3,6 +3,57 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - WooCommerce Hook Contract Foundation
+
+### What Changed
+
+- Added WooCommerce hook contract metadata for the serialized inventory
+  checkout lifecycle.
+- Added a hook registry for exact inventory cart, checkout, order, payment,
+  refund, cart removal, and Store API validation flows.
+- Added unit coverage for expected hook names, default live-gating, uniqueness,
+  payment completion contract shape, and separate Store API validation.
+
+### Why
+
+WooCommerce checkout wiring must be explicit before live reservation conversion,
+cart release, payment completion, refund, and Store API handlers are enabled.
+This slice defines the lifecycle contract while keeping every live hook disabled
+until WooCommerce integration tests and staging verification pass.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/HookContract.php`
+- `apps/wordpress-plugin/src/WooCommerce/SerializedInventoryHookRegistry.php`
+- `apps/wordpress-plugin/tests/Unit/SerializedInventoryHookRegistryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- WooCommerce serialized inventory hook registry tests for hook coverage,
+  default disabled live registration, duplicate protection, payment completion
+  metadata, and Store API separation.
+
+### Rollback Notes
+
+- Revert this revision to remove WooCommerce hook contract helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Live WooCommerce hook registration, HPOS verification, order-line writes,
+  Store API execution, payment conversion, and refund handling remain disabled
+  after rollback.
+
 ## 2026-06-06 - ScryDex Sync Page Processor Foundation
 
 ### What Changed
