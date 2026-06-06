@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Reservation Expiry Cleanup Planning Foundation
+
+### What Changed
+
+- Added a reservation expiry cleanup planner for active hold candidates.
+- Added an expiry plan result object for expired release payloads, skipped rows,
+  errors, release counts, and work detection.
+- Added deterministic cleanup idempotency keys for expired reservations.
+- Added an explicit reservation service `expire()` transition that restores
+  inventory to available and marks the reservation `expired`.
+- Added unit coverage for expired rows, equal-to-now expiry behavior, future
+  rows, inactive lifecycle rows, invalid row handling, and service expiry.
+
+### Why
+
+Exact-item holds need predictable expiry behavior before WooCommerce cart
+timers, kiosk carts, offline holds, and scheduled cleanup workers can safely
+ship. This slice defines the cleanup planning and service transition without
+enabling live cron execution or database race tests yet.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Reservations/ReservationExpiryPlan.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationExpiryPlanner.php`
+- `apps/wordpress-plugin/src/Reservations/ReservationService.php`
+- `apps/wordpress-plugin/tests/Unit/ReservationExpiryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ReservationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- Reservation expiry planner tests for expired holds, equal-to-now expiries,
+  future holds, inactive lifecycle rows, invalid reservation rows, and cleanup
+  idempotency key payloads.
+- Reservation service expiry transition test for restoring inventory to
+  available and marking the reservation expired.
+
+### Rollback Notes
+
+- Revert this revision to remove reservation expiry cleanup planning helpers,
+  the explicit expiry transition, and related tests.
+- No schema rollback is required; database target remains `7`.
+- Live cleanup workers, WooCommerce cart timers, and Action Scheduler jobs
+  remain disabled after rollback.
+
 ## 2026-06-06 - ScryDex Persistence Planning Foundation
 
 ### What Changed

@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.28.0] - 2026-06-06
+
+### Added
+
+- Reservation expiry cleanup planner for candidate active reservation rows.
+- Expired active hold release payloads with reservation ID, inventory ID,
+  source/cart context, expiry timestamp, target statuses, release reason, and
+  deterministic cleanup idempotency keys.
+- Explicit reservation service `expire()` transition that restores reserved
+  inventory to available and marks the reservation `expired`.
+- Unit coverage for expired holds, equal-to-now expiries, future holds,
+  inactive lifecycle rows, invalid rows, and service expiry transitions.
+
+### Not Added
+
+- Live Action Scheduler cleanup jobs, WooCommerce cart timer wiring, database
+  race integration tests, and automatic cleanup execution remain disabled for
+  later staging-gated phases.
+
 ## [0.27.0] - 2026-06-06
 
 ### Added

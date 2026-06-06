@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.27.0
+Stable tag: 0.28.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -28,6 +28,8 @@ Phase 6.2.1 adds buylist REST route contracts and submission intake payload
 validation while keeping live write APIs disabled.
 Phase 4 foundations add exact inventory reservation schema plus active-claim,
 release, and conversion service checks.
+Phase 4.1 adds reservation expiry cleanup planning and explicit expired-hold
+release transitions.
 Phase 2.2 adds manager override policy helpers for below-minimum sale approval.
 Phase 2.2.1 adds manager override persistence and audit payload planning.
 Phase 4.2 adds serialized cart item metadata validation for WooCommerce
@@ -59,6 +61,12 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.28.0 =
+
+* Added reservation expiry cleanup planner for expired active holds, future holds, inactive rows, invalid rows, and deterministic cleanup idempotency keys.
+* Added explicit reservation expiry transition that restores reserved inventory to available while marking the reservation expired.
+* Kept live cleanup workers, WooCommerce cart timers, Action Scheduler jobs, and database race integration tests disabled.
 
 = 0.27.0 =
 

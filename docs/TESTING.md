@@ -61,6 +61,10 @@
   to available, idempotent conversion replay, and inventory-state mismatch
   rejection. WordPress integration smoke coverage asserts schema version `7`
   and reservation tables.
+- Local unit coverage now includes reservation expiry cleanup planning for
+  expired active holds, equal-to-now expiries, future holds, inactive rows,
+  invalid rows, deterministic cleanup idempotency keys, and explicit expired
+  hold transitions back to available inventory.
 - Local unit coverage now includes manager override policy behavior for
   below-minimum sale approval, distinct manager checks, required reasons,
   invalid amounts, and override-row persistence requirements.
@@ -106,7 +110,8 @@ corresponding modules are implemented:
 - Live database migration integration tests for `dbDelta`, transactional
   execution, schema option writes, rollback, and restore drills.
 - Pricing engine tests.
-- Reservation database integration and concurrent double-sell prevention tests.
+- Reservation database integration, concurrent double-sell prevention tests,
+  Action Scheduler cleanup workers, and WooCommerce cart timer integration.
 - Customer credit ledger database integration and replay tests.
 - Manager override persistence, manager reauthentication, and audit tests.
 - ScryDex database write workers, scheduled worker, image download,

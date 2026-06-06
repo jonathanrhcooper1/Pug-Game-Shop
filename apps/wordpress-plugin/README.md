@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.27.0`
+Version: `0.28.0`
 
 ## Implemented Features
 
@@ -47,6 +47,8 @@ Version: `0.27.0`
   inventory active-claim enforcement.
 - Reservation lifecycle service helpers for idempotent conversion to sold and
   release back to available.
+- Reservation expiry cleanup planner and explicit expired-hold transition back
+  to available inventory.
 - Manager override policy helpers for below-minimum sale authorization.
 - Manager override persistence/audit payload planning for future stored
   below-minimum approvals.

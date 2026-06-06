@@ -128,6 +128,20 @@ final class ReservationService {
 		);
 	}
 
+	public function expire( int $reservation_id ): ReservationResult {
+		return $this->transition_active_reservation(
+			$reservation_id,
+			ReservationStatus::EXPIRED,
+			InventoryStatus::AVAILABLE,
+			'expired',
+			'Reservation expired and inventory was restored to available.',
+			array(
+				'released_at'    => $this->now(),
+				'release_reason' => 'expired',
+			)
+		);
+	}
+
 	private function validate( ReservationRequest $request ): ?ReservationResult {
 		if ( $request->inventory_id() <= 0 ) {
 			return ReservationResult::rejected( 'invalid_inventory', 'Inventory ID is required.' );

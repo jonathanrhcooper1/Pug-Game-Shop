@@ -157,6 +157,24 @@ final class ReservationServiceTest extends TestCase {
 		$this->assert_same( 'cart_removed', $storage->active_reservation['release_reason'] );
 	}
 
+	public function test_service_expires_active_reservation_to_available(): void {
+		$storage = new FakeReservationStorage(
+			array(
+				'inventory_id' => 42,
+				'status'       => InventoryStatus::RESERVED,
+			),
+			$this->active_reservation()
+		);
+		$result  = ( new ReservationService( $storage ) )->expire( 55 );
+
+		$this->assert_true( $result->is_accepted() );
+		$this->assert_same( 'expired', $result->code() );
+		$this->assert_same( InventoryStatus::AVAILABLE, $storage->inventory['status'] );
+		$this->assert_same( ReservationStatus::EXPIRED, $storage->active_reservation['status'] );
+		$this->assert_same( null, $storage->active_reservation['active_inventory_id'] );
+		$this->assert_same( 'expired', $storage->active_reservation['release_reason'] );
+	}
+
 	public function test_service_replays_already_converted_reservation(): void {
 		$reservation                        = $this->active_reservation();
 		$reservation['status']              = ReservationStatus::CONVERTED;

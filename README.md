@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.27.0`
+Version: `0.28.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -24,7 +24,9 @@ planning helpers, mock-backed provider adapter, card/price normalization, sync
 page processing, and reference/price persistence planning are implemented. Exact
 inventory reservation schema and
 transaction-oriented reservation reserve/release/convert service foundations
-are implemented for double-sell prevention. Manager override policy helpers are
+are implemented for double-sell prevention, with reservation expiry cleanup
+planning and explicit expired-hold release transitions now covered. Manager
+override policy helpers are
 implemented for below-minimum sale authorization, and manager override
 persistence/audit payload planning is implemented for future stored approvals.
 WooCommerce serialized cart item metadata validation is implemented for future
@@ -44,8 +46,8 @@ responses, exact scanned item sales, refunds, declines, and unmapped line
 conflicts.
 WooCommerce event-ticket flows, online payment capture, live TopDeck
 registration push, WooCommerce checkout hooks, credit REST endpoints, buylist
-write APIs, scheduled ScryDex write workers, and production provider
-credentials remain disabled until staging
+write APIs, scheduled ScryDex write workers, live reservation cleanup workers,
+and production provider credentials remain disabled until staging
 acceptance.
 
 ## Source Of Truth
