@@ -7,15 +7,18 @@ errors, and webhook events. ScryDex checkpoint/resume helpers plan page/cursor
 requests and serialize committed checkpoints. The ScryDex provider adapter is
 implemented with injectable transport, credential redaction, and mock-backed
 card-search/rate-limit tests. Card and current market price normalization is
-implemented against sanitized fixtures. Scheduled ScryDex workers, live
-provider credential configuration, database upsert workers, image workers,
-usage-budget enforcement, and webhook route handling remain disabled until
-staging acceptance.
+implemented against sanitized fixtures. Persistence planning now prepares
+deterministic reference-card inserts, changed-row updates, unchanged row
+detection, and current price observations from normalized page plans. Scheduled
+ScryDex workers, live provider credential configuration, database write
+workers, image workers, usage-budget enforcement, and webhook route handling
+remain disabled until staging acceptance.
 
 The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
-provider page response. It does not write to the database or schedule follow-up
-jobs yet.
+provider page response. The persistence planner turns those page plans into
+write payloads, but it does not execute `wpdb` writes or schedule follow-up jobs
+yet.
 
 ## Role
 
@@ -95,8 +98,8 @@ webhook registration based only on marketing copy.
 4. Enumerate expansions where supported.
 5. Fetch cards in provider-supported pages.
 6. Store sanitized raw payload and hash.
-7. Normalize/upsert card, set, variant, image metadata, and current prices.
-8. Use the sync page processor to plan normalized row writes and checkpoint
+7. Normalize card, set, variant, image metadata, and current prices.
+8. Use the sync page processor and persistence planner to plan row writes and checkpoint
    after each committed page.
 9. Queue image downloads separately.
 10. Queue optional price-history/population pulls only for supported scope.

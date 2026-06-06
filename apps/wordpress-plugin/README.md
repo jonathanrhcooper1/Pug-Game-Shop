@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.26.0`
+Version: `0.27.0`
 
 ## Implemented Features
 
@@ -61,6 +61,8 @@ Version: `0.26.0`
 - TopDeck registration push adapter and result mapping for later queue workers.
 - ScryDex sync page processor for normalized card/price upsert planning and
   checkpoint advancement.
+- ScryDex persistence planner for deterministic reference-card inserts,
+  changed-row updates, unchanged-row detection, and current price observations.
 - Hard-disabled flags for unfinished modules.
 - Explicit pending HPOS verification state.
 

@@ -92,6 +92,9 @@
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.
+- Local unit coverage now includes ScryDex persistence planning for
+  deterministic reference-card inserts, changed-row updates, unchanged-row
+  detection, price observations, and failed page plan guards.
 
 ## Required Test Backlog
 
@@ -106,8 +109,8 @@ corresponding modules are implemented:
 - Reservation database integration and concurrent double-sell prevention tests.
 - Customer credit ledger database integration and replay tests.
 - Manager override persistence, manager reauthentication, and audit tests.
-- ScryDex database upsert, scheduled worker, image download, usage-budget, and
-  webhook integration tests.
+- ScryDex database write workers, scheduled worker, image download,
+  usage-budget, and webhook integration tests.
 - TopDeck registration worker integration tests and live sandbox contract
   verification.
 - WooCommerce add-to-cart, checkout, payment, order-line, cart release, and

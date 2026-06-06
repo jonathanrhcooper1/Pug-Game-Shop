@@ -34,7 +34,7 @@ and intake benchmarks meet agreed targets.
 
 Status: In progress; generic sync schema, ScryDex checkpoint/resume helpers,
 mock-backed ScryDex provider adapter, card/price normalization, and sync page
-processing implemented
+processing plus persistence planning implemented
 
 Deliver adapter, capability discovery, card/expansion/price/image sync,
 checkpoints, resume, usage tracking, webhook verification, live logs, and daily

@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - ScryDex Persistence Planning Foundation
+
+### What Changed
+
+- Added a ScryDex persistence planner that consumes normalized sync page plans.
+- Added a persistence plan result object for reference-card inserts, changed-row
+  updates, unchanged provider keys, current price observations, errors,
+  retryability, and next checkpoint access.
+- Added deterministic reference-card insert payload planning with public IDs,
+  timestamps, and initial row versions.
+- Added changed-row update payload planning with local reference IDs, field
+  diffs, timestamps, and row-version increments.
+- Added unit coverage for insert planning, update planning, unchanged rows,
+  price observation reference IDs, and failed page plan guards.
+
+### Why
+
+ScryDex page processing already normalized provider cards and prices, but the
+next safe step is to decide what would be written before enabling live
+database writes. This slice defines the insert/update/no-op/price observation
+boundary without starting scheduled workers or touching `wpdb`.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `7`.
+
+### Tests Added
+
+- ScryDex persistence planner tests for deterministic insert payloads, changed
+  reference-card updates, unchanged-row no-ops, current price observations, and
+  failed page plan guards.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex persistence planning helpers and tests.
+- No schema rollback is required; database target remains `7`.
+- Scheduled workers, live provider credentials, database writes, image workers,
+  usage-budget enforcement, and webhooks remain disabled after rollback.
+
 ## 2026-06-06 - Manager Override Persistence Payload Foundation
 
 ### What Changed

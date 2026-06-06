@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.27.0] - 2026-06-06
+
+### Added
+
+- ScryDex persistence planner for normalized sync page plans.
+- Deterministic reference-card insert payload planning with public IDs,
+  timestamps, and row-version defaults.
+- Changed-row update planning with field diffs, reference card IDs, timestamps,
+  and row-version increments.
+- Unchanged reference-card detection and current price observation planning with
+  known local reference IDs when available.
+- Unit coverage for insert planning, changed-row update planning, unchanged
+  rows, price observation reference IDs, and failed page plan guards.
+
+### Not Added
+
+- Live ScryDex `wpdb` write workers, scheduled pulls, image downloads,
+  usage-budget enforcement, and webhook processing remain disabled for later
+  staging-gated phases.
+
 ## [0.26.0] - 2026-06-06
 
 ### Added
