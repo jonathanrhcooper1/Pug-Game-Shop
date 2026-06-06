@@ -92,10 +92,13 @@ required scopes without exposing raw tokens in accepted contexts. Offline token
 lookup planning now exposes a hashed lookup filter and short audit fingerprint
 for the future device repository without retaining raw tokens. Offline device
 session planning now prepares future last-seen update rows, row-version
-increments, session context, and audit payloads after authentication. Those
-endpoints are not registered live yet, accepted operations are not persisted or
-replayed yet, live device row repository queries and last-seen database writes
-are disabled, live pull queries are not executed yet, and pull cursors are not
+increments, session context, and audit payloads after authentication.
+Registered-device permission planning now composes lookup-required, denied,
+and authorized outcomes for future REST permission callbacks without querying
+or mutating device rows. Those endpoints are not registered live yet, accepted
+operations are not persisted or replayed yet, live device row repository
+queries, permission callback wiring, and last-seen database writes are
+disabled, live pull queries are not executed yet, and pull cursors are not
 advanced yet.
 Conflict list and
 resolution request validation now covers status/entity filters, cursors,

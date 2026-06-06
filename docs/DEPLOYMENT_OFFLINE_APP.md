@@ -147,6 +147,13 @@ payloads after a device row is authenticated. Live last-seen database writes,
 route registration, queue replay, and database writes remain disabled until
 staging integration tests pass.
 
+Version `0.53.0` adds the registered-device permission planning boundary.
+Future WordPress permission callbacks can now compose token lookup, loaded-row
+authentication, and session update planning into lookup-required, denied, or
+authorized outcomes. Live device row repository queries, route registration,
+permission callback wiring, last-seen writes, queue replay, and database writes
+remain disabled until staging integration tests pass.
+
 ## Hardware Gate
 
 Before production, test the actual:

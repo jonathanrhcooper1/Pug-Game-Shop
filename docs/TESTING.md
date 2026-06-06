@@ -162,6 +162,10 @@
   last-seen update rows, session context, row-version increments, audit
   payloads, string database IDs, denied decisions, mismatched device rows,
   invalid timestamps, invalid device IDs, and invalid row versions.
+- Local unit coverage now includes offline registered-device permission
+  planning for lookup-required states, authorized loaded devices, session
+  update planning, malformed tokens, denied scopes, invalid session rows, and
+  secret-free audit payloads.
 - Local unit coverage now includes offline conflict list and resolution request
   validation for statuses, entity types, cursors, page-size bounds,
   include-resolved filters, idempotent resolution IDs, manager IDs, resolution

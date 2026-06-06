@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.52.0`
+Version: `0.53.0`
 
 ## Implemented Features
 
@@ -97,6 +97,10 @@ Version: `0.52.0`
 - Offline device session planning for future permission callbacks, including
   authenticated row matching, last-seen update rows, row-version increments,
   session context, and secret-free audit payloads.
+- Offline registered-device permission planning for future REST callbacks,
+  including lookup-needed, denied, and authorized states that compose token
+  lookup, loaded-row authentication, and session update planning without live
+  database writes.
 - Offline conflict list and resolution request validation for future
   conflict-center filters, idempotent manager resolution actions, expected row
   versions, UTC resolution timestamps, notes, and adjustment payloads.

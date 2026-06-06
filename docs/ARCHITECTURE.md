@@ -200,6 +200,9 @@ and short audit fingerprint before live row loading is enabled.
 Device session planning now prepares a future last-seen update row, normalized
 session context, row-version increment, and audit payload after the loaded row
 matches an accepted access decision.
+Registered-device permission planning now composes lookup-needed, denied, and
+authorized outcomes for future REST permission callbacks without registering
+routes, querying device rows, or mutating last-seen state.
 Conflict list and resolution request validation is
 implemented so future conflict-center routes can reject malformed filters,
 unsupported actions, stale expected versions, missing manager context, and

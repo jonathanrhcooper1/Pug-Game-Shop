@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.53.0] - 2026-06-06
+
+### Added
+
+- Offline registered-device permission planner for future REST
+  `permission_callback` wiring.
+- Permission plan value object that exposes token lookup filters, lookup-needed
+  state, authorization decisions, session update plans, stable errors, and
+  secret-free audit payloads.
+- Assembly of token lookup, loaded device-row bearer authentication, and
+  session/last-seen planning without live database queries or route
+  registration.
+- Unit coverage for lookup-required plans, authorized loaded devices, malformed
+  tokens, denied scopes, invalid session rows, and audit payloads without raw
+  tokens.
+
+### Not Added
+
+- Live device row repository queries, REST route registration, WordPress
+  `permission_callback` wiring, last-seen `$wpdb` writes, queue replay workers,
+  and live database writes remain disabled for later staging-gated phases.
+
 ## [0.52.0] - 2026-06-06
 
 ### Added

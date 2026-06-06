@@ -261,9 +261,11 @@ verifies future request headers and stored token hashes before queue/conflict
 work proceeds. Offline token lookup planning now prepares the hashed
 `token_hash` filter future repositories will use to load registered devices,
 and offline session planning now prepares future `last_seen_at`, `updated_at`,
-and `row_version` updates. Live provider workers, device row repository
-queries, last-seen database writes, and offline route writes remain disabled
-until later phases.
+and `row_version` updates. Registered-device permission planning now composes
+lookup, loaded-row authentication, and session update plans for future
+permission callbacks without live queries or writes. Live provider workers,
+device row repository queries, permission callback wiring, last-seen database
+writes, and offline route writes remain disabled until later phases.
 
 | Table | Key fields |
 | --- | --- |

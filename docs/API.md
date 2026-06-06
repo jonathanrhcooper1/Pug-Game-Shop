@@ -221,10 +221,14 @@ offline device IDs, revocation, expiry, and required scopes before future
 route handlers proceed. Offline token lookup planning now prepares the hashed
 `token_hash` filter a future repository will use to load the device row.
 Offline session planning now prepares future `last_seen_at`, `updated_at`, and
-`row_version` updates once that row is authenticated. Live device pairing route
-writes, device row repository queries, last-seen database writes, push/pull
-workers, queue replay, canonical entity writes, and conflict persistence remain
-disabled until staging-gated WordPress/offline integration tests pass. Offline
+`row_version` updates once that row is authenticated. Registered-device
+permission planning now composes token lookup, loaded-row authentication, and
+session update planning into lookup-required, denied, and authorized plan
+states for future WordPress `permission_callback` wiring. Live device pairing
+route writes, device row repository queries, permission callback wiring,
+last-seen database writes, push/pull workers, queue replay, canonical entity
+writes, and conflict persistence remain disabled until staging-gated
+WordPress/offline integration tests pass. Offline
 pull request
 validation also exists for the SQLite cached domains `branding`, `inventory`,
 `customer_credit`, `events`, and `conflicts`, including cursor shape, page-size
@@ -268,7 +272,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.52.0",
+  "app_version": "0.53.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -368,9 +372,11 @@ normalization, token shape validation, SHA-256 token hash comparison,
 persisted device ID validation, and secret-free accepted contexts. Offline
 token lookup planning now adds hashed repository filters and audit
 fingerprints without raw token retention. Offline session planning adds future
-last-seen update rows and authenticated session context. Live device row
-repository queries, last-seen database writes, and REST permission callback
-wiring remain disabled until staging tests pass.
+last-seen update rows and authenticated session context. Registered-device
+permission planning now exposes the future callback assembly contract without
+querying the database or mutating device rows. Live device row repository
+queries, permission callback wiring, last-seen database writes, and REST route
+registration remain disabled until staging tests pass.
 
 The planned conflict list request accepts query/body filters shaped as:
 

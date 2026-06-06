@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Registered Device Permission Planning
+
+### What Changed
+
+- Added an offline registered-device permission planner for future
+  `registered_device` REST `permission_callback` wiring.
+- Added a permission plan value object that exposes token lookup filters,
+  lookup-required state, authorization decisions, optional session update plans,
+  stable error codes, and secret-free audit payloads.
+- Composed the existing token lookup planner, loaded device-row bearer-token
+  authenticator, and device session planner into one deterministic boundary.
+- Added lookup-needed planning for future repository adapters before a loaded
+  device row exists.
+- Added rejection handling for malformed tokens, denied device scopes, and
+  loaded rows that cannot produce safe session/last-seen update plans.
+- Added unit coverage for lookup-required plans, authorized loaded devices,
+  malformed tokens, denied scopes, invalid session rows, and audit payloads
+  without raw device tokens or token hashes.
+- Updated project, plugin, and offline app package versions to `0.53.0`.
+- Updated API, offline sync, architecture, database, deployment, testing,
+  roadmap, security, changelog, and plugin docs.
+
+### Why
+
+The lookup, authentication, and session planners are now present individually.
+Future live REST callbacks need one small orchestration boundary that can first
+derive a secret-safe lookup filter, then authorize a loaded device row, and
+finally prepare the last-seen update plan. This revision adds that boundary
+without querying WordPress tables, mutating device rows, or registering live
+offline routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Offline registered-device permission planner tests for lookup-required
+  plans, loaded-device authorization, session update planning, malformed token
+  rejection, denied scopes, invalid session rows, and secret-free audits.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline registered-device permission
+  planner/value object, tests, version bump, and docs.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live device row repository queries, route registration, WordPress permission
+  callbacks, last-seen writes, queue replay workers, and `$wpdb` writes remain
+  disabled both before and after rollback.
+
 ## 2026-06-06 - Offline Device Session Planning
 
 ### What Changed

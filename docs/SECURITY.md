@@ -45,8 +45,11 @@ delegates active/revoked/expired/scope checks to the shared device access
 policy. Offline token lookup planning derives repository filters and short
 audit fingerprints without retaining raw tokens. Offline session planning
 prepares last-seen update rows and session context after an accepted device row
-match. Live device row repository queries, last-seen database writes, and route
-callback wiring remain staging-gated.
+match. Registered-device permission planning now exposes lookup-needed, denied,
+and authorized callback outcomes while keeping token hashes and raw tokens out
+of audit payloads. Live device row repository queries, permission callback
+wiring, last-seen database writes, and route callback wiring remain
+staging-gated.
 
 ## Secret Storage
 
