@@ -22,7 +22,7 @@ final class OfflineRouteBootstrapper {
 		?callable $registrar = null
 	) {
 		$this->presenter = $presenter ?? new OfflineRouteBootstrapStatusPresenter();
-		$this->registrar  = $registrar ?? static function ( ?array $route_contracts, array $payload ): array {
+		$this->registrar = $registrar ?? static function ( ?array $route_contracts, array $payload ): array {
 			$registered_count = ( new OfflineRouteRegistrar() )->register_enabled_routes( $route_contracts );
 			$route_keys       = array_slice(
 				self::list_values( $payload['registerable_route_keys'] ?? array() ),
