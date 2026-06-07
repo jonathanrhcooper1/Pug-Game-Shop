@@ -47,6 +47,9 @@ The pull change repository adapter can now execute those prepared templates
 only when explicitly called and normalize rows into pull change sets, while
 route-connected execution, cursor advancement, tombstone reads, and route
 registration remain deferred.
+The pull change-set provider now composes request, explicit registered-device
+context, query planning, and repository fetches behind an injectable boundary;
+default route wiring still stays deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -231,6 +234,9 @@ Pull change repository adaptation now adds an explicit `$wpdb` execution
 boundary and change-set row normalizer for those templates, while keeping route
 connection, cursor advancement, tombstone reads, and route registration
 deferred.
+Pull change-set provider composition now gives staged tests a single explicit
+provider to inject into the pull handler, without making that provider the
+default route behavior.
 Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location

@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.99.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullChangeSetProvider`, an explicit provider boundary that composes
+  a validated pull request, registered-device context, pull query planning, and
+  repository fetches.
+- Provider readiness metadata for explicit device context, table-prefix
+  validation, planner/repository availability, and route/cursor/tombstone
+  deferral flags.
+- Unit coverage proving provider fetches normalize repository change sets,
+  invalid provider context fails before reads, injected pull-handler providers
+  can return data, and rejected providers fail closed.
+- Health/admin and WordPress smoke coverage for staged provider readiness.
+
+### Not Added
+
+- No default live offline route wiring is enabled. Route-connected pull
+  execution, cursor advancement, tombstone repository reads, queue replay,
+  route registration, and route-connected database mutation remain disabled.
+
 ## [0.98.0] - 2026-06-06
 
 ### Added

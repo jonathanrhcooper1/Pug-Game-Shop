@@ -404,6 +404,12 @@ prepared plans. Staging can verify normalized change sets and secret-free
 repository audits before route-connected pull execution, cursor advancement,
 tombstone reads, route registration, or route-connected writes are enabled.
 
+Version `0.99.0` adds explicit pull change-set provider composition. Staging
+can inject the provider for controlled pull-handler tests only after supplying
+registered-device context, while default route wiring, cursor advancement,
+tombstone reads, route registration, and route-connected writes remain
+disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

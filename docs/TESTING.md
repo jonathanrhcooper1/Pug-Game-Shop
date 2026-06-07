@@ -154,6 +154,10 @@
 - Local unit coverage now includes offline pull change repository adaptation
   for explicitly called prepared `$wpdb` reads, normalized change sets,
   database failure rejection, malformed row rejection, and secret-free audits.
+- Local unit coverage now includes offline pull change-set provider
+  composition for explicit registered-device context, planner/repository
+  composition, staged pull-handler injection, and fail-closed provider
+  rejection.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

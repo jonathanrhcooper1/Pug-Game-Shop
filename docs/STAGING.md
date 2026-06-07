@@ -66,6 +66,9 @@ Before major database migrations:
 - Pull change repository adaptation exposes normalized change-set and
   repository-audit coverage while route-connected execution, cursor
   advancement, tombstones, and route registration remain disabled.
+- Pull change-set provider composition can be injected in controlled staging
+  tests only with explicit registered-device context while default route wiring
+  remains disabled.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

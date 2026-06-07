@@ -142,6 +142,10 @@ called, validates/normalizes rows before returning pull change sets, and keeps
 repository audits limited to counts, statuses, domain metadata, and deferred
 flags. It does not expose row payloads in audits or enable route-connected
 execution, cursor advancement, tombstone reads, or writes.
+Pull change-set provider composition requires explicit registered-device
+context before query planning and repository fetches occur. Provider readiness
+reports only dependency/context booleans and deferred flags, and the provider
+is not wired into default routes.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in
