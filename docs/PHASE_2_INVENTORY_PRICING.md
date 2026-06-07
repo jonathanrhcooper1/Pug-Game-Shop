@@ -127,6 +127,11 @@ staging database acceptance remains pending.
   handoff, including default lockout, explicit execution requirements,
   skipped/failed projection handling, writer failure rejection, audit-safe
   result metadata, and continued production/payment/Square deferrals.
+- Guarded Square inventory projection execution for staging-only POS inventory
+  adapter handoff, including separate catalog and inventory writers, default
+  network-write lockout, skipped/failed projection handling, writer failure
+  rejection, and payment-capture deferral to the official WooCommerce Square
+  extension.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct

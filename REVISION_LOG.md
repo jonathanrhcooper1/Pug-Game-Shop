@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Guarded Square Inventory Projection Execution
+
+### What Changed
+
+- Added a guarded Square inventory projection executor for previously planned
+  catalog-object and physical-count inventory operations.
+- Added an execution result contract that reports blocked, executed, rejected,
+  and skipped outcomes with audit-safe metadata.
+- Default execution remains blocked unless staging code explicitly enables the
+  executor and injects separate catalog and inventory writer adapters.
+- Payment capture remains deferred to the official WooCommerce Square
+  extension; this path is POS inventory sync only.
+
+### Why
+
+The project needs Square POS inventory to pull from the card-management source
+of truth without mixing in payment capture work. This revision creates a safe
+staging handoff for Square catalog/inventory writes while preserving the
+current no-live-network-writes default.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutor.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for default Square inventory projection execution lockout.
+- Unit coverage for skipped and failed Square projection plans.
+- Unit coverage for explicit catalog/inventory writer-backed staging
+  execution.
+- Unit coverage for writer failure rejection and audit-safe deferral metadata.
+
+### Tests Run
+
+- `php -l` on the new Square executor/result classes and unit test: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventoryProjectionExecutionResult.php src\Square\SquareInventoryProjectionExecutor.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF alignment cleanup.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 784 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the guarded Square projection executor,
+  execution result contract, and unit tests.
+- No schema rollback or Square cleanup is required unless a future staging
+  adapter has been explicitly enabled and used to write catalog/inventory
+  changes.
+
 ## 2026-06-07 - Guarded WooCommerce Product Projection Execution
 
 ### What Changed

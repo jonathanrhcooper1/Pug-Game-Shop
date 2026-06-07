@@ -663,6 +663,11 @@
 - WordPress integration staging smoke coverage now asserts staged inventory
   create responses expose WooCommerce product and Square inventory projection
   contracts while keeping external writes and network calls deferred.
+- Local unit coverage now includes guarded Square inventory projection
+  execution, covering default network-write lockout, skipped/failed projection
+  handling, explicit catalog/inventory writer execution, writer failure
+  rejection, and payment-capture deferral through the official WooCommerce
+  Square extension.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

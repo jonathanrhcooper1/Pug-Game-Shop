@@ -126,6 +126,10 @@ All notable changes follow Semantic Versioning.
   Square catalog variation payloads, physical-count payloads, scan-identity
   validation, zero-count updates for unavailable mapped cards, and deferred
   network/provider write metadata.
+- Guarded Square inventory projection executor for POS inventory sync that
+  blocks by default, requires explicit staging execution plus injected catalog
+  and inventory writers, records audit-safe results, and leaves payment capture
+  to the official WooCommerce Square extension.
 
 ### Changed
 

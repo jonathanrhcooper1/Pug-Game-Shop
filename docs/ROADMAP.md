@@ -27,7 +27,7 @@ factory, gated inventory route registration and dependency composition,
 health/admin readiness status, bootstrapper wiring, inventory search
 planning/SQL-template contracts, explicit repository read adapter, staged route
 handler factory, WooCommerce product projection planning, and guarded
-WooCommerce projection execution implemented
+WooCommerce/Square projection execution implemented
 
 Deliver reference/inventory/location tables, intake, barcode generation, label
 contracts, required minimum price, pricing policy, movement log, price log, and
