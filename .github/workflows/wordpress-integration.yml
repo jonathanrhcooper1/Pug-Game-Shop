@@ -90,3 +90,29 @@ jobs:
         env:
           WP_DIR: ${{ runner.temp }}/wordpress
         run: wp eval-file apps/wordpress-plugin/tests/wordpress-integration-smoke.php --path="$WP_DIR"
+
+      - name: Enable staging inventory search gates
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+          WP_ENVIRONMENT_TYPE: staging
+        run: |
+          wp eval '
+          $flags = \TCGStorePlatform\FeatureFlags\FeatureFlags::defaults();
+          $flags["inventory_pricing"] = true;
+          update_option( \TCGStorePlatform\FeatureFlags\FeatureFlags::OPTION_NAME, $flags, false );
+
+          $settings = \TCGStorePlatform\Settings\Settings::defaults();
+          $settings["inventory_route_runtime"]["staff_search_route_enabled"] = true;
+          $settings["inventory_route_runtime"]["public_search_route_enabled"] = false;
+          update_option(
+            \TCGStorePlatform\Settings\Settings::OPTION_NAME,
+            \TCGStorePlatform\Settings\Settings::sanitize( $settings ),
+            false
+          );
+          ' --path="$WP_DIR"
+
+      - name: Verify staging inventory search route
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+          WP_ENVIRONMENT_TYPE: staging
+        run: wp eval-file apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php --path="$WP_DIR"

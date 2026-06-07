@@ -46,6 +46,10 @@ All notable changes follow Semantic Versioning.
 - Environment-aware feature flag availability that allows inventory/pricing
   only in local, development, and staging environments while production remains
   unavailable by default.
+- WordPress integration staging smoke coverage that opens only the staff
+  `/inventory/search` route after staging feature/runtime gates are enabled and
+  verifies writes, public reads, WooCommerce projection, Square projection, and
+  POS ingestion stay closed.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Staging Search Smoke
+
+### What Changed
+
+- Added a WordPress staging inventory smoke script that verifies
+  `/tcg-store/v1/inventory/search` can register in a staging environment when
+  the inventory/pricing feature flag and staff search runtime gate are enabled.
+- The smoke script performs an actual REST request against the staff inventory
+  search route and confirms the disposable integration inventory is empty.
+- The smoke script asserts inventory writes, POS event ingestion, WooCommerce
+  projection, Square projection, and public inventory reads remain disabled or
+  deferred.
+- Updated the WordPress integration GitHub Actions workflow to run the existing
+  production-default smoke test first, then enable staging search gates and run
+  the staging inventory smoke test.
+
+### Why
+
+The project needs proof that the staging path can open a safe read-only staff
+inventory route without changing production defaults or enabling write-side
+behavior. This gives us a CI-backed gate before using the GoDaddy staging site.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The workflow uses a disposable WordPress/MySQL integration site and does not
+  touch production or the GoDaddy staging database.
+
+### Tests Added
+
+- WordPress integration smoke coverage for staging-only staff inventory search
+  route registration and execution.
+- Assertions that staging search keeps inventory creation, POS ingestion,
+  WooCommerce projection, Square projection, and public inventory reads closed.
+
+### Tests Run
+
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  tests\wordpress-staging-inventory-smoke.php`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+- The new WordPress staging inventory smoke is wired into GitHub Actions and is
+  intended to run inside the disposable WordPress/MySQL integration job.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging smoke script and GitHub Actions
+  staging inventory smoke step.
+- No database rollback is required.
+
 ## 2026-06-07 - Inventory Feature Flag Staging Availability
 
 ### What Changed

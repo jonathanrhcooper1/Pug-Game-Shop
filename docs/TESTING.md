@@ -24,6 +24,11 @@
 - `.github/workflows/wordpress-integration.yml` provisions WordPress and MySQL
   in GitHub Actions, installs WooCommerce, activates the plugin, and runs
   `apps/wordpress-plugin/tests/wordpress-integration-smoke.php` through WP-CLI.
+  It then switches to `WP_ENVIRONMENT_TYPE=staging`, enables only the
+  inventory/pricing feature and staff search runtime gate, and runs
+  `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php` to prove
+  the staff `/inventory/search` route can execute while writes, public reads,
+  WooCommerce projection, Square projection, and POS ingestion remain closed.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
