@@ -21,8 +21,9 @@ endpoint on the target WordPress/WooCommerce versions.
 
 ## Phase 2: Inventory And Pricing
 
-Status: In progress; manager override policy helpers and inventory search
-planning/SQL-template contracts implemented
+Status: In progress; manager override policy helpers, inventory search
+planning/SQL-template contracts, and explicit repository read adapter
+implemented
 
 Deliver reference/inventory/location tables, intake, barcode generation, label
 contracts, required minimum price, pricing policy, movement log, price log, and

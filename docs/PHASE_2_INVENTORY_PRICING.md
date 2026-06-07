@@ -37,6 +37,10 @@ staging database acceptance remains pending.
 - Inventory search SQL-template planning with allowlisted selected columns,
   validated where/sort contracts, prepared `SELECT` and `COUNT` templates,
   pagination arguments, and deferred repository execution metadata.
+- Explicit inventory search repository adapter that executes prepared
+  `SELECT` and `COUNT` templates through injected `$wpdb`, validates the active
+  table prefix, normalizes row envelopes, rejects database/malformed-row
+  failures, and keeps live route registration disabled.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct

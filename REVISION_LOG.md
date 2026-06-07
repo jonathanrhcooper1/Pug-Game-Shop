@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Search Repository Adapter
+
+### What Changed
+
+- Added `InventorySearchRepository` and `InventorySearchRepositoryResult` to
+  execute validated inventory search SQL templates through an explicitly
+  injected `$wpdb` adapter.
+- Added prepared `SELECT` and `COUNT` execution for inventory search result
+  pages, with active table-prefix validation before any database call is made.
+- Normalized repository rows into safe inventory search envelopes for public
+  and staff presentation layers, including price/currency normalization,
+  visibility flags, row versions, timestamps, barcode/SKU fields, and image
+  metadata.
+- Added rejection paths for invalid query plans, table-prefix mismatches,
+  failed database calls, malformed critical row fields, and unsupported result
+  shapes while keeping route-connected reads and all writes deferred.
+
+### Why
+
+The card management system needs an audited read adapter before the website,
+admin tools, Square inventory projection, and offline sync can share the same
+inventory search source of truth. This checkpoint proves repository-backed
+reads can be executed and normalized in isolation without enabling live route
+registration or write paths.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Live inventory route registration, inventory writes, WooCommerce projection,
+  Square provider writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Repository fetch tests for prepared `$wpdb` select/count execution,
+  normalized rows, total counts, and audit payloads.
+- Invalid query-plan tests proving repository reads short-circuit before
+  database access.
+- Table-prefix mismatch tests proving repository execution is limited to the
+  active WordPress installation prefix.
+- Database failure and malformed-row tests for rejected result envelopes.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 691 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 470 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove the inventory search repository adapter and
+  its tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no live route registration, inventory
+  write path, WooCommerce projection, Square network call, or offline sync
+  mutation was enabled.
+
 ## 2026-06-07 - Inventory Search SQL Template Planning
 
 ### What Changed

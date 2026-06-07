@@ -560,6 +560,10 @@
 - Local unit coverage now includes inventory search SQL-template planning for
   public/staff/hidden card listings, prepared `SELECT` and `COUNT` templates,
   scan-column filters, pagination arguments, and tamper rejection.
+- Local unit coverage now includes the explicit inventory search repository
+  adapter for prepared `$wpdb` reads, selected row normalization, count
+  loading, invalid-plan short-circuiting, table-prefix mismatch rejection,
+  database failure handling, malformed-row rejection, and audit metadata.
 
 ## Required Test Backlog
 

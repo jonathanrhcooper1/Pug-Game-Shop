@@ -24,6 +24,10 @@ All notable changes follow Semantic Versioning.
   including allowlisted selected columns, prepared `SELECT` and `COUNT`
   templates, stable ordering, pagination arguments, tamper rejection, and
   deferred repository execution metadata.
+- Inventory search repository adapter for explicitly injected `$wpdb` reads,
+  including prepared `SELECT` and `COUNT` execution, table-prefix validation,
+  normalized row envelopes, database failure and malformed-row rejection, and
+  deferred route/WooCommerce/Square write metadata.
 - Square inventory projection planning for exact serialized cards, including
   Square catalog variation payloads, physical-count payloads, scan-identity
   validation, zero-count updates for unavailable mapped cards, and deferred
