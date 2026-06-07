@@ -150,6 +150,21 @@ final class SettingsPage {
 			'tcg-store-platform',
 			'tcg_store_platform_features'
 		);
+
+		add_settings_section(
+			'tcg_store_platform_inventory_routes',
+			__( 'Inventory route runtime', 'tcg-store-platform' ),
+			array( $this, 'render_inventory_route_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'inventory_route_runtime',
+			__( 'Staging route gates', 'tcg-store-platform' ),
+			array( $this, 'render_inventory_route_runtime' ),
+			'tcg-store-platform',
+			'tcg_store_platform_inventory_routes'
+		);
 	}
 
 	public function render_general_description(): void {
@@ -267,6 +282,7 @@ final class SettingsPage {
 	}
 
 	public function render_feature_flags(): void {
+
 		$values = get_option( FeatureFlags::OPTION_NAME, FeatureFlags::defaults() );
 
 		echo '<table class="widefat striped"><thead><tr><th>';
@@ -310,11 +326,48 @@ final class SettingsPage {
 		echo '</tbody></table>';
 	}
 
+	public function render_inventory_route_description(): void {
+
+			echo '<p>';
+		echo esc_html__( 'Route runtime gates are separate from feature flags. Keep writes and public reads disabled until staging acceptance passes.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_inventory_route_runtime(): void {
+
+			$runtime = InventoryRouteRuntimeSettings::from_settings( Settings::all() );
+
+			echo '<fieldset>';
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( InventoryRouteRuntimeSettings::KEY )
+		. '][staff_search_route_enabled]" value="1" '
+			. checked( ! empty( $runtime['staff_search_route_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Enable staff inventory search route in staging.', 'tcg-store-platform' );
+		echo '</label><br />';
+
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( InventoryRouteRuntimeSettings::KEY )
+		. '][public_search_route_enabled]" value="1" '
+		. checked( ! empty( $runtime['public_search_route_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Allow public inventory search responses.', 'tcg-store-platform' );
+			echo '</label>';
+			echo '<p class="description">';
+		echo esc_html__( 'Public search is ignored unless staff inventory search is enabled.', 'tcg-store-platform' );
+		echo '</p>';
+			echo '</fieldset>';
+	}
+
 	/**
-	 * @param mixed  $old_value Previous settings.
+		* @param mixed  $old_value Previous settings.
 	 * @param mixed  $new_value New settings.
-	 * @param string $option Option name.
-	 */
+		* @param string $option Option name.
+		*/
 	public function audit_settings_change( mixed $old_value, mixed $new_value, string $option ): void {
 		$this->audit_logger->record(
 			'settings.updated',

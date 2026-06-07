@@ -25,9 +25,9 @@ final class Settings {
 			'daily_timezone'                => 'America/New_York',
 			'branding'                      => BrandingSettings::defaults(),
 			'offline_pairing_authorization' => OfflinePairingAuthorizationSettings::defaults(),
+			'inventory_route_runtime'       => InventoryRouteRuntimeSettings::defaults(),
 		);
 	}
-
 	/**
 	 * @return array<string, mixed>
 	 */
@@ -44,10 +44,12 @@ final class Settings {
 			$settings['offline_pairing_authorization'] ?? array(),
 			OfflinePairingAuthorizationSettings::defaults()
 		);
+		$settings['inventory_route_runtime']       = InventoryRouteRuntimeSettings::sanitize(
+			$settings['inventory_route_runtime'] ?? array()
+		);
 
 		return $settings;
 	}
-
 	public static function get( string $key, mixed $fallback = null ): mixed {
 		$settings = self::all();
 
@@ -75,8 +77,11 @@ final class Settings {
 		$offline_pairing_authorization = OfflinePairingAuthorizationSettings::sanitize(
 			$value['offline_pairing_authorization'] ?? ( $existing['offline_pairing_authorization'] ?? array() ),
 			is_array( $existing['offline_pairing_authorization'] ?? null )
-				? $existing['offline_pairing_authorization']
+			? $existing['offline_pairing_authorization']
 				: OfflinePairingAuthorizationSettings::defaults()
+		);
+		$inventory_route_runtime       = InventoryRouteRuntimeSettings::sanitize(
+			$value['inventory_route_runtime'] ?? array()
 		);
 
 		if ( ! in_array( $level, $allowed_levels, true ) ) {
@@ -90,9 +95,9 @@ final class Settings {
 			'daily_timezone'                => 'America/New_York',
 			'branding'                      => $branding,
 			'offline_pairing_authorization' => $offline_pairing_authorization,
+			'inventory_route_runtime'       => $inventory_route_runtime,
 		);
 	}
-
 	/**
 	 * @return array<string, mixed>
 	 */

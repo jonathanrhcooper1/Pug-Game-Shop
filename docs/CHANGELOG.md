@@ -39,6 +39,10 @@ All notable changes follow Semantic Versioning.
 - Staff-facing WordPress Inventory admin workspace that surfaces readiness,
   route contracts, and next checkpoints from the staged inventory route graph
   while remaining read-only and route-safe by default.
+- Sanitized inventory route runtime settings and settings-aware route contract
+  configuration for enabling the staff `/inventory/search` route in staging
+  without enabling writes, public reads, Square writes, or WooCommerce writes
+  by default.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

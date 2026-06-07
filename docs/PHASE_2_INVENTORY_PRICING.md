@@ -58,6 +58,10 @@ staging database acceptance remains pending.
 - Staff-facing WordPress Inventory admin workspace for route readiness, route
   contract, and next-checkpoint review while live inventory execution remains
   disabled.
+- Inventory route runtime settings and contract configuration for staging-only
+  staff `/inventory/search` route enablement, with writes, public reads,
+  WooCommerce projection, Square projection, and label actions still disabled
+  by default.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

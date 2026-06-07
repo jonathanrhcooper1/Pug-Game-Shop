@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Settings\InventoryRouteRuntimeSettings;
+
 final class InventoryRouteDependencyFactory {
 	private const HANDLER_CALLBACKS = array(
 		'search_inventory_items',
@@ -28,10 +30,53 @@ final class InventoryRouteDependencyFactory {
 		?callable $register_route_callback = null,
 		private bool $public_read_routes_enabled = false,
 		private ?InventorySearchRouteHandlerFactory $search_handler_factory = null,
-		private ?InventoryIntakeRouteHandlerFactory $intake_handler_factory = null
+		private ?InventoryIntakeRouteHandlerFactory $intake_handler_factory = null,
+		private ?array $route_contracts = null
 	) {
 		$this->capability_checker      = $capability_checker;
 		$this->register_route_callback = $register_route_callback;
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Full platform settings.
+	 * @param callable(string): bool|null $capability_checker Capability checker.
+	 * @param callable(string, string, array<string, mixed>): mixed|null $register_route_callback Route registrar.
+	 */
+	public static function from_settings(
+		array $settings,
+		?callable $capability_checker = null,
+		?callable $register_route_callback = null
+	): self {
+		return self::from_runtime_settings(
+			InventoryRouteRuntimeSettings::from_settings( $settings ),
+			$capability_checker,
+			$register_route_callback
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $runtime_settings Runtime route settings.
+	 * @param callable(string): bool|null $capability_checker Capability checker.
+	 * @param callable(string, string, array<string, mixed>): mixed|null $register_route_callback Route registrar.
+	 */
+	public static function from_runtime_settings(
+		array $runtime_settings,
+		?callable $capability_checker = null,
+		?callable $register_route_callback = null
+	): self {
+		$configurator = new InventoryRouteRuntimeConfigurator();
+		$settings     = InventoryRouteRuntimeSettings::sanitize( $runtime_settings );
+
+		return new self(
+			null,
+			array(),
+			$capability_checker,
+			$register_route_callback,
+			$configurator->public_read_routes_enabled( $settings ),
+			new InventorySearchRouteHandlerFactory( null, $configurator->route_connected_reads_enabled( $settings ) ),
+			new InventoryIntakeRouteHandlerFactory(),
+			$configurator->route_contracts( $settings )
+		);
 	}
 
 	public function controller(): InventoryController {
@@ -51,7 +96,8 @@ final class InventoryRouteDependencyFactory {
 	public function registration_planner(): InventoryRouteRegistrationPlanner {
 		return new InventoryRouteRegistrationPlanner(
 			$this->permission_callback_factory(),
-			$this->controller()
+			$this->controller(),
+			$this->route_contracts()
 		);
 	}
 
@@ -64,9 +110,7 @@ final class InventoryRouteDependencyFactory {
 
 	public function bootstrapper(): InventoryRouteBootstrapper {
 		return new InventoryRouteBootstrapper(
-			new InventoryRouteBootstrapStatusPresenter(
-				new InventoryRouteBootstrapPlanner( $this->registration_planner() )
-			),
+			$this->bootstrap_status_presenter(),
 			function ( ?array $route_contracts, array $payload ): array {
 				$registered_count = $this->registrar()->register_enabled_routes( $route_contracts );
 				$route_keys       = array_slice(
@@ -77,6 +121,12 @@ final class InventoryRouteDependencyFactory {
 
 				return array_fill_keys( $route_keys, array( 'registered' => true ) );
 			}
+		);
+	}
+
+	public function bootstrap_status_presenter(): InventoryRouteBootstrapStatusPresenter {
+		return new InventoryRouteBootstrapStatusPresenter(
+			new InventoryRouteBootstrapPlanner( $this->registration_planner() )
 		);
 	}
 
@@ -101,7 +151,7 @@ final class InventoryRouteDependencyFactory {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
-		$route_contracts          = InventoryRouteContracts::route_contracts();
+		$route_contracts          = $this->route_contracts();
 		$route_plans              = $this->registration_planner()->planned_registration_args( $route_contracts );
 		$permission_callbacks     = $this->permission_callback_factory()->callbacks_for_contracts( $route_contracts );
 		$capability_route_keys    = array_keys( InventoryRoutePermissionCallbackFactory::capability_map( $route_contracts ) );
@@ -166,7 +216,7 @@ final class InventoryRouteDependencyFactory {
 			'planned_route_count'                          => count( $route_plans ),
 			'registerable_route_count'                     => count( $registerable_route_keys ),
 			'registerable_route_keys'                      => $registerable_route_keys,
-			'route_registration_deferred'                  => true,
+			'route_registration_deferred'                  => $this->any_route_flag( $route_plans, 'route_registration_deferred' ),
 			'route_connected_reads_deferred'               => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
 			'route_connected_writes_deferred'              => $this->any_route_flag( $route_plans, 'route_connected_writes_deferred' ),
 			'woocommerce_projection_deferred'              => true,
@@ -206,6 +256,13 @@ final class InventoryRouteDependencyFactory {
 		}
 
 		return $this->intake_handler_factory;
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	private function route_contracts(): array {
+		return $this->route_contracts ?? InventoryRouteContracts::route_contracts();
 	}
 
 	/**

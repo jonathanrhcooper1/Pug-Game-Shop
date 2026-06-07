@@ -14,6 +14,7 @@ use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
+use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
 
@@ -114,11 +115,12 @@ final class HealthController {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->health_payload();
-		$inventory_bootstrap        = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload(
+		$inventory_factory          = InventoryRouteDependencyFactory::from_settings( Settings::all() );
+		$inventory_bootstrap        = $inventory_factory->bootstrap_status_presenter()->health_payload(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
 		);
 		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
-			new InventoryRouteDependencyFactory()
+			$inventory_factory
 		) )->health_payload();
 		foreach ( $dependencies as $dependency ) {
 			if ( 'blocked' === $dependency['status'] ) {

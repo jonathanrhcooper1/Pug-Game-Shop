@@ -13,12 +13,22 @@ final class InventoryRouteRegistrationPlanner {
 	private ?InventoryRoutePermissionCallbackFactory $permission_callback_factory;
 	private ?InventoryController $controller;
 
+	/**
+	 * @var null|list<array<string, mixed>>
+	 */
+	private ?array $default_route_contracts;
+
+	/**
+	 * @param null|list<array<string, mixed>> $default_route_contracts Default route contracts.
+	 */
 	public function __construct(
 		?InventoryRoutePermissionCallbackFactory $permission_callback_factory = null,
-		?InventoryController $controller = null
+		?InventoryController $controller = null,
+		?array $default_route_contracts = null
 	) {
 		$this->permission_callback_factory = $permission_callback_factory;
 		$this->controller                  = $controller;
+		$this->default_route_contracts     = $default_route_contracts;
 	}
 
 	/**
@@ -27,7 +37,7 @@ final class InventoryRouteRegistrationPlanner {
 	 */
 	public function planned_registration_args( ?array $route_contracts = null ): array {
 		$plans           = array();
-		$route_contracts = $route_contracts ?? InventoryRouteContracts::route_contracts();
+		$route_contracts = $route_contracts ?? $this->default_route_contracts ?? InventoryRouteContracts::route_contracts();
 
 		foreach ( $route_contracts as $route_contract ) {
 			$plans[ InventoryRoutePermissionCallbackFactory::route_key( $route_contract ) ] = $this->route_plan(

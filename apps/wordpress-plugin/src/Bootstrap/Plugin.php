@@ -21,6 +21,7 @@ use TCGStorePlatform\Logging\AuditLogger;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Scheduler\DailyScheduler;
+use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
 
 final class Plugin {
@@ -68,7 +69,7 @@ final class Plugin {
 		( new HealthController( $scheduler ) )->register();
 		( new OfflineRouteBootstrapper() )->register();
 		( new PosPaymentRouteDependencyFactory() )->bootstrapper()->register();
-		( new InventoryRouteDependencyFactory() )->bootstrapper()->register();
+		InventoryRouteDependencyFactory::from_settings( Settings::all() )->bootstrapper()->register();
 		( new EventsController() )->register();
 		( new EventShortcodes() )->register();
 		$scheduler->register();

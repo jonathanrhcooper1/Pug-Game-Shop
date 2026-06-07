@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Staff Search Runtime Gates
+
+### What Changed
+
+- Added sanitized inventory route runtime settings for staff search and public
+  search gates, both disabled by default.
+- Added `InventoryRouteRuntimeConfigurator` to clear only the
+  `/inventory/search` route registration/read deferrals when staff search is
+  explicitly enabled.
+- Wired the settings-aware inventory route dependency factory into WordPress
+  admin, authenticated health output, and the `rest_api_init` bootstrapper.
+- Kept the `inventory_pricing` feature flag unavailable by default, so runtime
+  settings alone cannot open live production routes.
+- Added Settings UI checkboxes for staging route gates.
+
+### Why
+
+Staging needs a controlled path to exercise staff inventory search before any
+write routes, public search, WooCommerce projection, Square projection, or
+label actions are enabled. This revision adds that path while preserving the
+default locked install state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Settings/InventoryRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No write routes, public reads, WooCommerce writes, Square writes, or label
+  print actions were enabled by default.
+
+### Tests Added
+
+- Unit coverage for inventory route runtime settings sanitization.
+- Unit coverage for route contract configuration of the staging staff search
+  route.
+- Unit coverage proving the staff search route can register only when the
+  runtime contract, handler, and permission dependencies are explicitly ready.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 744 tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the runtime route settings, settings UI, and
+  settings-aware inventory route composition path.
+- No database rollback is required. Disable the staff search runtime checkbox
+  before rollback if it was enabled on staging.
+
 ## 2026-06-07 - Inventory Admin Workspace
 
 ### What Changed

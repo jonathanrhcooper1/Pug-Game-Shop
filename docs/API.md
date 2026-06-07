@@ -368,6 +368,12 @@ dependency factory can now assemble the staged search handler into that
 controller for readiness checks, but default live route registration remains
 disabled until rate limits, target database performance, and staging smoke
 tests are accepted.
+Inventory route runtime settings can now clear the staff `/inventory/search`
+registration and read deferrals for staging composition only. The default
+settings keep staff search disabled, public search disabled, writes disabled,
+WooCommerce projection disabled, Square projection disabled, and label actions
+disabled. The `inventory_pricing` feature flag also remains unavailable by
+default, so runtime settings alone do not register production routes.
 Inventory item creation now has plan-only persistence coverage that can shape a
 validated intake request into a schema-aligned prepared insert template. A
 staged route handler factory can explicitly compose the parser, persistence

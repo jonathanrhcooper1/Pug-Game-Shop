@@ -17,7 +17,6 @@ use TCGStorePlatform\Api\V1\OfflineRouteBootstrapPlanner;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
-use TCGStorePlatform\Api\V1\InventoryRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyStatusPresenter;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
@@ -119,11 +118,12 @@ final class AdminMenu {
 			wp_die( esc_html__( 'You do not have permission to view inventory.', 'tcg-store-platform' ) );
 		}
 
-		$bootstrap_payload  = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload(
+		$inventory_factory  = InventoryRouteDependencyFactory::from_settings( Settings::all() );
+		$bootstrap_payload  = $inventory_factory->bootstrap_status_presenter()->health_payload(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
 		);
 		$dependency_payload = ( new InventoryRouteDependencyStatusPresenter(
-			new InventoryRouteDependencyFactory()
+			$inventory_factory
 		) )->health_payload();
 		$workspace          = new InventoryWorkspacePresenter();
 
@@ -206,11 +206,12 @@ final class AdminMenu {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->admin_summary();
-		$inventory_bootstrap        = ( new InventoryRouteBootstrapStatusPresenter() )->admin_summary(
+		$inventory_factory          = InventoryRouteDependencyFactory::from_settings( Settings::all() );
+		$inventory_bootstrap        = $inventory_factory->bootstrap_status_presenter()->admin_summary(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
 		);
 		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
-			new InventoryRouteDependencyFactory()
+			$inventory_factory
 		) )->admin_summary();
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
