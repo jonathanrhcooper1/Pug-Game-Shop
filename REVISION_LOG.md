@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Inventory PHP Request Planner
+
+### What Changed
+
+- Added a WordPress PHP `SquareInventorySyncRequestPlanner`.
+- Added a `SquareInventorySyncRequestPlan` result object with audit payloads,
+  idempotency keys, external Square object IDs, SKU extraction, and payment
+  delegation metadata.
+- Converted Square projection plans into sandbox-only Catalog batch-upsert and
+  Inventory batch-change request envelopes without calling Square.
+- Tightened Square credential planning in both PHP and the API-client adapter
+  so sandbox-declared credentials are accepted for planning while production
+  environments, production-declared credentials, and live-looking markers are
+  rejected.
+- Updated API-client docs, Payments/POS docs, testing docs, changelog, and
+  revision notes.
+
+### Why
+
+Square POS inventory sync needs a WordPress-side request boundary before any
+future staging connector can make sandbox calls. This revision gives staging
+reviewers the exact Square request envelopes and audit metadata while keeping
+provider network writes, production credentials, and Square payment capture out
+of the custom plugin.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncRequestPlan.php`
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncRequestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncRequestPlannerTest.php`
+- `packages/api-client/README.md`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- PHP unit coverage for ready, skipped, failed, zero-count mapped, sandbox
+  credential, production-declared credential, idempotency, external ID, and
+  audit/delegation Square inventory sync request planning.
+- API-client adapter coverage for sandbox-declared credential planning and
+  production-declared credential rejection.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventorySyncRequestPlan.php src\Square\SquareInventorySyncRequestPlanner.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php --filter SquareInventorySyncRequestPlannerTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 790-test
+  suite.
+- `npm.cmd run test:api-client` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the WordPress PHP Square request planner and
+  the refined API-client credential guard.
+- No schema rollback or Square cleanup is required because no database
+  migrations, provider writes, or network calls were added.
+
 ## 2026-06-07 - Square Inventory API Client Adapter Contract
 
 ### What Changed

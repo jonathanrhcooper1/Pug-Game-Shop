@@ -18,6 +18,8 @@ function test(name, fn) {
 test("Square inventory adapter prepares sandbox catalog and inventory requests", () => {
   const result = planSquareInventorySyncRequest(readyProjectionContract(), {
     environment: "sandbox",
+    credentialEnvironment: "sandbox",
+    accessToken: "EAAA-sandbox-token",
   });
 
   assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.READY);
@@ -65,6 +67,19 @@ test("Square inventory adapter rejects production environment and live credentia
   ]);
   assert.equal(result.details.requestPlan, null);
   assert.equal(result.details.paymentDelegation.customGatewayCapturePermitted, false);
+});
+
+test("Square inventory adapter rejects credentials declared as production", () => {
+  const result = planSquareInventorySyncRequest(readyProjectionContract(), {
+    environment: "sandbox",
+    credentialEnvironment: "production",
+    accessToken: "redacted-token-without-live-marker",
+  });
+
+  assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.REJECTED);
+  assert.deepEqual(result.details.errors, [
+    "square_inventory_sync_production_credentials_rejected",
+  ]);
 });
 
 test("Square inventory adapter skips hidden unmapped projections without requests", () => {

@@ -110,10 +110,32 @@ sandbox-only request plans for:
 - `POST /v2/inventory/batch-change`
 
 The adapter preserves idempotency keys, extracts Square object IDs and SKUs,
-rejects production environments or live-looking credentials, and does not call
-Square directly. It also supports reconciliation-only Square POS event mapping
-from provider line items back to serialized inventory IDs. Unmapped lines become
-staff-review conflicts, and all WordPress inventory mutation remains deferred.
+rejects production environments, credentials declared as production, or
+live-looking credentials, and does not call Square directly. It also supports
+reconciliation-only Square POS event mapping from provider line items back to
+serialized inventory IDs. Unmapped lines become staff-review conflicts, and all
+WordPress inventory mutation remains deferred.
+
+## Square Inventory Sync Request Planning
+
+The WordPress plugin mirrors the API-client adapter with a PHP request planner.
+It converts side-effect-free Square projection plans into auditable
+sandbox-only request envelopes for:
+
+- `POST /v2/catalog/batch-upsert`
+- `POST /v2/inventory/batch-change`
+
+Ready plans preserve projection idempotency keys, derive the inventory-change
+idempotency key, expose Square catalog object IDs and SKUs for reconciliation
+review, and include the shared Square payment delegation policy. Skipped
+projections return empty request envelopes, and failed projections are rejected
+before any request payload is exposed.
+
+The planner rejects production environments, credentials declared as
+production, and live-looking credential markers. It allows sandbox-declared
+credential placeholders for staging planning only. Network requests, provider
+inventory writes, production network requests, WooCommerce gateway capture, and
+plugin Square payment capture remain deferred.
 
 ## Transaction Ingestion Contract
 

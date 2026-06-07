@@ -28,6 +28,10 @@ All notable changes follow Semantic Versioning.
   projection payloads into sandbox-safe Square Catalog/Inventory request plans,
   rejects production/live-looking credentials, and maps Square POS lines back
   to serialized inventory IDs for reconciliation review.
+- WordPress Square inventory sync request planner that converts Square
+  projection plans into sandbox-only Catalog/Inventory request envelopes,
+  preserves idempotency/external IDs, rejects production-declared credentials,
+  and keeps network/provider writes deferred.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

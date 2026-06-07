@@ -698,6 +698,11 @@
   production/live credential rejection, idempotency/external ID preservation,
   reconciliation-only Square POS line mapping, and unmapped-line staff
   conflicts.
+- Local WordPress unit coverage now includes the PHP Square inventory sync
+  request planner, covering sandbox Catalog/Inventory envelope planning,
+  skipped/failed projections, zero-count mapped inventory changes, external ID
+  extraction, official Square payment delegation metadata, production-declared
+  credential rejection, and deferred network/provider writes.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

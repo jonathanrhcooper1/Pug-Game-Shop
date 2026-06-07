@@ -7,7 +7,10 @@ Typed client and provider-adapter contracts for `/wp-json/tcg-store/v1`.
 `src/squareInventoryAdapter.mjs` converts the plugin's Square inventory
 projection contract into sandbox-safe Square Catalog and Inventory request
 plans. It does not perform network calls, store provider credentials, or treat
-Square as the inventory source of truth.
+Square as the inventory source of truth. The planner rejects production
+environments, credentials explicitly declared as production, and live-looking
+credential markers while allowing sandbox-declared credentials to be planned
+without network execution.
 
 The adapter also includes reconciliation-only mapping for Square POS lines back
 to serialized inventory IDs. Unmapped provider lines become staff-review

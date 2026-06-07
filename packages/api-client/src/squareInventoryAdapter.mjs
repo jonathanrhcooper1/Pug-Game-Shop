@@ -198,7 +198,12 @@ function validationErrors(contract, environment, options) {
     errors.push("square_inventory_sync_sandbox_environment_required");
   }
 
-  if (looksLikeProductionCredential(options.accessToken ?? options.apiKey ?? "")) {
+  if (
+    looksLikeProductionCredential(
+      options.accessToken ?? options.apiKey ?? "",
+      options,
+    )
+  ) {
     errors.push("square_inventory_sync_production_credentials_rejected");
   }
 
@@ -316,12 +321,23 @@ function normalizeLineIdentity(line) {
   };
 }
 
-function looksLikeProductionCredential(value) {
+function looksLikeProductionCredential(value, options = {}) {
+  const declaredCredentialEnvironment = normalizeSlug(
+    options.credentialEnvironment ?? options.tokenEnvironment ?? "",
+  );
   const credential = String(value ?? "").trim().toLowerCase();
 
+  if (
+    declaredCredentialEnvironment === "production" ||
+    declaredCredentialEnvironment === "prod" ||
+    declaredCredentialEnvironment === "live"
+  ) {
+    return true;
+  }
+
   return (
-    credential.startsWith("eaa") ||
     credential.includes("production") ||
+    credential.includes("prod") ||
     credential.includes("live")
   );
 }
