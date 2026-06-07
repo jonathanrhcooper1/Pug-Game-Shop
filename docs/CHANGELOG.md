@@ -26,6 +26,9 @@ All notable changes follow Semantic Versioning.
 - Gated inventory REST controller, permission callbacks, registration planner,
   and registrar for future `/inventory/search` reads and `POST /inventory`
   writes, with public reads and route-connected writes disabled by default.
+- Inventory route dependency factory and readiness presenter that compose
+  staged search/create handlers, permission callbacks, registration planner,
+  and registrar while keeping live inventory routes gated.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

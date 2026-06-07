@@ -43,6 +43,9 @@ staging database acceptance remains pending.
   permission adapter, capability permission adapter, registration planner, and
   registrar for future inventory search/create routes while default live
   registration remains disabled.
+- Inventory route dependency factory and readiness presenter for composing
+  staged search/create handlers, controller dispatch, permission callbacks,
+  registration planning, and registrar readiness without enabling live routes.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

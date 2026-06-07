@@ -363,18 +363,21 @@ can compose repository-backed reads and return public-redacted or staff-visible
 search responses for staging tests. Gated route registration planning now
 requires an explicit public-read permission flag, injected controller handlers,
 cleared route registration deferral, and cleared route-connected read deferral
-before a future `/inventory/search` route can register. Default live route
-registration remains disabled until rate limits, target database performance,
-and staging smoke tests are accepted.
+before a future `/inventory/search` route can register. The inventory route
+dependency factory can now assemble the staged search handler into that
+controller for readiness checks, but default live route registration remains
+disabled until rate limits, target database performance, and staging smoke
+tests are accepted.
 Inventory item creation now has plan-only persistence coverage that can shape a
 validated intake request into a schema-aligned prepared insert template. A
 staged route handler factory can explicitly compose the parser, persistence
 planner, and repository adapter into a created-item response for `POST
 /inventory` tests. Gated route registration planning now requires an injected
 handler, capability callback, cleared registration deferral, and cleared write
-deferral before a future `POST /inventory` route can register. Barcode label
-printing and WooCommerce/Square projection writes remain disabled until
-staging acceptance.
+deferral before a future `POST /inventory` route can register. The inventory
+route dependency factory can now assemble the staged create handler into that
+controller for readiness checks. Barcode label printing and WooCommerce/Square
+projection writes remain disabled until staging acceptance.
 
 ### Pricing And Overrides
 

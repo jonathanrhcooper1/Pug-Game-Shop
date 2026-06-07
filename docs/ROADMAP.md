@@ -23,9 +23,9 @@ endpoint on the target WordPress/WooCommerce versions.
 
 Status: In progress; manager override policy helpers, inventory intake
 persistence planning plus explicit repository adapter and staged route handler
-factory, gated inventory route registration planning, inventory search
-planning/SQL-template contracts, explicit repository read adapter, and staged
-route handler factory implemented
+factory, gated inventory route registration and dependency composition,
+inventory search planning/SQL-template contracts, explicit repository read
+adapter, and staged route handler factory implemented
 
 Deliver reference/inventory/location tables, intake, barcode generation, label
 contracts, required minimum price, pricing policy, movement log, price log, and

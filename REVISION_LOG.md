@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Route Dependency Composition
+
+### What Changed
+
+- Added `InventoryRouteDependencyFactory` to assemble staged inventory route
+  handlers, controller dispatch, permission callbacks, registration planning,
+  and registrar wiring.
+- Added `InventoryRouteDependencyStatusPresenter` to expose health/admin-ready
+  dependency summaries for inventory route readiness.
+- Limited composed handlers to the staged route callbacks that currently exist:
+  `search_inventory_items` and `create_inventory_item`.
+- Kept all other inventory callbacks fail-closed until their handlers and
+  permission models are implemented.
+
+### Why
+
+The inventory route registration layer needs a composition boundary before it
+can be used by health checks, staging smoke tests, or future bootstrap wiring.
+This revision lets the system report exactly which inventory route dependencies
+are ready without enabling live routes, public reads, staff writes,
+WooCommerce projection, Square projection, or label printing.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live route registration, public inventory reads, route-connected
+  writes, barcode label printing, WooCommerce projection, Square provider
+  writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Default dependency summary tests proving the factory reports blocked route
+  handlers, permission callbacks, and public-read settings.
+- Configured dependency summary tests proving staged search/create handlers,
+  permission callbacks, and registrar construction are assembled.
+- Controller dispatch tests proving injected search/create handlers receive
+  normalized REST request data while unsupported routes fail closed.
+- Registrar handoff tests proving future-ready inventory search routes use the
+  injected route registrar callback.
+- Status presenter tests for blocked health payloads and ready admin summaries.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 729 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 493 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory
+  dependency source files: passed after auto-fixing alignment with
+  `vendor/bin/phpcbf`.
+- `npm.cmd run test` from the repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from the repository root: passed.
+- `git diff --check`: passed with only normal Windows line-ending warnings.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory route dependency composition,
+  readiness presentation, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No staged or production route disablement is required after rollback because
+  default live route registration remains disabled.
+- No production rollback applies because public reads, inventory writes,
+  WooCommerce projection, Square network calls, barcode label printing, and
+  offline sync mutation remain disabled.
+
 ## 2026-06-07 - Inventory Route Registration Gating
 
 ### What Changed

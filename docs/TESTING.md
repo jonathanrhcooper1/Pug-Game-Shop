@@ -52,6 +52,10 @@
   gating, explicit write-gate clearing, injected controller handler readiness,
   capability permission callbacks, public-read permission callbacks, and locked
   device/owner permission routes.
+- Local unit coverage now includes inventory route dependency factory and
+  status presentation behavior for blocked default dependencies, staged
+  search/create handler composition, permission callback assembly, registrar
+  handoff, controller dispatch, and admin/health readiness summaries.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit
