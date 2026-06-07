@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.135.0`
+Version: `0.136.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -74,6 +74,9 @@ remain disabled.
 A staged POS/payment transaction executor now wraps those explicit log writes
 in begin/commit/rollback handling for tests, preserving disabled route writes,
 provider capture, provider inventory writes, and gateway capture.
+Planned POS/payment route contracts now describe disabled-by-default webhook,
+event ingestion, reconciliation, conflict, and fee-snapshot endpoints for later
+staging wiring.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

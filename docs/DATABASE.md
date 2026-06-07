@@ -172,6 +172,9 @@
 - Version `0.135.0` adds staged POS/payment transaction execution around those
   explicit log inserts with begin/commit/rollback handling. No WordPress
   schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.136.0` adds planned POS/payment REST route contracts only. No
+  WordPress schema, SQLite schema, migration order, query execution, route
+  registration, or rollback target changes.
 
 ## Relationship Overview
 

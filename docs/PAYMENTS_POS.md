@@ -193,6 +193,20 @@ This layer is still a controlled staging boundary. It does not register routes,
 call providers, capture payments, mutate provider inventory, reconcile live POS
 events, or enable WooCommerce gateway capture.
 
+## Planned Route Contracts
+
+The plugin now defines planned POS/payment REST route contracts for:
+
+- POS event ingestion and status lookup.
+- POS reconciliation runs.
+- POS reconciliation conflict review and resolution.
+- Signed provider webhook intake.
+- Payment fee snapshot listing and creation.
+
+These contracts are disabled by default and carry explicit route-registration,
+transaction, route-connected write, provider capture, provider inventory,
+webhook registration, and WooCommerce gateway capture deferral metadata.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

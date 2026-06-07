@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Planned Route Contracts
+
+### What Changed
+
+- Added `PosPaymentRouteContracts` for planned POS/payment REST endpoints.
+- Planned contracts now cover POS event ingestion, POS event lookup,
+  reconciliation runs, conflict review, conflict resolution, provider webhook
+  intake, payment fee snapshot listing, and payment fee snapshot creation.
+- Added disabled-by-default metadata for route registration, route-connected
+  writes, transaction execution, provider capture, provider inventory writes,
+  webhook registration, and WooCommerce gateway capture.
+- Added `PosPaymentRouteContractTest`.
+- Updated project, plugin, and offline app package versions to `0.136.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+Phase 8 now has staged execution components for POS/payment logs. This revision
+defines the REST surface those components will eventually sit behind, while
+preserving the current production safety boundary: no route registration, no
+provider webhooks, no payment capture, no provider inventory writes, and no
+WooCommerce gateway capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteContracts.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteContractTest` coverage for disabled-by-default route
+  registration, expected permissions, route/provider/capture deferrals, and
+  unique workflow labels.
+
+### Rollback Notes
+
+- Revert this revision to remove the planned POS/payment route contracts,
+  tests, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Log Transaction Executor
 
 ### What Changed

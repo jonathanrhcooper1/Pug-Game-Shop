@@ -475,6 +475,10 @@
   transaction begin failure rejection, repository failure rollback, commit
   failure rollback, repository affected-row audit data, and deferred
   route/provider-capture flags.
+- Local unit coverage now includes planned POS/payment route contracts for
+  disabled-by-default webhooks, event ingestion/status, reconciliation,
+  conflict review/resolution, fee snapshots, permissions, workflow labels, and
+  route/provider/capture deferral metadata.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

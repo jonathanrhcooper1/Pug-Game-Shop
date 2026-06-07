@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.136.0] - 2026-06-06
+
+### Added
+
+- Planned POS/payment REST route contracts for POS event ingestion/status,
+  reconciliation runs, conflict review/resolution, provider webhooks, and
+  payment fee snapshots.
+- Route contract metadata for workflow labels, planned permissions,
+  disabled-by-default route registration, transaction deferral, route-connected
+  write deferral, provider capture deferral, provider inventory deferral,
+  webhook registration deferral, and WooCommerce gateway capture deferral.
+- Unit coverage for disabled-by-default POS/payment routes, expected
+  permissions, route/provider/capture deferrals, and unique workflow labels.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.135.0] - 2026-06-06
 
 ### Added

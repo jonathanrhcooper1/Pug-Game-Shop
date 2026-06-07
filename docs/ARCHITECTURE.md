@@ -197,6 +197,10 @@ in begin/commit/rollback handling for controlled tests. It reports committed,
 rejected, and rolled-back outcomes without registering routes, calling
 providers, capturing payments, mutating provider inventory, or enabling
 WooCommerce gateway capture.
+Planned POS/payment REST route contracts now describe the future webhook,
+event-ingestion, reconciliation, conflict, and fee-snapshot surface. Those
+contracts remain disabled by default and expose deferral metadata instead of
+registering live routes.
 
 ## System Diagram
 

@@ -169,5 +169,8 @@ Before major database migrations:
   in begin/commit/rollback handling for tests only. Route-connected writes,
   provider capture, provider inventory writes, webhook routes, POS
   reconciliation services, and WooCommerce gateway capture remain disabled.
+- Planned POS/payment route contracts exist for webhooks, event ingestion,
+  reconciliation, conflicts, and fee snapshots, but route registration remains
+  disabled until staging-gated wiring is explicitly enabled.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.
