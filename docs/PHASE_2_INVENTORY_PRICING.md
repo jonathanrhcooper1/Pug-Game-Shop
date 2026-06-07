@@ -76,6 +76,9 @@ staging database acceptance remains pending.
 - Staff Inventory Workspace search form, route-readiness lockout, and
   REST-backed read-only results panel for the staging staff inventory search
   route.
+- Staff Inventory Workspace intake form for gated staging card creation through
+  `POST /inventory`, including card identity, barcode/SKU, location, pricing,
+  status, condition, and visibility fields.
 - Disposable WordPress staging smoke seed data for one Pokemon inventory item,
   proving staff inventory search returns real table data in CI.
 - Dependency-free inventory search parser with query, game, status, location,

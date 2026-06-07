@@ -131,6 +131,10 @@ final class AdminMenu {
 			$dependency_payload,
 			$this->inventory_search_query()
 		);
+		$intake_panel       = $workspace->intake_panel(
+			$bootstrap_payload,
+			$dependency_payload
+		);
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'Inventory Workspace', 'tcg-store-platform' );
@@ -138,6 +142,9 @@ final class AdminMenu {
 
 		echo '<h2>' . esc_html__( 'Staff Search', 'tcg-store-platform' ) . '</h2>';
 		$this->render_inventory_search_panel( $search_panel );
+
+		echo '<h2>' . esc_html__( 'Staff Intake', 'tcg-store-platform' ) . '</h2>';
+		$this->render_inventory_intake_panel( $intake_panel );
 
 		echo '<h2>' . esc_html__( 'Readiness', 'tcg-store-platform' ) . '</h2>';
 		$this->render_workspace_table( $workspace->readiness_rows( $bootstrap_payload, $dependency_payload ) );
@@ -451,6 +458,106 @@ final class AdminMenu {
 		}
 	}
 
+	/**
+	 * @param array<string, mixed> $panel Intake panel model.
+	 */
+	private function render_inventory_intake_panel( array $panel ): void {
+		$form               = is_array( $panel['form'] ?? null ) ? $panel['form'] : array();
+		$route_ready        = true === ( $panel['ready'] ?? false );
+		$can_create         = current_user_can( 'create_inventory' );
+		$ready              = $route_ready && $can_create;
+		$endpoint           = rest_url( ltrim( (string) ( $panel['endpoint_path'] ?? '' ), '/' ) );
+		$status_options     = is_array( $panel['status_options'] ?? null ) ? $panel['status_options'] : array();
+		$condition_options  = is_array( $panel['condition_options'] ?? null ) ? $panel['condition_options'] : array();
+		$raw_options        = is_array( $panel['raw_or_graded_options'] ?? null ) ? $panel['raw_or_graded_options'] : array();
+		$visibility_options = is_array( $panel['visibility_options'] ?? null ) ? $panel['visibility_options'] : array();
+		$notice_type        = $ready ? 'success' : 'warning';
+		$notes              = $can_create
+			? (string) ( $panel['notes'] ?? '' )
+			: __( 'create_inventory capability required', 'tcg-store-platform' );
+
+		echo '<div class="notice notice-' . esc_attr( $notice_type ) . ' inline"><p><strong>';
+		echo esc_html( (string) ( $panel['status_label'] ?? '' ) );
+		echo '</strong> ';
+		echo esc_html( $notes );
+		echo '</p></div>';
+
+		echo '<form id="tcg-store-inventory-intake-form" class="tcg-store-inventory-intake" method="post" action="';
+		echo esc_url( $endpoint );
+		echo '">';
+		echo '<input type="hidden" name="source" value="staff" />';
+		echo '<input type="hidden" name="actor_user_id" value="' . esc_attr( (string) get_current_user_id() ) . '" />';
+		echo '<table class="form-table" role="presentation"><tbody>';
+		$this->render_inventory_intake_text_input( $form, 'game', __( 'Game', 'tcg-store-platform' ), 'pokemon', true );
+		$this->render_inventory_intake_text_input( $form, 'card_name', __( 'Card name', 'tcg-store-platform' ), 'Bulbasaur', true );
+		$this->render_inventory_intake_text_input( $form, 'set_name', __( 'Set name', 'tcg-store-platform' ), 'Base Set', false );
+		$this->render_inventory_intake_text_input( $form, 'set_code', __( 'Set code', 'tcg-store-platform' ), 'BASE', false );
+		$this->render_inventory_intake_text_input( $form, 'card_number', __( 'Card number', 'tcg-store-platform' ), '44', false );
+		$this->render_inventory_intake_text_input( $form, 'printed_number', __( 'Printed number', 'tcg-store-platform' ), '44/102', false );
+		$this->render_inventory_intake_text_input( $form, 'barcode', __( 'Barcode', 'tcg-store-platform' ), 'PUG-PKM-BASE-044', true );
+		$this->render_inventory_intake_text_input( $form, 'sku', __( 'SKU', 'tcg-store-platform' ), 'PUG-PKM-BASE-044', false );
+		$this->render_inventory_intake_text_input( $form, 'location_id', __( 'Location ID', 'tcg-store-platform' ), '1', true, 'number' );
+		$this->render_inventory_intake_text_input( $form, 'sale_currency', __( 'Currency', 'tcg-store-platform' ), 'USD', true );
+		$this->render_inventory_intake_text_input( $form, 'minimum_sale_price_minor_units', __( 'Minimum price cents', 'tcg-store-platform' ), '100', true, 'number' );
+		$this->render_inventory_intake_text_input( $form, 'sale_price_minor_units', __( 'Sale price cents', 'tcg-store-platform' ), '250', true, 'number' );
+		$this->render_inventory_intake_select( $form, 'status', __( 'Status', 'tcg-store-platform' ), $status_options );
+		$this->render_inventory_intake_select( $form, 'raw_or_graded', __( 'Raw or graded', 'tcg-store-platform' ), $raw_options );
+		$this->render_inventory_intake_select( $form, 'condition_code', __( 'Condition', 'tcg-store-platform' ), $condition_options );
+		$this->render_inventory_intake_select( $form, 'online_visibility', __( 'Online visibility', 'tcg-store-platform' ), $visibility_options );
+		$this->render_inventory_intake_select( $form, 'kiosk_visibility', __( 'Kiosk visibility', 'tcg-store-platform' ), $visibility_options );
+		$this->render_inventory_intake_select( $form, 'pos_visibility', __( 'POS visibility', 'tcg-store-platform' ), $visibility_options );
+		echo '</tbody></table>';
+		submit_button( __( 'Create Inventory Item', 'tcg-store-platform' ), 'primary', 'submit', false, $ready ? array() : array( 'disabled' => 'disabled' ) );
+		echo '</form>';
+
+		echo '<div id="tcg-store-inventory-intake-result" data-ready="' . esc_attr( $ready ? '1' : '0' ) . '" data-endpoint="';
+		echo esc_url( $endpoint );
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">';
+		echo '<p>' . esc_html__( 'Created inventory items will appear here.', 'tcg-store-platform' ) . '</p>';
+		echo '</div>';
+
+		if ( $ready ) {
+			$this->render_inventory_intake_script();
+		}
+	}
+
+	/**
+	 * @param array<string, mixed> $form Intake form values.
+	 */
+	private function render_inventory_intake_text_input(
+		array $form,
+		string $name,
+		string $label,
+		string $placeholder,
+		bool $required,
+		string $type = 'text'
+	): void {
+		echo '<tr><th scope="row"><label for="tcg-store-intake-' . esc_attr( $name ) . '">';
+		echo esc_html( $label );
+		echo '</label></th><td><input type="' . esc_attr( $type ) . '" class="regular-text" id="tcg-store-intake-' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="';
+		echo esc_attr( (string) ( $form[ $name ] ?? '' ) );
+		echo '" placeholder="' . esc_attr( $placeholder ) . '"';
+		echo $required ? ' required="required"' : '';
+		echo ' /></td></tr>';
+	}
+
+	/**
+	 * @param array<string, mixed> $form Intake form values.
+	 * @param list<string>         $options Select options.
+	 */
+	private function render_inventory_intake_select( array $form, string $name, string $label, array $options ): void {
+		echo '<tr><th scope="row"><label for="tcg-store-intake-' . esc_attr( $name ) . '">';
+		echo esc_html( $label );
+		echo '</label></th><td><select id="tcg-store-intake-' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '">';
+		foreach ( $options as $option ) {
+			$option = (string) $option;
+			echo '<option value="' . esc_attr( $option ) . '" ' . selected( (string) ( $form[ $name ] ?? '' ), $option, false ) . '>';
+			echo esc_html( ucwords( str_replace( '_', ' ', $option ) ) );
+			echo '</option>';
+		}
+		echo '</select></td></tr>';
+	}
+
 	private function render_inventory_search_script(): void {
 		echo '<script>';
 		echo '(function(){';
@@ -463,6 +570,19 @@ final class AdminMenu {
 		echo 'target.innerHTML="<p>"+esc(meta.total)+" ' . esc_js( __( 'matching items', 'tcg-store-platform' ) ) . '</p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Status', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'SKU', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+items.map(function(item){return "<tr><td>"+esc(item.card_name)+"</td><td>"+esc(item.set_code||item.set_name||"")+"</td><td>"+esc(item.status)+"</td><td>"+esc(item.sale_price||"")+" "+esc(item.sale_currency||"")+"</td><td>"+esc(item.sku||item.barcode||"")+"</td></tr>";}).join("")+"</tbody></table>";};';
 		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));params.delete("page");params.delete("inventory_search");params.set("visibility","staff");target.innerHTML="<p>' . esc_js( __( 'Searching inventory...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint+"?"+params.toString(),{headers:{"X-WP-Nonce":target.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";return;}render(result.payload);}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";});});';
 		echo 'if(new URLSearchParams(window.location.search).get("inventory_search")==="1"){form.dispatchEvent(new Event("submit",{cancelable:true}));}';
+		echo '})();';
+		echo '</script>';
+	}
+
+	private function render_inventory_intake_script(): void {
+		echo '<script>';
+		echo '(function(){';
+		echo 'const form=document.getElementById("tcg-store-inventory-intake-form");';
+		echo 'const target=document.getElementById("tcg-store-inventory-intake-result");';
+		echo 'if(!form||!target||target.dataset.ready!=="1"){return;}';
+		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
+		echo 'const resultLine=function(payload){const data=payload.data||{};const meta=payload.meta||{};return "<p><strong>' . esc_js( __( 'Created', 'tcg-store-platform' ) ) . '</strong> #"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+" <span class=\"description\">' . esc_js( __( 'External projections deferred', 'tcg-store-platform' ) ) . ': "+esc(meta.woocommerce_projection_deferred&&meta.square_inventory_projection_deferred&&meta.label_print_deferred?"yes":"check")+"</span></p>";};';
+		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));const key="admin-intake-"+Date.now()+"-"+Math.random().toString(16).slice(2);target.innerHTML="<p>' . esc_js( __( 'Creating inventory item...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint,{method:"POST",headers:{"X-WP-Nonce":target.dataset.nonce,"Idempotency-Key":key},body:params}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok||result.payload.status!=="created"){const errors=(result.payload.errors||[]).join(", ");target.innerHTML="<p>' . esc_js( __( 'Inventory create failed.', 'tcg-store-platform' ) ) . ' "+esc(errors)+"</p>";return;}target.innerHTML=resultLine(result.payload);form.reset();}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory create failed.', 'tcg-store-platform' ) ) . '</p>";});});';
 		echo '})();';
 		echo '</script>';
 	}

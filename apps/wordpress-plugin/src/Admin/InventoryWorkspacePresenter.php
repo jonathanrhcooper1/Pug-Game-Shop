@@ -11,6 +11,7 @@ use TCGStorePlatform\Inventory\InventoryStatus;
 
 final class InventoryWorkspacePresenter {
 	private const SEARCH_ROUTE_KEY = 'GET /inventory/search';
+	private const CREATE_ROUTE_KEY = 'POST /inventory';
 
 	/**
 	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
@@ -131,6 +132,44 @@ final class InventoryWorkspacePresenter {
 			'status_options' => array_merge( array( '' ), InventoryStatus::all() ),
 			'sort_options'   => array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ),
 			'page_sizes'     => array( 10, 25, 50, 100 ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @param array<string, mixed> $form Submitted intake form values.
+	 * @return array<string, mixed>
+	 */
+	public function intake_panel( array $bootstrap_payload, array $dependency_payload, array $form = array() ): array {
+		$routes       = is_array( $bootstrap_payload['route_registration_summary'] ?? null )
+			? $bootstrap_payload['route_registration_summary']
+			: array();
+		$create_route = is_array( $routes[ self::CREATE_ROUTE_KEY ] ?? null )
+			? $routes[ self::CREATE_ROUTE_KEY ]
+			: array();
+		$ready        = true === ( $bootstrap_payload['feature_enabled'] ?? false )
+			&& true === ( $create_route['should_register'] ?? false )
+			&& false === ( $create_route['route_connected_writes_deferred'] ?? true )
+			&& true === ( $dependency_payload['inventory_intake_route_handler_ready'] ?? false )
+			&& false === ( $dependency_payload['inventory_intake_route_writes_deferred'] ?? true );
+
+		return array(
+			'ready'                 => $ready,
+			'status'                => $ready ? 'ready' : 'locked',
+			'status_label'          => $ready
+				? 'Ready for staff inventory intake'
+				: 'Locked until staging inventory create gates are enabled',
+			'endpoint_path'         => '/tcg-store/v1/inventory',
+			'method'                => 'POST',
+			'form'                  => $this->intake_form( $form ),
+			'notes'                 => $ready
+				? 'Staff intake writes are enabled; WooCommerce, Square, POS, and labels remain deferred.'
+				: $this->intake_lock_notes( $bootstrap_payload, $dependency_payload, $create_route ),
+			'status_options'        => InventoryStatus::all(),
+			'condition_options'     => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
+			'raw_or_graded_options' => array( 'raw', 'graded' ),
+			'visibility_options'    => array( 'hidden', 'visible', 'staff_only' ),
 		);
 	}
 
@@ -276,6 +315,48 @@ final class InventoryWorkspacePresenter {
 	}
 
 	/**
+	 * @param array<string, mixed> $form Submitted intake form values.
+	 * @return array<string, mixed>
+	 */
+	private function intake_form( array $form ): array {
+		$status        = strtolower( trim( (string) ( $form['status'] ?? InventoryStatus::AVAILABLE ) ) );
+		$raw_or_graded = strtolower( trim( (string) ( $form['raw_or_graded'] ?? 'raw' ) ) );
+
+		if ( ! InventoryStatus::is_valid( $status ) ) {
+			$status = InventoryStatus::AVAILABLE;
+		}
+
+		if ( ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
+			$raw_or_graded = 'raw';
+		}
+
+		return array(
+			'source'                         => 'staff',
+			'game'                           => $this->slug_value( $form['game'] ?? 'pokemon', 'pokemon' ),
+			'card_name'                      => $this->text_value( $form['card_name'] ?? '', 120 ),
+			'set_name'                       => $this->text_value( $form['set_name'] ?? '', 120 ),
+			'set_code'                       => strtoupper( $this->slug_value( $form['set_code'] ?? '', '' ) ),
+			'card_number'                    => $this->text_value( $form['card_number'] ?? '', 40 ),
+			'printed_number'                 => $this->text_value( $form['printed_number'] ?? '', 40 ),
+			'variant'                        => $this->text_value( $form['variant'] ?? '', 80 ),
+			'finish'                         => $this->text_value( $form['finish'] ?? '', 80 ),
+			'language'                       => strtoupper( $this->slug_value( $form['language'] ?? 'EN', 'EN' ) ),
+			'status'                         => $status,
+			'raw_or_graded'                  => $raw_or_graded,
+			'condition_code'                 => $this->condition_code( $form['condition_code'] ?? 'NM' ),
+			'barcode'                        => strtoupper( $this->text_value( $form['barcode'] ?? '', 80 ) ),
+			'sku'                            => strtoupper( $this->text_value( $form['sku'] ?? '', 80 ) ),
+			'location_id'                    => $this->positive_int_string( $form['location_id'] ?? '' ),
+			'sale_currency'                  => $this->currency_code( $form['sale_currency'] ?? 'USD' ),
+			'minimum_sale_price_minor_units' => $this->non_negative_int( $form['minimum_sale_price_minor_units'] ?? 100 ),
+			'sale_price_minor_units'         => $this->non_negative_int( $form['sale_price_minor_units'] ?? 100 ),
+			'online_visibility'              => $this->visibility_value( $form['online_visibility'] ?? 'visible' ),
+			'kiosk_visibility'               => $this->visibility_value( $form['kiosk_visibility'] ?? 'visible' ),
+			'pos_visibility'                 => $this->visibility_value( $form['pos_visibility'] ?? 'visible' ),
+		);
+	}
+
+	/**
 	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
 	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
 	 * @param array<string, mixed> $search_route Search route summary.
@@ -295,6 +376,74 @@ final class InventoryWorkspacePresenter {
 		);
 
 		return array() === $notes ? 'route not ready' : implode( '; ', array_values( array_unique( $notes ) ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @param array<string, mixed> $create_route Create route summary.
+	 */
+	private function intake_lock_notes( array $bootstrap_payload, array $dependency_payload, array $create_route ): string {
+		$notes = array();
+
+		if ( true !== ( $bootstrap_payload['feature_enabled'] ?? false ) ) {
+			$notes[] = 'inventory_pricing feature flag disabled';
+		}
+
+		$notes = array_merge(
+			$notes,
+			$this->list_values( $create_route['registration_block_reasons'] ?? array() ),
+			$this->list_values( $dependency_payload['inventory_intake_route_dependency_issues'] ?? array() ),
+			$this->list_values( $dependency_payload['configuration_issues'] ?? array() )
+		);
+
+		return array() === $notes ? 'route not ready' : implode( '; ', array_values( array_unique( $notes ) ) );
+	}
+
+	private function text_value( mixed $value, int $max_length ): string {
+		return substr( trim( (string) ( is_array( $value ) || is_object( $value ) ? '' : $value ) ), 0, $max_length );
+	}
+
+	private function slug_value( mixed $value, string $fallback ): string {
+		$value = strtolower( $this->text_value( $value, 64 ) );
+
+		return 1 === preg_match( '/^[a-z0-9_-]{2,64}$/', $value ) ? $value : $fallback;
+	}
+
+	private function condition_code( mixed $value ): string {
+		$value = strtoupper( $this->text_value( $value, 12 ) );
+
+		return in_array( $value, array( 'NM', 'LP', 'MP', 'HP', 'DMG' ), true ) ? $value : 'NM';
+	}
+
+	private function currency_code( mixed $value ): string {
+		$value = strtoupper( $this->text_value( $value, 3 ) );
+
+		return 1 === preg_match( '/^[A-Z]{3}$/', $value ) ? $value : 'USD';
+	}
+
+	private function positive_int_string( mixed $value ): string {
+		$value = $this->text_value( $value, 20 );
+
+		return 1 === preg_match( '/^\d+$/', $value ) && (int) $value > 0 ? $value : '';
+	}
+
+	private function non_negative_int( mixed $value ): int {
+		if ( is_int( $value ) && $value >= 0 ) {
+			return $value;
+		}
+
+		if ( is_string( $value ) && 1 === preg_match( '/^\d+$/', $value ) ) {
+			return (int) $value;
+		}
+
+		return 0;
+	}
+
+	private function visibility_value( mixed $value ): string {
+		$value = strtolower( $this->text_value( $value, 20 ) );
+
+		return in_array( $value, array( 'hidden', 'visible', 'staff_only' ), true ) ? $value : 'hidden';
 	}
 
 	/**

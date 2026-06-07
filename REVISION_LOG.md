@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Admin Intake Workspace
+
+### What Changed
+
+- Added a gated Staff Intake panel model to the Inventory Workspace presenter.
+- Added a WordPress admin Staff Intake form that posts to `POST /inventory`
+  with a REST nonce and idempotency key when the staging create route is ready.
+- The intake form captures game, card identity, barcode/SKU, location, pricing,
+  status, raw/graded condition, and channel visibility fields.
+- The admin result panel reports created inventory identity while keeping
+  WooCommerce projection, Square projection, POS side effects, and labels
+  deferred.
+
+### Why
+
+The staging create route needs a staff-facing workflow before it can be tested
+comfortably on the GoDaddy staging site. This gives staff a controlled admin
+intake surface while retaining the runtime gates that keep production and
+external systems locked.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Admin intake uses the existing staged `POST /inventory` route and only writes
+  when the staging feature flag and create runtime gate are enabled.
+
+### Tests Added
+
+- Unit coverage for the locked default Staff Intake panel and sanitized form
+  defaults.
+- Unit coverage for the ready staging Staff Intake panel and route metadata.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  src\Admin\AdminMenu.php src\Admin\InventoryWorkspacePresenter.php` from
+  `apps/wordpress-plugin`: passed.
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 753 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the admin intake form and presenter model.
+- Disable the staff create runtime checkbox to lock admin intake without code
+  rollback.
+- No production data rollback is required because production route availability
+  remains disabled by default.
+
 ## 2026-06-07 - Inventory Staff Create Runtime Gate
 
 ### What Changed

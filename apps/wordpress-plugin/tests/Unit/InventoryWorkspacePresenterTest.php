@@ -139,6 +139,96 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_true( in_array( 100, $panel['page_sizes'], true ) );
 	}
 
+	public function test_intake_panel_reports_locked_default_state_and_sanitizes_form(): void {
+		$presenter    = new InventoryWorkspacePresenter();
+		$bootstrap    = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload( false );
+		$dependencies = ( new InventoryRouteDependencyStatusPresenter(
+			new InventoryRouteDependencyFactory()
+		) )->health_payload();
+		$panel        = $presenter->intake_panel(
+			$bootstrap,
+			$dependencies,
+			array(
+				'game'                           => '../bad',
+				'card_name'                      => str_repeat( 'a', 140 ),
+				'set_code'                       => 'base',
+				'status'                         => 'bad',
+				'raw_or_graded'                  => 'bad',
+				'condition_code'                 => 'bad',
+				'location_id'                    => '-1',
+				'sale_currency'                  => 'b1d',
+				'minimum_sale_price_minor_units' => 'bad',
+				'sale_price_minor_units'         => '200',
+				'online_visibility'              => 'bad',
+			)
+		);
+
+		$this->assert_false( $panel['ready'] );
+		$this->assert_same( 'locked', $panel['status'] );
+		$this->assert_same( '/tcg-store/v1/inventory', $panel['endpoint_path'] );
+		$this->assert_same( 'POST', $panel['method'] );
+		$this->assert_contains( 'inventory_pricing feature flag disabled', $panel['notes'] );
+		$this->assert_same( 'staff', $panel['form']['source'] );
+		$this->assert_same( 'pokemon', $panel['form']['game'] );
+		$this->assert_same( 120, strlen( $panel['form']['card_name'] ) );
+		$this->assert_same( 'BASE', $panel['form']['set_code'] );
+		$this->assert_same( 'available', $panel['form']['status'] );
+		$this->assert_same( 'raw', $panel['form']['raw_or_graded'] );
+		$this->assert_same( 'NM', $panel['form']['condition_code'] );
+		$this->assert_same( '', $panel['form']['location_id'] );
+		$this->assert_same( 'USD', $panel['form']['sale_currency'] );
+		$this->assert_same( 0, $panel['form']['minimum_sale_price_minor_units'] );
+		$this->assert_same( 200, $panel['form']['sale_price_minor_units'] );
+		$this->assert_same( 'hidden', $panel['form']['online_visibility'] );
+	}
+
+	public function test_intake_panel_reports_ready_staging_create_route(): void {
+		$presenter = new InventoryWorkspacePresenter();
+		$panel     = $presenter->intake_panel(
+			array(
+				'feature_enabled'            => true,
+				'route_registration_summary' => array(
+					'POST /inventory' => array(
+						'should_register'                    => true,
+						'route_connected_writes_deferred'    => false,
+						'woocommerce_projection_deferred'    => true,
+						'square_inventory_projection_deferred' => true,
+						'label_print_deferred'               => true,
+						'registration_block_reasons'         => array(),
+					),
+				),
+			),
+			array(
+				'inventory_intake_route_handler_ready'      => true,
+				'inventory_intake_route_writes_deferred'    => false,
+				'inventory_intake_route_dependency_issues'  => array(),
+				'square_inventory_projection_deferred'      => true,
+				'woocommerce_projection_deferred'           => true,
+				'label_print_deferred'                      => true,
+			),
+			array(
+				'game'                           => 'pokemon',
+				'card_name'                      => 'Bulbasaur',
+				'set_code'                       => 'BASE',
+				'condition_code'                 => 'lp',
+				'location_id'                    => '7',
+				'minimum_sale_price_minor_units' => 100,
+				'sale_price_minor_units'         => 250,
+				'online_visibility'              => 'visible',
+			)
+		);
+
+		$this->assert_true( $panel['ready'] );
+		$this->assert_same( 'ready', $panel['status'] );
+		$this->assert_contains( 'Staff intake writes are enabled', $panel['notes'] );
+		$this->assert_same( 'Bulbasaur', $panel['form']['card_name'] );
+		$this->assert_same( 'BASE', $panel['form']['set_code'] );
+		$this->assert_same( 'LP', $panel['form']['condition_code'] );
+		$this->assert_same( '7', $panel['form']['location_id'] );
+		$this->assert_true( in_array( 'available', $panel['status_options'], true ) );
+		$this->assert_true( in_array( 'visible', $panel['visibility_options'], true ) );
+	}
+
 	/**
 	 * @param list<array{label:string,value:string,status:string,notes:string}> $rows Rows.
 	 * @return array<string, array{label:string,value:string,status:string,notes:string}>
