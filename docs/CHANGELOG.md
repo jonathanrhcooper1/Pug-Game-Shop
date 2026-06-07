@@ -11,6 +11,8 @@ All notable changes follow Semantic Versioning.
 - Kept offline push existing-operation-row route reads reported as deferred
   during default WordPress activation, even when WordPress provides a database
   object for lower-level readiness checks.
+- Kept offline push canonical mutation SQL planning reported as unconfigured
+  for route-connected handlers until route execution is explicitly enabled.
 
 ### Changed
 

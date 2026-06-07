@@ -13,13 +13,16 @@ review, staging approval, deployment approval, and rollback planning.
 - Updated offline registered-device sync readiness so existing-operation-row
   route reads stay reported as deferred until route-connected reads are
   explicitly enabled, even inside an activated WordPress install with `$wpdb`.
+- Applied the same route-dependency gate to handler-specific canonical mutation
+  SQL readiness so real WordPress activation reports the SQL templates as
+  staged, but default route-connected planning as unconfigured.
 
 ### Why
 
 The new repository CI surfaced stricter WordPress Coding Standards checks than
 the local syntax lint and a WordPress integration smoke mismatch between
-component readiness and route-connected read execution. The plugin should expose
-staged internals while keeping default route reads disabled.
+component readiness and route-connected read/SQL planning execution. The plugin
+should expose staged internals while keeping default route execution disabled.
 
 ### Files Affected
 
@@ -33,6 +36,7 @@ staged internals while keeping default route reads disabled.
 - `apps/wordpress-plugin/src/Payments/PosPaymentLogTransactionPreflightResult.php`
 - Additional PHP files in the offline push and POS/payment readiness area were
   formatting-aligned by `phpcbf`.
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
 - `docs/CHANGELOG.md`
 - `REVISION_LOG.md`
 
@@ -45,9 +49,11 @@ staged internals while keeping default route reads disabled.
 
 ### Tests Added
 
-- No new tests added.
-- Existing WordPress integration smoke assertions now match route-read
-  deferral behavior in an activated WordPress environment.
+- Added regression coverage for default offline push handler readiness when a
+  WordPress database is configured but route-connected execution remains
+  disabled.
+- Existing WordPress integration smoke assertions now match route-read and SQL
+  planning deferral behavior in an activated WordPress environment.
 
 ### Tests Run
 

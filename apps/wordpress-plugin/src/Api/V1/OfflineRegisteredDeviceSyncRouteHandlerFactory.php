@@ -238,7 +238,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_handler_existing_operation_rows_deferred' => true === ( $push_handler_dependencies['route_connected_existing_operation_rows_deferred'] ?? true ),
 			'push_handler_canonical_mutation_planner_ready' => true === ( $push_handler_dependencies['canonical_mutation_planner_ready'] ?? false ),
 			'push_handler_canonical_mutation_planning_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_planning_deferred'] ?? true ),
-			'push_handler_canonical_mutation_sql_ready'    => true === ( $push_handler_dependencies['canonical_mutation_sql_ready'] ?? false ),
+			'push_handler_canonical_mutation_sql_ready'    => true === ( $push_handler_dependencies['canonical_mutation_sql_ready'] ?? false )
+				&& false === ( $push_handler_dependencies['route_connected_canonical_mutation_sql_planning_deferred'] ?? true ),
 			'push_handler_canonical_mutation_sql_planning_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_sql_planning_deferred'] ?? true ),
 			'push_handler_canonical_mutation_sql_execution_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_sql_execution_deferred'] ?? true ),
 			'push_handler_canonical_repository_ready'      => true === ( $push_handler_dependencies['canonical_mutation_repository_ready'] ?? false ),

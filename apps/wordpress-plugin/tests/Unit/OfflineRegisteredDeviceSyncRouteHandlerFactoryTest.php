@@ -5,8 +5,23 @@
  * @package TCGStorePlatform
  */
 
-namespace TCGStorePlatform\Tests\Unit;
+namespace {
+	if ( ! class_exists( 'wpdb' ) ) {
+		class wpdb {
+			public string $prefix = 'wp_';
+		}
+	}
 
+	if ( ! class_exists( 'OfflineRegisteredDeviceSyncRouteHandlerFactoryWpdb' ) ) {
+		class OfflineRegisteredDeviceSyncRouteHandlerFactoryWpdb extends \wpdb {
+			public string $prefix = 'wp_';
+		}
+	}
+}
+
+namespace TCGStorePlatform\Tests\Unit {
+
+use TCGStorePlatform\Api\V1\OfflinePushRouteHandlerFactory;
 use TCGStorePlatform\Api\V1\OfflineRegisteredDeviceSyncRouteHandlerFactory;
 use TCGStorePlatform\Api\V1\OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter;
 use TCGStorePlatform\Tests\TestCase;
@@ -132,6 +147,23 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['route_registration_deferred'] );
 		$this->assert_false( $summary['route_connected_writes_ready'] );
 		$this->assert_same( array(), $summary['configuration_issues'] );
+	}
+
+	public function test_database_ready_push_handler_keeps_route_connected_sql_deferred_by_default(): void {
+		$database             = new \OfflineRegisteredDeviceSyncRouteHandlerFactoryWpdb();
+		$push_handler_factory = new OfflinePushRouteHandlerFactory( static fn (): \wpdb => $database );
+		$factory              = new OfflineRegisteredDeviceSyncRouteHandlerFactory(
+			push_handler_factory: $push_handler_factory
+		);
+		$summary              = $factory->readiness_summary();
+
+		$this->assert_true( $summary['push_handler_route_database_configured'] );
+		$this->assert_false( $summary['push_handler_route_execution_enabled'] );
+		$this->assert_false( $summary['push_handler_route_dependencies_ready'] );
+		$this->assert_false( $summary['push_handler_existing_operation_rows_ready'] );
+		$this->assert_true( $summary['push_handler_existing_operation_rows_deferred'] );
+		$this->assert_false( $summary['push_handler_canonical_mutation_sql_ready'] );
+		$this->assert_true( $summary['push_handler_canonical_mutation_sql_planning_deferred'] );
 	}
 
 	public function test_controller_marks_only_pull_and_push_handlers_ready(): void {
@@ -378,4 +410,5 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 			),
 		);
 	}
+}
 }
