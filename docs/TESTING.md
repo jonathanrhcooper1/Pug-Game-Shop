@@ -441,9 +441,11 @@
   mixed accepted/conflict batches, response counts, operation result rows,
   conflict row enrichment, per-operation runtime options, missing snapshots,
   invalid options, and invalid server timestamps.
-- Root automation now includes POS/payment reconciliation policy tests for
-  sandbox payment responses, scan-gated sales, declined payments, unmapped line
-  conflicts, and refunds to pending review.
+- Root automation now includes POS/payment reconciliation and
+  transaction-ingestion policy tests for sandbox payment responses, provider
+  event idempotency, duplicate-event replay, scan-gated sales, declined
+  payments, unmapped line conflicts, refunds to pending review, and
+  configurable fee estimates without hardcoded live rates.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

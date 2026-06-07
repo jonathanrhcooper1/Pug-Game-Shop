@@ -168,6 +168,11 @@ remain separate deferred boundaries.
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
 configured, and verified in the store's account.
+POS transaction ingestion is currently contract-tested with sanitized sandbox
+fixtures: provider event IDs are idempotency keys, duplicate events replay
+without inventory transitions, provider-side inventory writes stay blocked, and
+fee estimates come only from explicit configuration rather than hardcoded live
+rates.
 
 ## System Diagram
 

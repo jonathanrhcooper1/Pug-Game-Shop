@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Transaction Ingestion Contract
+
+### What Changed
+
+- Added POS adapter event normalization for sandbox provider events, event
+  IDs, event types, provider modes, external order references, and deferred
+  production-write metadata.
+- Added `planPosTransactionIngestion` to route sale and refund events through
+  existing scan-gated reconciliation policy while preserving idempotency and
+  replay behavior.
+- Added configurable POS fee-estimate comparison helpers that use explicit
+  fixture configuration and report that no hardcoded provider rates were used.
+- Added sandbox POS sale/refund event fixtures and fee-comparison fixtures.
+- Expanded POS/payment Node tests for event ingestion, replay, durable
+  conflicts, invalid event IDs, refund ingestion, and fee comparison.
+- Updated project, plugin, and offline app package versions to `0.128.0`.
+- Updated project, plugin, payments/POS, testing, architecture, roadmap, and
+  changelog docs.
+
+### Why
+
+Phase 8 needs a safe adapter boundary before live Square/POS webhooks or
+provider connections can be considered. This revision pins the idempotent
+transaction-ingestion contract against sanitized sandbox fixtures, keeps
+provider inventory writes blocked, and makes configurable fee comparison
+testable without embedding live provider rates.
+
+### Files Affected
+
+- `packages/validation/src/posPaymentPolicy.mjs`
+- `packages/validation/tests/pos-payment-policy.mjs`
+- `fixtures/mocks/pos/payment-responses.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- POS transaction ingestion tests for scan-gated sale transitions, provider
+  event idempotency keys, replayed event suppression, unmapped provider-line
+  conflicts, invalid event ID rejection, and refund-to-review behavior.
+- POS fee comparison test coverage for explicit sandbox rate fixtures and
+  `hardcodedRatesUsed: false`.
+
+### Rollback Notes
+
+- Revert this revision to remove POS transaction-ingestion contracts,
+  fee-estimate helpers, sandbox fixtures, and tests.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, webhook route registration, WooCommerce gateway capture,
+  and stored POS reconciliation logs remain disabled before and after
+  rollback.
+
 ## 2026-06-06 - Offline Push Canonical Mutation Transaction Preflight
 
 ### What Changed

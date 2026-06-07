@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.127.0
+Stable tag: 0.128.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -290,6 +290,10 @@ Phase 7.93 adds canonical mutation transaction preflight metadata to classify
 staged query kinds before any future transaction executor can run.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
+Phase 8.2 adds POS transaction-ingestion contract tests for sandbox adapter
+events, provider idempotency, duplicate-event replay, refund ingestion, durable
+conflict signaling, and configurable fee estimates without hardcoded live
+rates.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
 checkpoint advancement.
 Phase 3.4 adds ScryDex reference-card persistence planning for inserts, updates,
@@ -305,6 +309,16 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.128.0 =
+
+* Added POS transaction-ingestion contracts for sandbox adapter events,
+  provider event idempotency, duplicate-event replay, sale/refund routing, and
+  deferred route-write metadata.
+* Added configurable POS fee-estimate comparison using explicit sandbox
+  fixtures with no hardcoded live rates.
+* Expanded POS/payment tests for scan-gated sale ingestion, refund ingestion,
+  durable conflicts, invalid event IDs, replay, and fee comparison.
 
 = 0.127.0 =
 

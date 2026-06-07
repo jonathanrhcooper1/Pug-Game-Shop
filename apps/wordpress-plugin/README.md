@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.127.0`
+Version: `0.128.0`
 
 ## Implemented Features
 
@@ -69,6 +69,10 @@ Version: `0.127.0`
   and non-serialized line skipping.
 - WooCommerce serialized inventory hook contracts for cart, checkout, payment,
   refund, cart removal, and Store API validation lifecycle coverage.
+- POS/payment transaction-ingestion policy helpers for sandbox adapter events,
+  provider event idempotency, duplicate-event replay, scan-gated sale/refund
+  reconciliation, durable conflict signaling, and configurable fee estimates
+  without hardcoded live rates.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

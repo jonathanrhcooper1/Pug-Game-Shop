@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.128.0] - 2026-06-06
+
+### Added
+
+- POS transaction-ingestion contract for sandbox adapter events, provider event
+  idempotency, replay detection, sale/refund routing, and deferred route-write
+  metadata.
+- POS fee-estimate comparison helper that uses explicit effective-dated config
+  fixtures and reports that no hardcoded provider rates were used.
+- Sandbox POS event and fee fixtures plus Node coverage for scan-gated sale
+  ingestion, refund ingestion, duplicate-event replay, unmapped-line conflicts,
+  invalid event rejection, and fee comparison.
+
+### Not Added
+
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, webhook route registration, WooCommerce gateway capture,
+  and stored POS reconciliation logs remain disabled.
+
 ## [0.127.0] - 2026-06-06
 
 ### Added

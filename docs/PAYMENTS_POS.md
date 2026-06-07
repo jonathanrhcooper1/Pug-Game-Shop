@@ -63,6 +63,26 @@ Square webhook event IDs and external order/payment IDs are idempotency keys.
 Refunds do not automatically return a card to `available`; the configured
 default is `pending_review`.
 
+## Transaction Ingestion Contract
+
+The shared validation package now includes a sandbox-safe POS transaction
+ingestion contract:
+
+1. Normalize provider, event ID, event type, provider mode, external order ID,
+   and payment response data.
+2. Reject events without provider idempotency before inventory transitions are
+   planned.
+3. Suppress already processed provider events as replay responses with zero
+   inventory transitions.
+4. Route sale events through scan-gated sale reconciliation and refund events
+   through refund reconciliation.
+5. Keep provider inventory writes, route-connected writes, and production
+   capture explicitly deferred in the returned metadata.
+
+Unmapped provider-only lines create durable staff-review conflicts. The
+provider may record payments and orders, but exact serialized inventory status
+continues to belong to the plugin.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the
@@ -117,8 +137,8 @@ Mismatches create durable exceptions; they never silently modify exact inventory
 
 ## Implemented Policy Tests
 
-The shared validation package now tests POS/payment reconciliation policy with
-sanitized sandbox fixtures:
+The shared validation package now tests POS/payment reconciliation and
+transaction-ingestion policy with sanitized sandbox fixtures:
 
 - Approved provider payment responses normalize amount/currency and still block
   provider-side inventory writes.
@@ -127,6 +147,12 @@ sanitized sandbox fixtures:
 - Provider-only or unmapped POS lines create staff-review conflicts.
 - Refunds move exact items to `pending_review`, not directly back to
   `available`.
+- Provider event IDs become idempotency keys and duplicate events replay without
+  inventory transitions.
+- POS sale/refund adapter events keep route-connected writes and production
+  capture deferred.
+- Fee comparisons use explicit fixture configuration and report that no
+  hardcoded live rates were used.
 
 Live Square/POS connections, payment webhooks, WooCommerce gateway capture, and
 production credentials remain disabled until staging acceptance.
