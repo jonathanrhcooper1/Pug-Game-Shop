@@ -16,14 +16,14 @@ final class EventPresenter {
 	 * @return array<string, mixed>
 	 */
 	public static function present( array $row, ?DateTimeImmutable $now = null ): array {
-		$timezone     = self::timezone( $row['timezone'] ?? 'America/New_York' );
-		$start        = self::datetime( $row['start_datetime'] ?? null, $timezone );
-		$deadline     = self::datetime( $row['registration_deadline'] ?? null, $timezone );
-		$player_cap   = self::nullable_int( $row['player_cap'] ?? null );
-		$count        = max( 0, (int) ( $row['registered_count'] ?? 0 ) );
-		$waitlist     = ! empty( $row['waitlist_enabled'] );
-		$status       = EventStatus::registration_status( $player_cap, $count, $waitlist, $deadline, $now );
-		$entry_fee    = (float) ( $row['entry_fee'] ?? 0 );
+		$timezone   = self::timezone( $row['timezone'] ?? 'America/New_York' );
+		$start      = self::datetime( $row['start_datetime'] ?? null, $timezone );
+		$deadline   = self::datetime( $row['registration_deadline'] ?? null, $timezone );
+		$player_cap = self::nullable_int( $row['player_cap'] ?? null );
+		$count      = max( 0, (int) ( $row['registered_count'] ?? 0 ) );
+		$waitlist   = ! empty( $row['waitlist_enabled'] );
+		$status     = EventStatus::registration_status( $player_cap, $count, $waitlist, $deadline, $now );
+		$entry_fee  = (float) ( $row['entry_fee'] ?? 0 );
 
 		return array(
 			'id'                    => (int) ( $row['event_id'] ?? 0 ),
@@ -63,7 +63,6 @@ final class EventPresenter {
 			) : array( $status ),
 		);
 	}
-
 	private static function format_datetime( mixed $value, DateTimeZone $timezone ): ?string {
 		$datetime = self::datetime( $value, $timezone );
 

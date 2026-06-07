@@ -8,16 +8,15 @@
 namespace TCGStorePlatform\Events;
 
 final class EventRegistrationStatus {
-	public const RESERVED                  = 'reserved';
-	public const PAID                      = 'paid';
-	public const ALREADY_REGISTERED        = 'already_registered';
-	public const WAITLIST                  = 'waitlist';
-	public const CANCELLED                 = 'cancelled';
-	public const REFUNDED                  = 'refunded';
-	public const CHECKED_IN                = 'checked_in';
-	public const FAILED                    = 'failed';
-	public const STAFF_REVIEW_REQUIRED     = 'staff_review_required';
-
+	public const RESERVED              = 'reserved';
+	public const PAID                  = 'paid';
+	public const ALREADY_REGISTERED    = 'already_registered';
+	public const WAITLIST              = 'waitlist';
+	public const CANCELLED             = 'cancelled';
+	public const REFUNDED              = 'refunded';
+	public const CHECKED_IN            = 'checked_in';
+	public const FAILED                = 'failed';
+	public const STAFF_REVIEW_REQUIRED = 'staff_review_required';
 	/**
 	 * @return list<string>
 	 */
