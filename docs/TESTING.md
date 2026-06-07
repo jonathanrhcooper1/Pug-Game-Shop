@@ -693,6 +693,11 @@
   Square projection, and inventory workspace assertions proving admin/health
   surfaces show that payment capture/refunds/custom gateway behavior belong to
   the official WooCommerce Square extension.
+- Root automation now includes the API-client Square inventory adapter
+  executable test, covering sandbox Catalog/Inventory request planning,
+  production/live credential rejection, idempotency/external ID preservation,
+  reconciliation-only Square POS line mapping, and unmapped-line staff
+  conflicts.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

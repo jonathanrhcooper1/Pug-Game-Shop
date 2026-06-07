@@ -24,6 +24,10 @@ All notable changes follow Semantic Versioning.
   platform keeps Square payment capture/refund/gateway ownership with the
   official WooCommerce Square extension while allowing inventory
   sync/reconciliation contracts to proceed, with health/admin visibility.
+- Executable API-client Square inventory adapter contract that turns plugin
+  projection payloads into sandbox-safe Square Catalog/Inventory request plans,
+  rejects production/live-looking credentials, and maps Square POS lines back
+  to serialized inventory IDs for reconciliation review.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

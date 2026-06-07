@@ -3,6 +3,60 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Inventory API Client Adapter Contract
+
+### What Changed
+
+- Added an executable API-client Square inventory adapter module.
+- Added sandbox-safe request planning for Square Catalog batch upsert and
+  Inventory batch change operations from plugin projection contracts.
+- Added production-environment and live-looking credential rejection in the
+  adapter contract.
+- Added reconciliation-only Square POS event mapping back to serialized
+  inventory IDs, with unmapped provider lines producing staff-review conflicts.
+- Wired the adapter test into the root `npm run test` flow.
+- Updated API-client, Payments/POS, testing, changelog, and revision docs.
+
+### Why
+
+Square POS should be able to pull/sync inventory from the platform, but the
+project still needs a sandbox-only contract before any live Square API call is
+enabled. This revision creates the executable adapter boundary that future
+staging tests can use without allowing production credentials or provider
+network writes.
+
+### Files Affected
+
+- `package.json`
+- `packages/api-client/README.md`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- API-client Square inventory adapter tests for sandbox request planning,
+  production/live credential rejection, skipped projections, reconciliation
+  mapping, and unmapped-line conflicts.
+
+### Tests Run
+
+- `npm.cmd run test:api-client` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the API-client Square inventory adapter and
+  root test wiring.
+- No schema rollback is required.
+
 ## 2026-06-07 - Square Payment Delegation Policy Surfaces
 
 ### What Changed

@@ -100,6 +100,21 @@ skipped without provider payloads. All plans keep Square network requests,
 provider inventory writes, WooCommerce gateway capture, and payment capture
 explicitly deferred.
 
+## Square Inventory Adapter Contract
+
+The API-client package includes an executable Square inventory adapter
+contract. It accepts the plugin's Square projection contract and prepares
+sandbox-only request plans for:
+
+- `POST /v2/catalog/batch-upsert`
+- `POST /v2/inventory/batch-change`
+
+The adapter preserves idempotency keys, extracts Square object IDs and SKUs,
+rejects production environments or live-looking credentials, and does not call
+Square directly. It also supports reconciliation-only Square POS event mapping
+from provider line items back to serialized inventory IDs. Unmapped lines become
+staff-review conflicts, and all WordPress inventory mutation remains deferred.
+
 ## Transaction Ingestion Contract
 
 The shared validation package now includes a sandbox-safe POS transaction
