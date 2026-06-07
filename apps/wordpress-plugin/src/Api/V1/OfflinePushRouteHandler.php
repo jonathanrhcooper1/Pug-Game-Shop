@@ -116,6 +116,7 @@ final class OfflinePushRouteHandler {
 			'push_queue_persistence_deferred'    => false,
 			'push_conflict_persistence_deferred' => false,
 			'push_queue_replay_deferred'         => true,
+			'push_canonical_mutation_planning_deferred' => null === $route_result->canonical_mutation_plan(),
 			'push_canonical_mutations_deferred'  => true,
 			'route_still_gated'                  => true,
 			'default_route_execution_deferred'   => true,
@@ -128,6 +129,15 @@ final class OfflinePushRouteHandler {
 			'conflict_rows_affected'             => $persistence->conflict_rows_affected(),
 			'operation_replay_count'             => $persistence->operation_replay_count(),
 			'operation_replay_ids'               => $persistence->operation_replay_ids(),
+			'canonical_mutation_count'           => null !== $route_result->canonical_mutation_plan()
+				? $route_result->canonical_mutation_plan()->mutation_count()
+				: 0,
+			'canonical_mutation_operation_ids'   => null !== $route_result->canonical_mutation_plan()
+				? $route_result->canonical_mutation_plan()->mutation_operation_ids()
+				: array(),
+			'canonical_mutation_skipped_ids'     => null !== $route_result->canonical_mutation_plan()
+				? $route_result->canonical_mutation_plan()->skipped_operation_ids()
+				: array(),
 			'audit'                              => $route_result->audit_payload(),
 		);
 	}

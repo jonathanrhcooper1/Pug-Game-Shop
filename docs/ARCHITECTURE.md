@@ -135,6 +135,10 @@ mutation descriptors. The descriptors carry target statuses, row versions,
 TopDeck queue intent, ledger amounts, and skip metadata for conflict/rejected
 operations, but they are inspection-only until staging explicitly enables
 canonical writes.
+The staged push route now invokes that planner after persistence planning so
+replayed duplicate operations are skipped before canonical write planning.
+Response payloads, route meta, and audits expose counts and skipped IDs for
+staging review without executing entity mutations.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

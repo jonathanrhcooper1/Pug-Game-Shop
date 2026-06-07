@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.120.0`
+Version: `0.121.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -244,6 +244,9 @@ push response without enabling queue replay workers or canonical mutations.
 Accepted staged push operations now also produce plan-only canonical mutation
 descriptors for future inventory reservation, event registration, and customer
 credit ledger writes while canonical entity mutations remain disabled.
+Explicitly enabled staged push route processing now includes that canonical
+mutation planning metadata in response/audit payloads and skips replayed
+duplicate operations before future canonical write planning.
 Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash

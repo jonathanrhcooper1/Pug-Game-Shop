@@ -265,6 +265,13 @@ redemptions. Conflict and rejected push operations are skipped with explicit
 skip metadata. Health and admin readiness now report the planner as staged
 ready, while canonical entity writes, TopDeck workers, queue replay workers,
 default route execution, and live route registration remain disabled.
+Version `0.121.0` connects that planner to explicitly enabled staged push route
+processing after persistence planning. Route responses and audits now expose
+canonical mutation counts, operation IDs, skipped operation IDs, and skip
+reasons. Replayed duplicate operations are skipped with `operation_replayed`
+before future canonical writes can be considered. Canonical entity writes,
+TopDeck workers, queue replay workers, default route execution, and live route
+registration remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -531,7 +538,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.120.0",
+  "app_version": "0.121.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

@@ -319,6 +319,11 @@ operations. Conflict and rejected operations are skipped with explicit
 metadata, and health/admin readiness reports the planner as staged ready while
 canonical entity writes, TopDeck workers, queue replay workers, production
 route registration, and default route execution remain disabled.
+Version `0.121.0` connects that planner to explicitly enabled staged push route
+processing. Replayed duplicate operation rows are skipped before future
+canonical write planning, and response, route meta, and audit payloads expose
+canonical mutation counts, operation IDs, skipped IDs, and skip reasons while
+canonical writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -405,6 +410,10 @@ canonical mutations remain disabled by default.
 Existing operation-row repository adaptation now lets staged tests explicitly
 load and normalize those replay candidates while default route wiring still
 avoids queue reads, replay workers, and canonical mutations.
+Route-connected staged push canonical mutation planning now runs after
+persistence planning. Fresh accepted operations produce inspection-only
+mutation descriptors, while replayed duplicate operation rows are skipped with
+`operation_replayed` before future canonical write planning.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

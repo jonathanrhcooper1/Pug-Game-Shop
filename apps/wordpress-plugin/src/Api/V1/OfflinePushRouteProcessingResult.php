@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Offline\OfflinePushBatchResolutionPlan;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlan;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepositoryResult;
 
 final class OfflinePushRouteProcessingResult {
@@ -19,7 +20,8 @@ final class OfflinePushRouteProcessingResult {
 		private OfflinePushBatchResolutionPlan $resolution_plan,
 		private OfflinePushPersistenceRepositoryResult $persistence_result,
 		private array $permission_audit = array(),
-		private array $operation_replay_rows = array()
+		private array $operation_replay_rows = array(),
+		private ?OfflinePushCanonicalMutationPlan $canonical_mutation_plan = null
 	) {
 	}
 
@@ -29,6 +31,10 @@ final class OfflinePushRouteProcessingResult {
 
 	public function persistence_result(): OfflinePushPersistenceRepositoryResult {
 		return $this->persistence_result;
+	}
+
+	public function canonical_mutation_plan(): ?OfflinePushCanonicalMutationPlan {
+		return $this->canonical_mutation_plan;
 	}
 
 	/**
@@ -82,6 +88,16 @@ final class OfflinePushRouteProcessingResult {
 		$payload['operation_replay_response_hydrated_count'] = count( $hydrated_replay_ids );
 		$payload['operation_replay_response_hydrated_ids']   = array_values( array_unique( $hydrated_replay_ids ) );
 
+		if ( null !== $this->canonical_mutation_plan ) {
+			$canonical                                     = $this->canonical_mutation_plan->response_payload();
+			$payload['canonical_mutation_count']          = $canonical['mutation_count'];
+			$payload['canonical_mutation_operation_ids']  = $canonical['mutation_operation_ids'];
+			$payload['canonical_mutation_skipped_ids']    = $canonical['skipped_operation_ids'];
+			$payload['canonical_mutation_skipped_reasons'] = $canonical['skipped_reasons'];
+			$payload['canonical_mutation_planning_deferred'] = false;
+			$payload['canonical_mutations_deferred']      = true;
+		}
+
 		return $payload;
 	}
 
@@ -105,8 +121,20 @@ final class OfflinePushRouteProcessingResult {
 			'operation_replay_ids'                    => $this->persistence_result->operation_replay_ids(),
 			'operation_replay_response_hydrated_count' => count( $hydrated_replay_ids ),
 			'operation_replay_response_hydrated_ids'  => $hydrated_replay_ids,
+			'canonical_mutation_count'                => null !== $this->canonical_mutation_plan
+				? $this->canonical_mutation_plan->mutation_count()
+				: 0,
+			'canonical_mutation_operation_ids'        => null !== $this->canonical_mutation_plan
+				? $this->canonical_mutation_plan->mutation_operation_ids()
+				: array(),
+			'canonical_mutation_skipped_ids'          => null !== $this->canonical_mutation_plan
+				? $this->canonical_mutation_plan->skipped_operation_ids()
+				: array(),
 			'batch_resolution'                        => $this->resolution_plan->audit_payload(),
 			'persistence'                             => $this->persistence_result->audit_payload(),
+			'canonical_mutation_planning'             => null !== $this->canonical_mutation_plan
+				? $this->canonical_mutation_plan->audit_payload()
+				: array(),
 			'permission'                              => $this->permission_audit,
 			'default_route_execution_deferred'        => true,
 			'route_registration_deferred'             => true,

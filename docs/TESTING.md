@@ -127,6 +127,9 @@
   planning for accepted inventory, event, and credit push operations, skipped
   conflict/rejected operations, invalid accepted-result guards, and readiness
   metadata.
+- Local unit coverage now includes route-connected canonical mutation planning
+  metadata for staged push responses, including skipped replayed operations so
+  duplicate pushes cannot plan duplicate canonical writes.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

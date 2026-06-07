@@ -133,6 +133,37 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 		$this->assert_true( $response['canonical_mutations_deferred'] );
 	}
 
+	public function test_planner_skips_replayed_operations_before_canonical_writes(): void {
+		$payload    = $this->push_payload(
+			array(
+				$this->inventory_operation_payload(),
+			)
+		);
+		$resolution = ( new OfflinePushBatchResolver() )->resolve(
+			$payload,
+			array(
+				'op-inventory-0001' => array(
+					'inventory' => array(
+						'status'     => 'available',
+						'rowVersion' => 4,
+					),
+				),
+			),
+			'2026-06-06T20:00:00Z'
+		);
+
+		$plan = ( new OfflinePushCanonicalMutationPlanner() )->plan(
+			$payload,
+			$resolution,
+			array( 'op-inventory-0001' )
+		);
+
+		$this->assert_same( 0, $plan->mutation_count() );
+		$this->assert_same( array( 'op-inventory-0001' ), $plan->skipped_operation_ids() );
+		$this->assert_same( 'operation_replayed', $plan->skipped_reasons()['op-inventory-0001'] );
+		$this->assert_same( array( 'op-inventory-0001' ), $plan->response_payload()['replayed_operation_ids'] );
+	}
+
 	public function test_planner_rejects_mismatched_payload_and_resolution(): void {
 		$payload    = $this->push_payload(
 			array(

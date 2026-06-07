@@ -233,6 +233,10 @@ Pull device context planning accepts only authorized registered-device
 permission resolutions scoped to `offline_pull`, matches the authenticated
 device ID to the pull request, and keeps token material out of audits. Route
 handoff remains deferred.
+Route-connected staged push planning runs canonical mutation planning only
+after persistence planning identifies replayed operations. Those replayed IDs
+are skipped with `operation_replayed` so duplicate pushes cannot plan duplicate
+canonical writes, and canonical entity mutations remain disabled.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

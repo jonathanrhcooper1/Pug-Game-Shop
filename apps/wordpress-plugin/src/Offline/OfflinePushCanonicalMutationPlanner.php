@@ -12,10 +12,14 @@ use InvalidArgumentException;
 final class OfflinePushCanonicalMutationPlanner {
 	/**
 	 * Build future canonical mutation descriptors for accepted push operations.
+	 *
+	 * @param list<string> $replayed_operation_ids Client operation IDs already
+	 *                                             represented by persisted rows.
 	 */
 	public function plan(
 		OfflinePushPayload $payload,
-		OfflinePushBatchResolutionPlan $resolution
+		OfflinePushBatchResolutionPlan $resolution,
+		array $replayed_operation_ids = array()
 	): OfflinePushCanonicalMutationPlan {
 		if ( $payload->batch_id() !== $resolution->batch_id() ) {
 			throw new InvalidArgumentException( 'Push payload and resolution batch IDs must match.' );
@@ -26,6 +30,7 @@ final class OfflinePushCanonicalMutationPlanner {
 		}
 
 		$operation_plans       = $this->operation_plans_by_id( $resolution );
+		$replayed_ids          = array_fill_keys( $this->string_list( $replayed_operation_ids ), true );
 		$mutation_rows         = array();
 		$skipped_operation_ids = array();
 		$skipped_reasons       = array();
@@ -38,6 +43,12 @@ final class OfflinePushCanonicalMutationPlanner {
 			}
 
 			$operation_plan = $operation_plans[ $operation_id ];
+
+			if ( isset( $replayed_ids[ $operation_id ] ) ) {
+				$skipped_operation_ids[]          = $operation_id;
+				$skipped_reasons[ $operation_id ] = 'operation_replayed';
+				continue;
+			}
 
 			if ( 'accepted' !== $operation_plan->status() ) {
 				$skipped_operation_ids[]          = $operation_id;
@@ -60,6 +71,7 @@ final class OfflinePushCanonicalMutationPlanner {
 			'mutation_operation_ids'           => $this->operation_ids_from_rows( $mutation_rows ),
 			'skipped_operation_ids'            => $skipped_operation_ids,
 			'skipped_reasons'                  => $skipped_reasons,
+			'replayed_operation_ids'           => array_keys( $replayed_ids ),
 			'canonical_mutations_deferred'     => true,
 			'route_connected_writes_deferred'  => true,
 			'queue_replay_deferred'            => true,
@@ -348,5 +360,23 @@ final class OfflinePushCanonicalMutationPlanner {
 			static fn ( array $row ): string => (string) $row['client_operation_id'],
 			$rows
 		);
+	}
+
+	/**
+	 * @param list<string> $values Candidate string values.
+	 * @return list<string>
+	 */
+	private function string_list( array $values ): array {
+		$strings = array();
+
+		foreach ( $values as $value ) {
+			$value = trim( (string) $value );
+
+			if ( '' !== $value ) {
+				$strings[] = $value;
+			}
+		}
+
+		return array_values( array_unique( $strings ) );
 	}
 }

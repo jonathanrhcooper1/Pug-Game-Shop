@@ -523,6 +523,12 @@ offline push inventory, event, and customer credit operations. Staging can
 inspect the future mutation shape, skipped operations, and readiness metadata,
 but canonical entity writes, TopDeck workers, queue replay workers, production
 route registration, and default route execution remain disabled.
+Version `0.121.0` connects that planner to explicitly enabled staged push route
+processing, exposing canonical mutation counts and skipped replay IDs in
+staging responses/audits. Replayed duplicate operations are skipped before
+future canonical write planning. Canonical entity writes, TopDeck workers,
+queue replay workers, production route registration, and default route
+execution remain disabled.
 
 ## Hardware Gate
 

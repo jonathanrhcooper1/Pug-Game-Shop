@@ -124,6 +124,9 @@
 - Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
   offline push inventory, event, and credit operations. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.121.0` connects those descriptors to staged push route processing
+  metadata and skips replayed operations before canonical write planning. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

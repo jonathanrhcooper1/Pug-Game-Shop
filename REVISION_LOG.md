@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Route-Connected Offline Push Canonical Mutation Planning
+
+### What Changed
+
+- Connected `OfflinePushCanonicalMutationPlanner` to explicitly enabled staged
+  push route processing.
+- Skipped replayed duplicate operation rows before canonical mutation planning
+  so duplicate pushes do not plan duplicate future canonical writes.
+- Added route response, route meta, and audit metadata for canonical mutation
+  counts, mutation operation IDs, skipped IDs, and skip reasons.
+- Added staged readiness metadata for route-connected canonical mutation
+  planning and deferred canonical writes.
+- Updated project, plugin, and offline app package versions to `0.121.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+Staging can now verify the next offline push handoff through the same explicitly
+enabled route processing path used for persistence planning. Replay-aware
+canonical planning proves duplicate pushes stay idempotent before any canonical
+inventory, event, customer-credit, TopDeck, or queue replay writes are enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Canonical mutation planner coverage for replayed operation IDs being skipped
+  with `operation_replayed`.
+- Staged push route handler factory coverage for canonical mutation metadata on
+  fresh accepted pushes.
+- Staged duplicate-push route coverage proving replayed rows are skipped before
+  canonical mutation planning.
+- Readiness and smoke assertions for route-connected canonical planning flags.
+
+### Rollback Notes
+
+- Revert this revision to remove route-connected canonical mutation planning
+  metadata and replay-aware canonical planning skips.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Canonical entity writes, queue replay workers, TopDeck workers, default route
+  execution, live route registration, and production route-connected writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Canonical Mutation Planning
 
 ### What Changed

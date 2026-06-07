@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Api\V1;
 
 use RuntimeException;
 use TCGStorePlatform\Offline\OfflinePushBatchResolver;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushPayload;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
@@ -19,6 +20,7 @@ final class OfflinePushRoutePersistenceProvider {
 	private OfflinePushPersistenceRepository $persistence_repository;
 	private OfflinePushBatchResolver $batch_resolver;
 	private OfflinePushPersistencePlanner $persistence_planner;
+	private OfflinePushCanonicalMutationPlanner $canonical_mutation_planner;
 
 	/**
 	 * @var callable|null
@@ -48,12 +50,14 @@ final class OfflinePushRoutePersistenceProvider {
 		?callable $server_time_provider = null,
 		?callable $server_snapshots_provider = null,
 		?callable $operation_options_provider = null,
-		?callable $existing_operation_rows_provider = null
+		?callable $existing_operation_rows_provider = null,
+		?OfflinePushCanonicalMutationPlanner $canonical_mutation_planner = null
 	) {
 		$this->permission_resolver              = $permission_resolver;
 		$this->persistence_repository           = $persistence_repository;
 		$this->batch_resolver                   = $batch_resolver ?? new OfflinePushBatchResolver();
 		$this->persistence_planner              = $persistence_planner ?? new OfflinePushPersistencePlanner();
+		$this->canonical_mutation_planner       = $canonical_mutation_planner ?? new OfflinePushCanonicalMutationPlanner();
 		$this->server_time_provider             = $server_time_provider;
 		$this->server_snapshots_provider        = $server_snapshots_provider;
 		$this->operation_options_provider       = $operation_options_provider;
@@ -118,12 +122,18 @@ final class OfflinePushRoutePersistenceProvider {
 				)
 			)
 		);
+		$canonical  = $this->canonical_mutation_planner->plan(
+			$payload,
+			$resolution,
+			$this->row_operation_ids( $plan->operation_replay_rows() )
+		);
 
 		return new OfflinePushRouteProcessingResult(
 			$resolution,
 			$this->persistence_repository->persist( $plan ),
 			$permission->audit_payload(),
-			$plan->operation_replay_rows()
+			$plan->operation_replay_rows(),
+			$canonical
 		);
 	}
 
@@ -138,6 +148,7 @@ final class OfflinePushRoutePersistenceProvider {
 			'batch_resolver_ready'                        => method_exists( $this->batch_resolver, 'resolve' ),
 			'persistence_planner_ready'                   => method_exists( $this->persistence_planner, 'plan' ),
 			'persistence_repository_ready'                => method_exists( $this->persistence_repository, 'persist' ),
+			'canonical_mutation_planner_ready'            => method_exists( $this->canonical_mutation_planner, 'plan' ),
 			'server_snapshot_provider_configured'         => is_callable( $this->server_snapshots_provider ),
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
 			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
@@ -145,6 +156,7 @@ final class OfflinePushRoutePersistenceProvider {
 			'route_registration_deferred'                 => true,
 			'default_route_execution_deferred'            => true,
 			'queue_replay_deferred'                       => true,
+			'canonical_mutation_planning_deferred'        => false,
 			'canonical_mutations_deferred'                => true,
 		);
 	}
@@ -153,6 +165,7 @@ final class OfflinePushRoutePersistenceProvider {
 		return method_exists( $this->permission_resolver, 'resolve' )
 			&& method_exists( $this->batch_resolver, 'resolve' )
 			&& method_exists( $this->persistence_planner, 'plan' )
+			&& method_exists( $this->canonical_mutation_planner, 'plan' )
 			&& method_exists( $this->persistence_repository, 'persist' )
 			&& is_callable( $this->server_snapshots_provider );
 	}
@@ -187,5 +200,27 @@ final class OfflinePushRoutePersistenceProvider {
 		}
 
 		return gmdate( 'Y-m-d\TH:i:s\Z' );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Existing operation rows.
+	 * @return list<string>
+	 */
+	private function row_operation_ids( array $rows ): array {
+		$ids = array();
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$id = trim( (string) ( $row['client_operation_id'] ?? '' ) );
+
+			if ( '' !== $id ) {
+				$ids[] = $id;
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
 	}
 }

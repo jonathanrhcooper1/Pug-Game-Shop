@@ -7,6 +7,7 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
@@ -144,6 +145,8 @@ final class OfflinePushRouteHandlerFactory {
 				|| $database_ready,
 			'existing_operation_rows_route_provider_ready' => $existing_operation_rows_ready,
 			'existing_operation_rows_provider_readiness'  => $existing_operation_rows_readiness,
+			'canonical_mutation_planner_ready'            => method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' ),
+			'route_connected_canonical_mutation_planning_deferred' => ! $route_dependencies_ready,
 			'persistence_provider_configured'             => $route_dependencies_ready,
 			'route_connected_handler_ready'               => $route_dependencies_ready,
 			'route_connected_handler_deferred'            => ! $route_dependencies_ready,
@@ -154,6 +157,7 @@ final class OfflinePushRouteHandlerFactory {
 			'route_connected_conflict_writes_deferred'    => ! $route_dependencies_ready,
 			'route_connected_writes_ready'                => $route_dependencies_ready,
 			'canonical_route_writes_deferred'             => true,
+			'route_connected_canonical_writes_deferred'   => true,
 			'queue_replay_deferred'                       => true,
 			'default_route_registration_deferred'         => true,
 			'default_route_execution_deferred'            => ! $route_dependencies_ready,

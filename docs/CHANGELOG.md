@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.121.0] - 2026-06-06
+
+### Added
+
+- Staged push route processing now runs the plan-only canonical mutation
+  planner after persistence planning.
+- Route response, route meta, and route audit metadata for canonical mutation
+  counts, operation IDs, skipped operation IDs, and skip reasons.
+- Replay-aware canonical mutation planning so duplicate-push replay rows are
+  skipped before future canonical writes can be considered.
+- Unit and smoke coverage for route-connected canonical mutation planning
+  metadata and readiness flags.
+
+### Not Added
+
+- Canonical entity writes, queue replay workers, TopDeck workers, default route
+  execution, live route registration, and production route-connected writes
+  remain deferred.
+
 ## [0.120.0] - 2026-06-06
 
 ### Added
