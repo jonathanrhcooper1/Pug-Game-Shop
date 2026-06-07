@@ -224,6 +224,10 @@ pull handlers can now pass normalized request headers into a provider that
 resolves registered-device authorization and fetches change sets, while
 default route-connected reads, cursor advancement, tombstone reads, route
 registration, and writes remain deferred.
+Version `0.102.0` adds pull cursor advancement planning. Complete provider
+pages can be converted into per-device `tcg_offline_pull_cursors` row payloads
+after trusted context validation, while cursor writes and route-connected
+writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

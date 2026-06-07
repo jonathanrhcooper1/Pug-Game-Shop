@@ -103,6 +103,7 @@ plus pull change repository adaptation
 plus pull change-set provider composition
 plus pull device context planning
 plus route-aware pull provider handoff
+plus pull cursor advancement planning
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

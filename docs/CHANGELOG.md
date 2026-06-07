@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.102.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullCursorAdvancePlanner` and `OfflinePullCursorAdvancePlan` for
+  validating trusted pull context and provider change sets before future cursor
+  checkpoint writes.
+- Plan-only cursor rows for complete pull pages, including device IDs, domain,
+  nullable cursor value, UTC server time, row counts, and deferred-write flags.
+- Health/admin and WordPress smoke readiness metadata for staged cursor
+  advancement planning.
+- Unit coverage for complete-page cursor rows, nullable cursors, invalid
+  context/time/cursor rejection, malformed change sets, and missing domains.
+
+### Not Added
+
+- No cursor database writes are enabled. Cursor upserts, default route-connected
+  reads, tombstone repository reads, queue replay, route registration, and
+  route-connected database mutation remain disabled.
+
 ## [0.101.0] - 2026-06-06
 
 ### Added

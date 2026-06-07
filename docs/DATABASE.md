@@ -66,6 +66,9 @@
   schema, SQLite schema, migration order, or rollback target changes.
 - Version `0.101.0` adds route-aware offline pull provider handoff. No
   WordPress schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.102.0` adds offline pull cursor advancement planning against the
+  existing `tcg_offline_pull_cursors` table. No WordPress schema, SQLite
+  schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

@@ -166,6 +166,10 @@
   for registered-device header resolution, request-data forwarding,
   provider-backed change reads, missing-authorization rejection before reads,
   mismatched device context fail-closed behavior, and deferred session writes.
+- Local unit coverage now includes offline pull cursor advancement planning for
+  complete provider pages, `has_more` skip behavior, nullable cursors, invalid
+  context/time/cursor rejection, malformed change sets, missing domains, and
+  write-deferred cursor row payloads.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

@@ -166,6 +166,10 @@ injected handlers. The handler can pass normalized request headers to a
 provider that resolves registered-device authorization and fetches change sets,
 while default route-connected reads, cursor advancement, tombstone reads, route
 registration, and writes remain disabled.
+Version `0.102.0` adds pull cursor advancement planning. Provider change sets
+can now be validated into future per-device cursor rows after complete pages,
+while cursor writes, route registration, and route-connected writes remain
+disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -432,7 +436,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.101.0",
+  "app_version": "0.102.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

@@ -88,6 +88,9 @@ Route-aware pull provider handoff resolves registered-device headers through
 the same resolver path before explicitly injected pull reads and keeps missing
 or mismatched device context fail-closed before change queries run. Default
 route-connected reads and writes remain staging-gated.
+Pull cursor advancement planning validates trusted device context and provider
+change-set shapes before preparing future cursor rows, and keeps cursor writes
+disabled until staging explicitly enables the write repository.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.

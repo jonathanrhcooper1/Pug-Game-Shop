@@ -30,6 +30,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['pull_change_repository_ready'] );
 		$this->assert_true( $summary['pull_change_set_provider_ready'] );
 		$this->assert_true( $summary['pull_route_change_set_provider_ready'] );
+		$this->assert_true( $summary['pull_cursor_advance_planner_ready'] );
 		$this->assert_same( 5, $summary['pull_change_query_domain_count'] );
 		$this->assert_same(
 			array( 'branding', 'inventory', 'customer_credit', 'events', 'conflicts' ),
@@ -40,6 +41,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['pull_route_connected_reads_deferred'] );
 		$this->assert_true( $summary['pull_change_query_cursor_filter_deferred'] );
 		$this->assert_true( $summary['pull_change_query_execution_deferred'] );
+		$this->assert_true( $summary['pull_cursor_advance_write_deferred'] );
 		$this->assert_true( $summary['pull_change_repository_route_deferred'] );
 		$this->assert_true( $summary['pull_change_set_provider_route_deferred'] );
 		$this->assert_true( $summary['write_deferred'] );
@@ -124,11 +126,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['pull_change_repository_ready'] );
 		$this->assert_true( $payload['pull_change_set_provider_ready'] );
 		$this->assert_true( $payload['pull_route_change_set_provider_ready'] );
+		$this->assert_true( $payload['pull_cursor_advance_planner_ready'] );
 		$this->assert_same( 5, $payload['pull_change_query_domain_count'] );
 		$this->assert_true( $payload['pull_device_context_route_deferred'] );
 		$this->assert_true( $payload['pull_route_connected_reads_deferred'] );
 		$this->assert_true( $payload['pull_change_query_cursor_filter_deferred'] );
 		$this->assert_true( $payload['pull_change_query_execution_deferred'] );
+		$this->assert_true( $payload['pull_cursor_advance_write_deferred'] );
 		$this->assert_true( $payload['pull_change_repository_route_deferred'] );
 		$this->assert_true( $payload['pull_change_set_provider_route_deferred'] );
 		$this->assert_same( 2, $payload['handler_count'] );
@@ -143,6 +147,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'repository ready', $summary['value'] );
 		$this->assert_contains( 'provider ready', $summary['value'] );
 		$this->assert_contains( 'route provider ready', $summary['value'] );
+		$this->assert_contains( 'cursor planner ready', $summary['value'] );
 	}
 
 	/**

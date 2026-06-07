@@ -421,6 +421,10 @@ change sets without session writes or cursor advancement, while default
 route-connected reads, tombstone reads, route registration, and
 route-connected writes remain disabled.
 
+Version `0.102.0` adds pull cursor advancement planning. Staging can inspect
+future per-device cursor row payloads after complete provider pages, while
+cursor upserts, route registration, and route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

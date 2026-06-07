@@ -57,6 +57,9 @@ The route-aware pull change-set provider can now be injected into the pull
 handler to resolve registered-device headers and fetch provider change sets;
 default route-connected reads, cursor advancement, tombstone reads, route
 registration, and writes remain deferred.
+The pull cursor advancement planner now validates complete provider change
+sets into per-device cursor row payloads for future checkpoint upserts, while
+cursor writes remain deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
