@@ -192,6 +192,11 @@ An explicit POS/payment log execution repository can now write preflight-ready
 log rows through `$wpdb` for staged tests only. It is not connected to routes,
 providers, payment capture, provider inventory writes, or WooCommerce gateway
 capture.
+The staged POS/payment transaction executor now wraps those explicit log writes
+in begin/commit/rollback handling for controlled tests. It reports committed,
+rejected, and rolled-back outcomes without registering routes, calling
+providers, capturing payments, mutating provider inventory, or enabling
+WooCommerce gateway capture.
 
 ## System Diagram
 

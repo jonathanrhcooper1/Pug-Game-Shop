@@ -165,5 +165,9 @@ Before major database migrations:
   `tcg_pos_sync_log` and `tcg_payment_provider_log` rows through `$wpdb`;
   route-connected writes, provider capture, provider inventory writes, and
   WooCommerce gateway capture remain disabled.
+- Staged POS/payment transaction execution can wrap those explicit log writes
+  in begin/commit/rollback handling for tests only. Route-connected writes,
+  provider capture, provider inventory writes, webhook routes, POS
+  reconciliation services, and WooCommerce gateway capture remain disabled.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.134.0`
+Version: `0.135.0`
 
 ## Implemented Features
 
@@ -92,6 +92,10 @@ Version: `0.134.0`
   `tcg_pos_sync_log` and `tcg_payment_provider_log` inserts through `$wpdb`,
   with route-connected writes, provider capture, provider inventory writes,
   and WooCommerce gateway capture still disabled.
+- Staged POS/payment transaction executor for wrapping preflight-approved log
+  inserts in begin/commit/rollback handling, while route-connected writes,
+  provider capture, provider inventory writes, and WooCommerce gateway capture
+  stay disabled.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

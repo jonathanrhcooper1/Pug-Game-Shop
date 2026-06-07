@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.135.0] - 2026-06-06
+
+### Added
+
+- Staged POS/payment transaction executor and result contract for wrapping
+  preflight-approved `tcg_pos_sync_log` and `tcg_payment_provider_log` writes
+  in explicit begin/commit/rollback handling.
+- Transaction execution audit metadata for committed, rejected, and rolled-back
+  outcomes, transaction commands, repository affected rows, idempotency keys,
+  and provider/capture/route deferral flags.
+- Unit coverage for successful commit, blocked preflight rejection before
+  transaction start, transaction begin failure, repository failure rollback,
+  and commit failure rollback.
+
+### Not Added
+
+- Route-connected POS/payment writes, Square/POS network calls, production
+  payment capture, provider inventory writes, payment webhook route
+  registration, WooCommerce gateway capture, and POS reconciliation service
+  wiring remain disabled.
+
 ## [0.134.0] - 2026-06-06
 
 ### Added

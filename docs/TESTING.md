@@ -470,6 +470,11 @@
   rejection, invalid query-plan rejection, table-prefix mismatch rejection,
   failed payment inserts, partial affected-row counts, and deferred
   route/provider-capture flags.
+- Local unit coverage now includes staged POS/payment transaction execution for
+  successful commit, blocked preflight rejection before transaction start,
+  transaction begin failure rejection, repository failure rollback, commit
+  failure rollback, repository affected-row audit data, and deferred
+  route/provider-capture flags.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

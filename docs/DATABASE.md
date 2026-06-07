@@ -169,6 +169,9 @@
   `tcg_pos_sync_log` and `tcg_payment_provider_log` inserts through `$wpdb`.
   No WordPress schema, SQLite schema, migration order, or rollback target
   changes.
+- Version `0.135.0` adds staged POS/payment transaction execution around those
+  explicit log inserts with begin/commit/rollback handling. No WordPress
+  schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

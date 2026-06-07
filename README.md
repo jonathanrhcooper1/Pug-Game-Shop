@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.134.0`
+Version: `0.135.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -71,6 +71,9 @@ An explicit POS/payment log execution repository can now run preflight-approved
 log inserts in staged tests through `$wpdb`, while route-connected writes,
 provider capture, provider inventory writes, and WooCommerce gateway capture
 remain disabled.
+A staged POS/payment transaction executor now wraps those explicit log writes
+in begin/commit/rollback handling for tests, preserving disabled route writes,
+provider capture, provider inventory writes, and gateway capture.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

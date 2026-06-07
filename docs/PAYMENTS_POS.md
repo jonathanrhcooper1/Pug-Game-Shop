@@ -180,6 +180,19 @@ partial failure state, idempotency keys, and route-connected/provider-capture
 deferral flags. This repository does not register routes, call providers,
 capture payments, mutate inventory, or enable WooCommerce gateway capture.
 
+## Staged Transaction Execution
+
+The staged POS/payment transaction executor wraps preflight-approved explicit
+log execution in `START TRANSACTION`, `COMMIT`, and `ROLLBACK` commands. It
+rejects invalid query plans, blocked preflights, and transaction begin
+failures before log writes can run. Repository execution failure and commit
+failure both return rolled-back results with repository affected-row audit
+metadata and idempotency keys.
+
+This layer is still a controlled staging boundary. It does not register routes,
+call providers, capture payments, mutate provider inventory, reconcile live POS
+events, or enable WooCommerce gateway capture.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the
