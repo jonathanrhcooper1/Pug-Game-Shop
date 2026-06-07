@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.129.0`
+Version: `0.130.0`
 
 ## Implemented Features
 
@@ -75,6 +75,9 @@ Version: `0.129.0`
   without hardcoded live rates.
 - POS/payment schema migration for idempotent POS sync logs, masked payment
   provider logs, and effective-dated fee snapshots.
+- POS/payment log payload planning for redacted provider operation rows,
+  per-line POS reconciliation rows, conflict/replay summary rows, deterministic
+  idempotency keys, and audit metadata without live writes.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

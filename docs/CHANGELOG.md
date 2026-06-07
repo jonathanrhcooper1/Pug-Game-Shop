@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.130.0] - 2026-06-06
+
+### Added
+
+- POS/payment log payload planner for redacted payment provider operation rows,
+  per-line POS reconciliation rows, conflict/replay summary rows,
+  deterministic idempotency keys, and audit metadata.
+- Unit coverage for accepted sandbox sales, unmapped-line conflicts,
+  duplicate-event replay summaries, raw payload redaction, and missing required
+  field failures.
+
+### Not Added
+
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, and POS reconciliation write services remain disabled.
+
 ## [0.129.0] - 2026-06-06
 
 ### Added

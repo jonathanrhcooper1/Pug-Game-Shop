@@ -152,6 +152,10 @@
   database target to `9` with reversible POS sync log, payment provider log,
   and fee snapshot tables. Roll back to target `8` to drop those tables in a
   controlled maintenance window.
+- Version `0.130.0` adds plan-only POS/payment log payload generation over the
+  existing `tcg_pos_sync_log` and `tcg_payment_provider_log` tables. No
+  WordPress schema, SQLite schema, migration order, query execution, or rollback
+  target changes.
 
 ## Relationship Overview
 

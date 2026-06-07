@@ -153,6 +153,7 @@ Before major database migrations:
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.
 - Kiosk/offline sync queue test completes.
-- POS/payment sandbox response is handled.
+- POS/payment sandbox response produces redacted provider and POS sync log
+  plans without live capture or inventory writes.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

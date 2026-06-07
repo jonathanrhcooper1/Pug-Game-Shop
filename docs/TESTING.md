@@ -449,6 +449,10 @@
 - Local unit and WordPress smoke coverage now include POS/payment schema
   migration `0009`, idempotency indexes, masked provider payload fields,
   fee snapshot effective dates, dbDelta compatibility, and rollback order.
+- Local unit coverage now includes POS/payment log payload planning for
+  redacted provider operation rows, per-line POS sync rows, conflict/replay
+  summaries, deterministic idempotency keys, missing-field failures, and audit
+  metadata.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

@@ -99,6 +99,24 @@ These tables do not enable live network calls. They exist so staged adapters
 can be tested with durable, reversible storage before webhook routes or
 provider write services are allowed.
 
+## Log Planning
+
+The WordPress plugin now includes a POS/payment log planner that converts a
+normalized sandbox transaction-ingestion outcome into future database row
+payloads:
+
+- One masked `tcg_payment_provider_log` row per provider operation.
+- One `tcg_pos_sync_log` row per exact inventory transition when line mapping
+  succeeds.
+- One summary `tcg_pos_sync_log` row when a provider event is a replay,
+  conflict, or rejection without inventory transitions.
+- Deterministic idempotency keys and public IDs for replay-safe staged writes.
+- Redacted request/response JSON and audit metadata that keeps provider
+  inventory writes, route-connected writes, and production capture deferred.
+
+The planner does not insert rows, call providers, capture payments, or mutate
+serialized inventory.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the
@@ -169,6 +187,8 @@ transaction-ingestion policy with sanitized sandbox fixtures:
   capture deferred.
 - Fee comparisons use explicit fixture configuration and report that no
   hardcoded live rates were used.
+- WordPress log planning prepares redacted provider rows, per-line POS sync
+  rows, conflict/replay summaries, and audit events without live writes.
 
 Live Square/POS connections, payment webhooks, WooCommerce gateway capture, and
 production credentials remain disabled until staging acceptance.

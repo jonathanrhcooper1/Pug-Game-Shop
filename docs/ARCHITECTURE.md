@@ -173,6 +173,10 @@ fixtures: provider event IDs are idempotency keys, duplicate events replay
 without inventory transitions, provider-side inventory writes stay blocked, and
 fee estimates come only from explicit configuration rather than hardcoded live
 rates.
+The WordPress POS/payment log planner converts those normalized outcomes into
+redacted provider-operation rows, per-line POS sync rows, conflict/replay
+summaries, deterministic idempotency keys, and audit metadata without executing
+provider calls, captures, or inventory writes.
 
 ## System Diagram
 

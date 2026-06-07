@@ -141,7 +141,8 @@ events, and bounded credit redemption.
 ## Phase 8: POS And Payment Adapters
 
 Status: In progress; POS/payment reconciliation and transaction-ingestion
-contract tests plus POS/payment schema migration implemented
+contract tests plus POS/payment schema migration and log payload planning
+implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional
 catalog projection, reconciliation, refunds, conflict logs, and configurable

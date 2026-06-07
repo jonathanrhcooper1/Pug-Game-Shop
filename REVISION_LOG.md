@@ -3,6 +3,75 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Log Planning
+
+### What Changed
+
+- Added `PosPaymentLogPlanner` and `PosPaymentLogPlan`.
+- The planner converts normalized sandbox POS transaction-ingestion outcomes
+  into redacted payment provider log rows, per-line POS sync rows,
+  conflict/replay summary rows, deterministic idempotency keys, and audit
+  metadata.
+- Added coverage for accepted sales, unmapped-line conflicts, duplicate-event
+  replay summaries, raw request/response redaction, and missing required fields.
+- Updated project, plugin, and offline app package versions to `0.130.0`.
+- Updated project, plugin, payments/POS, staging, database, testing, roadmap,
+  changelog, and revision docs.
+
+### Why
+
+Phase 8 now has schema and sandbox ingestion contracts. This revision adds the
+next safe boundary: staging can inspect the exact rows that would be written for
+payment/POS reconciliation without inserting them, capturing payments, calling
+providers, or mutating serialized inventory.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogPlan.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentLogPlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentLogPlannerTest` coverage for sale reconciliation row planning,
+  conflict summary planning, duplicate-event replay summaries, redacted raw
+  payment payloads, and missing required field failures.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment log planner classes, tests,
+  and version/doc updates.
+- No database rollback is required because no schema migration or write service
+  was added. If reverting together with the prior POS/payment schema migration,
+  roll back to target `8` in a controlled maintenance window.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, and POS reconciliation write services remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - POS Payment Schema Migration
 
 ### What Changed
