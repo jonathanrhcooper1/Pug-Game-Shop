@@ -449,6 +449,11 @@ tests can explicitly enable factory-built route-aware pull reads and cursor
 advancement from `$wpdb`, while default route dependency injection, route
 registration, and production route execution remain disabled.
 
+Version `0.108.0` adds staged offline push persistence SQL and repository
+execution. Staging tests can explicitly execute prepared queue/conflict inserts
+against the existing offline sync tables, while default queue replay, canonical
+mutations, route registration, and production route execution remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

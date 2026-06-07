@@ -77,6 +77,12 @@ The pull route handler factory now composes the route-aware change-set and
 cursor-advance providers only when explicitly enabled with WordPress database
 dependencies, leaving default route dependency injection and route registration
 deferred.
+Offline push persistence now has a staged SQL/repository boundary that converts
+accepted queue and conflict persistence plans into prepared inserts for
+`tcg_offline_sync_queue` and `tcg_sync_conflicts`, and executes them only when
+explicitly invoked by tests. Default route execution, queue replay, conflict
+persistence, canonical entity mutations, and route-connected writes remain
+deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

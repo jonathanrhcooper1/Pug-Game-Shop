@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.107.0`
+Version: `0.108.0`
 
 ## Implemented Features
 
@@ -75,6 +75,10 @@ Version: `0.107.0`
 - Offline push payload validation for batch IDs, device matching, operation
   envelopes, supported operation/entity pairs, timestamps, row versions,
   payload objects, authorization context, duplicates, and schema version.
+- Offline push persistence SQL and repository staging for future
+  `tcg_offline_sync_queue` and `tcg_sync_conflicts` writes, including prepared
+  templates, explicit `$wpdb` execution, replay-only no-op plans, and deferred
+  route/canonical mutation flags.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

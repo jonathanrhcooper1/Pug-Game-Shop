@@ -79,6 +79,10 @@
   queue/result rows, conflict insert rows, JSON payload shaping, idempotent
   replay rows, mismatched device rows, mismatched batch IDs, invalid timestamps,
   and stale replay rows.
+- Local unit coverage now includes offline push persistence SQL/repository
+  staging for prepared queue/conflict insert templates, replay-only no-op
+  plans, invalid table prefixes, tampered rows, explicit `$wpdb` execution,
+  database failures, and invalid affected-row results.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

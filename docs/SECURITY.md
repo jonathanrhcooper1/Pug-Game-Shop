@@ -106,6 +106,11 @@ explicit cursor write path rejects.
 Staged pull route handler factory composition stays disabled by default and
 requires explicit route execution enablement plus WordPress database
 dependencies before route-aware reads or cursor writes can run in tests.
+Offline push persistence SQL/repository staging validates planned queue and
+conflict rows before prepared inserts execute, keeps raw request payloads inside
+stored JSON fields rather than audit summaries, and remains outside default
+route wiring so queue replay, conflict persistence, canonical mutations, and
+route-connected writes stay disabled.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.

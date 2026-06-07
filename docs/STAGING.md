@@ -69,6 +69,9 @@ Before major database migrations:
 - System status and authenticated health report staged pull handler dependency
   factory readiness while default route dependency injection, route-connected
   reads, and cursor writes remain deferred.
+- System status and authenticated health report staged push persistence SQL and
+  repository readiness while queue persistence, conflict persistence, queue
+  replay, canonical mutations, and route-connected writes remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

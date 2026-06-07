@@ -248,6 +248,12 @@ staging tests can enable a factory-built handler that wires route-aware
 change-set reads and cursor advancement from `$wpdb`, while default route
 dependency injection, route-connected reads, cursor writes, and route
 registration remain deferred.
+Version `0.108.0` adds staged offline push persistence SQL and repository
+execution. Accepted queue/conflict persistence plans can now become prepared
+`tcg_offline_sync_queue` and `tcg_sync_conflicts` insert templates and can be
+executed only when explicitly called by staging tests, while default route
+execution, queue replay, conflict persistence, canonical mutations, and route
+registration remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -320,7 +326,10 @@ mutation writes, and cursor advancement remain disabled until staging
 integration tests pass. Offline push persistence planning now
 maps a parsed payload and batch resolution into future queue/result rows,
 manager-reviewed conflict insert rows, idempotent replay rows, and redacted
-audit payloads without performing live `$wpdb` writes.
+audit payloads. Offline push persistence SQL and repository staging now convert
+those planned rows into prepared queue/conflict inserts and explicitly invoked
+`$wpdb` execution results, while live route callbacks, queue replay, canonical
+mutations, and default route-connected writes remain disabled.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

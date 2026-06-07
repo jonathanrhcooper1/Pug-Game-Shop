@@ -84,6 +84,9 @@
 - Version `0.107.0` adds pull route handler factory composition over existing
   registered-device, pull repository, and cursor repository contracts. No
   WordPress schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.108.0` adds offline push persistence SQL/repository staging over
+  the existing `tcg_offline_sync_queue` and `tcg_sync_conflicts` tables. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

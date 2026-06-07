@@ -59,6 +59,15 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['pull_handler_cursor_advance_deferred'] );
 		$this->assert_true( $summary['pull_change_repository_route_deferred'] );
 		$this->assert_true( $summary['pull_change_set_provider_route_deferred'] );
+		$this->assert_true( $summary['push_persistence_planner_ready'] );
+		$this->assert_true( $summary['push_persistence_sql_ready'] );
+		$this->assert_true( $summary['push_persistence_sql_template_ready'] );
+		$this->assert_true( $summary['push_persistence_repository_ready'] );
+		$this->assert_true( $summary['push_persistence_route_deferred'] );
+		$this->assert_true( $summary['push_queue_persistence_deferred'] );
+		$this->assert_true( $summary['push_conflict_persistence_deferred'] );
+		$this->assert_true( $summary['push_queue_replay_deferred'] );
+		$this->assert_true( $summary['push_canonical_mutations_deferred'] );
 		$this->assert_true( $summary['write_deferred'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
 		$this->assert_false( $summary['route_connected_writes_ready'] );
@@ -165,6 +174,15 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['pull_handler_cursor_advance_deferred'] );
 		$this->assert_true( $payload['pull_change_repository_route_deferred'] );
 		$this->assert_true( $payload['pull_change_set_provider_route_deferred'] );
+		$this->assert_true( $payload['push_persistence_planner_ready'] );
+		$this->assert_true( $payload['push_persistence_sql_ready'] );
+		$this->assert_true( $payload['push_persistence_sql_template_ready'] );
+		$this->assert_true( $payload['push_persistence_repository_ready'] );
+		$this->assert_true( $payload['push_persistence_route_deferred'] );
+		$this->assert_true( $payload['push_queue_persistence_deferred'] );
+		$this->assert_true( $payload['push_conflict_persistence_deferred'] );
+		$this->assert_true( $payload['push_queue_replay_deferred'] );
+		$this->assert_true( $payload['push_canonical_mutations_deferred'] );
 		$this->assert_same( 2, $payload['handler_count'] );
 		$this->assert_true( $payload['write_deferred'] );
 		$this->assert_true( $payload['route_registration_deferred'] );
@@ -184,6 +202,9 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'handler cursor ready', $summary['value'] );
 		$this->assert_contains( 'handler factory ready', $summary['value'] );
 		$this->assert_contains( 'route dependencies deferred', $summary['value'] );
+		$this->assert_contains( 'push persistence ready', $summary['value'] );
+		$this->assert_contains( 'push SQL ready', $summary['value'] );
+		$this->assert_contains( 'push repository ready', $summary['value'] );
 	}
 
 	/**

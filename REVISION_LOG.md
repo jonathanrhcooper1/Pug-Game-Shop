@@ -3,6 +3,100 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Persistence SQL And Repository
+
+### What Changed
+
+- Added `OfflinePushPersistenceQueryBuildPlan` and
+  `OfflinePushPersistenceQueryBuilder` to convert accepted offline push
+  persistence plans into prepared queue and conflict insert templates for the
+  existing `tcg_offline_sync_queue` and `tcg_sync_conflicts` tables.
+- Added SQL-build validation for table prefixes, offline device IDs, operation
+  IDs, supported operation/domain pairs, entity IDs, statuses, JSON payloads,
+  UTC timestamps, conflict metadata, and row versions.
+- Added `OfflinePushPersistenceRepository` and
+  `OfflinePushPersistenceRepositoryResult` for explicitly invoked `$wpdb`
+  execution of those prepared queue and conflict inserts.
+- Exposed sync handler readiness metadata for push persistence planning, SQL
+  template readiness, repository readiness, route deferral, queue persistence
+  deferral, conflict persistence deferral, queue replay deferral, and canonical
+  mutation deferral.
+- Updated the sync readiness admin summary and WordPress smoke assertions for
+  the new staged push persistence readiness keys.
+- Added unit coverage for prepared queue/conflict inserts, replay-only plans,
+  invalid table prefixes, tampered rows, explicit repository writes, database
+  failures, and invalid affected-row results.
+- Updated project, plugin, and offline app package versions to `0.108.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+Offline push planning could already map parsed device operations into future
+queue/result rows, conflict rows, and idempotent replay rows. Staging still
+needed an audited SQL and repository boundary before any route can safely
+persist those outcomes. This revision adds that explicit boundary while keeping
+default route execution, queue replay, conflict persistence, and canonical
+entity mutations disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistenceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Push persistence SQL builder tests for prepared queue/conflict insert
+  templates, replay-only plans, invalid table prefixes, and tampered rows.
+- Push persistence repository tests for explicit `$wpdb` execution, replay-only
+  no-op plans, invalid query plans before writes, database failures, and
+  invalid affected-row results.
+- Sync handler readiness and WordPress smoke coverage for staged push
+  persistence SQL/repository readiness and default deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push persistence SQL and repository
+  execution support.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default live offline routes, queue replay, queue persistence, conflict
+  persistence, canonical entity mutations, route registration, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pull Route Handler Factory Composition
 
 ### What Changed

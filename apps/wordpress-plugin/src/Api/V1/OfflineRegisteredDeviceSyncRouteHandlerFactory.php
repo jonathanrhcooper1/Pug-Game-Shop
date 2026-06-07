@@ -15,6 +15,9 @@ use TCGStorePlatform\Offline\OfflinePullCursorAdvancePlanner;
 use TCGStorePlatform\Offline\OfflinePullCursorAdvanceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePullCursorAdvanceRepository;
 use TCGStorePlatform\Offline\OfflinePullDeviceContextPlanner;
+use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
+use TCGStorePlatform\Offline\OfflinePushPersistenceQueryBuilder;
+use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
 
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	private const HANDLER_CALLBACKS = array(
@@ -78,8 +81,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePullRouteCursorAdvanceProvider::class, 'advance' );
 		$pull_handler_cursor_ready = $pull_route_cursor_ready
 			&& method_exists( OfflinePullRouteHandler::class, 'handle' );
-		$pull_handler_factory      = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
-		$pull_handler_dependencies = $pull_handler_factory->readiness_summary();
+		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
+		$push_persistence_sql_ready     = $push_persistence_planner_ready
+			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
+		$push_persistence_repo_ready    = $push_persistence_sql_ready
+			&& method_exists( OfflinePushPersistenceRepository::class, 'persist' );
+		$pull_handler_factory           = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
+		$pull_handler_dependencies      = $pull_handler_factory->readiness_summary();
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -129,6 +137,15 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_query_tombstone_reads_deferred' => true,
 			'pull_change_repository_route_deferred'      => true,
 			'pull_change_set_provider_route_deferred'    => true,
+			'push_persistence_planner_ready'             => $push_persistence_planner_ready,
+			'push_persistence_sql_ready'                 => $push_persistence_sql_ready,
+			'push_persistence_sql_template_ready'        => $push_persistence_sql_ready,
+			'push_persistence_repository_ready'          => $push_persistence_repo_ready,
+			'push_persistence_route_deferred'            => true,
+			'push_queue_persistence_deferred'            => true,
+			'push_conflict_persistence_deferred'         => true,
+			'push_queue_replay_deferred'                 => true,
+			'push_canonical_mutations_deferred'          => true,
 			'write_deferred'                             => true,
 			'route_registration_deferred'                => true,
 			'route_connected_writes_ready'               => false,

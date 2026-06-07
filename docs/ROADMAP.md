@@ -109,6 +109,7 @@ plus pull cursor advance repository adaptation
 plus route-aware pull cursor advance provider
 plus pull handler cursor advance orchestration
 plus pull route handler factory composition
+plus push persistence SQL/repository staging
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

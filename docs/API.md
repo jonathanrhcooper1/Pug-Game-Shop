@@ -191,6 +191,11 @@ Version `0.107.0` adds staged pull route handler factory composition. The sync
 handler factory can receive an explicitly enabled pull handler factory that
 wires route-aware providers from `$wpdb` for staging tests, while default route
 dependency injection and route execution remain deferred.
+Version `0.108.0` adds staged offline push persistence SQL and repository
+readiness. Health and admin output now expose push persistence planner, SQL
+template, repository, queue persistence, conflict persistence, queue replay, and
+canonical mutation deferral metadata while default route execution remains
+disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -457,7 +462,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.107.0",
+  "app_version": "0.108.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

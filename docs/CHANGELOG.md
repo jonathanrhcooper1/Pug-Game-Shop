@@ -2,6 +2,32 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.108.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushPersistenceQueryBuilder` and
+  `OfflinePushPersistenceQueryBuildPlan` for converting accepted offline push
+  queue/conflict persistence rows into prepared SQL insert templates against
+  the existing offline sync schema.
+- `OfflinePushPersistenceRepository` and
+  `OfflinePushPersistenceRepositoryResult` for explicitly executing those
+  prepared queue and conflict inserts through `$wpdb` in staged tests.
+- Health/admin and WordPress smoke readiness metadata for push persistence
+  planning, SQL templates, repository availability, queue persistence deferral,
+  conflict persistence deferral, queue replay deferral, and canonical mutation
+  deferral.
+- Unit coverage for queue/conflict SQL templates, replay-only plans, tampered
+  rows, invalid table prefixes, explicit repository inserts, database failures,
+  and invalid affected-row results.
+
+### Not Added
+
+- No default live offline push route execution is enabled. Queue persistence,
+  queue replay, conflict persistence, canonical entity mutations, route
+  registration, and route-connected database writes remain disabled unless a
+  staging test explicitly invokes the repository.
+
 ## [0.107.0] - 2026-06-06
 
 ### Added
