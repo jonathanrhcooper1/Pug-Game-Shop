@@ -159,6 +159,10 @@ bootstrap summary for staging checks while preserving disabled-by-default route
 registration. Authenticated health output and admin System Status now surface
 that pairing readiness summary so staging can inspect the blocked default and
 future staged dependencies without registering live routes.
+The first plan-only pairing authorizer now validates configured pairing-code
+hashes, manager/location allowlists, mode-specific requested scopes, and UTC
+expiry windows for that staged permission callback while retaining only a short
+pairing-code fingerprint in audits.
 The planned offline route registration planner now turns those contracts into
 disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.

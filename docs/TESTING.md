@@ -192,6 +192,11 @@
 - Local unit and WordPress smoke coverage now include staged pairing route
   readiness status presentation in health/admin surfaces, proving the default
   remains blocked, handlerless, permission-locked, and deferred.
+- Local unit coverage now includes plan-only offline device pairing
+  authorization for matching hashed pairing-code policy, denied
+  manager/location/scope/expiry policies, missing configuration, injection into
+  the staged pairing permission callback, and audit payloads without raw
+  pairing-code or full-hash leakage.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

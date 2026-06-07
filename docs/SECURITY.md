@@ -100,6 +100,11 @@ configuration as inspection metadata only; it does not register live routes or
 turn pairing writes on. Health and admin System Status expose that metadata to
 authorized staff/admin users while keeping the default route handlerless,
 permission-locked, and deferred.
+The plan-only pairing authorizer accepts only configured SHA-256 pairing-code
+hashes, manager/location allowlists, requested scopes allowed by device mode,
+and unexpired UTC policy windows. Its audit payload intentionally exposes only
+a short pairing-code fingerprint and policy counts, never raw pairing codes or
+full hashes.
 
 ## Secret Storage
 

@@ -65,6 +65,11 @@ callbacks still require that resolver and fail closed when it is absent.
 Pairing permission readiness now requires the adapter to have an injected
 authorizer; unconfigured pairing adapters are not exposed as route permission
 callbacks.
+The plan-only pairing authorizer now supports hashed pairing-code policies,
+manager and location allowlists, mode-specific scope checks, UTC expiry
+windows, server-time injection for tests, and secret-free audit payloads for
+future staged pairing callbacks. It does not register the live pairing route or
+issue production device tokens.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -365,7 +370,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.84.0",
+  "app_version": "0.85.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -393,6 +398,13 @@ Authenticated health responses also expose this summary under
 production-safe payload remains blocked, handlerless, permission-locked, and
 deferred until later route-enablement work injects and approves live
 dependencies.
+
+Pairing authorization is now planned behind an injectable callback. The
+authorizer accepts only configured SHA-256 pairing-code hashes, approved
+manager and location IDs, requested scopes allowed for the device mode, and
+unexpired UTC policy windows. Audit payloads expose only a short pairing-code
+fingerprint, counts, denied scopes, and timing metadata; raw pairing codes and
+full hashes are intentionally omitted.
 
 When the future route is enabled, the planned successful response body is:
 

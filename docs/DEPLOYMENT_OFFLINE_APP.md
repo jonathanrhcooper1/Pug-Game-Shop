@@ -333,6 +333,12 @@ health output and admin System Status. The visible default should remain
 blocked, handlerless, permission-locked, and deferred until a reviewed staging
 route-enablement slice changes the gate.
 
+Version `0.85.0` adds a plan-only offline device pairing authorizer for staged
+permission callbacks. It validates configured pairing-code hashes,
+manager/location allowlists, mode-specific scopes, and UTC expiry windows while
+keeping raw pairing codes and full hashes out of audit payloads. Live route
+registration and production device-token issuance remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

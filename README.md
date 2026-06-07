@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.84.0`
+Version: `0.85.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -106,9 +106,12 @@ pairing route readiness planner now composes the injected registration handler
 and configured pairing permission callback into one bootstrap summary for
 staging checks while route registration remains disabled. Authenticated health
 output and admin System Status now surface that pairing readiness summary for
-staff staging review while keeping live route registration deferred. Offline device access
-policy checks are implemented for future registered-device permission
-callbacks, covering active status, revocation timestamps, token expiry,
+staff staging review while keeping live route registration deferred. A
+plan-only offline device pairing authorizer now verifies hashed pairing-code
+policy, allowed managers, allowed locations, requested scopes, expiry windows,
+and secret-free audit payloads for future staged pairing callbacks. Offline
+device access policy checks are implemented for future registered-device
+permission callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp
 validation. Offline conflict list and resolution request validation is
 implemented for future conflict-center filters, idempotent manager resolution

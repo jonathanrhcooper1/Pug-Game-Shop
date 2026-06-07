@@ -17,7 +17,10 @@ registration. The staged pairing route now has a compact readiness planner that
 composes the injected registration handler and configured pairing permission
 callback into the existing bootstrap summary while preserving the
 disabled-by-default route gate. Health and admin System Status expose that
-pairing readiness as inspection metadata only; they do not register routes.
+pairing readiness as inspection metadata only; they do not register routes. A
+plan-only pairing authorizer now sits behind the staged permission callback so
+hashed pairing-code, manager, location, scope, and expiry policy can be tested
+without issuing live device credentials.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -214,7 +217,10 @@ now dispatch that service through the offline controller's
 behavior and route registration remain disabled. An opt-in pairing permission
 callback adapter can now validate pairing request bodies and call an injected
 manager/pairing authorizer, but the default permission factory still leaves
-the pairing route locked. Device access policy checks are implemented so
+the pairing route locked. The first plan-only authorizer for that callback now
+checks configured pairing-code hashes, manager/location allowlists,
+mode-specific scopes, and UTC expiry windows while keeping audits free of raw
+pairing secrets. Device access policy checks are implemented so
 future registered-device route permission callbacks can validate active state,
 revocation, token expiry, required scopes, supported modes/scopes, location
 IDs, and UTC timestamps before pull, push, or conflict work runs. Device

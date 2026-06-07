@@ -23,6 +23,9 @@
 - Version `0.84.0` only surfaces staged pairing route readiness in health and
   admin status output. No WordPress schema, SQLite schema, migration order, or
   rollback target changes.
+- Version `0.85.0` adds plan-only offline pairing authorization policy checks.
+  No WordPress schema, SQLite schema, migration order, or rollback target
+  changes.
 
 ## Relationship Overview
 

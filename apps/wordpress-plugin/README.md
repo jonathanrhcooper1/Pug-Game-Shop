@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.84.0`
+Version: `0.85.0`
 
 ## Implemented Features
 
@@ -115,6 +115,10 @@ Version: `0.84.0`
 - Authenticated health output and admin System Status reporting for staged
   offline device pairing route readiness, while route registration remains
   deferred.
+- Offline device pairing authorization planning for future staged pairing
+  callbacks, including hashed pairing-code checks, manager/location allowlists,
+  device-mode scope policy, UTC expiry enforcement, and secret-free audit
+  payloads.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

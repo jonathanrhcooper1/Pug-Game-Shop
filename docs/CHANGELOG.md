@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.85.0] - 2026-06-06
+
+### Added
+
+- Plan-only offline device pairing authorizer for future staged pairing
+  permission callbacks.
+- Hashed pairing-code policy checks, manager and location allowlists,
+  mode-specific requested-scope checks, UTC expiry enforcement, and injectable
+  server time for tests.
+- Unit coverage for authorized pairing policies, denied policies, missing
+  configuration, adapter injection, and audit payloads without raw pairing
+  codes or full hashes.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.84.0] - 2026-06-06
 
 ### Added
