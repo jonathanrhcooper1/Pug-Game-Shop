@@ -1,6 +1,6 @@
 {
   "name": "@pug-game-shop/offline-app",
-  "version": "0.139.0",
+  "version": "0.140.0",
   "private": true,
   "description": "Windows offline sync app for the TCG Store Platform.",
   "type": "module",

@@ -257,6 +257,33 @@ capture, provider inventory write, and WooCommerce gateway capture deferrals.
 Injected handlers can be used in controlled tests, but no live route
 registration or provider side effect is enabled by the scaffold.
 
+## Route Registration Planning
+
+POS/payment route registration planning now produces WordPress REST route args
+only for future route contracts that explicitly clear every required staging
+gate. The default plan remains locked with `__return_false` permissions and no
+controller callbacks.
+
+Registration planning reports:
+
+- Namespace, route path, method, callback, permission, and workflow metadata.
+- Permission callback readiness from the fail-closed POS/payment permission
+  callback factory.
+- Controller callback readiness from explicitly injected controller handlers.
+- Route-registration, route-connected write, webhook-registration,
+  transaction-execution, provider-capture, provider-inventory, and WooCommerce
+  gateway-capture deferral flags.
+- Stable block reasons for disabled routes, missing permission callbacks,
+  missing controller handlers, deferred route registration, deferred
+  route-connected writes, and deferred webhook registration.
+
+Future read-only routes can only become registerable after route registration
+is enabled and callbacks are ready. Future write routes also require
+route-connected write deferral to be cleared. Future webhook routes require a
+configured signature verifier and cleared webhook-registration deferral.
+Current production and staging defaults still produce zero enabled POS/payment
+route registrations.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

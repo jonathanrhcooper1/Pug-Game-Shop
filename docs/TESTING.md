@@ -189,6 +189,10 @@
 - Local unit coverage now includes the fail-closed POS/payment controller
   scaffold, disabled default responses, injected handler dispatch, normalized
   route request data, and controller handler readiness metadata.
+- Local unit coverage now includes POS/payment route registration planning for
+  default-locked plans, capability and webhook permission readiness, injected
+  controller handler readiness, future read/write/webhook route gates, and
+  public permission-bypass prevention.
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.

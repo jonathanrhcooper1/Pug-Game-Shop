@@ -216,6 +216,13 @@ injectable handler map. Without injected handlers, every callback returns a
 disabled response and repeats the route/write, transaction, webhook, capture,
 inventory, and gateway deferrals; readiness can report injected handler keys
 without registering routes.
+The POS/payment route registration planner now converts those contracts,
+permission callbacks, and injected controller handlers into guarded WordPress
+REST registration args. Current defaults produce zero enabled registrations;
+future route plans require cleared route-registration deferrals, write routes
+also require cleared route-connected write deferrals, and webhook routes also
+require cleared webhook-registration deferrals plus a configured signature
+verifier.
 
 ## System Diagram
 

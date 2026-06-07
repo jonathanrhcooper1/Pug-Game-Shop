@@ -3,6 +3,90 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Route Registration Planning
+
+### What Changed
+
+- Added `PosPaymentRouteRegistrationPlanner` for planned POS/payment REST route
+  registration metadata.
+- Default route plans stay locked with `__return_false` permissions, no
+  controller callbacks, route-registration deferral, and zero enabled route
+  registrations.
+- Registration plans now report permission callback readiness, controller
+  callback readiness, route-registration deferral, route-connected write
+  deferral, webhook-registration deferral, transaction execution deferral,
+  provider capture deferral, provider inventory write deferral, and
+  WooCommerce gateway capture deferral.
+- Future read routes can only produce enabled route args after route
+  registration deferral is cleared and permission/controller callbacks are
+  ready.
+- Future write routes also require route-connected write deferral to be
+  cleared, and future webhook routes require both a configured signature
+  verifier and cleared webhook-registration deferral.
+- Added `PosPaymentRouteRegistrationPlannerTest` coverage for default locked
+  routes, capability permission metadata, webhook verifier readiness, injected
+  controller handlers, future read/write/webhook enablement gates, and public
+  permission-bypass prevention.
+- Updated project, plugin, and offline app package versions to `0.140.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The POS/payment route contracts, permissions, readiness diagnostics, and
+controller callbacks now exist. This revision adds the guarded registration
+planning layer so future route registrars have a testable contract before any
+live REST endpoint is exposed.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteRegistrationPlannerTest` coverage for planned registration
+  args, disabled defaults, injected permission callback readiness, injected
+  controller handler readiness, future read route enablement, future write
+  route write-deferral blocking, future webhook deferral blocking, and public
+  permission-bypass prevention.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment route registration planner,
+  tests, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Controller Scaffold
 
 ### What Changed

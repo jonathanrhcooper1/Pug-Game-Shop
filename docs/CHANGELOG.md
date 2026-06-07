@@ -2,6 +2,30 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.140.0] - 2026-06-06
+
+### Added
+
+- POS/payment route registration planner for planned webhook, event ingestion,
+  reconciliation, conflict, and fee-snapshot REST route contracts.
+- Planned registration args with namespace, path, method, controller callback,
+  permission callback, workflow, deferral flags, readiness flags, and stable
+  block reasons.
+- Safety checks requiring route-registration deferral to be cleared before any
+  future route can register, route-connected write deferral to be cleared
+  before future write routes can register, and webhook-registration deferral to
+  be cleared before future provider webhook routes can register.
+- Unit coverage for default-locked routes, capability/webhook permission
+  readiness, injected controller handler readiness, future read/write/webhook
+  route enablement gates, and public permission-bypass prevention.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.139.0] - 2026-06-06
 
 ### Added

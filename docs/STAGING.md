@@ -182,5 +182,8 @@ Before major database migrations:
 - POS/payment controller callbacks exist for staged handler injection, but
   default callbacks return disabled responses with route/provider/capture
   deferrals and no live route registration.
+- POS/payment route registration planning reports zero enabled registrations
+  by default. Future read/write/webhook routes require explicitly cleared
+  registration, write, and webhook deferrals before route args can be emitted.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.
