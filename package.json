@@ -1,0 +1,28 @@
+{
+  "name": "pug-game-shop-tcg-store-platform",
+  "version": "0.155.0",
+  "private": true,
+  "description": "Trading card store platform development, testing, staging, and deployment tooling.",
+  "scripts": {
+    "wp-env:start": "wp-env start",
+    "wp-env:stop": "wp-env stop",
+    "wp-env:clean": "wp-env clean all",
+    "wp-env:destroy": "wp-env destroy",
+    "wp-env:reset": "wp-env clean all && wp-env start",
+    "wp-env:seed": "node scripts/wp-env/seed-dev-data.mjs",
+    "wp-env:test": "wp-env run tests-cli phpunit || node scripts/wp-env/report-pending-phpunit.mjs",
+    "test": "npm run test:local && npm run test:sync-engine && npm run test:pos-payments && npm run test:offline-app && npm run test:required-matrix",
+    "test:local": "cd apps/wordpress-plugin && php tests/run.php && php tests/bootstrap-smoke.php && php tests/lint.php",
+    "test:sync-engine": "node packages/sync-engine/tests/offline-conflict-policy.mjs",
+    "test:pos-payments": "node packages/validation/tests/pos-payment-policy.mjs",
+    "test:offline-app": "node apps/offline-app/tests/windows-package-contract.mjs && node apps/offline-app/tests/sqlite-schema-contract.mjs",
+    "test:required-matrix": "node scripts/wp-env/check-required-test-plan.mjs",
+    "test:e2e": "playwright test",
+    "test:wordpress": "npm run wp-env:start && npm run wp-env:test",
+    "verify:no-production-secrets": "node scripts/wp-env/verify-no-production-secrets.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@wordpress/env": "^11.8.0"
+  }
+}

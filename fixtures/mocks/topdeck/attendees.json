@@ -1,0 +1,19 @@
+{
+  "provider": "topdeck",
+  "tid": "td-dev-1001",
+  "status": 200,
+  "body": {
+    "attendees": [
+      {
+        "uid": "td-user-dev-001",
+        "display_name": "Morgan P.",
+        "status": "registered"
+      },
+      {
+        "uid": "td-user-dev-002",
+        "display_name": "Avery C.",
+        "status": "pending_invitation"
+      }
+    ]
+  }
+}

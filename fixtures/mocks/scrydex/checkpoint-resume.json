@@ -1,0 +1,12 @@
+{
+  "provider": "scrydex",
+  "job_id": "sync-dev-001",
+  "last_successful_cursor": "mock-cursor-page-1",
+  "resume_cursor": "mock-cursor-page-2",
+  "expected_duplicate_count": 0,
+  "expected_new_records": 2,
+  "rate_limit": {
+    "remaining": 500,
+    "reset_at": "2026-06-06T10:00:00Z"
+  }
+}

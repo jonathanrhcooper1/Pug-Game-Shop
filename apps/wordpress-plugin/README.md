@@ -1,0 +1,521 @@
+# TCG Store Platform WordPress Plugin
+
+Version: `0.155.0`
+
+## Implemented Features
+
+- Multisite-aware activation and uninstall.
+- Versioned, reversible foundation migration.
+- Inventory and pricing schema migration.
+- Foundation settings, role-permission, audit, and migration tables.
+- White-label company branding settings for company identity, support/logo
+  URLs, receipt copy, theme colors, staging banner color, and CSS variable
+  export.
+- Reference card/variant, inventory location/item, movement, barcode, price
+  change, and manager override tables.
+- Least-privilege staff, manager, kiosk, and system roles.
+- WordPress Settings API screen.
+- Structured JSON logging with secret redaction.
+- Immutable audit append service.
+- Action Scheduler integration for 9:00 AM Eastern daily dispatch.
+- Authenticated `/wp-json/tcg-store/v1/health` endpoint.
+- Local inventory status, intake validation, and pricing policy helpers.
+- Events schema migration with legacy provider columns kept inert.
+- Event registration status, public event badge, and capacity helpers.
+- External tournament-provider integrations are removed from active scope for
+  now; no provider credentials are accepted and no provider push is queued by
+  default.
+- Public read-only event REST endpoints and shortcodes for event list/detail
+  pages.
+- Public local event registration endpoint for free and pay-at-store
+  reservations with idempotency, event-row locking, capacity checks, waitlist
+  insertion, count updates, and registration logs.
+- Customer, contact, credit ledger, merge, and note schema migration.
+- Customer credit entry type and posting policy helpers for signed ledger
+  previews, manager approval, and negative-balance rejection.
+- Customer credit ledger posting service and repository with idempotency,
+  customer row locking, cached balance updates, and replay handling.
+- Customer credit planned REST route contracts and posting payload validation
+  for idempotent ledger writes, manager approvals, and route-customer matching.
+- Customer credit REST response presenter for safe balance, ledger, posting,
+  and validation-error payloads with redacted ledger metadata.
+- Buylist submission, item, offer, approval, and conversion schema migration.
+- Buylist submission status transition helper.
+- Buylist planned REST route contracts and submission intake payload validation
+  for customer identity, idempotency, source, owner token, and item rows.
+- Buylist offer planner for reviewed item offers, totals, manager approval
+  thresholds, target submission statuses, and deterministic offer fingerprints.
+- Generic sync job/checkpoint/error/webhook schema migration.
+- ScryDex checkpoint/resume value and request planning helpers.
+- ScryDex provider adapter contract and HTTP provider with mock-backed tests,
+  credential redaction, rate-limit mapping, and default-disabled webhook
+  registration.
+- ScryDex card and market price normalization helpers for local reference rows.
+- Reservation schema migration and reservation service foundation for exact
+  inventory active-claim enforcement.
+- Reservation lifecycle service helpers for idempotent conversion to sold and
+  release back to available.
+- Reservation expiry cleanup planner and explicit expired-hold transition back
+  to available inventory.
+- Manager override policy helpers for below-minimum sale authorization.
+- Manager override persistence/audit payload planning for future stored
+  below-minimum approvals.
+- WooCommerce serialized cart item metadata validator for exact inventory
+  checkout lines.
+- WooCommerce order-line metadata planner for exact inventory, reservation,
+  owner-token, price snapshot, expiry, optional card descriptor, and snapshot
+  hash persistence.
+- WooCommerce order lifecycle planner for checkout linkage, payment-complete
+  conversion, failed/cancelled release, refund review, duplicate line guards,
+  and non-serialized line skipping.
+- WooCommerce serialized inventory hook contracts for cart, checkout, payment,
+  refund, cart removal, and Store API validation lifecycle coverage.
+- POS/payment transaction-ingestion policy helpers for sandbox adapter events,
+  provider event idempotency, duplicate-event replay, scan-gated sale/refund
+  reconciliation, durable conflict signaling, and configurable fee estimates
+  without hardcoded live rates.
+- POS/payment schema migration for idempotent POS sync logs, masked payment
+  provider logs, and effective-dated fee snapshots.
+- POS/payment log payload planning for redacted provider operation rows,
+  per-line POS reconciliation rows, conflict/replay summary rows, deterministic
+  idempotency keys, and audit metadata without live writes.
+- POS/payment log SQL-template planning for validated POS/payment insert
+  templates, prepare-argument metadata, tamper rejection, and deferred
+  repository execution.
+- POS/payment log repository staging and execution-gate metadata for deferred
+  POS sync/payment provider writes, explicit block reasons, transaction
+  adapter deferral, and zero affected rows while live execution remains
+  disabled.
+- POS/payment transaction preflight metadata for staged log inserts, inherited
+  execution-gate blocks, unsupported query-kind blocking, idempotency keys, and
+  zero affected rows while transaction execution remains disabled.
+- Explicit POS/payment log execution repository for preflight-approved staged
+  `tcg_pos_sync_log` and `tcg_payment_provider_log` inserts through `$wpdb`,
+  with route-connected writes, provider capture, provider inventory writes,
+  and WooCommerce gateway capture still disabled.
+- Staged POS/payment transaction executor for wrapping preflight-approved log
+  inserts in begin/commit/rollback handling, while route-connected writes,
+  provider capture, provider inventory writes, and WooCommerce gateway capture
+  stay disabled.
+- Planned POS/payment REST route contracts for provider webhooks, POS event
+  ingestion/status, reconciliation runs, conflict review/resolution, and fee
+  snapshots, all disabled by default with route/provider/capture deferrals.
+- POS/payment route readiness planning and presentation for health/admin
+  diagnostics, keeping all POS/payment routes unregistered and provider
+  capture, provider inventory writes, webhooks, and WooCommerce gateway capture
+  deferred by default.
+- POS/payment fail-closed permission callback factory and adapters for
+  manager/system `manage_pos`, conflict-resolution/settings capabilities, and
+  signed provider webhooks, with `manage_pos` kept out of staff roles.
+- POS/payment fail-closed controller scaffold exposing all planned route
+  callbacks for future injected handlers while default responses remain
+  disabled with route/provider/capture deferrals.
+- POS/payment route registration planning metadata for default-locked route
+  plans, permission/controller readiness, route deferral checks, write-route
+  deferral checks, webhook deferral checks, and future enabled route args.
+- POS/payment guarded route registrar for future enabled route plans, keeping
+  current POS/payment REST route registration disabled by default.
+- POS/payment route bootstrap planning and health/admin status presentation
+  for blocked/gated/ready registration orchestration diagnostics.
+- POS/payment route bootstrapper wiring on `rest_api_init` while keeping
+  current POS/payment REST routes unregistered by default.
+- POS/payment route dependency health/admin status for controller handlers,
+  permission callbacks, webhook verifier, registrar, and bootstrapper
+  readiness while live writes stay deferred.
+- Parser-only POS/payment route validation handlers for event ingestion,
+  status, reconciliation, conflict, webhook, and fee-snapshot callbacks while
+  writes/capture remain deferred.
+- POS/payment bootstrapper wiring now uses the staged dependency factory while
+  current route registration remains disabled by default.
+- POS/payment fee snapshot query planning for staged admin review reads with
+  normalized provider, channel, currency, effective-date, and page-size filters
+  while read execution, writes, capture, inventory updates, and route
+  registration remain deferred.
+- POS/payment fee snapshot SQL-template planning for allowlisted staged review
+  reads, reporting prepare-argument metadata while repository execution and
+  route registration remain deferred.
+- POS/payment fee snapshot repository adaptation for explicit staged `$wpdb`
+  reads with row normalization, table-prefix guards, database failure auditing,
+  and route-connected reads still deferred by default.
+- POS/payment fee snapshot repository readiness metadata in parser-only route
+  validation and dependency health/admin status while repository execution
+  remains deferred from default route callbacks.
+- Explicit staged POS/payment fee snapshot route handler for repository-backed
+  read tests, with normalized fee rows, repository audit metadata, and default
+  route registration still disabled.
+- POS/payment fee snapshot route handler factory composition for explicitly
+  enabled repository-backed read tests while default dependency wiring remains
+  parser-only, deferred, and unregistered.
+- POS/payment route planning now includes route-connected read deferral in
+  route contracts, registration plans, readiness plans, and bootstrap summaries
+  so future GET routes remain blocked until read execution is explicitly
+  cleared.
+- POS/payment dependency health and admin status now expose route-connected
+  read deferral and read-ready state separately from write readiness.
+- Offline device pairing, push, pull, conflict list, and conflict resolution
+  planned REST route contracts with permission strategy metadata,
+  registered-device required scopes, and live registration disabled.
+- Offline push payload validation for batch IDs, device matching, operation
+  envelopes, supported operation/entity pairs, timestamps, row versions,
+  payload objects, authorization context, duplicates, and schema version.
+- Offline push persistence SQL and repository staging for future
+  `tcg_offline_sync_queue` and `tcg_sync_conflicts` writes, including prepared
+  templates, explicit `$wpdb` execution, replay-only no-op plans, and deferred
+  route/canonical mutation flags.
+- Offline push route handler and factory composition for explicitly enabled
+  staging tests that authenticate registered devices, resolve push batches, and
+  persist queue/conflict rows while default route execution remains deferred.
+- Offline push server snapshot query planning for future inventory, event, and
+  customer credit snapshot repositories, including allowlisted read contracts,
+  prepared SQL templates, and deferred execution metadata.
+- Offline push server snapshot repository adaptation for explicitly loading and
+  normalizing inventory, event, and customer-credit rows for staged tests while
+  keeping default route-connected reads deferred.
+- Offline push route server snapshot provider composition for explicitly
+  enabled staged handlers that feed repository-backed snapshots into push
+  resolution while keeping default route-connected reads deferred.
+- Offline push route operation-options provider composition for explicitly
+  enabled staged handlers that normalize event reservation payment status before
+  push resolution while keeping default route execution deferred.
+- Offline push existing operation-row query planning and SQL template building
+  for future idempotent replay checks against `tcg_offline_sync_queue`, while
+  route-connected reads, repository execution, queue replay, and canonical
+  mutations remain deferred.
+- Offline push existing operation-row repository adaptation for explicitly
+  called staged replay candidate reads, row normalization, duplicate rejection,
+  and secret-free repository audits while default route reads stay deferred.
+- Offline push route existing operation-row provider composition for explicitly
+  enabled staged handlers that read replay candidates before persistence
+  planning while default route execution remains deferred.
+- Offline push replay metadata for staged route responses, including replay
+  counts and replay operation IDs for idempotency verification.
+- Offline push per-operation persistence annotations in staged route response
+  results, including inserted/replayed status for duplicate-push verification.
+- Offline push replay response hydration for staged duplicate pushes, returning
+  stored queue-row result details and resolved timestamps without enabling
+  queue replay workers.
+- Offline push canonical mutation planning for accepted inventory, event, and
+  customer credit operations, producing deferred write descriptors without
+  enabling canonical entity mutations or queue replay workers.
+- Route-connected staged push response metadata for canonical mutation counts,
+  operation IDs, skipped IDs, and replay skips while canonical writes remain
+  disabled.
+- Staged canonical mutation SQL-template planning for guarded inventory updates
+  and event/customer-credit lookup guards, with canonical repositories and
+  execution still deferred.
+- Route-connected staged push response metadata for canonical mutation SQL
+  query counts, operation IDs, prepare-argument counts, replayed zero-query
+  plans, and deferred execution/repository flags.
+- Deferred canonical mutation repository results for staged SQL plans, with
+  audit metadata and zero affected rows while canonical writes stay disabled.
+- Route-connected staged push response metadata for deferred canonical
+  repository results, including status, query counts, operation IDs, zero rows
+  affected, and execution-deferred flags.
+- Canonical mutation repository execution gate metadata for staged push routes,
+  including blocked/ready/rejected status, block reasons, transaction deferral,
+  and audit output while canonical writes stay disabled.
+- Canonical mutation transaction preflight metadata for staged query kinds,
+  including ready/blocked counts, operation IDs, deferred event/credit write
+  plans, and transaction execution deferral.
+- Offline pull request validation for device IDs, cached domains, cursors,
+  page-size bounds, tombstone inclusion, and schema version.
+- Offline pull response presentation for per-domain cursors, change rows,
+  tombstones, server timestamps, and `has_more` pagination flags.
+- Offline device pairing request validation for pairing codes, installation
+  IDs, device modes, manager/location IDs, app versions, hardware
+  capabilities, requested scopes, and schema version.
+- Offline device registration planning for future device rows, one-time
+  response payloads, token hashes, sync routes, first-sync flags, and audit
+  payloads without live writes.
+- Offline device registration credential issuance for future pairing flows,
+  including generated device IDs, one-time device tokens, SHA-256 token hashes,
+  UTC issue/expiry timestamps, TTL bounds, injectable byte sources for tests,
+  and secret-free audit fingerprints.
+- Offline device registration insert query planning for future
+  `tcg_offline_devices` writes, including prepared SQL templates, JSON field
+  normalization, UTC timestamp conversion, and secret-free audits without live
+  database execution.
+- Offline device registration repository adaptation for future
+  `tcg_offline_devices` writes, including planned `$wpdb` insert execution,
+  inserted/rejected outcomes, insert ID capture, and secret-free repository
+  audits without live route wiring.
+- Offline device registration service orchestration for future pairing flows,
+  including pairing validation, credential issuance, registration planning,
+  explicit repository insertion, stable result envelopes, and secret-free
+  service audits without live route wiring.
+- Offline device registration route handler adaptation for the
+  `register_offline_device` controller callback, including injected handler
+  dispatch, registered/invalid/rejected response envelopes, and retained
+  secret-free audit payloads without default route enablement.
+- Offline device pairing permission callback adaptation for future staged
+  pairing routes, including request-body parsing, injected manager/pairing
+  authorization, authorizer rejection handling, secret-free audit payloads,
+  and optional permission factory attachment while defaults remain locked.
+- Offline device pairing route readiness planning that composes the injected
+  registration handler and configured pairing permission callback into one
+  staging bootstrap summary without registering live routes.
+- Authenticated health output and admin System Status reporting for staged
+  offline device pairing route readiness, while route registration remains
+  deferred.
+- Offline device pairing authorization planning for future staged pairing
+  callbacks, including hashed pairing-code checks, manager/location allowlists,
+  device-mode scope policy, UTC expiry enforcement, and secret-free audit
+  payloads.
+- Optional offline device registration service authorization enforcement that
+  rejects denied pairing policies before issuing credentials or calling the
+  registration repository.
+- Staged offline device registration route-handler mapping for pairing
+  authorization denials, including a distinct 403 response code while live
+  route registration remains disabled.
+- Hash-only offline pairing authorization settings for future staged pairing
+  policies without retaining raw pairing codes.
+- Settings-backed offline pairing authorizer factory for future staged pairing
+  callbacks without enabling live route registration.
+- Non-secret offline pairing policy readiness summaries in health and admin
+  System Status for staged review.
+- Staged offline device registration route-handler assembly from `$wpdb`,
+  repository, service, and settings-backed pairing authorizer readiness without
+  enabling live route registration.
+- Staged registered-device permission resolver readiness for offline pull/push
+  callbacks from `$wpdb`, repository, and session update dependencies without
+  enabling live routes.
+- Staged registered-device sync route handler readiness for offline pull/push
+  controller callbacks, keeping route registration and route-connected writes
+  deferred.
+- Staged offline pull route handler responses for registered-device pull
+  requests, returning presenter-shaped empty domain responses while live
+  change queries, cursor advancement, and route registration stay deferred.
+- Offline pull change-query planning for branding, inventory, customer credit,
+  events, and conflicts cache domains, with table/column contracts and
+  device-scoped conflict filters while execution stays deferred.
+- Health and admin System Status readiness metadata for staged offline pull
+  change-query planning while trusted context handoff and execution stay
+  deferred.
+- Offline pull change-query SQL planning that converts safe domain contracts
+  into prepared per-domain SQL templates and argument arrays while cursor
+  filtering, execution, tombstone reads, cursor advancement, and route
+  registration stay deferred.
+- Offline pull change repository adapter for explicitly called prepared
+  `$wpdb` reads, row normalization, pull change-set shaping, and secret-free
+  audits while route connection, cursor advancement, and tombstone reads stay
+  deferred.
+- Offline pull change-set provider composition for explicit registered-device
+  context, query planning, repository fetches, pull handler injection tests,
+  and provider readiness metadata while default route wiring stays deferred.
+- Offline pull device context planning for authorized registered-device
+  permission resolutions, request/device matching, offline device ID and table
+  prefix handoff, and secret-free audits while route wiring stays deferred.
+- Offline pull route-aware provider handoff for explicitly injected pull
+  handlers that can resolve registered-device headers and fetch change sets
+  while default route-connected reads, cursor advancement, tombstone reads,
+  route registration, and route-connected writes stay deferred.
+- Offline pull cursor advancement planning for provider change sets, complete
+  page checks, per-device cursor row payloads, and write-deferred readiness
+  metadata.
+- Offline pull cursor SQL planning for prepared per-device cursor upsert
+  templates, with execution and route-connected writes still deferred.
+- Offline pull cursor repository adaptation for explicitly called `$wpdb`
+  cursor upserts, with default route connection and route-connected writes
+  still deferred.
+- Offline pull route cursor advancement provider for explicitly injected route
+  orchestration, resolving registered-device headers and invoking the cursor
+  repository while default route execution remains deferred.
+- Offline pull handler cursor advancement orchestration for explicitly injected
+  providers, including advanced/rejected metadata and fail-closed cursor write
+  errors while default handler execution remains deferred.
+- Offline pull route handler factory composition for explicitly enabled staging
+  dependencies, wiring route-aware change-set and cursor-advance providers while
+  default route dependency injection remains deferred.
+- Offline device access policy checks for future registered-device permission
+  callbacks, including active/revoked/expired state, required scopes, supported
+  modes/scopes, location IDs, and UTC timestamp validation.
+- Offline device bearer-token authentication planning for future permission
+  callbacks, including header normalization, token shape validation, SHA-256
+  token hash comparison, persisted offline-device IDs, and secret-free accepted
+  contexts.
+- Offline device token lookup planning for future repositories, including
+  hashed token lookup filters, short audit fingerprints, normalized
+  WordPress-style headers, and no raw token retention.
+- Offline device session planning for future permission callbacks, including
+  authenticated row matching, last-seen update rows, row-version increments,
+  session context, and secret-free audit payloads.
+- Offline registered-device permission planning for future REST callbacks,
+  including lookup-needed, denied, and authorized states that compose token
+  lookup, loaded-row authentication, and session update planning without live
+  database writes.
+- Offline registered-device row normalization for future repositories,
+  including database identity coercion, decoded scopes/capabilities, UTC
+  timestamp normalization, validation errors, and secret-free audit payloads.
+- Offline registered-device lookup-query planning for future repositories,
+  including selected columns, active/revocation/expiry filters, row-normalizer
+  metadata, lock intent, deferred scope checks, and secret-free audit payloads.
+- Offline registered-device permission lookup-query integration, including
+  lookup-required query args, rejected invalid scope/time query plans, and
+  permission audit summaries without live repository calls.
+- Offline registered-device lookup query building for future repositories,
+  including safe table-prefix validation, whitelisted selected columns,
+  prepared SQL templates, UTC-to-MySQL expiry arguments, and secret-free audit
+  payloads without executing live database queries.
+- Offline registered-device repository adapter for future permission callbacks,
+  including planned `$wpdb` lookup execution, not-found handling, row
+  normalization, malformed-row rejection, and secret-free query/normalization
+  audits without live route wiring.
+- Offline registered-device permission resolver for future permission
+  callbacks, including initial token planning, repository-backed lookup,
+  loaded-row authentication, session update planning, not-found denial, and
+  secret-free resolution audits without live route wiring or last-seen writes.
+- Offline registered-device permission resolver opt-in session update
+  application, including applied update authorization, stale update denial,
+  failed update denial, skipped denied-device updates, and redacted
+  session-update audits without live route wiring.
+- Offline registered-device permission callback adapter for future REST
+  `permission_callback` wiring, including WordPress-style header extraction,
+  boolean callback results, last-resolution access, opt-in session update
+  application, and plan-only resolver compatibility without route registration.
+- Offline route permission callback factory for future registered-device REST
+  route wiring, including `offline_pull`/`offline_push` scope maps, adapter
+  construction, non-device route exclusion, and route registration kept
+  disabled.
+- Pairing-only route permission factory planning, allowing staged pairing
+  permission callbacks without requiring a registered-device resolver while
+  registered-device routes remain fail-closed until that resolver is present.
+- Pairing permission authorizer-readiness checks, keeping unconfigured pairing
+  adapters out of planned route permission callbacks.
+- Offline route registration planner for future WordPress REST wiring,
+  including disabled-by-default route plans, fail-closed permission callbacks,
+  registered-device callback metadata, controller-readiness gates, and no
+  public permission bypasses.
+- Offline route registration handler-readiness enforcement, requiring
+  explicitly injected controller handlers before future route plans can treat a
+  controller callback as ready.
+- Offline controller scaffold for future offline REST route handlers, including
+  callback method coverage for every planned route and stable disabled
+  responses while live handlers remain blocked.
+- Offline route registrar guard for future WordPress REST wiring, including
+  zero default offline route registration, injected registrar tests, and
+  ready-and-enabled plan filtering.
+- Offline REST request adapter and normalized request data for future route
+  handlers, including body/query/route params, header/idempotency extraction,
+  and injected controller dispatch while defaults remain disabled.
+- Offline route validation handler factory for parser-only controller
+  injection, covering pairing, pull, push, conflict list, conflict resolution,
+  safe response summaries, and stable validation errors without writes.
+- Offline route bootstrap planner for future staging bootstrap checks,
+  including feature-gate status, registerable route counts, route keys,
+  route-registration summaries, and bootstrap block reasons without registering
+  live routes.
+- Offline route bootstrap status presentation in authenticated health output
+  and admin System Status for staging readiness checks, including deferred
+  registration state, while live offline routes remain unregistered.
+- Offline route bootstrapper wiring on `rest_api_init` with guarded registrar
+  deferral unless the offline feature gate and route-readiness plan are ready.
+- Offline device session update query building for future permission
+  callbacks, including safe table-prefix validation, last-seen timestamp
+  conversion, optimistic row-version guards, prepared SQL templates, and
+  secret-free audits without executing live writes.
+- Offline device session update repository adapter for future permission
+  callbacks, including planned `$wpdb` update execution, applied/stale/rejected
+  outcomes, failed-write rejection, unexpected-row-count rejection, and
+  secret-free audits without live route wiring.
+- Offline conflict list and resolution request validation for future
+  conflict-center filters, idempotent manager resolution actions, expected row
+  versions, UTC resolution timestamps, notes, and adjustment payloads.
+- Offline conflict list response presentation for future conflict-center rows,
+  filters, cursors, severity, row versions, payload objects, and available
+  manager resolution options.
+- Offline conflict resolution planning for future row updates, response
+  payloads, stale-version guards, terminal-status guards, action availability
+  checks, and redacted audit payloads.
+- Offline push operation resolution planning for future queue replay outcomes,
+  response payloads, operation result rows, manager-reviewed conflict rows,
+  deterministic conflict IDs, and redacted audit payloads.
+- Offline push batch resolution planning for future route handlers,
+  per-operation results, operation result rows, enriched conflict rows, batch
+  counts, server snapshot lookup, and redacted batch audit payloads.
+- Offline sync persistence schema for registered devices, idempotent operation
+  queue/result rows, manager-reviewed conflicts, and per-device pull cursors.
+- Offline push persistence planning for future queue/result inserts, conflict
+  inserts, idempotent operation replay rows, and redacted audit payloads.
+- Offline push route operation-options planning for future staged handlers,
+  including event payment status normalization and external provider queue
+  suppression for pay-at-store reservations.
+- Offline push existing operation-row query planning for future idempotent
+  replay checks, including allowlisted queue columns and prepared SQL templates
+  without default route-connected reads.
+- Offline push existing operation-row repository adaptation for future
+  idempotent replay preparation, including explicit `$wpdb` reads and malformed
+  row rejection without default route-connected reads.
+- Offline push route existing operation-row provider composition for future
+  staged idempotent replay, including explicit route-context handoff and
+  duplicate-push no-write coverage.
+- Offline push replay metadata coverage for persistence plans, repository
+  audits, and staged route response meta.
+- Offline push per-operation persistence annotation coverage for inserted and
+  replayed staged route response results.
+- Offline push replay response hydration coverage for stored queue-row details,
+  resolved timestamps, response sources, and hydrated replay audit metadata.
+- Dependency-free REST route contract tests for health and public Events
+  endpoints.
+- Migration runner planning coverage for clean install, upgrade, idempotent
+  current-schema rerun, and rollback order.
+- External tournament-provider push queues are deferred.
+- ScryDex sync page processor for normalized card/price upsert planning and
+  checkpoint advancement.
+- ScryDex persistence planner for deterministic reference-card inserts,
+  changed-row updates, unchanged-row detection, and current price observations.
+- Hard-disabled flags for unfinished modules.
+- Explicit pending HPOS verification state.
+
+## Local Checks
+
+With PHP 8.1 or newer:
+
+```sh
+php tests/lint.php
+php tests/run.php
+```
+
+Composer is optional at runtime. When available:
+
+```sh
+composer install
+composer lint
+composer test
+composer standards
+```
+
+To run a local WordPress Playground smoke site without Docker or MySQL:
+
+```sh
+npx @wp-now/wp-now start --php=8.2 --blueprint=tests/wp-now-blueprint.json
+```
+
+On Windows, older `wp-now` releases may fail while installing WordPress.org
+plugins from a Blueprint. If that happens, run `npx @wp-now/wp-now start
+--php=8.2` from this plugin directory to verify plugin activation and admin
+status locally, then rely on GitHub Actions for the WooCommerce-backed
+integration gate.
+
+`composer.lock` is committed so CI and future developers use the reviewed tool
+versions.
+
+## Installation
+
+1. Use a staging WordPress site with WooCommerce 8.2 or newer.
+2. Copy this complete directory to
+   `wp-content/plugins/tcg-store-platform`.
+3. Activate **TCG Store Platform**.
+4. Open **TCG Store > System Status**.
+5. Confirm schema version `8 / 8`, WooCommerce, Action Scheduler, and the next
+   daily UTC run.
+6. Authenticate as a manager/admin and request
+   `/wp-json/tcg-store/v1/health`.
+
+## Data Safety
+
+Deactivation retains all data. Uninstall also retains data unless an authorized
+administrator deliberately enables **Permanently delete platform tables and
+settings during uninstall**.
+
+HPOS is declared unverified until WooCommerce lifecycle integration tests pass
+in Phase 4. The plugin does not read or write WooCommerce order tables directly.

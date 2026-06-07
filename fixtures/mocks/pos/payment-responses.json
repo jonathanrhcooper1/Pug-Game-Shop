@@ -1,0 +1,77 @@
+{
+  "provider": "square-sandbox",
+  "api_key": "sandbox-placeholder-never-production",
+  "events": {
+    "sale_paid": {
+      "provider": "square-sandbox",
+      "event_id": "evt-square-sandbox-sale-001",
+      "type": "payment",
+      "mode": "scan_gate",
+      "external_order_id": "sandbox-order-001",
+      "payment": {
+        "status": "approved",
+        "transaction_id": "sandbox-pos-txn-001",
+        "amount": "125.00",
+        "currency": "USD",
+        "inventory_write_permitted": true
+      }
+    },
+    "refund_paid": {
+      "provider": "square-sandbox",
+      "event_id": "evt-square-sandbox-refund-001",
+      "type": "refund",
+      "mode": "scan_gate",
+      "external_order_id": "sandbox-order-001",
+      "payment": {
+        "status": "refunded",
+        "transaction_id": "sandbox-pos-refund-001",
+        "amount": "125.00",
+        "currency": "USD",
+        "inventory_write_permitted": false
+      }
+    }
+  },
+  "fee_configs": [
+    {
+      "provider": "square-sandbox",
+      "channel": "card_present",
+      "currency": "USD",
+      "percentage_bps": 260,
+      "fixed_minor_units": 10,
+      "platform_minor_units": 0,
+      "source_note": "sandbox fixture for comparison tests, not a live rate",
+      "last_verified_date": "2026-06-06"
+    },
+    {
+      "provider": "example-terminal",
+      "channel": "card_present",
+      "currency": "USD",
+      "percentage_bps": 240,
+      "fixed_minor_units": 20,
+      "platform_minor_units": 0,
+      "source_note": "sandbox fixture for comparison tests, not a live rate",
+      "last_verified_date": "2026-06-06"
+    }
+  ],
+  "responses": {
+    "approved_card_present": {
+      "status": "approved",
+      "transaction_id": "sandbox-pos-txn-001",
+      "amount": "125.00",
+      "currency": "USD",
+      "inventory_write_permitted": false
+    },
+    "refund_success": {
+      "status": "refunded",
+      "transaction_id": "sandbox-pos-refund-001",
+      "amount": "125.00",
+      "currency": "USD",
+      "inventory_write_permitted": false
+    },
+    "declined": {
+      "status": "declined",
+      "transaction_id": "sandbox-pos-txn-002",
+      "reason": "sandbox_decline"
+    }
+  }
+}

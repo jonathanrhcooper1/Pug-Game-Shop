@@ -1,0 +1,14 @@
+.DS_Store
+Thumbs.db
+node_modules/
+vendor/
+.wp-env/
+wp-content/
+playwright-report/
+test-results/
+*.log
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example

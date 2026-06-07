@@ -1,0 +1,120 @@
+# TopDeck Integration Deferred
+
+TopDeck is removed from the active build scope at the owner's request. This
+document is retained only as a historical research and rollback reference for
+legacy scaffold already present in the branch. Do not configure credentials,
+run sandbox contract tests, add staging requirements, or queue provider pushes
+unless the scope is explicitly reopened in a future reviewed phase.
+
+## Role
+
+TopDeck is an event/tournament provider, not the local event database. Local
+events retain a complete operational record so payment, customer support,
+waitlist, check-in, and offline handling remain available during provider
+outages.
+
+## Verified Public Capabilities
+
+Verified against official TopDeck Tournaments V2 documentation on June 6, 2026:
+
+- Read tournament details, info, standings, and rounds.
+- Read attendees for authorized tournament staff.
+- Register one or more players by email for authorized tournament admins.
+- Registration responses distinguish registered, pending invitations, already
+  registered, failed, and banned users.
+- Capacity conflicts return HTTP `409`; `overrideCap` exists but is manager-only
+  in this platform.
+- List tournaments owned by the API key through `/v2/me/tournaments` for
+  eligible subscribed accounts.
+- API authentication uses the `Authorization` header.
+- Visible TopDeck attribution and link are required.
+- Published limits vary by endpoint/document revision and must be read from
+  responses/configuration rather than hardcoded.
+
+No public tournament-creation endpoint was documented in the reviewed V2 API.
+No public webhook contract was found in that documentation.
+
+## Implemented Adapter Interface
+
+```text
+getMyTournaments()
+getTournamentInfo(tid)
+getAttendees(tid)
+registerPlayers(tid, emails, overrideCap)
+syncEventFromTopDeck(tid)
+importOwnedEvents()
+createEvent(eventData)
+```
+
+`TopDeckHttpProvider` implements the prompt-required methods above and also
+exposes WordPress-style snake_case wrappers for internal use. Tests run against
+an injected transport so no live TopDeck API key is needed.
+
+`EventTopDeckRegistrationAdapter` maps local event registration rows to
+`registerPlayers()` calls for future queue workers. It validates TopDeck TID
+and registration email, normalizes TopDeck/customer email fallback, passes
+manager-approved capacity overrides through explicitly, maps provider outcomes
+to local registration statuses, and marks transient provider failures for retry.
+The queued worker that reads `tcg_event_topdeck_sync_log`, persists updates, and
+performs live provider calls remains disabled until staging acceptance.
+
+Standings, rounds, webhook, and provider capability discovery methods remain
+future extension points once product flows need them.
+
+Default results:
+
+- `createEvent`: `not_supported`
+- provider webhooks: `not_supported`
+- `getAttendees`: `not_configured` or `not_supported` without staff permission
+- `registerPlayers`: `not_configured` or `not_supported` without admin permission
+- `getMyTournaments`: account-dependent
+
+## Linking And Import
+
+- Manual link accepts a validated TID and event URL.
+- Import stores the TopDeck TID, normalized event fields, raw response snapshot,
+  attribution state, and sync timestamp.
+- Local editable fields and provider-owned fields are identified separately.
+- Sync never overwrites local staff notes, refund policy, Woo product linkage,
+  or offline-reservation settings.
+
+## Registration
+
+For website reserve-and-push:
+
+1. Lock local event capacity and create local registration.
+2. In the current local route, accept paid entries only when pay-at-store is
+   enabled.
+3. In a later WooCommerce phase, create/link Woo order and wait for payment
+   completion.
+4. Enqueue a local pending TopDeck sync-log record after local commit when the
+   registration is free, website-push mode is configured, and a TopDeck TID is
+   present.
+5. A later worker phase calls TopDeck from the queue after sandbox/staging
+   acceptance.
+6. Map provider outcomes to explicit local statuses through the tested
+   registration adapter.
+7. If provider registration fails after payment, retain payment and set
+   `staff_review_required`; never silently cancel or refund.
+8. On `409`, move to waitlist when configured or create capacity conflict.
+9. Log masked request/response details and keep the raw provider response under
+   restricted retention.
+
+Attendee emails are never returned by public event endpoints.
+
+## Creation Extension Point
+
+`createEvent(eventData)` may be enabled only when:
+
+- A documented or private endpoint is supplied by TopDeck.
+- Authentication and account permissions are known.
+- Request/response fixtures are captured without secrets.
+- Sandbox or approved production tests pass.
+- Error, idempotency, and rollback behavior is documented.
+
+The adapter may then expose `supported`; no domain redesign is required.
+
+## Sources
+
+- https://topdeck.gg/docs/tournaments-v2
+- https://topdeck.gg/features/integrations

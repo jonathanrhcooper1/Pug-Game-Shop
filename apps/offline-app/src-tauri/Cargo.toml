@@ -1,0 +1,18 @@
+[package]
+name = "tcg-store-offline"
+version = "0.155.0"
+description = "Windows offline sync app for the TCG Store Platform."
+authors = ["Configured per deployment"]
+edition = "2021"
+license = "proprietary"
+
+[lib]
+name = "tcg_store_offline_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"

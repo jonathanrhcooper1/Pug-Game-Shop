@@ -1,0 +1,82 @@
+name: Pull Request Quality Gates
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - ".github/workflows/**"
+      - ".wp-env.json"
+      - "apps/**"
+      - "docs/**"
+      - "fixtures/**"
+      - "package.json"
+      - "packages/**"
+      - "playwright.config.ts"
+      - "scripts/**"
+      - "tests/**"
+      - "REVISION_LOG.md"
+
+permissions:
+  contents: read
+
+jobs:
+  local-php:
+    name: Local PHP checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/wordpress-plugin
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+
+      - name: Unit tests
+        run: php tests/run.php
+
+      - name: Bootstrap smoke
+        run: php tests/bootstrap-smoke.php
+
+      - name: Syntax lint
+        run: php tests/lint.php
+
+  project-policy:
+    name: Project policy checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate wp-env config JSON
+        run: node -e "JSON.parse(require('node:fs').readFileSync('.wp-env.json', 'utf8')); console.log('wp-env JSON is valid')"
+
+      - name: Required test scaffold
+        run: node scripts/wp-env/check-required-test-plan.mjs
+
+      - name: Production secret marker check
+        run: node scripts/wp-env/verify-no-production-secrets.mjs
+
+      - name: Offline app Windows package contract
+        run: npm run test:offline-app
+
+  wordpress-integration:
+    name: WordPress integration workflow present
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify integration workflow exists
+        run: test -f .github/workflows/wordpress-integration.yml
