@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Search Route Handler Factory
+
+### What Changed
+
+- Added `InventorySearchRouteHandler` to orchestrate inventory search request
+  parsing, query planning, repository-backed reads, and public/staff response
+  presentation for the planned `search_inventory_items` callback.
+- Added `InventorySearchRouteHandlerFactory` to compose the staged handler from
+  `$wpdb` only when route-connected reads are explicitly enabled and the active
+  WordPress table prefix is valid.
+- Added route readiness metadata for request parser, query planner, repository
+  adapter, database configuration, table-prefix checks, handler readiness,
+  default route registration deferral, read deferral, and write deferral.
+- Added fail-closed response envelopes for invalid search requests, invalid
+  query plans, repository rejection, database provider failures, and invalid
+  table prefixes.
+
+### Why
+
+The website search UI, staff/admin card tools, Square inventory projection, and
+offline app need a route-level read boundary that can be tested before live
+REST registration is allowed. This revision wires the existing parser,
+planner, repository, and presenter together in an opt-in handler while keeping
+default production routes gated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live route registration, inventory writes, WooCommerce projection,
+  Square provider writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Route handler tests for repository-backed public search responses, public
+  redaction, response metadata, and selected repository audit payloads.
+- Route handler tests proving invalid query payloads short-circuit before
+  repository reads.
+- Route handler tests for repository failure rejection.
+- Factory tests for default route-connected read deferral, explicitly enabled
+  repository-backed handler composition, staff-visible search responses,
+  database provider failures, and invalid table prefixes.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 697 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 473 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new API source
+  files: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged inventory search route handler,
+  handler factory, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because default route registration, inventory
+  writes, WooCommerce projection, Square network calls, and offline sync
+  mutations remain disabled.
+
 ## 2026-06-07 - Inventory Search Repository Adapter
 
 ### What Changed

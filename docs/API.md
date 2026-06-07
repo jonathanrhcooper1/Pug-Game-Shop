@@ -357,6 +357,13 @@ registered routes during staged enablement.
 | GET | `/inventory/search` | public or staff fields by capability |
 | GET | `/search/versions` | public |
 
+The `/inventory/search` route now has staged parser, planner, SQL-template,
+repository, and route-handler coverage. An explicitly enabled handler factory
+can compose repository-backed reads and return public-redacted or staff-visible
+search responses for staging tests. Default live route registration remains
+disabled until permission callbacks, rate limits, target database performance,
+and staging smoke tests are accepted.
+
 ### Pricing And Overrides
 
 | Method | Route | Permission |

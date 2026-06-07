@@ -41,6 +41,10 @@ staging database acceptance remains pending.
   `SELECT` and `COUNT` templates through injected `$wpdb`, validates the active
   table prefix, normalizes row envelopes, rejects database/malformed-row
   failures, and keeps live route registration disabled.
+- Staged inventory search route handler and factory for explicitly enabled
+  `/inventory/search` reads, composing parser, planner, repository, and
+  public/staff response presentation while default route registration remains
+  gated.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct

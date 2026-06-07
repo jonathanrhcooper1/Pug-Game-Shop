@@ -564,6 +564,11 @@
   adapter for prepared `$wpdb` reads, selected row normalization, count
   loading, invalid-plan short-circuiting, table-prefix mismatch rejection,
   database failure handling, malformed-row rejection, and audit metadata.
+- Local unit coverage now includes staged inventory search route handler and
+  factory composition for public redaction, staff fields, invalid query
+  short-circuiting, repository failure rejection, default read deferral,
+  explicitly enabled repository-backed reads, provider failures, and table
+  prefix issues.
 
 ## Required Test Backlog
 
