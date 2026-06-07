@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.102.0
+Stable tag: 0.103.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -219,6 +219,8 @@ cursor advancement, tombstone reads, route registration, and route-connected
 writes deferred.
 Phase 7.68 adds offline pull cursor advancement planning while keeping cursor
 writes, route registration, and route-connected writes deferred.
+Phase 7.69 adds offline pull cursor SQL planning while keeping cursor upsert
+execution, route registration, and route-connected writes deferred.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -236,6 +238,14 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.103.0 =
+
+* Added offline pull cursor SQL planning for prepared per-device cursor upsert
+  templates.
+* Added readiness metadata and smoke coverage for staged cursor SQL planning
+  while keeping execution deferred.
+* Kept cursor upserts, route registration, and route-connected writes disabled.
 
 = 0.102.0 =
 

@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.103.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullCursorAdvanceQueryBuilder` and
+  `OfflinePullCursorAdvanceQueryBuildPlan` for converting accepted cursor
+  advancement rows into prepared upsert templates.
+- SQL-build validation for cursor table names, device IDs, domains, nullable
+  cursors, UTC timestamps, row counts, and row-version metadata.
+- Health/admin and WordPress smoke readiness metadata for staged cursor SQL
+  planning, with cursor execution still explicitly deferred.
+- Unit coverage for prepared cursor upsert templates, null cursors, empty valid
+  plans, invalid source plans, tampered cursor rows, and invalid table names.
+
+### Not Added
+
+- No cursor database writes are enabled. Cursor upserts, default route-connected
+  reads, tombstone repository reads, queue replay, route registration, and
+  route-connected database mutation remain disabled.
+
 ## [0.102.0] - 2026-06-06
 
 ### Added

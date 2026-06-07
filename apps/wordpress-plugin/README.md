@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.102.0`
+Version: `0.103.0`
 
 ## Implemented Features
 
@@ -170,6 +170,8 @@ Version: `0.102.0`
 - Offline pull cursor advancement planning for provider change sets, complete
   page checks, per-device cursor row payloads, and write-deferred readiness
   metadata.
+- Offline pull cursor SQL planning for prepared per-device cursor upsert
+  templates, with execution and route-connected writes still deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

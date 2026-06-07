@@ -60,6 +60,9 @@ registration, and writes remain deferred.
 The pull cursor advancement planner now validates complete provider change
 sets into per-device cursor row payloads for future checkpoint upserts, while
 cursor writes remain deferred.
+The pull cursor SQL planner now converts those accepted cursor rows into
+prepared upsert templates for staging review, while cursor execution remains
+deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

@@ -58,6 +58,8 @@ Before major database migrations:
   readiness while default route-connected reads and writes remain deferred.
 - System status and authenticated health report staged pull cursor planner
   readiness while cursor writes remain deferred.
+- System status and authenticated health report staged pull cursor SQL planning
+  readiness while cursor upsert execution remains deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

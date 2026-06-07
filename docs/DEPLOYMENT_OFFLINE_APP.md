@@ -425,6 +425,10 @@ Version `0.102.0` adds pull cursor advancement planning. Staging can inspect
 future per-device cursor row payloads after complete provider pages, while
 cursor upserts, route registration, and route-connected writes remain disabled.
 
+Version `0.103.0` adds pull cursor SQL planning. Staging can inspect prepared
+cursor upsert templates and argument counts before cursor execution, route
+registration, or route-connected writes are enabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -228,6 +228,9 @@ Version `0.102.0` adds pull cursor advancement planning. Complete provider
 pages can be converted into per-device `tcg_offline_pull_cursors` row payloads
 after trusted context validation, while cursor writes and route-connected
 writes remain deferred.
+Version `0.103.0` adds pull cursor SQL planning. Those accepted cursor row
+payloads can now be transformed into prepared upsert templates, while cursor
+execution, route registration, and route-connected writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

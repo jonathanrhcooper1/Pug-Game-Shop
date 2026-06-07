@@ -170,6 +170,10 @@
   complete provider pages, `has_more` skip behavior, nullable cursors, invalid
   context/time/cursor rejection, malformed change sets, missing domains, and
   write-deferred cursor row payloads.
+- Local unit coverage now includes offline pull cursor SQL planning for
+  prepared upsert templates, null cursor literals, empty valid plans, invalid
+  source plans, tampered cursor rows, invalid table names, and deferred
+  execution metadata.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

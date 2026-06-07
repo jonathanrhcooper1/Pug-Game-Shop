@@ -12,6 +12,7 @@ use TCGStorePlatform\Offline\OfflinePullChangeQueryPlanner;
 use TCGStorePlatform\Offline\OfflinePullChangeRepository;
 use TCGStorePlatform\Offline\OfflinePullChangeSetProvider;
 use TCGStorePlatform\Offline\OfflinePullCursorAdvancePlanner;
+use TCGStorePlatform\Offline\OfflinePullCursorAdvanceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePullDeviceContextPlanner;
 
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
@@ -66,6 +67,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& $pull_context_ready
 			&& method_exists( OfflinePullRouteChangeSetProvider::class, '__invoke' );
 		$pull_cursor_planner_ready = method_exists( OfflinePullCursorAdvancePlanner::class, 'plan' );
+		$pull_cursor_sql_ready     = $pull_cursor_planner_ready
+			&& method_exists( OfflinePullCursorAdvanceQueryBuilder::class, 'build' );
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -88,6 +91,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_set_provider_ready'             => $pull_provider_ready,
 			'pull_route_change_set_provider_ready'       => $pull_route_provider_ready,
 			'pull_cursor_advance_planner_ready'          => $pull_cursor_planner_ready,
+			'pull_cursor_advance_sql_ready'              => $pull_cursor_sql_ready,
 			'pull_change_query_domains'                  => $pull_query_domains,
 			'pull_change_query_domain_count'             => count( $pull_query_domains ),
 			'pull_change_query_context_deferred'         => true,
@@ -97,6 +101,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_query_execution_deferred'       => true,
 			'pull_change_query_cursor_advance_deferred'  => true,
 			'pull_cursor_advance_write_deferred'         => true,
+			'pull_cursor_advance_execution_deferred'     => true,
 			'pull_change_query_tombstone_reads_deferred' => true,
 			'pull_change_repository_route_deferred'      => true,
 			'pull_change_set_provider_route_deferred'    => true,

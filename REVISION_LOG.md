@@ -3,6 +3,99 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Cursor Advance SQL Planning
+
+### What Changed
+
+- Added `OfflinePullCursorAdvanceQueryBuilder` to convert accepted cursor
+  advancement rows into prepared `tcg_offline_pull_cursors` upsert templates.
+- Added `OfflinePullCursorAdvanceQueryBuildPlan` to carry planned cursor SQL,
+  prepared arguments, source audit metadata, and deferred execution flags.
+- Validated cursor table names, device IDs, device public IDs, domains,
+  nullable cursors, UTC timestamps, row counts, and row-version metadata before
+  emitting any SQL plan.
+- Exposed staged pull cursor SQL readiness in registered-device sync handler
+  health and admin summaries while keeping cursor execution deferred.
+- Added WordPress smoke assertions for cursor SQL readiness and cursor SQL
+  execution deferral metadata.
+- Added unit coverage for prepared cursor upsert templates, null cursor
+  literals, empty valid plans, invalid source plans, tampered cursor rows, and
+  invalid table names.
+- Updated project, plugin, and offline app package versions to `0.103.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous cursor advancement revision produced safe, plan-only cursor rows.
+This revision adds the next staging-gated boundary: prepared SQL templates that
+can be inspected and tested before a future repository is allowed to execute
+cursor upserts. Cursor write execution, route registration, default
+route-connected reads, tombstone reads, queue replay, and route-connected writes
+remain disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullCursorAdvanceQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullCursorAdvanceQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullCursorAdvanceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteChangeSetProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Cursor SQL builder coverage for prepared upsert templates, nullable cursor
+  handling, empty plans, invalid source plans, tampered rows, invalid table
+  names, and deferred execution metadata.
+- Sync handler readiness and WordPress smoke coverage for cursor SQL planning
+  readiness and cursor execution deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove pull cursor SQL planning and its health/admin
+  readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Cursor writes, live offline routes, default route-connected reads, tombstone
+  reads, queue replay, route registration, and route-connected database writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - Pull Cursor Advancement Planning
 
 ### What Changed
