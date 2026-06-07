@@ -134,6 +134,11 @@ with the existing pull response contract. Valid pull requests now receive
 deferred-state metadata for `query_deferred`, `cursor_advance_deferred`,
 `write_deferred`, and `route_still_gated`. Live pull queries, cursor
 advancement, route registration, and route-connected writes remain disabled.
+Version `0.95.0` adds plan-only pull change-query contracts for branding,
+inventory, customer credit, events, and conflicts domains. The planner carries
+safe table/column allowlists, request cursors, page sizes, and device-scoped
+conflict filters for future repositories, but the route still does not execute
+queries, read tombstones, advance cursors, or register live endpoints.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -400,7 +405,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.94.0",
+  "app_version": "0.95.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

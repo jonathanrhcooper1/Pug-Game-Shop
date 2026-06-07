@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Pull Change-Query Planning
+
+### What Changed
+
+- Added `OfflinePullChangeQueryPlanner` to map accepted pull requests into
+  plan-only read contracts for branding, inventory, customer credit, events,
+  and conflicts domains.
+- Added `OfflinePullChangeQueryPlan` for safe audit/readiness metadata without
+  exposing SQL execution or mutating cursors.
+- Added unit coverage for table/column/payload allowlists, cursor and page-size
+  carry-forward, device-scoped conflict filters, invalid table prefixes,
+  invalid offline device IDs, and unsupported domains.
+- Kept the staged pull route handler on empty default responses unless a
+  future change-set provider is explicitly injected.
+- Updated project, plugin, and offline app package versions to `0.95.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, roadmap, and plugin docs.
+
+### Why
+
+The pull route now has a stable response envelope, but future repositories need
+safe, reviewable read contracts before live queries are allowed. This revision
+defines those domain boundaries and device filters without executing queries,
+reading tombstones, advancing cursors, or registering routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeQueryPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeQueryPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullChangeQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Pull change-query planner coverage for branding, inventory, customer credit,
+  events, and conflict domain read contracts.
+- Device-scoped conflict pull coverage for offline device ID and public device
+  ID filters.
+- Fail-closed coverage for invalid table prefixes, invalid offline device IDs,
+  and unsupported domains.
+
+### Rollback Notes
+
+- Revert this revision to remove the plan-only pull change-query contracts.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pull query execution, tombstone reads, cursor
+  advancement, queue replay, and route-connected database writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Staged Pull Response Handler
 
 ### What Changed

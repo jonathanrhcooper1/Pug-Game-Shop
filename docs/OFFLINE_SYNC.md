@@ -192,6 +192,11 @@ to the real pull response contract. It returns presenter-shaped empty domain
 responses by default, supports an injected change-set provider for future
 staging adapters, and still reports live query, cursor advancement,
 route-registration, and write deferral.
+Version `0.95.0` adds offline pull change-query planning for the same cached
+domains. The planner records safe source tables, selected columns, payload
+fields, request cursors, page-size limits, and device-scoped conflict filters,
+while query execution, tombstone reads, cursor advancement, and live route
+registration remain disabled.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

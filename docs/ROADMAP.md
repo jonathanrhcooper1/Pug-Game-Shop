@@ -96,6 +96,7 @@ permission-resolution session update application plus planned permission
 callback adapter plus settings-backed staged pairing handler assembly and
 registered-device resolver readiness plus staged sync route handler readiness
 plus staged pull response handler readiness
+plus pull change-query planning
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

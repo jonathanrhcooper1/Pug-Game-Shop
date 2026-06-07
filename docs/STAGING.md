@@ -56,6 +56,8 @@ Before major database migrations:
   registered, and offline pull/push routes still unregistered.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
+- Pull change-query planning exposes only safe table/column contracts and
+  device-scoped conflict filters while query execution remains disabled.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

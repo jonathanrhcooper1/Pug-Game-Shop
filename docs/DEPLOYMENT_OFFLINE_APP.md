@@ -385,6 +385,11 @@ Version `0.94.0` adds a staged pull response handler for the
 Windows app will consume, but live pull queries, tombstone reads, cursor
 advancement, route registration, and route-connected writes remain disabled.
 
+Version `0.95.0` adds plan-only pull change-query contracts. Staging can review
+domain source tables, selected columns, payload fields, request cursor
+carry-forward, and device-scoped conflict filters before any live query
+execution or cursor advancement is enabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

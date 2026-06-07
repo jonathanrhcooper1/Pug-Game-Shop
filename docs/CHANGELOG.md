@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.95.0] - 2026-06-06
+
+### Added
+
+- Plan-only offline pull change-query contracts for branding, inventory,
+  customer credit, events, and conflicts cache domains.
+- Domain table/column allowlists, payload-field allowlists, cursor carry-forward
+  metadata, page-size propagation, and device-scoped conflict filters for future
+  pull repositories.
+- Unit coverage proving domain contracts are planned without execution,
+  conflict pulls are scoped to the registered device, and invalid table/device
+  inputs or unsupported domains fail closed.
+
+### Not Added
+
+- No live offline route is enabled. Pull query execution, tombstone repository
+  reads, cursor advancement, queue replay, route registration, and
+  route-connected database mutation remain disabled.
+
 ## [0.94.0] - 2026-06-06
 
 ### Added

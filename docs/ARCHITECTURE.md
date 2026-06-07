@@ -209,7 +209,10 @@ cursors, change rows, tombstones, server timestamps, and `has_more` pagination
 flags without changing the offline app contract. The staged pull route handler
 now returns that response contract with empty domain change sets by default,
 and any future change-set provider remains injected behind the same boundary
-while live queries and cursor writes stay disabled. Device pairing request
+while live queries and cursor writes stay disabled. Pull change-query planning
+now defines plan-only table, column, payload-field, cursor, and device-scoped
+conflict contracts for those domains before any repository execution is wired.
+Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location
 IDs, unsupported platforms, and schema mismatches before any token or device row

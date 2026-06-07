@@ -51,6 +51,8 @@
 - Version `0.94.0` adds a staged offline pull response handler and reporting.
   No WordPress schema, SQLite schema, migration order, or rollback target
   changes.
+- Version `0.95.0` adds plan-only offline pull change-query contracts. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

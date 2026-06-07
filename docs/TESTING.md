@@ -141,6 +141,10 @@
   proving valid requests return the presenter-shaped response contract,
   injected change-set providers are passed through without cursor advancement,
   invalid payloads skip providers, and provider failures fail closed.
+- Local unit coverage now includes offline pull change-query planning for
+  branding, inventory, customer credit, events, and conflicts domain contracts,
+  including safe table/column allowlists, device-scoped conflict filters,
+  request cursor carry-forward, and fail-closed invalid inputs.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

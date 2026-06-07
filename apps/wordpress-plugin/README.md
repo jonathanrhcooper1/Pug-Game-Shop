@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.94.0`
+Version: `0.95.0`
 
 ## Implemented Features
 
@@ -138,11 +138,14 @@ Version: `0.94.0`
   callbacks from `$wpdb`, repository, and session update dependencies without
   enabling live routes.
 - Staged registered-device sync route handler readiness for offline pull/push
-  parser-only controller callbacks, keeping route registration and
-  route-connected writes deferred.
+  controller callbacks, keeping route registration and route-connected writes
+  deferred.
 - Staged offline pull route handler responses for registered-device pull
   requests, returning presenter-shaped empty domain responses while live
   change queries, cursor advancement, and route registration stay deferred.
+- Offline pull change-query planning for branding, inventory, customer credit,
+  events, and conflicts cache domains, with table/column contracts and
+  device-scoped conflict filters while execution stays deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

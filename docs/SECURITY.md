@@ -126,6 +126,10 @@ The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor
 writes, queue replay, last-seen writes, and route-connected database mutation.
+The pull change-query planner exposes only table names, allowlisted columns,
+payload fields, request cursors, and device-scoped conflict filters for future
+repositories. It rejects invalid table prefixes and unsupported domains before
+any SQL execution path exists.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in
