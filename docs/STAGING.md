@@ -113,6 +113,9 @@ Before major database migrations:
 - Explicitly enabled staged push route responses expose canonical mutation
   planning counts and skipped replay IDs while canonical entity writes remain
   deferred.
+- Staged canonical mutation SQL planning reports readiness and produces
+  inspection-only guard templates while repository execution and canonical
+  writes remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

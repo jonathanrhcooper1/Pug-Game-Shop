@@ -272,6 +272,12 @@ reasons. Replayed duplicate operations are skipped with `operation_replayed`
 before future canonical writes can be considered. Canonical entity writes,
 TopDeck workers, queue replay workers, default route execution, and live route
 registration remain disabled.
+Version `0.122.0` adds staged canonical mutation SQL-template planning for
+those descriptors. The planner produces a guarded inventory status update
+template and event/customer-credit guard lookup templates for future
+repositories, while canonical write execution, repository execution, TopDeck
+workers, queue replay workers, default route execution, and live route
+registration remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains

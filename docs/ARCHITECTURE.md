@@ -139,6 +139,11 @@ The staged push route now invokes that planner after persistence planning so
 replayed duplicate operations are skipped before canonical write planning.
 Response payloads, route meta, and audits expose counts and skipped IDs for
 staging review without executing entity mutations.
+Canonical mutation SQL-template planning validates those descriptors and
+prepares inspection-only guards for future repositories. Inventory receives a
+row-version and available-status guarded update template; event registration
+and customer-credit redemption receive lookup guards until repository hydration
+can safely provide internal IDs and write rows.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

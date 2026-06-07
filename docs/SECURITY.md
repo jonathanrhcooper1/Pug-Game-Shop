@@ -237,6 +237,10 @@ Route-connected staged push planning runs canonical mutation planning only
 after persistence planning identifies replayed operations. Those replayed IDs
 are skipped with `operation_replayed` so duplicate pushes cannot plan duplicate
 canonical writes, and canonical entity mutations remain disabled.
+Canonical mutation SQL-template planning remains inspection-only. It validates
+table contracts, identifiers, row versions, deferred flags, and guard metadata
+before producing templates, and it keeps repository execution and canonical
+entity writes disabled.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.122.0] - 2026-06-06
+
+### Added
+
+- Staged canonical mutation SQL-template planning for accepted offline push
+  mutation descriptors.
+- Guarded inventory status update templates with row-version and
+  available-status checks before future canonical writes.
+- Event registration and customer-credit guard lookup templates while
+  registration, ledger, and TopDeck writes remain deferred.
+- Health, admin System Status, WordPress smoke, and unit coverage for staged
+  canonical mutation SQL planner readiness.
+
+### Not Added
+
+- Canonical mutation repository execution, event registration writes,
+  customer-credit ledger writes, TopDeck workers, queue replay workers, default
+  route execution, live route registration, and production route-connected
+  writes remain deferred.
+
 ## [0.121.0] - 2026-06-06
 
 ### Added

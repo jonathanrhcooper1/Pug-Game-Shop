@@ -130,6 +130,9 @@
 - Local unit coverage now includes route-connected canonical mutation planning
   metadata for staged push responses, including skipped replayed operations so
   duplicate pushes cannot plan duplicate canonical writes.
+- Local unit and WordPress smoke coverage now include canonical mutation
+  SQL-template planning, guarded inventory update templates, event/customer
+  credit lookup guards, tampered row rejection, and readiness metadata.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

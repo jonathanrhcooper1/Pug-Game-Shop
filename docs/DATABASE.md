@@ -127,6 +127,9 @@
 - Version `0.121.0` connects those descriptors to staged push route processing
   metadata and skips replayed operations before canonical write planning. No
   WordPress schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.122.0` adds staged canonical mutation SQL-template planning for
+  those descriptors. No WordPress schema, SQLite schema, migration order,
+  query execution, or rollback target changes.
 
 ## Relationship Overview
 

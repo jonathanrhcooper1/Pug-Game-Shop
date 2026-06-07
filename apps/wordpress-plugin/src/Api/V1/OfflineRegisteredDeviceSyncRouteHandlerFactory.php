@@ -16,6 +16,7 @@ use TCGStorePlatform\Offline\OfflinePullCursorAdvanceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePullCursorAdvanceRepository;
 use TCGStorePlatform\Offline\OfflinePullDeviceContextPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryPlanner;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsRepository;
@@ -118,6 +119,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		$push_persistence_repo_ready    = $push_persistence_sql_ready
 			&& method_exists( OfflinePushPersistenceRepository::class, 'persist' );
 		$push_canonical_mutation_planner_ready = method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' );
+		$push_canonical_mutation_sql_ready     = $push_canonical_mutation_planner_ready
+			&& method_exists( OfflinePushCanonicalMutationQueryBuilder::class, 'build' );
 		$pull_handler_factory           = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
 		$pull_handler_dependencies      = $pull_handler_factory->readiness_summary();
 		$push_handler_factory           = $this->push_handler_factory ?? new OfflinePushRouteHandlerFactory();
@@ -176,7 +179,11 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_persistence_sql_template_ready'        => $push_persistence_sql_ready,
 			'push_persistence_repository_ready'          => $push_persistence_repo_ready,
 			'push_canonical_mutation_planner_ready'      => $push_canonical_mutation_planner_ready,
+			'push_canonical_mutation_sql_ready'          => $push_canonical_mutation_sql_ready,
+			'push_canonical_mutation_sql_template_ready' => $push_canonical_mutation_sql_ready,
 			'push_canonical_mutation_planning_deferred'  => true,
+			'push_canonical_mutation_sql_execution_deferred' => true,
+			'push_canonical_mutation_repository_deferred' => true,
 			'push_snapshot_query_planner_ready'          => $push_snapshot_planner_ready,
 			'push_snapshot_query_sql_ready'              => $push_snapshot_sql_ready,
 			'push_snapshot_query_sql_template_ready'     => $push_snapshot_sql_ready,

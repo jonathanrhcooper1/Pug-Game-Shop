@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Canonical Mutation SQL Planning
+
+### What Changed
+
+- Added `OfflinePushCanonicalMutationQueryBuilder` and
+  `OfflinePushCanonicalMutationQueryBuildPlan`.
+- Planned inspection-only SQL templates for accepted canonical mutation
+  descriptors produced by offline push processing.
+- Added guarded inventory update templates that require the expected row
+  version and `available` status before a future canonical reservation write.
+- Added event registration and customer-credit lookup guard templates while
+  registration, ledger, TopDeck, and repository writes remain deferred.
+- Added health/admin readiness metadata for staged canonical mutation SQL
+  planning.
+- Added unit and WordPress smoke coverage for canonical SQL planning,
+  tampered-row rejection, empty valid plans, and readiness metadata.
+- Updated project, plugin, and offline app package versions to `0.122.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+Canonical mutation planning is now visible in staged route responses, but
+turning those descriptors into writes still needs a reviewable handoff. This
+revision adds the next non-mutating layer: validated SQL templates and guard
+metadata that staging can inspect before any repository executes inventory,
+event, customer-credit, TopDeck, or replay writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Canonical mutation SQL builder test for guarded inventory update templates,
+  event lookup guards, and customer-credit lookup guards.
+- Canonical mutation SQL builder test for empty valid plans without queries.
+- Tampered-row and table-prefix rejection coverage for canonical SQL planning.
+- Readiness and smoke assertions for staged canonical mutation SQL planning.
+
+### Rollback Notes
+
+- Revert this revision to remove staged canonical mutation SQL-template
+  planning and its readiness metadata.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Canonical repository execution, canonical entity writes, queue replay
+  workers, TopDeck workers, default route execution, live route registration,
+  and production route-connected writes remain disabled before and after
+  rollback.
+
 ## 2026-06-06 - Route-Connected Offline Push Canonical Mutation Planning
 
 ### What Changed

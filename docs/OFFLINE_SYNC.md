@@ -324,6 +324,11 @@ processing. Replayed duplicate operation rows are skipped before future
 canonical write planning, and response, route meta, and audit payloads expose
 canonical mutation counts, operation IDs, skipped IDs, and skip reasons while
 canonical writes remain deferred.
+Version `0.122.0` adds staged canonical mutation SQL-template planning for
+accepted mutation descriptors. Guarded inventory update templates require the
+expected row version and available status, while event registration and
+customer-credit redemption templates stay as lookup guards until later
+repositories can hydrate internal IDs and write safely.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -414,6 +419,11 @@ Route-connected staged push canonical mutation planning now runs after
 persistence planning. Fresh accepted operations produce inspection-only
 mutation descriptors, while replayed duplicate operation rows are skipped with
 `operation_replayed` before future canonical write planning.
+Canonical mutation SQL-template planning can now validate those descriptors and
+produce inspection-only guard templates. Inventory receives a guarded status
+update template, while event and customer-credit mutations receive lookup guard
+templates and keep registration, ledger, TopDeck, and repository execution
+deferred.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

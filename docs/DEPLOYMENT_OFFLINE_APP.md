@@ -529,6 +529,11 @@ staging responses/audits. Replayed duplicate operations are skipped before
 future canonical write planning. Canonical entity writes, TopDeck workers,
 queue replay workers, production route registration, and default route
 execution remain disabled.
+Version `0.122.0` adds staged canonical mutation SQL-template planning for
+accepted mutation descriptors. Staging can inspect guarded inventory update
+templates and event/customer-credit lookup guards, but canonical write
+execution, repository execution, TopDeck workers, queue replay workers,
+production route registration, and default route execution remain disabled.
 
 ## Hardware Gate
 
