@@ -123,6 +123,10 @@
   replayed results.
 - Local unit coverage now includes staged offline push replay response
   hydration from stored queue-row details and resolved timestamps.
+- Local unit and WordPress smoke coverage now include staged canonical mutation
+  planning for accepted inventory, event, and credit push operations, skipped
+  conflict/rejected operations, invalid accepted-result guards, and readiness
+  metadata.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

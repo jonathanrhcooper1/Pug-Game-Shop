@@ -107,6 +107,9 @@ Before major database migrations:
 - Staged duplicate-push response results hydrate status, code, details, and
   resolved timestamps from existing queue rows while queue replay workers and
   canonical mutations remain deferred.
+- System status and authenticated health report staged canonical mutation
+  planner readiness while inventory, event, TopDeck, credit-ledger, queue
+  replay, and route-connected writes remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

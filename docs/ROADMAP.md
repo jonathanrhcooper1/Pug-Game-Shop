@@ -121,6 +121,7 @@ plus push existing operation-row route provider composition
 plus push replay response metadata
 plus push per-operation persistence annotations
 plus push replay response hydration
+plus push canonical mutation planning
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

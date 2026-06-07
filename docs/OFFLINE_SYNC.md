@@ -313,6 +313,12 @@ queue rows. Duplicate-push responses now reuse the stored status, result code,
 result details, and resolved timestamp, and report whether the response came
 from the existing queue row or the fresh resolution plan. Queue replay workers
 and canonical mutations remain deferred.
+Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
+inventory reservation, event registration, and customer credit redemption push
+operations. Conflict and rejected operations are skipped with explicit
+metadata, and health/admin readiness reports the planner as staged ready while
+canonical entity writes, TopDeck workers, queue replay workers, production
+route registration, and default route execution remain disabled.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

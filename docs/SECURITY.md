@@ -201,6 +201,10 @@ Replay response hydration uses only stored result status, result code, result
 details, and resolved timestamp from normalized queue rows. It does not expose
 raw operation payload JSON, SQL templates, prepared arguments, bearer tokens,
 payment data, customer credit details, or raw database row contents.
+Canonical mutation planning exposes only future write descriptors for accepted
+operations and skip metadata for conflict/rejected operations. It does not
+execute inventory, event, TopDeck, or credit-ledger writes, and it keeps route
+execution, queue replay, and production route registration disabled.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

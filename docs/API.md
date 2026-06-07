@@ -259,6 +259,12 @@ use `response_source = resolution_plan`. The response and audit payloads also
 include hydrated replay counts and operation IDs. Queue replay workers,
 canonical mutations, default route execution, and live route registration
 remain disabled.
+Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
+offline push inventory reservations, event registrations, and customer credit
+redemptions. Conflict and rejected push operations are skipped with explicit
+skip metadata. Health and admin readiness now report the planner as staged
+ready, while canonical entity writes, TopDeck workers, queue replay workers,
+default route execution, and live route registration remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -525,7 +531,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.119.0",
+  "app_version": "0.120.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

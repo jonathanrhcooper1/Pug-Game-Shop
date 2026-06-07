@@ -121,6 +121,9 @@
 - Version `0.119.0` hydrates staged duplicate-push responses from existing
   queue rows already read for idempotency checks. No WordPress schema, SQLite
   schema, migration order, or rollback target changes.
+- Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
+  offline push inventory, event, and credit operations. No WordPress schema,
+  SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.120.0] - 2026-06-06
+
+### Added
+
+- Plan-only canonical mutation planner for accepted offline push operations.
+- Deferred mutation descriptors for inventory reservations, event
+  registrations, and customer credit redemptions.
+- Skip metadata for conflict and rejected push operations.
+- Health, admin System Status, WordPress smoke, and unit coverage for staged
+  canonical mutation planner readiness.
+
+### Not Added
+
+- Canonical entity writes, queue replay workers, TopDeck workers, default route
+  execution, live route registration, and production route-connected writes
+  remain deferred.
+
 ## [0.119.0] - 2026-06-06
 
 ### Added

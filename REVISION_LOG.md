@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Canonical Mutation Planning
+
+### What Changed
+
+- Added `OfflinePushCanonicalMutationPlanner` and
+  `OfflinePushCanonicalMutationPlan`.
+- Planned deferred canonical mutation descriptors for accepted offline push
+  inventory reservations, event registrations, and customer credit redemptions.
+- Added skipped-operation metadata for conflict and rejected push outcomes.
+- Added readiness metadata for staged canonical mutation planning in health and
+  admin System Status.
+- Added unit coverage for accepted mutations, skipped operations, mismatched
+  payload/resolution guards, and malformed accepted-result guards.
+- Updated project, plugin, and offline app package versions to `0.120.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The staged push route can now persist operation results and replay duplicate
+responses, but canonical inventory, event, and credit writes are still disabled.
+This revision defines the next safe handoff: a plan-only mutation shape that
+staging can inspect before any live entity writes, TopDeck workers, or queue
+replay workers are enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Canonical mutation planner test for accepted inventory, event, and credit
+  push operations.
+- Canonical mutation planner test for skipped conflict and rejected outcomes.
+- Guard tests for mismatched payload/resolution metadata and malformed accepted
+  resolution details.
+- Readiness assertions for health/admin/smoke reporting of the staged planner.
+
+### Rollback Notes
+
+- Revert this revision to remove plan-only canonical mutation descriptors and
+  their readiness metadata.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Canonical entity writes, queue replay workers, TopDeck workers, default route
+  execution, live route registration, and production route-connected writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Replay Response Hydration
 
 ### What Changed

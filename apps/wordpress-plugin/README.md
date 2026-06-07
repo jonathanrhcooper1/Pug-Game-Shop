@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.119.0`
+Version: `0.120.0`
 
 ## Implemented Features
 
@@ -111,6 +111,9 @@ Version: `0.119.0`
 - Offline push replay response hydration for staged duplicate pushes, returning
   stored queue-row result details and resolved timestamps without enabling
   queue replay workers.
+- Offline push canonical mutation planning for accepted inventory, event, and
+  customer credit operations, producing deferred write descriptors without
+  enabling canonical entity mutations or queue replay workers.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

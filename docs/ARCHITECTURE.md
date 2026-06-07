@@ -129,6 +129,12 @@ Replay response hydration now feeds the stored queue-row status, code, details,
 and resolved timestamp back into staged duplicate-push responses. This preserves
 idempotent response semantics while keeping queue replay workers, route
 registration, and canonical mutations disabled.
+Canonical mutation planning now converts accepted offline push results into
+future inventory reservation, event registration, and customer credit ledger
+mutation descriptors. The descriptors carry target statuses, row versions,
+TopDeck queue intent, ledger amounts, and skip metadata for conflict/rejected
+operations, but they are inspection-only until staging explicitly enables
+canonical writes.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

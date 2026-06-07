@@ -518,6 +518,11 @@ queue rows. Staging responses can now confirm duplicate pushes return the
 stored result details and resolved timestamp; queue replay workers, canonical
 mutations, production route registration, and default route execution remain
 disabled.
+Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
+offline push inventory, event, and customer credit operations. Staging can
+inspect the future mutation shape, skipped operations, and readiness metadata,
+but canonical entity writes, TopDeck workers, queue replay workers, production
+route registration, and default route execution remain disabled.
 
 ## Hardware Gate
 
