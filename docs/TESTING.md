@@ -557,6 +557,9 @@
 - Local unit coverage now includes ScryDex persistence planning for
   deterministic reference-card inserts, changed-row updates, unchanged-row
   detection, price observations, and failed page plan guards.
+- Local unit coverage now includes inventory search SQL-template planning for
+  public/staff/hidden card listings, prepared `SELECT` and `COUNT` templates,
+  scan-column filters, pagination arguments, and tamper rejection.
 
 ## Required Test Backlog
 

@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Search SQL Template Planning
+
+### What Changed
+
+- Added `InventorySearchQueryBuilder` and
+  `InventorySearchQueryBuildPlan` to convert safe inventory search plans into
+  deferred prepared SQL templates.
+- Built allowlisted `SELECT` and `COUNT` templates for public, staff, hidden,
+  and all inventory views, including text search, game filters, status filters,
+  location filters, visibility filters, stable sort ordering, limit, and
+  offset arguments.
+- Added tamper rejection for invalid table names, unsupported selected columns,
+  unsafe order clauses, unsupported where keys, invalid filter shapes, unsafe
+  limits, and negative offsets.
+
+### Why
+
+The website, staff tools, Square inventory projection work, and offline sync
+need repository-ready inventory reads, but live route-connected reads should
+remain gated until staging can verify permissions, performance, and database
+behavior. This moves the card search layer one step closer to real reads while
+keeping execution deferred.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryBuilderTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Inventory repository execution and live route-connected reads remain
+  deferred.
+
+### Tests Added
+
+- Public search SQL-template tests for text/game/status/visibility filters,
+  price-desc ordering, `SELECT`/`COUNT` templates, and prepare arguments.
+- Staff search SQL-template tests for barcode/SKU/cert-number scan columns,
+  multi-status filters, location filtering, and update-desc ordering.
+- Hidden inventory SQL-template tests for visibility-only count/select queries.
+- Tamper-rejection tests for unsafe tables, columns, sort clauses, where
+  contracts, limits, and offsets.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 687 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 467 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory search SQL-template planning and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no live route registration or database
+  execution was enabled.
+
 ## 2026-06-07 - Square Inventory Projection Planning
 
 ### What Changed

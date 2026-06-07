@@ -20,6 +20,10 @@ All notable changes follow Semantic Versioning.
 - Inventory search response presentation with public redaction and staff-only
   operational fields for barcode, SKU, cost, location, visibility, and row
   version details.
+- Inventory search SQL-template planning for public/staff/hidden card listings,
+  including allowlisted selected columns, prepared `SELECT` and `COUNT`
+  templates, stable ordering, pagination arguments, tamper rejection, and
+  deferred repository execution metadata.
 - Square inventory projection planning for exact serialized cards, including
   Square catalog variation payloads, physical-count payloads, scan-identity
   validation, zero-count updates for unavailable mapped cards, and deferred

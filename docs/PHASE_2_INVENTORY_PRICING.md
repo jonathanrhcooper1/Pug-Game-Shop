@@ -34,6 +34,9 @@ staging database acceptance remains pending.
   barcode/SKU search for staff views, and deferred route/database execution.
 - Inventory search response presentation with public-safe redaction and
   staff-only operational fields for exact-card handling.
+- Inventory search SQL-template planning with allowlisted selected columns,
+  validated where/sort contracts, prepared `SELECT` and `COUNT` templates,
+  pagination arguments, and deferred repository execution metadata.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct
