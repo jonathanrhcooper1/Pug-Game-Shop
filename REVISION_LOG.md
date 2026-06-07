@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Dependency Read Gate Status
+
+### What Changed
+
+- Exposed POS/payment route-connected read deferral in dependency health
+  payloads.
+- Added an explicit `route_connected_reads_ready` health flag, currently false
+  while default route-connected reads remain deferred.
+- Updated the POS/payment dependency admin summary to render route, read, and
+  write gate states from the dependency payload instead of hardcoded text.
+- Added unit coverage for default and fully injected dependency health payloads
+  proving read execution remains deferred and not ready.
+- Updated project, plugin, and offline app package versions to `0.154.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Staging reviewers need to see the POS/payment read gate at the dependency
+status layer, not only inside route registration plans. This makes configured
+handlers, repository readiness, route registration deferral, read deferral, and
+write deferral independently visible before any live routes are enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteDependencyFactoryTest` assertions for route-connected read
+  deferral and read-ready metadata.
+- `PosPaymentRouteDependencyStatusPresenterTest` assertions for health/admin
+  read gate status.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment dependency health/admin read gate
+  status and return the admin summary to static route/read/write text.
+- No database rollback is required because no schema migration, default route
+  registration, default route-connected read execution, write path, provider
+  capture, provider inventory write service, webhook processing, or WooCommerce
+  gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and default route-connected POS/payment
+  reads and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Route Read Deferral Gate
 
 ### What Changed

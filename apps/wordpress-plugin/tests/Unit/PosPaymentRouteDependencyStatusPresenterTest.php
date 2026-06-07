@@ -24,7 +24,9 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$this->assert_true( $payload['registrar_ready'] );
 		$this->assert_true( $payload['bootstrapper_ready'] );
 		$this->assert_true( $payload['route_registration_deferred'] );
+		$this->assert_true( $payload['route_connected_reads_deferred'] );
 		$this->assert_true( $payload['route_connected_writes_deferred'] );
+		$this->assert_false( $payload['route_connected_reads_ready'] );
 	}
 
 	public function test_admin_summary_reports_counts_and_deferred_state(): void {
@@ -38,6 +40,7 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$this->assert_contains( 'registrar ready', $summary['value'] );
 		$this->assert_contains( 'bootstrapper ready', $summary['value'] );
 		$this->assert_contains( 'routes deferred', $summary['value'] );
+		$this->assert_contains( 'reads deferred', $summary['value'] );
 		$this->assert_contains( 'writes deferred', $summary['value'] );
 	}
 
@@ -56,7 +59,9 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$this->assert_same( 8, $payload['controller_handler_count'] );
 		$this->assert_same( 8, $payload['permission_callback_count'] );
 		$this->assert_true( $payload['route_registration_deferred'] );
+		$this->assert_true( $payload['route_connected_reads_deferred'] );
 		$this->assert_true( $payload['route_connected_writes_deferred'] );
+		$this->assert_false( $payload['route_connected_reads_ready'] );
 		$this->assert_false( $payload['route_connected_writes_ready'] );
 	}
 

@@ -180,12 +180,14 @@ final class PosPaymentRouteDependencyFactory {
 			'registerable_route_count'                        => count( $registerable_route_keys ),
 			'registerable_route_keys'                         => $registerable_route_keys,
 			'route_registration_deferred'                     => true,
+			'route_connected_reads_deferred'                  => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
 			'route_connected_writes_deferred'                 => true,
 			'transaction_execution_deferred'                  => true,
 			'provider_capture_deferred'                       => true,
 			'provider_inventory_write_deferred'               => true,
 			'webhook_registration_deferred'                   => true,
 			'woocommerce_gateway_capture_deferred'            => true,
+			'route_connected_reads_ready'                     => false,
 			'route_connected_writes_ready'                    => false,
 			'configuration_issues'                            => array_values( array_unique( $issues ) ),
 		);
@@ -233,6 +235,19 @@ final class PosPaymentRouteDependencyFactory {
 		}
 
 		return true;
+	}
+
+	/**
+	 * @param array<string, array<string, mixed>> $route_plans Route plans.
+	 */
+	private function any_route_flag( array $route_plans, string $flag ): bool {
+		foreach ( $route_plans as $route_plan ) {
+			if ( true === ( $route_plan[ $flag ] ?? false ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

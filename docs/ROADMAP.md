@@ -153,7 +153,7 @@ query planning plus fee snapshot SQL-template planning plus explicit fee
 snapshot repository adaptation plus fee snapshot repository readiness metadata
 plus explicit staged fee snapshot route handler plus staged fee snapshot route
 handler factory composition plus POS/payment route-connected read deferral
-gates
+gates plus dependency health/admin read-gate status
 implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional

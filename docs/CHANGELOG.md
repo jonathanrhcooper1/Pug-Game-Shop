@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.154.0] - 2026-06-07
+
+### Added
+
+- POS/payment dependency health metadata for route-connected read deferral and
+  read-ready state.
+- Admin status summary rendering for route, read, and write gate states from
+  dependency payloads instead of static text.
+- Unit coverage for default and fully injected dependency payloads proving read
+  execution remains deferred.
+
+### Not Added
+
+- Default POS/payment route registration, default route-connected fee snapshot
+  reads, fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.153.0] - 2026-06-07
 
 ### Added

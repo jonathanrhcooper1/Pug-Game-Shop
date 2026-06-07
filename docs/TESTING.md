@@ -545,6 +545,8 @@
   gates in route registration, readiness, bootstrap, dependency factory, and
   registrar flows, proving future GET routes cannot register until read
   execution is explicitly cleared.
+- Local unit coverage now includes POS/payment dependency health/admin status
+  assertions for route-connected read deferral and read-ready state.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

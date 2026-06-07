@@ -36,7 +36,7 @@ final class PosPaymentRouteDependencyStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'handlers %d / %d; permissions %d / %d; webhook verifier %s; fee repo %s; fee handler %s; registrar %s; bootstrapper %s; routes deferred; reads deferred; writes deferred',
+				'handlers %d / %d; permissions %d / %d; webhook verifier %s; fee repo %s; fee handler %s; registrar %s; bootstrapper %s; routes %s; reads %s; writes %s',
 				(int) ( $payload['controller_handler_count'] ?? 0 ),
 				(int) ( $payload['route_contract_count'] ?? 0 ),
 				(int) ( $payload['permission_callback_count'] ?? 0 ),
@@ -45,7 +45,10 @@ final class PosPaymentRouteDependencyStatusPresenter {
 				true === ( $payload['fee_snapshot_repository_adapter_ready'] ?? false ) ? 'staged' : 'deferred',
 				true === ( $payload['fee_snapshot_route_handler_ready'] ?? false ) ? 'ready' : 'deferred',
 				true === ( $payload['registrar_ready'] ?? false ) ? 'ready' : 'not ready',
-				true === ( $payload['bootstrapper_ready'] ?? false ) ? 'ready' : 'not ready'
+				true === ( $payload['bootstrapper_ready'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['route_registration_deferred'] ?? true ) ? 'deferred' : 'ready',
+				true === ( $payload['route_connected_reads_deferred'] ?? true ) ? 'deferred' : 'ready',
+				true === ( $payload['route_connected_writes_deferred'] ?? true ) ? 'deferred' : 'ready'
 			),
 			'status' => (string) $payload['status'],
 		);

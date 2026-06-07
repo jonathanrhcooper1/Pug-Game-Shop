@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.153.0`
+Version: `0.154.0`
 
 ## Implemented Features
 
@@ -149,6 +149,8 @@ Version: `0.153.0`
   route contracts, registration plans, readiness plans, and bootstrap summaries
   so future GET routes remain blocked until read execution is explicitly
   cleared.
+- POS/payment dependency health and admin status now expose route-connected
+  read deferral and read-ready state separately from write readiness.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

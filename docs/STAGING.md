@@ -228,5 +228,8 @@ Before major database migrations:
 - POS/payment route contracts, registration planning, readiness planning, and
   bootstrap summaries expose route-connected read deferral, and future GET
   routes stay blocked until staging explicitly clears the read gate.
+- POS/payment dependency health and admin summaries expose route-connected read
+  deferral and read-ready state separately from write readiness, so staging can
+  verify default read execution is still deferred.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

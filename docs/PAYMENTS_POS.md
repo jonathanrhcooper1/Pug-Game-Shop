@@ -400,6 +400,11 @@ webhook deferrals. Future GET routes, including fee snapshot review reads, must
 clear the read deferral explicitly before registration planning or readiness
 planning can mark them registerable.
 
+POS/payment dependency health and admin summaries now expose that read gate as
+its own readiness state. This lets staging reviewers distinguish configured
+handlers and repositories from default route-connected read execution, which
+remains deferred until deliberately enabled.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

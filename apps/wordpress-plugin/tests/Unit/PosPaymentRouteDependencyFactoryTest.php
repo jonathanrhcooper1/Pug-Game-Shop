@@ -33,12 +33,14 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $summary['bootstrapper_ready'] );
 		$this->assert_same( 0, $summary['registerable_route_count'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
+		$this->assert_true( $summary['route_connected_reads_deferred'] );
 		$this->assert_true( $summary['route_connected_writes_deferred'] );
 		$this->assert_true( $summary['transaction_execution_deferred'] );
 		$this->assert_true( $summary['provider_capture_deferred'] );
 		$this->assert_true( $summary['provider_inventory_write_deferred'] );
 		$this->assert_true( $summary['webhook_registration_deferred'] );
 		$this->assert_true( $summary['woocommerce_gateway_capture_deferred'] );
+		$this->assert_false( $summary['route_connected_reads_ready'] );
 		$this->assert_false( $summary['route_connected_writes_ready'] );
 		$this->assert_same(
 			array(
@@ -69,6 +71,7 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $summary['webhook_permission_callbacks_configured'] );
 		$this->assert_same( 0, $summary['registerable_route_count'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
+		$this->assert_true( $summary['route_connected_reads_deferred'] );
 		$this->assert_true( $summary['route_connected_writes_deferred'] );
 		$this->assert_same( array(), $summary['configuration_issues'] );
 		$this->assert_true( $factory->controller()->has_handler( 'ingest_pos_event' ) );
