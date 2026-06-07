@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.147.0`
+Version: `0.148.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -117,6 +117,9 @@ POS/payment fee snapshot listing now has a staged query planner that normalizes
 provider, channel, currency, effective-date, and page-size filters for future
 admin review reads while read execution, writes, capture, inventory updates,
 gateway capture, and route registration remain disabled.
+Those fee snapshot read contracts now also produce prepared SQL-template
+metadata and prepare-argument counts for staging review without executing
+database reads or returning fee rows.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

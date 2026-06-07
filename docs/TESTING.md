@@ -521,6 +521,10 @@
   normalized provider, channel, currency, effective-date, and page-size
   filters, rejected tampered inputs, and parser-only route metadata while read
   execution remains deferred.
+- Local unit coverage now includes POS/payment fee snapshot SQL-template
+  planning for filtered and unfiltered staged reads, prepare-argument counts,
+  invalid source plans, and tampered table/column/order guards while
+  repository execution remains deferred.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

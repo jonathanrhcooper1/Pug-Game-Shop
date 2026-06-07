@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.147.0`
+Version: `0.148.0`
 
 ## Implemented Features
 
@@ -130,6 +130,9 @@ Version: `0.147.0`
   normalized provider, channel, currency, effective-date, and page-size filters
   while read execution, writes, capture, inventory updates, and route
   registration remain deferred.
+- POS/payment fee snapshot SQL-template planning for allowlisted staged review
+  reads, reporting prepare-argument metadata while repository execution and
+  route registration remain deferred.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

@@ -169,6 +169,8 @@ final class PosPaymentRouteValidationHandlerFactoryTest extends TestCase {
 		$this->assert_true( $list['data']['fee_snapshot_query_ready'] );
 		$this->assert_same( 'wp_tcg_payment_fee_snapshots', $list['data']['fee_snapshot_read_query']['table_name'] );
 		$this->assert_true( $list['data']['fee_snapshot_read_query']['read_execution_deferred'] );
+		$this->assert_true( $list['data']['fee_snapshot_sql_ready'] );
+		$this->assert_same( 6, $list['data']['fee_snapshot_sql_prepare_args'] );
 		$this->assert_true( $list['data']['read_deferred'] );
 		$this->assert_true( $list['data']['fee_snapshot_read_deferred'] );
 		$this->assert_same( 'validated', $create['status'] );

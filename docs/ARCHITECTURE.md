@@ -249,6 +249,9 @@ review reads. It normalizes provider, channel, currency, effective-date, and
 page-size filters into an allowlisted `tcg_payment_fee_snapshots` query
 contract while read execution, fee writes, provider capture, provider inventory
 writes, route registration, and WooCommerce gateway capture remain deferred.
+Those contracts now pass through a SQL-template builder that emits prepared
+`SELECT` metadata and prepare-argument counts for staging review while
+repository execution remains disconnected.
 
 ## System Diagram
 

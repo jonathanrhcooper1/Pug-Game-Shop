@@ -359,6 +359,14 @@ read-execution deferral without calling `$wpdb`, returning fee rows, writing
 fee rows, registering REST routes, calling providers, capturing payments,
 mutating inventory, or enabling WooCommerce gateway capture.
 
+Fee snapshot query contracts now also pass through a prepared SQL-template
+builder. The builder validates the allowlisted table, columns, ordering,
+filters, and limits before emitting a deferred `SELECT` template plus
+prepare-argument metadata for staging review. It still does not call `$wpdb`,
+execute repository reads, return fee rows, write fee rows, register routes,
+call providers, capture payments, mutate inventory, or enable WooCommerce
+gateway capture.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

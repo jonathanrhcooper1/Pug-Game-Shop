@@ -207,5 +207,9 @@ Before major database migrations:
   for provider, channel, currency, effective-date, and page-size filters while
   read execution, writes, capture, inventory updates, gateway capture, and
   route registration remain disabled.
+- POS/payment fee snapshot SQL-template planning reports safe prepared
+  `SELECT` metadata and prepare-argument counts while repository execution,
+  route registration, writes, capture, inventory updates, and gateway capture
+  remain disabled.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

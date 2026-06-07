@@ -7,6 +7,7 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Payments\PosPaymentFeeSnapshotQueryBuilder;
 use TCGStorePlatform\Payments\PosPaymentFeeSnapshotQueryPlanner;
 use TCGStorePlatform\Payments\PosPaymentLogPlan;
 use TCGStorePlatform\Payments\PosPaymentLogPlanner;
@@ -14,15 +15,18 @@ use TCGStorePlatform\Payments\PosPaymentLogPlanner;
 final class PosPaymentRouteValidationHandlerFactory {
 	private PosPaymentLogPlanner $log_planner;
 	private PosPaymentFeeSnapshotQueryPlanner $fee_snapshot_query_planner;
+	private PosPaymentFeeSnapshotQueryBuilder $fee_snapshot_query_builder;
 	private string $table_prefix;
 
 	public function __construct(
 		?PosPaymentLogPlanner $log_planner = null,
 		?PosPaymentFeeSnapshotQueryPlanner $fee_snapshot_query_planner = null,
+		?PosPaymentFeeSnapshotQueryBuilder $fee_snapshot_query_builder = null,
 		string $table_prefix = 'wp_'
 	) {
 		$this->log_planner                 = $log_planner ?? new PosPaymentLogPlanner();
 		$this->fee_snapshot_query_planner  = $fee_snapshot_query_planner ?? new PosPaymentFeeSnapshotQueryPlanner();
+		$this->fee_snapshot_query_builder  = $fee_snapshot_query_builder ?? new PosPaymentFeeSnapshotQueryBuilder();
 		$this->table_prefix                = $table_prefix;
 	}
 
@@ -176,6 +180,11 @@ final class PosPaymentRouteValidationHandlerFactory {
 			return $this->rejected( 'list_payment_fee_snapshots', $query_plan->errors() );
 		}
 
+		$query_build_plan = $this->fee_snapshot_query_builder->build( $query_plan );
+		if ( ! $query_build_plan->is_valid() ) {
+			return $this->rejected( 'list_payment_fee_snapshots', $query_build_plan->errors() );
+		}
+
 		$filters = $query_plan->filters();
 
 		return $this->validated(
@@ -188,6 +197,8 @@ final class PosPaymentRouteValidationHandlerFactory {
 				'page_size'                     => $query_plan->limit(),
 				'fee_snapshot_query_ready'      => true,
 				'fee_snapshot_read_query'       => $query_plan->query_contract(),
+				'fee_snapshot_sql_ready'        => true,
+				'fee_snapshot_sql_prepare_args' => $query_build_plan->prepare_arg_count(),
 				'read_deferred'                 => true,
 				'fee_snapshot_read_deferred'    => true,
 			),

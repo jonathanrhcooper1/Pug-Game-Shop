@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.148.0] - 2026-06-07
+
+### Added
+
+- POS/payment fee snapshot SQL-template builder and build-plan metadata for
+  future admin review reads.
+- Parser-only fee snapshot list route metadata now reports SQL readiness and
+  prepare-argument counts while keeping database reads deferred.
+- Unit coverage for filtered, unfiltered, invalid, and tampered fee snapshot
+  SQL-template planning.
+
+### Not Added
+
+- Live POS/payment route registration, fee snapshot repository execution,
+  fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.147.0] - 2026-06-07
 
 ### Added

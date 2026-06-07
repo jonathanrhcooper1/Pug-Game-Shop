@@ -149,7 +149,7 @@ plus fail-closed route permission callbacks, controller scaffold, route
 registration planning, guarded registrar, route bootstrap status, and
 bootstrapper wiring plus route dependency status and parser-only route
 validation handlers plus dependency-backed bootstrap wiring and fee snapshot
-query planning
+query planning plus fee snapshot SQL-template planning
 implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional
