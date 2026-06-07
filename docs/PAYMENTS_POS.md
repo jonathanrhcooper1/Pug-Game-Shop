@@ -301,6 +301,21 @@ deferrals, the registrar registers zero POS/payment routes under default
 settings. Future routes must first pass the planner's permission, handler,
 registration, write, and webhook gates before the registrar can expose them.
 
+## Route Bootstrap Status
+
+POS/payment route bootstrap status reports the orchestration state that would
+control the guarded registrar:
+
+- `blocked` when the `pos_payments` feature flag is off.
+- `gated` when the feature flag is on but no route plans are registerable.
+- `ready` only when the feature flag is on and at least one route plan is
+  registerable.
+
+The authenticated health payload and admin System Status screen expose planned
+route counts, registerable route counts, route keys, registration deferral, and
+bootstrap block reasons. Current defaults keep bootstrap blocked with zero
+registerable POS/payment routes.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

@@ -197,6 +197,9 @@
   behavior for disabled defaults, future enabled read/write/webhook routes,
   missing permission callbacks, missing injected handlers, and write/webhook
   gate enforcement.
+- Local unit and WordPress smoke coverage now include POS/payment route
+  bootstrap status for blocked/gated/ready orchestration, health/admin
+  payloads, zero default registerable routes, and registration deferral.
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.

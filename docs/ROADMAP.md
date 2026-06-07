@@ -146,7 +146,8 @@ template planning, repository staging, execution-gate metadata, transaction
 preflight metadata, explicit staged log execution, and staged transaction
 execution plus planned route contracts and route readiness diagnostics
 plus fail-closed route permission callbacks, controller scaffold, route
-registration planning, and guarded registrar implemented
+registration planning, guarded registrar, and route bootstrap status
+implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional
 catalog projection, reconciliation, refunds, conflict logs, and configurable

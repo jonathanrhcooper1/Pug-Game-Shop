@@ -88,7 +88,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.141.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.142.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 2 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -149,7 +149,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.141.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.142.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -291,5 +291,11 @@ $assert( false === ( $pos_payment_routes['POST /pos/events']['should_register'] 
 $assert( true === ( $pos_payment_routes['POST /pos/events']['route_connected_writes_deferred'] ?? null ), 'POS event ingestion writes should remain deferred.' );
 $assert( false === ( $pos_payment_routes['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['should_register'] ?? null ), 'Payment webhook route should remain unregistered.' );
 $assert( false === ( $pos_payment_routes['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['webhook_verifier_ready'] ?? null ), 'Payment webhook verifier should remain unconfigured.' );
+$assert( 'blocked' === ( $data['pos_payment_route_bootstrap']['status'] ?? null ), 'POS/payment route bootstrap should remain blocked.' );
+$assert( false === ( $data['pos_payment_route_bootstrap']['feature_enabled'] ?? null ), 'POS/payment route bootstrap feature should remain disabled.' );
+$assert( 8 === (int) ( $data['pos_payment_route_bootstrap']['planned_route_count'] ?? 0 ), 'POS/payment route bootstrap should report planned routes.' );
+$assert( 0 === (int) ( $data['pos_payment_route_bootstrap']['registerable_route_count'] ?? -1 ), 'POS/payment route bootstrap should report zero registerable routes.' );
+$assert( false === ( $data['pos_payment_route_bootstrap']['should_register_routes'] ?? null ), 'POS/payment route bootstrap should not register routes.' );
+$assert( true === ( $data['pos_payment_route_bootstrap']['registration_deferred'] ?? null ), 'POS/payment route bootstrap should remain deferred.' );
 
 echo "PASS WordPress integration smoke test\n";

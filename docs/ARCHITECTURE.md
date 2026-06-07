@@ -226,6 +226,10 @@ verifier.
 The guarded POS/payment route registrar consumes only those enabled plans and
 passes their controller and permission callbacks to WordPress route
 registration. With current defaults, it registers no POS/payment routes.
+POS/payment route bootstrap status now mirrors the offline bootstrap status
+pattern for health/admin diagnostics, reporting blocked, gated, or ready
+registration orchestration with planned/registerable route counts and block
+reasons. It remains inspection-only and does not register POS/payment routes.
 
 ## System Diagram
 

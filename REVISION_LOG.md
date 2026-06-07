@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Route Bootstrap Status
+
+### What Changed
+
+- Added `PosPaymentRouteBootstrapPlanner` for POS/payment route-registration
+  orchestration planning.
+- Added `PosPaymentRouteBootstrapStatusPresenter` for health/admin
+  blocked/gated/ready status payloads.
+- Authenticated health now reports `pos_payment_route_bootstrap` with feature
+  status, planned/registerable route counts, route keys, registration deferral,
+  route-registration summary, and bootstrap block reasons.
+- Admin System Status now displays a POS/payment route bootstrap row.
+- Added unit coverage for disabled-feature blocking, feature-enabled gating,
+  future-ready registration plans, health payloads, and admin summary text.
+- Added WordPress smoke coverage proving POS/payment route bootstrap remains
+  blocked with zero registerable routes by default.
+- Updated project, plugin, and offline app package versions to `0.142.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The guarded registrar exists, but staging needs explicit bootstrap visibility
+before any future route registration is wired to lifecycle hooks. This
+revision adds that inspection layer without changing current route exposure.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteBootstrapPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteBootstrapStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteBootstrapPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteBootstrapStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteBootstrapPlannerTest` coverage for disabled-feature blocking,
+  feature-enabled no-route gating, future registerable route visibility, and
+  ready bootstrap plans.
+- `PosPaymentRouteBootstrapStatusPresenterTest` coverage for health payloads
+  and admin summary formatting.
+- WordPress smoke coverage for `pos_payment_route_bootstrap` blocked defaults.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment route bootstrap planning,
+  health/admin presentation, tests, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Guarded Route Registrar
 
 ### What Changed

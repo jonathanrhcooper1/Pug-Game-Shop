@@ -188,5 +188,8 @@ Before major database migrations:
 - POS/payment guarded route registrar registers zero routes by default and may
   only call WordPress route registration for future planner-enabled route
   plans.
+- System status and authenticated health report POS/payment route bootstrap
+  status with zero registerable routes by default, blocked feature-gate
+  reasons, and registration deferral.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

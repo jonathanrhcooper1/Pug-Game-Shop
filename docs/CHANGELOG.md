@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.142.0] - 2026-06-06
+
+### Added
+
+- POS/payment route bootstrap planner and status presenter for
+  blocked/gated/ready route-registration orchestration diagnostics.
+- Authenticated health payload and admin System Status row for POS/payment
+  route bootstrap status, including planned/registerable route counts,
+  registerable route keys, registration deferral, and bootstrap block reasons.
+- Unit and WordPress smoke coverage proving POS/payment route bootstrap stays
+  blocked by default with zero registerable routes.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.141.0] - 2026-06-06
 
 ### Added
