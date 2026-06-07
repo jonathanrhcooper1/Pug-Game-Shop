@@ -47,6 +47,11 @@
   short-circuiting, repository failure rejection, default write deferral,
   explicitly enabled repository-backed writes, provider failures, and table
   prefix issues.
+- Local unit coverage now includes gated inventory route registration planning
+  and registrar behavior for default-disabled routes, explicit public-read
+  gating, explicit write-gate clearing, injected controller handler readiness,
+  capability permission callbacks, public-read permission callbacks, and locked
+  device/owner permission routes.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit

@@ -23,6 +23,9 @@ All notable changes follow Semantic Versioning.
 - Staged inventory intake route handler and factory that can explicitly compose
   parser, persistence planner, and repository execution for `POST /inventory`
   creation tests while default live route registration remains disabled.
+- Gated inventory REST controller, permission callbacks, registration planner,
+  and registrar for future `/inventory/search` reads and `POST /inventory`
+  writes, with public reads and route-connected writes disabled by default.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

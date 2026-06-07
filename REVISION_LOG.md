@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Route Registration Gating
+
+### What Changed
+
+- Added a fail-closed `InventoryController` with explicit handler dispatch for
+  all planned inventory and search callbacks.
+- Added inventory permission callback adapters for capability-based staff
+  routes and explicitly enabled public-read routes.
+- Added `InventoryRoutePermissionCallbackFactory` to map route contracts to
+  permission callbacks without exposing public reads by default.
+- Added `InventoryRouteRegistrationPlanner` and `InventoryRouteRegistrar` so
+  future inventory routes register only when the route is live-enabled, route
+  registration deferral is cleared, read/write deferrals are cleared, a
+  permission callback is ready, and a controller handler is injected.
+
+### Why
+
+The plugin needs a controlled path from tested inventory search/intake handlers
+to usable WordPress REST routes. This revision creates the gated registration
+layer for staging without changing production defaults or enabling public
+search, staff writes, label printing, WooCommerce projection, or Square
+projection.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryCapabilityPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryController.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryPublicReadPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRegistrar.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrationPlannerTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live route registration, public inventory reads, route-connected
+  writes, barcode label printing, WooCommerce projection, Square provider
+  writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Planner tests proving all inventory routes remain disabled without configured
+  permission callbacks and injected controller handlers.
+- Permission-factory tests for capability routes and explicitly enabled
+  public-read routes.
+- Controller dispatch tests proving injected handlers receive normalized REST
+  request data while missing handlers fail closed.
+- Registrar tests proving default routes do not register, future search routes
+  require public-read/read gates, future create routes require write-gate
+  clearing, and device/owner permission routes stay locked until dedicated
+  permission callbacks exist.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 723 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 490 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the six new inventory route
+  source files: passed after auto-fixing alignment with `vendor/bin/phpcbf`.
+- `npm.cmd run test` from the repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from the repository root: passed.
+- `git diff --check`: passed with only normal Windows line-ending warnings.
+
+### Rollback Notes
+
+- Revert this revision to remove the gated inventory route controller,
+  permission callbacks, registration planner, registrar, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No staged or production route disablement is required after rollback because
+  default live route registration remains disabled.
+- No production rollback applies because public reads, inventory writes,
+  WooCommerce projection, Square network calls, barcode label printing, and
+  offline sync mutation remain disabled.
+
 ## 2026-06-07 - Inventory Intake Route Handler Factory
 
 ### What Changed

@@ -39,6 +39,10 @@ staging database acceptance remains pending.
   `POST /inventory` creation tests, composing parser, persistence planner,
   repository execution, created responses, default route deferral, and
   projection/label-print deferral metadata.
+- Gated inventory REST controller, permission callback factory, public-read
+  permission adapter, capability permission adapter, registration planner, and
+  registrar for future inventory search/create routes while default live
+  registration remains disabled.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all
