@@ -50,6 +50,9 @@ All notable changes follow Semantic Versioning.
   `/inventory/search` route after staging feature/runtime gates are enabled and
   verifies writes, public reads, WooCommerce projection, Square projection, and
   POS ingestion stay closed.
+- Staff Inventory Workspace search panel with safe filter sanitization,
+  route-readiness lockout messaging, and a REST-backed read-only results table
+  for the staging staff inventory search route.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

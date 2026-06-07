@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Admin Search Workspace
+
+### What Changed
+
+- Added a staff search panel model to the Inventory Workspace presenter with
+  staging-readiness detection, safe filter sanitization, route metadata, status
+  options, sort options, and page-size choices.
+- Added a WordPress admin Inventory Workspace search form and REST-backed
+  results panel that calls `/tcg-store/v1/inventory/search` only when the
+  staging route is ready.
+- The admin search surface stays visibly locked when the feature flag, route
+  runtime gate, or route handler dependencies are not ready.
+- The results panel keeps search read-only and displays staff fields while
+  writes, WooCommerce projection, Square projection, labels, and POS ingestion
+  remain deferred.
+
+### Why
+
+Staff need a concrete inventory workflow surface before staging acceptance can
+be meaningful. This revision turns the diagnostics-only Inventory Workspace
+into a controlled search shell while preserving default production lockout.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No write routes, WooCommerce projection, Square projection, POS ingestion, or
+  public inventory reads were enabled.
+
+### Tests Added
+
+- Unit coverage for the Inventory Workspace search panel locked/default state.
+- Unit coverage for staging-ready staff search state and sanitized filter
+  values.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 748 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist` on touched admin source
+  files: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the admin search form and search panel model.
+- No database rollback is required.
+
 ## 2026-06-07 - Inventory Staging Search Smoke
 
 ### What Changed

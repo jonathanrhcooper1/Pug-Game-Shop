@@ -7,7 +7,11 @@
 
 namespace TCGStorePlatform\Admin;
 
+use TCGStorePlatform\Inventory\InventoryStatus;
+
 final class InventoryWorkspacePresenter {
+	private const SEARCH_ROUTE_KEY = 'GET /inventory/search';
+
 	/**
 	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
 	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
@@ -90,6 +94,43 @@ final class InventoryWorkspacePresenter {
 				true === ( $dependency_payload['label_print_deferred'] ?? true ) ? 'deferred' : 'ready',
 				'barcode and shelf label actions remain gated'
 			),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @param array<string, mixed> $query Submitted admin query values.
+	 * @return array<string, mixed>
+	 */
+	public function search_panel( array $bootstrap_payload, array $dependency_payload, array $query = array() ): array {
+		$routes       = is_array( $bootstrap_payload['route_registration_summary'] ?? null )
+			? $bootstrap_payload['route_registration_summary']
+			: array();
+		$search_route = is_array( $routes[ self::SEARCH_ROUTE_KEY ] ?? null )
+			? $routes[ self::SEARCH_ROUTE_KEY ]
+			: array();
+		$ready        = true === ( $bootstrap_payload['feature_enabled'] ?? false )
+			&& true === ( $search_route['should_register'] ?? false )
+			&& false === ( $search_route['route_connected_reads_deferred'] ?? true )
+			&& true === ( $dependency_payload['inventory_search_route_handler_ready'] ?? false )
+			&& false === ( $dependency_payload['inventory_search_route_reads_deferred'] ?? true );
+
+		return array(
+			'ready'          => $ready,
+			'status'         => $ready ? 'ready' : 'locked',
+			'status_label'   => $ready
+				? 'Ready for staff inventory search'
+				: 'Locked until staging inventory search gates are enabled',
+			'endpoint_path'  => '/tcg-store/v1/inventory/search',
+			'method'         => 'GET',
+			'query'          => $this->search_query( $query ),
+			'notes'          => $ready
+				? 'Staff search reads are enabled; writes and projections remain deferred.'
+				: $this->search_lock_notes( $bootstrap_payload, $dependency_payload, $search_route ),
+			'status_options' => array_merge( array( '' ), InventoryStatus::all() ),
+			'sort_options'   => array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ),
+			'page_sizes'     => array( 10, 25, 50, 100 ),
 		);
 	}
 
@@ -195,6 +236,65 @@ final class InventoryWorkspacePresenter {
 		}
 
 		return array() === $notes ? 'ready' : implode( '; ', array_values( array_unique( $notes ) ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $query Submitted admin query values.
+	 * @return array{q:string,game:string,status:string,sort:string,page_size:int,visibility:string}
+	 */
+	private function search_query( array $query ): array {
+		$q         = substr( trim( (string) ( $query['q'] ?? '' ) ), 0, 120 );
+		$game      = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
+		$status    = strtolower( trim( (string) ( $query['status'] ?? '' ) ) );
+		$sort      = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
+		$page_size = (int) ( $query['page_size'] ?? 25 );
+
+		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
+			$game = '';
+		}
+
+		if ( '' !== $status && ! InventoryStatus::is_valid( $status ) ) {
+			$status = '';
+		}
+
+		if ( ! in_array( $sort, array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ), true ) ) {
+			$sort = 'relevance';
+		}
+
+		if ( ! in_array( $page_size, array( 10, 25, 50, 100 ), true ) ) {
+			$page_size = 25;
+		}
+
+		return array(
+			'q'          => $q,
+			'game'       => $game,
+			'status'     => $status,
+			'sort'       => $sort,
+			'page_size'  => $page_size,
+			'visibility' => 'staff',
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @param array<string, mixed> $search_route Search route summary.
+	 */
+	private function search_lock_notes( array $bootstrap_payload, array $dependency_payload, array $search_route ): string {
+		$notes = array();
+
+		if ( true !== ( $bootstrap_payload['feature_enabled'] ?? false ) ) {
+			$notes[] = 'inventory_pricing feature flag disabled';
+		}
+
+		$notes = array_merge(
+			$notes,
+			$this->list_values( $search_route['registration_block_reasons'] ?? array() ),
+			$this->list_values( $dependency_payload['inventory_search_route_dependency_issues'] ?? array() ),
+			$this->list_values( $dependency_payload['configuration_issues'] ?? array() )
+		);
+
+		return array() === $notes ? 'route not ready' : implode( '; ', array_values( array_unique( $notes ) ) );
 	}
 
 	/**

@@ -69,6 +69,76 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_contains( 'sandbox projection', $index['Square inventory sync']['notes'] );
 	}
 
+	public function test_search_panel_reports_locked_default_state_and_sanitizes_filters(): void {
+		$presenter    = new InventoryWorkspacePresenter();
+		$bootstrap    = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload( false );
+		$dependencies = ( new InventoryRouteDependencyStatusPresenter(
+			new InventoryRouteDependencyFactory()
+		) )->health_payload();
+		$panel        = $presenter->search_panel(
+			$bootstrap,
+			$dependencies,
+			array(
+				'q'         => str_repeat( 'a', 140 ),
+				'game'      => '../bad',
+				'status'    => 'bad',
+				'sort'      => 'bad',
+				'page_size' => 999,
+			)
+		);
+
+		$this->assert_false( $panel['ready'] );
+		$this->assert_same( 'locked', $panel['status'] );
+		$this->assert_same( '/tcg-store/v1/inventory/search', $panel['endpoint_path'] );
+		$this->assert_contains( 'inventory_pricing feature flag disabled', $panel['notes'] );
+		$this->assert_same( 120, strlen( $panel['query']['q'] ) );
+		$this->assert_same( '', $panel['query']['game'] );
+		$this->assert_same( '', $panel['query']['status'] );
+		$this->assert_same( 'relevance', $panel['query']['sort'] );
+		$this->assert_same( 25, $panel['query']['page_size'] );
+		$this->assert_same( 'staff', $panel['query']['visibility'] );
+	}
+
+	public function test_search_panel_reports_ready_staging_staff_route(): void {
+		$presenter = new InventoryWorkspacePresenter();
+		$panel     = $presenter->search_panel(
+			array(
+				'feature_enabled'            => true,
+				'route_registration_summary' => array(
+					'GET /inventory/search' => array(
+						'should_register'                => true,
+						'route_connected_reads_deferred' => false,
+						'registration_block_reasons'     => array(),
+					),
+				),
+			),
+			array(
+				'inventory_search_route_handler_ready'     => true,
+				'inventory_search_route_reads_deferred'    => false,
+				'inventory_intake_route_writes_deferred'   => true,
+				'inventory_search_route_dependency_issues' => array(),
+			),
+			array(
+				'q'         => 'pikachu',
+				'game'      => 'pokemon',
+				'status'    => 'available',
+				'sort'      => 'updated_desc',
+				'page_size' => 50,
+			)
+		);
+
+		$this->assert_true( $panel['ready'] );
+		$this->assert_same( 'ready', $panel['status'] );
+		$this->assert_contains( 'Staff search reads are enabled', $panel['notes'] );
+		$this->assert_same( 'pikachu', $panel['query']['q'] );
+		$this->assert_same( 'pokemon', $panel['query']['game'] );
+		$this->assert_same( 'available', $panel['query']['status'] );
+		$this->assert_same( 'updated_desc', $panel['query']['sort'] );
+		$this->assert_same( 50, $panel['query']['page_size'] );
+		$this->assert_true( in_array( 'available', $panel['status_options'], true ) );
+		$this->assert_true( in_array( 100, $panel['page_sizes'], true ) );
+	}
+
 	/**
 	 * @param list<array{label:string,value:string,status:string,notes:string}> $rows Rows.
 	 * @return array<string, array{label:string,value:string,status:string,notes:string}>

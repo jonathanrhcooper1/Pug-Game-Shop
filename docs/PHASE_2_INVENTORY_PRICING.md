@@ -67,6 +67,9 @@ staging database acceptance remains pending.
 - WordPress integration staging smoke coverage for enabling only the staff
   `/inventory/search` route while writes, public reads, WooCommerce projection,
   Square projection, and POS ingestion stay closed.
+- Staff Inventory Workspace search form, route-readiness lockout, and
+  REST-backed read-only results panel for the staging staff inventory search
+  route.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

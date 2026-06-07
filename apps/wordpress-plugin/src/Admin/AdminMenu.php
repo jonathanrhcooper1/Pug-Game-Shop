@@ -126,10 +126,18 @@ final class AdminMenu {
 			$inventory_factory
 		) )->health_payload();
 		$workspace          = new InventoryWorkspacePresenter();
+		$search_panel       = $workspace->search_panel(
+			$bootstrap_payload,
+			$dependency_payload,
+			$this->inventory_search_query()
+		);
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'Inventory Workspace', 'tcg-store-platform' );
 		echo '</h1>';
+
+		echo '<h2>' . esc_html__( 'Staff Search', 'tcg-store-platform' ) . '</h2>';
+		$this->render_inventory_search_panel( $search_panel );
 
 		echo '<h2>' . esc_html__( 'Readiness', 'tcg-store-platform' ) . '</h2>';
 		$this->render_workspace_table( $workspace->readiness_rows( $bootstrap_payload, $dependency_payload ) );
@@ -354,5 +362,108 @@ final class AdminMenu {
 		echo '<td>' . esc_html( $row['value'] ) . '</td>';
 		echo '<td>' . esc_html( $row['status'] ) . '</td>';
 		echo '<td>' . esc_html( $row['notes'] ) . '</td></tr>';
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function inventory_search_query(): array {
+		$source = is_array( $_GET ) ? wp_unslash( $_GET ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		return array(
+			'q'         => $source['q'] ?? '',
+			'game'      => $source['game'] ?? '',
+			'status'    => $source['status'] ?? '',
+			'sort'      => $source['sort'] ?? '',
+			'page_size' => $source['page_size'] ?? '',
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $panel Search panel model.
+	 */
+	private function render_inventory_search_panel( array $panel ): void {
+		$query          = is_array( $panel['query'] ?? null ) ? $panel['query'] : array();
+		$ready          = true === ( $panel['ready'] ?? false );
+		$endpoint       = rest_url( ltrim( (string) ( $panel['endpoint_path'] ?? '' ), '/' ) );
+		$status_options = is_array( $panel['status_options'] ?? null ) ? $panel['status_options'] : array();
+		$sort_options   = is_array( $panel['sort_options'] ?? null ) ? $panel['sort_options'] : array();
+		$page_sizes     = is_array( $panel['page_sizes'] ?? null ) ? $panel['page_sizes'] : array();
+
+		echo '<div class="notice notice-' . esc_attr( $ready ? 'success' : 'warning' ) . ' inline"><p><strong>';
+		echo esc_html( (string) ( $panel['status_label'] ?? '' ) );
+		echo '</strong> ';
+		echo esc_html( (string) ( $panel['notes'] ?? '' ) );
+		echo '</p></div>';
+
+		echo '<form id="tcg-store-inventory-search-form" class="tcg-store-inventory-search" method="get" action="';
+		echo esc_url( admin_url( 'admin.php' ) );
+		echo '">';
+		echo '<input type="hidden" name="page" value="tcg-store-platform-inventory" />';
+		echo '<input type="hidden" name="inventory_search" value="1" />';
+		echo '<table class="form-table" role="presentation"><tbody><tr>';
+		echo '<th scope="row"><label for="tcg-store-inventory-q">' . esc_html__( 'Card search', 'tcg-store-platform' ) . '</label></th>';
+		echo '<td><input type="search" class="regular-text" id="tcg-store-inventory-q" name="q" value="';
+		echo esc_attr( (string) ( $query['q'] ?? '' ) );
+		echo '" placeholder="' . esc_attr__( 'Name, set, barcode, SKU, or cert', 'tcg-store-platform' ) . '" /></td></tr>';
+		echo '<tr><th scope="row"><label for="tcg-store-inventory-game">' . esc_html__( 'Game', 'tcg-store-platform' ) . '</label></th>';
+		echo '<td><input type="text" id="tcg-store-inventory-game" name="game" value="';
+		echo esc_attr( (string) ( $query['game'] ?? '' ) );
+		echo '" placeholder="' . esc_attr__( 'pokemon, magic, lorcana', 'tcg-store-platform' ) . '" /></td></tr>';
+		echo '<tr><th scope="row"><label for="tcg-store-inventory-status">' . esc_html__( 'Status', 'tcg-store-platform' ) . '</label></th><td>';
+		echo '<select id="tcg-store-inventory-status" name="status">';
+		foreach ( $status_options as $status ) {
+			$status = (string) $status;
+			echo '<option value="' . esc_attr( $status ) . '" ' . selected( (string) ( $query['status'] ?? '' ), $status, false ) . '>';
+			echo esc_html( '' === $status ? __( 'Any status', 'tcg-store-platform' ) : ucwords( str_replace( '_', ' ', $status ) ) );
+			echo '</option>';
+		}
+		echo '</select></td></tr>';
+		echo '<tr><th scope="row"><label for="tcg-store-inventory-sort">' . esc_html__( 'Sort', 'tcg-store-platform' ) . '</label></th><td>';
+		echo '<select id="tcg-store-inventory-sort" name="sort">';
+		foreach ( $sort_options as $sort ) {
+			$sort = (string) $sort;
+			echo '<option value="' . esc_attr( $sort ) . '" ' . selected( (string) ( $query['sort'] ?? '' ), $sort, false ) . '>';
+			echo esc_html( ucwords( str_replace( '_', ' ', $sort ) ) );
+			echo '</option>';
+		}
+		echo '</select> ';
+		echo '<select id="tcg-store-inventory-page-size" name="page_size" aria-label="' . esc_attr__( 'Rows per page', 'tcg-store-platform' ) . '">';
+		foreach ( $page_sizes as $page_size ) {
+			$page_size = (int) $page_size;
+			echo '<option value="' . esc_attr( (string) $page_size ) . '" ' . selected( (int) ( $query['page_size'] ?? 25 ), $page_size, false ) . '>';
+			/* translators: %d: number of inventory rows to show per page. */
+			echo esc_html( sprintf( __( '%d rows', 'tcg-store-platform' ), $page_size ) );
+			echo '</option>';
+		}
+		echo '</select></td></tr></tbody></table>';
+		submit_button( __( 'Search Inventory', 'tcg-store-platform' ), 'primary', 'submit', false, $ready ? array() : array( 'disabled' => 'disabled' ) );
+		echo '</form>';
+
+		echo '<div id="tcg-store-inventory-search-results" data-ready="' . esc_attr( $ready ? '1' : '0' ) . '" data-endpoint="';
+		echo esc_url( $endpoint );
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">';
+		echo '<p>' . esc_html__( 'Results will appear here after a staff search runs.', 'tcg-store-platform' ) . '</p>';
+		echo '</div>';
+
+		if ( $ready ) {
+			$this->render_inventory_search_script();
+		}
+	}
+
+	private function render_inventory_search_script(): void {
+		echo '<script>';
+		echo '(function(){';
+		echo 'const form=document.getElementById("tcg-store-inventory-search-form");';
+		echo 'const target=document.getElementById("tcg-store-inventory-search-results");';
+		echo 'if(!form||!target||target.dataset.ready!=="1"){return;}';
+		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
+		echo 'const render=function(payload){const items=((payload.data||{}).items)||[];const meta=((payload.data||{}).meta)||{};';
+		echo 'if(!items.length){target.innerHTML="<p>' . esc_js( __( 'No matching inventory found.', 'tcg-store-platform' ) ) . '</p>";return;}';
+		echo 'target.innerHTML="<p>"+esc(meta.total)+" ' . esc_js( __( 'matching items', 'tcg-store-platform' ) ) . '</p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Status', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'SKU', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+items.map(function(item){return "<tr><td>"+esc(item.card_name)+"</td><td>"+esc(item.set_code||item.set_name||"")+"</td><td>"+esc(item.status)+"</td><td>"+esc(item.sale_price||"")+" "+esc(item.sale_currency||"")+"</td><td>"+esc(item.sku||item.barcode||"")+"</td></tr>";}).join("")+"</tbody></table>";};';
+		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));params.delete("page");params.delete("inventory_search");params.set("visibility","staff");target.innerHTML="<p>' . esc_js( __( 'Searching inventory...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint+"?"+params.toString(),{headers:{"X-WP-Nonce":target.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";return;}render(result.payload);}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";});});';
+		echo 'if(new URLSearchParams(window.location.search).get("inventory_search")==="1"){form.dispatchEvent(new Event("submit",{cancelable:true}));}';
+		echo '})();';
+		echo '</script>';
 	}
 }

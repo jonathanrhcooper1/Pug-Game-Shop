@@ -73,6 +73,9 @@
 - Local unit coverage now includes the staff Inventory admin workspace
   presenter, covering readiness rows, route contract lockout rows, and default
   pending checkpoint rows.
+- Local unit coverage now includes the staff Inventory admin search panel,
+  covering default lockout, staging-ready route state, safe filter
+  sanitization, and route metadata for the read-only REST-backed results table.
 - Local unit coverage now includes inventory route runtime settings,
   staging-only staff search route contract configuration, and dependency
   factory proof that the staff search route registers only when the runtime
