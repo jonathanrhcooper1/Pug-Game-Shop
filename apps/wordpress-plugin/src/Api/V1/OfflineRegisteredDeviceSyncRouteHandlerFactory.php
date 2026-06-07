@@ -7,8 +7,9 @@
 
 namespace TCGStorePlatform\Api\V1;
 
-use TCGStorePlatform\Offline\OfflinePullChangeQueryPlanner;
 use TCGStorePlatform\Offline\OfflinePullChangeQueryBuilder;
+use TCGStorePlatform\Offline\OfflinePullChangeQueryPlanner;
+use TCGStorePlatform\Offline\OfflinePullChangeRepository;
 
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	private const HANDLER_CALLBACKS = array(
@@ -48,11 +49,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
-		$handlers           = $this->handlers();
-		$issues             = array();
-		$pull_query_domains = OfflinePullChangeQueryPlanner::supported_domains();
-		$pull_sql_ready     = array() !== $pull_query_domains
+		$handlers              = $this->handlers();
+		$issues                = array();
+		$pull_query_domains    = OfflinePullChangeQueryPlanner::supported_domains();
+		$pull_sql_ready        = array() !== $pull_query_domains
 			&& method_exists( OfflinePullChangeQueryBuilder::class, 'build' );
+		$pull_repository_ready = $pull_sql_ready
+			&& method_exists( OfflinePullChangeRepository::class, 'fetch' );
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -70,6 +73,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_query_ready'                    => array() !== $pull_query_domains,
 			'pull_change_query_sql_ready'                => $pull_sql_ready,
 			'pull_change_query_sql_template_ready'       => $pull_sql_ready,
+			'pull_change_repository_ready'               => $pull_repository_ready,
 			'pull_change_query_domains'                  => $pull_query_domains,
 			'pull_change_query_domain_count'             => count( $pull_query_domains ),
 			'pull_change_query_context_deferred'         => true,
@@ -77,6 +81,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_query_execution_deferred'       => true,
 			'pull_change_query_cursor_advance_deferred'  => true,
 			'pull_change_query_tombstone_reads_deferred' => true,
+			'pull_change_repository_route_deferred'      => true,
 			'write_deferred'                             => true,
 			'route_registration_deferred'                => true,
 			'route_connected_writes_ready'               => false,

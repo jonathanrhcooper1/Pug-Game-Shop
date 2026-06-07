@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.97.0`
+Version: `0.98.0`
 
 ## Implemented Features
 
@@ -153,6 +153,10 @@ Version: `0.97.0`
   into prepared per-domain SQL templates and argument arrays while cursor
   filtering, execution, tombstone reads, cursor advancement, and route
   registration stay deferred.
+- Offline pull change repository adapter for explicitly called prepared
+  `$wpdb` reads, row normalization, pull change-set shaping, and secret-free
+  audits while route connection, cursor advancement, and tombstone reads stay
+  deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

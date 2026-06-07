@@ -58,6 +58,8 @@
   target changes.
 - Version `0.97.0` adds offline pull change-query SQL template planning. No
   WordPress schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.98.0` adds offline pull change repository adaptation. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

@@ -43,6 +43,10 @@ The pull change-query SQL builder now turns those contracts into prepared
 per-domain SQL templates and argument arrays for staging review, while cursor
 filtering, execution, tombstones, cursor advancement, and route registration
 remain deferred.
+The pull change repository adapter can now execute those prepared templates
+only when explicitly called and normalize rows into pull change sets, while
+route-connected execution, cursor advancement, tombstone reads, and route
+registration remain deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -223,6 +227,10 @@ conflict contracts for those domains before any repository execution is wired.
 Pull change-query SQL planning now compiles those contracts into safe prepared
 `SELECT` templates for future repositories while keeping cursor filtering and
 all database execution deferred.
+Pull change repository adaptation now adds an explicit `$wpdb` execution
+boundary and change-set row normalizer for those templates, while keeping route
+connection, cursor advancement, tombstone reads, and route registration
+deferred.
 Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location

@@ -205,6 +205,10 @@ The builder validates table/column/filter/order contracts and returns
 allowlisted SQL templates plus prepared arguments while cursor filtering,
 execution, tombstone reads, cursor advancement, and live route registration
 remain deferred.
+Version `0.98.0` adds an explicitly called pull change repository adapter for
+those prepared plans. It normalizes rows into pull change-set records and
+secret-free repository audits, while route-connected execution, cursor
+advancement, tombstone reads, route registration, and writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

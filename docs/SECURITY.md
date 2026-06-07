@@ -137,6 +137,11 @@ Pull change-query SQL planning validates those table, column, filter, order,
 cursor, and limit contracts before returning prepared templates. It still
 does not execute SQL, parse opaque cursors into filters, read tombstones,
 advance cursors, or enable route-connected writes.
+Pull change repository adaptation executes prepared plans only when explicitly
+called, validates/normalizes rows before returning pull change sets, and keeps
+repository audits limited to counts, statuses, domain metadata, and deferred
+flags. It does not expose row payloads in audits or enable route-connected
+execution, cursor advancement, tombstone reads, or writes.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

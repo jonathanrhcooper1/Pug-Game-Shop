@@ -3,6 +3,98 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Change Repository Adapter
+
+### What Changed
+
+- Added `OfflinePullChangeRepository` to explicitly execute accepted prepared
+  pull change-query plans through `$wpdb`.
+- Added `OfflinePullChangeRepositoryResult` for fetched/rejected result states,
+  change-set access, and secret-free repository audit payloads.
+- Added row normalization for entity IDs, row versions, UTC timestamps, and
+  allowlisted payload fields before pull change sets are returned.
+- Exposed staged pull repository readiness in registered-device sync handler
+  health and admin summaries while keeping route connection deferred.
+- Added unit coverage for successful inventory/conflict repository fetches,
+  invalid pre-query plans, database failures, and malformed row rejection.
+- Added WordPress smoke assertions for repository readiness and route
+  deferral metadata.
+- Updated project, plugin, and offline app package versions to `0.98.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+Prepared SQL planning is reviewable, but future pull handlers need a separate
+repository boundary that can execute those plans only when explicitly called
+and normalize database rows into the existing offline pull response contract.
+This revision proves that boundary without connecting it to live REST routes,
+cursor advancement, tombstone reads, or route-connected writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullChangeRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Pull change repository coverage for successful prepared inventory and
+  conflict reads, normalized change sets, prepare argument propagation, and
+  repository audit metadata.
+- Fail-closed coverage for invalid query plans before database reads,
+  database failures, malformed entity IDs, invalid row versions, invalid
+  timestamps, and missing allowlisted fields.
+- Sync handler readiness and WordPress smoke coverage for repository readiness
+  and route-connection deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove the pull change repository adapter and its
+  health/admin readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, route-connected pull execution, cursor advancement,
+  tombstone reads, queue replay, route registration, and route-connected
+  database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pull Query SQL Template Planning
 
 ### What Changed

@@ -147,6 +147,11 @@ Version `0.97.0` adds prepared SQL template planning for those pull contracts.
 The SQL plan exposes allowlisted `SELECT` templates and prepared arguments for
 future repositories, while cursor filtering, query execution, tombstone reads,
 cursor advancement, writes, and live route registration remain disabled.
+Version `0.98.0` adds an explicitly called pull change repository adapter for
+those prepared plans. It can normalize repository rows into per-domain pull
+change sets and repository audits, while route-connected execution, cursor
+advancement, tombstone reads, writes, and live route registration remain
+disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -413,7 +418,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.97.0",
+  "app_version": "0.98.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

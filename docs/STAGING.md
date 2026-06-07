@@ -63,6 +63,9 @@ Before major database migrations:
 - Pull change-query SQL planning exposes only allowlisted prepared templates
   and argument counts while cursor filtering, execution, tombstones, cursor
   advancement, and route registration remain disabled.
+- Pull change repository adaptation exposes normalized change-set and
+  repository-audit coverage while route-connected execution, cursor
+  advancement, tombstones, and route registration remain disabled.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

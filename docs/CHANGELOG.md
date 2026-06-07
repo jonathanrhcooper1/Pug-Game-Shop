@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.98.0] - 2026-06-06
+
+### Added
+
+- An explicitly called offline pull change repository adapter that executes
+  accepted prepared SQL plans through `$wpdb` without wiring the live pull
+  route.
+- Pull change repository result/audit metadata with fetched/rejected states,
+  row/domain counts, query audit nesting, and deferred cursor/tombstone flags.
+- Row normalization for repository-backed pull data, including entity IDs,
+  row versions, UTC timestamps, allowlisted payload fields, and fail-closed
+  malformed-row errors.
+- Health, admin, unit, and WordPress smoke coverage for staged repository
+  readiness and route deferral.
+
+### Not Added
+
+- No live offline route is enabled. Route-connected pull execution, cursor
+  advancement, tombstone repository reads, queue replay, route registration,
+  and route-connected database mutation remain disabled.
+
 ## [0.97.0] - 2026-06-06
 
 ### Added

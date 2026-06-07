@@ -399,6 +399,11 @@ contracts. Staging can inspect allowlisted `SELECT` templates and prepared
 argument counts before cursor filtering, execution, tombstone reads, cursor
 advancement, route registration, or route-connected writes are enabled.
 
+Version `0.98.0` adds explicit pull change repository adaptation for those
+prepared plans. Staging can verify normalized change sets and secret-free
+repository audits before route-connected pull execution, cursor advancement,
+tombstone reads, route registration, or route-connected writes are enabled.
+
 ## Hardware Gate
 
 Before production, test the actual:
