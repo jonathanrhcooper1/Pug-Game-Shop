@@ -197,6 +197,10 @@ Per-operation staged push persistence annotations expose only inserted/replayed
 status derived from client operation IDs already present in the response. They
 do not expose queue payload JSON, SQL templates, prepared arguments, bearer
 tokens, payment data, customer credit details, or raw database row contents.
+Replay response hydration uses only stored result status, result code, result
+details, and resolved timestamp from normalized queue rows. It does not expose
+raw operation payload JSON, SQL templates, prepared arguments, bearer tokens,
+payment data, customer credit details, or raw database row contents.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

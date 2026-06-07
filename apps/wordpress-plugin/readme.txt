@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.118.0
+Stable tag: 0.119.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -262,6 +262,9 @@ mutations deferred.
 Phase 7.84 annotates staged offline push response results with per-operation
 persistence status so duplicate pushes identify replayed rows without enabling
 queue replay workers or canonical mutations.
+Phase 7.85 hydrates staged duplicate-push response results from stored queue
+rows so replayed operations return their original result details while queue
+replay workers and canonical mutations remain disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -279,6 +282,18 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.119.0 =
+
+* Hydrated replayed staged push response results from existing queue rows.
+* Added response-source metadata for inserted resolution-plan results and
+  replayed existing-queue-row results.
+* Added replay response hydration counts and hydrated operation IDs to staged
+  push responses and audits.
+* Added route handler factory coverage for replayed response details and
+  resolved timestamps loaded from stored queue rows.
+* Kept queue replay workers, canonical mutations, default route execution, and
+  live route registration disabled.
 
 = 0.118.0 =
 

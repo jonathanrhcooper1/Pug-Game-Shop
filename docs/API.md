@@ -251,6 +251,14 @@ push response results. Each result now reports `persistence.status` as
 payload includes an `operation_persistence_statuses` map keyed by client
 operation ID. Queue replay workers, canonical mutations, default route
 execution, and live route registration remain disabled.
+Version `0.119.0` hydrates replayed staged push response results from stored
+queue rows. Replayed results use the existing row status, result code,
+result details, and resolved timestamp, and expose
+`persistence.response_source = existing_queue_row`; fresh results continue to
+use `response_source = resolution_plan`. The response and audit payloads also
+include hydrated replay counts and operation IDs. Queue replay workers,
+canonical mutations, default route execution, and live route registration
+remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -517,7 +525,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.118.0",
+  "app_version": "0.119.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

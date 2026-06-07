@@ -118,6 +118,9 @@
 - Version `0.118.0` adds per-operation staged push response annotations for
   inserted/replayed persistence status. No WordPress schema, SQLite schema,
   migration order, or rollback target changes.
+- Version `0.119.0` hydrates staged duplicate-push responses from existing
+  queue rows already read for idempotency checks. No WordPress schema, SQLite
+  schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

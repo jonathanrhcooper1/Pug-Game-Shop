@@ -125,6 +125,10 @@ Staged push response payloads now also annotate each operation result with
 inserted/replayed persistence status and expose an operation persistence-status
 map, keeping client-facing replay handling observable without enabling route
 registration, queue replay workers, or canonical mutations.
+Replay response hydration now feeds the stored queue-row status, code, details,
+and resolved timestamp back into staged duplicate-push responses. This preserves
+idempotent response semantics while keeping queue replay workers, route
+registration, and canonical mutations disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

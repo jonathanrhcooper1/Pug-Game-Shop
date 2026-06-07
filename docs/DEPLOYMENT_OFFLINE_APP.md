@@ -513,6 +513,11 @@ response results. Staging responses can now distinguish inserted operation rows
 from replayed duplicate rows without parsing nested audits; queue replay
 workers, canonical mutations, production route registration, and default route
 execution remain disabled.
+Version `0.119.0` hydrates replayed staged push response results from existing
+queue rows. Staging responses can now confirm duplicate pushes return the
+stored result details and resolved timestamp; queue replay workers, canonical
+mutations, production route registration, and default route execution remain
+disabled.
 
 ## Hardware Gate
 

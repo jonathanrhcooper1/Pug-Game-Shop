@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Replay Response Hydration
+
+### What Changed
+
+- Carried staged persistence replay rows into `OfflinePushRouteProcessingResult`.
+- Hydrated replayed staged push response results from existing queue-row
+  status, result code, result details, and resolved timestamp.
+- Added per-result `persistence.response_source` metadata to distinguish
+  fresh resolution-plan results from existing-queue-row replay results.
+- Added replay response hydration counts and operation IDs to staged push
+  response payloads and route processing audits.
+- Added route handler factory coverage for stored replay details, stored
+  resolved timestamps, response sources, and hydration audit metadata.
+- Updated project, plugin, and offline app package versions to `0.119.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous checkpoint let clients see which operation results were replayed,
+but replayed response details still came from the freshly resolved batch
+payload. This revision makes duplicate-push responses more strongly idempotent
+by returning the stored queue-row result for replayed operations without
+enabling queue replay workers or canonical mutations.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Staged push route handler factory assertions that replayed operation details
+  come from stored queue rows.
+- Staged push route handler factory assertions that replayed operation
+  timestamps come from stored queue-row resolution timestamps.
+- Staged push route handler factory assertions for response source and
+  hydration audit metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove stored queue-row hydration from staged
+  duplicate-push responses while keeping prior inserted/replayed annotations.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Queue replay workers, canonical mutations, default route execution, live
+  route registration, and production route-connected writes remain disabled
+  before and after rollback.
+
 ## 2026-06-06 - Offline Push Per-Operation Persistence Annotations
 
 ### What Changed

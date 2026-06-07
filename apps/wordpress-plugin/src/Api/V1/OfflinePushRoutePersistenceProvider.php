@@ -122,7 +122,8 @@ final class OfflinePushRoutePersistenceProvider {
 		return new OfflinePushRouteProcessingResult(
 			$resolution,
 			$this->persistence_repository->persist( $plan ),
-			$permission->audit_payload()
+			$permission->audit_payload(),
+			$plan->operation_replay_rows()
 		);
 	}
 

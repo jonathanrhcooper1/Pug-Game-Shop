@@ -308,6 +308,11 @@ response results. Each result now includes inserted/replayed persistence status
 metadata and the payload includes an operation persistence-status map, letting
 offline clients identify duplicate replays without inspecting nested audits.
 Queue replay workers and canonical mutations remain deferred.
+Version `0.119.0` hydrates replayed staged push response results from existing
+queue rows. Duplicate-push responses now reuse the stored status, result code,
+result details, and resolved timestamp, and report whether the response came
+from the existing queue row or the fresh resolution plan. Queue replay workers
+and canonical mutations remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

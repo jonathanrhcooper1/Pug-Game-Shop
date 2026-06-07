@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.119.0] - 2026-06-06
+
+### Added
+
+- Replay response hydration for staged duplicate offline push responses from
+  stored queue rows.
+- Per-result `persistence.response_source` metadata for resolution-plan versus
+  existing-queue-row responses.
+- Hydrated replay response counts and operation IDs in staged push response and
+  audit payloads.
+- Unit coverage for stored replay details and resolved timestamps in duplicate
+  push responses.
+
+### Not Added
+
+- Queue replay workers, canonical entity mutations, default route execution,
+  live route registration, and production route-connected writes remain
+  deferred.
+
 ## [0.118.0] - 2026-06-06
 
 ### Added

@@ -12,12 +12,14 @@ use TCGStorePlatform\Offline\OfflinePushPersistenceRepositoryResult;
 
 final class OfflinePushRouteProcessingResult {
 	/**
-	 * @param array<string, mixed> $permission_audit Secret-free permission audit payload.
+	 * @param array<string, mixed>       $permission_audit Secret-free permission audit payload.
+	 * @param list<array<string, mixed>> $operation_replay_rows Existing queue rows for replay response hydration.
 	 */
 	public function __construct(
 		private OfflinePushBatchResolutionPlan $resolution_plan,
 		private OfflinePushPersistenceRepositoryResult $persistence_result,
-		private array $permission_audit = array()
+		private array $permission_audit = array(),
+		private array $operation_replay_rows = array()
 	) {
 	}
 
@@ -39,9 +41,11 @@ final class OfflinePushRouteProcessingResult {
 			return $payload;
 		}
 
-		$replay_ids         = array_fill_keys( $this->persistence_result->operation_replay_ids(), true );
-		$annotated_results  = array();
-		$operation_statuses = array();
+		$replay_ids          = array_fill_keys( $this->persistence_result->operation_replay_ids(), true );
+		$replay_rows         = $this->operation_replay_rows_by_id();
+		$annotated_results   = array();
+		$operation_statuses  = array();
+		$hydrated_replay_ids = array();
 
 		foreach ( $payload['results'] as $result ) {
 			if ( ! is_array( $result ) ) {
@@ -52,10 +56,18 @@ final class OfflinePushRouteProcessingResult {
 			$operation_id = trim( (string) ( $result['client_operation_id'] ?? '' ) );
 			$is_replayed  = '' !== $operation_id && isset( $replay_ids[ $operation_id ] );
 			$status       = $is_replayed ? 'replayed' : 'inserted';
+			$source       = 'resolution_plan';
+
+			if ( $is_replayed && isset( $replay_rows[ $operation_id ] ) ) {
+				$result                = $this->replay_response_result( $result, $replay_rows[ $operation_id ] );
+				$source                = 'existing_queue_row';
+				$hydrated_replay_ids[] = $operation_id;
+			}
 
 			$result['persistence'] = array(
-				'status'   => $status,
-				'replayed' => $is_replayed,
+				'status'          => $status,
+				'replayed'        => $is_replayed,
+				'response_source' => $source,
 			);
 
 			if ( '' !== $operation_id ) {
@@ -65,8 +77,10 @@ final class OfflinePushRouteProcessingResult {
 			$annotated_results[] = $result;
 		}
 
-		$payload['results']                       = $annotated_results;
-		$payload['operation_persistence_statuses'] = $operation_statuses;
+		$payload['results']                                  = $annotated_results;
+		$payload['operation_persistence_statuses']           = $operation_statuses;
+		$payload['operation_replay_response_hydrated_count'] = count( $hydrated_replay_ids );
+		$payload['operation_replay_response_hydrated_ids']   = array_values( array_unique( $hydrated_replay_ids ) );
 
 		return $payload;
 	}
@@ -75,25 +89,104 @@ final class OfflinePushRouteProcessingResult {
 	 * @return array<string, mixed>
 	 */
 	public function audit_payload(): array {
+		$hydrated_replay_ids = $this->operation_replay_response_hydrated_ids();
+
 		return array(
-			'action'                           => 'offline_push_route_processing',
-			'batch_id'                         => $this->resolution_plan->batch_id(),
-			'device_id'                        => $this->resolution_plan->device_id(),
-			'server_time_utc'                  => $this->resolution_plan->server_time_utc(),
-			'operation_count'                  => count( $this->resolution_plan->operation_plans() ),
-			'persistence_status'               => $this->persistence_result->status(),
-			'persistence_rows_affected'        => $this->persistence_result->rows_affected(),
-			'operation_rows_affected'          => $this->persistence_result->operation_rows_affected(),
-			'conflict_rows_affected'           => $this->persistence_result->conflict_rows_affected(),
-			'operation_replay_count'           => $this->persistence_result->operation_replay_count(),
-			'operation_replay_ids'             => $this->persistence_result->operation_replay_ids(),
-			'batch_resolution'                 => $this->resolution_plan->audit_payload(),
-			'persistence'                      => $this->persistence_result->audit_payload(),
-			'permission'                       => $this->permission_audit,
-			'default_route_execution_deferred' => true,
-			'route_registration_deferred'      => true,
-			'canonical_mutations_deferred'     => true,
-			'queue_replay_deferred'            => true,
+			'action'                                  => 'offline_push_route_processing',
+			'batch_id'                                => $this->resolution_plan->batch_id(),
+			'device_id'                               => $this->resolution_plan->device_id(),
+			'server_time_utc'                         => $this->resolution_plan->server_time_utc(),
+			'operation_count'                         => count( $this->resolution_plan->operation_plans() ),
+			'persistence_status'                      => $this->persistence_result->status(),
+			'persistence_rows_affected'               => $this->persistence_result->rows_affected(),
+			'operation_rows_affected'                 => $this->persistence_result->operation_rows_affected(),
+			'conflict_rows_affected'                  => $this->persistence_result->conflict_rows_affected(),
+			'operation_replay_count'                  => $this->persistence_result->operation_replay_count(),
+			'operation_replay_ids'                    => $this->persistence_result->operation_replay_ids(),
+			'operation_replay_response_hydrated_count' => count( $hydrated_replay_ids ),
+			'operation_replay_response_hydrated_ids'  => $hydrated_replay_ids,
+			'batch_resolution'                        => $this->resolution_plan->audit_payload(),
+			'persistence'                             => $this->persistence_result->audit_payload(),
+			'permission'                              => $this->permission_audit,
+			'default_route_execution_deferred'        => true,
+			'route_registration_deferred'             => true,
+			'canonical_mutations_deferred'            => true,
+			'queue_replay_deferred'                   => true,
 		);
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function operation_replay_rows_by_id(): array {
+		$rows = array();
+
+		foreach ( $this->operation_replay_rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$operation_id = trim( (string) ( $row['client_operation_id'] ?? '' ) );
+
+			if ( '' !== $operation_id ) {
+				$rows[ $operation_id ] = $row;
+			}
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function operation_replay_response_hydrated_ids(): array {
+		$rows = $this->operation_replay_rows_by_id();
+		$ids  = array();
+
+		foreach ( $this->persistence_result->operation_replay_ids() as $operation_id ) {
+			if ( isset( $rows[ $operation_id ] ) ) {
+				$ids[] = $operation_id;
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $result Freshly resolved response result.
+	 * @param array<string, mixed> $replay_row Existing queue row.
+	 * @return array<string, mixed>
+	 */
+	private function replay_response_result( array $result, array $replay_row ): array {
+		return array_merge(
+			$result,
+			array(
+				'status'          => $this->string_or_fallback( $replay_row, 'status', $result['status'] ?? '' ),
+				'code'            => $this->string_or_fallback( $replay_row, 'result_code', $result['code'] ?? '' ),
+				'details'         => $this->array_or_fallback( $replay_row, 'result_details', $result['details'] ?? array() ),
+				'server_time_utc' => $this->string_or_fallback( $replay_row, 'resolved_at', $result['server_time_utc'] ?? $this->resolution_plan->server_time_utc() ),
+			)
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Source row.
+	 */
+	private function string_or_fallback( array $row, string $field, mixed $fallback ): string {
+		$value = trim( (string) ( $row[ $field ] ?? '' ) );
+
+		return '' !== $value ? $value : trim( (string) $fallback );
+	}
+
+	/**
+	 * @param array<string, mixed> $row Source row.
+	 * @return array<string, mixed>
+	 */
+	private function array_or_fallback( array $row, string $field, mixed $fallback ): array {
+		if ( isset( $row[ $field ] ) && is_array( $row[ $field ] ) ) {
+			return $row[ $field ];
+		}
+
+		return is_array( $fallback ) ? $fallback : array();
 	}
 }
