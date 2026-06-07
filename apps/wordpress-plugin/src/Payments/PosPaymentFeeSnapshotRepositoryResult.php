@@ -93,19 +93,19 @@ final class PosPaymentFeeSnapshotRepositoryResult {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                          => 'pos_payment_fee_snapshot_repository_fetch',
-			'status'                          => $this->status,
-			'fetched'                         => $this->is_fetched(),
-			'is_rejected'                     => $this->is_rejected(),
-			'row_count'                       => count( $this->fee_snapshots ),
-			'query'                           => $this->query_audit,
-			'fetch'                           => $this->fetch_audit,
-			'route_registration_deferred'     => true,
-			'route_connected_reads_deferred'  => true,
-			'route_connected_writes_deferred' => true,
-			'provider_capture_deferred'       => true,
+			'action'                               => 'pos_payment_fee_snapshot_repository_fetch',
+			'status'                               => $this->status,
+			'fetched'                              => $this->is_fetched(),
+			'is_rejected'                          => $this->is_rejected(),
+			'row_count'                            => count( $this->fee_snapshots ),
+			'query'                                => $this->query_audit,
+			'fetch'                                => $this->fetch_audit,
+			'route_registration_deferred'          => true,
+			'route_connected_reads_deferred'       => true,
+			'route_connected_writes_deferred'      => true,
+			'provider_capture_deferred'            => true,
 			'woocommerce_gateway_capture_deferred' => true,
-			'errors'                          => $this->errors,
+			'errors'                               => $this->errors,
 		);
 	}
 }

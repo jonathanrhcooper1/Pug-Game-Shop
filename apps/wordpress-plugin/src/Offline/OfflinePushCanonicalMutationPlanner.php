@@ -64,17 +64,17 @@ final class OfflinePushCanonicalMutationPlanner {
 		}
 
 		$response_payload = array(
-			'batch_id'                         => $payload->batch_id(),
-			'device_id'                        => $payload->device_id(),
-			'server_time_utc'                  => $resolution->server_time_utc(),
-			'mutation_count'                   => count( $mutation_rows ),
-			'mutation_operation_ids'           => $this->operation_ids_from_rows( $mutation_rows ),
-			'skipped_operation_ids'            => $skipped_operation_ids,
-			'skipped_reasons'                  => $skipped_reasons,
-			'replayed_operation_ids'           => array_keys( $replayed_ids ),
-			'canonical_mutations_deferred'     => true,
-			'route_connected_writes_deferred'  => true,
-			'queue_replay_deferred'            => true,
+			'batch_id'                        => $payload->batch_id(),
+			'device_id'                       => $payload->device_id(),
+			'server_time_utc'                 => $resolution->server_time_utc(),
+			'mutation_count'                  => count( $mutation_rows ),
+			'mutation_operation_ids'          => $this->operation_ids_from_rows( $mutation_rows ),
+			'skipped_operation_ids'           => $skipped_operation_ids,
+			'skipped_reasons'                 => $skipped_reasons,
+			'replayed_operation_ids'          => array_keys( $replayed_ids ),
+			'canonical_mutations_deferred'    => true,
+			'route_connected_writes_deferred' => true,
+			'queue_replay_deferred'           => true,
 		);
 
 		$audit_payload = array_merge(
@@ -197,13 +197,13 @@ final class OfflinePushCanonicalMutationPlanner {
 		return array_merge(
 			$this->base_row( $payload, $operation, $operation_plan, $server_time_utc ),
 			array(
-				'mutation_type'               => 'event_registration',
-				'table_contract'              => 'tcg_event_registrations',
-				'registration_status'         => $registration_status,
-				'target_row_version'          => $row_version,
-				'queue_topdeck'               => $details['queueTopDeck'],
-				'topdeck_worker_deferred'     => true,
-				'capacity_guard_deferred'      => true,
+				'mutation_type'           => 'event_registration',
+				'table_contract'          => 'tcg_event_registrations',
+				'registration_status'     => $registration_status,
+				'target_row_version'      => $row_version,
+				'queue_topdeck'           => $details['queueTopDeck'],
+				'topdeck_worker_deferred' => true,
+				'capacity_guard_deferred' => true,
 			)
 		);
 	}
@@ -216,21 +216,21 @@ final class OfflinePushCanonicalMutationPlanner {
 	): array {
 		$this->assert_code( $operation, $operation_plan, array( 'credit_redeemed' ) );
 
-		$details        = $operation_plan->details();
-		$amount         = $this->required_positive_int( $operation, $operation->payload(), 'amountMinorUnits' );
-		$balance_after  = $this->required_non_negative_int( $operation, $details, 'balanceAfterMinorUnits' );
-		$row_version    = $this->required_non_negative_int( $operation, $details, 'rowVersion' );
+		$details       = $operation_plan->details();
+		$amount        = $this->required_positive_int( $operation, $operation->payload(), 'amountMinorUnits' );
+		$balance_after = $this->required_non_negative_int( $operation, $details, 'balanceAfterMinorUnits' );
+		$row_version   = $this->required_non_negative_int( $operation, $details, 'rowVersion' );
 
 		return array_merge(
 			$this->base_row( $payload, $operation, $operation_plan, $server_time_utc ),
 			array(
-				'mutation_type'              => 'customer_credit_redemption',
-				'table_contract'             => 'tcg_customer_credit_ledger',
-				'amount_minor_units'         => $amount,
-				'balance_after_minor_units'  => $balance_after,
-				'target_row_version'         => $row_version,
-				'ledger_write_deferred'      => true,
-				'negative_balance_guard'     => true,
+				'mutation_type'             => 'customer_credit_redemption',
+				'table_contract'            => 'tcg_customer_credit_ledger',
+				'amount_minor_units'        => $amount,
+				'balance_after_minor_units' => $balance_after,
+				'target_row_version'        => $row_version,
+				'ledger_write_deferred'     => true,
+				'negative_balance_guard'    => true,
 			)
 		);
 	}
@@ -265,17 +265,17 @@ final class OfflinePushCanonicalMutationPlanner {
 		}
 
 		return array(
-			'batch_id'                         => $payload->batch_id(),
-			'device_id'                        => $payload->device_id(),
-			'client_operation_id'              => $operation->client_operation_id(),
-			'operation_type'                   => $operation->operation_type(),
-			'entity_type'                      => $operation->entity_type(),
-			'entity_id'                        => $operation->entity_id(),
-			'resolution_code'                  => $operation_plan->code(),
-			'expected_base_row_version'        => $operation->base_row_version(),
-			'planned_at_utc'                   => $server_time_utc,
-			'canonical_mutation_deferred'      => true,
-			'route_connected_write_deferred'   => true,
+			'batch_id'                       => $payload->batch_id(),
+			'device_id'                      => $payload->device_id(),
+			'client_operation_id'            => $operation->client_operation_id(),
+			'operation_type'                 => $operation->operation_type(),
+			'entity_type'                    => $operation->entity_type(),
+			'entity_id'                      => $operation->entity_id(),
+			'resolution_code'                => $operation_plan->code(),
+			'expected_base_row_version'      => $operation->base_row_version(),
+			'planned_at_utc'                 => $server_time_utc,
+			'canonical_mutation_deferred'    => true,
+			'route_connected_write_deferred' => true,
 		);
 	}
 

@@ -28,7 +28,7 @@ final class PosPaymentLogTransactionPreflight {
 		$block_reasons  = $execution_result->block_reasons();
 
 		foreach ( $repository_result->pos_sync_results() as $index => $pos_sync_result ) {
-			$preflight       = $this->preflight_log( $pos_sync_result, 'pos_sync', $index );
+			$preflight        = $this->preflight_log( $pos_sync_result, 'pos_sync', $index );
 			$log_preflights[] = $preflight;
 
 			foreach ( $preflight['block_reasons'] as $reason ) {
@@ -37,7 +37,7 @@ final class PosPaymentLogTransactionPreflight {
 		}
 
 		foreach ( $repository_result->payment_provider_results() as $index => $payment_provider_result ) {
-			$preflight       = $this->preflight_log( $payment_provider_result, 'payment_provider', $index );
+			$preflight        = $this->preflight_log( $payment_provider_result, 'payment_provider', $index );
 			$log_preflights[] = $preflight;
 
 			foreach ( $preflight['block_reasons'] as $reason ) {

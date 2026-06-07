@@ -103,17 +103,17 @@ final class PosPaymentController {
 		unset( $request );
 
 		return array(
-			'status'                              => 'disabled',
-			'status_code'                         => 501,
-			'code'                                => 'pos_payment_route_disabled',
-			'callback'                            => $callback,
-			'message'                             => 'POS/payment route registration is disabled until staging verification passes.',
-			'route_registration_deferred'         => true,
-			'route_connected_writes_deferred'     => true,
-			'transaction_execution_deferred'      => true,
-			'provider_capture_deferred'           => true,
-			'provider_inventory_write_deferred'   => true,
-			'webhook_registration_deferred'       => true,
+			'status'                               => 'disabled',
+			'status_code'                          => 501,
+			'code'                                 => 'pos_payment_route_disabled',
+			'callback'                             => $callback,
+			'message'                              => 'POS/payment route registration is disabled until staging verification passes.',
+			'route_registration_deferred'          => true,
+			'route_connected_writes_deferred'      => true,
+			'transaction_execution_deferred'       => true,
+			'provider_capture_deferred'            => true,
+			'provider_inventory_write_deferred'    => true,
+			'webhook_registration_deferred'        => true,
 			'woocommerce_gateway_capture_deferred' => true,
 		);
 	}

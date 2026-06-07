@@ -121,33 +121,33 @@ final class PosPaymentFeeSnapshotRepository {
 	 * @return array<string, mixed>|null
 	 */
 	private function fee_snapshot( array $row, int $index, array &$errors ): ?array {
-		$row_errors                = array();
-		$public_id                 = $this->public_id( $row['public_id'] ?? null );
-		$provider                  = $this->slugish( $row['provider'] ?? null );
-		$channel                   = $this->slugish( $row['channel'] ?? null );
-		$currency                  = $this->currency( $row['currency'] ?? null );
-		$percentage_basis_points   = $this->non_negative_int( $row['percentage_basis_points'] ?? null );
-		$fixed_fee_minor_units     = $this->non_negative_int( $row['fixed_fee_minor_units'] ?? null );
-		$platform_fee_minor_units  = $this->non_negative_int( $row['platform_fee_minor_units'] ?? null );
-		$effective_from            = $this->date_value( $row['effective_from'] ?? null );
-		$effective_to              = $this->nullable_date_value( $row['effective_to'] ?? null );
-		$last_verified_at          = $this->utc_timestamp( $row['last_verified_at'] ?? null );
-		$updated_at                = $this->utc_timestamp( $row['updated_at'] ?? null );
-		$row_version               = $this->positive_int( $row['row_version'] ?? null );
+		$row_errors               = array();
+		$public_id                = $this->public_id( $row['public_id'] ?? null );
+		$provider                 = $this->slugish( $row['provider'] ?? null );
+		$channel                  = $this->slugish( $row['channel'] ?? null );
+		$currency                 = $this->currency( $row['currency'] ?? null );
+		$percentage_basis_points  = $this->non_negative_int( $row['percentage_basis_points'] ?? null );
+		$fixed_fee_minor_units    = $this->non_negative_int( $row['fixed_fee_minor_units'] ?? null );
+		$platform_fee_minor_units = $this->non_negative_int( $row['platform_fee_minor_units'] ?? null );
+		$effective_from           = $this->date_value( $row['effective_from'] ?? null );
+		$effective_to             = $this->nullable_date_value( $row['effective_to'] ?? null );
+		$last_verified_at         = $this->utc_timestamp( $row['last_verified_at'] ?? null );
+		$updated_at               = $this->utc_timestamp( $row['updated_at'] ?? null );
+		$row_version              = $this->positive_int( $row['row_version'] ?? null );
 
 		foreach (
 			array(
-				'public_id'                 => $public_id,
-				'provider'                  => $provider,
-				'channel'                   => $channel,
-				'currency'                  => $currency,
-				'percentage_basis_points'   => $percentage_basis_points,
-				'fixed_fee_minor_units'     => $fixed_fee_minor_units,
-				'platform_fee_minor_units'  => $platform_fee_minor_units,
-				'effective_from'            => $effective_from,
-				'last_verified_at'          => $last_verified_at,
-				'updated_at'                => $updated_at,
-				'row_version'               => $row_version,
+				'public_id'                => $public_id,
+				'provider'                 => $provider,
+				'channel'                  => $channel,
+				'currency'                 => $currency,
+				'percentage_basis_points'  => $percentage_basis_points,
+				'fixed_fee_minor_units'    => $fixed_fee_minor_units,
+				'platform_fee_minor_units' => $platform_fee_minor_units,
+				'effective_from'           => $effective_from,
+				'last_verified_at'         => $last_verified_at,
+				'updated_at'               => $updated_at,
+				'row_version'              => $row_version,
 			) as $field => $value
 		) {
 			if ( null === $value ) {

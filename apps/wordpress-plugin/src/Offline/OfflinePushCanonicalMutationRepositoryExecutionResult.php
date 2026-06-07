@@ -8,8 +8,8 @@
 namespace TCGStorePlatform\Offline;
 
 final class OfflinePushCanonicalMutationRepositoryExecutionResult {
-	public const STATUS_BLOCKED = 'blocked';
-	public const STATUS_READY   = 'ready';
+	public const STATUS_BLOCKED  = 'blocked';
+	public const STATUS_READY    = 'ready';
 	public const STATUS_REJECTED = 'rejected';
 
 	/**
@@ -118,23 +118,23 @@ final class OfflinePushCanonicalMutationRepositoryExecutionResult {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                                  => 'offline_push_canonical_mutation_repository_execution_gate',
-			'status'                                  => $this->status,
-			'is_blocked'                              => $this->is_blocked(),
-			'is_ready'                                => $this->is_ready(),
-			'is_rejected'                             => $this->is_rejected(),
-			'block_reasons'                           => $this->block_reasons,
-			'mutation_query_count'                    => $this->mutation_query_count(),
-			'mutation_operation_ids'                  => $this->mutation_operation_ids(),
-			'prepare_arg_count'                       => $this->prepare_arg_count(),
-			'rows_affected'                           => $this->rows_affected(),
-			'repository'                              => $this->repository_audit,
-			'explicit_execution_required'             => true,
+			'action'                          => 'offline_push_canonical_mutation_repository_execution_gate',
+			'status'                          => $this->status,
+			'is_blocked'                      => $this->is_blocked(),
+			'is_ready'                        => $this->is_ready(),
+			'is_rejected'                     => $this->is_rejected(),
+			'block_reasons'                   => $this->block_reasons,
+			'mutation_query_count'            => $this->mutation_query_count(),
+			'mutation_operation_ids'          => $this->mutation_operation_ids(),
+			'prepare_arg_count'               => $this->prepare_arg_count(),
+			'rows_affected'                   => $this->rows_affected(),
+			'repository'                      => $this->repository_audit,
+			'explicit_execution_required'     => true,
 			'canonical_mutation_repository_execution_deferred' => true,
 			'canonical_mutation_repository_transaction_deferred' => ! $this->is_ready(),
-			'route_connected_writes_deferred'         => true,
-			'queue_replay_deferred'                   => true,
-			'errors'                                  => $this->errors,
+			'route_connected_writes_deferred' => true,
+			'queue_replay_deferred'           => true,
+			'errors'                          => $this->errors,
 		);
 	}
 

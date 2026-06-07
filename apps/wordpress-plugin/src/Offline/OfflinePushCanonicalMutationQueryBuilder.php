@@ -68,10 +68,10 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 	 */
 	private function table_names( string $table_prefix ): array {
 		return array(
-			'inventory_items'      => $table_prefix . self::INVENTORY_TABLE,
-			'events'               => $table_prefix . self::EVENTS_TABLE,
-			'event_registrations'  => $table_prefix . self::REGISTRATIONS_TABLE,
-			'customers'            => $table_prefix . self::CUSTOMERS_TABLE,
+			'inventory_items'        => $table_prefix . self::INVENTORY_TABLE,
+			'events'                 => $table_prefix . self::EVENTS_TABLE,
+			'event_registrations'    => $table_prefix . self::REGISTRATIONS_TABLE,
+			'customers'              => $table_prefix . self::CUSTOMERS_TABLE,
 			'customer_credit_ledger' => $table_prefix . self::CREDIT_LEDGER_TABLE,
 		);
 	}
@@ -243,12 +243,12 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 		);
 
 		return array(
-			'client_operation_id'                 => $row['client_operation_id'],
-			'mutation_type'                       => $row['mutation_type'],
-			'query_kind'                          => 'inventory_status_guarded_update',
-			'table_name'                          => $table_names['inventory_items'],
-			'sql_template'                        => $sql_template,
-			'prepare_args'                        => array(
+			'client_operation_id'                => $row['client_operation_id'],
+			'mutation_type'                      => $row['mutation_type'],
+			'query_kind'                         => 'inventory_status_guarded_update',
+			'table_name'                         => $table_names['inventory_items'],
+			'sql_template'                       => $sql_template,
+			'prepare_args'                       => array(
 				(string) $row['target_status'],
 				(string) $this->mysql_datetime_utc( (string) $row['planned_at_utc'] ),
 				(int) $row['target_row_version'],
@@ -256,9 +256,9 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 				(int) $row['expected_base_row_version'],
 				'available',
 			),
-			'prevent_double_sell_guard'           => true,
-			'inventory_write_execution_deferred'  => true,
-			'route_connected_writes_deferred'     => true,
+			'prevent_double_sell_guard'          => true,
+			'inventory_write_execution_deferred' => true,
+			'route_connected_writes_deferred'    => true,
 		);
 	}
 
@@ -274,21 +274,21 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 		);
 
 		return array(
-			'client_operation_id'                    => $row['client_operation_id'],
-			'mutation_type'                          => $row['mutation_type'],
-			'query_kind'                             => 'event_registration_guard_lookup',
-			'table_name'                             => $table_names['events'],
-			'registration_table_name'                => $table_names['event_registrations'],
-			'sql_template'                           => $sql_template,
-			'prepare_args'                           => array(
+			'client_operation_id'               => $row['client_operation_id'],
+			'mutation_type'                     => $row['mutation_type'],
+			'query_kind'                        => 'event_registration_guard_lookup',
+			'table_name'                        => $table_names['events'],
+			'registration_table_name'           => $table_names['event_registrations'],
+			'sql_template'                      => $sql_template,
+			'prepare_args'                      => array(
 				(string) $row['entity_id'],
 				(int) $row['expected_base_row_version'],
 			),
-			'registration_status'                    => $row['registration_status'],
-			'queue_topdeck'                          => (bool) $row['queue_topdeck'],
-			'event_registration_write_deferred'      => true,
-			'topdeck_worker_deferred'                => true,
-			'route_connected_writes_deferred'        => true,
+			'registration_status'               => $row['registration_status'],
+			'queue_topdeck'                     => (bool) $row['queue_topdeck'],
+			'event_registration_write_deferred' => true,
+			'topdeck_worker_deferred'           => true,
+			'route_connected_writes_deferred'   => true,
 		);
 	}
 
@@ -304,21 +304,21 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 		);
 
 		return array(
-			'client_operation_id'                 => $row['client_operation_id'],
-			'mutation_type'                       => $row['mutation_type'],
-			'query_kind'                          => 'customer_credit_guard_lookup',
-			'table_name'                          => $table_names['customers'],
-			'ledger_table_name'                   => $table_names['customer_credit_ledger'],
-			'sql_template'                        => $sql_template,
-			'prepare_args'                        => array(
+			'client_operation_id'                   => $row['client_operation_id'],
+			'mutation_type'                         => $row['mutation_type'],
+			'query_kind'                            => 'customer_credit_guard_lookup',
+			'table_name'                            => $table_names['customers'],
+			'ledger_table_name'                     => $table_names['customer_credit_ledger'],
+			'sql_template'                          => $sql_template,
+			'prepare_args'                          => array(
 				(string) $row['entity_id'],
 				(int) $row['expected_base_row_version'],
 			),
-			'amount_minor_units'                  => (int) $row['amount_minor_units'],
-			'balance_after_minor_units'           => (int) $row['balance_after_minor_units'],
+			'amount_minor_units'                    => (int) $row['amount_minor_units'],
+			'balance_after_minor_units'             => (int) $row['balance_after_minor_units'],
 			'customer_credit_ledger_write_deferred' => true,
-			'negative_balance_guard'              => true,
-			'route_connected_writes_deferred'     => true,
+			'negative_balance_guard'                => true,
+			'route_connected_writes_deferred'       => true,
 		);
 	}
 

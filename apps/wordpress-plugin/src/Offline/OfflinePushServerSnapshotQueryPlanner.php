@@ -208,22 +208,22 @@ final class OfflinePushServerSnapshotQueryPlanner {
 		$entity_key = $operation->entity_type() . ':' . $operation->entity_id();
 
 		return array(
-			'client_operation_id'           => $operation->client_operation_id(),
-			'operation_type'                => $operation->operation_type(),
-			'entity_type'                   => $operation->entity_type(),
-			'entity_id'                     => $operation->entity_id(),
-			'entity_key'                    => $entity_key,
-			'domain'                        => $contract['domain'],
-			'table_name'                    => $table_prefix . $contract['table'],
-			'snapshot_section'              => $contract['snapshot_section'],
-			'selected_columns'              => $contract['selected_columns'],
-			'payload_fields'                => $contract['payload_fields'],
-			'derived_fields'                => $contract['derived_fields'] ?? array(),
-			'where'                         => array(
+			'client_operation_id'            => $operation->client_operation_id(),
+			'operation_type'                 => $operation->operation_type(),
+			'entity_type'                    => $operation->entity_type(),
+			'entity_id'                      => $operation->entity_id(),
+			'entity_key'                     => $entity_key,
+			'domain'                         => $contract['domain'],
+			'table_name'                     => $table_prefix . $contract['table'],
+			'snapshot_section'               => $contract['snapshot_section'],
+			'selected_columns'               => $contract['selected_columns'],
+			'payload_fields'                 => $contract['payload_fields'],
+			'derived_fields'                 => $contract['derived_fields'] ?? array(),
+			'where'                          => array(
 				'public_id' => $operation->entity_id(),
 			),
-			'limit'                         => 1,
-			'result_keys'                   => array(
+			'limit'                          => 1,
+			'result_keys'                    => array(
 				$operation->client_operation_id(),
 				$entity_key,
 			),

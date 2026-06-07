@@ -27,11 +27,11 @@ final class PosPaymentRouteValidationHandlerFactory {
 		string $table_prefix = 'wp_',
 		?PosPaymentFeeSnapshotRepository $fee_snapshot_repository = null
 	) {
-		$this->log_planner                 = $log_planner ?? new PosPaymentLogPlanner();
-		$this->fee_snapshot_query_planner  = $fee_snapshot_query_planner ?? new PosPaymentFeeSnapshotQueryPlanner();
-		$this->fee_snapshot_query_builder  = $fee_snapshot_query_builder ?? new PosPaymentFeeSnapshotQueryBuilder();
-		$this->fee_snapshot_repository     = $fee_snapshot_repository;
-		$this->table_prefix                = $table_prefix;
+		$this->log_planner                = $log_planner ?? new PosPaymentLogPlanner();
+		$this->fee_snapshot_query_planner = $fee_snapshot_query_planner ?? new PosPaymentFeeSnapshotQueryPlanner();
+		$this->fee_snapshot_query_builder = $fee_snapshot_query_builder ?? new PosPaymentFeeSnapshotQueryBuilder();
+		$this->fee_snapshot_repository    = $fee_snapshot_repository;
+		$this->table_prefix               = $table_prefix;
 	}
 
 	/**
@@ -39,14 +39,14 @@ final class PosPaymentRouteValidationHandlerFactory {
 	 */
 	public function handlers(): array {
 		return array(
-			'ingest_pos_event'                     => fn ( OfflineRestRequestData $data ): array => $this->ingest_pos_event( $data ),
-			'get_pos_event_status'                 => fn ( OfflineRestRequestData $data ): array => $this->get_pos_event_status( $data ),
-			'run_pos_reconciliation'               => fn ( OfflineRestRequestData $data ): array => $this->run_pos_reconciliation( $data ),
-			'list_pos_reconciliation_conflicts'    => fn ( OfflineRestRequestData $data ): array => $this->list_pos_reconciliation_conflicts( $data ),
-			'resolve_pos_reconciliation_conflict'  => fn ( OfflineRestRequestData $data ): array => $this->resolve_pos_reconciliation_conflict( $data ),
-			'receive_payment_provider_webhook'     => fn ( OfflineRestRequestData $data ): array => $this->receive_payment_provider_webhook( $data ),
-			'list_payment_fee_snapshots'           => fn ( OfflineRestRequestData $data ): array => $this->list_payment_fee_snapshots( $data ),
-			'create_payment_fee_snapshot'          => fn ( OfflineRestRequestData $data ): array => $this->create_payment_fee_snapshot( $data ),
+			'ingest_pos_event'                    => fn ( OfflineRestRequestData $data ): array => $this->ingest_pos_event( $data ),
+			'get_pos_event_status'                => fn ( OfflineRestRequestData $data ): array => $this->get_pos_event_status( $data ),
+			'run_pos_reconciliation'              => fn ( OfflineRestRequestData $data ): array => $this->run_pos_reconciliation( $data ),
+			'list_pos_reconciliation_conflicts'   => fn ( OfflineRestRequestData $data ): array => $this->list_pos_reconciliation_conflicts( $data ),
+			'resolve_pos_reconciliation_conflict' => fn ( OfflineRestRequestData $data ): array => $this->resolve_pos_reconciliation_conflict( $data ),
+			'receive_payment_provider_webhook'    => fn ( OfflineRestRequestData $data ): array => $this->receive_payment_provider_webhook( $data ),
+			'list_payment_fee_snapshots'          => fn ( OfflineRestRequestData $data ): array => $this->list_payment_fee_snapshots( $data ),
+			'create_payment_fee_snapshot'         => fn ( OfflineRestRequestData $data ): array => $this->create_payment_fee_snapshot( $data ),
 		);
 	}
 
@@ -55,14 +55,14 @@ final class PosPaymentRouteValidationHandlerFactory {
 	 */
 	public function readiness_summary(): array {
 		return array(
-			'parser_validation_factory_ready'                  => true,
-			'fee_snapshot_query_planner_ready'                 => method_exists( PosPaymentFeeSnapshotQueryPlanner::class, 'plan' ),
-			'fee_snapshot_query_builder_ready'                 => method_exists( PosPaymentFeeSnapshotQueryBuilder::class, 'build' ),
-			'fee_snapshot_repository_configured'               => null !== $this->fee_snapshot_repository,
-			'fee_snapshot_repository_adapter_ready'            => null !== $this->fee_snapshot_repository,
-			'fee_snapshot_repository_deferred'                 => true,
-			'fee_snapshot_route_connected_reads_deferred'      => true,
-			'fee_snapshot_route_connected_writes_deferred'     => true,
+			'parser_validation_factory_ready'              => true,
+			'fee_snapshot_query_planner_ready'             => method_exists( PosPaymentFeeSnapshotQueryPlanner::class, 'plan' ),
+			'fee_snapshot_query_builder_ready'             => method_exists( PosPaymentFeeSnapshotQueryBuilder::class, 'build' ),
+			'fee_snapshot_repository_configured'           => null !== $this->fee_snapshot_repository,
+			'fee_snapshot_repository_adapter_ready'        => null !== $this->fee_snapshot_repository,
+			'fee_snapshot_repository_deferred'             => true,
+			'fee_snapshot_route_connected_reads_deferred'  => true,
+			'fee_snapshot_route_connected_writes_deferred' => true,
 			'fee_snapshot_repository_execution_requires_route' => false,
 		);
 	}
@@ -125,9 +125,9 @@ final class PosPaymentRouteValidationHandlerFactory {
 		return $this->validated(
 			'run_pos_reconciliation',
 			array(
-				'provider'           => $provider,
-				'window_start'       => $this->string_value( $body['window_start'] ?? '' ),
-				'window_end'         => $this->string_value( $body['window_end'] ?? '' ),
+				'provider'                => $provider,
+				'window_start'            => $this->string_value( $body['window_start'] ?? '' ),
+				'window_end'              => $this->string_value( $body['window_end'] ?? '' ),
 				'reconciliation_deferred' => true,
 			),
 			202
@@ -156,11 +156,11 @@ final class PosPaymentRouteValidationHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function resolve_pos_reconciliation_conflict( OfflineRestRequestData $data ): array {
-		$body       = $data->body_params();
+		$body        = $data->body_params();
 		$conflict_id = $data->route_param( 'conflict_id' ) ?? $this->string_value( $body['conflict_id'] ?? '' );
-		$action     = $this->string_value( $body['resolution_action'] ?? '' );
-		$key        = $data->idempotency_key();
-		$errors     = array();
+		$action      = $this->string_value( $body['resolution_action'] ?? '' );
+		$key         = $data->idempotency_key();
+		$errors      = array();
 
 		if ( '' === $conflict_id ) {
 			$errors[] = 'conflict_id_required';
@@ -181,9 +181,9 @@ final class PosPaymentRouteValidationHandlerFactory {
 		return $this->validated(
 			'resolve_pos_reconciliation_conflict',
 			array(
-				'conflict_id'           => $conflict_id,
-				'resolution_action'     => $action,
-				'idempotency_key'       => $key,
+				'conflict_id'             => $conflict_id,
+				'resolution_action'       => $action,
+				'idempotency_key'         => $key,
 				'conflict_write_deferred' => true,
 			),
 			202
@@ -211,21 +211,21 @@ final class PosPaymentRouteValidationHandlerFactory {
 		return $this->validated(
 			'list_payment_fee_snapshots',
 			array(
-				'provider'                      => $filters['provider'],
-				'channel'                       => $filters['channel'],
-				'currency'                      => $filters['currency'],
-				'effective_on'                  => $filters['effective_on'],
-				'page_size'                     => $query_plan->limit(),
-				'fee_snapshot_query_ready'      => true,
-				'fee_snapshot_read_query'       => $query_plan->query_contract(),
-				'fee_snapshot_sql_ready'        => true,
-				'fee_snapshot_sql_prepare_args' => $query_build_plan->prepare_arg_count(),
-				'fee_snapshot_repository_configured' => null !== $this->fee_snapshot_repository,
+				'provider'                              => $filters['provider'],
+				'channel'                               => $filters['channel'],
+				'currency'                              => $filters['currency'],
+				'effective_on'                          => $filters['effective_on'],
+				'page_size'                             => $query_plan->limit(),
+				'fee_snapshot_query_ready'              => true,
+				'fee_snapshot_read_query'               => $query_plan->query_contract(),
+				'fee_snapshot_sql_ready'                => true,
+				'fee_snapshot_sql_prepare_args'         => $query_build_plan->prepare_arg_count(),
+				'fee_snapshot_repository_configured'    => null !== $this->fee_snapshot_repository,
 				'fee_snapshot_repository_adapter_ready' => null !== $this->fee_snapshot_repository,
-				'fee_snapshot_repository_deferred' => true,
-				'read_deferred'                 => true,
-				'fee_snapshot_read_deferred'    => true,
-				'route_connected_reads_deferred' => true,
+				'fee_snapshot_repository_deferred'      => true,
+				'read_deferred'                         => true,
+				'fee_snapshot_read_deferred'            => true,
+				'route_connected_reads_deferred'        => true,
 			),
 			200
 		);
@@ -299,12 +299,12 @@ final class PosPaymentRouteValidationHandlerFactory {
 		return $this->validated(
 			$callback,
 			array(
-				'log_plan_status'            => $plan->status(),
-				'log_plan_code'              => $plan->code(),
-				'planned_pos_sync_rows'      => count( $plan->pos_sync_rows() ),
-				'planned_payment_log_rows'   => count( $plan->payment_provider_rows() ),
-				'planned_write_count'        => $plan->write_count(),
-				'log_write_deferred'         => true,
+				'log_plan_status'          => $plan->status(),
+				'log_plan_code'            => $plan->code(),
+				'planned_pos_sync_rows'    => count( $plan->pos_sync_rows() ),
+				'planned_payment_log_rows' => count( $plan->payment_provider_rows() ),
+				'planned_write_count'      => $plan->write_count(),
+				'log_write_deferred'       => true,
 			),
 			$status_code
 		);
@@ -316,11 +316,11 @@ final class PosPaymentRouteValidationHandlerFactory {
 	 */
 	private function validated( string $callback, array $data, int $status_code ): array {
 		return array(
-			'status'                              => 'validated',
-			'status_code'                         => $status_code,
-			'code'                                => 'pos_payment_route_request_validated',
-			'callback'                            => $callback,
-			'data'                                => array_merge(
+			'status'      => 'validated',
+			'status_code' => $status_code,
+			'code'        => 'pos_payment_route_request_validated',
+			'callback'    => $callback,
+			'data'        => array_merge(
 				$data,
 				array(
 					'route_connected_writes_deferred'      => true,
@@ -355,10 +355,10 @@ final class PosPaymentRouteValidationHandlerFactory {
 		return array_merge( $data->query_params(), $data->body_params() );
 	}
 
-	private function defaulted_string( mixed $value, string $default ): string {
+	private function defaulted_string( mixed $value, string $fallback ): string {
 		$value = $this->string_value( $value );
 
-		return '' === $value ? $default : $value;
+		return '' === $value ? $fallback : $value;
 	}
 
 	private function nullable_string( mixed $value ): ?string {

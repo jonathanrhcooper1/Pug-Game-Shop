@@ -8,8 +8,8 @@
 namespace TCGStorePlatform\Payments;
 
 final class PosPaymentLogRepositoryExecutionResult {
-	public const STATUS_BLOCKED = 'blocked';
-	public const STATUS_READY   = 'ready';
+	public const STATUS_BLOCKED  = 'blocked';
+	public const STATUS_READY    = 'ready';
 	public const STATUS_REJECTED = 'rejected';
 
 	/**
@@ -126,29 +126,29 @@ final class PosPaymentLogRepositoryExecutionResult {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                                     => 'pos_payment_log_repository_execution_gate',
-			'status'                                     => $this->status,
-			'is_blocked'                                 => $this->is_blocked(),
-			'is_ready'                                   => $this->is_ready(),
-			'is_rejected'                                => $this->is_rejected(),
-			'block_reasons'                              => $this->block_reasons,
-			'pos_sync_query_count'                       => $this->pos_sync_query_count(),
-			'payment_provider_query_count'               => $this->payment_provider_query_count(),
-			'total_query_count'                          => $this->total_query_count(),
-			'log_idempotency_keys'                       => $this->log_idempotency_keys(),
-			'prepare_arg_count'                          => $this->prepare_arg_count(),
-			'rows_affected'                              => $this->rows_affected(),
-			'repository'                                 => $this->repository_audit,
-			'explicit_execution_required'                => true,
-			'payment_log_repository_execution_deferred'  => true,
+			'action'                                      => 'pos_payment_log_repository_execution_gate',
+			'status'                                      => $this->status,
+			'is_blocked'                                  => $this->is_blocked(),
+			'is_ready'                                    => $this->is_ready(),
+			'is_rejected'                                 => $this->is_rejected(),
+			'block_reasons'                               => $this->block_reasons,
+			'pos_sync_query_count'                        => $this->pos_sync_query_count(),
+			'payment_provider_query_count'                => $this->payment_provider_query_count(),
+			'total_query_count'                           => $this->total_query_count(),
+			'log_idempotency_keys'                        => $this->log_idempotency_keys(),
+			'prepare_arg_count'                           => $this->prepare_arg_count(),
+			'rows_affected'                               => $this->rows_affected(),
+			'repository'                                  => $this->repository_audit,
+			'explicit_execution_required'                 => true,
+			'payment_log_repository_execution_deferred'   => true,
 			'payment_log_repository_transaction_deferred' => ! $this->is_ready(),
-			'pos_sync_write_execution_deferred'          => true,
-			'payment_provider_write_execution_deferred'  => true,
-			'route_connected_writes_deferred'            => true,
-			'provider_inventory_write_deferred'          => true,
-			'payment_capture_execution_deferred'         => true,
-			'production_capture_deferred'                => true,
-			'errors'                                     => $this->errors,
+			'pos_sync_write_execution_deferred'           => true,
+			'payment_provider_write_execution_deferred'   => true,
+			'route_connected_writes_deferred'             => true,
+			'provider_inventory_write_deferred'           => true,
+			'payment_capture_execution_deferred'          => true,
+			'production_capture_deferred'                 => true,
+			'errors'                                      => $this->errors,
 		);
 	}
 

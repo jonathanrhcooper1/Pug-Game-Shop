@@ -88,15 +88,15 @@ final class PosPaymentFeeSnapshotRouteHandler {
 	 */
 	private function ready_meta(): array {
 		return array(
-			'route_connected_reads_enabled'       => true,
-			'route_connected_reads_deferred'      => false,
-			'fee_snapshot_repository_deferred'    => false,
-			'route_connected_writes_deferred'     => true,
-			'provider_capture_deferred'           => true,
-			'provider_inventory_write_deferred'   => true,
+			'route_connected_reads_enabled'        => true,
+			'route_connected_reads_deferred'       => false,
+			'fee_snapshot_repository_deferred'     => false,
+			'route_connected_writes_deferred'      => true,
+			'provider_capture_deferred'            => true,
+			'provider_inventory_write_deferred'    => true,
 			'woocommerce_gateway_capture_deferred' => true,
-			'default_route_registration_deferred' => true,
-			'route_still_gated'                   => true,
+			'default_route_registration_deferred'  => true,
+			'route_still_gated'                    => true,
 		);
 	}
 

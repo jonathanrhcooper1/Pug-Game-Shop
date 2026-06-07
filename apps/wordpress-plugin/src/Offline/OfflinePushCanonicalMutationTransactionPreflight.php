@@ -28,7 +28,7 @@ final class OfflinePushCanonicalMutationTransactionPreflight {
 		$block_reasons       = $execution_result->block_reasons();
 
 		foreach ( $repository_result->mutation_results() as $index => $mutation_result ) {
-			$preflight            = $this->preflight_mutation( $mutation_result, $index );
+			$preflight             = $this->preflight_mutation( $mutation_result, $index );
 			$mutation_preflights[] = $preflight;
 
 			foreach ( $preflight['block_reasons'] as $reason ) {
@@ -62,16 +62,16 @@ final class OfflinePushCanonicalMutationTransactionPreflight {
 		$block_reasons = $this->block_reasons_for_query_kind( $query_kind );
 
 		return array(
-			'client_operation_id'              => (string) ( $mutation_result['client_operation_id'] ?? '' ),
-			'mutation_type'                    => $mutation_type,
-			'query_kind'                       => $query_kind,
-			'mutation_query_index'             => $index,
-			'preflight_status'                 => array() === $block_reasons ? 'ready' : 'blocked',
-			'block_reasons'                    => $block_reasons,
-			'prepare_arg_count'                => $this->non_negative_int( $mutation_result['prepare_arg_count'] ?? 0 ),
-			'rows_affected'                    => 0,
-			'transaction_execution_deferred'   => true,
-			'route_connected_writes_deferred'  => true,
+			'client_operation_id'             => (string) ( $mutation_result['client_operation_id'] ?? '' ),
+			'mutation_type'                   => $mutation_type,
+			'query_kind'                      => $query_kind,
+			'mutation_query_index'            => $index,
+			'preflight_status'                => array() === $block_reasons ? 'ready' : 'blocked',
+			'block_reasons'                   => $block_reasons,
+			'prepare_arg_count'               => $this->non_negative_int( $mutation_result['prepare_arg_count'] ?? 0 ),
+			'rows_affected'                   => 0,
+			'transaction_execution_deferred'  => true,
+			'route_connected_writes_deferred' => true,
 		);
 	}
 

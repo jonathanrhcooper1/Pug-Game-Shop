@@ -35,13 +35,13 @@ final class PosPaymentRouteReadinessStatusPresenter {
 				(int) ( $payload['registerable_route_count'] ?? 0 ),
 				(int) ( $payload['planned_route_count'] ?? 0 ),
 				$details,
-				true === ( $payload['route_handlers_configured'] ?? false ) ? 'ready' : 'not ready',
-				true === ( $payload['permission_callbacks_configured'] ?? false ) ? 'ready' : 'not ready',
-				true === ( $payload['route_transaction_executor_configured'] ?? false ) ? 'ready' : 'deferred',
-				true === ( $payload['webhook_verifier_configured'] ?? false ) ? 'ready' : 'not ready',
-				true === ( $payload['provider_capture_deferred'] ?? false ) ? 'deferred' : 'enabled',
-				true === ( $payload['provider_inventory_write_deferred'] ?? false ) ? 'deferred' : 'enabled',
-				true === ( $payload['woocommerce_gateway_capture_deferred'] ?? false ) ? 'deferred' : 'enabled'
+				( true === ( $payload['route_handlers_configured'] ?? false ) ) ? 'ready' : 'not ready',
+				( true === ( $payload['permission_callbacks_configured'] ?? false ) ) ? 'ready' : 'not ready',
+				( true === ( $payload['route_transaction_executor_configured'] ?? false ) ) ? 'ready' : 'deferred',
+				( true === ( $payload['webhook_verifier_configured'] ?? false ) ) ? 'ready' : 'not ready',
+				( true === ( $payload['provider_capture_deferred'] ?? false ) ) ? 'deferred' : 'enabled',
+				( true === ( $payload['provider_inventory_write_deferred'] ?? false ) ) ? 'deferred' : 'enabled',
+				( true === ( $payload['woocommerce_gateway_capture_deferred'] ?? false ) ) ? 'deferred' : 'enabled'
 			),
 			'status' => (string) ( $payload['status'] ?? 'blocked' ),
 		);

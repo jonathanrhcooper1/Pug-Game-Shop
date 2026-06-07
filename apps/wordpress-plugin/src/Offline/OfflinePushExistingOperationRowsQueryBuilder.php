@@ -81,7 +81,7 @@ final class OfflinePushExistingOperationRowsQueryBuilder {
 			$errors[] = 'where_unsupported';
 		}
 
-		if ( $operation_ids !== ( $query['operation_ids'] ?? array() ) ) {
+		if ( ( $query['operation_ids'] ?? array() ) !== $operation_ids ) {
 			$errors[] = 'operation_ids_unsupported';
 		}
 
@@ -92,11 +92,11 @@ final class OfflinePushExistingOperationRowsQueryBuilder {
 			}
 		}
 
-		if ( count( $operation_ids ) !== ( $query['limit'] ?? null ) ) {
+		if ( ( $query['limit'] ?? null ) !== count( $operation_ids ) ) {
 			$errors[] = 'limit_unsupported';
 		}
 
-		if ( $operation_ids !== ( $query['result_keys'] ?? array() ) ) {
+		if ( ( $query['result_keys'] ?? array() ) !== $operation_ids ) {
 			$errors[] = 'result_keys_unsupported';
 		}
 
@@ -133,7 +133,7 @@ final class OfflinePushExistingOperationRowsQueryBuilder {
 		array $query,
 		OfflinePushExistingOperationRowsQueryPlan $query_plan
 	): array {
-		$operation_ids      = $query_plan->operation_ids();
+		$operation_ids     = $query_plan->operation_ids();
 		$selected_columns  = array_values( $query['selected_columns'] );
 		$operation_markers = implode( ', ', array_fill( 0, count( $operation_ids ), '%s' ) );
 		$sql_template      = sprintf(

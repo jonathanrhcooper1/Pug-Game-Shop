@@ -98,23 +98,23 @@ final class OfflinePushRouteHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
-		$database                            = $this->database();
-		$table_prefix                        = null !== $database ? trim( (string) $database->prefix ) : '';
-		$database_ready                      = null !== $database;
-		$table_prefix_ready                  = $this->table_prefix_ready( $table_prefix );
-		$permission_resolver                 = $this->permission_resolver();
-		$permission_ready                    = null !== $permission_resolver;
-		$server_snapshot_provider_configured = is_callable( $this->server_snapshots_provider );
+		$database                             = $this->database();
+		$table_prefix                         = null !== $database ? trim( (string) $database->prefix ) : '';
+		$database_ready                       = null !== $database;
+		$table_prefix_ready                   = $this->table_prefix_ready( $table_prefix );
+		$permission_resolver                  = $this->permission_resolver();
+		$permission_ready                     = null !== $permission_resolver;
+		$server_snapshot_provider_configured  = is_callable( $this->server_snapshots_provider );
 		$server_snapshot_provider_readiness   = $this->server_snapshot_provider_readiness();
 		$operation_options_provider_readiness = $this->operation_options_provider_readiness();
 		$existing_operation_rows_readiness    = $this->existing_operation_rows_provider_readiness( $database );
 		$existing_operation_rows_ready        = true === ( $existing_operation_rows_readiness['provider_ready'] ?? false );
-		$route_dependencies_ready            = $this->route_connected_execution_enabled
+		$route_dependencies_ready             = $this->route_connected_execution_enabled
 			&& $database_ready
 			&& $table_prefix_ready
 			&& $permission_ready
 			&& $server_snapshot_provider_configured;
-		$issues                              = array();
+		$issues                               = array();
 
 		if ( $this->route_connected_execution_enabled ) {
 			if ( ! $database_ready ) {
@@ -137,28 +137,28 @@ final class OfflinePushRouteHandlerFactory {
 		}
 
 		return array(
-			'action'                                      => 'offline_push_route_handler_factory_ready',
-			'configured'                                  => true,
-			'handler_factory_ready'                       => true,
-			'route_connected_execution_enabled'           => $this->route_connected_execution_enabled,
-			'database_configured'                         => $database_ready,
-			'table_prefix_ready'                          => $table_prefix_ready,
-			'permission_resolver_configured'              => $permission_ready,
-			'server_snapshot_provider_configured'         => $server_snapshot_provider_configured,
-			'server_snapshot_repository_provider_ready'   => true === ( $server_snapshot_provider_readiness['provider_ready'] ?? false ),
-			'server_snapshot_route_reads_ready'           => true === ( $server_snapshot_provider_readiness['route_connected_reads_ready'] ?? false ),
-			'server_snapshot_provider_readiness'          => $server_snapshot_provider_readiness,
-			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
-			'operation_options_route_provider_ready'      => true === ( $operation_options_provider_readiness['provider_ready'] ?? false ),
-			'operation_options_provider_readiness'        => $operation_options_provider_readiness,
-			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider )
+			'action'                                       => 'offline_push_route_handler_factory_ready',
+			'configured'                                   => true,
+			'handler_factory_ready'                        => true,
+			'route_connected_execution_enabled'            => $this->route_connected_execution_enabled,
+			'database_configured'                          => $database_ready,
+			'table_prefix_ready'                           => $table_prefix_ready,
+			'permission_resolver_configured'               => $permission_ready,
+			'server_snapshot_provider_configured'          => $server_snapshot_provider_configured,
+			'server_snapshot_repository_provider_ready'    => true === ( $server_snapshot_provider_readiness['provider_ready'] ?? false ),
+			'server_snapshot_route_reads_ready'            => true === ( $server_snapshot_provider_readiness['route_connected_reads_ready'] ?? false ),
+			'server_snapshot_provider_readiness'           => $server_snapshot_provider_readiness,
+			'operation_options_provider_configured'        => is_callable( $this->operation_options_provider ),
+			'operation_options_route_provider_ready'       => true === ( $operation_options_provider_readiness['provider_ready'] ?? false ),
+			'operation_options_provider_readiness'         => $operation_options_provider_readiness,
+			'existing_operation_rows_provider_configured'  => is_callable( $this->existing_operation_rows_provider )
 				|| $database_ready,
 			'existing_operation_rows_route_provider_ready' => $existing_operation_rows_ready,
-			'existing_operation_rows_provider_readiness'  => $existing_operation_rows_readiness,
-			'canonical_mutation_planner_ready'            => method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' ),
-			'canonical_mutation_sql_ready'                => method_exists( OfflinePushCanonicalMutationQueryBuilder::class, 'build' )
+			'existing_operation_rows_provider_readiness'   => $existing_operation_rows_readiness,
+			'canonical_mutation_planner_ready'             => method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' ),
+			'canonical_mutation_sql_ready'                 => method_exists( OfflinePushCanonicalMutationQueryBuilder::class, 'build' )
 				&& $table_prefix_ready,
-			'canonical_mutation_repository_ready'         => method_exists( OfflinePushCanonicalMutationRepository::class, 'stage' ),
+			'canonical_mutation_repository_ready'          => method_exists( OfflinePushCanonicalMutationRepository::class, 'stage' ),
 			'canonical_mutation_repository_execution_gate_ready' => method_exists( OfflinePushCanonicalMutationRepositoryExecutionGate::class, 'evaluate' ),
 			'canonical_mutation_transaction_preflight_ready' => method_exists( OfflinePushCanonicalMutationTransactionPreflight::class, 'evaluate' ),
 			'route_connected_canonical_mutation_planning_deferred' => ! $route_dependencies_ready,
@@ -171,21 +171,21 @@ final class OfflinePushRouteHandlerFactory {
 			'route_connected_canonical_mutation_transaction_preflight_deferred' => true,
 			'route_connected_canonical_mutation_transaction_execution_deferred' => true,
 			'route_connected_canonical_repository_deferred' => true,
-			'persistence_provider_configured'             => $route_dependencies_ready,
-			'route_connected_handler_ready'               => $route_dependencies_ready,
-			'route_connected_handler_deferred'            => ! $route_dependencies_ready,
-			'route_connected_snapshot_reads_deferred'     => ! $route_dependencies_ready,
-			'route_connected_operation_options_deferred'  => ! $route_dependencies_ready,
+			'persistence_provider_configured'              => $route_dependencies_ready,
+			'route_connected_handler_ready'                => $route_dependencies_ready,
+			'route_connected_handler_deferred'             => ! $route_dependencies_ready,
+			'route_connected_snapshot_reads_deferred'      => ! $route_dependencies_ready,
+			'route_connected_operation_options_deferred'   => ! $route_dependencies_ready,
 			'route_connected_existing_operation_rows_deferred' => ! $route_dependencies_ready,
-			'route_connected_queue_writes_deferred'       => ! $route_dependencies_ready,
-			'route_connected_conflict_writes_deferred'    => ! $route_dependencies_ready,
-			'route_connected_writes_ready'                => $route_dependencies_ready,
-			'canonical_route_writes_deferred'             => true,
-			'route_connected_canonical_writes_deferred'   => true,
-			'queue_replay_deferred'                       => true,
-			'default_route_registration_deferred'         => true,
-			'default_route_execution_deferred'            => ! $route_dependencies_ready,
-			'configuration_issues'                        => array_values( array_unique( $issues ) ),
+			'route_connected_queue_writes_deferred'        => ! $route_dependencies_ready,
+			'route_connected_conflict_writes_deferred'     => ! $route_dependencies_ready,
+			'route_connected_writes_ready'                 => $route_dependencies_ready,
+			'canonical_route_writes_deferred'              => true,
+			'route_connected_canonical_writes_deferred'    => true,
+			'queue_replay_deferred'                        => true,
+			'default_route_registration_deferred'          => true,
+			'default_route_execution_deferred'             => ! $route_dependencies_ready,
+			'configuration_issues'                         => array_values( array_unique( $issues ) ),
 		);
 	}
 

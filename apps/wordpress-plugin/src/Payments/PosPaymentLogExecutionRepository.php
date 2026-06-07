@@ -125,17 +125,17 @@ final class PosPaymentLogExecutionRepository {
 
 			$payment_rows_affected += $result;
 			$payment_results[]      = array(
-				'idempotency_key'                           => $idempotency_key,
-				'query_kind'                                => 'payment_provider_insert',
-				'query_index'                               => $index,
-				'operation'                                 => (string) ( $query['operation'] ?? '' ),
-				'status'                                    => (string) ( $query['status'] ?? '' ),
-				'prepare_arg_count'                         => count( $query['prepare_args'] ?? array() ),
-				'rows_affected'                             => $result,
+				'idempotency_key'                    => $idempotency_key,
+				'query_kind'                         => 'payment_provider_insert',
+				'query_index'                        => $index,
+				'operation'                          => (string) ( $query['operation'] ?? '' ),
+				'status'                             => (string) ( $query['status'] ?? '' ),
+				'prepare_arg_count'                  => count( $query['prepare_args'] ?? array() ),
+				'rows_affected'                      => $result,
 				'payment_provider_write_execution_deferred' => false,
-				'route_connected_writes_deferred'           => true,
-				'payment_capture_execution_deferred'        => true,
-				'production_capture_deferred'               => true,
+				'route_connected_writes_deferred'    => true,
+				'payment_capture_execution_deferred' => true,
+				'production_capture_deferred'        => true,
 			);
 		}
 

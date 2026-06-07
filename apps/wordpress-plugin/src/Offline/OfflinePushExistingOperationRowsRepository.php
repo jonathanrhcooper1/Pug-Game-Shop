@@ -81,7 +81,7 @@ final class OfflinePushExistingOperationRowsRepository {
 			}
 
 			$existing_rows[ $operation_id ] = $normalized;
-			$row_results[]                 = $this->row_result( $normalized, $index );
+			$row_results[]                  = $this->row_result( $normalized, $index );
 		}
 
 		return OfflinePushExistingOperationRowsRepositoryResult::fetched(

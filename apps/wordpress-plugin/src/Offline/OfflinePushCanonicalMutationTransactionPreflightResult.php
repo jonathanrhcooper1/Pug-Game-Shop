@@ -160,24 +160,24 @@ final class OfflinePushCanonicalMutationTransactionPreflightResult {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                              => 'offline_push_canonical_mutation_transaction_preflight',
-			'status'                              => $this->status,
-			'is_blocked'                          => $this->is_blocked(),
-			'is_ready'                            => $this->is_ready(),
-			'is_rejected'                         => $this->is_rejected(),
-			'mutation_query_count'                => $this->mutation_query_count(),
-			'ready_mutation_count'                => $this->ready_mutation_count(),
-			'blocked_mutation_count'              => $this->blocked_mutation_count(),
-			'mutation_operation_ids'              => $this->mutation_operation_ids(),
-			'rows_affected'                       => $this->rows_affected(),
-			'block_reasons'                       => $this->block_reasons,
-			'errors'                              => $this->errors,
-			'mutation_preflights'                 => $this->mutation_preflights,
-			'repository'                          => $this->repository_audit,
-			'execution_gate'                      => $this->execution_audit,
-			'transaction_execution_deferred'      => true,
-			'route_connected_writes_deferred'     => true,
-			'queue_replay_deferred'               => true,
+			'action'                          => 'offline_push_canonical_mutation_transaction_preflight',
+			'status'                          => $this->status,
+			'is_blocked'                      => $this->is_blocked(),
+			'is_ready'                        => $this->is_ready(),
+			'is_rejected'                     => $this->is_rejected(),
+			'mutation_query_count'            => $this->mutation_query_count(),
+			'ready_mutation_count'            => $this->ready_mutation_count(),
+			'blocked_mutation_count'          => $this->blocked_mutation_count(),
+			'mutation_operation_ids'          => $this->mutation_operation_ids(),
+			'rows_affected'                   => $this->rows_affected(),
+			'block_reasons'                   => $this->block_reasons,
+			'errors'                          => $this->errors,
+			'mutation_preflights'             => $this->mutation_preflights,
+			'repository'                      => $this->repository_audit,
+			'execution_gate'                  => $this->execution_audit,
+			'transaction_execution_deferred'  => true,
+			'route_connected_writes_deferred' => true,
+			'queue_replay_deferred'           => true,
 		);
 	}
 
@@ -185,7 +185,7 @@ final class OfflinePushCanonicalMutationTransactionPreflightResult {
 		$count = 0;
 
 		foreach ( $this->mutation_preflights as $preflight ) {
-			if ( $status === (string) ( $preflight['preflight_status'] ?? '' ) ) {
+			if ( (string) ( $preflight['preflight_status'] ?? '' ) === $status ) {
 				++$count;
 			}
 		}

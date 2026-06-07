@@ -4,6 +4,14 @@ All notable changes follow Semantic Versioning.
 
 ## [0.155.0] - 2026-06-07
 
+### Fixed
+
+- Aligned offline/POS payment PHP files with the WordPress Coding Standards
+  rules used by GitHub Actions.
+- Kept offline push existing-operation-row route reads reported as deferred
+  during default WordPress activation, even when WordPress provides a database
+  object for lower-level readiness checks.
+
 ### Changed
 
 - Removed TopDeck from the active project scope, staging checklist, deployment

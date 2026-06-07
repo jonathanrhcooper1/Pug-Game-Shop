@@ -99,8 +99,8 @@ final class OfflinePushExistingOperationRowsQueryPlanner {
 				'table_name'                              => $table_prefix . self::QUEUE_TABLE,
 				'selected_columns'                        => self::SELECTED_COLUMNS,
 				'where'                                   => array(
-					'offline_device_id'       => $offline_device_id,
-					'client_operation_id_in'  => $operation_ids,
+					'offline_device_id'      => $offline_device_id,
+					'client_operation_id_in' => $operation_ids,
 				),
 				'operation_ids'                           => $operation_ids,
 				'limit'                                   => count( $operation_ids ),

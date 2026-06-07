@@ -132,7 +132,7 @@ final class PosPaymentFeeSnapshotQueryBuilder {
 			$sql_template .= ' WHERE ' . implode( ' AND ', $where_clauses );
 		}
 
-		$sql_template .= ' ORDER BY `effective_from` DESC, `payment_fee_snapshot_id` DESC LIMIT %d';
+		$sql_template  .= ' ORDER BY `effective_from` DESC, `payment_fee_snapshot_id` DESC LIMIT %d';
 		$prepare_args[] = $query_plan->limit();
 
 		return array(

@@ -37,19 +37,19 @@ final class PosPaymentLogRepository {
 		$payment_provider_results = array();
 		foreach ( $query_plan->payment_provider_queries() as $index => $query ) {
 			$payment_provider_results[] = array(
-				'idempotency_key'                           => (string) ( $query['idempotency_key'] ?? '' ),
-				'query_kind'                                => 'payment_provider_insert',
-				'query_index'                               => $index,
-				'operation'                                 => (string) ( $query['operation'] ?? '' ),
-				'status'                                    => (string) ( $query['status'] ?? '' ),
-				'prepare_arg_count'                         => count( $query['prepare_args'] ?? array() ),
-				'execution_status'                          => 'deferred',
-				'rows_affected'                             => 0,
+				'idempotency_key'                    => (string) ( $query['idempotency_key'] ?? '' ),
+				'query_kind'                         => 'payment_provider_insert',
+				'query_index'                        => $index,
+				'operation'                          => (string) ( $query['operation'] ?? '' ),
+				'status'                             => (string) ( $query['status'] ?? '' ),
+				'prepare_arg_count'                  => count( $query['prepare_args'] ?? array() ),
+				'execution_status'                   => 'deferred',
+				'rows_affected'                      => 0,
 				'payment_provider_write_execution_deferred' => true,
-				'payment_log_repository_deferred'           => true,
-				'route_connected_writes_deferred'           => true,
-				'payment_capture_execution_deferred'        => true,
-				'production_capture_deferred'               => true,
+				'payment_log_repository_deferred'    => true,
+				'route_connected_writes_deferred'    => true,
+				'payment_capture_execution_deferred' => true,
+				'production_capture_deferred'        => true,
 			);
 		}
 

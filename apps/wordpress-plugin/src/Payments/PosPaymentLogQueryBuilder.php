@@ -12,9 +12,9 @@ use DateTimeZone;
 use Exception;
 
 final class PosPaymentLogQueryBuilder {
-	private const POS_SYNC_TABLE         = 'tcg_pos_sync_log';
-	private const PAYMENT_PROVIDER_TABLE = 'tcg_payment_provider_log';
-	private const POS_SYNC_COLUMNS       = array(
+	private const POS_SYNC_TABLE              = 'tcg_pos_sync_log';
+	private const PAYMENT_PROVIDER_TABLE      = 'tcg_payment_provider_log';
+	private const POS_SYNC_COLUMNS            = array(
 		'public_id',
 		'provider',
 		'provider_location_id',
@@ -34,7 +34,7 @@ final class PosPaymentLogQueryBuilder {
 		'updated_at',
 		'row_version',
 	);
-	private const PAYMENT_PROVIDER_COLUMNS = array(
+	private const PAYMENT_PROVIDER_COLUMNS    = array(
 		'public_id',
 		'provider',
 		'channel',

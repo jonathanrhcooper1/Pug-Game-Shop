@@ -60,7 +60,7 @@ final class PosPaymentFeeSnapshotQueryPlanner {
 
 		if ( null === $channel ) {
 			$errors[] = 'channel_invalid';
-			$channel = '';
+			$channel  = '';
 		}
 
 		if ( null === $currency ) {

@@ -28,7 +28,7 @@ final class PosPaymentRoutePermissionCallbackFactory {
 		?callable $capability_checker = null,
 		?callable $webhook_signature_verifier = null
 	) {
-		$this->capability_checker        = $capability_checker;
+		$this->capability_checker         = $capability_checker;
 		$this->webhook_signature_verifier = $webhook_signature_verifier;
 	}
 

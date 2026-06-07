@@ -117,14 +117,14 @@ final class PosPaymentFeeSnapshotQueryPlan {
 	 */
 	public function query_contract(): array {
 		return array(
-			'table_name'                  => $this->table_name,
-			'filters'                     => $this->filters,
-			'selected_columns'            => $this->selected_columns,
-			'order_by'                    => $this->order_by,
-			'limit'                       => $this->limit,
-			'query_ready'                 => $this->is_valid,
-			'read_execution_deferred'     => true,
-			'route_registration_deferred' => true,
+			'table_name'                      => $this->table_name,
+			'filters'                         => $this->filters,
+			'selected_columns'                => $this->selected_columns,
+			'order_by'                        => $this->order_by,
+			'limit'                           => $this->limit,
+			'query_ready'                     => $this->is_valid,
+			'read_execution_deferred'         => true,
+			'route_registration_deferred'     => true,
 			'route_connected_writes_deferred' => true,
 		);
 	}
@@ -134,18 +134,18 @@ final class PosPaymentFeeSnapshotQueryPlan {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                              => 'pos_payment_fee_snapshot_query_planned',
-			'is_valid'                            => $this->is_valid,
-			'table_name'                          => $this->table_name,
-			'filter_count'                        => count( array_filter( $this->filters, fn ( mixed $value ): bool => '' !== $value && null !== $value && false !== $value ) ),
-			'limit'                               => $this->limit,
-			'query_ready'                         => $this->is_valid,
-			'read_execution_deferred'             => true,
-			'route_connected_writes_deferred'     => true,
-			'provider_capture_deferred'           => true,
-			'provider_inventory_write_deferred'   => true,
+			'action'                               => 'pos_payment_fee_snapshot_query_planned',
+			'is_valid'                             => $this->is_valid,
+			'table_name'                           => $this->table_name,
+			'filter_count'                         => count( array_filter( $this->filters, fn ( mixed $value ): bool => '' !== $value && null !== $value && false !== $value ) ),
+			'limit'                                => $this->limit,
+			'query_ready'                          => $this->is_valid,
+			'read_execution_deferred'              => true,
+			'route_connected_writes_deferred'      => true,
+			'provider_capture_deferred'            => true,
+			'provider_inventory_write_deferred'    => true,
 			'woocommerce_gateway_capture_deferred' => true,
-			'errors'                              => $this->errors,
+			'errors'                               => $this->errors,
 		);
 	}
 }

@@ -45,7 +45,7 @@ final class OfflinePushRouteOperationOptionsProvider {
 				continue;
 			}
 
-			$options[ $operation->client_operation_id() ] = $operation_options;
+			$options[ $operation->client_operation_id() ]                         = $operation_options;
 			$options[ $operation->entity_type() . ':' . $operation->entity_id() ] = $operation_options;
 			$options[ $index ] = $operation_options;
 		}

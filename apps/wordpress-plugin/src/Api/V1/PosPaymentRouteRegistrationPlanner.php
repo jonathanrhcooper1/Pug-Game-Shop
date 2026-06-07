@@ -62,31 +62,31 @@ final class PosPaymentRouteRegistrationPlanner {
 		$controller_ready    = is_array( $controller_callback );
 
 		return array(
-			'namespace'                              => $this->route_value( $route_contract, 'namespace' ),
-			'path'                                   => $this->route_value( $route_contract, 'path' ),
-			'methods'                                => strtoupper( $this->route_value( $route_contract, 'method' ) ),
-			'callback'                               => $this->route_value( $route_contract, 'callback' ),
-			'controller_callback'                    => $controller_callback,
-			'permission'                             => $this->route_value( $route_contract, 'permission' ),
-			'workflow'                               => $this->route_value( $route_contract, 'workflow' ),
-			'permission_callback'                    => $permission_callback,
-			'permission_callback_ready'              => $permission_ready,
-			'controller_callback_ready'              => $controller_ready,
-			'live_enabled_by_default'                => true === ( $route_contract['live_enabled_by_default'] ?? false ),
-			'route_registration_deferred'            => true === ( $route_contract['route_registration_deferred'] ?? true ),
-			'route_connected_reads_deferred'         => true === ( $route_contract['route_connected_reads_deferred'] ?? true ),
-			'route_connected_writes_deferred'        => true === ( $route_contract['route_connected_writes_deferred'] ?? true ),
-			'webhook_registration_deferred'          => true === ( $route_contract['webhook_registration_deferred'] ?? true ),
-			'transaction_execution_deferred'         => true === ( $route_contract['transaction_execution_deferred'] ?? true ),
-			'provider_capture_deferred'              => true === ( $route_contract['provider_capture_deferred'] ?? true ),
-			'provider_inventory_write_deferred'      => true === ( $route_contract['provider_inventory_write_deferred'] ?? true ),
-			'woocommerce_gateway_capture_deferred'   => true === ( $route_contract['woocommerce_gateway_capture_deferred'] ?? true ),
-			'should_register'                        => $this->should_register(
+			'namespace'                            => $this->route_value( $route_contract, 'namespace' ),
+			'path'                                 => $this->route_value( $route_contract, 'path' ),
+			'methods'                              => strtoupper( $this->route_value( $route_contract, 'method' ) ),
+			'callback'                             => $this->route_value( $route_contract, 'callback' ),
+			'controller_callback'                  => $controller_callback,
+			'permission'                           => $this->route_value( $route_contract, 'permission' ),
+			'workflow'                             => $this->route_value( $route_contract, 'workflow' ),
+			'permission_callback'                  => $permission_callback,
+			'permission_callback_ready'            => $permission_ready,
+			'controller_callback_ready'            => $controller_ready,
+			'live_enabled_by_default'              => true === ( $route_contract['live_enabled_by_default'] ?? false ),
+			'route_registration_deferred'          => true === ( $route_contract['route_registration_deferred'] ?? true ),
+			'route_connected_reads_deferred'       => true === ( $route_contract['route_connected_reads_deferred'] ?? true ),
+			'route_connected_writes_deferred'      => true === ( $route_contract['route_connected_writes_deferred'] ?? true ),
+			'webhook_registration_deferred'        => true === ( $route_contract['webhook_registration_deferred'] ?? true ),
+			'transaction_execution_deferred'       => true === ( $route_contract['transaction_execution_deferred'] ?? true ),
+			'provider_capture_deferred'            => true === ( $route_contract['provider_capture_deferred'] ?? true ),
+			'provider_inventory_write_deferred'    => true === ( $route_contract['provider_inventory_write_deferred'] ?? true ),
+			'woocommerce_gateway_capture_deferred' => true === ( $route_contract['woocommerce_gateway_capture_deferred'] ?? true ),
+			'should_register'                      => $this->should_register(
 				$route_contract,
 				$permission_ready,
 				$controller_ready
 			),
-			'registration_block_reasons'             => $this->registration_block_reasons(
+			'registration_block_reasons'           => $this->registration_block_reasons(
 				$route_contract,
 				$permission_ready,
 				$controller_ready

@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - CI Standards And WordPress Smoke Fix
+
+### What Changed
+
+- Ran the WordPress Coding Standards fixer over PHP files flagged by GitHub
+  Actions and manually resolved remaining Yoda-condition and reserved-parameter
+  warnings.
+- Updated offline registered-device sync readiness so existing-operation-row
+  route reads stay reported as deferred until route-connected reads are
+  explicitly enabled, even inside an activated WordPress install with `$wpdb`.
+
+### Why
+
+The new repository CI surfaced stricter WordPress Coding Standards checks than
+the local syntax lint and a WordPress integration smoke mismatch between
+component readiness and route-connected read execution. The plugin should expose
+staged internals while keeping default route reads disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteValidationHandlerFactory.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionPreflightResult.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushExistingOperationRowsQueryBuilder.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogPlanner.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogTransactionPreflightResult.php`
+- Additional PHP files in the offline push and POS/payment readiness area were
+  formatting-aligned by `phpcbf`.
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No offline app SQLite schema changes were made.
+
+### Tests Added
+
+- No new tests added.
+- Existing WordPress integration smoke assertions now match route-read
+  deferral behavior in an activated WordPress environment.
+
+### Tests Run
+
+- `vendor/bin/phpcs --standard=phpcs.xml.dist`
+- `npm.cmd run test`
+
+### Rollback Notes
+
+- Revert this revision if CI standards enforcement is relaxed or if the offline
+  push route-read readiness model changes in a later route activation phase.
+- No database rollback is required.
+
 ## 2026-06-07 - TopDeck De-Scope And Square Payment Boundary
 
 ### What Changed

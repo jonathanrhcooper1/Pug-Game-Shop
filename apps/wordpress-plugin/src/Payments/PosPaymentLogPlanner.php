@@ -15,20 +15,20 @@ final class PosPaymentLogPlanner {
 	 * @param array<string, mixed> $context Optional WordPress/order/provider context.
 	 */
 	public function plan_transaction( array $transaction_plan, array $context = array() ): PosPaymentLogPlan {
-		$details       = $this->array_value( $transaction_plan['details'] ?? array() );
-		$ingestion     = $this->array_value( $details['ingestion'] ?? array() );
-		$payment       = $this->array_value( $ingestion['payment'] ?? $details['payment'] ?? array() );
-		$outcome       = $this->slug( $transaction_plan['status'] ?? '' );
-		$result_code   = $this->slug( $transaction_plan['code'] ?? 'pos_transaction_unclassified' );
-		$provider      = $this->slug( $ingestion['provider'] ?? $context['provider'] ?? '' );
-		$event_id      = $this->trimmed_string( $ingestion['eventId'] ?? $ingestion['event_id'] ?? '' );
-		$event_type    = $this->slug( $ingestion['eventType'] ?? $ingestion['event_type'] ?? '' );
-		$event_key     = $this->event_key( $provider, $ingestion, $event_id );
-		$currency      = $this->currency( $payment['currency'] ?? $context['currency'] ?? '' );
-		$received_at   = $this->safe_timestamp( $context['received_at'] ?? null );
-		$occurred_at   = $this->optional_timestamp( $context['occurred_at'] ?? $ingestion['occurredAt'] ?? $ingestion['occurred_at'] ?? null );
-		$operation     = $this->operation_for_event_type( $event_type );
-		$errors        = $this->planning_errors( $provider, $event_key, $outcome, $currency, $operation );
+		$details     = $this->array_value( $transaction_plan['details'] ?? array() );
+		$ingestion   = $this->array_value( $details['ingestion'] ?? array() );
+		$payment     = $this->array_value( $ingestion['payment'] ?? $details['payment'] ?? array() );
+		$outcome     = $this->slug( $transaction_plan['status'] ?? '' );
+		$result_code = $this->slug( $transaction_plan['code'] ?? 'pos_transaction_unclassified' );
+		$provider    = $this->slug( $ingestion['provider'] ?? $context['provider'] ?? '' );
+		$event_id    = $this->trimmed_string( $ingestion['eventId'] ?? $ingestion['event_id'] ?? '' );
+		$event_type  = $this->slug( $ingestion['eventType'] ?? $ingestion['event_type'] ?? '' );
+		$event_key   = $this->event_key( $provider, $ingestion, $event_id );
+		$currency    = $this->currency( $payment['currency'] ?? $context['currency'] ?? '' );
+		$received_at = $this->safe_timestamp( $context['received_at'] ?? null );
+		$occurred_at = $this->optional_timestamp( $context['occurred_at'] ?? $ingestion['occurredAt'] ?? $ingestion['occurred_at'] ?? null );
+		$operation   = $this->operation_for_event_type( $event_type );
+		$errors      = $this->planning_errors( $provider, $event_key, $outcome, $currency, $operation );
 
 		if ( array() !== $errors ) {
 			return PosPaymentLogPlan::failed( 'pos_payment_log_plan_invalid', $errors );
@@ -60,18 +60,18 @@ final class PosPaymentLogPlanner {
 
 		$audit_events = array(
 			array(
-				'action'                            => 'pos_payment.log_plan_created',
-				'provider'                          => $provider,
-				'event_id_hash'                     => hash( 'sha256', $event_id ),
-				'event_type'                        => $event_type,
-				'operation'                         => $operation,
-				'outcome_status'                    => $outcome,
-				'result_code'                       => $result_code,
-				'pos_sync_row_count'                => count( $pos_rows ),
-				'payment_provider_row_count'        => 1,
-				'provider_inventory_write_blocked'  => true === ( $details['providerInventoryWriteBlocked'] ?? false ),
-				'route_connected_writes_deferred'   => true === ( $details['routeConnectedWritesDeferred'] ?? true ),
-				'production_capture_deferred'       => true === ( $details['productionCaptureDeferred'] ?? true ),
+				'action'                           => 'pos_payment.log_plan_created',
+				'provider'                         => $provider,
+				'event_id_hash'                    => hash( 'sha256', $event_id ),
+				'event_type'                       => $event_type,
+				'operation'                        => $operation,
+				'outcome_status'                   => $outcome,
+				'result_code'                      => $result_code,
+				'pos_sync_row_count'               => count( $pos_rows ),
+				'payment_provider_row_count'       => 1,
+				'provider_inventory_write_blocked' => true === ( $details['providerInventoryWriteBlocked'] ?? false ),
+				'route_connected_writes_deferred'  => true === ( $details['routeConnectedWritesDeferred'] ?? true ),
+				'production_capture_deferred'      => true === ( $details['productionCaptureDeferred'] ?? true ),
 			),
 		);
 
@@ -105,25 +105,25 @@ final class PosPaymentLogPlanner {
 		$idempotency_key = $this->bounded_key( $event_key . ':payment:' . $operation );
 
 		return array(
-			'public_id'                => $this->public_id_for_key( 'payment-provider-log:' . $idempotency_key ),
-			'provider'                 => $provider,
-			'channel'                  => $this->defaulted_slug( $context['channel'] ?? '', 'card_present' ),
-			'operation'                => $operation,
-			'woo_order_id'             => $this->optional_positive_int( $context['woo_order_id'] ?? $context['order_id'] ?? null ),
-			'external_transaction_id'  => $this->nullable_string( $payment['transactionId'] ?? $payment['transaction_id'] ?? null ),
-			'external_payment_id'      => $this->nullable_string( $payment['paymentId'] ?? $payment['payment_id'] ?? null ),
-			'external_refund_id'       => $this->nullable_string( $payment['refundId'] ?? $payment['refund_id'] ?? null ),
-			'amount_minor_units'       => $this->non_negative_int( $payment['amountMinorUnits'] ?? $payment['amount_minor_units'] ?? null ),
-			'currency'                 => $currency,
-			'status'                   => $this->defaulted_slug( $payment['status'] ?? $transaction_plan['status'] ?? '', 'unknown' ),
-			'masked_request_json'      => $this->json( Redactor::redact( $context['raw_request'] ?? $ingestion ) ),
-			'masked_response_json'     => $this->json( Redactor::redact( $context['raw_response'] ?? $transaction_plan ) ),
-			'idempotency_key'          => $idempotency_key,
-			'occurred_at'              => $occurred_at,
-			'received_at'              => $received_at,
-			'created_at'               => $received_at,
-			'updated_at'               => $received_at,
-			'row_version'              => 1,
+			'public_id'               => $this->public_id_for_key( 'payment-provider-log:' . $idempotency_key ),
+			'provider'                => $provider,
+			'channel'                 => $this->defaulted_slug( $context['channel'] ?? '', 'card_present' ),
+			'operation'               => $operation,
+			'woo_order_id'            => $this->optional_positive_int( $context['woo_order_id'] ?? $context['order_id'] ?? null ),
+			'external_transaction_id' => $this->nullable_string( $payment['transactionId'] ?? $payment['transaction_id'] ?? null ),
+			'external_payment_id'     => $this->nullable_string( $payment['paymentId'] ?? $payment['payment_id'] ?? null ),
+			'external_refund_id'      => $this->nullable_string( $payment['refundId'] ?? $payment['refund_id'] ?? null ),
+			'amount_minor_units'      => $this->non_negative_int( $payment['amountMinorUnits'] ?? $payment['amount_minor_units'] ?? null ),
+			'currency'                => $currency,
+			'status'                  => $this->defaulted_slug( $payment['status'] ?? $transaction_plan['status'] ?? '', 'unknown' ),
+			'masked_request_json'     => $this->json( Redactor::redact( $context['raw_request'] ?? $ingestion ) ),
+			'masked_response_json'    => $this->json( Redactor::redact( $context['raw_response'] ?? $transaction_plan ) ),
+			'idempotency_key'         => $idempotency_key,
+			'occurred_at'             => $occurred_at,
+			'received_at'             => $received_at,
+			'created_at'              => $received_at,
+			'updated_at'              => $received_at,
+			'row_version'             => 1,
 		);
 	}
 
@@ -215,34 +215,34 @@ final class PosPaymentLogPlanner {
 			: $this->reconciliation_status( $transaction_plan['status'] ?? '' );
 
 		return array(
-			'public_id'                => $this->public_id_for_key( 'pos-sync-log:' . $idempotency_key ),
-			'provider'                 => $provider,
-			'provider_location_id'     => $this->nullable_string( $context['provider_location_id'] ?? $ingestion['providerLocationId'] ?? $ingestion['provider_location_id'] ?? null ),
-			'external_transaction_id'  => $this->nullable_string( $payment['transactionId'] ?? $payment['transaction_id'] ?? $transition['transactionId'] ?? null ),
-			'external_order_id'        => $this->nullable_string( $ingestion['externalOrderId'] ?? $ingestion['external_order_id'] ?? $context['external_order_id'] ?? null ),
-			'external_line_item_id'    => $this->nullable_string( $transition['externalLineItemId'] ?? $transition['external_line_item_id'] ?? null ),
-			'inventory_item_id'        => $this->optional_positive_int( $transition['inventoryId'] ?? $transition['inventory_item_id'] ?? null ),
-			'barcode'                  => $this->nullable_string( $transition['barcode'] ?? null ),
-			'reconciliation_status'    => $status,
-			'result_code'              => $this->slug( $transaction_plan['code'] ?? 'pos_transaction_unclassified' ),
-			'result_details_json'      => $this->json(
+			'public_id'               => $this->public_id_for_key( 'pos-sync-log:' . $idempotency_key ),
+			'provider'                => $provider,
+			'provider_location_id'    => $this->nullable_string( $context['provider_location_id'] ?? $ingestion['providerLocationId'] ?? $ingestion['provider_location_id'] ?? null ),
+			'external_transaction_id' => $this->nullable_string( $payment['transactionId'] ?? $payment['transaction_id'] ?? $transition['transactionId'] ?? null ),
+			'external_order_id'       => $this->nullable_string( $ingestion['externalOrderId'] ?? $ingestion['external_order_id'] ?? $context['external_order_id'] ?? null ),
+			'external_line_item_id'   => $this->nullable_string( $transition['externalLineItemId'] ?? $transition['external_line_item_id'] ?? null ),
+			'inventory_item_id'       => $this->optional_positive_int( $transition['inventoryId'] ?? $transition['inventory_item_id'] ?? null ),
+			'barcode'                 => $this->nullable_string( $transition['barcode'] ?? null ),
+			'reconciliation_status'   => $status,
+			'result_code'             => $this->slug( $transaction_plan['code'] ?? 'pos_transaction_unclassified' ),
+			'result_details_json'     => $this->json(
 				Redactor::redact(
 					array(
-						'outcome_status'                    => $this->slug( $transaction_plan['status'] ?? '' ),
-						'transition'                        => $transition,
-						'provider_inventory_write_blocked'  => true === ( $details['providerInventoryWriteBlocked'] ?? false ),
-						'route_connected_writes_deferred'   => true === ( $details['routeConnectedWritesDeferred'] ?? true ),
-						'production_capture_deferred'       => true === ( $details['productionCaptureDeferred'] ?? true ),
+						'outcome_status'                   => $this->slug( $transaction_plan['status'] ?? '' ),
+						'transition'                       => $transition,
+						'provider_inventory_write_blocked' => true === ( $details['providerInventoryWriteBlocked'] ?? false ),
+						'route_connected_writes_deferred'  => true === ( $details['routeConnectedWritesDeferred'] ?? true ),
+						'production_capture_deferred'      => true === ( $details['productionCaptureDeferred'] ?? true ),
 					)
 				)
 			),
-			'idempotency_key'          => $idempotency_key,
-			'occurred_at'              => $occurred_at,
-			'received_at'              => $received_at,
-			'reconciled_at'            => 'reconciled' === $status ? $received_at : null,
-			'created_at'               => $received_at,
-			'updated_at'               => $received_at,
-			'row_version'              => 1,
+			'idempotency_key'         => $idempotency_key,
+			'occurred_at'             => $occurred_at,
+			'received_at'             => $received_at,
+			'reconciled_at'           => 'reconciled' === $status ? $received_at : null,
+			'created_at'              => $received_at,
+			'updated_at'              => $received_at,
+			'row_version'             => 1,
 		);
 	}
 
@@ -351,10 +351,10 @@ final class PosPaymentLogPlanner {
 		return $value;
 	}
 
-	private function defaulted_slug( mixed $value, string $default ): string {
+	private function defaulted_slug( mixed $value, string $fallback ): string {
 		$value = $this->slug( $value );
 
-		return '' === $value ? $default : $value;
+		return '' === $value ? $fallback : $value;
 	}
 
 	private function currency( mixed $value ): string {

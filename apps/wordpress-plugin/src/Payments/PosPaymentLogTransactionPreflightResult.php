@@ -199,7 +199,7 @@ final class PosPaymentLogTransactionPreflightResult {
 		$count = 0;
 
 		foreach ( $this->log_preflights as $preflight ) {
-			if ( $status === (string) ( $preflight['preflight_status'] ?? '' ) ) {
+			if ( (string) ( $preflight['preflight_status'] ?? '' ) === $status ) {
 				++$count;
 			}
 		}
@@ -211,7 +211,7 @@ final class PosPaymentLogTransactionPreflightResult {
 		$count = 0;
 
 		foreach ( $this->log_preflights as $preflight ) {
-			if ( $log_type === (string) ( $preflight['log_type'] ?? '' ) ) {
+			if ( (string) ( $preflight['log_type'] ?? '' ) === $log_type ) {
 				++$count;
 			}
 		}

@@ -79,19 +79,19 @@ final class PosPaymentFeeSnapshotQueryBuildPlan {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                          => 'pos_payment_fee_snapshot_query_sql_planned',
-			'is_valid'                        => $this->is_valid,
-			'table_name'                      => $this->table_name,
-			'prepare_arg_count'               => $this->prepare_arg_count(),
-			'source'                          => $this->source_audit,
-			'sql_query_ready'                 => $this->is_valid,
-			'read_execution_deferred'         => true,
-			'fee_snapshot_repository_deferred' => true,
-			'route_registration_deferred'     => true,
-			'route_connected_writes_deferred' => true,
-			'provider_capture_deferred'       => true,
+			'action'                               => 'pos_payment_fee_snapshot_query_sql_planned',
+			'is_valid'                             => $this->is_valid,
+			'table_name'                           => $this->table_name,
+			'prepare_arg_count'                    => $this->prepare_arg_count(),
+			'source'                               => $this->source_audit,
+			'sql_query_ready'                      => $this->is_valid,
+			'read_execution_deferred'              => true,
+			'fee_snapshot_repository_deferred'     => true,
+			'route_registration_deferred'          => true,
+			'route_connected_writes_deferred'      => true,
+			'provider_capture_deferred'            => true,
 			'woocommerce_gateway_capture_deferred' => true,
-			'errors'                          => $this->errors,
+			'errors'                               => $this->errors,
 		);
 	}
 }

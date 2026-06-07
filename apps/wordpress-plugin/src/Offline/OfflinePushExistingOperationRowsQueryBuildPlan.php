@@ -95,20 +95,20 @@ final class OfflinePushExistingOperationRowsQueryBuildPlan {
 			: array();
 
 		return array(
-			'action'                                    => 'offline_push_existing_operation_rows_query_sql_planned',
-			'is_valid'                                  => $this->is_valid,
-			'batch_id'                                  => $this->batch_id,
-			'device_id'                                 => $this->device_id,
-			'offline_device_id'                         => $this->offline_device_id,
-			'operation_count'                           => count( $this->query['operation_ids'] ?? array() ),
-			'prepare_arg_count'                         => count( $prepare_args ),
-			'sql_query_ready'                           => $this->is_valid,
-			'execution_deferred'                        => true,
-			'existing_operation_rows_repository_next'   => true,
-			'route_connected_reads_deferred'            => true,
-			'queue_replay_deferred'                     => true,
-			'canonical_mutations_deferred'              => true,
-			'errors'                                    => $this->errors,
+			'action'                                  => 'offline_push_existing_operation_rows_query_sql_planned',
+			'is_valid'                                => $this->is_valid,
+			'batch_id'                                => $this->batch_id,
+			'device_id'                               => $this->device_id,
+			'offline_device_id'                       => $this->offline_device_id,
+			'operation_count'                         => count( $this->query['operation_ids'] ?? array() ),
+			'prepare_arg_count'                       => count( $prepare_args ),
+			'sql_query_ready'                         => $this->is_valid,
+			'execution_deferred'                      => true,
+			'existing_operation_rows_repository_next' => true,
+			'route_connected_reads_deferred'          => true,
+			'queue_replay_deferred'                   => true,
+			'canonical_mutations_deferred'            => true,
+			'errors'                                  => $this->errors,
 		);
 	}
 }

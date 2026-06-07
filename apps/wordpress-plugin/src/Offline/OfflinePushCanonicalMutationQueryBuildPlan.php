@@ -88,19 +88,19 @@ final class OfflinePushCanonicalMutationQueryBuildPlan {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                                    => 'offline_push_canonical_mutation_sql_planned',
-			'is_valid'                                  => $this->is_valid,
-			'table_names'                               => $this->table_names,
-			'mutation_query_count'                      => count( $this->mutation_queries ),
-			'prepare_arg_count'                         => $this->prepare_arg_count(),
-			'source'                                    => $this->source_audit,
-			'inventory_write_execution_deferred'        => true,
-			'event_registration_write_deferred'         => true,
-			'customer_credit_ledger_write_deferred'     => true,
-			'canonical_mutation_repository_deferred'    => true,
-			'route_connected_writes_deferred'           => true,
-			'queue_replay_deferred'                     => true,
-			'errors'                                    => $this->errors,
+			'action'                                 => 'offline_push_canonical_mutation_sql_planned',
+			'is_valid'                               => $this->is_valid,
+			'table_names'                            => $this->table_names,
+			'mutation_query_count'                   => count( $this->mutation_queries ),
+			'prepare_arg_count'                      => $this->prepare_arg_count(),
+			'source'                                 => $this->source_audit,
+			'inventory_write_execution_deferred'     => true,
+			'event_registration_write_deferred'      => true,
+			'customer_credit_ledger_write_deferred'  => true,
+			'canonical_mutation_repository_deferred' => true,
+			'route_connected_writes_deferred'        => true,
+			'queue_replay_deferred'                  => true,
+			'errors'                                 => $this->errors,
 		);
 	}
 
