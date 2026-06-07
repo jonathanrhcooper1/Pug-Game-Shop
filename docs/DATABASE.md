@@ -139,6 +139,9 @@
 - Version `0.125.0` surfaces that deferred repository result from staged push
   route responses, meta, and audits. No WordPress schema, SQLite schema,
   migration order, query execution, or rollback target changes.
+- Version `0.126.0` adds a canonical mutation repository execution gate and
+  route/readiness metadata. No WordPress schema, SQLite schema, migration
+  order, query execution, or rollback target changes.
 
 ## Relationship Overview
 

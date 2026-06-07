@@ -10,6 +10,7 @@ namespace TCGStorePlatform\Api\V1;
 use TCGStorePlatform\Offline\OfflinePushBatchResolutionPlan;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlan;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuildPlan;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryExecutionResult;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryResult;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepositoryResult;
 
@@ -25,7 +26,8 @@ final class OfflinePushRouteProcessingResult {
 		private array $operation_replay_rows = array(),
 		private ?OfflinePushCanonicalMutationPlan $canonical_mutation_plan = null,
 		private ?OfflinePushCanonicalMutationQueryBuildPlan $canonical_mutation_query_build_plan = null,
-		private ?OfflinePushCanonicalMutationRepositoryResult $canonical_mutation_repository_result = null
+		private ?OfflinePushCanonicalMutationRepositoryResult $canonical_mutation_repository_result = null,
+		private ?OfflinePushCanonicalMutationRepositoryExecutionResult $canonical_mutation_repository_execution_result = null
 	) {
 	}
 
@@ -47,6 +49,10 @@ final class OfflinePushRouteProcessingResult {
 
 	public function canonical_mutation_repository_result(): ?OfflinePushCanonicalMutationRepositoryResult {
 		return $this->canonical_mutation_repository_result;
+	}
+
+	public function canonical_mutation_repository_execution_result(): ?OfflinePushCanonicalMutationRepositoryExecutionResult {
+		return $this->canonical_mutation_repository_execution_result;
 	}
 
 	/**
@@ -132,6 +138,17 @@ final class OfflinePushRouteProcessingResult {
 			$payload['canonical_mutation_repository_deferred'] = true;
 		}
 
+		if ( null !== $this->canonical_mutation_repository_execution_result ) {
+			$payload['canonical_mutation_repository_execution_status'] = $this->canonical_mutation_repository_execution_result->status();
+			$payload['canonical_mutation_repository_execution_blocked'] = $this->canonical_mutation_repository_execution_result->is_blocked();
+			$payload['canonical_mutation_repository_execution_ready'] = $this->canonical_mutation_repository_execution_result->is_ready();
+			$payload['canonical_mutation_repository_execution_block_reasons'] = $this->canonical_mutation_repository_execution_result->block_reasons();
+			$payload['canonical_mutation_repository_execution_errors'] = $this->canonical_mutation_repository_execution_result->errors();
+			$payload['canonical_mutation_repository_transaction_deferred'] = true;
+			$payload['canonical_mutation_repository_execution_deferred'] = true;
+			$payload['canonical_mutation_repository_deferred'] = true;
+		}
+
 		return $payload;
 	}
 
@@ -186,6 +203,18 @@ final class OfflinePushRouteProcessingResult {
 			'canonical_mutation_repository_rows_affected' => null !== $this->canonical_mutation_repository_result
 				? $this->canonical_mutation_repository_result->rows_affected()
 				: 0,
+			'canonical_mutation_repository_execution_status' => null !== $this->canonical_mutation_repository_execution_result
+				? $this->canonical_mutation_repository_execution_result->status()
+				: 'blocked',
+			'canonical_mutation_repository_execution_blocked' => null !== $this->canonical_mutation_repository_execution_result
+				? $this->canonical_mutation_repository_execution_result->is_blocked()
+				: true,
+			'canonical_mutation_repository_execution_ready' => null !== $this->canonical_mutation_repository_execution_result
+				? $this->canonical_mutation_repository_execution_result->is_ready()
+				: false,
+			'canonical_mutation_repository_execution_block_reasons' => null !== $this->canonical_mutation_repository_execution_result
+				? $this->canonical_mutation_repository_execution_result->block_reasons()
+				: array(),
 			'batch_resolution'                        => $this->resolution_plan->audit_payload(),
 			'persistence'                             => $this->persistence_result->audit_payload(),
 			'canonical_mutation_planning'             => null !== $this->canonical_mutation_plan
@@ -196,6 +225,9 @@ final class OfflinePushRouteProcessingResult {
 				: array(),
 			'canonical_mutation_repository'           => null !== $this->canonical_mutation_repository_result
 				? $this->canonical_mutation_repository_result->audit_payload()
+				: array(),
+			'canonical_mutation_repository_execution' => null !== $this->canonical_mutation_repository_execution_result
+				? $this->canonical_mutation_repository_execution_result->audit_payload()
 				: array(),
 			'permission'                              => $this->permission_audit,
 			'default_route_execution_deferred'        => true,

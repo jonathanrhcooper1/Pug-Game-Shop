@@ -550,6 +550,10 @@ enabled staged push route responses and audits. Staging can confirm repository
 status and zero affected rows for fresh and replayed pushes, but canonical
 write execution, repository execution, TopDeck workers, queue replay workers,
 production route registration, and default route execution remain disabled.
+Version `0.126.0` adds the canonical repository execution gate. Staging can
+confirm canonical execution remains blocked by default, inspect block reasons,
+and distinguish transaction-adapter deferral from future ready-for-executor
+state before any Windows offline app push can trigger canonical writes.
 
 ## Hardware Gate
 

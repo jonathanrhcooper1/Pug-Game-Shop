@@ -345,6 +345,10 @@ enabled staged push routes. Fresh and replayed push responses, route meta, and
 audits now report repository status, query counts, operation IDs,
 prepare-argument counts, zero affected rows, and deferred execution flags
 without executing canonical repository writes.
+Version `0.126.0` adds a canonical mutation repository execution gate after
+that staging result. Staged push responses now report blocked, ready, or
+rejected execution status plus block reasons and transaction-adapter deferral,
+so canonical writes still cannot run without an explicit future executor path.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

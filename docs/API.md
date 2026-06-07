@@ -300,6 +300,10 @@ replayed duplicate operations report a deferred zero-query repository result.
 Canonical repository execution, inventory writes, event registration writes,
 customer-credit ledger writes, TopDeck workers, queue replay workers, default
 route execution, and live route registration remain disabled.
+Version `0.126.0` adds a canonical mutation repository execution gate to those
+same staged push responses. Payloads, meta, and audits now expose execution
+status, blocked/ready flags, block reasons, transaction-adapter deferral, and
+zero affected rows before any canonical write executor can be attached.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains

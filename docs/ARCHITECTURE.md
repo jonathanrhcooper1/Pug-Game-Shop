@@ -156,6 +156,10 @@ Explicitly enabled staged push routes now include that repository result in
 response payloads, route meta, and route audits. Fresh accepted operations
 report one deferred repository query; replayed duplicate operations report a
 deferred zero-query repository result.
+The canonical mutation repository execution gate now sits after repository
+staging and before any transaction executor. It reports blocked/ready/rejected
+state, block reasons, and transaction-adapter deferral so production writes
+remain impossible until the execution path is explicitly configured and tested.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

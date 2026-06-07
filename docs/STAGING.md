@@ -126,6 +126,9 @@ Before major database migrations:
 - Explicitly enabled staged push responses expose deferred canonical
   repository status for fresh and replayed operations while canonical
   repository execution remains deferred.
+- Canonical repository execution gate metadata reports blocked status, block
+  reasons, and transaction-adapter deferral while canonical writes remain
+  disabled.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

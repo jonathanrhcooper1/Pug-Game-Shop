@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.126.0] - 2026-06-06
+
+### Added
+
+- Canonical mutation repository execution gate for staged offline push
+  mutation results.
+- Route response, route meta, audit, sync readiness, admin summary, and smoke
+  metadata for canonical repository execution status, block reasons, ready
+  state, execution deferral, and transaction-adapter deferral.
+- Unit coverage for default blocked, explicit ready, empty-plan blocked, and
+  rejected-staging execution gate outcomes.
+
+### Not Added
+
+- Canonical mutation repository writes, inventory writes, event registration
+  writes, customer-credit ledger writes, TopDeck workers, queue replay workers,
+  default route execution, live route registration, and production
+  route-connected writes remain deferred.
+
 ## [0.125.0] - 2026-06-06
 
 ### Added

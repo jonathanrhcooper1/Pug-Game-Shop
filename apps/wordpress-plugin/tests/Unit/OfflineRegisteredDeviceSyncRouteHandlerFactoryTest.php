@@ -67,8 +67,11 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_canonical_mutation_sql_ready'] );
 		$this->assert_true( $summary['push_canonical_mutation_sql_template_ready'] );
 		$this->assert_true( $summary['push_canonical_mutation_repository_ready'] );
+		$this->assert_true( $summary['push_canonical_mutation_repository_execution_gate_ready'] );
 		$this->assert_true( $summary['push_canonical_mutation_planning_deferred'] );
 		$this->assert_true( $summary['push_canonical_mutation_sql_execution_deferred'] );
+		$this->assert_true( $summary['push_canonical_mutation_repository_execution_gate_deferred'] );
+		$this->assert_true( $summary['push_canonical_mutation_repository_transaction_deferred'] );
 		$this->assert_true( $summary['push_canonical_mutation_repository_deferred'] );
 		$this->assert_true( $summary['push_snapshot_query_planner_ready'] );
 		$this->assert_true( $summary['push_snapshot_query_sql_ready'] );
@@ -108,6 +111,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_handler_canonical_repository_ready'] );
 		$this->assert_true( $summary['push_handler_canonical_repository_staging_deferred'] );
 		$this->assert_true( $summary['push_handler_canonical_repository_execution_deferred'] );
+		$this->assert_true( $summary['push_handler_canonical_repository_execution_gate_deferred'] );
+		$this->assert_true( $summary['push_handler_canonical_repository_transaction_deferred'] );
 		$this->assert_true( $summary['push_handler_canonical_repository_deferred'] );
 		$this->assert_true( $summary['push_handler_canonical_writes_deferred'] );
 		$this->assert_true( $summary['push_handler_route_queue_writes_deferred'] );
@@ -235,8 +240,11 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_canonical_mutation_sql_ready'] );
 		$this->assert_true( $payload['push_canonical_mutation_sql_template_ready'] );
 		$this->assert_true( $payload['push_canonical_mutation_repository_ready'] );
+		$this->assert_true( $payload['push_canonical_mutation_repository_execution_gate_ready'] );
 		$this->assert_true( $payload['push_canonical_mutation_planning_deferred'] );
 		$this->assert_true( $payload['push_canonical_mutation_sql_execution_deferred'] );
+		$this->assert_true( $payload['push_canonical_mutation_repository_execution_gate_deferred'] );
+		$this->assert_true( $payload['push_canonical_mutation_repository_transaction_deferred'] );
 		$this->assert_true( $payload['push_canonical_mutation_repository_deferred'] );
 		$this->assert_true( $payload['push_snapshot_query_planner_ready'] );
 		$this->assert_true( $payload['push_snapshot_query_sql_ready'] );
@@ -276,6 +284,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_handler_canonical_repository_ready'] );
 		$this->assert_true( $payload['push_handler_canonical_repository_staging_deferred'] );
 		$this->assert_true( $payload['push_handler_canonical_repository_execution_deferred'] );
+		$this->assert_true( $payload['push_handler_canonical_repository_execution_gate_deferred'] );
+		$this->assert_true( $payload['push_handler_canonical_repository_transaction_deferred'] );
 		$this->assert_true( $payload['push_handler_canonical_repository_deferred'] );
 		$this->assert_true( $payload['push_handler_canonical_writes_deferred'] );
 		$this->assert_true( $payload['push_handler_route_queue_writes_deferred'] );
@@ -310,6 +320,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'push canonical planner ready', $summary['value'] );
 		$this->assert_contains( 'push canonical SQL ready', $summary['value'] );
 		$this->assert_contains( 'push canonical repository ready', $summary['value'] );
+		$this->assert_contains( 'push canonical gate ready', $summary['value'] );
 		$this->assert_contains( 'push snapshots ready', $summary['value'] );
 		$this->assert_contains( 'push snapshot SQL ready', $summary['value'] );
 		$this->assert_contains( 'push snapshot repository ready', $summary['value'] );

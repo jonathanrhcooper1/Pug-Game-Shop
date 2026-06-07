@@ -144,6 +144,9 @@
   repository staging metadata for fresh and replayed staged push responses,
   including repository status, query counts, operation IDs, zero affected rows,
   and deferred execution flags.
+- Local unit and WordPress smoke coverage now include canonical mutation
+  repository execution gate outcomes, block reasons, transaction-adapter
+  deferral, route metadata, and sync readiness.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

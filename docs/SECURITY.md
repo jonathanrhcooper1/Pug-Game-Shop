@@ -253,6 +253,11 @@ or production route-connected mutations.
 Route-connected staged push responses now expose that deferred repository
 status and zero-row result metadata, but the repository still does not execute
 canonical mutations or production route-connected writes.
+The canonical mutation repository execution gate adds an explicit second
+approval boundary after staging. Default route processing reports blocked
+execution with block reasons and transaction-adapter deferral; it does not run
+SQL writes, queue replay, TopDeck workers, or production route-connected
+mutations.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

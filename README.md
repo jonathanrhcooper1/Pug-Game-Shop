@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.125.0`
+Version: `0.126.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -261,6 +261,9 @@ disabled.
 Explicitly enabled staged push route responses now include those deferred
 canonical repository results in response payloads, route meta, and audits for
 fresh and replayed operations.
+Those staged push routes now also report a canonical repository execution gate
+with blocked/ready/rejected status, block reasons, and transaction-adapter
+deferral so canonical writes still require an explicit future approval path.
 Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash

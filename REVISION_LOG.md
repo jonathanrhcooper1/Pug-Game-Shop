@@ -3,6 +3,91 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Canonical Mutation Repository Execution Gate
+
+### What Changed
+
+- Added `OfflinePushCanonicalMutationRepositoryExecutionGate`.
+- Added `OfflinePushCanonicalMutationRepositoryExecutionResult`.
+- Connected the execution gate into explicitly enabled offline push route
+  processing after deferred canonical repository staging.
+- Added route response, route meta, audit, sync readiness, admin summary, and
+  smoke metadata for canonical repository execution status, blocked/ready
+  flags, block reasons, transaction-adapter deferral, and zero affected rows.
+- Added unit coverage for default blocked, explicitly ready, empty-plan
+  blocked, and rejected-staging execution gate outcomes.
+- Updated project, plugin, and offline app package versions to `0.126.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The staged push route can now build canonical SQL and stage it in a deferred
+repository result, but actual canonical writes need a separate approval
+boundary before any transaction executor is attached. This revision makes that
+boundary explicit and visible in route payloads while keeping production writes
+disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationRepositoryExecutionGate.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationRepositoryExecutionResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationRepositoryExecutionGateTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `OfflinePushCanonicalMutationRepositoryExecutionGateTest` coverage for
+  blocked, ready, empty-plan blocked, and rejected execution-gate outcomes.
+- Route-connected push handler assertions for execution status, block reasons,
+  transaction deferral, and execution-gate audit metadata.
+- Registered-device sync readiness and WordPress smoke assertions for the
+  execution gate and transaction-adapter deferral flags.
+
+### Rollback Notes
+
+- Revert this revision to remove the canonical repository execution gate and
+  its route/readiness metadata.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Canonical repository execution, canonical entity writes, queue replay
+  workers, TopDeck workers, default route execution, live route registration,
+  and production route-connected writes remain disabled before and after
+  rollback.
+
 ## 2026-06-06 - Route-Connected Offline Push Canonical Mutation Repository Staging
 
 ### What Changed
