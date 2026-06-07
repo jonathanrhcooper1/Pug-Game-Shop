@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Server Snapshot Repository
+
+### What Changed
+
+- Added `OfflinePushServerSnapshotRepository` and
+  `OfflinePushServerSnapshotRepositoryResult` to explicitly execute staged
+  snapshot lookup templates through `$wpdb`.
+- Added resolver-ready snapshot normalization for inventory, event, and
+  customer-credit rows, including event `seatsRemaining` derivation and
+  customer-credit `creditBalanceMinorUnits` derivation.
+- Added repository readiness metadata to registered-device sync handler health
+  and admin summary output while keeping repository execution deferred by
+  default.
+- Added WordPress smoke assertions for push snapshot repository readiness and
+  repository execution deferral.
+- Added unit coverage for successful repository reads, invalid query plans,
+  missing rows, malformed rows, resolver-compatible snapshot keys, fetch audits,
+  and deferred route-read metadata.
+- Updated project, plugin, and offline app package versions to `0.111.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The prior checkpoint defined allowlisted snapshot query contracts and SQL
+templates. This revision adds the next staged boundary: an explicit repository
+adapter that can load the server snapshots needed by the push resolver without
+enabling default route-connected reads, route registration, replay workers, or
+canonical mutations.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotRepositoryResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Push server snapshot repository tests for resolver-ready snapshots, duplicate
+  operation/entity-key lookup keys, fetch audits, invalid query-plan rejection,
+  missing rows, and malformed row rejection.
+- Sync handler factory and WordPress smoke assertions for snapshot repository
+  readiness and explicit execution deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push snapshot repository loading and
+  return to query-template-only snapshot planning.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default route-connected snapshot reads, live route registration, queue replay,
+  canonical entity mutations, and route-connected database writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Server Snapshot Query Planning
 
 ### What Changed

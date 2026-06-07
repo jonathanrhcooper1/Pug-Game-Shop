@@ -159,6 +159,10 @@ columns, lookup IDs, result keys, and deferred execution flags before emitting
 prepared read templates. It does not execute snapshot reads, expose SQL
 arguments in health/admin summaries, load repository rows, or mutate canonical
 entities.
+Push server snapshot repository loading is explicit-only: it executes prepared
+templates through `$wpdb`, rejects malformed rows before push resolution, keeps
+raw SQL out of health/admin summaries, and does not enable default
+route-connected reads or canonical mutations.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

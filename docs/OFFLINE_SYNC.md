@@ -265,6 +265,11 @@ Push operations now produce allowlisted inventory, event, and customer-credit
 snapshot lookup contracts plus prepared SQL templates for future repositories,
 while snapshot execution, repository loading, queue replay, canonical
 mutations, and route registration remain deferred.
+Version `0.111.0` adds explicit offline push server snapshot repository
+adaptation. Staged tests can load and normalize inventory, event, and
+customer-credit rows into resolver-ready server snapshots, while default
+route-connected reads, queue replay, canonical mutations, and route registration
+remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

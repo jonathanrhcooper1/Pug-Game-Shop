@@ -90,6 +90,10 @@
 - Local unit coverage now includes offline push server snapshot query planning
   and SQL template generation for supported operations, invalid contexts,
   unsupported or mismatched operations, and tampered snapshot contracts.
+- Local unit coverage now includes offline push server snapshot repository
+  loading for resolver-ready snapshot normalization, duplicate operation/entity
+  lookup keys, invalid query plans, missing rows, malformed rows, and fetch
+  audit metadata.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

@@ -20,6 +20,7 @@ use TCGStorePlatform\Offline\OfflinePushPersistenceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
 use TCGStorePlatform\Offline\OfflinePushServerSnapshotQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushServerSnapshotQueryPlanner;
+use TCGStorePlatform\Offline\OfflinePushServerSnapshotRepository;
 
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	private const HANDLER_CALLBACKS = array(
@@ -89,6 +90,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		$push_snapshot_planner_ready    = method_exists( OfflinePushServerSnapshotQueryPlanner::class, 'plan' );
 		$push_snapshot_sql_ready        = $push_snapshot_planner_ready
 			&& method_exists( OfflinePushServerSnapshotQueryBuilder::class, 'build' );
+		$push_snapshot_repository_ready = $push_snapshot_sql_ready
+			&& method_exists( OfflinePushServerSnapshotRepository::class, 'fetch' );
 		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
 		$push_persistence_sql_ready     = $push_persistence_planner_ready
 			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
@@ -154,6 +157,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_snapshot_query_planner_ready'          => $push_snapshot_planner_ready,
 			'push_snapshot_query_sql_ready'              => $push_snapshot_sql_ready,
 			'push_snapshot_query_sql_template_ready'     => $push_snapshot_sql_ready,
+			'push_snapshot_repository_ready'             => $push_snapshot_repository_ready,
+			'push_snapshot_repo_execution_deferred'      => true,
 			'push_snapshot_query_execution_deferred'     => true,
 			'push_snapshot_repository_deferred'          => true,
 			'push_snapshot_route_reads_deferred'         => true,

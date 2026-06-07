@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.111.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushServerSnapshotRepository` and
+  `OfflinePushServerSnapshotRepositoryResult` for explicitly executing staged
+  push snapshot lookup templates through `$wpdb`.
+- Snapshot normalization for inventory, event, and customer-credit rows into
+  resolver-ready server snapshot payloads, including event seats remaining and
+  customer-credit minor-unit balance derivation.
+- Health/admin and WordPress smoke readiness metadata for staged push snapshot
+  repository availability and explicit repository execution deferral.
+- Unit coverage for successful snapshot loading, invalid query-plan rejection,
+  missing snapshot rows, malformed row rejection, repository audit payloads, and
+  resolver-compatible snapshot keys.
+
+### Not Added
+
+- Default route-connected snapshot reads remain disabled. Route registration,
+  queue replay, canonical entity mutations, and route-connected database
+  writes remain deferred.
+
 ## [0.110.0] - 2026-06-06
 
 ### Added

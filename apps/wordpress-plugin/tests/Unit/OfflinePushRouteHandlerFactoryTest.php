@@ -269,7 +269,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.110.0',
+				'app_version'       => '0.111.0',
 				'platform'          => 'windows',
 				'last_seen_at'      => '2026-06-06 19:30:00.000000',
 				'revoked_at'        => null,

@@ -94,6 +94,9 @@
 - Version `0.110.0` adds offline push server snapshot query planning over
   existing inventory, event, and customer credit tables. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.111.0` adds explicit offline push server snapshot repository
+  adaptation over those existing tables. No WordPress schema, SQLite schema,
+  migration order, or rollback target changes.
 
 ## Relationship Overview
 

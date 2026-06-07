@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.110.0
+Stable tag: 0.111.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -238,6 +238,9 @@ disabled.
 Phase 7.76 adds offline push server snapshot query planning while keeping
 snapshot execution, repository loading, canonical mutations, and route reads
 deferred.
+Phase 7.77 adds explicit offline push server snapshot repository loading while
+keeping default route-connected reads, route registration, queue replay, and
+canonical mutations deferred.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -255,6 +258,17 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.111.0 =
+
+* Added an explicit offline push server snapshot repository for staged loading
+  of inventory, event, and customer-credit rows.
+* Added row normalization for resolver-ready server snapshots, including event
+  seats remaining and customer-credit minor-unit balance derivation.
+* Added readiness metadata for staged push snapshot repository availability and
+  execution deferral.
+* Kept default route-connected reads, route registration, queue replay,
+  canonical mutations, and route-connected writes disabled.
 
 = 0.110.0 =
 

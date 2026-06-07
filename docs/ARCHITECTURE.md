@@ -93,6 +93,9 @@ inventory, event, and customer-credit read contracts needed by the push batch
 resolver before any repository-backed snapshot loading is added. Those SQL
 templates are inspection-only; route-connected reads and canonical mutations
 remain deferred.
+The staged snapshot repository now executes those templates only when explicitly
+called, normalizes inventory/event/customer-credit rows into the resolver's
+server snapshot shape, and keeps default route-connected reads disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

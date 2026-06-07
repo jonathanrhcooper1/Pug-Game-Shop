@@ -467,6 +467,12 @@ lookup templates for future repositories, while snapshot query execution,
 repository-backed loading, route registration, queue replay, canonical
 mutations, and production route-connected writes remain disabled.
 
+Version `0.111.0` adds explicit offline push server snapshot repository
+adaptation. Staging tests can load and normalize inventory, event, and
+customer-credit rows for push resolution, while default route-connected reads,
+route registration, queue replay, canonical mutations, and production
+route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:
