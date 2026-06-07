@@ -217,6 +217,11 @@ composition. Explicitly enabled staged push handlers can now pass authenticated
 device context to repository-backed snapshot reads before batch resolution,
 while default route-connected reads, canonical mutations, queue replay, and
 live route registration remain deferred.
+Version `0.113.0` adds route-aware offline push operation options provider
+composition. Explicitly enabled staged push handlers can now normalize
+per-operation event payment status from route payloads before batch resolution,
+while default route execution, route registration, TopDeck queue workers,
+canonical mutations, and route-connected writes remain deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -483,7 +488,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.112.0",
+  "app_version": "0.113.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -611,8 +616,12 @@ The planned batch response wraps per-operation results with stable counts:
 
 The batch planner requires server snapshots keyed by client operation ID,
 `entity_type:entity_id`, or operation index before resolving operations.
-Default push route execution and repository-backed snapshot loading remain
-disabled unless staging explicitly injects the route handler dependencies.
+Route-backed operation options may also be keyed by client operation ID,
+`entity_type:entity_id`, or operation index. Current staged options normalize
+event reservation payment status so pay-at-store events do not enter the
+TopDeck registration queue. Default push route execution, repository-backed
+snapshot loading, and operation-options derivation remain disabled unless
+staging explicitly injects the route handler dependencies.
 
 Schema migration `0008_offline-sync` now defines the future persistence tables
 for registered offline devices, idempotent operation queue/result rows,

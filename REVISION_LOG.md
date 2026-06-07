@@ -3,6 +3,91 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Route Operation Options Provider
+
+### What Changed
+
+- Added `OfflinePushRouteOperationOptionsProvider` to normalize per-operation
+  route options from offline push payloads before batch resolution.
+- Added event reservation payment status support for both `paymentStatus` and
+  `payment_status`, limited to the existing event payment status constants.
+- Added push handler factory readiness metadata for operation-options provider
+  readiness, nested provider audits, and route option deferral.
+- Added registered-device sync handler health/admin readiness metadata for the
+  staged push operation-options provider.
+- Added unit coverage for direct provider normalization/rejection and explicitly
+  enabled push handler factory composition using route-derived event options.
+- Updated project, plugin, and offline app package versions to `0.113.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The prior route-backed push handler could fetch repository snapshots, but event
+reservation decisions still depended on injected per-operation options. This
+revision adds the safe route adapter for those options so staged handlers can
+derive payment status from the parsed operation payload and keep pay-at-store
+event registrations out of the TopDeck queue. Default route execution, route
+registration, queue replay, TopDeck workers, canonical mutations, and production
+writes remain disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteOperationOptionsProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteOperationOptionsProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Route operation-options provider tests for event payment status normalization,
+  default payment status handling, non-event operation skipping, and invalid or
+  unsupported payment status rejection.
+- Push route handler factory test coverage for route-derived event payment
+  status options feeding batch resolution and suppressing TopDeck queueing for
+  pay-at-store reservations.
+- Sync handler factory and WordPress smoke assertions for operation-options
+  provider readiness and deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push route operation-options provider
+  composition and return event push route tests to injected options only.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default route-connected execution, live route registration, queue replay,
+  TopDeck queue workers, canonical entity mutations, and route-connected
+  database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Route Server Snapshot Provider
 
 ### What Changed

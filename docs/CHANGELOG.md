@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.113.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushRouteOperationOptionsProvider` for normalizing route payload
+  operation options before offline push batch resolution.
+- Event reservation payment status normalization from `paymentStatus` or
+  `payment_status`, with explicit support for `not_required`, `pay_at_store`,
+  `pending_online`, `paid`, and `refunded`.
+- Push handler factory readiness metadata for staged operation-options provider
+  availability, nested provider audits, and route option deferral.
+- Sync handler health/admin and WordPress smoke readiness metadata for staged
+  push operation-options provider availability and deferral.
+- Unit coverage for route operation-options normalization, invalid or unsupported
+  payment status rejection, non-event operation skipping, and staged push handler
+  event decisions that keep pay-at-store TopDeck queueing disabled.
+
+### Not Added
+
+- Default route-connected execution remains disabled. Route registration,
+  queue replay, canonical entity mutations, TopDeck queue workers, and
+  route-connected database writes remain deferred.
+
 ## [0.112.0] - 2026-06-06
 
 ### Added

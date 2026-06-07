@@ -85,6 +85,7 @@ namespace {
 
 namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflinePushRouteHandlerFactory;
+	use TCGStorePlatform\Api\V1\OfflinePushRouteOperationOptionsProvider;
 	use TCGStorePlatform\Api\V1\OfflinePushRouteServerSnapshotProvider;
 	use TCGStorePlatform\Api\V1\OfflineRegisteredDeviceSyncRouteHandlerFactory;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
@@ -195,6 +196,42 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_contains( 'FROM `wp_tcg_inventory_items`', $database->prepare_queries[1] );
 		}
 
+		public function test_factory_can_use_route_operation_options_provider_for_event_decisions(): void {
+			$database          = new \OfflinePushRouteHandlerFactoryWpdb(
+				$this->database_row(),
+				array( 1 ),
+				array( $this->event_snapshot_row() )
+			);
+			$snapshot_provider = new OfflinePushRouteServerSnapshotProvider( $database );
+			$options_provider  = new OfflinePushRouteOperationOptionsProvider();
+			$factory           = new OfflinePushRouteHandlerFactory(
+				static fn (): \wpdb => $database,
+				null,
+				$this->server_time_provider(),
+				$snapshot_provider,
+				$options_provider,
+				null,
+				true
+			);
+			$summary           = $factory->readiness_summary();
+			$response          = $factory->handler()->handle( $this->event_push_request_data() );
+
+			$this->assert_true( $summary['operation_options_route_provider_ready'] );
+			$this->assert_false( $summary['route_connected_operation_options_deferred'] );
+			$this->assert_same(
+				'offline_push_route_operation_options_provider_ready',
+				$summary['operation_options_provider_readiness']['action']
+			);
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
+			$this->assert_same( 'event_reserved', $response['data']['results'][0]['code'] );
+			$this->assert_false( $response['data']['results'][0]['details']['queueTopDeck'] );
+			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 2, $database->get_row_count );
+			$this->assert_same( 1, $database->query_count );
+			$this->assert_contains( 'FROM `wp_tcg_events`', $database->prepare_queries[1] );
+		}
+
 		public function test_sync_handler_factory_can_receive_route_connected_push_factory(): void {
 			$database = new \OfflinePushRouteHandlerFactoryWpdb( $this->database_row(), array( 1 ) );
 			$factory  = new OfflineRegisteredDeviceSyncRouteHandlerFactory(
@@ -264,6 +301,15 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
+		private function event_push_request_data(): \TCGStorePlatform\Api\V1\OfflineRestRequestData {
+			return new \TCGStorePlatform\Api\V1\OfflineRestRequestData(
+				$this->event_push_body(),
+				array(),
+				array(),
+				$this->headers()
+			);
+		}
+
 		/**
 		 * @return array<string, string>
 		 */
@@ -308,12 +354,57 @@ namespace TCGStorePlatform\Tests\Unit {
 		/**
 		 * @return array<string, mixed>
 		 */
+		private function event_push_body(): array {
+			return array(
+				'batch_id'   => 'body-batch-ignored',
+				'device_id'  => 'device-main-01',
+				'operations' => array(
+					array(
+						'client_operation_id' => 'op-event-route-01',
+						'device_id'           => 'device-main-01',
+						'location_id'         => 3,
+						'actor_id'            => 22,
+						'operation_type'      => 'event_reservation',
+						'entity_type'         => 'event',
+						'entity_id'           => 'event-100',
+						'base_row_version'    => 9,
+						'occurred_at_local'   => '2026-06-06T11:15:00-04:00',
+						'queued_at_utc'       => '2026-06-06T15:15:05Z',
+						'payload'             => array(
+							'paymentStatus' => 'pay_at_store',
+						),
+						'schema_version'      => 1,
+					),
+				),
+			);
+		}
+
+		/**
+		 * @return array<string, mixed>
+		 */
 		private function inventory_snapshot_row(): array {
 			return array(
 				'public_id'   => 'inv-1001',
 				'status'      => 'available',
 				'row_version' => '4',
 				'updated_at'  => '2026-06-06 18:00:00',
+			);
+		}
+
+		/**
+		 * @return array<string, mixed>
+		 */
+		private function event_snapshot_row(): array {
+			return array(
+				'public_id'           => 'event-100',
+				'player_cap'          => '16',
+				'registered_count'    => '10',
+				'waitlist_enabled'    => '1',
+				'registration_status' => 'open',
+				'registration_mode'   => 'website_push_topdeck',
+				'topdeck_enabled'     => '1',
+				'row_version'         => '9',
+				'updated_at'          => '2026-06-06 18:01:00',
 			);
 		}
 
@@ -332,7 +423,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.112.0',
+				'app_version'       => '0.113.0',
 				'platform'          => 'windows',
 				'last_seen_at'      => '2026-06-06 19:30:00.000000',
 				'revoked_at'        => null,

@@ -479,6 +479,13 @@ repository-backed snapshots from authenticated device context, while default
 route-connected reads, route registration, queue replay, canonical mutations,
 and production route-connected writes remain disabled.
 
+Version `0.113.0` adds route-aware offline push operation options provider
+composition. Explicitly enabled staged push handlers can now normalize event
+reservation payment status from route payloads before batch resolution, while
+default route execution, route registration, queue replay, TopDeck queue
+workers, canonical mutations, and production route-connected writes remain
+disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

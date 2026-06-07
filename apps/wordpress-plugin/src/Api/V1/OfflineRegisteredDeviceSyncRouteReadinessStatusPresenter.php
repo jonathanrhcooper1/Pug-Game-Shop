@@ -36,7 +36,7 @@ final class OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'pull %s; push %s; context %s; query plan %s; SQL plan %s; repository %s; provider %s; route provider %s; cursor planner %s; cursor SQL %s; cursor repository %s; route cursor provider %s; handler cursor %s; handler factory %s; route dependencies %s; push snapshots %s; push snapshot SQL %s; push snapshot repository %s; push snapshot route provider %s; push persistence %s; push SQL %s; push repository %s; push route handler %s; push route provider %s; push handler factory %s; push route dependencies %s; %d callbacks; writes deferred; routes deferred',
+				'pull %s; push %s; context %s; query plan %s; SQL plan %s; repository %s; provider %s; route provider %s; cursor planner %s; cursor SQL %s; cursor repository %s; route cursor provider %s; handler cursor %s; handler factory %s; route dependencies %s; push snapshots %s; push snapshot SQL %s; push snapshot repository %s; push snapshot route provider %s; push operation options %s; push persistence %s; push SQL %s; push repository %s; push route handler %s; push route provider %s; push handler factory %s; push route dependencies %s; %d callbacks; writes deferred; routes deferred',
 				true === ( $payload['pull_handler_configured'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_handler_configured'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['pull_device_context_planner_ready'] ?? false ) ? 'ready' : 'not ready',
@@ -56,6 +56,7 @@ final class OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter {
 				true === ( $payload['push_snapshot_query_sql_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_snapshot_repository_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_snapshot_route_provider_ready'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['push_operation_options_provider_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_persistence_planner_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_persistence_sql_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_persistence_repository_ready'] ?? false ) ? 'ready' : 'not ready',

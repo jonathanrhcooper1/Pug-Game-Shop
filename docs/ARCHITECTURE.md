@@ -100,6 +100,11 @@ The route-aware snapshot provider now adapts authenticated registered-device
 context to that repository for explicitly enabled staged push handlers, while
 default route reads, route registration, queue replay, and canonical mutations
 remain disabled.
+The route-aware operation-options provider now adapts parsed push payloads into
+resolver options for explicitly enabled staged handlers. Current options are
+limited to event reservation payment status, keeping pay-at-store reservations
+out of the TopDeck queue while default route execution and canonical mutations
+remain disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -450,6 +455,9 @@ queue/result rows, manager-reviewed conflicts, and per-device pull cursors.
 Offline push persistence planning now maps resolved batches into deterministic
 queue rows, conflict rows, idempotent replay rows, and redacted audit payloads
 before live `$wpdb` writes are enabled.
+Route operation-options staging now feeds normalized event payment status into
+that resolution path for explicitly enabled tests without enabling live TopDeck
+queue workers or canonical event mutation.
 
 ## Storefront Product Strategy
 

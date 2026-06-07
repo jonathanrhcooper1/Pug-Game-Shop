@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.112.0`
+Version: `0.113.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -216,7 +216,10 @@ staged tests while default route-connected reads remain deferred. Route-aware
 offline push snapshot provider composition now feeds repository-backed
 snapshots into explicitly enabled staged push handlers while default route
 registration, route reads, queue replay, and canonical mutations remain
-deferred. Offline bearer-token
+deferred. Route-aware offline push operation options provider composition now
+normalizes event reservation payment status from route payloads for explicitly
+enabled staged handlers, including pay-at-store behavior that suppresses
+TopDeck queueing, while default route execution remains deferred. Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash
 comparison, persisted offline-device ID enforcement, and delegated
@@ -292,7 +295,7 @@ credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
 live reservation cleanup workers, live offline route registration, live device
 row permission checks, route permission callback wiring, route-connected
 device last-seen database writes, live offline push handlers, live batch queue
-replay, and production provider credentials remain disabled until staging
+replay, live TopDeck queue workers, and production provider credentials remain disabled until staging
 acceptance.
 
 ## Source Of Truth

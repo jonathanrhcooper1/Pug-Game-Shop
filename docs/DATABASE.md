@@ -100,6 +100,9 @@
 - Version `0.112.0` adds route-aware offline push snapshot provider
   composition over the existing snapshot repository. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.113.0` adds route-aware offline push operation-options provider
+  composition over existing event payment status contracts. No WordPress schema,
+  SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

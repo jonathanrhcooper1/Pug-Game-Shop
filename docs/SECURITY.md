@@ -167,6 +167,11 @@ Route-aware push snapshot provider composition receives only the authenticated
 registered-device row and server timestamp from the staged push route provider,
 then delegates to the allowlisted repository. It remains explicit-only and does
 not enable default public route reads, queue replay, or canonical mutations.
+Route-aware push operation-options composition reads only parsed operation
+payload fields, normalizes event payment status against an allowlist, rejects
+array/object or unsupported statuses, and does not expose SQL, customer data,
+payment credentials, or TopDeck secrets. It remains explicit-only and does not
+enable default route execution, TopDeck queue workers, or canonical mutations.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

@@ -69,6 +69,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_snapshot_repository_ready'] );
 		$this->assert_true( $summary['push_snapshot_route_provider_ready'] );
 		$this->assert_true( $summary['push_snapshot_route_provider_deferred'] );
+		$this->assert_true( $summary['push_operation_options_provider_ready'] );
+		$this->assert_true( $summary['push_operation_options_provider_deferred'] );
 		$this->assert_true( $summary['push_snapshot_repo_execution_deferred'] );
 		$this->assert_true( $summary['push_snapshot_query_execution_deferred'] );
 		$this->assert_true( $summary['push_snapshot_repository_deferred'] );
@@ -207,6 +209,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_snapshot_repository_ready'] );
 		$this->assert_true( $payload['push_snapshot_route_provider_ready'] );
 		$this->assert_true( $payload['push_snapshot_route_provider_deferred'] );
+		$this->assert_true( $payload['push_operation_options_provider_ready'] );
+		$this->assert_true( $payload['push_operation_options_provider_deferred'] );
 		$this->assert_true( $payload['push_snapshot_repo_execution_deferred'] );
 		$this->assert_true( $payload['push_snapshot_query_execution_deferred'] );
 		$this->assert_true( $payload['push_snapshot_repository_deferred'] );
@@ -251,6 +255,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'push snapshot SQL ready', $summary['value'] );
 		$this->assert_contains( 'push snapshot repository ready', $summary['value'] );
 		$this->assert_contains( 'push snapshot route provider ready', $summary['value'] );
+		$this->assert_contains( 'push operation options ready', $summary['value'] );
 		$this->assert_contains( 'push repository ready', $summary['value'] );
 		$this->assert_contains( 'push route handler ready', $summary['value'] );
 		$this->assert_contains( 'push route provider ready', $summary['value'] );

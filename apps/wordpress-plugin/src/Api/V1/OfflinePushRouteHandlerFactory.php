@@ -94,7 +94,8 @@ final class OfflinePushRouteHandlerFactory {
 		$permission_resolver                 = $this->permission_resolver();
 		$permission_ready                    = null !== $permission_resolver;
 		$server_snapshot_provider_configured = is_callable( $this->server_snapshots_provider );
-		$server_snapshot_provider_readiness  = $this->server_snapshot_provider_readiness();
+		$server_snapshot_provider_readiness   = $this->server_snapshot_provider_readiness();
+		$operation_options_provider_readiness = $this->operation_options_provider_readiness();
 		$route_dependencies_ready            = $this->route_connected_execution_enabled
 			&& $database_ready
 			&& $table_prefix_ready
@@ -135,11 +136,14 @@ final class OfflinePushRouteHandlerFactory {
 			'server_snapshot_route_reads_ready'           => true === ( $server_snapshot_provider_readiness['route_connected_reads_ready'] ?? false ),
 			'server_snapshot_provider_readiness'          => $server_snapshot_provider_readiness,
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
+			'operation_options_route_provider_ready'      => true === ( $operation_options_provider_readiness['provider_ready'] ?? false ),
+			'operation_options_provider_readiness'        => $operation_options_provider_readiness,
 			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
 			'persistence_provider_configured'             => $route_dependencies_ready,
 			'route_connected_handler_ready'               => $route_dependencies_ready,
 			'route_connected_handler_deferred'            => ! $route_dependencies_ready,
 			'route_connected_snapshot_reads_deferred'     => ! $route_dependencies_ready,
+			'route_connected_operation_options_deferred'  => ! $route_dependencies_ready,
 			'route_connected_queue_writes_deferred'       => ! $route_dependencies_ready,
 			'route_connected_conflict_writes_deferred'    => ! $route_dependencies_ready,
 			'route_connected_writes_ready'                => $route_dependencies_ready,
@@ -199,6 +203,22 @@ final class OfflinePushRouteHandlerFactory {
 		}
 
 		$summary = $this->server_snapshots_provider->readiness_summary();
+
+		return is_array( $summary ) ? $summary : array();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function operation_options_provider_readiness(): array {
+		if (
+			! is_object( $this->operation_options_provider )
+			|| ! method_exists( $this->operation_options_provider, 'readiness_summary' )
+		) {
+			return array();
+		}
+
+		$summary = $this->operation_options_provider->readiness_summary();
 
 		return is_array( $summary ) ? $summary : array();
 	}

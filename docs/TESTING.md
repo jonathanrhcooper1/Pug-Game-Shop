@@ -98,6 +98,11 @@
   provider composition for authenticated device context handoff,
   repository-backed snapshot reads, missing context/row rejection, and staged
   route handler integration.
+- Local unit coverage now includes route-aware offline push operation-options
+  provider composition for event payment status normalization, default
+  not-required handling, invalid or unsupported status rejection, non-event
+  operation skipping, and staged event decisions that suppress TopDeck queueing
+  for pay-at-store reservations.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

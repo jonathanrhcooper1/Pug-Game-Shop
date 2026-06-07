@@ -275,6 +275,12 @@ composition. Explicitly enabled staged push handlers can now use authenticated
 device context to fetch repository-backed snapshots before batch resolution,
 while default route-connected reads, queue replay, canonical mutations, and
 route registration remain deferred.
+Version `0.113.0` adds route-aware offline push operation options provider
+composition. Explicitly enabled staged push handlers can now derive event
+reservation payment status options from operation payloads, including
+pay-at-store behavior that suppresses TopDeck queueing, while default route
+execution, queue replay, canonical mutations, and route registration remain
+deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -351,7 +357,9 @@ rows, and redacted audit payloads. Offline push persistence SQL and repository
 staging now convert those planned rows into prepared queue/conflict inserts and
 explicitly invoked `$wpdb` execution results, while default live route
 execution, queue replay, canonical mutations, and route-connected writes remain
-disabled.
+disabled. Route operation-options staging now normalizes event reservation
+payment status from push payloads before batch resolution, while keeping
+TopDeck queue workers and canonical event mutations disabled by default.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,
