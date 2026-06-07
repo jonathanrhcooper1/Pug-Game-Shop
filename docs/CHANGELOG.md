@@ -107,6 +107,10 @@ All notable changes follow Semantic Versioning.
 - Staged inventory search route handler and factory that can explicitly compose
   parser, query planner, repository, and public/staff response presentation for
   `/inventory/search` while default live route registration remains disabled.
+- WooCommerce product projection planning for exact serialized inventory rows,
+  including simple-product create/update payloads, stockout updates for mapped
+  unavailable cards, serialized metadata, currency/quantity validation, and
+  explicit deferred WooCommerce/Square write metadata.
 - Square inventory projection planning for exact serialized cards, including
   Square catalog variation payloads, physical-count payloads, scan-identity
   validation, zero-count updates for unavailable mapped cards, and deferred

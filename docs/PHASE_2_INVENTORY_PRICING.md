@@ -116,6 +116,10 @@ staging database acceptance remains pending.
   `/inventory/search` reads, composing parser, planner, repository, and
   public/staff response presentation while default route registration remains
   gated.
+- WooCommerce product projection planning for exact serialized inventory rows,
+  including available/visible simple-product create and update payloads,
+  unavailable mapped-card stockout payloads, serialized inventory metadata,
+  store-currency and single-quantity validation, and deferred write metadata.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct

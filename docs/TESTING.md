@@ -646,6 +646,12 @@
   short-circuiting, repository failure rejection, default read deferral,
   explicitly enabled repository-backed reads, provider failures, and table
   prefix issues.
+- Local unit coverage now includes WooCommerce product projection planning for
+  exact serialized inventory rows, covering available visible product
+  create/update payloads, mapped unavailable stockout updates, hidden/unmapped
+  skips, scan identity and price validation, store-currency mismatch blocking,
+  single-quantity enforcement, serialized metadata, and deferred WooCommerce
+  write metadata.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

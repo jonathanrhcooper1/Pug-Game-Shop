@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - WooCommerce Product Projection Planning
+
+### What Changed
+
+- Added a plan-only WooCommerce inventory product projection planner and plan
+  contract for exact serialized card inventory rows.
+- Available visible cards now produce create/update simple-product payloads
+  with SKU, price, single-stock quantity, sold-individually behavior, and
+  serialized inventory metadata.
+- Existing mapped products for unavailable cards now produce stockout update
+  payloads while hidden/unmapped cards skip without writes.
+- Added validation for card identity, barcode/SKU scan identity, sale price,
+  store-currency mismatch, and serialized quantity of one.
+
+### Why
+
+The Pug WooCommerce plugin needs a tested bridge from the internal inventory
+source of truth to WooCommerce product payloads before live WooCommerce writes
+are enabled in staging. This keeps product projection deterministic while
+preserving the current no-live-writes safety posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlan.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for available visible product creation, mapped product updates,
+  mapped unavailable stockout updates, hidden/unmapped skips, and invalid
+  identity/price/currency/quantity inputs.
+
+### Tests Run
+
+- `php -l` on the new WooCommerce projection classes and unit test: passed.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 773 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductProjectionPlan.php src\WooCommerce\InventoryProductProjectionPlanner.php`
+  from `apps/wordpress-plugin`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the projection planner, plan contract, and
+  unit tests.
+- No schema rollback or WooCommerce data cleanup is required because this
+  revision does not perform live product writes.
+
 ## 2026-06-07 - Inventory Search Benchmark Fixture
 
 ### What Changed
