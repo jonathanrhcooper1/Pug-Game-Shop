@@ -135,6 +135,7 @@ plus deferred push canonical mutation repository scaffold
 plus route-connected deferred push canonical mutation repository metadata
 plus push canonical mutation repository execution gate
 plus push canonical mutation transaction preflight
+plus polished offline inventory command workspace UI and shell contract
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

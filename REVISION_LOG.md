@@ -3,6 +3,72 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline App Inventory Command Workspace UI
+
+### What Changed
+
+- Replaced the placeholder offline app shell with a polished React inventory
+  command workspace for staff use.
+- Added scanner/search, inventory list, selected-card detail, sync queue,
+  conflict review, customer credit, and device/sync health surfaces.
+- Added responsive styling for desktop and mobile layouts plus a local favicon
+  to keep browser verification clean.
+- Added a UI shell contract test and wired it into offline app and root test
+  commands.
+- Refreshed the offline app Vite dependency and committed a lockfile for
+  reproducible installs.
+
+### Why
+
+The standalone Windows app needs a usable visual baseline before live SQLite
+and website sync wiring are connected. This revision creates the staff-facing
+surface while keeping the app local-only and side-effect-free.
+
+### Files Affected
+
+- `apps/offline-app/index.html`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app UI shell contract coverage for the inventory workspace, sync
+  queue, conflict center, customer credit surface, responsive styling, and
+  no-production-secret markers.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd audit` from `apps/offline-app`: passed with zero vulnerabilities.
+- `npm.cmd run test:offline-app` from repository root: passed.
+- Desktop and mobile Playwright screenshot verification against the local Vite
+  dev server: passed after adding the local favicon.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the prior placeholder offline app shell,
+  package metadata, and tests.
+- No schema rollback is required because the existing SQLite migration
+  contract was not changed.
+
 ## 2026-06-07 - Guarded Square Inventory Projection Execution
 
 ### What Changed

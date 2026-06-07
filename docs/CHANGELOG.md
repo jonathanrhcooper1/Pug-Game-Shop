@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Polished offline app inventory command workspace UI with scanner/search,
+  selected-card detail, sync queue, conflict review, customer credit snapshot,
+  responsive layout, local favicon, Vite build dependency refresh, and UI shell
+  contract coverage.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

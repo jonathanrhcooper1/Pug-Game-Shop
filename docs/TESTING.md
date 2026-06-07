@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
+  inventory workspace keeps its scanner/search, sync queue, conflict center,
+  customer credit, responsive layout, and no-production-secret UI markers in
+  place.
 - `.github/workflows/php.yml` runs Composer validation, dependency audit,
   syntax checks, unit tests, bootstrap smoke, and WordPress coding standards
   against PHP 8.1, 8.2, and 8.3.
