@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.89.0`
+Version: `0.90.0`
 
 ## Implemented Features
 
@@ -129,6 +129,8 @@ Version: `0.89.0`
   policies without retaining raw pairing codes.
 - Settings-backed offline pairing authorizer factory for future staged pairing
   callbacks without enabling live route registration.
+- Non-secret offline pairing policy readiness summaries in health and admin
+  System Status for staged review.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

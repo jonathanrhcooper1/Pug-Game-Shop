@@ -40,6 +40,50 @@ final class OfflineDevicePairingAuthorizerFactory {
 		return new OfflineDevicePairingPermissionCallbackAdapter( $parser, $this->authorizer() );
 	}
 
+	public function is_policy_configured(): bool {
+		return true === $this->policy_summary()['configured'];
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function policy_summary(): array {
+		$policy        = $this->policy();
+		$scope_counts  = $this->scope_counts( $policy['allowed_scopes_by_mode'] ?? array() );
+		$block_reasons = array();
+
+		if ( array() === ( $policy['pairing_code_hashes'] ?? array() ) ) {
+			$block_reasons[] = 'pairing_code_hashes_not_configured';
+		}
+
+		if ( array() === ( $policy['manager_ids'] ?? array() ) ) {
+			$block_reasons[] = 'manager_policy_not_configured';
+		}
+
+		if ( array() === ( $policy['location_ids'] ?? array() ) ) {
+			$block_reasons[] = 'location_policy_not_configured';
+		}
+
+		if ( 0 === $scope_counts['configured_mode_count'] ) {
+			$block_reasons[] = 'scope_policy_not_configured';
+		}
+
+		if ( '' === ( $policy['expires_at_utc'] ?? '' ) ) {
+			$block_reasons[] = 'pairing_code_expiry_not_configured';
+		}
+
+		return array(
+			'configured'                  => array() === $block_reasons,
+			'pairing_code_hash_count'     => count( $policy['pairing_code_hashes'] ?? array() ),
+			'manager_count'               => count( $policy['manager_ids'] ?? array() ),
+			'location_count'              => count( $policy['location_ids'] ?? array() ),
+			'configured_mode_count'       => $scope_counts['configured_mode_count'],
+			'configured_scope_count'      => $scope_counts['configured_scope_count'],
+			'expires_at_utc_configured'   => '' !== ( $policy['expires_at_utc'] ?? '' ),
+			'policy_configuration_issues' => $block_reasons,
+		);
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */
@@ -62,5 +106,34 @@ final class OfflineDevicePairingAuthorizerFactory {
 		}
 
 		return is_array( $settings ) ? $settings : array();
+	}
+
+	/**
+	 * @return array{configured_mode_count:int,configured_scope_count:int}
+	 */
+	private function scope_counts( mixed $scope_map ): array {
+		if ( ! is_array( $scope_map ) ) {
+			return array(
+				'configured_mode_count'  => 0,
+				'configured_scope_count' => 0,
+			);
+		}
+
+		$configured_modes       = 0;
+		$configured_scope_count = 0;
+
+		foreach ( $scope_map as $scopes ) {
+			if ( ! is_array( $scopes ) || array() === $scopes ) {
+				continue;
+			}
+
+			++$configured_modes;
+			$configured_scope_count += count( $scopes );
+		}
+
+		return array(
+			'configured_mode_count'  => $configured_modes,
+			'configured_scope_count' => $configured_scope_count,
+		);
 	}
 }

@@ -37,6 +37,8 @@
   order, or rollback target changes.
 - Version `0.89.0` adds a settings-backed pairing authorizer factory. No
   WordPress schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.90.0` adds non-secret pairing policy readiness reporting. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

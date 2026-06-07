@@ -31,10 +31,18 @@ final class OfflineDevicePairingAuthorizerFactoryTest extends TestCase {
 
 		$audit  = $callback->last_audit_payload();
 		$policy = $factory->policy();
+		$summary = $factory->policy_summary();
 
+		$this->assert_true( $factory->is_policy_configured() );
 		$this->assert_same( 'authorized', $audit['status'] );
 		$this->assert_same( array( hash( 'sha256', self::PAIRING_CODE ) ), $policy['pairing_code_hashes'] );
 		$this->assert_same( array( 'offline_pull', 'offline_push', 'kiosk' ), $policy['allowed_scopes_by_mode']['kiosk'] );
+		$this->assert_same( 1, $summary['pairing_code_hash_count'] );
+		$this->assert_same( 1, $summary['manager_count'] );
+		$this->assert_same( 1, $summary['location_count'] );
+		$this->assert_same( 3, $summary['configured_mode_count'] );
+		$this->assert_same( 8, $summary['configured_scope_count'] );
+		$this->assert_same( array(), $summary['policy_configuration_issues'] );
 		$this->assert_false( isset( $policy['pairing_code'] ) );
 		$this->assert_not_contains( self::PAIRING_CODE, (string) json_encode( $audit ) );
 		$this->assert_not_contains( hash( 'sha256', self::PAIRING_CODE ), (string) json_encode( $audit ) );
@@ -56,10 +64,13 @@ final class OfflineDevicePairingAuthorizerFactoryTest extends TestCase {
 			static fn (): string => '2026-06-06T18:30:00Z'
 		);
 		$policy  = $factory->policy();
+		$summary = $factory->policy_summary();
 		$result  = $factory->authorizer()->authorize( $this->pairing_request() );
 		$audit   = $result->audit_payload();
 
+		$this->assert_false( $factory->is_policy_configured() );
 		$this->assert_same( array(), $policy['pairing_code_hashes'] );
+		$this->assert_true( in_array( 'pairing_code_hashes_not_configured', $summary['policy_configuration_issues'], true ) );
 		$this->assert_false( isset( $policy['pairing_code'] ) );
 		$this->assert_false( $result->is_authorized() );
 		$this->assert_true( in_array( 'pairing_code_policy_not_configured', $result->errors(), true ) );
@@ -73,9 +84,13 @@ final class OfflineDevicePairingAuthorizerFactoryTest extends TestCase {
 			},
 			static fn (): string => '2026-06-06T18:30:00Z'
 		);
+		$summary = $factory->policy_summary();
 		$result  = $factory->authorizer()->authorize( $this->pairing_request() );
 		$audit   = $result->audit_payload();
 
+		$this->assert_false( $summary['configured'] );
+		$this->assert_true( in_array( 'pairing_code_hashes_not_configured', $summary['policy_configuration_issues'], true ) );
+		$this->assert_true( in_array( 'manager_policy_not_configured', $summary['policy_configuration_issues'], true ) );
 		$this->assert_false( $result->is_authorized() );
 		$this->assert_true( in_array( 'pairing_code_policy_not_configured', $result->errors(), true ) );
 		$this->assert_true( in_array( 'manager_policy_not_configured', $result->errors(), true ) );
@@ -120,7 +135,7 @@ final class OfflineDevicePairingAuthorizerFactoryTest extends TestCase {
 			'device_mode'      => 'kiosk',
 			'location_id'      => 2,
 			'manager_id'       => 42,
-			'app_version'      => '0.89.0',
+			'app_version'      => '0.90.0',
 			'platform'         => 'windows',
 			'capabilities'     => array(
 				'barcode_scanner' => true,

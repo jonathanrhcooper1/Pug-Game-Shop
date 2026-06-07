@@ -380,7 +380,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.89.0",
+  "app_version": "0.90.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -423,6 +423,10 @@ Staging code can now build the same plan-only authorizer or pairing permission
 callback from those sanitized settings through
 `OfflineDevicePairingAuthorizerFactory`; this does not enable live route
 registration.
+Health and admin System Status now expose a non-secret policy summary for that
+settings-backed path: hash count, manager/location counts, configured mode and
+scope counts, expiry presence, and policy configuration issues. Incomplete
+settings policies do not produce a route-ready pairing permission callback.
 
 The registration service can consume the same authorizer as a defense-in-depth
 stage. When the supplied authorizer denies a parsed pairing request, the

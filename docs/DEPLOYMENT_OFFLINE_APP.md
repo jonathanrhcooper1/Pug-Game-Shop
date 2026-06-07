@@ -359,6 +359,10 @@ staged callback wiring. It can construct the plan-only authorizer or permission
 callback from sanitized settings, but live route registration and production
 device-token issuance remain disabled.
 
+Version `0.90.0` surfaces non-secret pairing policy readiness in health and
+admin System Status. Staging can confirm hash, manager, location, scope, and
+expiry policy completeness before any future live route-enablement review.
+
 ## Hardware Gate
 
 Before production, test the actual:

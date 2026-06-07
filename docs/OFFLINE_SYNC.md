@@ -168,6 +168,8 @@ shape for future staging wiring without saving raw pairing codes.
 A settings-backed pairing authorizer factory now turns that sanitized settings
 policy into the staged authorizer or permission callback without registering
 live routes.
+Pairing route readiness now also reports non-secret policy readiness, and an
+incomplete settings policy keeps the staged permission callback locked.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

@@ -204,6 +204,9 @@
 - Local unit coverage now includes the settings-backed pairing authorizer
   factory, proving sanitized settings can authorize staged callbacks, raw-code
   only settings fail closed, and settings provider failures do not leak secrets.
+- Local unit coverage now includes offline pairing policy readiness reporting,
+  proving complete settings can produce staged permission callbacks while
+  incomplete settings keep pairing permissions locked.
 - Local unit coverage now includes registration service pairing-authorization
   enforcement, proving authorized pairing can proceed and denied pairing stops
   before credential issuance or repository writes.

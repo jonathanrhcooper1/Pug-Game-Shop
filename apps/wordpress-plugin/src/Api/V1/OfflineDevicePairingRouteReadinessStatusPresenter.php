@@ -31,9 +31,10 @@ final class OfflineDevicePairingRouteReadinessStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'handler %s; permission %s; %s',
+				'handler %s; permission %s; policy %s; %s',
 				true === ( $payload['controller_callback_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['permission_callback_ready'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['policy_configured'] ?? false ) ? 'ready' : 'not ready',
 				$details
 			),
 			'status' => (string) ( $payload['status'] ?? 'blocked' ),

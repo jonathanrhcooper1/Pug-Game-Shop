@@ -7,6 +7,7 @@
 
 namespace TCGStorePlatform\Admin;
 
+use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
@@ -14,6 +15,7 @@ use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
+use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\Settings;
@@ -114,7 +116,13 @@ final class AdminMenu {
 		$offline   = ( new OfflineRouteBootstrapStatusPresenter() )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )
 		);
-		$pairing   = ( new OfflineDevicePairingRouteReadinessStatusPresenter() )->admin_summary(
+		$pairing   = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
+			new OfflineDevicePairingRouteReadinessPlanner(
+				null,
+				null,
+				new OfflineDevicePairingAuthorizerFactory()
+			)
+		) )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )
 		);
 

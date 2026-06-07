@@ -11,6 +11,7 @@ use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Migrations\MigrationRunner;
+use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
@@ -74,7 +75,13 @@ final class HealthController {
 		$offline                 = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
 			$offline_feature_enabled
 		);
-		$pairing                 = ( new OfflineDevicePairingRouteReadinessStatusPresenter() )->health_payload(
+		$pairing                 = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
+			new OfflineDevicePairingRouteReadinessPlanner(
+				null,
+				null,
+				new OfflineDevicePairingAuthorizerFactory()
+			)
+		) )->health_payload(
 			$offline_feature_enabled
 		);
 

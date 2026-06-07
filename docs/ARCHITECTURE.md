@@ -229,7 +229,9 @@ pairing secrets. Offline pairing authorization settings now define the
 hash-only policy shape future staging code can pass into that authorizer
 without saving raw pairing codes. A settings-backed pairing authorizer factory
 now creates the staged authorizer or permission callback from that sanitized
-policy while preserving default route lockout. Device access policy checks are implemented so
+policy while preserving default route lockout. Health and admin System Status
+now report non-secret policy readiness so incomplete settings cannot be treated
+as route-ready permissions. Device access policy checks are implemented so
 future registered-device route permission callbacks can validate active state,
 revocation, token expiry, required scopes, supported modes/scopes, location
 IDs, and UTC timestamps before pull, push, or conflict work runs. Device

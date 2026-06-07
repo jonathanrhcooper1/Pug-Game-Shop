@@ -9,11 +9,14 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDeviceRegistrationRouteHandler;
+use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 use TCGStorePlatform\Offline\OfflineDeviceRegistrationService;
 use TCGStorePlatform\Tests\TestCase;
 
 final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
+	private const PAIRING_CODE = 'PAIR-2026-READINESS';
+
 	public function test_readiness_reports_missing_handler_and_permission_dependencies(): void {
 		$plan = ( new OfflineDevicePairingRouteReadinessPlanner() )->plan( false );
 
@@ -22,6 +25,8 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_true( $plan['registration_deferred'] );
 		$this->assert_false( $plan['handler_injected'] );
 		$this->assert_false( $plan['authorizer_configured'] );
+		$this->assert_false( $plan['policy_configured'] );
+		$this->assert_true( in_array( 'policy_provider_not_configured', $plan['policy_summary']['policy_configuration_issues'], true ) );
 		$this->assert_false( $plan['permission_callback_ready'] );
 		$this->assert_false( $plan['controller_callback_ready'] );
 		$this->assert_same( 0, $plan['registerable_route_count'] );
@@ -41,6 +46,7 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_true( $plan['registration_deferred'] );
 		$this->assert_true( $plan['handler_injected'] );
 		$this->assert_true( $plan['authorizer_configured'] );
+		$this->assert_true( $plan['policy_configured'] );
 		$this->assert_true( $plan['permission_callback_ready'] );
 		$this->assert_true( $plan['controller_callback_ready'] );
 		$this->assert_false( $plan['live_enabled_by_default'] );
@@ -48,6 +54,49 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_same( 'not_required_for_pairing', $plan['registered_device_dependency'] );
 		$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
 		$this->assert_same( array( 'no_registerable_offline_routes' ), $plan['bootstrap_block_reasons'] );
+	}
+
+	public function test_readiness_can_build_pairing_permission_from_configured_settings_policy(): void {
+		$settings = array(
+			'offline_pairing_authorization' => $this->policy(),
+		);
+		$plan = ( new OfflineDevicePairingRouteReadinessPlanner(
+			new OfflineDeviceRegistrationRouteHandler( new OfflineDeviceRegistrationService() ),
+			null,
+			new OfflineDevicePairingAuthorizerFactory(
+				static fn (): array => $settings,
+				static fn (): string => '2026-06-06T18:30:00Z'
+			)
+		) )->plan( true );
+
+		$this->assert_true( $plan['handler_injected'] );
+		$this->assert_true( $plan['authorizer_configured'] );
+		$this->assert_true( $plan['policy_configured'] );
+		$this->assert_true( $plan['permission_callback_ready'] );
+		$this->assert_true( $plan['controller_callback_ready'] );
+		$this->assert_same( 1, $plan['policy_summary']['pairing_code_hash_count'] );
+		$this->assert_same( 1, $plan['policy_summary']['configured_mode_count'] );
+		$this->assert_same( array(), $plan['policy_summary']['policy_configuration_issues'] );
+		$this->assert_false( $plan['should_register'] );
+		$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
+	}
+
+	public function test_readiness_keeps_incomplete_settings_policy_permission_locked(): void {
+		$plan = ( new OfflineDevicePairingRouteReadinessPlanner(
+			new OfflineDeviceRegistrationRouteHandler( new OfflineDeviceRegistrationService() ),
+			null,
+			new OfflineDevicePairingAuthorizerFactory(
+				static fn (): array => array(),
+				static fn (): string => '2026-06-06T18:30:00Z'
+			)
+		) )->plan( true );
+
+		$this->assert_true( $plan['handler_injected'] );
+		$this->assert_false( $plan['authorizer_configured'] );
+		$this->assert_false( $plan['policy_configured'] );
+		$this->assert_false( $plan['permission_callback_ready'] );
+		$this->assert_true( in_array( 'pairing_code_hashes_not_configured', $plan['policy_summary']['policy_configuration_issues'], true ) );
+		$this->assert_true( in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true ) );
 	}
 
 	public function test_readiness_keeps_unconfigured_pairing_authorizer_not_ready(): void {
@@ -61,5 +110,20 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_false( $plan['permission_callback_ready'] );
 		$this->assert_true( $plan['controller_callback_ready'] );
 		$this->assert_true( in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true ) );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function policy(): array {
+		return array(
+			'pairing_code_hashes'    => array( hash( 'sha256', self::PAIRING_CODE ) ),
+			'manager_ids'            => array( 42 ),
+			'location_ids'           => array( 2 ),
+			'allowed_scopes_by_mode' => array(
+				'kiosk' => array( 'offline_pull', 'offline_push', 'kiosk' ),
+			),
+			'expires_at_utc'         => '2026-06-06T19:00:00Z',
+		);
 	}
 }

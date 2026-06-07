@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Pairing Policy Readiness Visibility
+
+### What Changed
+
+- Added non-secret pairing policy summaries to
+  `OfflineDevicePairingAuthorizerFactory`.
+- Extended staged pairing route readiness planning to report whether the
+  saved hash-only pairing policy is configured.
+- Allowed settings-backed factories to provide the staged pairing permission
+  callback only when policy readiness is complete.
+- Wired health and admin System Status pairing readiness through the
+  settings-backed factory so staging can inspect policy readiness without
+  enabling live routes.
+- Updated project, plugin, and offline app package versions to `0.90.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+Staging staff need to distinguish an injected authorizer from a complete saved
+pairing policy before live route enablement is considered. This revision makes
+policy readiness visible and keeps incomplete settings from being treated as a
+ready pairing permission callback.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingAuthorizerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Factory tests for non-secret policy summary counts and configuration issues.
+- Readiness planner tests proving complete settings policies make staged
+  permissions ready while incomplete settings policies keep permissions locked.
+- Status presenter test coverage for policy readiness text in admin summaries.
+
+### Rollback Notes
+
+- Revert this revision to remove settings-backed pairing policy readiness
+  reporting.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Settings-Backed Pairing Authorizer Factory
 
 ### What Changed

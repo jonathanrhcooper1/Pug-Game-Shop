@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.90.0] - 2026-06-06
+
+### Added
+
+- Offline pairing policy readiness summaries for staged health and System
+  Status review.
+- Settings-backed pairing policies can now create staged permission callbacks
+  only when hash, manager, location, scope, and expiry policy pieces are
+  configured.
+- Unit coverage proving configured settings make the staged pairing permission
+  ready, incomplete settings keep it locked, and policy summaries avoid
+  pairing-code leakage.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.89.0] - 2026-06-06
 
 ### Added

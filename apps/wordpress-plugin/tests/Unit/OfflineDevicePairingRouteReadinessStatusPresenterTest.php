@@ -23,6 +23,7 @@ final class OfflineDevicePairingRouteReadinessStatusPresenterTest extends TestCa
 		$this->assert_true( $payload['registration_deferred'] );
 		$this->assert_false( $payload['handler_injected'] );
 		$this->assert_false( $payload['authorizer_configured'] );
+		$this->assert_false( $payload['policy_configured'] );
 		$this->assert_false( $payload['permission_callback_ready'] );
 		$this->assert_false( $payload['controller_callback_ready'] );
 		$this->assert_false( $payload['should_register'] );
@@ -39,6 +40,7 @@ final class OfflineDevicePairingRouteReadinessStatusPresenterTest extends TestCa
 		$this->assert_same( 'gated', $summary['status'] );
 		$this->assert_contains( 'handler ready', $summary['value'] );
 		$this->assert_contains( 'permission ready', $summary['value'] );
+		$this->assert_contains( 'policy ready', $summary['value'] );
 		$this->assert_contains( 'route_disabled_by_default', $summary['value'] );
 	}
 }
