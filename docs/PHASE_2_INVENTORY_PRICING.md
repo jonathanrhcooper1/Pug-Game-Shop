@@ -31,6 +31,10 @@ staging database acceptance remains pending.
   schema-aligned insert rows, prepared SQL templates, deterministic public IDs,
   fallback pending-intake barcode/SKU generation, money/timestamp planning, and
   explicit write/projection deferral metadata.
+- Explicit inventory intake repository adapter for staged `$wpdb` inserts,
+  including invalid-plan short-circuiting, active table-prefix validation,
+  insert-count outcome handling, created-item response payloads, and write/
+  projection deferral audits.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

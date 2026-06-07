@@ -3,6 +3,80 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Intake Repository Adapter
+
+### What Changed
+
+- Added `InventoryIntakeRepository` and `InventoryIntakeRepositoryResult` to
+  execute staged intake insert plans through an explicitly injected `$wpdb`
+  adapter.
+- Added invalid-plan short-circuiting, active WordPress table-prefix validation,
+  prepared insert execution, insert ID capture, and exact insert-count outcome
+  handling.
+- Added created-item response payloads with inventory ID, public ID, barcode,
+  SKU, status, and row version.
+- Added repository audit metadata for insert status, rows affected, insert ID,
+  response public ID, persistence plan audit, route/write deferrals,
+  WooCommerce/Square projection deferrals, and label-print deferral.
+
+### Why
+
+The card management write path now has a tested persistence plan, but future
+staff/admin intake and offline intake also need a repository boundary that can
+execute that plan safely in controlled staging tests. This revision makes the
+database insert adapter reviewable while keeping live route registration and
+projection side effects disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRepositoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Live `POST /inventory` route registration, barcode label printing,
+  WooCommerce projection, Square provider writes, and offline sync writes
+  remain deferred.
+
+### Tests Added
+
+- Repository insert tests for prepared `$wpdb` execution, insert ID capture,
+  created-item response payloads, and redacted audit output.
+- Invalid-plan tests proving repository writes short-circuit before SQL.
+- Table-prefix mismatch tests proving staged writes stay scoped to the active
+  WordPress installation prefix.
+- Database failure, zero-row, and unexpected-row-count rejection tests.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 705 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 479 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the inventory intake repository adapter and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- If the repository adapter was explicitly invoked in staging before rollback,
+  delete only the test inventory rows created by that staging run after
+  confirming they are not linked to reservations, orders, POS events, or
+  offline sync rows.
+- No production rollback applies because no live route registration,
+  WooCommerce projection, Square network call, or offline sync mutation was
+  enabled.
+
 ## 2026-06-07 - Inventory Intake Persistence Planning
 
 ### What Changed

@@ -16,6 +16,10 @@ All notable changes follow Semantic Versioning.
   deterministic public IDs, fallback barcode/SKU generation for pending intake,
   schema-aligned insert rows, prepared SQL templates, timestamp/date planning,
   money normalization, and deferred database/write/projection metadata.
+- Explicit inventory intake repository adapter that can execute staged
+  inventory insert plans through injected `$wpdb`, with table-prefix mismatch
+  guards, exact insert-count handling, response payloads, and route/projection
+  deferral audit metadata.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with
