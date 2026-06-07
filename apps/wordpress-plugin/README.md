@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.111.0`
+Version: `0.112.0`
 
 ## Implemented Features
 
@@ -88,6 +88,9 @@ Version: `0.111.0`
 - Offline push server snapshot repository adaptation for explicitly loading and
   normalizing inventory, event, and customer-credit rows for staged tests while
   keeping default route-connected reads deferred.
+- Offline push route server snapshot provider composition for explicitly
+  enabled staged handlers that feed repository-backed snapshots into push
+  resolution while keeping default route-connected reads deferred.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

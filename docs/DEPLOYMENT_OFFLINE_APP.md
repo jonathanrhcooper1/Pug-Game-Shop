@@ -473,6 +473,12 @@ customer-credit rows for push resolution, while default route-connected reads,
 route registration, queue replay, canonical mutations, and production
 route-connected writes remain disabled.
 
+Version `0.112.0` adds route-aware offline push server snapshot provider
+composition. Explicitly enabled staged push handlers can now fetch
+repository-backed snapshots from authenticated device context, while default
+route-connected reads, route registration, queue replay, canonical mutations,
+and production route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

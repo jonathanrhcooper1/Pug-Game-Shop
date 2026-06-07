@@ -83,16 +83,40 @@ final class OfflinePushRoutePersistenceProvider {
 
 		$resolution = $this->batch_resolver->resolve(
 			$payload,
-			$this->provider_payload( $this->server_snapshots_provider, $payload, $data ),
+			$this->provider_payload(
+				$this->server_snapshots_provider,
+				$payload,
+				$data,
+				array(
+					'device_row'      => $device_row,
+					'server_time_utc' => $server_time_utc,
+				)
+			),
 			$server_time_utc,
-			$this->provider_payload( $this->operation_options_provider, $payload, $data )
+			$this->provider_payload(
+				$this->operation_options_provider,
+				$payload,
+				$data,
+				array(
+					'device_row'      => $device_row,
+					'server_time_utc' => $server_time_utc,
+				)
+			)
 		);
 		$plan       = $this->persistence_planner->plan(
 			$payload,
 			$resolution,
 			$device_row,
 			$server_time_utc,
-			$this->provider_payload( $this->existing_operation_rows_provider, $payload, $data )
+			$this->provider_payload(
+				$this->existing_operation_rows_provider,
+				$payload,
+				$data,
+				array(
+					'device_row'      => $device_row,
+					'server_time_utc' => $server_time_utc,
+				)
+			)
 		);
 
 		return new OfflinePushRouteProcessingResult(
@@ -134,18 +158,20 @@ final class OfflinePushRoutePersistenceProvider {
 
 	/**
 	 * @param callable|null $provider Provider callable.
+	 * @param array<string, mixed> $context Route processing context.
 	 * @return array<string|int, mixed>
 	 */
 	private function provider_payload(
 		?callable $provider,
 		OfflinePushPayload $payload,
-		OfflineRestRequestData $data
+		OfflineRestRequestData $data,
+		array $context = array()
 	): array {
 		if ( ! is_callable( $provider ) ) {
 			return array();
 		}
 
-		$value = $provider( $payload, $data );
+		$value = $provider( $payload, $data, $context );
 
 		if ( ! is_array( $value ) ) {
 			throw new RuntimeException( 'offline_push_provider_payload_invalid' );

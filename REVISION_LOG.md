@@ -3,6 +3,93 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Route Server Snapshot Provider
+
+### What Changed
+
+- Added `OfflinePushRouteServerSnapshotProvider` to adapt authenticated
+  registered-device context into repository-backed push server snapshot reads.
+- Updated `OfflinePushRoutePersistenceProvider` to pass provider callables a
+  route context containing the authorized device row and server timestamp.
+- Added push handler factory readiness metadata for repository-backed snapshot
+  provider readiness, route snapshot-read readiness, nested provider audits, and
+  snapshot-read deferral.
+- Added registered-device sync handler health/admin readiness metadata for the
+  staged push snapshot route provider.
+- Added unit coverage for direct route snapshot provider success/rejection and
+  explicitly enabled push handler factory composition using repository-backed
+  snapshots.
+- Updated project, plugin, and offline app package versions to `0.112.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous checkpoint could explicitly load server snapshots, but staged
+route processing still relied on injected in-memory snapshots. This revision
+adds the safe adapter that lets explicitly enabled staged handlers fetch
+allowlisted snapshots from the repository using the authenticated device
+context, while keeping default route reads, route registration, replay workers,
+and canonical mutations disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteServerSnapshotProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteServerSnapshotProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Route server snapshot provider tests for authenticated device context handoff,
+  repository-backed snapshot loading, missing device context rejection, and
+  missing snapshot row rejection.
+- Push route handler factory test coverage for explicitly enabled
+  repository-backed snapshot reads feeding push resolution and queue
+  persistence.
+- Sync handler factory and WordPress smoke assertions for snapshot route
+  provider readiness and deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push snapshot provider composition and
+  return route-handler tests to injected snapshot fixtures only.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default route-connected snapshot reads, live route registration, queue replay,
+  canonical entity mutations, and route-connected database writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Server Snapshot Repository
 
 ### What Changed

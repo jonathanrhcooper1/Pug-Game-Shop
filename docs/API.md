@@ -212,6 +212,11 @@ adaptation. Staged tests can execute those prepared lookup templates through
 `$wpdb` and normalize inventory, event, and customer-credit rows into
 resolver-ready snapshots while default route-connected reads, canonical
 mutations, queue replay, and live route registration remain deferred.
+Version `0.112.0` adds route-aware offline push server snapshot provider
+composition. Explicitly enabled staged push handlers can now pass authenticated
+device context to repository-backed snapshot reads before batch resolution,
+while default route-connected reads, canonical mutations, queue replay, and
+live route registration remain deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -478,7 +483,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.111.0",
+  "app_version": "0.112.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

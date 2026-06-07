@@ -96,6 +96,10 @@ remain deferred.
 The staged snapshot repository now executes those templates only when explicitly
 called, normalizes inventory/event/customer-credit rows into the resolver's
 server snapshot shape, and keeps default route-connected reads disabled.
+The route-aware snapshot provider now adapts authenticated registered-device
+context to that repository for explicitly enabled staged push handlers, while
+default route reads, route registration, queue replay, and canonical mutations
+remain disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

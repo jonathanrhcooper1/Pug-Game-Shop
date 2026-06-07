@@ -97,6 +97,9 @@
 - Version `0.111.0` adds explicit offline push server snapshot repository
   adaptation over those existing tables. No WordPress schema, SQLite schema,
   migration order, or rollback target changes.
+- Version `0.112.0` adds route-aware offline push snapshot provider
+  composition over the existing snapshot repository. No WordPress schema,
+  SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

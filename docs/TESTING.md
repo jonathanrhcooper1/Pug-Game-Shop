@@ -94,6 +94,10 @@
   loading for resolver-ready snapshot normalization, duplicate operation/entity
   lookup keys, invalid query plans, missing rows, malformed rows, and fetch
   audit metadata.
+- Local unit coverage now includes route-aware offline push server snapshot
+  provider composition for authenticated device context handoff,
+  repository-backed snapshot reads, missing context/row rejection, and staged
+  route handler integration.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

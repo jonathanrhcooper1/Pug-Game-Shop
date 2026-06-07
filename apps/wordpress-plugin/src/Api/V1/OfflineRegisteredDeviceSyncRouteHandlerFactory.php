@@ -92,6 +92,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePushServerSnapshotQueryBuilder::class, 'build' );
 		$push_snapshot_repository_ready = $push_snapshot_sql_ready
 			&& method_exists( OfflinePushServerSnapshotRepository::class, 'fetch' );
+		$push_snapshot_route_provider_ready = $push_snapshot_repository_ready
+			&& method_exists( OfflinePushRouteServerSnapshotProvider::class, '__invoke' );
 		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
 		$push_persistence_sql_ready     = $push_persistence_planner_ready
 			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
@@ -158,6 +160,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_snapshot_query_sql_ready'              => $push_snapshot_sql_ready,
 			'push_snapshot_query_sql_template_ready'     => $push_snapshot_sql_ready,
 			'push_snapshot_repository_ready'             => $push_snapshot_repository_ready,
+			'push_snapshot_route_provider_ready'         => $push_snapshot_route_provider_ready,
+			'push_snapshot_route_provider_deferred'      => true,
 			'push_snapshot_repo_execution_deferred'      => true,
 			'push_snapshot_query_execution_deferred'     => true,
 			'push_snapshot_repository_deferred'          => true,
@@ -169,6 +173,9 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_handler_route_dependencies_deferred'   => true === ( $push_handler_dependencies['route_connected_handler_deferred'] ?? true ),
 			'push_handler_route_execution_enabled'       => true === ( $push_handler_dependencies['route_connected_execution_enabled'] ?? false ),
 			'push_handler_route_database_configured'     => true === ( $push_handler_dependencies['database_configured'] ?? false ),
+			'push_handler_snapshot_provider_ready'       => true === ( $push_handler_dependencies['server_snapshot_repository_provider_ready'] ?? false ),
+			'push_handler_snapshot_reads_ready'          => true === ( $push_handler_dependencies['server_snapshot_route_reads_ready'] ?? false ),
+			'push_handler_snapshot_reads_deferred'       => true === ( $push_handler_dependencies['route_connected_snapshot_reads_deferred'] ?? true ),
 			'push_handler_route_queue_writes_deferred'   => true === ( $push_handler_dependencies['route_connected_queue_writes_deferred'] ?? true ),
 			'push_handler_conflict_writes_deferred'      => true === ( $push_handler_dependencies['route_connected_conflict_writes_deferred'] ?? true ),
 			'push_handler_route_dependency_issues'       => $push_handler_dependencies['configuration_issues'] ?? array(),

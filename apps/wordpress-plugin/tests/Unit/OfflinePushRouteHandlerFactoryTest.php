@@ -21,12 +21,19 @@ namespace {
 			public string $last_query = '';
 
 			/**
+			 * @var list<string>
+			 */
+			public array $prepare_queries = array();
+
+			/**
 			 * @param array<string, mixed>|null $device_row Registered device row.
 			 * @param list<int|false>           $query_results Query results.
+			 * @param list<array<string, mixed>|null> $snapshot_rows Snapshot rows.
 			 */
 			public function __construct(
 				private ?array $device_row = null,
 				private array $query_results = array(),
+				private array $snapshot_rows = array(),
 				?string $prefix = null
 			) {
 				if ( null !== $prefix ) {
@@ -41,6 +48,7 @@ namespace {
 				unset( $args );
 
 				++$this->prepare_count;
+				$this->prepare_queries[] = $query;
 
 				return 'prepared:' . $query;
 			}
@@ -53,6 +61,10 @@ namespace {
 
 				++$this->get_row_count;
 				$this->last_query = $query;
+
+				if ( 1 < $this->get_row_count ) {
+					return array_shift( $this->snapshot_rows );
+				}
 
 				return $this->device_row;
 			}
@@ -73,6 +85,7 @@ namespace {
 
 namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflinePushRouteHandlerFactory;
+	use TCGStorePlatform\Api\V1\OfflinePushRouteServerSnapshotProvider;
 	use TCGStorePlatform\Api\V1\OfflineRegisteredDeviceSyncRouteHandlerFactory;
 	use TCGStorePlatform\Offline\OfflineDeviceTokenAuthenticator;
 	use TCGStorePlatform\Tests\TestCase;
@@ -142,6 +155,44 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 2, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->query_count );
+		}
+
+		public function test_factory_can_use_repository_backed_snapshot_provider_when_explicitly_enabled(): void {
+			$database          = new \OfflinePushRouteHandlerFactoryWpdb(
+				$this->database_row(),
+				array( 1 ),
+				array( $this->inventory_snapshot_row() )
+			);
+			$snapshot_provider = new OfflinePushRouteServerSnapshotProvider( $database );
+			$factory           = new OfflinePushRouteHandlerFactory(
+				static fn (): \wpdb => $database,
+				null,
+				$this->server_time_provider(),
+				$snapshot_provider,
+				null,
+				null,
+				true
+			);
+			$summary           = $factory->readiness_summary();
+			$response          = $factory->handler()->handle( $this->push_request_data() );
+
+			$this->assert_true( $summary['route_connected_execution_enabled'] );
+			$this->assert_true( $summary['server_snapshot_repository_provider_ready'] );
+			$this->assert_true( $summary['server_snapshot_route_reads_ready'] );
+			$this->assert_false( $summary['route_connected_snapshot_reads_deferred'] );
+			$this->assert_same(
+				'offline_push_route_server_snapshot_provider_ready',
+				$summary['server_snapshot_provider_readiness']['action']
+			);
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'offline_push_response_ready', $response['code'] );
+			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
+			$this->assert_same( 'inventory_reserved', $response['data']['results'][0]['code'] );
+			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
+			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 2, $database->get_row_count );
+			$this->assert_same( 1, $database->query_count );
+			$this->assert_contains( 'FROM `wp_tcg_inventory_items`', $database->prepare_queries[1] );
 		}
 
 		public function test_sync_handler_factory_can_receive_route_connected_push_factory(): void {
@@ -257,6 +308,18 @@ namespace TCGStorePlatform\Tests\Unit {
 		/**
 		 * @return array<string, mixed>
 		 */
+		private function inventory_snapshot_row(): array {
+			return array(
+				'public_id'   => 'inv-1001',
+				'status'      => 'available',
+				'row_version' => '4',
+				'updated_at'  => '2026-06-06 18:00:00',
+			);
+		}
+
+		/**
+		 * @return array<string, mixed>
+		 */
 		private function database_row(): array {
 			return array(
 				'offline_device_id' => '42',
@@ -269,7 +332,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.111.0',
+				'app_version'       => '0.112.0',
 				'platform'          => 'windows',
 				'last_seen_at'      => '2026-06-06 19:30:00.000000',
 				'revoked_at'        => null,

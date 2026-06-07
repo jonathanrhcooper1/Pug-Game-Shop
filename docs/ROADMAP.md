@@ -113,6 +113,7 @@ plus push persistence SQL/repository staging
 plus push route handler factory composition
 plus push server snapshot query planning
 plus push server snapshot repository adaptation
+plus push route server snapshot provider composition
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

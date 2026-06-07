@@ -163,6 +163,10 @@ Push server snapshot repository loading is explicit-only: it executes prepared
 templates through `$wpdb`, rejects malformed rows before push resolution, keeps
 raw SQL out of health/admin summaries, and does not enable default
 route-connected reads or canonical mutations.
+Route-aware push snapshot provider composition receives only the authenticated
+registered-device row and server timestamp from the staged push route provider,
+then delegates to the allowlisted repository. It remains explicit-only and does
+not enable default public route reads, queue replay, or canonical mutations.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

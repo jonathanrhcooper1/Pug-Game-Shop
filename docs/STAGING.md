@@ -82,6 +82,9 @@ Before major database migrations:
 - System status and authenticated health report staged push snapshot repository
   readiness while default route-connected snapshot reads, route registration,
   queue replay, and canonical mutations remain deferred.
+- System status and authenticated health report staged push snapshot route
+  provider readiness while default route-connected snapshot reads, route
+  registration, queue replay, and canonical mutations remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.112.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushRouteServerSnapshotProvider` for adapting authenticated
+  registered-device context into repository-backed server snapshot reads for
+  explicitly enabled staged push handlers.
+- Context handoff from `OfflinePushRoutePersistenceProvider` to provider
+  callables, including the authenticated device row and server timestamp.
+- Push handler factory readiness metadata for repository-backed snapshot
+  provider availability, route snapshot-read readiness, and snapshot-read
+  deferral.
+- Sync handler health/admin and WordPress smoke readiness metadata for staged
+  push snapshot route provider availability and deferral.
+- Unit coverage for direct route snapshot provider loading/rejection and
+  route-handler factory composition using repository-backed snapshots.
+
+### Not Added
+
+- Default route-connected snapshot reads remain disabled. Route registration,
+  queue replay, canonical entity mutations, and route-connected database
+  writes remain deferred.
+
 ## [0.111.0] - 2026-06-06
 
 ### Added
