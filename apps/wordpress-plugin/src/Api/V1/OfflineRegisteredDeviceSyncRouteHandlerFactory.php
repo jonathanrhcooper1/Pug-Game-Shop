@@ -58,28 +58,28 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
-		$handlers                  = $this->handlers();
-		$issues                    = array();
-		$pull_query_domains        = OfflinePullChangeQueryPlanner::supported_domains();
-		$pull_sql_ready            = array() !== $pull_query_domains
+		$handlers                       = $this->handlers();
+		$issues                         = array();
+		$pull_query_domains             = OfflinePullChangeQueryPlanner::supported_domains();
+		$pull_sql_ready                 = array() !== $pull_query_domains
 			&& method_exists( OfflinePullChangeQueryBuilder::class, 'build' );
-		$pull_repository_ready     = $pull_sql_ready
+		$pull_repository_ready          = $pull_sql_ready
 			&& method_exists( OfflinePullChangeRepository::class, 'fetch' );
-		$pull_provider_ready       = $pull_repository_ready
+		$pull_provider_ready            = $pull_repository_ready
 			&& method_exists( OfflinePullChangeSetProvider::class, 'fetch' );
-		$pull_context_ready        = method_exists( OfflinePullDeviceContextPlanner::class, 'plan' );
-		$pull_route_provider_ready = $pull_provider_ready
+		$pull_context_ready             = method_exists( OfflinePullDeviceContextPlanner::class, 'plan' );
+		$pull_route_provider_ready      = $pull_provider_ready
 			&& $pull_context_ready
 			&& method_exists( OfflinePullRouteChangeSetProvider::class, '__invoke' );
-		$pull_cursor_planner_ready = method_exists( OfflinePullCursorAdvancePlanner::class, 'plan' );
-		$pull_cursor_sql_ready     = $pull_cursor_planner_ready
+		$pull_cursor_planner_ready      = method_exists( OfflinePullCursorAdvancePlanner::class, 'plan' );
+		$pull_cursor_sql_ready          = $pull_cursor_planner_ready
 			&& method_exists( OfflinePullCursorAdvanceQueryBuilder::class, 'build' );
-		$pull_cursor_repo_ready    = $pull_cursor_sql_ready
+		$pull_cursor_repo_ready         = $pull_cursor_sql_ready
 			&& method_exists( OfflinePullCursorAdvanceRepository::class, 'advance' );
-		$pull_route_cursor_ready   = $pull_cursor_repo_ready
+		$pull_route_cursor_ready        = $pull_cursor_repo_ready
 			&& $pull_context_ready
 			&& method_exists( OfflinePullRouteCursorAdvanceProvider::class, 'advance' );
-		$pull_handler_cursor_ready = $pull_route_cursor_ready
+		$pull_handler_cursor_ready      = $pull_route_cursor_ready
 			&& method_exists( OfflinePullRouteHandler::class, 'handle' );
 		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
 		$push_persistence_sql_ready     = $push_persistence_planner_ready
