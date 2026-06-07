@@ -34,6 +34,7 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$this->assert_contains( 'handlers 8 / 8', $summary['value'] );
 		$this->assert_contains( 'permissions 0 / 8', $summary['value'] );
 		$this->assert_contains( 'webhook verifier not ready', $summary['value'] );
+		$this->assert_contains( 'fee handler deferred', $summary['value'] );
 		$this->assert_contains( 'registrar ready', $summary['value'] );
 		$this->assert_contains( 'bootstrapper ready', $summary['value'] );
 		$this->assert_contains( 'routes deferred', $summary['value'] );

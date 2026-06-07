@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Fee Snapshot Handler Factory
+
+### What Changed
+
+- Added a staged POS/payment fee snapshot route handler factory for explicit
+  repository-backed read tests.
+- The factory reports database readiness, table-prefix readiness, handler
+  readiness, default route deferrals, and configuration issues without enabling
+  route-connected reads by default.
+- Updated the POS/payment dependency factory so an explicitly injected fee
+  snapshot handler factory can compose the repository-backed list callback for
+  staging tests.
+- Updated dependency status presentation to surface deferred fee handler
+  readiness in admin summaries.
+- Added unit coverage for default factory deferral, enabled repository-backed
+  handler composition, dependency issue reporting, dependency-factory
+  injection, and admin status metadata.
+- Updated project, plugin, and offline app package versions to `0.152.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Phase 8 needs a narrow factory boundary that can prove route-connected
+fee-snapshot reads in staging without turning default POS/payment routes live.
+This revision makes the repository-backed handler injectable and auditable
+while preserving parser-only defaults, route registration deferral, and all
+write/capture safety gates.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentFeeSnapshotRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentFeeSnapshotRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentFeeSnapshotRouteHandlerFactoryTest` coverage for default
+  route-connected read deferral, explicitly enabled repository-backed handler
+  composition, missing database/table-prefix dependency issues, and dependency
+  factory injection.
+- `PosPaymentRouteDependencyStatusPresenterTest` coverage for deferred fee
+  handler readiness in admin summaries.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged fee snapshot route handler factory
+  and dependency-factory composition.
+- No database rollback is required because no schema migration, default route
+  registration, default route-connected read execution, write path, provider
+  capture, provider inventory write service, webhook processing, or WooCommerce
+  gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and default route-connected POS/payment
+  reads and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Fee Snapshot Route Handler
 
 ### What Changed

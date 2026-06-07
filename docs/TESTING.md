@@ -537,6 +537,10 @@
 - Local unit coverage now includes an explicit staged POS/payment fee snapshot
   route handler for repository-backed reads, invalid query rejection before
   repository calls, and repository failure rejection.
+- Local unit coverage now includes staged POS/payment fee snapshot route
+  handler factory composition for default read deferral, explicitly enabled
+  repository-backed reads, dependency issue reporting, dependency-factory
+  injection, and admin status metadata.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

@@ -221,5 +221,9 @@ Before major database migrations:
 - An explicit staged POS/payment fee snapshot route handler can be invoked in
   controlled tests to return repository-backed fee rows and audit metadata.
   The default route factory remains parser-only and unregistered.
+- A staged POS/payment fee snapshot route handler factory can be injected into
+  the POS/payment dependency factory for explicitly enabled repository-backed
+  read tests while default route-connected reads and route registration remain
+  deferred.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

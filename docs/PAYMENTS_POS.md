@@ -388,6 +388,12 @@ before repository calls, and fails closed on repository rejection. The default
 route dependency factory still uses parser-only callbacks and registers no
 POS/payment fee snapshot routes.
 
+A staged fee snapshot route handler factory can now assemble that handler only
+when route-connected reads are explicitly enabled and a safe `$wpdb` instance
+and table prefix are present. The POS/payment dependency factory can receive
+that factory for repository-backed staging tests, while default dependency
+wiring keeps fee snapshot callbacks parser-only, deferred, and unregistered.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

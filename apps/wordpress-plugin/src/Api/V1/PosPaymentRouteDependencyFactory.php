@@ -35,7 +35,8 @@ final class PosPaymentRouteDependencyFactory {
 		?callable $capability_checker = null,
 		?callable $webhook_signature_verifier = null,
 		?callable $register_route_callback = null,
-		private ?PosPaymentRouteValidationHandlerFactory $validation_handler_factory = null
+		private ?PosPaymentRouteValidationHandlerFactory $validation_handler_factory = null,
+		private ?PosPaymentFeeSnapshotRouteHandlerFactory $fee_snapshot_handler_factory = null
 	) {
 		$this->capability_checker          = $capability_checker;
 		$this->webhook_signature_verifier  = $webhook_signature_verifier;
@@ -95,9 +96,12 @@ final class PosPaymentRouteDependencyFactory {
 		$handlers = array() === $this->handlers
 			? $this->validation_handler_factory()->handlers()
 			: $this->handlers;
+		$fee_snapshot_handlers = null !== $this->fee_snapshot_handler_factory
+			? $this->fee_snapshot_handler_factory->handlers()
+			: array();
 
 		return array_intersect_key(
-			array_filter( $handlers, 'is_callable' ),
+			array_filter( array_merge( $handlers, $fee_snapshot_handlers ), 'is_callable' ),
 			array_flip( self::HANDLER_CALLBACKS )
 		);
 	}
@@ -114,6 +118,7 @@ final class PosPaymentRouteDependencyFactory {
 		$route_plans            = $this->registration_planner()->planned_registration_args( $route_contracts );
 		$permission_callbacks   = $this->permission_callback_factory()->callbacks_for_contracts( $route_contracts );
 		$validation_summary     = $this->validation_handler_factory()->readiness_summary();
+		$fee_snapshot_summary   = $this->fee_snapshot_handler_factory_summary();
 		$capability_route_keys  = array_keys( PosPaymentRoutePermissionCallbackFactory::capability_map( $route_contracts ) );
 		$webhook_route_keys     = PosPaymentRoutePermissionCallbackFactory::webhook_route_keys( $route_contracts );
 		$handler_keys           = array_keys( $this->handlers() );
@@ -164,7 +169,13 @@ final class PosPaymentRouteDependencyFactory {
 			'fee_snapshot_repository_configured'              => true === ( $validation_summary['fee_snapshot_repository_configured'] ?? false ),
 			'fee_snapshot_repository_adapter_ready'           => true === ( $validation_summary['fee_snapshot_repository_adapter_ready'] ?? false ),
 			'fee_snapshot_repository_deferred'                => true,
-			'fee_snapshot_route_connected_reads_deferred'     => true,
+			'fee_snapshot_route_connected_reads_deferred'     => true === ( $fee_snapshot_summary['route_connected_reads_deferred'] ?? true ),
+			'fee_snapshot_route_handler_factory_ready'        => true === ( $fee_snapshot_summary['handler_factory_ready'] ?? false ),
+			'fee_snapshot_route_execution_enabled'            => true === ( $fee_snapshot_summary['route_connected_reads_enabled'] ?? false ),
+			'fee_snapshot_route_handler_ready'                => true === ( $fee_snapshot_summary['route_connected_handler_ready'] ?? false ),
+			'fee_snapshot_route_handler_deferred'             => true === ( $fee_snapshot_summary['route_connected_handler_deferred'] ?? true ),
+			'fee_snapshot_route_database_configured'          => true === ( $fee_snapshot_summary['database_configured'] ?? false ),
+			'fee_snapshot_route_dependency_issues'            => $this->list_values( $fee_snapshot_summary['configuration_issues'] ?? array() ),
 			'planned_route_count'                             => count( $route_plans ),
 			'registerable_route_count'                        => count( $registerable_route_keys ),
 			'registerable_route_keys'                         => $registerable_route_keys,
@@ -178,6 +189,24 @@ final class PosPaymentRouteDependencyFactory {
 			'route_connected_writes_ready'                    => false,
 			'configuration_issues'                            => array_values( array_unique( $issues ) ),
 		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function fee_snapshot_handler_factory_summary(): array {
+		if ( null === $this->fee_snapshot_handler_factory ) {
+			return array(
+				'handler_factory_ready'            => false,
+				'route_connected_reads_enabled'    => false,
+				'route_connected_handler_ready'    => false,
+				'route_connected_handler_deferred' => true,
+				'database_configured'              => false,
+				'configuration_issues'             => array(),
+			);
+		}
+
+		return $this->fee_snapshot_handler_factory->readiness_summary();
 	}
 
 	private function validation_handler_factory(): PosPaymentRouteValidationHandlerFactory {

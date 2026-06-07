@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.152.0] - 2026-06-07
+
+### Added
+
+- Staged POS/payment fee snapshot route handler factory with explicit
+  route-connected read enablement, database/table-prefix readiness, and
+  dependency-issue metadata.
+- POS/payment dependency factory composition for an explicitly provided fee
+  snapshot handler factory, allowing repository-backed read tests while
+  default callbacks remain parser-only.
+- Unit coverage for default factory deferral, enabled repository-backed handler
+  composition, dependency issue reporting, dependency-factory injection, and
+  admin status metadata.
+
+### Not Added
+
+- Default POS/payment route registration, default route-connected fee snapshot
+  reads, fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.151.0] - 2026-06-07
 
 ### Added
