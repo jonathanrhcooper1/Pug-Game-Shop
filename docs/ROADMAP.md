@@ -148,7 +148,7 @@ execution plus planned route contracts and route readiness diagnostics
 plus fail-closed route permission callbacks, controller scaffold, route
 registration planning, guarded registrar, route bootstrap status, and
 bootstrapper wiring plus route dependency status and parser-only route
-validation handlers
+validation handlers plus dependency-backed bootstrap wiring
 implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional

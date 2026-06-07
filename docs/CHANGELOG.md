@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.146.0] - 2026-06-07
+
+### Added
+
+- WordPress POS/payment bootstrap wiring now uses
+  `PosPaymentRouteDependencyFactory()->bootstrapper()` so future staged route
+  registration checks share the parser-only controller and permission factory.
+- Unit coverage proving the dependency-backed bootstrapper can register a
+  future explicitly enabled read route in tests while default route contracts
+  still register zero routes.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.145.0] - 2026-06-07
 
 ### Added

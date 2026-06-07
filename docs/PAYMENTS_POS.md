@@ -337,6 +337,12 @@ log plans, but all log writes, reconciliation writes, provider capture,
 provider inventory writes, gateway capture, and live route registration remain
 deferred.
 
+The WordPress POS/payment route bootstrap hook now uses the staged dependency
+factory. Future explicitly enabled staging route tests therefore exercise the
+same parser-only controller, permission callback factory, guarded registrar,
+and bootstrapper path that WordPress registers on `rest_api_init`, while
+default route contracts still expose zero POS/payment routes.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

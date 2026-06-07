@@ -240,6 +240,10 @@ The default POS/payment controller now receives parser-only validation handlers
 for every planned callback, allowing request-shape checks and POS/payment log
 planning diagnostics without enabling route registration, transaction
 execution, provider capture, inventory writes, or WooCommerce gateway capture.
+WordPress bootstrap obtains the POS/payment route bootstrapper from the staged
+dependency factory, keeping the lifecycle path aligned with those parser-only
+handlers and fail-closed permission callbacks while default contracts register
+zero routes.
 
 ## System Diagram
 

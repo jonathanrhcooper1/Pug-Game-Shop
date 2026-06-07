@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Dependency-Backed Bootstrap Wiring
+
+### What Changed
+
+- Updated WordPress plugin bootstrap to register the POS/payment route
+  bootstrapper from `PosPaymentRouteDependencyFactory`.
+- The POS/payment bootstrap lifecycle now shares the staged parser-only
+  controller, permission callback factory, registration planner, and guarded
+  registrar.
+- Added unit coverage proving a future explicitly enabled read route can be
+  registered by the dependency-backed bootstrapper in tests.
+- Default WordPress smoke coverage still proves POS/payment REST routes remain
+  absent after `rest_api_init`.
+- Updated project, plugin, and offline app package versions to `0.146.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The parser-only handlers are now available through the dependency factory, so
+the lifecycle bootstrap should use that same assembly path. This keeps future
+staging route registration checks realistic without exposing any current
+POS/payment route.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteDependencyFactoryTest` coverage for dependency-backed
+  bootstrap registration of a future explicitly enabled read route.
+- Existing WordPress smoke coverage continues to prove current POS/payment
+  routes are absent after `rest_api_init`.
+
+### Rollback Notes
+
+- Revert this revision to return POS/payment bootstrap wiring to the previous
+  default bootstrapper assembly.
+- No database rollback is required because no schema migration, default live
+  route registration, provider capture, provider inventory write service,
+  webhook processing, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Route Validation Handlers
 
 ### What Changed

@@ -77,6 +77,36 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_same( 'gated', $factory->bootstrapper()->bootstrap( true )['status'] );
 	}
 
+	public function test_factory_bootstrapper_uses_injected_dependencies_for_future_ready_routes(): void {
+		$calls   = array();
+		$factory = new PosPaymentRouteDependencyFactory(
+			null,
+			$this->handlers_for_all_routes(),
+			static fn (): bool => true,
+			static fn (): bool => true,
+			static function ( string $namespace, string $route, array $args ) use ( &$calls ): bool {
+				$calls[] = array(
+					'namespace' => $namespace,
+					'route'     => $route,
+					'args'      => $args,
+				);
+
+				return true;
+			}
+		);
+		$result  = $factory->bootstrapper()->bootstrap( true, $this->future_enabled_fee_review_route() );
+
+		$this->assert_same( 'ready', $result['status'] );
+		$this->assert_same( 1, $result['registered_route_count'] );
+		$this->assert_same( array( 'GET /payments/fee-snapshots' ), $result['registered_route_keys'] );
+		$this->assert_false( $result['registration_deferred'] );
+		$this->assert_same( 1, count( $calls ) );
+		$this->assert_same( '/payments/fee-snapshots', $calls[0]['route'] );
+		$this->assert_same( 'GET', $calls[0]['args']['methods'] );
+		$this->assert_true( is_callable( $calls[0]['args']['callback'] ) );
+		$this->assert_true( is_callable( $calls[0]['args']['permission_callback'] ) );
+	}
+
 	public function test_default_controller_uses_parser_only_validation_handlers(): void {
 		$response = ( new PosPaymentRouteDependencyFactory() )->controller()->run_pos_reconciliation(
 			array(
@@ -154,5 +184,21 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 				'route_connected_writes_deferred' => true,
 			)
 		);
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	private function future_enabled_fee_review_route(): array {
+		$routes = \TCGStorePlatform\Api\V1\PosPaymentRouteContracts::route_contracts();
+
+		foreach ( $routes as $index => $route ) {
+			$is_target                                     = '/payments/fee-snapshots' === $route['path']
+				&& 'GET' === $route['method'];
+			$routes[ $index ]['live_enabled_by_default']     = $is_target;
+			$routes[ $index ]['route_registration_deferred'] = ! $is_target;
+		}
+
+		return $routes;
 	}
 }
