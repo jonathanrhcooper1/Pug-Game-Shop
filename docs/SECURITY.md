@@ -189,6 +189,10 @@ processing before calling that repository. It fails closed on missing device
 context or rejected repository reads and keeps default route execution, live
 route registration, queue replay workers, raw queue payload logs, and canonical
 mutations disabled.
+Staged replay metadata exposes only counts and client operation IDs that are
+already part of the offline operation envelope. It does not expose raw queue
+payload JSON, SQL templates, prepared arguments, bearer tokens, payment data,
+or customer credit details.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

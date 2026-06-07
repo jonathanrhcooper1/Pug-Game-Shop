@@ -50,6 +50,8 @@ final class OfflinePushRouteProcessingResult {
 			'persistence_rows_affected'        => $this->persistence_result->rows_affected(),
 			'operation_rows_affected'          => $this->persistence_result->operation_rows_affected(),
 			'conflict_rows_affected'           => $this->persistence_result->conflict_rows_affected(),
+			'operation_replay_count'           => $this->persistence_result->operation_replay_count(),
+			'operation_replay_ids'             => $this->persistence_result->operation_replay_ids(),
 			'batch_resolution'                 => $this->resolution_plan->audit_payload(),
 			'persistence'                      => $this->persistence_result->audit_payload(),
 			'permission'                       => $this->permission_audit,

@@ -504,6 +504,11 @@ candidates before persistence planning, proving duplicate pushes can avoid a
 second queue write. Default route execution, production route registration,
 queue replay workers, and canonical mutations remain disabled.
 
+Version `0.117.0` adds staged push replay metadata. Staging responses and
+audits now expose replay counts and replayed operation IDs for duplicate-push
+verification, while queue replay workers, canonical mutations, production route
+registration, and default route execution remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

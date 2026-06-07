@@ -202,13 +202,19 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 0, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
+			$this->assert_same( 1, $response['meta']['operation_replay_count'] );
+			$this->assert_same( array( 'op-push-route-01' ), $response['meta']['operation_replay_ids'] );
 			$this->assert_same( 2, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->get_results_count );
 			$this->assert_same( 0, $database->query_count );
 			$this->assert_same(
 				1,
-				$response['meta']['audit']['persistence']['query']['source']['operation_replay_count']
+				$response['meta']['audit']['operation_replay_count']
+			);
+			$this->assert_same(
+				array( 'op-push-route-01' ),
+				$response['meta']['audit']['operation_replay_ids']
 			);
 		}
 
@@ -479,7 +485,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.116.0',
+				'app_version'       => '0.117.0',
 				'platform'          => 'windows',
 				'last_seen_at'      => '2026-06-06 19:30:00.000000',
 				'revoked_at'        => null,

@@ -115,6 +115,9 @@
   operation-row provider composition for authenticated device context handoff,
   repository-backed replay candidate reads, repository rejection mapping, and
   duplicate-push no-write replay behavior in staged route handlers.
+- Local unit coverage now includes offline push replay metadata for persistence
+  insert IDs, replay IDs, repository replay helper methods, repository audits,
+  and staged route response meta.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

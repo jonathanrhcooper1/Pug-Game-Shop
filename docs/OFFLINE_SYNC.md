@@ -298,6 +298,11 @@ context into repository-backed queue-row reads before persistence planning, so
 duplicate operation pushes replay existing queue results without issuing a
 second queue write. Default route execution, route registration, queue replay
 workers, and canonical mutations remain deferred.
+Version `0.117.0` surfaces staged push replay metadata. Persistence plans,
+repository audits, route processing audits, and response metadata now expose
+operation replay counts and replayed client operation IDs, so duplicate-push
+idempotency can be verified directly while queue replay workers and canonical
+mutations remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

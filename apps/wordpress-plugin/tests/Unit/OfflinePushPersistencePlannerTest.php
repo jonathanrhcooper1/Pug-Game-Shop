@@ -52,6 +52,12 @@ final class OfflinePushPersistencePlannerTest extends TestCase {
 		$this->assert_same( 3, $audit['operation_insert_count'] );
 		$this->assert_same( 0, $audit['operation_replay_count'] );
 		$this->assert_same( 1, $audit['conflict_insert_count'] );
+		$this->assert_same(
+			array( 'op-inventory-0001', 'op-event-0001', 'op-credit-redemption-01' ),
+			$audit['operation_insert_ids']
+		);
+		$this->assert_same( array(), $audit['operation_replay_ids'] );
+		$this->assert_same( array( 'op-credit-redemption-01' ), $audit['conflict_insert_ids'] );
 	}
 
 	public function test_planner_replays_existing_operation_rows_idempotently(): void {
@@ -76,6 +82,8 @@ final class OfflinePushPersistencePlannerTest extends TestCase {
 		$this->assert_same( 1, count( $plan->operation_replay_rows() ) );
 		$this->assert_same( 0, count( $plan->conflict_insert_rows() ) );
 		$this->assert_same( 1, $plan->audit_payload()['operation_replay_count'] );
+		$this->assert_same( array( 'op-inventory-0001' ), $plan->audit_payload()['operation_replay_ids'] );
+		$this->assert_same( array(), $plan->audit_payload()['operation_insert_ids'] );
 	}
 
 	public function test_planner_rejects_mismatched_or_stale_inputs(): void {

@@ -118,6 +118,7 @@ plus push route operation-options provider composition
 plus push existing operation-row query planning
 plus push existing operation-row repository adaptation
 plus push existing operation-row route provider composition
+plus push replay response metadata
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

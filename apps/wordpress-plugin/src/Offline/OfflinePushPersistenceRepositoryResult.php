@@ -98,6 +98,17 @@ final class OfflinePushPersistenceRepositoryResult {
 		return $this->conflict_rows_affected;
 	}
 
+	public function operation_replay_count(): int {
+		return $this->non_negative_int( $this->query_audit['source']['operation_replay_count'] ?? 0 );
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public function operation_replay_ids(): array {
+		return $this->string_list( $this->query_audit['source']['operation_replay_ids'] ?? array() );
+	}
+
 	/**
 	 * @return list<array<string, mixed>>
 	 */
@@ -130,6 +141,8 @@ final class OfflinePushPersistenceRepositoryResult {
 			'is_rejected'                      => $this->is_rejected(),
 			'operation_query_count'            => count( $this->operation_results ),
 			'conflict_query_count'             => count( $this->conflict_results ),
+			'operation_replay_count'           => $this->operation_replay_count(),
+			'operation_replay_ids'             => $this->operation_replay_ids(),
 			'operation_rows_affected'          => $this->operation_rows_affected,
 			'conflict_rows_affected'           => $this->conflict_rows_affected,
 			'rows_affected'                    => $this->rows_affected(),
@@ -143,5 +156,38 @@ final class OfflinePushPersistenceRepositoryResult {
 			'canonical_mutations_deferred'     => true,
 			'errors'                           => $this->errors,
 		);
+	}
+
+	private function non_negative_int( mixed $value ): int {
+		if ( is_int( $value ) && 0 <= $value ) {
+			return $value;
+		}
+
+		if ( is_string( $value ) && 1 === preg_match( '/^\d+$/', $value ) ) {
+			return (int) $value;
+		}
+
+		return 0;
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function string_list( mixed $value ): array {
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$strings = array();
+
+		foreach ( $value as $item ) {
+			$item = trim( (string) $item );
+
+			if ( '' !== $item ) {
+				$strings[] = $item;
+			}
+		}
+
+		return array_values( array_unique( $strings ) );
 	}
 }

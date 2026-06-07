@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.117.0] - 2026-06-06
+
+### Added
+
+- Offline push persistence planner audit metadata for operation insert IDs,
+  operation replay IDs, and conflict insert IDs.
+- `OfflinePushPersistenceRepositoryResult` helpers and audit fields for
+  operation replay counts and replayed client operation IDs.
+- Staged push route processing and response metadata for replay counts and
+  replay operation IDs.
+- Unit coverage for persistence replay metadata and duplicate-push route
+  response metadata.
+
+### Not Added
+
+- Queue replay workers, canonical entity mutations, default route execution,
+  live route registration, and production route-connected writes remain
+  deferred.
+
 ## [0.116.0] - 2026-06-06
 
 ### Added

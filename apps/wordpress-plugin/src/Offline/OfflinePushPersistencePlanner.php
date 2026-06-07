@@ -83,6 +83,9 @@ final class OfflinePushPersistencePlanner {
 			'operation_insert_count' => count( $insert_rows ),
 			'operation_replay_count' => count( $replay_rows ),
 			'conflict_insert_count'  => count( $conflict_inserts ),
+			'operation_insert_ids'   => $this->row_operation_ids( $insert_rows ),
+			'operation_replay_ids'   => $this->row_operation_ids( $replay_rows ),
+			'conflict_insert_ids'    => $this->row_operation_ids( $conflict_inserts ),
 			'operation_ids'          => $this->operation_ids( $payload ),
 		);
 
@@ -385,6 +388,24 @@ final class OfflinePushPersistencePlanner {
 			static fn ( OfflineOperationEnvelope $operation ): string => $operation->client_operation_id(),
 			$payload->operations()
 		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Planned operation or conflict rows.
+	 * @return list<string>
+	 */
+	private function row_operation_ids( array $rows ): array {
+		$ids = array();
+
+		foreach ( $rows as $row ) {
+			$id = trim( (string) ( $row['client_operation_id'] ?? '' ) );
+
+			if ( '' !== $id ) {
+				$ids[] = $id;
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
 	}
 
 	/**

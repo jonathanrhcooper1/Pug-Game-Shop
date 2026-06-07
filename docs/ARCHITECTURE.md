@@ -117,6 +117,10 @@ The route-aware existing operation-row provider now adapts authenticated
 registered-device context to that repository for explicitly enabled staged push
 handlers, allowing persistence planning to replay duplicate operation results
 without a second queue insert while default route execution remains disabled.
+Replay counts and replayed client operation IDs now flow from persistence
+planning through repository audits and staged route response metadata, giving
+staging tests direct observability into insert-vs-replay behavior without
+enabling queue replay workers or canonical mutations.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

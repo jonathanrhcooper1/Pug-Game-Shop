@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Replay Response Metadata
+
+### What Changed
+
+- Added persistence planner audit fields for operation insert IDs, operation
+  replay IDs, and conflict insert IDs.
+- Added `OfflinePushPersistenceRepositoryResult::operation_replay_count()` and
+  `operation_replay_ids()` for route and audit consumers.
+- Added operation replay count and replay operation IDs to staged push
+  persistence repository audits.
+- Added operation replay count and replay operation IDs to staged push route
+  processing audits and response metadata.
+- Added unit coverage for insert/replay/conflict ID audits, repository replay
+  helper methods, repository replay audit fields, and duplicate-push route
+  response metadata.
+- Updated project, plugin, and offline app package versions to `0.117.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous checkpoint enabled explicitly staged push handlers to read existing
+operation rows before persistence planning, but replay status was only visible
+inside nested audit payloads. This revision gives staging tests and reviewers a
+direct, secret-free response metadata surface for verifying idempotent
+duplicate pushes without enabling queue replay workers, canonical mutations,
+default route execution, or live route registration.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistencePlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistenceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Persistence planner assertions for operation insert IDs, replay IDs, and
+  conflict insert IDs.
+- Persistence repository assertions for replay helper methods and replay audit
+  fields.
+- Staged push route handler factory assertions for direct response metadata on
+  duplicate-push replay.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push replay metadata from route
+  responses and repository audits while keeping existing route provider
+  composition intact.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Queue replay workers, canonical mutations, default route execution, live
+  route registration, and production route-connected writes remain disabled
+  before and after rollback.
+
 ## 2026-06-06 - Offline Push Existing Operation Rows Route Provider
 
 ### What Changed

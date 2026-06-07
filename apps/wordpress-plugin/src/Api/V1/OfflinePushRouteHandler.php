@@ -126,6 +126,8 @@ final class OfflinePushRouteHandler {
 			'persistence_rows_affected'          => $persistence->rows_affected(),
 			'operation_rows_affected'            => $persistence->operation_rows_affected(),
 			'conflict_rows_affected'             => $persistence->conflict_rows_affected(),
+			'operation_replay_count'             => $persistence->operation_replay_count(),
+			'operation_replay_ids'               => $persistence->operation_replay_ids(),
 			'audit'                              => $route_result->audit_payload(),
 		);
 	}

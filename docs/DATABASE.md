@@ -112,6 +112,9 @@
 - Version `0.116.0` adds route-aware existing operation-row provider
   composition over the existing queue table and staged repository. No WordPress
   schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.117.0` adds replay metadata to staged push planning, repository,
+  and route response contracts. No WordPress schema, SQLite schema, migration
+  order, or rollback target changes.
 
 ## Relationship Overview
 

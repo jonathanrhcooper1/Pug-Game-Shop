@@ -80,6 +80,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 4, $result->rows_affected() );
 			$this->assert_same( 3, $result->operation_rows_affected() );
 			$this->assert_same( 1, $result->conflict_rows_affected() );
+			$this->assert_same( 0, $result->operation_replay_count() );
+			$this->assert_same( array(), $result->operation_replay_ids() );
 			$this->assert_same( 4, $database->prepare_count );
 			$this->assert_same( 4, $database->query_count );
 			$this->assert_contains( 'INSERT INTO `wp_tcg_offline_sync_queue`', $database->prepare_queries[0] );
@@ -96,6 +98,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'offline_push_persistence_repository', $audit['action'] );
 			$this->assert_same( 3, $audit['operation_query_count'] );
 			$this->assert_same( 1, $audit['conflict_query_count'] );
+			$this->assert_same( 0, $audit['operation_replay_count'] );
+			$this->assert_same( array(), $audit['operation_replay_ids'] );
 			$this->assert_true( $audit['explicit_execution_required'] );
 			$this->assert_true( $audit['route_connected_writes_deferred'] );
 			$this->assert_true( $audit['queue_replay_deferred'] );
@@ -105,9 +109,14 @@ namespace TCGStorePlatform\Tests\Unit {
 		public function test_repository_accepts_replay_only_plans_without_database_writes(): void {
 			$database = new \OfflinePushPersistenceWpdb();
 			$result   = ( new OfflinePushPersistenceRepository( $database ) )->persist( $this->replay_plan() );
+			$audit    = $result->audit_payload();
 
 			$this->assert_true( $result->is_persisted() );
 			$this->assert_same( 0, $result->rows_affected() );
+			$this->assert_same( 1, $result->operation_replay_count() );
+			$this->assert_same( array( 'op-inventory-0001' ), $result->operation_replay_ids() );
+			$this->assert_same( 1, $audit['operation_replay_count'] );
+			$this->assert_same( array( 'op-inventory-0001' ), $audit['operation_replay_ids'] );
 			$this->assert_same( array(), $result->operation_results() );
 			$this->assert_same( array(), $result->conflict_results() );
 			$this->assert_same( 0, $database->prepare_count );

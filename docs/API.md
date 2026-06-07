@@ -240,6 +240,11 @@ context into repository-backed queue-row reads before persistence planning, so
 duplicate push operations can replay existing results without a second queue
 write. Default route execution, route registration, queue replay workers, and
 canonical mutations remain disabled.
+Version `0.117.0` adds staged offline push replay metadata. Route response
+`meta` and secret-free audits now include operation replay counts and replayed
+client operation IDs, giving staging tests a direct way to verify idempotent
+duplicate-push behavior while queue replay workers and canonical mutations
+remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -506,7 +511,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.116.0",
+  "app_version": "0.117.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
