@@ -103,19 +103,19 @@ final class HealthController {
 
 		return new \WP_REST_Response(
 			array(
-				'status'                                  => $overall,
-				'version'                                 => Version::PLUGIN,
-				'database'                                => array(
+				'status'                                 => $overall,
+				'version'                                => Version::PLUGIN,
+				'database'                               => array(
 					'current' => $runner->current_version(),
 					'target'  => Version::DATABASE,
 				),
-				'dependencies'                            => $dependencies,
-				'scheduler'                               => $this->scheduler->status(),
-				'hpos'                                    => Compatibility::hpos_status(),
-				'features'                                => $features,
-				'offline_route_bootstrap'                 => $offline,
+				'dependencies'                           => $dependencies,
+				'scheduler'                              => $this->scheduler->status(),
+				'hpos'                                   => Compatibility::hpos_status(),
+				'features'                               => $features,
+				'offline_route_bootstrap'                => $offline,
 				'offline_device_pairing_route_readiness' => $pairing,
-				'timestamp'                               => gmdate( 'c' ),
+				'timestamp'                              => gmdate( 'c' ),
 			),
 			200
 		);
