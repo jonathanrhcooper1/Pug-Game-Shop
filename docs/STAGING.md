@@ -211,5 +211,9 @@ Before major database migrations:
   `SELECT` metadata and prepare-argument counts while repository execution,
   route registration, writes, capture, inventory updates, and gateway capture
   remain disabled.
+- POS/payment fee snapshot repository adaptation can execute those allowlisted
+  reads in explicit `$wpdb` staging tests with row normalization, prefix
+  guards, and failure audits while route-connected reads, writes, capture,
+  inventory updates, gateway capture, and route registration remain disabled.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

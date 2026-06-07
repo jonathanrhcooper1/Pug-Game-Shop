@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.148.0`
+Version: `0.149.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -120,6 +120,11 @@ gateway capture, and route registration remain disabled.
 Those fee snapshot read contracts now also produce prepared SQL-template
 metadata and prepare-argument counts for staging review without executing
 database reads or returning fee rows.
+An explicit POS/payment fee snapshot repository adapter can now execute those
+allowlisted reads in controlled tests through `$wpdb`, normalizing fee rows and
+auditing table-prefix/database failures while default route-connected reads,
+writes, capture, inventory updates, gateway capture, and route registration
+remain disabled.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

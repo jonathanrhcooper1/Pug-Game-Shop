@@ -367,6 +367,15 @@ execute repository reads, return fee rows, write fee rows, register routes,
 call providers, capture payments, mutate inventory, or enable WooCommerce
 gateway capture.
 
+An explicit fee snapshot repository adapter can execute those allowlisted
+templates in controlled staging tests. The adapter prepares the SQL through the
+provided `$wpdb`, verifies the database prefix matches the planned table,
+normalizes effective-dated fee rows, and reports database or malformed-row
+failures in an audit payload. Default route-connected reads still do not use
+the repository, and fee-snapshot writes, REST route registration, provider
+capture, provider inventory changes, and WooCommerce gateway capture remain
+disabled.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

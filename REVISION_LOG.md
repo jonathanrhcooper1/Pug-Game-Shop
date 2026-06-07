@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Fee Snapshot Repository Adapter
+
+### What Changed
+
+- Added an explicit POS/payment fee snapshot repository adapter for staged
+  `$wpdb` read tests.
+- The adapter executes only previously allowlisted fee snapshot SQL-template
+  plans, validates the active database prefix, normalizes returned fee rows,
+  and reports database or malformed-row failures through an audit payload.
+- Added unit coverage for successful prepared reads, invalid source plans,
+  table-prefix mismatch guards, database failures, and malformed rows.
+- Updated project, plugin, and offline app package versions to `0.149.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Phase 8 needs a controlled repository boundary for payment fee review data
+before any route-connected reads are enabled. This revision verifies the
+`$wpdb` execution and normalization path in tests while keeping live REST
+routes and production side effects disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Payments/PosPaymentFeeSnapshotRepository.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentFeeSnapshotRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentFeeSnapshotRepositoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentFeeSnapshotRepositoryTest` coverage for prepared `$wpdb` reads,
+  normalized fee rows, invalid query-plan rejection before reads, table-prefix
+  mismatch rejection, database failure rejection, and malformed row rejection.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged fee snapshot repository adapter
+  and return fee snapshot handling to SQL-template planning only.
+- No database rollback is required because no schema migration, route
+  registration, route-connected read execution, write path, provider capture,
+  provider inventory write service, webhook processing, or WooCommerce gateway
+  capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment reads
+  and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Fee Snapshot SQL Planning
 
 ### What Changed

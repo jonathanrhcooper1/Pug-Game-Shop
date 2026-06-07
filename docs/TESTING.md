@@ -525,6 +525,11 @@
   planning for filtered and unfiltered staged reads, prepare-argument counts,
   invalid source plans, and tampered table/column/order guards while
   repository execution remains deferred.
+- Local unit coverage now includes POS/payment fee snapshot repository
+  adaptation for prepared `$wpdb` reads, normalized fee rows, invalid plan
+  rejection before reads, table-prefix mismatch rejection, database failure
+  auditing, and malformed row rejection while route-connected reads remain
+  deferred.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

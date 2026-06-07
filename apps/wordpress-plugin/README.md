@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.148.0`
+Version: `0.149.0`
 
 ## Implemented Features
 
@@ -133,6 +133,9 @@ Version: `0.148.0`
 - POS/payment fee snapshot SQL-template planning for allowlisted staged review
   reads, reporting prepare-argument metadata while repository execution and
   route registration remain deferred.
+- POS/payment fee snapshot repository adaptation for explicit staged `$wpdb`
+  reads with row normalization, table-prefix guards, database failure auditing,
+  and route-connected reads still deferred by default.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

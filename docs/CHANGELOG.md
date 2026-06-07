@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.149.0] - 2026-06-07
+
+### Added
+
+- Explicit POS/payment fee snapshot repository adapter for staged `$wpdb`
+  read tests.
+- Fee snapshot row normalization, table-prefix mismatch protection, database
+  failure auditing, and malformed-row rejection.
+- Unit coverage for successful prepared fee snapshot reads, invalid plans,
+  prefix mismatches, database failures, and malformed rows.
+
+### Not Added
+
+- Live POS/payment route registration, route-connected fee snapshot reads,
+  fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.148.0] - 2026-06-07
 
 ### Added
