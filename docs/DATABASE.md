@@ -32,6 +32,9 @@
 - Version `0.87.0` adds staged registration route-handler response mapping for
   pairing authorization denials. No WordPress schema, SQLite schema, migration
   order, or rollback target changes.
+- Version `0.88.0` adds hash-only offline pairing authorization settings inside
+  the existing settings option. No WordPress schema, SQLite schema, migration
+  order, or rollback target changes.
 
 ## Relationship Overview
 

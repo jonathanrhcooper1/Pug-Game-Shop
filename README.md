@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.87.0`
+Version: `0.88.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -116,6 +116,9 @@ attempted, giving staging a direct service-level defense-in-depth check while
 live routes remain disabled. The injected registration route handler now maps
 pairing authorization denials to a distinct 403 response code before any
 credential or repository path runs, while preserving secret-free audit payloads.
+Offline pairing authorization settings now normalize hash-only pairing-code
+policies, manager/location allowlists, mode scopes, and UTC expiry windows
+without accepting or retaining raw pairing codes.
 Offline
 device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,

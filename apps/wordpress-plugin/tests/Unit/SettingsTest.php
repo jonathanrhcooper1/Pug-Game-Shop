@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Settings\BrandingSettings;
+use TCGStorePlatform\Settings\OfflinePairingAuthorizationSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Tests\TestCase;
 
@@ -56,6 +57,75 @@ final class SettingsTest extends TestCase {
 
 		$this->assert_same( 'https://topdeck.gg/api', $result['topdeck_base_url'] );
 		$this->assert_same( 60, $result['topdeck_rate_limit'] );
+	}
+
+	public function test_offline_pairing_authorization_defaults_are_secret_free(): void {
+		$defaults = Settings::defaults();
+		$policy   = $defaults['offline_pairing_authorization'];
+
+		$this->assert_same( array(), $policy['pairing_code_hashes'] );
+		$this->assert_same( array(), $policy['manager_ids'] );
+		$this->assert_same( array(), $policy['location_ids'] );
+		$this->assert_same( array(), $policy['allowed_scopes_by_mode']['kiosk'] );
+		$this->assert_same( '', $policy['expires_at_utc'] );
+		$this->assert_false( isset( $policy['pairing_code'] ) );
+	}
+
+	public function test_offline_pairing_authorization_settings_are_sanitized(): void {
+		$hash   = strtoupper( hash( 'sha256', 'PAIR-2026-REGISTER-DEVICE' ) );
+		$result = Settings::sanitize(
+			array(
+				'offline_pairing_authorization' => array(
+					'pairing_code'           => 'PAIR-2026-REGISTER-DEVICE',
+					'pairing_code_hashes'    => " {$hash}\nnot-a-hash",
+					'manager_ids'            => '42, 0, bad, 42, 7',
+					'location_ids'           => array( '2', 'bad', 3, -1 ),
+					'allowed_scopes_by_mode' => array(
+						'kiosk' => 'offline_pull offline_push kiosk unknown',
+						'staff' => array( 'Inventory', 'events', 'events' ),
+						'admin' => array( 'conflicts', 'customer_credit' ),
+						'bad'   => array( 'offline_pull' ),
+					),
+					'expires_at_utc'         => '2026-06-06T19:30:00Z',
+				),
+			)
+		);
+		$policy = $result['offline_pairing_authorization'];
+
+		$this->assert_same( array( strtolower( $hash ) ), $policy['pairing_code_hashes'] );
+		$this->assert_same( array( 42, 7 ), $policy['manager_ids'] );
+		$this->assert_same( array( 2, 3 ), $policy['location_ids'] );
+		$this->assert_same( array( 'offline_pull', 'offline_push', 'kiosk' ), $policy['allowed_scopes_by_mode']['kiosk'] );
+		$this->assert_same( array( 'inventory', 'events' ), $policy['allowed_scopes_by_mode']['staff'] );
+		$this->assert_same( array( 'conflicts', 'customer_credit' ), $policy['allowed_scopes_by_mode']['admin'] );
+		$this->assert_same( '2026-06-06T19:30:00Z', $policy['expires_at_utc'] );
+		$this->assert_false( isset( $policy['pairing_code'] ) );
+	}
+
+	public function test_offline_pairing_authorization_policy_preserves_existing_partial_values(): void {
+		$hash     = hash( 'sha256', 'PAIR-2026-REGISTER-DEVICE' );
+		$existing = array(
+			'pairing_code_hashes'    => array( $hash ),
+			'manager_ids'            => array( 42 ),
+			'location_ids'           => array( 2 ),
+			'allowed_scopes_by_mode' => array(
+				'kiosk' => array( 'offline_pull', 'offline_push' ),
+			),
+			'expires_at_utc'         => '2026-06-06T19:30:00Z',
+		);
+
+		$policy = OfflinePairingAuthorizationSettings::sanitize(
+			array(
+				'manager_ids' => array( 99 ),
+			),
+			$existing
+		);
+
+		$this->assert_same( array( $hash ), $policy['pairing_code_hashes'] );
+		$this->assert_same( array( 99 ), $policy['manager_ids'] );
+		$this->assert_same( array( 2 ), $policy['location_ids'] );
+		$this->assert_same( array( 'offline_pull', 'offline_push' ), $policy['allowed_scopes_by_mode']['kiosk'] );
+		$this->assert_same( '2026-06-06T19:30:00Z', $policy['expires_at_utc'] );
 	}
 
 	public function test_branding_settings_are_sanitized(): void {

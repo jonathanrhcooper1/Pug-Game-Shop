@@ -197,6 +197,10 @@
   manager/location/scope/expiry policies, missing configuration, injection into
   the staged pairing permission callback, and audit payloads without raw
   pairing-code or full-hash leakage.
+- Local unit coverage now includes hash-only offline pairing authorization
+  settings, proving SHA-256 hashes, manager/location allowlists, mode scopes,
+  UTC expiry windows, partial updates, and raw pairing-code omission are
+  handled deterministically.
 - Local unit coverage now includes registration service pairing-authorization
   enforcement, proving authorized pairing can proceed and denied pairing stops
   before credential issuance or repository writes.

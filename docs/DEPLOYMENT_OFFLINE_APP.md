@@ -349,6 +349,11 @@ registration route handler as `offline_device_pairing_authorization_denied`
 with status `403`. The route remains opt-in/injected for staging tests only;
 live route registration and production token issuance remain disabled.
 
+Version `0.88.0` adds the hash-only offline pairing authorization settings
+contract for future staged policy wiring. Store SHA-256 pairing-code hashes,
+manager/location allowlists, mode scopes, and UTC expiry windows only; raw
+pairing codes are ignored and must not be saved in settings.
+
 ## Hardware Gate
 
 Before production, test the actual:

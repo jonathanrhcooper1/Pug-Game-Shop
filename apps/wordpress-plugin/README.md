@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.87.0`
+Version: `0.88.0`
 
 ## Implemented Features
 
@@ -125,6 +125,8 @@ Version: `0.87.0`
 - Staged offline device registration route-handler mapping for pairing
   authorization denials, including a distinct 403 response code while live
   route registration remains disabled.
+- Hash-only offline pairing authorization settings for future staged pairing
+  policies without retaining raw pairing codes.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

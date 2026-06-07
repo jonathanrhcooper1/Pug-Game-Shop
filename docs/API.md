@@ -76,6 +76,10 @@ manager and location allowlists, mode-specific scope checks, UTC expiry
 windows, server-time injection for tests, and secret-free audit payloads for
 future staged pairing callbacks. It does not register the live pairing route or
 issue production device tokens.
+Offline pairing authorization settings now provide the future policy source for
+that authorizer, normalizing SHA-256 pairing-code hashes, manager/location
+allowlists, mode scopes, and UTC expiry windows while ignoring raw pairing-code
+fields.
 Offline device bearer-token authentication planning is implemented for future
 registered-device permission callbacks,
 including header normalization, device token validation, token hash comparison,
@@ -376,7 +380,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.87.0",
+  "app_version": "0.88.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -411,6 +415,10 @@ manager and location IDs, requested scopes allowed for the device mode, and
 unexpired UTC policy windows. Audit payloads expose only a short pairing-code
 fingerprint, counts, denied scopes, and timing metadata; raw pairing codes and
 full hashes are intentionally omitted.
+The matching settings contract stores only policy metadata for future staging
+wiring: `pairing_code_hashes`, `manager_ids`, `location_ids`,
+`allowed_scopes_by_mode`, and `expires_at_utc`. Submitted raw pairing-code
+fields are ignored.
 
 The registration service can consume the same authorizer as a defense-in-depth
 stage. When the supplied authorizer denies a parsed pairing request, the

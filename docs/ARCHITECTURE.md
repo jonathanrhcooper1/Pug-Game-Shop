@@ -225,7 +225,9 @@ manager/pairing authorizer, but the default permission factory still leaves
 the pairing route locked. The first plan-only authorizer for that callback now
 checks configured pairing-code hashes, manager/location allowlists,
 mode-specific scopes, and UTC expiry windows while keeping audits free of raw
-pairing secrets. Device access policy checks are implemented so
+pairing secrets. Offline pairing authorization settings now define the
+hash-only policy shape future staging code can pass into that authorizer
+without saving raw pairing codes. Device access policy checks are implemented so
 future registered-device route permission callbacks can validate active state,
 revocation, token expiry, required scopes, supported modes/scopes, location
 IDs, and UTC timestamps before pull, push, or conflict work runs. Device

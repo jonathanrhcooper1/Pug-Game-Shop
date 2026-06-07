@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.88.0] - 2026-06-06
+
+### Added
+
+- Hash-only offline pairing authorization settings for future staged policy
+  wiring.
+- Sanitization for SHA-256 pairing-code hash allowlists, manager/location
+  allowlists, mode-specific scopes, and UTC expiry windows without accepting
+  or retaining raw pairing codes.
+- Unit coverage for policy defaults, sanitization, partial-update preservation,
+  and secret-free pairing settings.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.87.0] - 2026-06-06
 
 ### Added
