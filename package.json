@@ -1,6 +1,6 @@
 {
   "name": "pug-game-shop-tcg-store-platform",
-  "version": "0.82.0",
+  "version": "0.83.0",
   "private": true,
   "description": "Trading card store platform development, testing, staging, and deployment tooling.",
   "scripts": {

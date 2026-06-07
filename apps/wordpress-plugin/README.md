@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.82.0`
+Version: `0.83.0`
 
 ## Implemented Features
 
@@ -109,6 +109,9 @@ Version: `0.82.0`
   pairing routes, including request-body parsing, injected manager/pairing
   authorization, authorizer rejection handling, secret-free audit payloads,
   and optional permission factory attachment while defaults remain locked.
+- Offline device pairing route readiness planning that composes the injected
+  registration handler and configured pairing permission callback into one
+  staging bootstrap summary without registering live routes.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

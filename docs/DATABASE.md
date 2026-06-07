@@ -18,6 +18,8 @@
   upgrade, idempotent current-schema rerun, and rollback order. Live MySQL,
   `dbDelta`, backup/restore, and row-lock migration tests remain required in
   staging.
+- Version `0.83.0` adds only staged offline route readiness planning. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

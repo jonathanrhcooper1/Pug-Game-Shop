@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pairing Route Readiness Summary
+
+### What Changed
+
+- Added `OfflineDevicePairingRouteReadinessPlanner` to summarize staged
+  pairing route readiness without registering live routes.
+- Composed the injected offline device registration route handler and
+  configured pairing permission callback into the existing route registration
+  and bootstrap planners.
+- Added tests proving missing dependencies remain blocked, configured staged
+  dependencies report ready-but-gated, and unconfigured pairing authorizers keep
+  permission readiness locked.
+- Updated project, plugin, and offline app package versions to `0.83.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+Staging needs one compact inspection point for the pairing route before live
+offline route registration is allowed. This revision proves the handler and
+permission sides can be assembled together while preserving the
+disabled-by-default route gate and deferred registration status.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Pairing route readiness tests for missing handler/permission dependencies.
+- Pairing route readiness tests for configured staged dependencies that remain
+  gated by disabled-by-default route registration.
+- Pairing route readiness tests for unconfigured pairing authorizers.
+
+### Rollback Notes
+
+- Revert this revision to remove the pairing route readiness summary and tests.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pairing Permission Authorizer Readiness
 
 ### What Changed

@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.83.0] - 2026-06-06
+
+### Added
+
+- Staged offline device pairing route readiness planning for handler,
+  permission, feature-gate, and disabled-route checks.
+- A compact readiness summary proving the injected registration handler and
+  configured pairing permission callback can be composed without registering
+  live routes.
+- Unit coverage for missing dependencies, configured-but-gated staging
+  dependencies, and unconfigured pairing authorizers.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.82.0] - 2026-06-06
 
 ### Added

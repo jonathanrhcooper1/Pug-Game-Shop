@@ -365,7 +365,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.82.0",
+  "app_version": "0.83.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -379,6 +379,14 @@ The planned pairing request body is shaped as:
 
 Live route token issuance/storage, revocation checks, and first-sync execution
 remain disabled until staging tests pass.
+
+Staging can inspect the planned pairing route readiness summary before enabling
+live route registration. The summary reports the route key, feature gate,
+handler injection, configured pairing authorizer, permission readiness,
+controller readiness, disabled-by-default registration state, and bootstrap
+block reasons. Even with both staged dependencies injected, the current pairing
+route remains `registration_deferred` because offline routes are still disabled
+by default.
 
 When the future route is enabled, the planned successful response body is:
 

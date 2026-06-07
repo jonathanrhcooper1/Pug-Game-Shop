@@ -95,6 +95,9 @@ registered-device resolver, and registered-device pull/push callbacks still
 fail closed unless that resolver is configured.
 Unconfigured pairing permission adapters are no longer treated as route-ready;
 they still deny direct calls but are not exposed by the permission factory.
+The staged pairing route readiness planner reports handler and permission
+configuration as inspection metadata only; it does not register live routes or
+turn pairing writes on.
 
 ## Secret Storage
 

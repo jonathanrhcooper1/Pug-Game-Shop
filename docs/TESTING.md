@@ -185,6 +185,10 @@
 - Local unit coverage now includes pairing permission authorizer-readiness
   checks, proving unconfigured pairing adapters deny directly and are not
   attached as route-ready permission callbacks by the factory or planner.
+- Local unit coverage now includes staged pairing route readiness planning,
+  proving missing handler/permission dependencies stay blocked, configured
+  staged dependencies report ready-but-gated, and unconfigured authorizers keep
+  permission readiness locked.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

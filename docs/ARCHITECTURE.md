@@ -12,6 +12,12 @@ proof-of-concept demonstrates a blocker. It maintains a local searchable read
 model and an idempotent operation queue so kiosk and staff workflows continue
 during internet or WordPress outages.
 
+Offline REST routes move through explicit readiness objects before live
+registration. The staged pairing route now has a compact readiness planner that
+composes the injected registration handler and configured pairing permission
+callback into the existing bootstrap summary while preserving the
+disabled-by-default route gate.
+
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
 configured, and verified in the store's account.

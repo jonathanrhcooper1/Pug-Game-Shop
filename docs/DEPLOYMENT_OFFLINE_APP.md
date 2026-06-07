@@ -323,6 +323,11 @@ permission callback is treated as route-ready. Unconfigured pairing adapters
 still deny direct calls, but the route factory no longer exposes them as ready
 permission callbacks.
 
+Version `0.83.0` adds a staged pairing route readiness summary that composes the
+injected registration handler and configured pairing permission callback into
+the existing bootstrap plan. It proves handler and permission readiness while
+the pairing route remains disabled by default and registration stays deferred.
+
 ## Hardware Gate
 
 Before production, test the actual:

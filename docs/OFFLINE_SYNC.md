@@ -153,6 +153,10 @@ resolver; pull and push callback setup still requires it and stays locked when
 the resolver is absent.
 Pairing permission readiness now also requires an injected authorizer, so
 deny-only pairing adapters are not returned as route callbacks.
+The staged pairing route readiness planner now composes the injected
+registration handler and configured pairing permission callback into a compact
+bootstrap summary for staging checks while preserving disabled-by-default route
+registration.
 The planned offline route registration planner now turns those contracts into
 disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.
