@@ -81,16 +81,16 @@ final class OfflinePullCursorAdvanceQueryBuildPlan {
 	 */
 	public function audit_payload(): array {
 		return array(
-			'action'                            => 'offline_pull_cursor_advance_sql_planned',
-			'is_valid'                          => $this->is_valid,
-			'table_name'                        => $this->table_name,
-			'query_count'                       => count( $this->cursor_queries ),
-			'prepare_arg_count'                 => $this->prepare_arg_count(),
-			'source'                            => $this->source_audit,
-			'cursor_write_execution_deferred'   => true,
-			'route_connected_writes_deferred'   => true,
-			'cursor_repository_deferred'        => true,
-			'errors'                            => $this->errors,
+			'action'                          => 'offline_pull_cursor_advance_sql_planned',
+			'is_valid'                        => $this->is_valid,
+			'table_name'                      => $this->table_name,
+			'query_count'                     => count( $this->cursor_queries ),
+			'prepare_arg_count'               => $this->prepare_arg_count(),
+			'source'                          => $this->source_audit,
+			'cursor_write_execution_deferred' => true,
+			'route_connected_writes_deferred' => true,
+			'cursor_repository_deferred'      => true,
+			'errors'                          => $this->errors,
 		);
 	}
 
