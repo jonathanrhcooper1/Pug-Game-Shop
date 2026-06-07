@@ -24,7 +24,6 @@
 - [ ] Customer credit ledger tests
 - [ ] Manager override tests
 - [ ] ScryDex sync checkpoint/resume tests
-- [ ] TopDeck adapter tests
 - [ ] WooCommerce checkout hook tests
 - [ ] Playwright E2E tests
 - [ ] Offline sync conflict tests

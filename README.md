@@ -6,11 +6,13 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.154.0`
+Version: `0.155.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
-inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
-public Events REST/shortcode surface are implemented and locally verified.
+inventory/pricing schema, Events schema, and public Events REST/shortcode
+surface are implemented and locally verified. TopDeck has been removed from
+the active build scope for now; legacy tournament-provider scaffolding remains
+disabled and does not collect credentials or queue provider pushes by default.
 White-label company branding settings are implemented for configurable company
 names, support/logo URLs, receipt footer text, theme colors, staging banner
 color, and client-safe CSS variable export.
@@ -44,8 +46,7 @@ cart, checkout, payment, refund, cart removal, and Store API validation flows.
 REST route contracts for health and public event endpoints are unit-tested
 alongside the WordPress smoke route registration check. Migration planning is
 unit-tested for clean install, upgrade, idempotent current-schema reruns, and
-rollback order. TopDeck registration push mapping is implemented and
-unit-tested for later queue workers.
+rollback order.
 Offline sync conflict policy tests are implemented in the shared sync engine
 for inventory reservations, event reservations, customer credit redemption, and
 device revocation.
@@ -67,10 +68,14 @@ inventory writes remain disabled.
 POS/payment transaction preflight now classifies staged POS sync and payment
 provider log inserts after the execution gate so unsupported query kinds and
 gate blocks are visible before any future transaction executor can run.
+Payment capture should be handled by the official WooCommerce Square extension
+when Square is selected as the processor. This platform observes WooCommerce
+order/payment events and reconciles exact serialized inventory; it does not
+build or enable a custom Square payment gateway.
 An explicit POS/payment log execution repository can now run preflight-approved
 log inserts in staged tests through `$wpdb`, while route-connected writes,
-provider capture, provider inventory writes, and WooCommerce gateway capture
-remain disabled.
+custom provider capture, provider inventory writes, and WooCommerce gateway
+capture remain disabled.
 A staged POS/payment transaction executor now wraps those explicit log writes
 in begin/commit/rollback handling for tests, preserving disabled route writes,
 provider capture, provider inventory writes, and gateway capture.
@@ -310,7 +315,7 @@ registration, route reads, queue replay, and canonical mutations remain
 deferred. Route-aware offline push operation options provider composition now
 normalizes event reservation payment status from route payloads for explicitly
 enabled staged handlers, including pay-at-store behavior that suppresses
-TopDeck queueing, while default route execution remains deferred. Offline push
+external provider queueing, while default route execution remains deferred. Offline push
 existing operation-row query planning now prepares allowlisted
 `tcg_offline_sync_queue` lookups by offline device ID and client operation IDs
 for future idempotent replay checks, while repository execution,
@@ -347,8 +352,7 @@ execution/repository flags, including zero-query replay metadata for duplicate
 pushes.
 A deferred canonical mutation repository scaffold now turns those SQL plans
 into audit-only repository results with zero affected rows while inventory,
-event, credit-ledger, TopDeck, queue replay, and production writes stay
-disabled.
+event, credit-ledger, queue replay, and production writes stay disabled.
 Explicitly enabled staged push route responses now include those deferred
 canonical repository results in response payloads, route meta, and audits for
 fresh and replayed operations.
@@ -429,13 +433,12 @@ readiness checks while the offline routes remain unregistered.
 The offline route bootstrapper is now wired to WordPress `rest_api_init`, but
 it defers the guarded registrar unless the feature gate and future route
 readiness plan both allow registration.
-WooCommerce event-ticket flows, online payment capture, live TopDeck
-registration push, WooCommerce checkout hook execution, live order mutation,
+WooCommerce event-ticket flows, WooCommerce checkout hook execution, live order mutation,
 credit REST endpoints, buylist write APIs, scheduled ScryDex write workers,
 live reservation cleanup workers, live offline route registration, live device
 row permission checks, route permission callback wiring, route-connected
 device last-seen database writes, live offline push handlers, live batch queue
-replay, live TopDeck queue workers, and production provider credentials remain disabled until staging
+replay, custom payment capture, and production provider credentials remain disabled until staging
 acceptance.
 
 ## Source Of Truth
@@ -465,7 +468,6 @@ acceptance.
 - [Offline Sync](docs/OFFLINE_SYNC.md)
 - [Branding](docs/BRANDING.md)
 - [ScryDex Integration](docs/SCRYDEX_INTEGRATION.md)
-- [TopDeck Integration](docs/TOPDECK_INTEGRATION.md)
 - [Payments and POS](docs/PAYMENTS_POS.md)
 - [Events](docs/EVENTS.md)
 - [Customer Credit](docs/CUSTOMER_CREDIT.md)

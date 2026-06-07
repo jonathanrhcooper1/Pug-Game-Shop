@@ -599,8 +599,8 @@ Offline push persistence planning now maps resolved batches into deterministic
 queue rows, conflict rows, idempotent replay rows, and redacted audit payloads
 before live `$wpdb` writes are enabled.
 Route operation-options staging now feeds normalized event payment status into
-that resolution path for explicitly enabled tests without enabling live TopDeck
-queue workers or canonical event mutation.
+that resolution path for explicitly enabled tests without enabling live
+external provider queue workers or canonical event mutation.
 Existing operation-row query planning now stages the next idempotent replay
 lookup boundary against `tcg_offline_sync_queue` without enabling repository
 reads, queue replay, or canonical mutation.

@@ -31,7 +31,6 @@ deploy production.
 - Confirm staging tests pass.
 - Confirm payment gateway test.
 - Confirm ScryDex sync test.
-- Confirm TopDeck sync test.
 - Confirm kiosk/offline sync test.
 - Confirm WooCommerce checkout.
 - Confirm Square/POS adapter behavior.

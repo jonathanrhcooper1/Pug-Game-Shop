@@ -156,21 +156,22 @@ handler factory composition plus POS/payment route-connected read deferral
 gates plus dependency health/admin read-gate status
 implemented
 
-Deliver Square connection, transaction ingestion, barcode scan gate, optional
-catalog projection, reconciliation, refunds, conflict logs, and configurable
-fee comparison. Add payment adapters only where a supported integration exists.
+Deliver WooCommerce/Square payment observation, transaction ingestion, barcode
+scan gate, optional catalog projection, reconciliation, refunds, conflict logs,
+and configurable fee comparison. Online Square authorization, capture, and
+refund execution should stay in the official WooCommerce Square extension
+unless a future reviewed requirement proves a custom gateway is necessary.
 
 Exit criteria: test POS sales and refunds reconcile exact items idempotently.
 
-## Phase 9: Events And TopDeck
+## Phase 9: Events
 
-Status: In progress; schema, public read surface, TopDeck adapter contract,
-local free/pay-at-store registration writes, and TopDeck registration adapter
-mapping implemented
+Status: In progress; schema, public read surface, and local free/pay-at-store
+registration writes implemented. TopDeck and other external tournament-provider
+integrations are deferred at owner request.
 
-Deliver public events UI, local registration, Woo event products, TopDeck
-link/import/sync/register, waitlist, check-in, QR, attribution, and offline event
-queue.
+Deliver public events UI, local registration, Woo event products, waitlist,
+check-in, QR, local attribution, and offline event queue.
 
 Exit criteria: payment and registration partial-failure cases remain visible
 and recoverable.

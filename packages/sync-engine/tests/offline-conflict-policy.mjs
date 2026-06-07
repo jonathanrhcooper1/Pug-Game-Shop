@@ -58,7 +58,7 @@ test("offline inventory reservation creates staff conflict when item sold", () =
   assert.equal(result.details.serverStatus, "sold");
 });
 
-test("offline event reservation queues TopDeck only after local acceptance", () => {
+test("offline event reservation keeps external provider queue disabled", () => {
   const result = resolveOfflineOperation(
     {
       operationType: "event_reservation",
@@ -79,7 +79,7 @@ test("offline event reservation queues TopDeck only after local acceptance", () 
 
   assert.equal(result.status, OFFLINE_CONFLICT_OUTCOME.ACCEPTED);
   assert.equal(result.code, "event_reserved");
-  assert.equal(result.details.queueTopDeck, true);
+  assert.equal(result.details.queueTopDeck, false);
 });
 
 test("offline event reservation waitlists full event when allowed", () => {

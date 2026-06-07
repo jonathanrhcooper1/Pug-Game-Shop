@@ -50,10 +50,7 @@ function resolveEventReservation(operation, serverState, options) {
     return outcome(ACCEPTED, "event_reserved", {
       canonicalStatus: "reserved",
       rowVersion: nextVersion(event.rowVersion),
-      queueTopDeck:
-        event.registrationMode === "website_push_topdeck" &&
-        event.topDeckEnabled === true &&
-        options.paymentStatus !== "pay_at_store",
+      queueTopDeck: false,
     });
   }
 

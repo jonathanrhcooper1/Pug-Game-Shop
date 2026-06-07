@@ -8,10 +8,17 @@
 namespace TCGStorePlatform\Events;
 
 final class EventTopDeckRegistrationPlanner {
+	public function __construct( private bool $provider_queue_enabled = false ) {
+	}
+
 	/**
 	 * @param array<string, mixed> $event Event row.
 	 */
 	public function should_queue( array $event, EventRegistrationDecision $decision ): bool {
+		if ( ! $this->provider_queue_enabled ) {
+			return false;
+		}
+
 		if ( EventRegistrationMode::WEBSITE_PUSH_TOPDECK !== (string) ( $event['registration_mode'] ?? '' ) ) {
 			return false;
 		}

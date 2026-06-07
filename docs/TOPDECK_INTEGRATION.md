@@ -1,4 +1,10 @@
-# TopDeck Integration
+# TopDeck Integration Deferred
+
+TopDeck is removed from the active build scope at the owner's request. This
+document is retained only as a historical research and rollback reference for
+legacy scaffold already present in the branch. Do not configure credentials,
+run sandbox contract tests, add staging requirements, or queue provider pushes
+unless the scope is explicitly reopened in a future reviewed phase.
 
 ## Role
 

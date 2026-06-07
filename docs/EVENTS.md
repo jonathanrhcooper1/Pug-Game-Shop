@@ -3,15 +3,13 @@
 ## Implementation Status
 
 Schema migration `0003` creates durable event, registration, waitlist, check-in,
-TopDeck sync log, and template tables. Local helper classes define registration
-modes, capacity-consuming statuses, seats remaining, public status, and badges.
-Read-only public REST endpoints and shortcodes are implemented for published
-events. Local registration writes are implemented for free and pay-at-store
-reservations. WooCommerce event-entry products, online payment capture, TopDeck
-registration push worker execution, and the staff dashboard are still behind
-the disabled `events_topdeck` feature flag until staging acceptance. TopDeck
-registration adapter mapping is implemented and unit-tested for future queued
-workers.
+legacy provider sync-log, and template tables. Local helper classes define
+registration modes, capacity-consuming statuses, seats remaining, public
+status, and badges. Read-only public REST endpoints and shortcodes are
+implemented for published events. Local registration writes are implemented for
+free and pay-at-store reservations. WooCommerce event-entry products and the
+staff dashboard remain staging-gated. TopDeck and other external
+tournament-provider integrations are removed from the active scope for now.
 
 ## Public Read Surface
 
@@ -21,16 +19,15 @@ workers.
 - `[tcg_event_detail slug="event-slug"]`
 
 The public response includes seats remaining, entry fee/free state, status
-badges, TopDeck attribution, and hosted registration links when the event is
-configured for TopDeck-hosted registration.
+badges, and local registration links.
 
 ## Public Write Surface
 
 - `POST /wp-json/tcg-store/v1/events/{slug}/register`
 
-The request accepts `first_name`, `last_name`, `email`, optional `phone`,
-optional `topdeck_email`, and an `idempotency_key` field or `Idempotency-Key`
-header. The write path locks the local event row, validates capacity, reuses
+The request accepts `first_name`, `last_name`, `email`, optional `phone`, and
+an `idempotency_key` field or `Idempotency-Key` header. The write path locks
+the local event row, validates capacity, reuses
 duplicate idempotency keys, inserts a local registration, creates a waitlist row
 when enabled, recomputes the public registered count/status, and writes a
 registration log. Active registrations with the same event and email are
@@ -38,28 +35,17 @@ returned idempotently instead of creating a duplicate seat or waitlist row.
 An idempotency key reused for another event or email returns an
 `idempotency_conflict` error.
 
-TopDeck-hosted events return a rejection with instructions to use the hosted
-registration link. Paid events are accepted only when `allow_pay_at_store` is
-enabled. Online payment capture and TopDeck registration push are not performed
-by this route yet. Eligible free website-push registrations write a local
-pending TopDeck sync-log record; a later worker phase will process that queue.
-The worker will use the tested TopDeck registration adapter to map provider
-registered, pending invitation, already registered, capacity conflict, failed,
-and retryable outage outcomes to explicit local statuses.
+Paid events are accepted only when `allow_pay_at_store` is enabled. Online
+payment capture is not performed by this route. External tournament-provider
+pushes are not queued by default.
 
 ## Registration Modes
 
-### TopDeck Hosted
-
-Local event is a public projection. Registration links to the configured
-TopDeck URL. Scheduled sync refreshes event and attendee counts where permitted.
-
-### Website Reserve And Push
+### Website Reserve
 
 Local event controls customer, payment, and support records. Paid registration
 currently requires pay-at-store until Woo event product/order handling is
-enabled. Successful future payment will queue TopDeck player registration.
-Provider and payment statuses remain independent.
+enabled.
 
 ### Local Only
 
@@ -71,12 +57,10 @@ One registration stores:
 
 - Local reservation status.
 - Payment status and Woo order.
-- TopDeck push status and response class.
 - Waitlist position/status.
 - Check-in state.
 
-This prevents a TopDeck outage from hiding a paid customer or a failed payment
-from appearing registered.
+This keeps local registration, payment, waitlist, and check-in state separate.
 
 ## Capacity
 
@@ -93,11 +77,8 @@ local registrations.
 3. In a later WooCommerce phase, create a Woo order line linked to
    event/registration.
 4. On payment complete, set local paid.
-5. Queue a local pending TopDeck sync-log record when the registration is free,
-   website-push mode is configured, and a TopDeck TID is present.
-6. Map immediate, pending invite, already registered, banned/failed, or capacity
-   conflict.
-7. Escalate failed provider registration after payment to staff review.
+5. Keep external tournament-provider push disabled unless the scope is reopened
+   in a future reviewed phase.
 
 Cancellation/refund rules use configured deadlines and explicit staff actions.
 

@@ -385,12 +385,9 @@ final class OfflinePushOperationResolver {
 	 * @param array<string, mixed> $options Runtime options.
 	 */
 	private function should_queue_topdeck( array $event, array $options ): bool {
-		$registration_mode = (string) $this->value( $event, 'registrationMode', 'registration_mode', '' );
-		$payment_status    = (string) $this->value( $options, 'paymentStatus', 'payment_status', '' );
+		unset( $event, $options );
 
-		return 'website_push_topdeck' === $registration_mode
-			&& $this->bool_value( $this->value( $event, 'topDeckEnabled', 'topdeck_enabled', false ) )
-			&& 'pay_at_store' !== $payment_status;
+		return false;
 	}
 
 	private function bool_value( mixed $value ): bool {

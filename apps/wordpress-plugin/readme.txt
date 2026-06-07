@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.154.0
+Stable tag: 0.155.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -16,8 +16,9 @@ identity, URLs, receipt text, theme colors, staging banner color, and CSS
 variable export.
 Phase 2 foundations add inventory/pricing schema contracts and local business
 rule helpers.
-Phase 3 foundations add Events and TopDeck schema contracts, event status
-helpers, and a TopDeck adapter with default-disabled event creation.
+Phase 3 foundations add Events schema contracts and event status helpers.
+External tournament-provider integrations are deferred and no provider
+credentials are accepted.
 Phase 3 ScryDex sync foundations add sync tables, checkpoint/resume helpers, a
 mock-backed provider adapter, and card/price normalization.
 Phase 3.1 adds read-only public event REST endpoints and shortcodes.
@@ -51,8 +52,8 @@ Phase 1.3 adds dependency-free REST route contract coverage for health and
 public Events endpoints.
 Phase 1.4 adds migration runner plan coverage for clean install, upgrade,
 idempotent current-schema rerun, and rollback order.
-Phase 9.2 adds TopDeck registration push adapter mapping for queued event
-registration workers.
+Phase 9.2 provider push work is deferred; local event registration remains the
+active event scope.
 Phase 7.1 adds shared offline sync conflict policy tests for inventory, events,
 customer credit, and device revocation.
 Phase 7.2 adds offline device pairing, push, pull, and conflict REST route
@@ -246,7 +247,8 @@ for explicitly enabled staged handlers while keeping default route-connected
 reads, route registration, queue replay, and canonical mutations deferred.
 Phase 7.79 adds route-aware offline push operation-options provider composition
 for explicitly enabled staged handlers while keeping default route execution,
-route registration, TopDeck queue workers, and canonical mutations deferred.
+route registration, external provider queue workers, and canonical mutations
+deferred.
 Phase 7.80 adds offline push existing operation-row query planning for future
 idempotent replay checks while keeping repository reads, queue replay,
 route registration, and canonical mutations deferred.
@@ -278,7 +280,7 @@ Phase 7.89 connects canonical mutation SQL-template planning into explicitly
 enabled staged push route responses, meta, and audits while canonical write
 execution and repositories remain deferred.
 Phase 7.90 adds a deferred canonical mutation repository scaffold and audit
-result contract while inventory, event, credit-ledger, and TopDeck writes
+result contract while inventory, event, credit-ledger, and queue replay writes
 remain disabled.
 Phase 7.91 connects deferred canonical mutation repository staging into
 explicitly enabled staged push route responses, meta, and audits while
@@ -380,6 +382,17 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.155.0 =
+
+* Removed TopDeck from active scope by hiding credential settings, stripping
+  submitted TopDeck settings, renaming the active feature flag to Events, and
+  keeping provider push queues disabled by default.
+* Updated staging, deployment, testing, roadmap, events, and POS/payment docs
+  so TopDeck is deferred and Square payment capture belongs to the official
+  WooCommerce Square extension.
+* Added ScryDex credential handling guidance while keeping local tests
+  mock-backed and secret-safe.
 
 = 0.154.0 =
 

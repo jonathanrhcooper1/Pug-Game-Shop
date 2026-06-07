@@ -220,8 +220,8 @@ live route registration remain deferred.
 Version `0.113.0` adds route-aware offline push operation options provider
 composition. Explicitly enabled staged push handlers can now normalize
 per-operation event payment status from route payloads before batch resolution,
-while default route execution, route registration, TopDeck queue workers,
-canonical mutations, and route-connected writes remain deferred.
+while default route execution, route registration, external provider queue
+workers, canonical mutations, and route-connected writes remain deferred.
 Version `0.114.0` adds staged existing operation-row query planning for offline
 push idempotency checks. Validated push batches can now produce allowlisted
 `tcg_offline_sync_queue` lookup contracts and prepared SQL templates scoped by

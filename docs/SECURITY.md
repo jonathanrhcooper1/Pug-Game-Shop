@@ -170,8 +170,9 @@ not enable default public route reads, queue replay, or canonical mutations.
 Route-aware push operation-options composition reads only parsed operation
 payload fields, normalizes event payment status against an allowlist, rejects
 array/object or unsupported statuses, and does not expose SQL, customer data,
-payment credentials, or TopDeck secrets. It remains explicit-only and does not
-enable default route execution, TopDeck queue workers, or canonical mutations.
+payment credentials, or provider secrets. It remains explicit-only and does not
+enable default route execution, external provider queue workers, or canonical
+mutations.
 Existing push operation-row query planning is also allowlist-only: it targets
 the `tcg_offline_sync_queue` table, selects fixed queue/result columns,
 validates offline device IDs, table prefixes, and client operation IDs, and

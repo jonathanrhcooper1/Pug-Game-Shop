@@ -20,6 +20,26 @@ provider page response. The persistence planner turns those page plans into
 write payloads, but it does not execute `wpdb` writes or schedule follow-up jobs
 yet.
 
+## Credential Handling
+
+ScryDex credentials may be provided for staging configuration, but they must
+never be committed to GitHub, test fixtures, screenshots, logs, or revision
+notes. Store them only in environment variables, deployment secrets, or
+WordPress administrator settings once the live provider configuration surface is
+enabled. Local and CI tests continue to use sanitized mock responses and
+fixture-backed transports.
+
+Expected non-production configuration keys:
+
+```text
+SCRYDEX_API_KEY
+SCRYDEX_TEAM_ID
+SCRYDEX_BASE_URL
+```
+
+Production credentials must not be used in local development or automated pull
+request checks.
+
 ## Role
 
 ScryDex supplies card reference, expansion, variant, image, price, price-history,

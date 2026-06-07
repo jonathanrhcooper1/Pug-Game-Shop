@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.154.0`
+Version: `0.155.0`
 
 ## Implemented Features
 
@@ -20,10 +20,11 @@ Version: `0.154.0`
 - Action Scheduler integration for 9:00 AM Eastern daily dispatch.
 - Authenticated `/wp-json/tcg-store/v1/health` endpoint.
 - Local inventory status, intake validation, and pricing policy helpers.
-- Events and TopDeck schema migration.
+- Events schema migration with legacy provider columns kept inert.
 - Event registration status, public event badge, and capacity helpers.
-- TopDeck provider adapter with owned tournament, tournament info, attendee,
-  register-player, import, sync, and default-disabled create-event contract.
+- External tournament-provider integrations are removed from active scope for
+  now; no provider credentials are accepted and no provider push is queued by
+  default.
 - Public read-only event REST endpoints and shortcodes for event list/detail
   pages.
 - Public local event registration endpoint for free and pay-at-store
@@ -436,8 +437,8 @@ Version: `0.154.0`
 - Offline push persistence planning for future queue/result inserts, conflict
   inserts, idempotent operation replay rows, and redacted audit payloads.
 - Offline push route operation-options planning for future staged handlers,
-  including event payment status normalization and TopDeck queue suppression for
-  pay-at-store reservations.
+  including event payment status normalization and external provider queue
+  suppression for pay-at-store reservations.
 - Offline push existing operation-row query planning for future idempotent
   replay checks, including allowlisted queue columns and prepared SQL templates
   without default route-connected reads.
@@ -457,7 +458,7 @@ Version: `0.154.0`
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent
   current-schema rerun, and rollback order.
-- TopDeck registration push adapter and result mapping for later queue workers.
+- External tournament-provider push queues are deferred.
 - ScryDex sync page processor for normalized card/price upsert planning and
   checkpoint advancement.
 - ScryDex persistence planner for deterministic reference-card inserts,

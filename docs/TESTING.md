@@ -101,8 +101,8 @@
 - Local unit coverage now includes route-aware offline push operation-options
   provider composition for event payment status normalization, default
   not-required handling, invalid or unsupported status rejection, non-event
-  operation skipping, and staged event decisions that suppress TopDeck queueing
-  for pay-at-store reservations.
+  operation skipping, and staged event decisions that suppress external
+  provider queueing for pay-at-store reservations.
 - Local unit coverage now includes offline push existing operation-row query
   planning and SQL building for idempotent replay preparation, including
   accepted lookup contracts, invalid contexts, duplicate/invalid operation IDs,
@@ -203,9 +203,8 @@
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.
-- Local unit coverage now includes TopDeck registration adapter mapping for
-  provider call shape, email normalization/fallback, override-cap pass-through,
-  provider outcome mapping, missing input guards, and retryable failures.
+- TopDeck adapter coverage is no longer an active staging requirement; legacy
+  provider scaffolding remains disabled until the scope is reopened.
 - Root automation now includes sync-engine offline conflict policy tests for
   inventory reservations, event reservations, customer credit redemption, and
   device revocation.
@@ -570,8 +569,7 @@ corresponding modules are implemented:
 - Manager override persistence, manager reauthentication, and audit tests.
 - ScryDex database write workers, scheduled worker, image download,
   usage-budget, and webhook integration tests.
-- TopDeck registration worker integration tests and live sandbox contract
-  verification.
+- External tournament-provider registration worker tests are deferred.
 - WooCommerce add-to-cart, checkout, payment, order-line, cart release, and
   refund hook integration tests.
 - Playwright admin, kiosk, search, cart, event registration, and customer
@@ -654,16 +652,13 @@ corresponding modules are implemented:
 - Image content/size/path validation.
 - Daily job schedules correctly across both DST transitions.
 
-### Events And TopDeck
+### Events
 
-- All three registration modes.
 - Local free/pay-at-store event registration route validation, idempotency, and
   waitlist policy.
-- Pending TopDeck queue planner for eligible free website-push registrations.
-- Paid registration with successful and failed TopDeck push.
-- Pending invitation, already registered, banned/failed, and capacity conflict.
 - Waitlist promotion and check-in.
-- `createEvent` remains unavailable when capability is unsupported.
+- External tournament-provider queues remain disabled unless the scope is
+  reopened in a future phase.
 
 ### Security
 

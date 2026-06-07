@@ -86,8 +86,9 @@ Before major database migrations:
   provider readiness while default route-connected snapshot reads, route
   registration, queue replay, and canonical mutations remain deferred.
 - System status and authenticated health report staged push operation-options
-  provider readiness while default route execution, route registration, TopDeck
-  queue workers, and canonical mutations remain deferred.
+  provider readiness while default route execution, route registration,
+  external tournament-provider queue workers, and canonical mutations remain
+  deferred.
 - System status and authenticated health report staged push existing
   operation-row query and SQL readiness while route-connected reads,
   repository execution, queue replay, and canonical mutations remain deferred.
@@ -108,8 +109,8 @@ Before major database migrations:
   resolved timestamps from existing queue rows while queue replay workers and
   canonical mutations remain deferred.
 - System status and authenticated health report staged canonical mutation
-  planner readiness while inventory, event, TopDeck, credit-ledger, queue
-  replay, and route-connected writes remain deferred.
+  planner readiness while inventory, event, credit-ledger, queue replay, and
+  route-connected writes remain deferred.
 - Explicitly enabled staged push route responses expose canonical mutation
   planning counts and skipped replay IDs while canonical entity writes remain
   deferred.
@@ -121,8 +122,7 @@ Before major database migrations:
   while repository execution and canonical writes remain deferred.
 - Canonical mutation repository staging reports deferred repository results,
   operation IDs, prepare-argument counts, and zero affected rows while
-  inventory, event, credit-ledger, TopDeck, and queue replay writes remain
-  deferred.
+  inventory, event, credit-ledger, and queue replay writes remain deferred.
 - Explicitly enabled staged push responses expose deferred canonical
   repository status for fresh and replayed operations while canonical
   repository execution remains deferred.
@@ -151,7 +151,6 @@ Before major database migrations:
   remains disabled.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
-- TopDeck mock or sandbox sync completes.
 - Kiosk/offline sync queue test completes.
 - POS/payment sandbox response produces redacted provider/POS sync log plans
   and deferred SQL templates without live capture or inventory writes.
@@ -232,4 +231,5 @@ Before major database migrations:
   deferral and read-ready state separately from write readiness, so staging can
   verify default read execution is still deferred.
 - Customer credit ledger replay matches cached balance.
-- Event registration flow works for local and TopDeck-linked events.
+- Event registration flow works for local events.
+- External tournament-provider integrations remain out of active staging scope.

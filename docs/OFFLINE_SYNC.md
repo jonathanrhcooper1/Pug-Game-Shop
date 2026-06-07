@@ -431,7 +431,8 @@ explicitly invoked `$wpdb` execution results, while default live route
 execution, queue replay, canonical mutations, and route-connected writes remain
 disabled. Route operation-options staging now normalizes event reservation
 payment status from push payloads before batch resolution, while keeping
-TopDeck queue workers and canonical event mutations disabled by default.
+external provider queue workers and canonical event mutations disabled by
+default.
 Existing operation-row query planning now prepares the future idempotent replay
 lookup against `tcg_offline_sync_queue` by offline device ID and client
 operation IDs, while repository reads, queue replay, route registration, and

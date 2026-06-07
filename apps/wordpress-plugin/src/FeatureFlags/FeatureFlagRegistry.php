@@ -67,8 +67,8 @@ final class FeatureFlagRegistry {
 				'available' => false,
 				'phase'     => 8,
 			),
-			'events_topdeck'           => array(
-				'label'     => 'Events and TopDeck',
+			'events'                   => array(
+				'label'     => 'Events',
 				'default'   => false,
 				'available' => false,
 				'phase'     => 9,

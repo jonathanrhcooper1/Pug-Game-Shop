@@ -67,7 +67,7 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		$this->assert_same( $conflict['conflict_id'], $plan->details()['conflict_id'] );
 	}
 
-	public function test_event_reservation_queues_topdeck_only_after_local_acceptance(): void {
+	public function test_event_reservation_keeps_external_provider_queue_disabled(): void {
 		$plan = ( new OfflinePushOperationResolver() )->resolve(
 			$this->operation( 'event_reservation', 'event', 'event-100' ),
 			array(
@@ -84,7 +84,7 @@ final class OfflinePushOperationResolverTest extends TestCase {
 
 		$this->assert_same( 'accepted', $plan->status() );
 		$this->assert_same( 'event_reserved', $plan->code() );
-		$this->assert_same( true, $plan->details()['queueTopDeck'] );
+		$this->assert_same( false, $plan->details()['queueTopDeck'] );
 		$this->assert_same( 3, $plan->details()['rowVersion'] );
 	}
 

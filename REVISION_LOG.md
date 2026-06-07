@@ -3,6 +3,97 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - TopDeck De-Scope And Square Payment Boundary
+
+### What Changed
+
+- Removed TopDeck from active requirements, staging/deployment checks, PR test
+  matrix, Events docs, roadmap, and WordPress readme language.
+- Hid TopDeck credential fields from the WordPress settings page.
+- Stripped submitted TopDeck settings from sanitized platform settings and
+  defaults so credentials are no longer accepted in active scope.
+- Renamed the active feature flag label/key from `events_topdeck` to `events`.
+- Made the legacy TopDeck registration queue planner disabled by default unless
+  explicitly opted in by a future reviewed phase.
+- Reframed POS/payment docs around the official WooCommerce Square extension
+  owning payment capture, with this plugin limited to Woo order observation,
+  masked references, fee snapshots, and exact serialized inventory
+  reconciliation.
+- Added ScryDex credential guidance for environment/deployment secrets or
+  future WordPress settings only, never committed fixtures.
+- Updated project, plugin, and offline app package versions to `0.155.0`.
+
+### Why
+
+The owner removed TopDeck from the current scope and clarified that Square
+payments should use the existing WooCommerce Square extension rather than a
+custom payment gateway. The project still needs POS/payment reconciliation and
+inventory safeguards, but payment capture and external tournament providers
+should not remain active development gates.
+
+### Files Affected
+
+- `.github/pull_request_template.md`
+- `README.md`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Events/EventTopDeckRegistrationPlanner.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/EventTopDeckRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushOperationResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `packages/sync-engine/src/offlineConflictPolicy.mjs`
+- `packages/sync-engine/tests/offline-conflict-policy.mjs`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT.md`
+- `docs/EVENTS.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `docs/TOPDECK_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Updated `SettingsTest` to assert deferred TopDeck credentials are not
+  accepted by active settings.
+- Updated `EventTopDeckRegistrationPlannerTest` to assert provider queues are
+  disabled by default and require explicit opt-in for legacy behavior.
+- Updated offline sync policy tests so event reservations retain the
+  compatibility `queueTopDeck` field but keep it false in active scope.
+- Updated `FeatureFlagsTest` for the plain Events feature flag.
+
+### Rollback Notes
+
+- Revert this revision to restore TopDeck credential settings, active
+  TopDeck-related docs/checklists, and default queue-planner behavior.
+- No database rollback is required because no schema migration was added and
+  the existing legacy provider tables remain untouched.
+- Square payment capture continues to belong to the WooCommerce Square
+  extension before and after rollback; no custom payment gateway was added.
+- ScryDex credentials must still remain out of Git history and automated test
+  fixtures.
+
 ## 2026-06-07 - POS Payment Dependency Read Gate Status
 
 ### What Changed

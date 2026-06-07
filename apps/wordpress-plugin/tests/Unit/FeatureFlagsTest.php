@@ -30,7 +30,7 @@ final class FeatureFlagsTest extends TestCase {
 		$this->assert_true( $result['core'] );
 		$this->assert_false( $result['inventory_pricing'] );
 		$this->assert_false( $result['offline_sync'] );
-		$this->assert_false( $result['events_topdeck'] );
+		$this->assert_false( $result['events'] );
 	}
 
 	public function test_core_cannot_be_disabled(): void {

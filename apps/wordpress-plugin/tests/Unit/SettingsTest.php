@@ -31,7 +31,7 @@ final class SettingsTest extends TestCase {
 		$this->assert_same( 'America/New_York', $result['daily_timezone'] );
 	}
 
-	public function test_topdeck_settings_are_sanitized(): void {
+	public function test_deferred_topdeck_settings_are_not_accepted(): void {
 		$result = Settings::sanitize(
 			array(
 				'topdeck_api_key'        => ' sandbox-test-key ',
@@ -41,22 +41,19 @@ final class SettingsTest extends TestCase {
 			)
 		);
 
-		$this->assert_same( 'sandbox-test-key', $result['topdeck_api_key'] );
-		$this->assert_same( 'https://topdeck.example.test/api', $result['topdeck_base_url'] );
-		$this->assert_same( 120, $result['topdeck_rate_limit'] );
-		$this->assert_true( $result['topdeck_create_enabled'] );
+		$this->assert_false( isset( $result['topdeck_api_key'] ) );
+		$this->assert_false( isset( $result['topdeck_base_url'] ) );
+		$this->assert_false( isset( $result['topdeck_rate_limit'] ) );
+		$this->assert_false( isset( $result['topdeck_create_enabled'] ) );
 	}
 
-	public function test_topdeck_base_url_must_be_https(): void {
-		$result = Settings::sanitize(
-			array(
-				'topdeck_base_url'   => 'http://topdeck.example.test/api',
-				'topdeck_rate_limit' => 999,
-			)
-		);
+	public function test_defaults_do_not_include_deferred_topdeck_credentials(): void {
+		$defaults = Settings::defaults();
 
-		$this->assert_same( 'https://topdeck.gg/api', $result['topdeck_base_url'] );
-		$this->assert_same( 60, $result['topdeck_rate_limit'] );
+		$this->assert_false( isset( $defaults['topdeck_api_key'] ) );
+		$this->assert_false( isset( $defaults['topdeck_base_url'] ) );
+		$this->assert_false( isset( $defaults['topdeck_rate_limit'] ) );
+		$this->assert_false( isset( $defaults['topdeck_create_enabled'] ) );
 	}
 
 	public function test_offline_pairing_authorization_defaults_are_secret_free(): void {

@@ -2,6 +2,36 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.155.0] - 2026-06-07
+
+### Changed
+
+- Removed TopDeck from the active project scope, staging checklist, deployment
+  checklist, PR template, and event roadmap while retaining legacy scaffold as
+  disabled historical code.
+- Reframed POS/payment work so the official WooCommerce Square extension owns
+  Square payment authorization, capture, refund execution, tokenization, and
+  gateway UI, while this plugin observes WooCommerce payment lifecycle events
+  and reconciles exact serialized inventory.
+- Added ScryDex credential-handling guidance requiring environment/deployment
+  secrets or WordPress settings only, with local and CI tests staying
+  mock-backed.
+
+### Removed
+
+- TopDeck credential fields from active WordPress settings sanitization and
+  the admin settings page.
+- Default TopDeck registration queueing from local event registration planning.
+- Active offline event reservation policy now keeps the compatibility
+  `queueTopDeck` field false instead of planning provider pushes.
+- TopDeck adapter checks from active PR/staging/deployment requirements.
+
+### Not Added
+
+- No custom Square payment gateway, live Square/POS network calls, production
+  payment capture, provider inventory writes, TopDeck credentials, TopDeck
+  worker execution, or production ScryDex credentials were added.
+
 ## [0.154.0] - 2026-06-07
 
 ### Added

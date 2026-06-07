@@ -2,30 +2,31 @@
 
 ## Boundaries
 
-- Payment providers authorize, capture, refund, and report fees.
+- The official WooCommerce Square extension owns online Square authorization,
+  capture, refund execution, PCI-sensitive payment fields, and gateway UI when
+  Square is selected.
+- This plugin observes WooCommerce order/payment lifecycle events, records
+  masked provider references, and reconciles exact serialized inventory.
 - POS providers record in-store transactions.
 - The plugin owns exact serialized item status.
 - No adapter may infer that provider quantity stock is equivalent to serialized
   card availability.
 
-## Payment Provider Interface
+## WooCommerce Payment Observation Interface
 
 ```text
-authorizePayment()
-capturePayment()
-refundPayment()
-voidPayment()
+observeOrderPaymentComplete()
+observeOrderPaymentFailed()
+observeOrderRefunded()
+recordMaskedProviderReference()
 getFees()
-supportsTokenization()
-supportsStoreCreditCombinedPayment()
-supportsInPersonPayment()
-supportsOnlinePayment()
 capabilityCheck()
 ```
 
 Online payment should normally use maintained WooCommerce gateway extensions.
 The platform observes Woo order/payment lifecycle events and stores only
-provider transaction references and masked metadata. It never stores card data.
+provider transaction references and masked metadata. It never stores card data
+and does not implement a custom Square gateway in the active scope.
 
 ## POS Provider Interface
 
@@ -44,10 +45,16 @@ capabilityCheck()
 
 ## Square Strategy
 
-Official Square documentation supports Catalog, Orders, Inventory, and webhooks,
-including POS-originated orders. That permits reconciliation, but does not prove
-that a Square POS line item will always carry the store's unique serialized
-barcode in a recoverable field.
+Install and configure the official WooCommerce Square extension for online
+Square payments. Keep that extension responsible for customer payment capture,
+refund execution, tokenization, wallet support, and checkout UX. This platform
+adds the trading-card-specific layer around exact serialized inventory,
+scan-gated POS reconciliation, masked provider references, and staff conflict
+review.
+
+Square catalog, order, inventory, and webhook data can support reconciliation,
+but it does not prove that a Square POS line item will always carry the store's
+unique serialized barcode in a recoverable field.
 
 Launch modes:
 

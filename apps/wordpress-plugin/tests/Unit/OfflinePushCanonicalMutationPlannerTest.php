@@ -75,7 +75,7 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 		$this->assert_same( 'tcg_event_registrations', $mutations[1]['table_contract'] );
 		$this->assert_same( 'reserved', $mutations[1]['registration_status'] );
 		$this->assert_same( 10, $mutations[1]['target_row_version'] );
-		$this->assert_true( $mutations[1]['queue_topdeck'] );
+		$this->assert_false( $mutations[1]['queue_topdeck'] );
 		$this->assert_true( $mutations[1]['topdeck_worker_deferred'] );
 		$this->assert_same( 'customer_credit_redemption', $mutations[2]['mutation_type'] );
 		$this->assert_same( 'tcg_customer_credit_ledger', $mutations[2]['table_contract'] );

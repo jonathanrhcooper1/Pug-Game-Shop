@@ -25,10 +25,6 @@ final class Settings {
 			'daily_timezone'                => 'America/New_York',
 			'branding'                      => BrandingSettings::defaults(),
 			'offline_pairing_authorization' => OfflinePairingAuthorizationSettings::defaults(),
-			'topdeck_api_key'               => '',
-			'topdeck_base_url'              => 'https://topdeck.gg/api',
-			'topdeck_create_enabled'        => false,
-			'topdeck_rate_limit'            => 60,
 		);
 	}
 
@@ -49,7 +45,7 @@ final class Settings {
 			OfflinePairingAuthorizationSettings::defaults()
 		);
 
-		return $settings;
+		return self::without_deferred_provider_credentials( $settings );
 	}
 
 	public static function get( string $key, mixed $fallback = null ): mixed {
@@ -71,9 +67,6 @@ final class Settings {
 		$existing       = self::existing_values();
 		$allowed_levels = array( 'debug', 'info', 'warning', 'error' );
 		$level          = isset( $value['logging_level'] ) ? strtolower( (string) $value['logging_level'] ) : 'warning';
-		$api_key        = isset( $value['topdeck_api_key'] ) ? trim( (string) $value['topdeck_api_key'] ) : (string) ( $existing['topdeck_api_key'] ?? '' );
-		$base_url       = isset( $value['topdeck_base_url'] ) ? trim( (string) $value['topdeck_base_url'] ) : 'https://topdeck.gg/api';
-		$rate_limit     = isset( $value['topdeck_rate_limit'] ) ? (int) $value['topdeck_rate_limit'] : 60;
 		$branding       = BrandingSettings::sanitize(
 			$value['branding'] ?? array(),
 			is_array( $existing['branding'] ?? null ) ? $existing['branding'] : BrandingSettings::defaults()
@@ -90,18 +83,6 @@ final class Settings {
 			$level = 'warning';
 		}
 
-		if ( '' === $api_key && ! empty( $existing['topdeck_api_key'] ) ) {
-			$api_key = (string) $existing['topdeck_api_key'];
-		}
-
-		if ( false === filter_var( $base_url, FILTER_VALIDATE_URL ) || ! str_starts_with( $base_url, 'https://' ) ) {
-			$base_url = 'https://topdeck.gg/api';
-		}
-
-		if ( $rate_limit < 1 || $rate_limit > 600 ) {
-			$rate_limit = 60;
-		}
-
 		return array(
 			'logging_level'                 => $level,
 			'delete_data_on_uninstall'      => ! empty( $value['delete_data_on_uninstall'] ),
@@ -109,10 +90,6 @@ final class Settings {
 			'daily_timezone'                => 'America/New_York',
 			'branding'                      => $branding,
 			'offline_pairing_authorization' => $offline_pairing_authorization,
-			'topdeck_api_key'               => $api_key,
-			'topdeck_base_url'              => $base_url,
-			'topdeck_create_enabled'        => ! empty( $value['topdeck_create_enabled'] ),
-			'topdeck_rate_limit'            => $rate_limit,
 		);
 	}
 
@@ -127,6 +104,21 @@ final class Settings {
 		$value = get_option( self::OPTION_NAME, array() );
 
 		return is_array( $value ) ? $value : array();
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Settings payload.
+	 * @return array<string, mixed>
+	 */
+	private static function without_deferred_provider_credentials( array $settings ): array {
+		unset(
+			$settings['topdeck_api_key'],
+			$settings['topdeck_base_url'],
+			$settings['topdeck_create_enabled'],
+			$settings['topdeck_rate_limit']
+		);
+
+		return $settings;
 	}
 
 	private function __construct() {

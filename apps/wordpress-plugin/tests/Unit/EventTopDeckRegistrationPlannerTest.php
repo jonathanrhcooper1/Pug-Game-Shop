@@ -15,8 +15,19 @@ use TCGStorePlatform\Events\EventTopDeckRegistrationPlanner;
 use TCGStorePlatform\Tests\TestCase;
 
 final class EventTopDeckRegistrationPlannerTest extends TestCase {
-	public function test_free_website_push_registration_with_tid_is_queued(): void {
+	public function test_free_website_push_registration_with_tid_is_deferred_by_default(): void {
 		$planner  = new EventTopDeckRegistrationPlanner();
+		$decision = EventRegistrationDecision::accepted(
+			EventRegistrationStatus::RESERVED,
+			EventPaymentStatus::NOT_REQUIRED,
+			'Local reservation accepted.'
+		);
+
+		$this->assert_false( $planner->should_queue( $this->event(), $decision ) );
+	}
+
+	public function test_legacy_provider_queue_requires_explicit_opt_in(): void {
+		$planner  = new EventTopDeckRegistrationPlanner( true );
 		$decision = EventRegistrationDecision::accepted(
 			EventRegistrationStatus::RESERVED,
 			EventPaymentStatus::NOT_REQUIRED,
