@@ -65,6 +65,9 @@
 - Local unit coverage now verifies the default inventory dependency graph
   exposes staged search/intake handler factories while route-connected reads
   and writes remain deferred.
+- Local unit coverage now includes the staff Inventory admin workspace
+  presenter, covering readiness rows, route contract lockout rows, and default
+  pending checkpoint rows.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit

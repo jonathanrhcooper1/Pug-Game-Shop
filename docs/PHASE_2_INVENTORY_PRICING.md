@@ -55,6 +55,9 @@ staging database acceptance remains pending.
 - Default inventory dependency composition now includes staged search and
   intake handler factories so health/admin diagnostics can report factory and
   database readiness while route execution remains deferred.
+- Staff-facing WordPress Inventory admin workspace for route readiness, route
+  contract, and next-checkpoint review while live inventory execution remains
+  disabled.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

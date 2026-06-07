@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Admin Workspace
+
+### What Changed
+
+- Added an Inventory submenu under the TCG Store WordPress admin menu for staff
+  users with `view_inventory`.
+- Added a dependency-free `InventoryWorkspacePresenter` that renders readiness,
+  route contract, and next-checkpoint rows from the existing inventory bootstrap
+  and dependency health payloads.
+- Kept the workspace read-only and status-focused while live inventory route
+  registration, route-connected reads, route-connected writes, WooCommerce
+  projection, Square projection, and label actions remain deferred.
+- Added unit coverage for the default safe workspace state.
+
+### Why
+
+Staff and staging reviewers need a real admin surface to inspect inventory
+readiness before live routes are enabled. This revision makes the staged route
+graph visible in WordPress admin without changing the current safety posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No live inventory routes, database writes, Square writes, WooCommerce writes,
+  or label-print actions were enabled.
+
+### Tests Added
+
+- Unit tests for inventory admin readiness rows, route contract rows, and
+  default pending checkpoint rows.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 737 tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the Inventory admin submenu and pure workspace
+  presenter.
+- No database rollback is required because the change is read-only admin UI and
+  unit coverage.
+
 ## 2026-06-07 - Inventory Handler Factory Dependency Defaults
 
 ### What Changed

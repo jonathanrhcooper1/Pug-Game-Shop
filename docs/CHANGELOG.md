@@ -36,6 +36,9 @@ All notable changes follow Semantic Versioning.
   permission, handler, and route deferral gates are explicitly cleared.
 - Default inventory dependency graph composition for staged search and intake
   handler factories, while route-connected reads and writes remain disabled.
+- Staff-facing WordPress Inventory admin workspace that surfaces readiness,
+  route contracts, and next checkpoints from the staged inventory route graph
+  while remaining read-only and route-safe by default.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

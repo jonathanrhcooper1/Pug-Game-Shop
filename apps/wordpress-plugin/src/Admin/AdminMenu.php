@@ -70,6 +70,15 @@ final class AdminMenu {
 
 		add_submenu_page(
 			'tcg-store-platform',
+			__( 'Inventory', 'tcg-store-platform' ),
+			__( 'Inventory', 'tcg-store-platform' ),
+			'view_inventory',
+			'tcg-store-platform-inventory',
+			array( $this, 'render_inventory' )
+		);
+
+		add_submenu_page(
+			'tcg-store-platform',
 			__( 'Settings', 'tcg-store-platform' ),
 			__( 'Settings', 'tcg-store-platform' ),
 			'manage_settings',
@@ -101,6 +110,35 @@ final class AdminMenu {
 		echo '</p>';
 
 		$this->render_feature_table();
+
+		echo '</div>';
+	}
+
+	public function render_inventory(): void {
+		if ( ! current_user_can( 'view_inventory' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view inventory.', 'tcg-store-platform' ) );
+		}
+
+		$bootstrap_payload  = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload(
+			FeatureFlags::is_enabled( 'inventory_pricing' )
+		);
+		$dependency_payload = ( new InventoryRouteDependencyStatusPresenter(
+			new InventoryRouteDependencyFactory()
+		) )->health_payload();
+		$workspace          = new InventoryWorkspacePresenter();
+
+		echo '<div class="wrap"><h1>';
+		echo esc_html__( 'Inventory Workspace', 'tcg-store-platform' );
+		echo '</h1>';
+
+		echo '<h2>' . esc_html__( 'Readiness', 'tcg-store-platform' ) . '</h2>';
+		$this->render_workspace_table( $workspace->readiness_rows( $bootstrap_payload, $dependency_payload ) );
+
+		echo '<h2>' . esc_html__( 'Route Contracts', 'tcg-store-platform' ) . '</h2>';
+		$this->render_workspace_table( $workspace->route_rows( $bootstrap_payload ) );
+
+		echo '<h2>' . esc_html__( 'Checkpoints', 'tcg-store-platform' ) . '</h2>';
+		$this->render_workspace_table( $workspace->checkpoint_rows( $dependency_payload ) );
 
 		echo '</div>';
 	}
@@ -280,5 +318,36 @@ final class AdminMenu {
 		echo '<tr><th scope="row">' . esc_html( $label ) . '</th>';
 		echo '<td>' . esc_html( $value ) . '</td>';
 		echo '<td>' . esc_html( $status ) . '</td></tr>';
+	}
+
+	/**
+	 * @param list<array{label:string,value:string,status:string,notes:string}> $rows Workspace rows.
+	 */
+	private function render_workspace_table( array $rows ): void {
+		echo '<table class="widefat striped"><thead><tr><th>';
+		echo esc_html__( 'Label', 'tcg-store-platform' );
+		echo '</th><th>';
+		echo esc_html__( 'Value', 'tcg-store-platform' );
+		echo '</th><th>';
+		echo esc_html__( 'Status', 'tcg-store-platform' );
+		echo '</th><th>';
+		echo esc_html__( 'Notes', 'tcg-store-platform' );
+		echo '</th></tr></thead><tbody>';
+
+		foreach ( $rows as $row ) {
+			$this->render_workspace_row( $row );
+		}
+
+		echo '</tbody></table>';
+	}
+
+	/**
+	 * @param array{label:string,value:string,status:string,notes:string} $row Workspace row.
+	 */
+	private function render_workspace_row( array $row ): void {
+		echo '<tr><th scope="row">' . esc_html( $row['label'] ) . '</th>';
+		echo '<td>' . esc_html( $row['value'] ) . '</td>';
+		echo '<td>' . esc_html( $row['status'] ) . '</td>';
+		echo '<td>' . esc_html( $row['notes'] ) . '</td></tr>';
 	}
 }
