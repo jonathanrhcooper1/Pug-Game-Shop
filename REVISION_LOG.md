@@ -3,6 +3,84 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Staged Pairing Route Handler Assembly
+
+### What Changed
+
+- Added `OfflineDeviceRegistrationRouteHandlerFactory` to assemble the staged
+  registration route handler from a WordPress database adapter, registration
+  repository, registration service, and settings-backed pairing authorizer.
+- Extended staged pairing route readiness planning with handler readiness
+  summaries and optional factory-built handler resolution.
+- Wired health and admin System Status readiness through the handler factory
+  while preserving disabled live route registration.
+- Added unit tests for configured handler assembly, incomplete policy
+  fail-closed behavior, database-provider failures, and planner readiness.
+- Updated project, plugin, and offline app package versions to `0.91.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+Staging needs to prove that the future pairing route handler can be composed
+from real repository/service dependencies without enabling the live REST route.
+This revision adds that assembly boundary and keeps it fail-closed until both
+database access and the hash-only pairing policy are ready.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDeviceRegistrationRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Factory coverage for missing dependencies, configured staging handler
+  assembly, incomplete pairing policy lockout, and database provider failure.
+- Planner coverage proving factory-built handlers make the staged controller
+  callback ready without registering the disabled route.
+
+### Rollback Notes
+
+- Revert this revision to remove settings-backed route-handler assembly and
+  handler readiness summaries.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Pairing Policy Readiness Visibility
 
 ### What Changed

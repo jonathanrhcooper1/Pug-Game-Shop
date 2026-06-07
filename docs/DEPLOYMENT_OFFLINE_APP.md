@@ -363,6 +363,11 @@ Version `0.90.0` surfaces non-secret pairing policy readiness in health and
 admin System Status. Staging can confirm hash, manager, location, scope, and
 expiry policy completeness before any future live route-enablement review.
 
+Version `0.91.0` adds staged registration route-handler assembly from the
+WordPress database adapter, registration repository, registration service, and
+settings-backed pairing authorizer. Staging can verify handler readiness
+without enabling the live pairing route or issuing production device tokens.
+
 ## Hardware Gate
 
 Before production, test the actual:

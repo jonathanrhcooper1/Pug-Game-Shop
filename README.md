@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.90.0`
+Version: `0.91.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -124,8 +124,11 @@ authorizer or permission callback from those sanitized settings while keeping
 live route registration disabled.
 Health and admin System Status now expose non-secret pairing policy readiness
 so incomplete settings cannot be mistaken for route-ready permissions.
-Offline
-device access policy checks are implemented for future registered-device
+Staged offline device registration route-handler assembly can now compose the
+WordPress database adapter, registration repository, registration service, and
+settings-backed pairing authorizer only when those dependencies are ready,
+while route registration remains disabled.
+Offline device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp
 validation. Offline conflict list and resolution request validation is

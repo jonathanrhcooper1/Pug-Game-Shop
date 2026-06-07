@@ -380,7 +380,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.90.0",
+  "app_version": "0.91.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -427,6 +427,15 @@ Health and admin System Status now expose a non-secret policy summary for that
 settings-backed path: hash count, manager/location counts, configured mode and
 scope counts, expiry presence, and policy configuration issues. Incomplete
 settings policies do not produce a route-ready pairing permission callback.
+Version `0.91.0` adds the matching staged registration handler assembly
+boundary. `OfflineDeviceRegistrationRouteHandlerFactory` can compose the
+handler from `$wpdb`, `OfflineDeviceRegistrationRepository`,
+`OfflineDeviceRegistrationService`, and the settings-backed pairing authorizer
+only when the database and hash-only pairing policy are configured. The pairing
+readiness payload now includes `handler_summary` fields for database,
+repository, pairing policy, pairing authorizer, and configuration issue state.
+This still does not register the live pairing route, and no route-connected
+device writes occur by default.
 
 The registration service can consume the same authorizer as a defense-in-depth
 stage. When the supplied authorizer denies a parsed pairing request, the

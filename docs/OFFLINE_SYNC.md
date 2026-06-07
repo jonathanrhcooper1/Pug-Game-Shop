@@ -170,6 +170,12 @@ policy into the staged authorizer or permission callback without registering
 live routes.
 Pairing route readiness now also reports non-secret policy readiness, and an
 incomplete settings policy keeps the staged permission callback locked.
+Version `0.91.0` adds staged registration handler assembly for the same route.
+The handler factory reports database, repository, pairing policy, and
+pairing-authorizer readiness before composing `$wpdb`, the registration
+repository, the registration service, and the settings-backed authorizer. If
+any dependency is missing or a provider fails, handler readiness stays locked
+and the live route remains unregistered.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

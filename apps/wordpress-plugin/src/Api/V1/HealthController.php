@@ -67,19 +67,21 @@ final class HealthController {
 	public function get_health( \WP_REST_Request $request ): \WP_REST_Response {
 		unset( $request );
 
-		$runner                  = new MigrationRunner();
-		$dependencies            = DependencyChecker::status();
-		$features                = array();
-		$overall                 = 'ok';
-		$offline_feature_enabled = FeatureFlags::is_enabled( 'offline_sync' );
-		$offline                 = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
+		$runner                     = new MigrationRunner();
+		$dependencies               = DependencyChecker::status();
+		$features                   = array();
+		$overall                    = 'ok';
+		$offline_feature_enabled    = FeatureFlags::is_enabled( 'offline_sync' );
+		$offline                    = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
 			$offline_feature_enabled
 		);
-		$pairing                 = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
+		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
+		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
 				null,
 				null,
-				new OfflineDevicePairingAuthorizerFactory()
+				$pairing_authorizer_factory,
+				new OfflineDeviceRegistrationRouteHandlerFactory( null, $pairing_authorizer_factory )
 			)
 		) )->health_payload(
 			$offline_feature_enabled

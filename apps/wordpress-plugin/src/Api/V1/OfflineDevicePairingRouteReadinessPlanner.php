@@ -16,7 +16,8 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 	public function __construct(
 		private ?OfflineDeviceRegistrationRouteHandler $registration_handler = null,
 		private ?OfflineDevicePairingPermissionCallbackAdapter $permission_callback = null,
-		private ?OfflineDevicePairingAuthorizerFactory $authorizer_factory = null
+		private ?OfflineDevicePairingAuthorizerFactory $authorizer_factory = null,
+		private ?OfflineDeviceRegistrationRouteHandlerFactory $registration_handler_factory = null
 	) {
 	}
 
@@ -24,11 +25,13 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 	 * @return array<string, mixed>
 	 */
 	public function plan( bool $offline_feature_enabled = false ): array {
-		$route_plans         = $this->route_plans();
-		$route_plan          = $route_plans[ self::ROUTE_KEY ] ?? array();
-		$permission_callback = $this->resolved_permission_callback();
-		$policy_summary      = $this->policy_summary();
-		$bootstrap           = ( new OfflineRouteBootstrapPlanner() )->plan_from_registration_args(
+		$route_plans          = $this->route_plans();
+		$route_plan           = $route_plans[ self::ROUTE_KEY ] ?? array();
+		$registration_handler = $this->resolved_registration_handler();
+		$permission_callback  = $this->resolved_permission_callback();
+		$handler_summary      = $this->handler_summary();
+		$policy_summary       = $this->policy_summary();
+		$bootstrap            = ( new OfflineRouteBootstrapPlanner() )->plan_from_registration_args(
 			$offline_feature_enabled,
 			$route_plans
 		);
@@ -38,7 +41,8 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 			'feature_enabled'              => true === $bootstrap['feature_enabled'],
 			'status'                       => $this->status_from_bootstrap( $bootstrap ),
 			'registration_deferred'        => true !== $bootstrap['should_register_routes'],
-			'handler_injected'             => null !== $this->registration_handler,
+			'handler_injected'             => null !== $registration_handler,
+			'handler_summary'              => $handler_summary,
 			'authorizer_configured'        => null !== $permission_callback
 				&& $permission_callback->is_configured(),
 			'policy_configured'            => true === $policy_summary['configured'],
@@ -60,12 +64,14 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function route_plans(): array {
+		$registration_handler = $this->resolved_registration_handler();
+
 		return ( new OfflineRouteRegistrationPlanner(
 			new OfflineRoutePermissionCallbackFactory( null, null, $this->resolved_permission_callback() ),
 			new OfflineController(
 				null,
-				null !== $this->registration_handler
-					? $this->registration_handler->handlers()
+				null !== $registration_handler
+					? $registration_handler->handlers()
 					: array()
 			)
 		) )->planned_registration_args( $this->pairing_route_contracts() );
@@ -84,6 +90,21 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 		return array();
 	}
 
+	private function resolved_registration_handler(): ?OfflineDeviceRegistrationRouteHandler {
+		if ( null !== $this->registration_handler ) {
+			return $this->registration_handler;
+		}
+
+		if (
+			null === $this->registration_handler_factory
+			|| ! $this->registration_handler_factory->is_configured()
+		) {
+			return null;
+		}
+
+		return $this->registration_handler_factory->handler();
+	}
+
 	private function resolved_permission_callback(): ?OfflineDevicePairingPermissionCallbackAdapter {
 		if ( null !== $this->permission_callback ) {
 			return $this->permission_callback;
@@ -94,6 +115,35 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 		}
 
 		return $this->authorizer_factory->permission_callback();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function handler_summary(): array {
+		if ( null !== $this->registration_handler ) {
+			return array(
+				'configured'                    => true,
+				'database_configured'           => true,
+				'repository_configured'         => true,
+				'pairing_policy_configured'     => true,
+				'pairing_authorizer_configured' => true,
+				'configuration_issues'          => array(),
+			);
+		}
+
+		if ( null === $this->registration_handler_factory ) {
+			return array(
+				'configured'                    => false,
+				'database_configured'           => false,
+				'repository_configured'         => false,
+				'pairing_policy_configured'     => false,
+				'pairing_authorizer_configured' => false,
+				'configuration_issues'          => array( 'handler_provider_not_configured' ),
+			);
+		}
+
+		return $this->registration_handler_factory->readiness_summary();
 	}
 
 	/**

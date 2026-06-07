@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.91.0] - 2026-06-06
+
+### Added
+
+- Staged offline device registration route-handler factory that can assemble
+  the registration handler from `$wpdb`, the repository adapter, registration
+  service, and settings-backed pairing authorizer.
+- Handler readiness summaries for health/planner diagnostics, including
+  database, repository, pairing policy, and configuration issue fields.
+- Unit coverage proving configured staging dependencies make the controller
+  callback ready while route registration stays disabled, incomplete policies
+  keep the handler unavailable, and provider failures fail closed.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.90.0] - 2026-06-06
 
 ### Added

@@ -24,6 +24,10 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_same( 'blocked', $plan['status'] );
 		$this->assert_true( $plan['registration_deferred'] );
 		$this->assert_false( $plan['handler_injected'] );
+		$this->assert_false( $plan['handler_summary']['configured'] );
+		$this->assert_true(
+			in_array( 'handler_provider_not_configured', $plan['handler_summary']['configuration_issues'], true )
+		);
 		$this->assert_false( $plan['authorizer_configured'] );
 		$this->assert_false( $plan['policy_configured'] );
 		$this->assert_true( in_array( 'policy_provider_not_configured', $plan['policy_summary']['policy_configuration_issues'], true ) );

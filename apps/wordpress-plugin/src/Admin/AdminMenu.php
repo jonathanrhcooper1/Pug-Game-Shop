@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Admin;
 
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter;
+use TCGStorePlatform\Api\V1\OfflineDeviceRegistrationRouteHandlerFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
@@ -109,18 +110,20 @@ final class AdminMenu {
 			wp_die( esc_html__( 'You do not have permission to view system status.', 'tcg-store-platform' ) );
 		}
 
-		$runner    = new MigrationRunner( $this->logger );
-		$scheduler = new DailyScheduler( $this->logger );
-		$status    = DependencyChecker::status();
-		$branding  = BrandingSettings::public_config( Settings::all() );
-		$offline   = ( new OfflineRouteBootstrapStatusPresenter() )->admin_summary(
+		$runner                     = new MigrationRunner( $this->logger );
+		$scheduler                  = new DailyScheduler( $this->logger );
+		$status                     = DependencyChecker::status();
+		$branding                   = BrandingSettings::public_config( Settings::all() );
+		$offline                    = ( new OfflineRouteBootstrapStatusPresenter() )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )
 		);
-		$pairing   = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
+		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
+		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
 				null,
 				null,
-				new OfflineDevicePairingAuthorizerFactory()
+				$pairing_authorizer_factory,
+				new OfflineDeviceRegistrationRouteHandlerFactory( null, $pairing_authorizer_factory )
 			)
 		) )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )

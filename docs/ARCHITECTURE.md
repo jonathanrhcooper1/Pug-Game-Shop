@@ -21,6 +21,11 @@ pairing readiness as inspection metadata only; they do not register routes. A
 plan-only pairing authorizer now sits behind the staged permission callback so
 hashed pairing-code, manager, location, scope, and expiry policy can be tested
 without issuing live device credentials.
+The staged registration handler can also be assembled from the WordPress
+database adapter, registration repository, registration service, and
+settings-backed pairing authorizer when those dependencies are ready. That
+factory reports handler readiness to health/admin diagnostics but does not
+change route contracts or register live offline routes.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
