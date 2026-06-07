@@ -111,6 +111,10 @@
   repository loading for successful replay candidate reads, empty result sets,
   invalid plans, database failures, malformed rows, duplicate rows, and
   repository audit payloads.
+- Local unit coverage now includes route-aware offline push existing
+  operation-row provider composition for authenticated device context handoff,
+  repository-backed replay candidate reads, repository rejection mapping, and
+  duplicate-push no-write replay behavior in staged route handlers.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

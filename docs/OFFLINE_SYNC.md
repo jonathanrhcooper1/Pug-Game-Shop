@@ -292,6 +292,12 @@ Staging can now execute those prepared lookup templates through `$wpdb`,
 normalize queue rows keyed by client operation ID, and reject malformed or
 duplicate rows before replay preparation, while default route-connected reads,
 queue replay, canonical mutations, and route registration remain deferred.
+Version `0.116.0` adds route-aware existing operation-row provider composition.
+Explicitly enabled staged push handlers can now pass authenticated device
+context into repository-backed queue-row reads before persistence planning, so
+duplicate operation pushes replay existing queue results without issuing a
+second queue write. Default route execution, route registration, queue replay
+workers, and canonical mutations remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

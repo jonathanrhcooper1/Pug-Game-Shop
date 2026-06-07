@@ -498,6 +498,12 @@ and normalize replay candidate rows, while default route-connected reads,
 queue replay, canonical mutations, and production route registration remain
 disabled.
 
+Version `0.116.0` adds route-aware existing operation-row provider composition.
+Explicitly enabled staged push handlers can now read repository-backed replay
+candidates before persistence planning, proving duplicate pushes can avoid a
+second queue write. Default route execution, production route registration,
+queue replay workers, and canonical mutations remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

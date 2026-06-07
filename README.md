@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.115.0`
+Version: `0.116.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -227,6 +227,10 @@ route-connected reads, queue replay, and canonical mutations remain deferred.
 Offline push existing operation-row repository adaptation can now explicitly
 load and normalize those replay candidates for staged tests, while default
 route-connected reads and queue replay remain deferred.
+Route-aware offline push existing operation-row provider composition now lets
+explicitly enabled staged push handlers read replay candidates before
+persistence planning, proving duplicate pushes can avoid a second queue write
+while default route execution and live route registration stay deferred.
 Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash

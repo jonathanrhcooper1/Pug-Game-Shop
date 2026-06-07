@@ -3,6 +3,91 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Existing Operation Rows Route Provider
+
+### What Changed
+
+- Added `OfflinePushRouteExistingOperationRowsProvider` to adapt authenticated
+  staged push route context into repository-backed existing queue-row reads.
+- Updated `OfflinePushRouteHandlerFactory` to compose that provider
+  automatically when route-connected execution is explicitly enabled and no
+  custom existing operation-row provider is injected.
+- Added push handler factory readiness metadata for existing operation-row
+  route provider configuration, nested readiness, and route-read deferral.
+- Added registered-device sync handler health/admin readiness metadata for the
+  staged existing operation-row route provider.
+- Added unit coverage for provider success, missing device context rejection,
+  repository rejection mapping, and duplicate push replay with zero new queue
+  writes.
+- Updated project, plugin, and offline app package versions to `0.116.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous checkpoint could explicitly fetch existing queue rows, but the
+staged push route still needed a safe route-context adapter before idempotent
+replay checks could run inside explicitly enabled handler factory tests. This
+revision wires that adapter behind registered-device authorization and keeps
+default route execution, route registration, queue replay workers, canonical
+mutations, and production route-connected writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteExistingOperationRowsProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteExistingOperationRowsProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Route existing operation-row provider tests for successful repository-backed
+  reads, missing route device context rejection, and repository rejection
+  mapping.
+- Push handler factory replay coverage proving existing queue rows are passed
+  into persistence planning and avoid a second queue write.
+- Sync handler factory and WordPress smoke assertions for existing
+  operation-row route provider readiness and deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged existing operation-row route provider
+  composition and return replay preparation to explicit repository calls only.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default route execution, route registration, queue replay workers, canonical
+  mutations, and production route-connected writes remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - Offline Push Existing Operation Rows Repository
 
 ### What Changed

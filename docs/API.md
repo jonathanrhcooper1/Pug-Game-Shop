@@ -234,6 +234,12 @@ existing queue rows keyed by client operation ID, and reject malformed or
 duplicate rows before replay preparation, while default route-connected reads,
 queue replay, canonical mutations, and live route registration remain
 deferred.
+Version `0.116.0` adds route-aware existing operation-row provider composition.
+Explicitly enabled staged push handlers can now pass authenticated device
+context into repository-backed queue-row reads before persistence planning, so
+duplicate push operations can replay existing results without a second queue
+write. Default route execution, route registration, queue replay workers, and
+canonical mutations remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -500,7 +506,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.115.0",
+  "app_version": "0.116.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

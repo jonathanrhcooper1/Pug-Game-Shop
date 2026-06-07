@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.116.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushRouteExistingOperationRowsProvider` for adapting authenticated
+  push route context to repository-backed existing operation-row reads.
+- Explicit push handler factory composition of the existing operation-row
+  provider when route-connected execution is enabled for staged tests.
+- Readiness metadata for staged existing operation-row route provider
+  availability and route-read deferral.
+- Unit coverage for successful provider reads, missing device context,
+  repository rejection mapping, and duplicate push replay that performs zero
+  new queue writes.
+
+### Not Added
+
+- Default route execution, live route registration, queue replay workers,
+  canonical entity mutations, and production route-connected writes remain
+  deferred.
+
 ## [0.115.0] - 2026-06-06
 
 ### Added

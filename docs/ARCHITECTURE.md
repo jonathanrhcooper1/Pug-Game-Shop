@@ -113,6 +113,10 @@ deferred.
 Existing operation-row repository adaptation can now execute those templates
 only when explicitly called, normalize replay candidate queue rows, and reject
 malformed or duplicate rows while default route wiring remains read-disabled.
+The route-aware existing operation-row provider now adapts authenticated
+registered-device context to that repository for explicitly enabled staged push
+handlers, allowing persistence planning to replay duplicate operation results
+without a second queue insert while default route execution remains disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

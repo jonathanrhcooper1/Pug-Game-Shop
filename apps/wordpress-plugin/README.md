@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.115.0`
+Version: `0.116.0`
 
 ## Implemented Features
 
@@ -101,6 +101,9 @@ Version: `0.115.0`
 - Offline push existing operation-row repository adaptation for explicitly
   called staged replay candidate reads, row normalization, duplicate rejection,
   and secret-free repository audits while default route reads stay deferred.
+- Offline push route existing operation-row provider composition for explicitly
+  enabled staged handlers that read replay candidates before persistence
+  planning while default route execution remains deferred.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,
@@ -329,6 +332,9 @@ Version: `0.115.0`
 - Offline push existing operation-row repository adaptation for future
   idempotent replay preparation, including explicit `$wpdb` reads and malformed
   row rejection without default route-connected reads.
+- Offline push route existing operation-row provider composition for future
+  staged idempotent replay, including explicit route-context handoff and
+  duplicate-push no-write coverage.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

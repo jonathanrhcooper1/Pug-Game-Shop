@@ -17,6 +17,7 @@ namespace {
 			public string $prefix = 'wp_';
 			public int $prepare_count = 0;
 			public int $get_row_count = 0;
+			public int $get_results_count = 0;
 			public int $query_count = 0;
 			public string $last_query = '';
 
@@ -29,11 +30,13 @@ namespace {
 			 * @param array<string, mixed>|null $device_row Registered device row.
 			 * @param list<int|false>           $query_results Query results.
 			 * @param list<array<string, mixed>|null> $snapshot_rows Snapshot rows.
+			 * @param list<array<string, mixed>>|false $existing_operation_rows Existing queue rows.
 			 */
 			public function __construct(
 				private ?array $device_row = null,
 				private array $query_results = array(),
 				private array $snapshot_rows = array(),
+				private array|false $existing_operation_rows = array(),
 				?string $prefix = null
 			) {
 				if ( null !== $prefix ) {
@@ -67,6 +70,18 @@ namespace {
 				}
 
 				return $this->device_row;
+			}
+
+			/**
+			 * @return list<array<string, mixed>>|false
+			 */
+			public function get_results( string $query, string $output_type ): array|false {
+				unset( $output_type );
+
+				++$this->get_results_count;
+				$this->last_query = $query;
+
+				return $this->existing_operation_rows;
 			}
 
 			public function query( string $query ): int|false {
@@ -140,8 +155,11 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['database_configured'] );
 			$this->assert_true( $summary['permission_resolver_configured'] );
 			$this->assert_true( $summary['persistence_provider_configured'] );
+			$this->assert_true( $summary['existing_operation_rows_provider_configured'] );
+			$this->assert_true( $summary['existing_operation_rows_route_provider_ready'] );
 			$this->assert_true( $summary['route_connected_handler_ready'] );
 			$this->assert_false( $summary['route_connected_handler_deferred'] );
+			$this->assert_false( $summary['route_connected_existing_operation_rows_deferred'] );
 			$this->assert_false( $summary['route_connected_queue_writes_deferred'] );
 			$this->assert_false( $summary['route_connected_conflict_writes_deferred'] );
 			$this->assert_same( 'ready', $response['status'] );
@@ -153,9 +171,45 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
 			$this->assert_false( $response['meta']['push_queue_persistence_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutations_deferred'] );
+			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
+			$this->assert_same( 1, $database->get_results_count );
+			$this->assert_same( 1, $database->query_count );
+		}
+
+		public function test_factory_replays_existing_operation_rows_without_second_queue_write(): void {
+			$database = new \OfflinePushRouteHandlerFactoryWpdb(
+				$this->database_row(),
+				array(),
+				array(),
+				array( $this->existing_operation_row() )
+			);
+			$factory  = new OfflinePushRouteHandlerFactory(
+				static fn (): \wpdb => $database,
+				null,
+				$this->server_time_provider(),
+				$this->server_snapshots_provider(),
+				null,
+				null,
+				true
+			);
+			$response = $factory->handler()->handle( $this->push_request_data() );
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'offline_push_response_ready', $response['code'] );
+			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
+			$this->assert_same( 'inventory_reserved', $response['data']['results'][0]['code'] );
+			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
+			$this->assert_same( 0, $response['meta']['operation_rows_affected'] );
+			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
 			$this->assert_same( 2, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
-			$this->assert_same( 1, $database->query_count );
+			$this->assert_same( 1, $database->get_results_count );
+			$this->assert_same( 0, $database->query_count );
+			$this->assert_same(
+				1,
+				$response['meta']['audit']['persistence']['query']['source']['operation_replay_count']
+			);
 		}
 
 		public function test_factory_can_use_repository_backed_snapshot_provider_when_explicitly_enabled(): void {
@@ -190,8 +244,9 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
 			$this->assert_same( 'inventory_reserved', $response['data']['results'][0]['code'] );
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
-			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 4, $database->prepare_count );
 			$this->assert_same( 2, $database->get_row_count );
+			$this->assert_same( 1, $database->get_results_count );
 			$this->assert_same( 1, $database->query_count );
 			$this->assert_contains( 'FROM `wp_tcg_inventory_items`', $database->prepare_queries[1] );
 		}
@@ -226,8 +281,9 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
 			$this->assert_same( 'event_reserved', $response['data']['results'][0]['code'] );
 			$this->assert_false( $response['data']['results'][0]['details']['queueTopDeck'] );
-			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 4, $database->prepare_count );
 			$this->assert_same( 2, $database->get_row_count );
+			$this->assert_same( 1, $database->get_results_count );
 			$this->assert_same( 1, $database->query_count );
 			$this->assert_contains( 'FROM `wp_tcg_events`', $database->prepare_queries[1] );
 		}
@@ -423,7 +479,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.115.0',
+				'app_version'       => '0.116.0',
 				'platform'          => 'windows',
 				'last_seen_at'      => '2026-06-06 19:30:00.000000',
 				'revoked_at'        => null,
@@ -432,6 +488,33 @@ namespace TCGStorePlatform\Tests\Unit {
 				'row_version'       => '8',
 				'created_at'        => '2026-06-06 12:00:00.000000',
 				'updated_at'        => '2026-06-06 12:00:00.000000',
+			);
+		}
+
+		/**
+		 * @return array<string, mixed>
+		 */
+		private function existing_operation_row(): array {
+			return array(
+				'offline_queue_id'    => '501',
+				'offline_device_id'   => '42',
+				'device_public_id'    => 'device-main-01',
+				'batch_id'            => 'batch-route-01',
+				'client_operation_id' => 'op-push-route-01',
+				'sequence_number'     => '1',
+				'operation_type'      => 'inventory_reservation',
+				'domain'              => 'inventory',
+				'action_name'         => 'inventory_reservation',
+				'entity_type'         => 'inventory',
+				'entity_id'           => 'inv-1001',
+				'base_row_version'    => '4',
+				'status'              => 'accepted',
+				'result_code'         => 'inventory_reserved',
+				'result_details_json' => '{"reservation_id":"res-1001"}',
+				'conflict_id'         => null,
+				'received_at'         => '2026-06-06 20:00:02.000000',
+				'resolved_at'         => '2026-06-06 20:00:03',
+				'row_version'         => '3',
 			);
 		}
 	}

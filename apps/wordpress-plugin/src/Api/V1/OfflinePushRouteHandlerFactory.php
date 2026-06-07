@@ -78,7 +78,7 @@ final class OfflinePushRouteHandlerFactory {
 				$this->server_time_provider,
 				$this->server_snapshots_provider,
 				$this->operation_options_provider,
-				$this->existing_operation_rows_provider
+				$this->existing_operation_rows_provider ?? new OfflinePushRouteExistingOperationRowsProvider( $database )
 			)
 		);
 	}
@@ -96,6 +96,8 @@ final class OfflinePushRouteHandlerFactory {
 		$server_snapshot_provider_configured = is_callable( $this->server_snapshots_provider );
 		$server_snapshot_provider_readiness   = $this->server_snapshot_provider_readiness();
 		$operation_options_provider_readiness = $this->operation_options_provider_readiness();
+		$existing_operation_rows_readiness    = $this->existing_operation_rows_provider_readiness( $database );
+		$existing_operation_rows_ready        = true === ( $existing_operation_rows_readiness['provider_ready'] ?? false );
 		$route_dependencies_ready            = $this->route_connected_execution_enabled
 			&& $database_ready
 			&& $table_prefix_ready
@@ -138,12 +140,16 @@ final class OfflinePushRouteHandlerFactory {
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
 			'operation_options_route_provider_ready'      => true === ( $operation_options_provider_readiness['provider_ready'] ?? false ),
 			'operation_options_provider_readiness'        => $operation_options_provider_readiness,
-			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
+			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider )
+				|| $database_ready,
+			'existing_operation_rows_route_provider_ready' => $existing_operation_rows_ready,
+			'existing_operation_rows_provider_readiness'  => $existing_operation_rows_readiness,
 			'persistence_provider_configured'             => $route_dependencies_ready,
 			'route_connected_handler_ready'               => $route_dependencies_ready,
 			'route_connected_handler_deferred'            => ! $route_dependencies_ready,
 			'route_connected_snapshot_reads_deferred'     => ! $route_dependencies_ready,
 			'route_connected_operation_options_deferred'  => ! $route_dependencies_ready,
+			'route_connected_existing_operation_rows_deferred' => ! $route_dependencies_ready,
 			'route_connected_queue_writes_deferred'       => ! $route_dependencies_ready,
 			'route_connected_conflict_writes_deferred'    => ! $route_dependencies_ready,
 			'route_connected_writes_ready'                => $route_dependencies_ready,
@@ -221,6 +227,26 @@ final class OfflinePushRouteHandlerFactory {
 		$summary = $this->operation_options_provider->readiness_summary();
 
 		return is_array( $summary ) ? $summary : array();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function existing_operation_rows_provider_readiness( ?\wpdb $database ): array {
+		if (
+			is_object( $this->existing_operation_rows_provider )
+			&& method_exists( $this->existing_operation_rows_provider, 'readiness_summary' )
+		) {
+			$summary = $this->existing_operation_rows_provider->readiness_summary();
+
+			return is_array( $summary ) ? $summary : array();
+		}
+
+		if ( null === $database ) {
+			return array();
+		}
+
+		return ( new OfflinePushRouteExistingOperationRowsProvider( $database ) )->readiness_summary();
 	}
 
 	private function table_prefix_ready( string $table_prefix ): bool {

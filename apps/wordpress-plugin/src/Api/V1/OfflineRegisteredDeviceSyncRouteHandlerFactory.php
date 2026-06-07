@@ -109,6 +109,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePushExistingOperationRowsQueryBuilder::class, 'build' );
 		$push_existing_operation_rows_repository_ready = $push_existing_operation_rows_sql_ready
 			&& method_exists( OfflinePushExistingOperationRowsRepository::class, 'fetch' );
+		$push_existing_operation_rows_route_provider_ready = $push_existing_operation_rows_repository_ready
+			&& method_exists( OfflinePushRouteExistingOperationRowsProvider::class, '__invoke' );
 		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
 		$push_persistence_sql_ready     = $push_persistence_planner_ready
 			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
@@ -183,6 +185,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_existing_operation_rows_query_sql_ready' => $push_existing_operation_rows_sql_ready,
 			'push_existing_operation_rows_query_sql_template_ready' => $push_existing_operation_rows_sql_ready,
 			'push_existing_operation_rows_repository_ready' => $push_existing_operation_rows_repository_ready,
+			'push_existing_operation_rows_route_provider_ready' => $push_existing_operation_rows_route_provider_ready,
+			'push_existing_operation_rows_route_provider_deferred' => true,
 			'push_existing_operation_rows_query_execution_deferred' => true,
 			'push_existing_operation_rows_repository_deferred'      => true,
 			'push_existing_operation_rows_route_reads_deferred'     => true,
@@ -202,6 +206,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_handler_snapshot_reads_deferred'       => true === ( $push_handler_dependencies['route_connected_snapshot_reads_deferred'] ?? true ),
 			'push_handler_operation_options_ready'       => true === ( $push_handler_dependencies['operation_options_route_provider_ready'] ?? false ),
 			'push_handler_operation_options_deferred'    => true === ( $push_handler_dependencies['route_connected_operation_options_deferred'] ?? true ),
+			'push_handler_existing_operation_rows_ready' => true === ( $push_handler_dependencies['existing_operation_rows_route_provider_ready'] ?? false ),
+			'push_handler_existing_operation_rows_deferred' => true === ( $push_handler_dependencies['route_connected_existing_operation_rows_deferred'] ?? true ),
 			'push_handler_route_queue_writes_deferred'   => true === ( $push_handler_dependencies['route_connected_queue_writes_deferred'] ?? true ),
 			'push_handler_conflict_writes_deferred'      => true === ( $push_handler_dependencies['route_connected_conflict_writes_deferred'] ?? true ),
 			'push_handler_route_dependency_issues'       => $push_handler_dependencies['configuration_issues'] ?? array(),

@@ -109,6 +109,9 @@
 - Version `0.115.0` adds explicit existing operation-row repository adaptation
   over the existing `tcg_offline_sync_queue` table. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.116.0` adds route-aware existing operation-row provider
+  composition over the existing queue table and staged repository. No WordPress
+  schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 
