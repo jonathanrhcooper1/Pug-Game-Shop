@@ -29,6 +29,14 @@ final class InventoryIntakeRepository {
 			);
 		}
 
+		$identity_errors = $this->validate_unique_identity( $plan );
+		if ( array() !== $identity_errors ) {
+			return InventoryIntakeRepositoryResult::rejected(
+				$plan,
+				$identity_errors
+			);
+		}
+
 		$prepared_sql = $this->database->prepare(
 			$plan->insert_sql_template(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			$plan->prepare_args()
@@ -94,6 +102,56 @@ final class InventoryIntakeRepository {
 		return array();
 	}
 
+	/**
+	 * @return list<string>
+	 */
+	private function validate_unique_identity( InventoryIntakePersistencePlan $plan ): array {
+		$row     = $plan->insert_row();
+		$barcode = trim( (string) ( $row['barcode'] ?? '' ) );
+		$sku     = trim( (string) ( $row['sku'] ?? '' ) );
+
+		if ( '' === $barcode && '' === $sku ) {
+			return array();
+		}
+
+		$query = $this->database->prepare(
+			'SELECT barcode, sku FROM `' . $plan->table_name() . '` WHERE barcode = %s OR sku = %s LIMIT 1',
+			array(
+				$barcode,
+				$sku,
+			)
+		);
+
+		if ( ! is_string( $query ) || '' === $query ) {
+			return array( 'inventory_intake_identity_check_failed' );
+		}
+
+		$existing = $this->database->get_row(
+			$query, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$this->array_output_type()
+		);
+
+		if ( null === $existing ) {
+			return array();
+		}
+
+		if ( ! is_array( $existing ) ) {
+			return array( 'inventory_intake_identity_check_failed' );
+		}
+
+		$errors = array();
+
+		if ( '' !== $barcode && (string) ( $existing['barcode'] ?? '' ) === $barcode ) {
+			$errors[] = 'barcode_already_exists';
+		}
+
+		if ( '' !== $sku && (string) ( $existing['sku'] ?? '' ) === $sku ) {
+			$errors[] = 'sku_already_exists';
+		}
+
+		return array() === $errors ? array( 'inventory_identity_already_exists' ) : $errors;
+	}
+
 	private function insert_id(): ?int {
 		$insert_id = $this->database->insert_id ?? null;
 
@@ -108,5 +166,9 @@ final class InventoryIntakeRepository {
 		}
 
 		return $insert_id;
+	}
+
+	private function array_output_type(): string {
+		return defined( 'ARRAY_A' ) ? (string) constant( 'ARRAY_A' ) : 'ARRAY_A';
 	}
 }

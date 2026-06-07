@@ -12,6 +12,9 @@ All notable changes follow Semantic Versioning.
 - Dependency-free inventory intake parsing for staff/offline/ScryDex-import
   card management payloads, including exact-item normalization, price floor
   checks, visibility normalization, and deferred WooCommerce projection flags.
+- Inventory intake repository collision guard that reports duplicate barcode
+  and SKU errors before insert while keeping database unique keys as the final
+  safety net.
 - Plan-only inventory intake persistence for staged card creation, including
   deterministic public IDs, fallback barcode/SKU generation for pending intake,
   schema-aligned insert rows, prepared SQL templates, timestamp/date planning,

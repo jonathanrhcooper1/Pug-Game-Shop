@@ -50,7 +50,8 @@
 - Local unit coverage now includes the explicit inventory intake repository
   adapter for prepared `$wpdb` inserts, invalid-plan short-circuiting,
   table-prefix mismatch rejection, failed insert handling, zero/unexpected
-  insert-count rejection, created-item response payloads, and audit redaction.
+  insert-count rejection, duplicate barcode/SKU preflight rejection,
+  created-item response payloads, and audit redaction.
 - Local unit coverage now includes staged inventory intake route handler and
   factory composition for successful created-item responses, invalid payload
   short-circuiting, repository failure rejection, default write deferral,

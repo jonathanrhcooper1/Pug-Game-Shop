@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Intake Identity Collision Guard
+
+### What Changed
+
+- Added a pre-insert identity lookup to the inventory intake repository for
+  barcode and SKU collisions.
+- The repository now returns stable `barcode_already_exists` and
+  `sku_already_exists` errors before attempting an insert.
+- Updated intake repository and route-handler factory tests for the additional
+  preflight database read.
+
+### Why
+
+Staff intake needs explicit duplicate scan/SKU feedback before we rely on it in
+staging. The database unique keys remain the final guard, but the service layer
+now reports actionable collision errors instead of a generic insert failure.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepository.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing unique keys on `barcode` and `sku` remain unchanged.
+
+### Tests Added
+
+- Unit coverage proving duplicate barcode/SKU rows are detected before insert.
+- Unit coverage updates proving repository-backed route handlers account for
+  the new identity lookup plus insert query path.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Inventory\InventoryIntakeRepository.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 754 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return to database-only duplicate rejection.
+- No data rollback is required.
+
 ## 2026-06-07 - Inventory Admin Intake Workspace
 
 ### What Changed

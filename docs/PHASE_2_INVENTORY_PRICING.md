@@ -35,6 +35,8 @@ staging database acceptance remains pending.
   including invalid-plan short-circuiting, active table-prefix validation,
   insert-count outcome handling, created-item response payloads, and write/
   projection deferral audits.
+- Inventory intake repository duplicate barcode/SKU preflight checks with
+  stable staff-facing collision error codes before insert.
 - Staged inventory intake route handler and factory for explicitly enabled
   `POST /inventory` creation tests, composing parser, persistence planner,
   repository execution, created responses, default route deferral, and
@@ -120,9 +122,8 @@ On PHP 8.2.29:
 1. Clean migration from schema version `1` to `2` on staging.
 2. Rollback from schema version `2` to `1` on staging.
 3. `dbDelta` compatibility on the target WordPress database configuration.
-4. Duplicate barcode and SKU collision handling through service-layer tests.
-5. Pricing change log persistence once inventory write services are added.
-6. Manager override persistence and reauthentication tests.
-7. Search and pagination benchmarks after the 50,000-item seed fixture exists.
-8. Live route registration remains disabled until repository writes, staff
+4. Pricing change log persistence once inventory write services are added.
+5. Manager override persistence and reauthentication tests.
+6. Search and pagination benchmarks after the 50,000-item seed fixture exists.
+7. Live route registration remains disabled until repository writes, staff
    permissions, rate limiting, and staging smoke tests are complete.

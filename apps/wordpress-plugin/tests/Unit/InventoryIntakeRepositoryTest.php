@@ -18,6 +18,10 @@ namespace {
 			public string $last_prepare_query = '';
 			public string $last_query = '';
 			public string $last_output_type = '';
+			private ?array $row = null;
+			private int|false $query_result = 1;
+			private array|false $result_set = array();
+			private mixed $var_result = 0;
 
 			/**
 			 * @var list<mixed>
@@ -28,11 +32,15 @@ namespace {
 			 * @param array<string, mixed>|null $row Row returned by get_row.
 			 */
 			public function __construct(
-				private ?array $row = null,
-				private int|false $query_result = 1,
-				private array|false $result_set = array(),
-				private mixed $var_result = 0
+				?array $row = null,
+				int|false $query_result = 1,
+				array|false $result_set = array(),
+				mixed $var_result = 0
 			) {
+				$this->row          = $row;
+				$this->query_result = $query_result;
+				$this->result_set   = $result_set;
+				$this->var_result   = $var_result;
 			}
 
 			/**
@@ -89,9 +97,11 @@ namespace {
 			public string $prefix = 'wp_';
 			public int $insert_id = 707;
 			public int $prepare_count = 0;
+			public int $get_row_count = 0;
 			public int $query_count = 0;
 			public string $last_prepare_query = '';
 			public string $last_query = '';
+			public string $last_output_type = '';
 
 			/**
 			 * @var list<mixed>
@@ -101,7 +111,8 @@ namespace {
 			public function __construct(
 				private int|false $query_result = 1,
 				string $prefix = 'wp_',
-				int $insert_id = 707
+				int $insert_id = 707,
+				private ?array $row = null
 			) {
 				$this->prefix    = $prefix;
 				$this->insert_id = $insert_id;
@@ -116,6 +127,17 @@ namespace {
 				$this->last_prepare_args  = array_values( $args );
 
 				return 'prepared:' . $query;
+			}
+
+			/**
+			 * @return array<string, mixed>|null
+			 */
+			public function get_row( string $query, string $output_type ): ?array {
+				++$this->get_row_count;
+				$this->last_query       = $query;
+				$this->last_output_type = $output_type;
+
+				return $this->row;
 			}
 
 			public function query( string $query ): int|false {
@@ -149,7 +171,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 1, $result->rows_affected() );
 			$this->assert_same( 707, $result->insert_id() );
 			$this->assert_same( array(), $result->errors() );
-			$this->assert_same( 1, $database->prepare_count );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->query_count );
 			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->last_prepare_query );
 			$this->assert_contains( '`public_id`', $database->last_prepare_query );
@@ -190,6 +213,29 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 0, $database->prepare_count );
 			$this->assert_same( 0, $database->query_count );
 			$this->assert_same( array( 'inventory_intake_table_prefix_mismatch' ), $result->errors() );
+		}
+
+		public function test_repository_rejects_duplicate_barcode_and_sku_before_insert(): void {
+			$plan     = $this->valid_plan();
+			$database = new \InventoryIntakeRepositoryWpdb(
+				1,
+				'wp_',
+				707,
+				array(
+					'barcode' => 'PCS-000001',
+					'sku'     => 'PCS-PIKA-000001',
+				)
+			);
+			$result   = ( new InventoryIntakeRepository( $database ) )->create( $plan );
+
+			$this->assert_true( $result->is_rejected() );
+			$this->assert_same( 1, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
+			$this->assert_same( 0, $database->query_count );
+			$this->assert_same( 'ARRAY_A', $database->last_output_type );
+			$this->assert_contains( 'SELECT barcode, sku FROM `wp_tcg_inventory_items`', $database->last_prepare_query );
+			$this->assert_same( array( 'PCS-000001', 'PCS-PIKA-000001' ), $database->last_prepare_args );
+			$this->assert_same( array( 'barcode_already_exists', 'sku_already_exists' ), $result->errors() );
 		}
 
 		public function test_repository_rejects_failed_and_unexpected_insert_counts(): void {

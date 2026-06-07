@@ -18,6 +18,10 @@ namespace {
 			public string $last_prepare_query = '';
 			public string $last_query = '';
 			public string $last_output_type = '';
+			private ?array $row = null;
+			private int|false $query_result = 1;
+			private array|false $result_set = array();
+			private mixed $var_result = 0;
 
 			/**
 			 * @var list<mixed>
@@ -28,11 +32,15 @@ namespace {
 			 * @param array<string, mixed>|null $row Row returned by get_row.
 			 */
 			public function __construct(
-				private ?array $row = null,
-				private int|false $query_result = 1,
-				private array|false $result_set = array(),
-				private mixed $var_result = 0
+				?array $row = null,
+				int|false $query_result = 1,
+				array|false $result_set = array(),
+				mixed $var_result = 0
 			) {
+				$this->row          = $row;
+				$this->query_result = $query_result;
+				$this->result_set   = $result_set;
+				$this->var_result   = $var_result;
 			}
 
 			/**
@@ -156,7 +164,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'inventory_item_created', $response['code'] );
 			$this->assert_same( 909, $response['data']['inventory_id'] );
 			$this->assert_same( 'PCS-000001', $response['data']['barcode'] );
-			$this->assert_same( 1, $database->prepare_count );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->query_count );
 			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->last_prepare_query );
 			$this->assert_false( $response['meta']['route_connected_writes_deferred'] );
