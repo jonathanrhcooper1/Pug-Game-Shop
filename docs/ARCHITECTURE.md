@@ -211,7 +211,10 @@ or rejected outcomes, insert IDs, and the one-time pairing response while
 keeping raw tokens and token hashes out of audits. Device registration service
 orchestration now composes pairing validation, credential issuance,
 registration planning, and explicit repository insertion into a route-ready
-boundary with secret-free service audits. An opt-in route handler adapter can
+boundary with secret-free service audits. The same service can now optionally
+require the staged pairing authorizer before credential issuance, so direct
+staging service calls can fail before repository writes when pairing policy is
+denied. An opt-in route handler adapter can
 now dispatch that service through the offline controller's
 `register_offline_device` callback for staged tests while default controller
 behavior and route registration remain disabled. An opt-in pairing permission

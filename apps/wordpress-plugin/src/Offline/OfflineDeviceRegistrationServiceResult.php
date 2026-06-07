@@ -26,7 +26,7 @@ final class OfflineDeviceRegistrationServiceResult {
 	) {
 	}
 
-	public static function invalid( array $errors ): self {
+	public static function invalid( array $errors, array $pairing_authorization = array() ): self {
 		return new self(
 			self::STATUS_INVALID,
 			400,
@@ -35,7 +35,11 @@ final class OfflineDeviceRegistrationServiceResult {
 			self::build_audit_payload(
 				self::STATUS_INVALID,
 				400,
-				$errors
+				$errors,
+				null,
+				null,
+				null,
+				$pairing_authorization
 			)
 		);
 	}
@@ -43,7 +47,8 @@ final class OfflineDeviceRegistrationServiceResult {
 	public static function registered(
 		OfflineDeviceRegistrationCredentials $credentials,
 		OfflineDeviceRegistrationPlan $registration_plan,
-		OfflineDeviceRegistrationRepositoryResult $repository_result
+		OfflineDeviceRegistrationRepositoryResult $repository_result,
+		array $pairing_authorization = array()
 	): self {
 		return new self(
 			self::STATUS_REGISTERED,
@@ -56,7 +61,8 @@ final class OfflineDeviceRegistrationServiceResult {
 				array(),
 				$credentials,
 				$registration_plan,
-				$repository_result
+				$repository_result,
+				$pairing_authorization
 			)
 		);
 	}
@@ -69,7 +75,8 @@ final class OfflineDeviceRegistrationServiceResult {
 		?OfflineDeviceRegistrationCredentials $credentials = null,
 		?OfflineDeviceRegistrationPlan $registration_plan = null,
 		?OfflineDeviceRegistrationRepositoryResult $repository_result = null,
-		int $status_code = 500
+		int $status_code = 500,
+		array $pairing_authorization = array()
 	): self {
 		return new self(
 			self::STATUS_REJECTED,
@@ -82,7 +89,8 @@ final class OfflineDeviceRegistrationServiceResult {
 				$errors,
 				$credentials,
 				$registration_plan,
-				$repository_result
+				$repository_result,
+				$pairing_authorization
 			)
 		);
 	}
@@ -146,25 +154,27 @@ final class OfflineDeviceRegistrationServiceResult {
 		array $errors,
 		?OfflineDeviceRegistrationCredentials $credentials = null,
 		?OfflineDeviceRegistrationPlan $registration_plan = null,
-		?OfflineDeviceRegistrationRepositoryResult $repository_result = null
+		?OfflineDeviceRegistrationRepositoryResult $repository_result = null,
+		array $pairing_authorization = array()
 	): array {
 		return array(
-			'action'            => 'offline_device_registration_service',
-			'status'            => $status,
-			'status_code'       => $status_code,
-			'is_registered'     => self::STATUS_REGISTERED === $status,
-			'is_invalid'        => self::STATUS_INVALID === $status,
-			'is_rejected'       => self::STATUS_REJECTED === $status,
-			'credentials'       => null !== $credentials
+			'action'                => 'offline_device_registration_service',
+			'status'                => $status,
+			'status_code'           => $status_code,
+			'is_registered'         => self::STATUS_REGISTERED === $status,
+			'is_invalid'            => self::STATUS_INVALID === $status,
+			'is_rejected'           => self::STATUS_REJECTED === $status,
+			'pairing_authorization' => $pairing_authorization,
+			'credentials'           => null !== $credentials
 				? $credentials->audit_payload()
 				: array(),
-			'registration_plan' => null !== $registration_plan
+			'registration_plan'     => null !== $registration_plan
 				? $registration_plan->audit_payload()
 				: array(),
-			'repository'        => null !== $repository_result
+			'repository'            => null !== $repository_result
 				? $repository_result->audit_payload()
 				: array(),
-			'errors'            => self::unique_errors( $errors ),
+			'errors'                => self::unique_errors( $errors ),
 		);
 	}
 }

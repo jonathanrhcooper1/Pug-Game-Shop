@@ -48,6 +48,9 @@ hashes out of repository audits. Offline device registration service
 orchestration now composes pairing validation, credential issuance,
 registration planning, and explicit repository insertion into stable
 registered/invalid/rejected result envelopes with secret-free service audits.
+That service can now optionally require the staged pairing authorizer before
+credential issuance, rejecting denied pairing policies with a 403 response
+before repository writes are attempted.
 An opt-in route handler adapter now maps that service to the offline
 controller's `register_offline_device` callback when explicitly injected,
 returning stable response envelopes and retaining secret-free audits while the
@@ -370,7 +373,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.85.0",
+  "app_version": "0.86.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -405,6 +408,12 @@ manager and location IDs, requested scopes allowed for the device mode, and
 unexpired UTC policy windows. Audit payloads expose only a short pairing-code
 fingerprint, counts, denied scopes, and timing metadata; raw pairing codes and
 full hashes are intentionally omitted.
+
+The registration service can consume the same authorizer as a defense-in-depth
+stage. When the supplied authorizer denies a parsed pairing request, the
+service returns `offline_device_registration_rejected` with status code `403`,
+keeps the one-time credential payload empty, and skips the registration
+repository.
 
 When the future route is enabled, the planned successful response body is:
 

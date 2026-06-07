@@ -163,6 +163,9 @@ The first plan-only pairing authorizer now validates configured pairing-code
 hashes, manager/location allowlists, mode-specific requested scopes, and UTC
 expiry windows for that staged permission callback while retaining only a short
 pairing-code fingerprint in audits.
+The offline device registration service can also consume that authorizer before
+credential issuance, so a denied pairing policy stops direct staged service
+registration before credentials or repository writes are created.
 The planned offline route registration planner now turns those contracts into
 disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.

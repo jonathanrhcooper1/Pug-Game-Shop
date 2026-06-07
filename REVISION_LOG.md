@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Registration Service Pairing Authorization
+
+### What Changed
+
+- Added optional pairing authorizer injection to
+  `OfflineDeviceRegistrationService`.
+- Added `pairing_authorization` audit payload support to
+  `OfflineDeviceRegistrationServiceResult`.
+- Added service tests proving authorized pairing can proceed to credential
+  issuance/repository registration, and denied pairing stops before credentials
+  or repository writes.
+- Updated project, plugin, and offline app package versions to `0.86.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The permission callback remains the staged REST gate, but direct service tests
+also need a defense-in-depth path before any future route enablement. This
+revision proves the registration service can consume the same pairing policy
+and fail closed before one-time credentials or database writes are created.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationService.php`
+- `apps/wordpress-plugin/src/Offline/OfflineDeviceRegistrationServiceResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Service test proving an authorized pairing policy can proceed to registration
+  with pairing authorization audit metadata.
+- Service test proving a denied pairing policy returns a 403 rejection before
+  credential issuance or repository writes.
+
+### Rollback Notes
+
+- Revert this revision to remove registration-service pairing authorization
+  enforcement and audit payload support.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pairing Authorization Policy
 
 ### What Changed

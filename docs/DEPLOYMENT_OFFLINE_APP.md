@@ -339,6 +339,11 @@ manager/location allowlists, mode-specific scopes, and UTC expiry windows while
 keeping raw pairing codes and full hashes out of audit payloads. Live route
 registration and production device-token issuance remain disabled.
 
+Version `0.86.0` lets the offline device registration service optionally
+consume that same authorizer before credential issuance. Denied pairing
+policies return a rejected service result before repository writes, while live
+route registration and production token issuance remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

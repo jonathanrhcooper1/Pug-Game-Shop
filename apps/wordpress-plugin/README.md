@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.85.0`
+Version: `0.86.0`
 
 ## Implemented Features
 
@@ -119,6 +119,9 @@ Version: `0.85.0`
   callbacks, including hashed pairing-code checks, manager/location allowlists,
   device-mode scope policy, UTC expiry enforcement, and secret-free audit
   payloads.
+- Optional offline device registration service authorization enforcement that
+  rejects denied pairing policies before issuing credentials or calling the
+  registration repository.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

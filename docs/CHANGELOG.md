@@ -2,6 +2,22 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.86.0] - 2026-06-06
+
+### Added
+
+- Optional pairing authorization enforcement inside offline device registration
+  service orchestration.
+- Service audit payload support for the staged pairing authorization outcome.
+- Unit coverage proving authorized pairing can proceed to registration and
+  denied pairing stops before credential issuance or repository writes.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.85.0] - 2026-06-06
 
 ### Added

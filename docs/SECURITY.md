@@ -105,6 +105,9 @@ hashes, manager/location allowlists, requested scopes allowed by device mode,
 and unexpired UTC policy windows. Its audit payload intentionally exposes only
 a short pairing-code fingerprint and policy counts, never raw pairing codes or
 full hashes.
+When injected into the offline device registration service, that authorization
+must pass before one-time credentials are issued or the registration repository
+is called.
 
 ## Secret Storage
 

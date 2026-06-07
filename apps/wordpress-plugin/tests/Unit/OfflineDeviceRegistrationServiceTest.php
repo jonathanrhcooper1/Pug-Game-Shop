@@ -64,6 +64,7 @@ namespace {
 }
 
 namespace TCGStorePlatform\Tests\Unit {
+	use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizer;
 	use TCGStorePlatform\Offline\OfflineDeviceRegistrationCredentialIssuer;
 	use TCGStorePlatform\Offline\OfflineDeviceRegistrationPlan;
 	use TCGStorePlatform\Offline\OfflineDeviceRegistrationRepository;
@@ -116,6 +117,77 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_not_contains( $response['device_token'], (string) json_encode( $audit ) );
 			$this->assert_not_contains(
 				(string) $database->last_prepare_args[5],
+				(string) json_encode( $audit )
+			);
+		}
+
+		public function test_service_can_require_pairing_authorization_before_issuing_credentials(): void {
+			$database           = new \wpdb( null, 1 );
+			$repository_calls   = 0;
+			$repository_adapter = static function ( OfflineDeviceRegistrationPlan $plan ) use (
+				$database,
+				&$repository_calls
+			): OfflineDeviceRegistrationRepositoryResult {
+				++$repository_calls;
+
+				return ( new OfflineDeviceRegistrationRepository( $database ) )->register( $plan );
+			};
+			$result             = $this->service(
+				$repository_adapter,
+				$this->pairing_authorizer()
+			)->register(
+				$this->pairing_payload(),
+				'2026-06-06T18:30:00Z',
+				3600
+			);
+			$audit              = $result->audit_payload();
+
+			$this->assert_true( $result->is_registered() );
+			$this->assert_same( 1, $repository_calls );
+			$this->assert_same( 1, $database->prepare_count );
+			$this->assert_same( 'authorized', $audit['pairing_authorization']['status'] );
+			$this->assert_same(
+				'offline_device_pairing_authorization',
+				$audit['pairing_authorization']['action']
+			);
+			$this->assert_not_contains(
+				$this->pairing_payload()['pairing_code'],
+				(string) json_encode( $audit )
+			);
+			$this->assert_not_contains(
+				hash( 'sha256', $this->pairing_payload()['pairing_code'] ),
+				(string) json_encode( $audit )
+			);
+		}
+
+		public function test_service_rejects_pairing_authorization_before_credentials_or_repository(): void {
+			$database           = new \wpdb( null, 1 );
+			$repository_called  = false;
+			$repository_adapter = static function () use ( &$repository_called ): void {
+				$repository_called = true;
+			};
+			$result             = $this->service(
+				$repository_adapter,
+				$this->pairing_authorizer( array( 'manager_ids' => array( 99 ) ) )
+			)->register(
+				$this->pairing_payload(),
+				'2026-06-06T18:30:00Z',
+				3600
+			);
+			$audit              = $result->audit_payload();
+
+			$this->assert_true( $result->is_rejected() );
+			$this->assert_same( 403, $result->status_code() );
+			$this->assert_true( in_array( 'manager_not_allowed', $result->errors(), true ) );
+			$this->assert_same( array(), $result->response_payload() );
+			$this->assert_false( $repository_called );
+			$this->assert_same( 0, $database->prepare_count );
+			$this->assert_same( 0, $database->query_count );
+			$this->assert_same( 'denied', $audit['pairing_authorization']['status'] );
+			$this->assert_same( array(), $audit['credentials'] );
+			$this->assert_same( array(), $audit['repository'] );
+			$this->assert_not_contains(
+				$this->pairing_payload()['pairing_code'],
 				(string) json_encode( $audit )
 			);
 		}
@@ -180,12 +252,37 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 		}
 
-		private function service( ?callable $repository_adapter = null ): OfflineDeviceRegistrationService {
+		private function service(
+			?callable $repository_adapter = null,
+			?callable $pairing_authorizer = null
+		): OfflineDeviceRegistrationService {
 			return new OfflineDeviceRegistrationService(
 				null,
 				new OfflineDeviceRegistrationCredentialIssuer( $this->deterministic_bytes() ),
 				null,
-				$repository_adapter
+				$repository_adapter,
+				$pairing_authorizer
+			);
+		}
+
+		/**
+		 * @param array<string, mixed> $overrides Policy overrides.
+		 */
+		private function pairing_authorizer( array $overrides = array() ): OfflineDevicePairingAuthorizer {
+			return new OfflineDevicePairingAuthorizer(
+				array_merge(
+					array(
+						'pairing_code_hashes'    => array( hash( 'sha256', 'PAIR-2026-REGISTER-DEVICE' ) ),
+						'manager_ids'            => array( 42 ),
+						'location_ids'           => array( 2 ),
+						'allowed_scopes_by_mode' => array(
+							'kiosk' => array( 'offline_pull', 'offline_push', 'kiosk' ),
+						),
+						'expires_at_utc'         => '2026-06-06T19:30:00Z',
+					),
+					$overrides
+				),
+				static fn (): string => '2026-06-06T18:30:00Z'
 			);
 		}
 
@@ -216,7 +313,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'device_mode'      => 'kiosk',
 				'location_id'      => 2,
 				'manager_id'       => 42,
-				'app_version'      => '0.85.0',
+				'app_version'      => '0.86.0',
 				'platform'         => 'windows',
 				'capabilities'     => array(
 					'barcode_scanner' => true,

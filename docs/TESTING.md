@@ -197,6 +197,9 @@
   manager/location/scope/expiry policies, missing configuration, injection into
   the staged pairing permission callback, and audit payloads without raw
   pairing-code or full-hash leakage.
+- Local unit coverage now includes registration service pairing-authorization
+  enforcement, proving authorized pairing can proceed and denied pairing stops
+  before credential issuance or repository writes.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp
