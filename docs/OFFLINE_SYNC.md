@@ -239,6 +239,10 @@ composition. Explicit staging orchestration can resolve registered-device
 headers, validate pull context, plan cursor rows, and invoke the cursor
 repository after returned change sets, while default route execution remains
 deferred.
+Version `0.106.0` adds opt-in pull handler cursor advancement orchestration.
+The handler can call an explicitly injected cursor advance provider after
+change sets are returned and fail closed on cursor write rejection, while
+default handler cursor advancement and route-connected writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

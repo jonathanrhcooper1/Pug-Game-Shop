@@ -439,6 +439,11 @@ headers and invokes explicit cursor repository writes after provider change
 sets are returned, while default route execution and route-connected writes
 remain disabled.
 
+Version `0.106.0` adds opt-in pull handler cursor advancement orchestration.
+Staging can inject a cursor advance provider into the pull handler after
+change sets are returned, while default handler cursor advancement and
+route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

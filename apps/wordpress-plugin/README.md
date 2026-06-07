@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.105.0`
+Version: `0.106.0`
 
 ## Implemented Features
 
@@ -178,6 +178,9 @@ Version: `0.105.0`
 - Offline pull route cursor advancement provider for explicitly injected route
   orchestration, resolving registered-device headers and invoking the cursor
   repository while default route execution remains deferred.
+- Offline pull handler cursor advancement orchestration for explicitly injected
+  providers, including advanced/rejected metadata and fail-closed cursor write
+  errors while default handler execution remains deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.106.0] - 2026-06-06
+
+### Added
+
+- Opt-in `OfflinePullRouteHandler` cursor advancement orchestration through an
+  explicitly injected cursor advance provider.
+- Ready-response metadata for cursor advancement attempts, status, rows
+  affected, repository audit payloads, and default route execution deferral.
+- Fail-closed handler responses for rejected cursor advancement results,
+  invalid cursor provider return types, and cursor provider exceptions.
+- Health/admin and WordPress smoke readiness metadata for staged handler cursor
+  advancement support while default execution remains deferred.
+- Unit coverage for default cursor deferral, successful explicit cursor
+  advancement, rejected cursor results, invalid provider returns, and readiness
+  metadata.
+
+### Not Added
+
+- No default live offline route cursor execution is enabled. Default
+  route-connected reads, tombstone repository reads, queue replay, route
+  registration, and route-connected database mutation remain disabled.
+
 ## [0.105.0] - 2026-06-06
 
 ### Added

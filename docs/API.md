@@ -182,6 +182,11 @@ Version `0.105.0` adds route-aware pull cursor advancement provider
 composition. Explicitly injected orchestration can resolve registered-device
 headers, plan cursor rows from returned change sets, and invoke the cursor
 repository while default route execution remains deferred.
+Version `0.106.0` adds opt-in pull handler cursor advancement orchestration.
+An explicitly injected cursor advance provider can now run after change sets
+are returned, with ready metadata for advanced cursors and fail-closed
+responses for rejected cursor writes, while the default handler still defers
+cursor advancement.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -448,7 +453,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.105.0",
+  "app_version": "0.106.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

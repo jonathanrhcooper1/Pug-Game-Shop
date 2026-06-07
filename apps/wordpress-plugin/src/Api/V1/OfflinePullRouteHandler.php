@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
+use TCGStorePlatform\Offline\OfflinePullCursorAdvanceRepositoryResult;
 use TCGStorePlatform\Offline\OfflinePullRequest;
 use TCGStorePlatform\Offline\OfflinePullRequestParser;
 use TCGStorePlatform\Offline\OfflinePullResponsePresenter;
@@ -26,16 +27,23 @@ final class OfflinePullRouteHandler {
 	/**
 	 * @var callable|null
 	 */
+	private $cursor_advance_provider;
+
+	/**
+	 * @var callable|null
+	 */
 	private $server_time_provider;
 
 	public function __construct(
 		private ?OfflinePullRequestParser $parser = null,
 		private ?OfflinePullResponsePresenter $presenter = null,
 		?callable $change_set_provider = null,
-		?callable $server_time_provider = null
+		?callable $server_time_provider = null,
+		?callable $cursor_advance_provider = null
 	) {
-		$this->change_set_provider  = $change_set_provider;
-		$this->server_time_provider = $server_time_provider;
+		$this->change_set_provider     = $change_set_provider;
+		$this->server_time_provider    = $server_time_provider;
+		$this->cursor_advance_provider = $cursor_advance_provider;
 	}
 
 	/**
@@ -51,15 +59,34 @@ final class OfflinePullRouteHandler {
 		$request = $result->request();
 
 		try {
+			$server_time_utc = $this->server_time_utc();
+			$change_sets     = $this->change_sets( $request, $data );
 			$response = $this->presenter()->present(
 				$request,
-				$this->change_sets( $request, $data ),
-				$this->server_time_utc()
+				$change_sets,
+				$server_time_utc
 			);
 		} catch ( InvalidArgumentException $exception ) {
 			return $this->rejected( 'offline_pull_response_invalid', array( $exception->getMessage() ) );
 		} catch ( Throwable ) {
 			return $this->rejected( 'offline_pull_change_provider_failed', array( 'change_set_provider_failed' ) );
+		}
+
+		try {
+			$cursor_advance = $this->advance_cursors( $request, $data, $change_sets );
+		} catch ( InvalidArgumentException $exception ) {
+			return $this->rejected( 'offline_pull_cursor_advance_invalid', array( $exception->getMessage() ) );
+		} catch ( Throwable ) {
+			return $this->rejected( 'offline_pull_cursor_advance_failed', array( 'cursor_advance_provider_failed' ) );
+		}
+
+		if ( null !== $cursor_advance && $cursor_advance->is_rejected() ) {
+			return $this->rejected(
+				'offline_pull_cursor_advance_failed',
+				array() !== $cursor_advance->errors()
+					? $cursor_advance->errors()
+					: array( 'cursor_advance_rejected' )
+			);
 		}
 
 		return array(
@@ -68,12 +95,7 @@ final class OfflinePullRouteHandler {
 			'code'        => 'offline_pull_response_ready',
 			'callback'    => 'pull_offline_changes',
 			'data'        => $response,
-			'meta'        => array(
-				'query_deferred'          => true,
-				'cursor_advance_deferred' => true,
-				'write_deferred'          => true,
-				'route_still_gated'       => true,
-			),
+			'meta'        => $this->ready_meta( $cursor_advance ),
 		);
 	}
 
@@ -83,6 +105,30 @@ final class OfflinePullRouteHandler {
 
 	private function presenter(): OfflinePullResponsePresenter {
 		return $this->presenter ?? new OfflinePullResponsePresenter();
+	}
+
+	/**
+	 * @param array<string, mixed> $change_sets Provider change sets keyed by domain.
+	 */
+	private function advance_cursors(
+		OfflinePullRequest $request,
+		OfflineRestRequestData $data,
+		array $change_sets
+	): ?OfflinePullCursorAdvanceRepositoryResult {
+		if ( ! is_callable( $this->cursor_advance_provider ) ) {
+			return null;
+		}
+
+		$provider = $this->cursor_advance_provider;
+		$result   = $this->provider_accepts_change_sets( $provider )
+			? $provider( $request, $data, $change_sets )
+			: $provider( $request, $data );
+
+		if ( ! $result instanceof OfflinePullCursorAdvanceRepositoryResult ) {
+			throw new InvalidArgumentException( 'Offline pull cursor advance provider must return a repository result.' );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -103,6 +149,25 @@ final class OfflinePullRouteHandler {
 		}
 
 		return $change_sets;
+	}
+
+	/**
+	 * @param callable $provider Cursor advance provider.
+	 */
+	private function provider_accepts_change_sets( callable $provider ): bool {
+		try {
+			if ( is_array( $provider ) ) {
+				$reflection = new ReflectionMethod( $provider[0], (string) $provider[1] );
+			} elseif ( is_object( $provider ) && ! $provider instanceof Closure ) {
+				$reflection = new ReflectionMethod( $provider, '__invoke' );
+			} else {
+				$reflection = new ReflectionFunction( $provider );
+			}
+		} catch ( ReflectionException ) {
+			return false;
+		}
+
+		return $reflection->isVariadic() || 3 <= $reflection->getNumberOfParameters();
 	}
 
 	/**
@@ -130,6 +195,25 @@ final class OfflinePullRouteHandler {
 		}
 
 		return trim( (string) ( $this->server_time_provider )() );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function ready_meta( ?OfflinePullCursorAdvanceRepositoryResult $cursor_advance ): array {
+		$cursor_advanced = null !== $cursor_advance && $cursor_advance->is_advanced();
+
+		return array(
+			'query_deferred'                   => true,
+			'cursor_advance_deferred'          => ! $cursor_advanced,
+			'write_deferred'                   => ! $cursor_advanced,
+			'route_still_gated'                => true,
+			'cursor_advance_attempted'         => null !== $cursor_advance,
+			'cursor_advance_status'            => null !== $cursor_advance ? $cursor_advance->status() : 'deferred',
+			'cursor_advance_rows_affected'     => null !== $cursor_advance ? $cursor_advance->rows_affected() : 0,
+			'cursor_advance_audit'             => null !== $cursor_advance ? $cursor_advance->audit_payload() : array(),
+			'default_route_execution_deferred' => true,
+		);
 	}
 
 	/**

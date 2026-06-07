@@ -181,6 +181,9 @@
   provider composition for registered-device header resolution, explicit cursor
   repository invocation, missing authorization before writes, and missing
   change-set rejection after context lookup.
+- Local unit coverage now includes opt-in pull handler cursor advancement
+  orchestration for default deferral, successful explicit advancement metadata,
+  rejected cursor results, invalid provider returns, and readiness reporting.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

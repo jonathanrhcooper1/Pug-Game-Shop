@@ -100,6 +100,9 @@ explicit and route-connected cursor execution remains disabled.
 Route-aware pull cursor advancement now resolves registered-device headers
 before planning and invoking that repository, but it remains an explicitly
 injected boundary and default route execution stays deferred.
+Opt-in pull handler cursor advancement fails closed on rejected cursor results
+or invalid provider returns, so staging cannot silently send pull data when an
+explicit cursor write path rejects.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.

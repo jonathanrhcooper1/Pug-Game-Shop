@@ -78,6 +78,9 @@
 - Version `0.105.0` adds route-aware pull cursor advancement provider
   composition over the existing cursor planner and repository. No WordPress
   schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.106.0` adds opt-in pull handler cursor advancement orchestration
+  over existing cursor provider/repository contracts. No WordPress schema,
+  SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 
