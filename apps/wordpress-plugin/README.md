@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.150.0`
+Version: `0.151.0`
 
 ## Implemented Features
 
@@ -139,6 +139,9 @@ Version: `0.150.0`
 - POS/payment fee snapshot repository readiness metadata in parser-only route
   validation and dependency health/admin status while repository execution
   remains deferred from default route callbacks.
+- Explicit staged POS/payment fee snapshot route handler for repository-backed
+  read tests, with normalized fee rows, repository audit metadata, and default
+  route registration still disabled.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

@@ -218,5 +218,8 @@ Before major database migrations:
 - POS/payment fee snapshot repository readiness appears in parser-only route
   validation and dependency health/admin status, but default route callbacks
   still do not invoke the repository or return fee rows.
+- An explicit staged POS/payment fee snapshot route handler can be invoked in
+  controlled tests to return repository-backed fee rows and audit metadata.
+  The default route factory remains parser-only and unregistered.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

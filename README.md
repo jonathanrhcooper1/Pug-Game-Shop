@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.150.0`
+Version: `0.151.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -129,6 +129,9 @@ POS/payment fee snapshot repository readiness now appears in parser-only route
 metadata and dependency health/admin status, so staging can see whether an
 explicit repository adapter was injected without calling it from default route
 callbacks.
+An explicit staged POS/payment fee snapshot route handler can now be injected
+for controlled repository-backed reads, returning normalized fee rows and audit
+metadata while keeping the default route factory parser-only and unregistered.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

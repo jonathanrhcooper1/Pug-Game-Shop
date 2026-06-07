@@ -3,6 +3,75 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Fee Snapshot Route Handler
+
+### What Changed
+
+- Added an explicit staged POS/payment fee snapshot route handler for
+  repository-backed read tests.
+- The handler plans safe fee snapshot filters, calls the repository only when
+  directly constructed/injected, returns normalized fee rows with repository
+  audit metadata, and fails closed on invalid queries or repository rejection.
+- Added unit coverage for successful handler reads, invalid query rejection
+  before repository calls, and repository failure rejection.
+- Updated project, plugin, and offline app package versions to `0.151.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Phase 8 needs an explicit route-handler boundary for staging tests before default
+route registration can safely expose fee snapshot reads. This revision proves
+the repository-backed read response shape while leaving the default route
+factory parser-only and unregistered.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentFeeSnapshotRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentFeeSnapshotRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentFeeSnapshotRouteHandlerTest` coverage for explicit
+  repository-backed reads, invalid query rejection before repository calls, and
+  repository failure rejection.
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit staged fee snapshot route
+  handler and keep fee snapshot reads at repository-adapter tests only.
+- No database rollback is required because no schema migration, default route
+  registration, default route-connected read execution, write path, provider
+  capture, provider inventory write service, webhook processing, or
+  WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and default route-connected POS/payment
+  reads and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Fee Snapshot Repository Readiness
 
 ### What Changed

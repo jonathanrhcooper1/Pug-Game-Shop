@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.151.0] - 2026-06-07
+
+### Added
+
+- Explicit staged POS/payment fee snapshot route handler for repository-backed
+  read tests.
+- Unit coverage for successful handler reads, invalid query rejection before
+  repository calls, and repository failure rejection.
+
+### Not Added
+
+- Default POS/payment route registration, default route-connected fee snapshot
+  reads, fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.150.0] - 2026-06-07
 
 ### Added

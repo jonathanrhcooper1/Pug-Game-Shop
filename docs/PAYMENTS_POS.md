@@ -381,6 +381,13 @@ fee snapshot repository readiness. A staged route handler can show that an
 explicit repository adapter was injected, but default route callbacks continue
 to return deferred read metadata and do not call `$wpdb`.
 
+An explicit staged fee snapshot route handler can now call the repository when
+constructed directly for tests or future staging injection. It returns
+normalized fee rows plus repository audit metadata, rejects invalid filters
+before repository calls, and fails closed on repository rejection. The default
+route dependency factory still uses parser-only callbacks and registers no
+POS/payment fee snapshot routes.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

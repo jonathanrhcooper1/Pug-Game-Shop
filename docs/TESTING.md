@@ -534,6 +534,9 @@
   readiness metadata, proving an injected repository adapter is reported in
   parser-only route/dependency status but is not called from default route
   validation.
+- Local unit coverage now includes an explicit staged POS/payment fee snapshot
+  route handler for repository-backed reads, invalid query rejection before
+  repository calls, and repository failure rejection.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.
