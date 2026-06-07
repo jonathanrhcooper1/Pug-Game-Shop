@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.150.0] - 2026-06-07
+
+### Added
+
+- POS/payment fee snapshot repository readiness metadata in parser-only route
+  validation responses and dependency health/admin status.
+- Unit coverage proving an injected fee snapshot repository adapter is
+  reported as staged while default route validation does not call `$wpdb`.
+
+### Not Added
+
+- Live POS/payment route registration, route-connected fee snapshot reads,
+  fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.149.0] - 2026-06-07
 
 ### Added

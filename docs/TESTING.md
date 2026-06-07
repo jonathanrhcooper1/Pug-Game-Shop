@@ -530,6 +530,10 @@
   rejection before reads, table-prefix mismatch rejection, database failure
   auditing, and malformed row rejection while route-connected reads remain
   deferred.
+- Local unit coverage now includes POS/payment fee snapshot repository
+  readiness metadata, proving an injected repository adapter is reported in
+  parser-only route/dependency status but is not called from default route
+  validation.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

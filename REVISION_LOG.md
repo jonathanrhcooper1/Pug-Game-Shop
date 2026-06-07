@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Fee Snapshot Repository Readiness
+
+### What Changed
+
+- Added POS/payment fee snapshot repository readiness metadata to parser-only
+  fee snapshot route validation responses.
+- Added POS/payment dependency health/admin status fields for parser validation
+  readiness, fee snapshot query planner/builder readiness, and staged fee
+  snapshot repository adapter readiness.
+- Added unit coverage proving an injected repository adapter is reported as
+  staged while route validation keeps repository execution deferred and does
+  not call `$wpdb`.
+- Updated project, plugin, and offline app package versions to `0.150.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Staging needs visibility into whether the fee snapshot read adapter is
+available before any live route-connected reads are enabled. This revision
+surfaces that readiness without changing the default parser-only route
+behavior or executing database reads from route callbacks.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteValidationHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentFeeSnapshotRepositoryReadinessTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentFeeSnapshotRepositoryReadinessTest` coverage for injected
+  repository readiness metadata and proof that parser-only route validation
+  does not call the staged `$wpdb` repository adapter.
+
+### Rollback Notes
+
+- Revert this revision to remove fee snapshot repository readiness metadata
+  from parser-only route validation and dependency health/admin status.
+- No database rollback is required because no schema migration, route
+  registration, route-connected read execution, write path, provider capture,
+  provider inventory write service, webhook processing, or WooCommerce gateway
+  capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment reads
+  and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Fee Snapshot Repository Adapter
 
 ### What Changed

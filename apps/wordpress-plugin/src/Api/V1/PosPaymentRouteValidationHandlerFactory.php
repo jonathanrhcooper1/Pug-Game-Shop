@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Payments\PosPaymentFeeSnapshotQueryBuilder;
 use TCGStorePlatform\Payments\PosPaymentFeeSnapshotQueryPlanner;
+use TCGStorePlatform\Payments\PosPaymentFeeSnapshotRepository;
 use TCGStorePlatform\Payments\PosPaymentLogPlan;
 use TCGStorePlatform\Payments\PosPaymentLogPlanner;
 
@@ -16,17 +17,20 @@ final class PosPaymentRouteValidationHandlerFactory {
 	private PosPaymentLogPlanner $log_planner;
 	private PosPaymentFeeSnapshotQueryPlanner $fee_snapshot_query_planner;
 	private PosPaymentFeeSnapshotQueryBuilder $fee_snapshot_query_builder;
+	private ?PosPaymentFeeSnapshotRepository $fee_snapshot_repository;
 	private string $table_prefix;
 
 	public function __construct(
 		?PosPaymentLogPlanner $log_planner = null,
 		?PosPaymentFeeSnapshotQueryPlanner $fee_snapshot_query_planner = null,
 		?PosPaymentFeeSnapshotQueryBuilder $fee_snapshot_query_builder = null,
-		string $table_prefix = 'wp_'
+		string $table_prefix = 'wp_',
+		?PosPaymentFeeSnapshotRepository $fee_snapshot_repository = null
 	) {
 		$this->log_planner                 = $log_planner ?? new PosPaymentLogPlanner();
 		$this->fee_snapshot_query_planner  = $fee_snapshot_query_planner ?? new PosPaymentFeeSnapshotQueryPlanner();
 		$this->fee_snapshot_query_builder  = $fee_snapshot_query_builder ?? new PosPaymentFeeSnapshotQueryBuilder();
+		$this->fee_snapshot_repository     = $fee_snapshot_repository;
 		$this->table_prefix                = $table_prefix;
 	}
 
@@ -43,6 +47,23 @@ final class PosPaymentRouteValidationHandlerFactory {
 			'receive_payment_provider_webhook'     => fn ( OfflineRestRequestData $data ): array => $this->receive_payment_provider_webhook( $data ),
 			'list_payment_fee_snapshots'           => fn ( OfflineRestRequestData $data ): array => $this->list_payment_fee_snapshots( $data ),
 			'create_payment_fee_snapshot'          => fn ( OfflineRestRequestData $data ): array => $this->create_payment_fee_snapshot( $data ),
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function readiness_summary(): array {
+		return array(
+			'parser_validation_factory_ready'                  => true,
+			'fee_snapshot_query_planner_ready'                 => method_exists( PosPaymentFeeSnapshotQueryPlanner::class, 'plan' ),
+			'fee_snapshot_query_builder_ready'                 => method_exists( PosPaymentFeeSnapshotQueryBuilder::class, 'build' ),
+			'fee_snapshot_repository_configured'               => null !== $this->fee_snapshot_repository,
+			'fee_snapshot_repository_adapter_ready'            => null !== $this->fee_snapshot_repository,
+			'fee_snapshot_repository_deferred'                 => true,
+			'fee_snapshot_route_connected_reads_deferred'      => true,
+			'fee_snapshot_route_connected_writes_deferred'     => true,
+			'fee_snapshot_repository_execution_requires_route' => false,
 		);
 	}
 
@@ -199,8 +220,12 @@ final class PosPaymentRouteValidationHandlerFactory {
 				'fee_snapshot_read_query'       => $query_plan->query_contract(),
 				'fee_snapshot_sql_ready'        => true,
 				'fee_snapshot_sql_prepare_args' => $query_build_plan->prepare_arg_count(),
+				'fee_snapshot_repository_configured' => null !== $this->fee_snapshot_repository,
+				'fee_snapshot_repository_adapter_ready' => null !== $this->fee_snapshot_repository,
+				'fee_snapshot_repository_deferred' => true,
 				'read_deferred'                 => true,
 				'fee_snapshot_read_deferred'    => true,
+				'route_connected_reads_deferred' => true,
 			),
 			200
 		);

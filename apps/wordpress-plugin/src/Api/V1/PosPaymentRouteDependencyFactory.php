@@ -93,7 +93,7 @@ final class PosPaymentRouteDependencyFactory {
 	 */
 	public function handlers(): array {
 		$handlers = array() === $this->handlers
-			? ( $this->validation_handler_factory ?? new PosPaymentRouteValidationHandlerFactory() )->handlers()
+			? $this->validation_handler_factory()->handlers()
 			: $this->handlers;
 
 		return array_intersect_key(
@@ -113,6 +113,7 @@ final class PosPaymentRouteDependencyFactory {
 		$route_contracts         = PosPaymentRouteContracts::route_contracts();
 		$route_plans            = $this->registration_planner()->planned_registration_args( $route_contracts );
 		$permission_callbacks   = $this->permission_callback_factory()->callbacks_for_contracts( $route_contracts );
+		$validation_summary     = $this->validation_handler_factory()->readiness_summary();
 		$capability_route_keys  = array_keys( PosPaymentRoutePermissionCallbackFactory::capability_map( $route_contracts ) );
 		$webhook_route_keys     = PosPaymentRoutePermissionCallbackFactory::webhook_route_keys( $route_contracts );
 		$handler_keys           = array_keys( $this->handlers() );
@@ -157,6 +158,13 @@ final class PosPaymentRouteDependencyFactory {
 			'registration_planner_ready'                      => method_exists( PosPaymentRouteRegistrationPlanner::class, 'planned_registration_args' ),
 			'registrar_ready'                                 => method_exists( PosPaymentRouteRegistrar::class, 'register_enabled_routes' ),
 			'bootstrapper_ready'                              => method_exists( PosPaymentRouteBootstrapper::class, 'bootstrap_current_routes' ),
+			'parser_validation_factory_ready'                 => true === ( $validation_summary['parser_validation_factory_ready'] ?? false ),
+			'fee_snapshot_query_planner_ready'                => true === ( $validation_summary['fee_snapshot_query_planner_ready'] ?? false ),
+			'fee_snapshot_query_builder_ready'                => true === ( $validation_summary['fee_snapshot_query_builder_ready'] ?? false ),
+			'fee_snapshot_repository_configured'              => true === ( $validation_summary['fee_snapshot_repository_configured'] ?? false ),
+			'fee_snapshot_repository_adapter_ready'           => true === ( $validation_summary['fee_snapshot_repository_adapter_ready'] ?? false ),
+			'fee_snapshot_repository_deferred'                => true,
+			'fee_snapshot_route_connected_reads_deferred'     => true,
 			'planned_route_count'                             => count( $route_plans ),
 			'registerable_route_count'                        => count( $registerable_route_keys ),
 			'registerable_route_keys'                         => $registerable_route_keys,
@@ -170,6 +178,14 @@ final class PosPaymentRouteDependencyFactory {
 			'route_connected_writes_ready'                    => false,
 			'configuration_issues'                            => array_values( array_unique( $issues ) ),
 		);
+	}
+
+	private function validation_handler_factory(): PosPaymentRouteValidationHandlerFactory {
+		if ( null === $this->validation_handler_factory ) {
+			$this->validation_handler_factory = new PosPaymentRouteValidationHandlerFactory();
+		}
+
+		return $this->validation_handler_factory;
 	}
 
 	/**

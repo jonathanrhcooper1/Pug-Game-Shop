@@ -36,12 +36,13 @@ final class PosPaymentRouteDependencyStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'handlers %d / %d; permissions %d / %d; webhook verifier %s; registrar %s; bootstrapper %s; routes deferred; writes deferred',
+				'handlers %d / %d; permissions %d / %d; webhook verifier %s; fee repo %s; registrar %s; bootstrapper %s; routes deferred; reads deferred; writes deferred',
 				(int) ( $payload['controller_handler_count'] ?? 0 ),
 				(int) ( $payload['route_contract_count'] ?? 0 ),
 				(int) ( $payload['permission_callback_count'] ?? 0 ),
 				(int) ( $payload['route_contract_count'] ?? 0 ),
 				true === ( $payload['webhook_signature_verifier_configured'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['fee_snapshot_repository_adapter_ready'] ?? false ) ? 'staged' : 'deferred',
 				true === ( $payload['registrar_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['bootstrapper_ready'] ?? false ) ? 'ready' : 'not ready'
 			),

@@ -215,5 +215,8 @@ Before major database migrations:
   reads in explicit `$wpdb` staging tests with row normalization, prefix
   guards, and failure audits while route-connected reads, writes, capture,
   inventory updates, gateway capture, and route registration remain disabled.
+- POS/payment fee snapshot repository readiness appears in parser-only route
+  validation and dependency health/admin status, but default route callbacks
+  still do not invoke the repository or return fee rows.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

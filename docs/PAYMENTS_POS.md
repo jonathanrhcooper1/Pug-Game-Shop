@@ -376,6 +376,11 @@ the repository, and fee-snapshot writes, REST route registration, provider
 capture, provider inventory changes, and WooCommerce gateway capture remain
 disabled.
 
+Parser-only route validation and POS/payment dependency status now also report
+fee snapshot repository readiness. A staged route handler can show that an
+explicit repository adapter was injected, but default route callbacks continue
+to return deferred read metadata and do not call `$wpdb`.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the
