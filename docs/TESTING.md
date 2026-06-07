@@ -200,6 +200,10 @@
 - Local unit coverage now includes registration service pairing-authorization
   enforcement, proving authorized pairing can proceed and denied pairing stops
   before credential issuance or repository writes.
+- Local unit coverage now includes staged registration route-handler pairing
+  authorization responses, proving denied pairing returns 403 through the
+  controller boundary, skips credential/repository paths, and omits raw pairing
+  codes from response and audit payloads.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

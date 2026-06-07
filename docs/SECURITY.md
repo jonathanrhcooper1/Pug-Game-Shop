@@ -108,6 +108,9 @@ full hashes.
 When injected into the offline device registration service, that authorization
 must pass before one-time credentials are issued or the registration repository
 is called.
+The injected registration route handler surfaces the same denial as a 403
+response without credential data, skips repository writes, and keeps raw
+pairing codes out of both response and handler audit payloads.
 
 ## Secret Storage
 

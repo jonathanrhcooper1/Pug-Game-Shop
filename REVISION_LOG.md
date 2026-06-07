@@ -3,6 +3,75 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Registration Route Pairing Authorization Response
+
+### What Changed
+
+- Added a distinct
+  `offline_device_pairing_authorization_denied` response code for injected
+  offline device registration route-handler responses with status `403`.
+- Added route-handler/controller coverage proving denied pairing authorization
+  stops before credential issuance or registration repository writes.
+- Updated project, plugin, and offline app package versions to `0.87.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The service-level defense-in-depth path can already reject unauthorized
+pairing before writes. This revision proves that the staged route-handler
+boundary reports that denial clearly through the controller response, giving
+future staging tests a stable 403 contract before live route registration is
+considered.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDeviceRegistrationRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Route-handler/controller test proving denied pairing authorization returns
+  `403` with `offline_device_pairing_authorization_denied`, omits credential
+  data, skips repository writes, and keeps raw pairing codes out of response
+  and audit payloads.
+
+### Rollback Notes
+
+- Revert this revision to restore the generic registration rejection response
+  code for staged route-handler pairing authorization denials.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Registration Service Pairing Authorization
 
 ### What Changed

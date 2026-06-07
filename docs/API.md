@@ -54,8 +54,11 @@ before repository writes are attempted.
 An opt-in route handler adapter now maps that service to the offline
 controller's `register_offline_device` callback when explicitly injected,
 returning stable response envelopes and retaining secret-free audits while the
-default controller remains fail-closed. Live pairing route wiring remains
-disabled. An opt-in pairing permission callback adapter can now validate the
+default controller remains fail-closed. Pairing authorization denials now map
+to the distinct staged response code
+`offline_device_pairing_authorization_denied` with status `403` before
+credential or repository paths run. Live pairing route wiring remains disabled.
+An opt-in pairing permission callback adapter can now validate the
 pairing request body and delegate manager/pairing authorization to an injected
 authorizer for staged route tests while the default permission factory still
 keeps the pairing route locked.
@@ -373,7 +376,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.86.0",
+  "app_version": "0.87.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -411,9 +414,10 @@ full hashes are intentionally omitted.
 
 The registration service can consume the same authorizer as a defense-in-depth
 stage. When the supplied authorizer denies a parsed pairing request, the
-service returns `offline_device_registration_rejected` with status code `403`,
-keeps the one-time credential payload empty, and skips the registration
-repository.
+service and injected route handler return status code `403`, keep the
+one-time credential payload empty, skip the registration repository, and expose
+`offline_device_pairing_authorization_denied` at the route-handler response
+boundary.
 
 When the future route is enabled, the planned successful response body is:
 

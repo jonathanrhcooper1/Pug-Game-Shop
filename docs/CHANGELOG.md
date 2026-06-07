@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.87.0] - 2026-06-06
+
+### Added
+
+- Staged offline device registration route-handler mapping for pairing
+  authorization denials.
+- A distinct `offline_device_pairing_authorization_denied` response code for
+  injected route-handler responses with status `403`.
+- Unit coverage proving denied pairing policies skip credential issuance and
+  repository writes through the controller boundary without leaking raw pairing
+  codes.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.86.0] - 2026-06-06
 
 ### Added

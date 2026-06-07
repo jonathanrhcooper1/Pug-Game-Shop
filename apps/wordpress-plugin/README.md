@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.86.0`
+Version: `0.87.0`
 
 ## Implemented Features
 
@@ -122,6 +122,9 @@ Version: `0.86.0`
 - Optional offline device registration service authorization enforcement that
   rejects denied pairing policies before issuing credentials or calling the
   registration repository.
+- Staged offline device registration route-handler mapping for pairing
+  authorization denials, including a distinct 403 response code while live
+  route registration remains disabled.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

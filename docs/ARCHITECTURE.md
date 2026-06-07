@@ -217,7 +217,9 @@ staging service calls can fail before repository writes when pairing policy is
 denied. An opt-in route handler adapter can
 now dispatch that service through the offline controller's
 `register_offline_device` callback for staged tests while default controller
-behavior and route registration remain disabled. An opt-in pairing permission
+behavior and route registration remain disabled. It now reports denied pairing
+authorization as a distinct 403 response code before credential or repository
+paths run. An opt-in pairing permission
 callback adapter can now validate pairing request bodies and call an injected
 manager/pairing authorizer, but the default permission factory still leaves
 the pairing route locked. The first plan-only authorizer for that callback now

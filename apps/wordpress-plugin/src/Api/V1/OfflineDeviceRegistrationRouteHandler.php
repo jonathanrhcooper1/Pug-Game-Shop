@@ -69,6 +69,10 @@ final class OfflineDeviceRegistrationRouteHandler {
 			return 'offline_device_registration_invalid';
 		}
 
+		if ( 403 === $result->status_code() ) {
+			return 'offline_device_pairing_authorization_denied';
+		}
+
 		return 'offline_device_registration_rejected';
 	}
 }

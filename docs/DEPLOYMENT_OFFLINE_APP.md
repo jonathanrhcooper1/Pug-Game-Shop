@@ -344,6 +344,11 @@ consume that same authorizer before credential issuance. Denied pairing
 policies return a rejected service result before repository writes, while live
 route registration and production token issuance remain disabled.
 
+Version `0.87.0` maps those denied pairing policies through the staged
+registration route handler as `offline_device_pairing_authorization_denied`
+with status `403`. The route remains opt-in/injected for staging tests only;
+live route registration and production token issuance remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

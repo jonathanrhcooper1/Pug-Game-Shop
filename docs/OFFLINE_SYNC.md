@@ -166,6 +166,10 @@ pairing-code fingerprint in audits.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
+The injected registration route handler now maps that denial to
+`offline_device_pairing_authorization_denied` with status `403`, giving future
+staging tests a stable controller response while live route registration
+remains disabled.
 The planned offline route registration planner now turns those contracts into
 disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.
