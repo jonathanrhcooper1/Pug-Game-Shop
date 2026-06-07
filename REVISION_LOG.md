@@ -3,6 +3,98 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Route Permission Callbacks
+
+### What Changed
+
+- Added `PosPaymentCapabilityPermissionCallbackAdapter`,
+  `PosPaymentWebhookPermissionCallbackAdapter`, and
+  `PosPaymentRoutePermissionCallbackFactory`.
+- Added manager/system-only `manage_pos` to the capability registry and bumped
+  the role version so existing installs can receive the capability during
+  `RoleManager::maybe_install()`.
+- POS/payment route readiness can now consume an injected permission callback
+  factory and report callback counts, callback keys, and webhook verifier
+  readiness.
+- Added unit coverage for POS/payment capability maps, webhook route keys,
+  fail-closed missing checkers, capability authorization, webhook signature
+  verifier behavior, exception handling, and readiness integration.
+- Updated WordPress smoke coverage to assert role version `2`, manager
+  `manage_pos`, and staff `manage_pos` exclusion.
+- Updated project, plugin, and offline app package versions to `0.138.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The planned POS/payment routes need a permission boundary before any future
+route registration work. This revision adds that boundary while preserving the
+current fail-closed behavior: no configured checker means no capability
+callback, and no injected verifier means no webhook callback.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentCapabilityPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentWebhookPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Auth/CapabilityRegistry.php`
+- `apps/wordpress-plugin/src/Auth/RoleManager.php`
+- `apps/wordpress-plugin/tests/Unit/CapabilityRegistryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability version target is now `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRoutePermissionCallbackFactoryTest` coverage for capability maps,
+  webhook route keys, missing-checker fail-closed behavior, capability
+  authorization, webhook verifier behavior, and exception fail-closed behavior.
+- `CapabilityRegistryTest` coverage for manager/system-only `manage_pos`.
+- `PosPaymentRouteReadinessPlannerTest` coverage for injected permission
+  factory readiness.
+- WordPress smoke role assertions for role version `2`, manager `manage_pos`,
+  and staff `manage_pos` exclusion.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment permission callback adapters,
+  factory, role-capability updates, readiness integration, tests, and
+  version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- If this revision has run on staging and rollback removes `manage_pos`, rerun
+  role installation from the restored code or remove `manage_pos` manually from
+  manager/admin/shop-manager roles during the rollback checklist.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Route Readiness Diagnostics
 
 ### What Changed

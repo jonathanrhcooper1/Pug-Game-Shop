@@ -182,6 +182,10 @@
   readiness diagnostics for planned webhook, event ingestion, reconciliation,
   conflict, and fee-snapshot routes, proving the routes stay unregistered while
   blocked reasons and provider/capture deferrals remain visible.
+- Local unit and WordPress smoke coverage now include POS/payment route
+  permission callbacks, manager/system-only `manage_pos`, webhook verifier
+  fail-closed behavior, and readiness metadata for injected permission
+  callbacks.
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.

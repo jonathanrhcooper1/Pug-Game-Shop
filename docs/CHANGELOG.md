@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.138.0] - 2026-06-06
+
+### Added
+
+- POS/payment fail-closed permission callback adapters and factory for
+  capability-based staff/admin routes and signed provider webhook routes.
+- Manager/system-only `manage_pos` capability, with role-version upgrade to add
+  the capability to existing manager/admin/shop-manager installs while keeping
+  staff roles excluded.
+- POS/payment route readiness metadata for injected permission callback counts,
+  callback keys, and webhook verifier readiness.
+- Unit and WordPress smoke coverage for POS/payment capabilities, callback
+  authorization, webhook verifier failures, and fail-closed defaults.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.137.0] - 2026-06-06
 
 ### Added

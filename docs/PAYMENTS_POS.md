@@ -223,6 +223,21 @@ By default every route remains unregistered. The readiness layer is
 inspection-only and does not call providers, capture payments, mutate inventory,
 register webhooks, or enable WooCommerce gateway capture.
 
+## Route Permissions
+
+Planned POS/payment routes now have fail-closed permission callback adapters:
+
+- `manage_pos` for POS event ingestion, status lookup, and reconciliation runs.
+- `resolve_conflicts` for reconciliation conflict review and resolution.
+- `manage_settings` for payment fee snapshot review and configuration.
+- `signed_provider_webhook` for payment provider webhook intake.
+
+`manage_pos` is installed for manager, system, administrator, and shop-manager
+roles, and is intentionally excluded from staff roles. Capability callbacks use
+WordPress `current_user_can()` when available or an injected checker in tests.
+Webhook callbacks require an injected signature verifier; without one, the
+factory returns no webhook permission callback and readiness stays blocked.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

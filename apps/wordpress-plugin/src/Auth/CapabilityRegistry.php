@@ -26,6 +26,7 @@ final class CapabilityRegistry {
 			'approve_buylist',
 			'manage_events',
 			'sync_topdeck',
+			'manage_pos',
 			'manage_settings',
 			'view_reports',
 			'resolve_conflicts',

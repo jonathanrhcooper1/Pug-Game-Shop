@@ -9,7 +9,7 @@ namespace TCGStorePlatform\Auth;
 
 final class RoleManager {
 	public const VERSION_OPTION = 'tcg_store_platform_role_version';
-	private const VERSION       = 1;
+	private const VERSION       = 2;
 
 	/**
 	 * Install custom roles and add platform capabilities to trusted core roles.

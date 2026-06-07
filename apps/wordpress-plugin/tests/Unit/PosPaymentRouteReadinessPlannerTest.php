@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\PosPaymentRouteReadinessPlanner;
+use TCGStorePlatform\Api\V1\PosPaymentRoutePermissionCallbackFactory;
 use TCGStorePlatform\Tests\TestCase;
 
 final class PosPaymentRouteReadinessPlannerTest extends TestCase {
@@ -139,6 +140,37 @@ final class PosPaymentRouteReadinessPlannerTest extends TestCase {
 		$this->assert_same( 'ready', $ready['status'] );
 		$this->assert_true(
 			$ready['route_registration_summary']['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['should_register']
+		);
+	}
+
+	public function test_readiness_can_use_injected_permission_factory_for_callbacks_and_webhook_verifier(): void {
+		$plan = ( new PosPaymentRouteReadinessPlanner(
+			new PosPaymentRoutePermissionCallbackFactory(
+				static fn (): bool => true,
+				static fn (): bool => true
+			)
+		) )->plan(
+			true,
+			array( $this->future_webhook_contract() ),
+			array(
+				'route_handlers_configured'             => true,
+				'route_transaction_executor_configured' => true,
+			)
+		);
+
+		$this->assert_same( 'ready', $plan['status'] );
+		$this->assert_true( $plan['permission_callbacks_configured'] );
+		$this->assert_same( 1, $plan['permission_callback_count'] );
+		$this->assert_same(
+			array( 'POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)' ),
+			$plan['permission_callback_keys']
+		);
+		$this->assert_true( $plan['webhook_verifier_configured'] );
+		$this->assert_true(
+			$plan['route_registration_summary']['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['permission_callback_ready']
+		);
+		$this->assert_true(
+			$plan['route_registration_summary']['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['webhook_verifier_ready']
 		);
 	}
 

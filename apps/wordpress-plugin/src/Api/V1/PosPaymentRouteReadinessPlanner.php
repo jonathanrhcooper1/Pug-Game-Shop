@@ -20,6 +20,12 @@ final class PosPaymentRouteReadinessPlanner {
 		'woocommerce_gateway_capture_enabled'    => false,
 	);
 
+	private ?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory;
+
+	public function __construct( ?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory = null ) {
+		$this->permission_callback_factory = $permission_callback_factory;
+	}
+
 	/**
 	 * @param null|list<array<string, mixed>> $route_contracts Planned route contracts.
 	 * @param array<string, mixed>            $dependency_overrides Dependency readiness overrides for tests/staging.
@@ -30,9 +36,14 @@ final class PosPaymentRouteReadinessPlanner {
 		?array $route_contracts = null,
 		array $dependency_overrides = array()
 	): array {
-		$dependencies   = $this->dependencies( $dependency_overrides );
-		$route_contracts = $route_contracts ?? PosPaymentRouteContracts::route_contracts();
-		$route_plans    = array();
+		$route_contracts      = $route_contracts ?? PosPaymentRouteContracts::route_contracts();
+		$permission_callbacks = $this->permission_callbacks( $route_contracts );
+		$dependencies         = $this->dependencies(
+			$dependency_overrides,
+			$route_contracts,
+			$permission_callbacks
+		);
+		$route_plans          = array();
 
 		foreach ( $route_contracts as $route_contract ) {
 			$route_plan = $this->route_plan( $route_contract, $dependencies );
@@ -66,6 +77,8 @@ final class PosPaymentRouteReadinessPlanner {
 			'route_registration_summary'              => $route_plans,
 			'route_handlers_configured'               => true === $dependencies['route_handlers_configured'],
 			'permission_callbacks_configured'         => true === $dependencies['permission_callbacks_configured'],
+			'permission_callback_count'               => count( $permission_callbacks ),
+			'permission_callback_keys'                => array_keys( $permission_callbacks ),
 			'route_transaction_executor_configured'   => true === $dependencies['route_transaction_executor_configured'],
 			'webhook_verifier_configured'             => true === $dependencies['webhook_verifier_configured'],
 			'sandbox_provider_credentials_configured' => true === $dependencies['sandbox_provider_credentials_configured'],
@@ -243,9 +256,15 @@ final class PosPaymentRouteReadinessPlanner {
 
 	/**
 	 * @param array<string, mixed> $dependency_overrides Dependency readiness overrides.
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @param array<string, callable>    $permission_callbacks Resolved permission callbacks.
 	 * @return array<string, bool>
 	 */
-	private function dependencies( array $dependency_overrides ): array {
+	private function dependencies(
+		array $dependency_overrides,
+		array $route_contracts,
+		array $permission_callbacks
+	): array {
 		$dependencies = self::DEFAULT_DEPENDENCIES;
 
 		foreach ( $dependency_overrides as $key => $value ) {
@@ -254,7 +273,58 @@ final class PosPaymentRouteReadinessPlanner {
 			}
 		}
 
+		if (
+			! array_key_exists( 'permission_callbacks_configured', $dependency_overrides )
+			&& null !== $this->permission_callback_factory
+		) {
+			$dependencies['permission_callbacks_configured'] = count( $permission_callbacks ) === count( $route_contracts );
+		}
+
+		if (
+			! array_key_exists( 'webhook_verifier_configured', $dependency_overrides )
+			&& null !== $this->permission_callback_factory
+		) {
+			$dependencies['webhook_verifier_configured'] = $this->webhook_callbacks_ready(
+				$route_contracts,
+				$permission_callbacks
+			);
+		}
+
 		return $dependencies;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @return array<string, callable>
+	 */
+	private function permission_callbacks( array $route_contracts ): array {
+		if ( null === $this->permission_callback_factory ) {
+			return array();
+		}
+
+		return $this->permission_callback_factory->callbacks_for_contracts( $route_contracts );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @param array<string, callable>    $permission_callbacks Resolved permission callbacks.
+	 */
+	private function webhook_callbacks_ready( array $route_contracts, array $permission_callbacks ): bool {
+		$webhook_route_seen = false;
+
+		foreach ( $route_contracts as $route_contract ) {
+			if ( 'signed_provider_webhook' !== strtolower( $this->route_value( $route_contract, 'permission' ) ) ) {
+				continue;
+			}
+
+			$webhook_route_seen = true;
+
+			if ( ! isset( $permission_callbacks[ PosPaymentRoutePermissionCallbackFactory::route_key( $route_contract ) ] ) ) {
+				return false;
+			}
+		}
+
+		return $webhook_route_seen;
 	}
 
 	/**

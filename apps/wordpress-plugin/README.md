@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.137.0`
+Version: `0.138.0`
 
 ## Implemented Features
 
@@ -103,6 +103,9 @@ Version: `0.137.0`
   diagnostics, keeping all POS/payment routes unregistered and provider
   capture, provider inventory writes, webhooks, and WooCommerce gateway capture
   deferred by default.
+- POS/payment fail-closed permission callback factory and adapters for
+  manager/system `manage_pos`, conflict-resolution/settings capabilities, and
+  signed provider webhooks, with `manage_pos` kept out of staff roles.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

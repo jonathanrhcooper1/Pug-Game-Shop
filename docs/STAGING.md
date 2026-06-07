@@ -176,5 +176,8 @@ Before major database migrations:
   with zero registerable routes by default, missing route-handler and
   permission-callback dependencies, webhook verifier deferral, and provider
   capture/inventory/gateway deferrals.
+- Manager/system roles receive `manage_pos`; staff roles do not. POS/payment
+  permission callbacks remain fail-closed until capability checks and webhook
+  verifiers are explicitly configured for staging route tests.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

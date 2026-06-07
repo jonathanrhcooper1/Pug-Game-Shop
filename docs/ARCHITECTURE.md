@@ -206,6 +206,11 @@ health/admin diagnostics with planned/registerable route counts, missing
 handler and permission callback state, transaction executor gating, webhook
 verification gating, and provider capture/inventory/gateway deferrals. This is
 inspection-only; it does not register routes or call provider/payment services.
+The POS/payment permission callback factory now provides fail-closed capability
+callbacks for `manage_pos`, `resolve_conflicts`, and `manage_settings`, plus a
+signed-webhook callback that only exists when a verifier is injected. The
+`manage_pos` capability is manager/system only and does not grant staff live
+route access.
 
 ## System Diagram
 

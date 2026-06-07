@@ -88,10 +88,10 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.137.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.138.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
-$assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
+$assert( 2 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
 
 $tables = array_merge(
 	FoundationSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
@@ -121,8 +121,10 @@ $assert( null !== $manager, 'Manager role was not created.' );
 $assert( null !== $staff, 'Staff role was not created.' );
 $assert( null !== $kiosk, 'Kiosk role was not created.' );
 $assert( $manager->has_cap( 'override_minimum_price' ), 'Manager role cannot override minimum price.' );
+$assert( $manager->has_cap( 'manage_pos' ), 'Manager role cannot manage POS/payment staging.' );
 $assert( $staff->has_cap( 'view_inventory' ), 'Staff role cannot view inventory.' );
 $assert( ! $staff->has_cap( 'override_minimum_price' ), 'Staff role can override minimum price.' );
+$assert( ! $staff->has_cap( 'manage_pos' ), 'Staff role can manage POS/payment staging.' );
 $assert(
 	$has_hook_callback( 'rest_api_init', OfflineRouteBootstrapper::class, 'bootstrap_current_routes', 20 ),
 	'Offline route bootstrapper was not registered on rest_api_init.'
@@ -147,7 +149,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.137.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.138.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
