@@ -307,9 +307,13 @@ final class AdminMenu {
 		echo '</th></tr></thead><tbody>';
 
 		foreach ( FeatureFlagRegistry::definitions() as $flag => $definition ) {
+			$module_state = FeatureFlags::is_available( $flag )
+				? ( FeatureFlags::is_enabled( $flag ) ? 'enabled' : 'disabled' )
+				: 'unavailable';
+
 			echo '<tr><td>' . esc_html( $definition['label'] ) . '</td>';
 			echo '<td>' . esc_html( (string) $definition['phase'] ) . '</td>';
-			echo '<td>' . esc_html( FeatureFlags::is_enabled( $flag ) ? 'enabled' : 'disabled' ) . '</td></tr>';
+			echo '<td>' . esc_html( $module_state ) . '</td></tr>';
 		}
 
 		echo '</tbody></table>';

@@ -372,8 +372,9 @@ Inventory route runtime settings can now clear the staff `/inventory/search`
 registration and read deferrals for staging composition only. The default
 settings keep staff search disabled, public search disabled, writes disabled,
 WooCommerce projection disabled, Square projection disabled, and label actions
-disabled. The `inventory_pricing` feature flag also remains unavailable by
-default, so runtime settings alone do not register production routes.
+disabled. The `inventory_pricing` feature flag is available only in local,
+development, and staging environments and remains unavailable in production, so
+runtime settings alone do not register production routes.
 Inventory item creation now has plan-only persistence coverage that can shape a
 validated intake request into a schema-aligned prepared insert template. A
 staged route handler factory can explicitly compose the parser, persistence
@@ -390,10 +391,12 @@ blocked/ready summary for staging review. WordPress smoke coverage asserts the
 inventory search and create routes remain unregistered by default.
 The inventory route bootstrapper is now wired to WordPress `rest_api_init`, but
 authenticated health reports `inventory_route_bootstrap.status = blocked` by
-default because the `inventory_pricing` feature flag is unavailable and no
-inventory route is registerable. The bootstrap summary exposes per-route
-registration, read/write deferral, permission, handler, WooCommerce projection,
-Square projection, and label-print flags for staging review.
+default because the `inventory_pricing` feature flag is off in non-production
+environments and unavailable in production. No inventory route is registerable
+until staging explicitly enables the feature flag and route runtime gates. The
+bootstrap summary exposes per-route registration, read/write deferral,
+permission, handler, WooCommerce projection, Square projection, and label-print
+flags for staging review.
 
 ### Pricing And Overrides
 

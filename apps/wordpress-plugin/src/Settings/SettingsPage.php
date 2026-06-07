@@ -294,12 +294,13 @@ final class SettingsPage {
 		echo '</th></tr></thead><tbody>';
 
 		foreach ( FeatureFlagRegistry::definitions() as $flag => $definition ) {
-			$enabled = ! empty( $values[ $flag ] ) && $definition['available'];
+			$available = FeatureFlags::is_available( $flag );
+			$enabled   = ! empty( $values[ $flag ] ) && $available;
 
 			echo '<tr><td>' . esc_html( $definition['label'] ) . '</td>';
 			echo '<td>' . esc_html( (string) $definition['phase'] ) . '</td><td>';
 
-			if ( $definition['available'] ) {
+			if ( $available ) {
 				if ( 'core' === $flag ) {
 					echo '<input type="hidden" name="'
 						. esc_attr( FeatureFlags::OPTION_NAME )

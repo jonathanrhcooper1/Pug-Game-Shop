@@ -62,6 +62,8 @@ staging database acceptance remains pending.
   staff `/inventory/search` route enablement, with writes, public reads,
   WooCommerce projection, Square projection, and label actions still disabled
   by default.
+- Environment-aware `inventory_pricing` feature flag availability for local,
+  development, and staging environments while production remains unavailable.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

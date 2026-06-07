@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Feature Flag Staging Availability
+
+### What Changed
+
+- Added environment-aware feature flag availability so future modules can be
+  available outside production without becoming production-available.
+- Made `inventory_pricing` available only for `local`, `development`, and
+  `staging` environments while it remains unavailable in `production`.
+- Updated feature flag sanitization, admin module status, settings UI, and
+  authenticated health output to use runtime environment availability.
+- Kept the default inventory/pricing flag value disabled, so staging still
+  requires an explicit staff/admin enablement step before routes can register.
+
+### Why
+
+Staging needs to turn on the inventory/pricing module for controlled staff
+search testing, but production must remain locked until manual deployment
+approval and post-staging acceptance. This revision creates that separation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlags.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Production still reports `inventory_pricing` as unavailable, and no inventory
+  routes are enabled by default.
+
+### Tests Added
+
+- Unit coverage proving `inventory_pricing` is available in local,
+  development, and staging environments only.
+- Unit coverage proving unavailable modules are sanitized off in production
+  while inventory/pricing can be retained for staging settings.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 746 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 503 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist` on touched PHP files:
+  passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return `inventory_pricing` to globally unavailable.
+- No database rollback is required. If staging enabled `inventory_pricing`,
+  disable it or set `WP_ENVIRONMENT_TYPE=production` before rollback.
+
 ## 2026-06-07 - Inventory Staff Search Runtime Gates
 
 ### What Changed

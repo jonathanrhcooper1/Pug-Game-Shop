@@ -30,13 +30,34 @@ final class FeatureFlags {
 	public static function is_enabled( string $flag ): bool {
 		$definitions = FeatureFlagRegistry::definitions();
 
-		if ( ! isset( $definitions[ $flag ] ) || ! $definitions[ $flag ]['available'] ) {
+		if ( ! isset( $definitions[ $flag ] ) || ! self::is_available( $flag ) ) {
 			return false;
 		}
 
 		$values = get_option( self::OPTION_NAME, self::defaults() );
 
 		return ! empty( $values[ $flag ] );
+	}
+
+	public static function is_available( string $flag, ?string $environment_type = null ): bool {
+		$definitions = FeatureFlagRegistry::definitions();
+
+		if ( ! isset( $definitions[ $flag ] ) || true !== $definitions[ $flag ]['available'] ) {
+			return false;
+		}
+
+		$allowed_environments = $definitions[ $flag ]['available_environments'] ?? array(
+			'local',
+			'development',
+			'staging',
+			'production',
+		);
+
+		return in_array(
+			self::environment_type( $environment_type ),
+			$allowed_environments,
+			true
+		);
 	}
 
 	/**
@@ -60,7 +81,7 @@ final class FeatureFlags {
 	 * @param mixed $value Submitted value.
 	 * @return array<string, bool>
 	 */
-	public static function sanitize( mixed $value ): array {
+	public static function sanitize( mixed $value, ?string $environment_type = null ): array {
 		$value     = is_array( $value ) ? $value : array();
 		$sanitized = array();
 
@@ -70,10 +91,31 @@ final class FeatureFlags {
 				continue;
 			}
 
-			$sanitized[ $flag ] = $definition['available'] && ! empty( $value[ $flag ] );
+			$sanitized[ $flag ] = self::is_available( $flag, $environment_type )
+				&& ! empty( $value[ $flag ] );
 		}
 
 		return $sanitized;
+	}
+
+	private static function environment_type( ?string $environment_type = null ): string {
+		$environment_type = null !== $environment_type ? $environment_type : self::current_environment_type();
+		$environment_type = strtolower( trim( $environment_type ) );
+		$allowed          = array( 'local', 'development', 'staging', 'production' );
+
+		return in_array( $environment_type, $allowed, true ) ? $environment_type : 'production';
+	}
+
+	private static function current_environment_type(): string {
+		if ( function_exists( 'wp_get_environment_type' ) ) {
+			return (string) wp_get_environment_type();
+		}
+
+		$environment_type = getenv( 'WP_ENVIRONMENT_TYPE' );
+
+		return is_string( $environment_type ) && '' !== trim( $environment_type )
+			? $environment_type
+			: 'production';
 	}
 
 	private function __construct() {

@@ -140,7 +140,7 @@ final class HealthController {
 		foreach ( FeatureFlagRegistry::definitions() as $flag => $definition ) {
 			$features[ $flag ] = array(
 				'enabled'   => FeatureFlags::is_enabled( $flag ),
-				'available' => $definition['available'],
+				'available' => FeatureFlags::is_available( $flag ),
 				'phase'     => $definition['phase'],
 			);
 		}

@@ -43,6 +43,9 @@ All notable changes follow Semantic Versioning.
   configuration for enabling the staff `/inventory/search` route in staging
   without enabling writes, public reads, Square writes, or WooCommerce writes
   by default.
+- Environment-aware feature flag availability that allows inventory/pricing
+  only in local, development, and staging environments while production remains
+  unavailable by default.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

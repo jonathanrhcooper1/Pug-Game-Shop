@@ -72,6 +72,9 @@
   staging-only staff search route contract configuration, and dependency
   factory proof that the staff search route registers only when the runtime
   contract, handler, and permission dependencies are explicitly ready.
+- Local unit coverage now includes environment-aware feature flag availability,
+  proving inventory/pricing can be enabled for local/development/staging while
+  production sanitizes it off.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit
