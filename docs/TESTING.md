@@ -510,6 +510,10 @@
   dependency status for controller handlers, permission callbacks, webhook
   verifier, registrar/bootstrapper readiness, injected handler dispatch, and
   default route/write deferral.
+- Local unit coverage now includes parser-only POS/payment route validation
+  handlers for transaction plan ingestion, provider webhooks, event status,
+  reconciliation runs, conflicts, and fee snapshots while writes/capture remain
+  deferred.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

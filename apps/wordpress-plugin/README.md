@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.144.0`
+Version: `0.145.0`
 
 ## Implemented Features
 
@@ -121,6 +121,9 @@ Version: `0.144.0`
 - POS/payment route dependency health/admin status for controller handlers,
   permission callbacks, webhook verifier, registrar, and bootstrapper
   readiness while live writes stay deferred.
+- Parser-only POS/payment route validation handlers for event ingestion,
+  status, reconciliation, conflict, webhook, and fee-snapshot callbacks while
+  writes/capture remain deferred.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

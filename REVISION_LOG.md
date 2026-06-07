@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Route Validation Handlers
+
+### What Changed
+
+- Added `PosPaymentRouteValidationHandlerFactory` with parser-only handlers for
+  every planned POS/payment route callback.
+- POS event ingestion and provider webhook handlers validate normalized
+  transaction plans through `PosPaymentLogPlanner` while deferring log writes.
+- Status, reconciliation, conflict, and fee-snapshot handlers validate request
+  shape while keeping reads/writes deferred.
+- `PosPaymentRouteDependencyFactory` now uses parser-only validation handlers
+  by default, so controller handler readiness is staged without exposing live
+  routes.
+- Updated WordPress smoke coverage to expect staged parser-only controller
+  handlers while POS/payment dependencies remain blocked by missing webhook
+  verifier and route/write deferrals.
+- Added unit coverage for every parser-only handler, default dependency
+  handler wiring, and deferred validation responses.
+- Updated project, plugin, and offline app package versions to `0.145.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The POS/payment dependency status can now report controller readiness. This
+revision gives that controller safe parser-only handlers so staging can inspect
+request validation paths before any route is registered or any write/capture
+path is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteValidationHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteValidationHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteValidationHandlerFactoryTest` coverage for every planned
+  handler, valid/invalid transaction plans, provider webhook route parameters,
+  status and conflict reads, reconciliation/conflict write validation, and
+  fee-snapshot validation.
+- Updated dependency factory/status tests for parser-only default handler
+  readiness.
+- WordPress smoke coverage for staged parser-only POS/payment handlers.
+
+### Rollback Notes
+
+- Revert this revision to remove parser-only POS/payment route validation
+  handlers, dependency readiness changes, tests, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler execution, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Route Dependency Status
 
 ### What Changed

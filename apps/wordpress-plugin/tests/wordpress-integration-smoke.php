@@ -89,7 +89,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.144.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.145.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 2 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -154,7 +154,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.144.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.145.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -305,8 +305,8 @@ $assert( true === ( $data['pos_payment_route_bootstrap']['registration_deferred'
 $assert( 'blocked' === ( $data['pos_payment_route_dependencies']['status'] ?? null ), 'POS/payment route dependencies should remain blocked.' );
 $assert( false === ( $data['pos_payment_route_dependencies']['configured'] ?? null ), 'POS/payment route dependencies should not be fully configured by default.' );
 $assert( 8 === (int) ( $data['pos_payment_route_dependencies']['route_contract_count'] ?? 0 ), 'POS/payment route dependencies should report planned route contracts.' );
-$assert( 0 === (int) ( $data['pos_payment_route_dependencies']['controller_handler_count'] ?? -1 ), 'POS/payment route handlers should remain unconfigured by default.' );
-$assert( false === ( $data['pos_payment_route_dependencies']['controller_handlers_configured'] ?? null ), 'POS/payment controller handlers should remain unconfigured by default.' );
+$assert( 8 === (int) ( $data['pos_payment_route_dependencies']['controller_handler_count'] ?? -1 ), 'POS/payment parser-only handlers should be staged by default.' );
+$assert( true === ( $data['pos_payment_route_dependencies']['controller_handlers_configured'] ?? null ), 'POS/payment parser-only handlers should be configured by default.' );
 $assert( true === ( $data['pos_payment_route_dependencies']['capability_permission_callbacks_configured'] ?? null ), 'POS/payment capability callbacks should be available inside WordPress.' );
 $assert( false === ( $data['pos_payment_route_dependencies']['webhook_signature_verifier_configured'] ?? null ), 'POS/payment webhook verifier should remain unconfigured by default.' );
 $assert( true === ( $data['pos_payment_route_dependencies']['registrar_ready'] ?? null ), 'POS/payment registrar dependency should be staged ready.' );

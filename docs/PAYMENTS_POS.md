@@ -326,9 +326,16 @@ verify lifecycle wiring while POS/payment REST routes remain absent.
 POS/payment route dependency status reports whether the staged route controller
 has injected handlers, whether capability permission callbacks can be built,
 whether a webhook signature verifier is configured, and whether the guarded
-registrar/bootstrapper classes are available. Current defaults keep controller
-handlers and the webhook verifier unconfigured, route registration deferred,
-and route-connected writes deferred.
+registrar/bootstrapper classes are available. Current defaults stage
+parser-only controller handlers while keeping the webhook verifier
+unconfigured, route registration deferred, and route-connected writes deferred.
+
+Parser-only POS/payment route validation handlers now cover event ingestion,
+event status, reconciliation runs, conflict review/resolution, provider
+webhooks, and fee-snapshot requests. They validate request shapes and staged
+log plans, but all log writes, reconciliation writes, provider capture,
+provider inventory writes, gateway capture, and live route registration remain
+deferred.
 
 ## GoDaddy Payments
 

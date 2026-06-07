@@ -34,7 +34,8 @@ final class PosPaymentRouteDependencyFactory {
 		private array $handlers = array(),
 		?callable $capability_checker = null,
 		?callable $webhook_signature_verifier = null,
-		?callable $register_route_callback = null
+		?callable $register_route_callback = null,
+		private ?PosPaymentRouteValidationHandlerFactory $validation_handler_factory = null
 	) {
 		$this->capability_checker          = $capability_checker;
 		$this->webhook_signature_verifier  = $webhook_signature_verifier;
@@ -91,8 +92,12 @@ final class PosPaymentRouteDependencyFactory {
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
 	public function handlers(): array {
+		$handlers = array() === $this->handlers
+			? ( $this->validation_handler_factory ?? new PosPaymentRouteValidationHandlerFactory() )->handlers()
+			: $this->handlers;
+
 		return array_intersect_key(
-			array_filter( $this->handlers, 'is_callable' ),
+			array_filter( $handlers, 'is_callable' ),
 			array_flip( self::HANDLER_CALLBACKS )
 		);
 	}

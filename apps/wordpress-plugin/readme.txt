@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.144.0
+Stable tag: 0.145.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -336,6 +336,8 @@ Phase 8.17 wires the POS/payment route bootstrapper to `rest_api_init` while
 keeping all current POS/payment routes unregistered by default.
 Phase 8.18 adds POS/payment route dependency health/admin status while keeping
 route registration and live writes deferred.
+Phase 8.19 adds parser-only POS/payment route validation handlers while
+keeping route registration and live writes deferred.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
 checkpoint advancement.
 Phase 3.4 adds ScryDex reference-card persistence planning for inserts, updates,
@@ -351,6 +353,17 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.145.0 =
+
+* Added parser-only POS/payment route validation handlers for every planned
+  controller callback.
+* Updated POS/payment route dependency assembly so default controller handlers
+  are staged while route registration and writes remain deferred.
+* Added unit and WordPress smoke coverage for parser-only POS/payment handler
+  readiness and validation responses.
+* Kept current POS/payment route registration, webhook processing, provider
+  capture, provider inventory writes, and WooCommerce gateway capture disabled.
 
 = 0.144.0 =
 

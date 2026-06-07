@@ -196,5 +196,9 @@ Before major database migrations:
 - POS/payment route dependency status reports controller handler, permission
   callback, webhook verifier, registrar, and bootstrapper readiness while
   keeping route registration and route-connected writes deferred by default.
+- Parser-only POS/payment validation handlers are staged for every planned
+  callback; use them for request-shape checks only until route registration,
+  writes, capture, inventory updates, and gateway capture are explicitly
+  enabled in staging.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.145.0] - 2026-06-07
+
+### Added
+
+- Parser-only POS/payment route validation handler factory covering POS event
+  ingestion/status, reconciliation run, conflict list/resolution, provider
+  webhook, and payment fee snapshot callbacks.
+- Default POS/payment route dependency assembly now uses the parser-only
+  handlers so controller callbacks are staged while route registration and
+  route-connected writes remain deferred.
+- Unit and WordPress smoke coverage for staged parser-only handlers, request
+  validation, deferred log writes, deferred reconciliation/conflict writes,
+  and default dependency readiness.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.144.0] - 2026-06-07
 
 ### Added

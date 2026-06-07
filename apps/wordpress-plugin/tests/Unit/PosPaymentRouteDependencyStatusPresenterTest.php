@@ -17,8 +17,8 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 
 		$this->assert_same( 'blocked', $payload['status'] );
 		$this->assert_false( $payload['configured'] );
-		$this->assert_same( 0, $payload['controller_handler_count'] );
-		$this->assert_false( $payload['controller_handlers_configured'] );
+		$this->assert_same( 8, $payload['controller_handler_count'] );
+		$this->assert_true( $payload['controller_handlers_configured'] );
 		$this->assert_false( $payload['capability_permission_callbacks_configured'] );
 		$this->assert_false( $payload['webhook_signature_verifier_configured'] );
 		$this->assert_true( $payload['registrar_ready'] );
@@ -31,7 +31,7 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$summary = ( new PosPaymentRouteDependencyStatusPresenter() )->admin_summary();
 
 		$this->assert_same( 'blocked', $summary['status'] );
-		$this->assert_contains( 'handlers 0 / 8', $summary['value'] );
+		$this->assert_contains( 'handlers 8 / 8', $summary['value'] );
 		$this->assert_contains( 'permissions 0 / 8', $summary['value'] );
 		$this->assert_contains( 'webhook verifier not ready', $summary['value'] );
 		$this->assert_contains( 'registrar ready', $summary['value'] );

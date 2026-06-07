@@ -236,6 +236,10 @@ POS/payment route dependency status now reports controller handler,
 permission callback, webhook verifier, registrar, and bootstrapper readiness
 separately from route exposure. This keeps staging diagnostics explicit while
 route registration and route-connected writes remain deferred.
+The default POS/payment controller now receives parser-only validation handlers
+for every planned callback, allowing request-shape checks and POS/payment log
+planning diagnostics without enabling route registration, transaction
+execution, provider capture, inventory writes, or WooCommerce gateway capture.
 
 ## System Diagram
 

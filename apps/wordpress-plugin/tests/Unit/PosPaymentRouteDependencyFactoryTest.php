@@ -20,8 +20,8 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_false( $summary['configured'] );
 		$this->assert_true( $summary['route_dependency_factory_ready'] );
 		$this->assert_same( 8, $summary['route_contract_count'] );
-		$this->assert_same( 0, $summary['controller_handler_count'] );
-		$this->assert_false( $summary['controller_handlers_configured'] );
+		$this->assert_same( 8, $summary['controller_handler_count'] );
+		$this->assert_true( $summary['controller_handlers_configured'] );
 		$this->assert_same( 0, $summary['permission_callback_count'] );
 		$this->assert_same( 7, $summary['capability_permission_route_count'] );
 		$this->assert_false( $summary['capability_permission_callbacks_configured'] );
@@ -42,7 +42,6 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_false( $summary['route_connected_writes_ready'] );
 		$this->assert_same(
 			array(
-				'pos_payment_route_handlers_not_configured',
 				'pos_payment_capability_permission_callbacks_not_configured',
 				'pos_payment_webhook_signature_verifier_not_configured',
 			),
@@ -76,6 +75,20 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $factory->controller()->has_handler( 'receive_payment_provider_webhook' ) );
 		$this->assert_same( 0, $factory->registrar()->register_enabled_routes() );
 		$this->assert_same( 'gated', $factory->bootstrapper()->bootstrap( true )['status'] );
+	}
+
+	public function test_default_controller_uses_parser_only_validation_handlers(): void {
+		$response = ( new PosPaymentRouteDependencyFactory() )->controller()->run_pos_reconciliation(
+			array(
+				'body' => array(
+					'provider' => 'square-sandbox',
+				),
+			)
+		);
+
+		$this->assert_same( 'validated', $response['status'] );
+		$this->assert_true( $response['data']['reconciliation_deferred'] );
+		$this->assert_true( $response['data']['route_connected_writes_deferred'] );
 	}
 
 	public function test_factory_controller_dispatches_injected_handler_without_live_writes(): void {
