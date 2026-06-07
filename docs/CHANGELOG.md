@@ -118,6 +118,10 @@ All notable changes follow Semantic Versioning.
   including simple-product create/update payloads, stockout updates for mapped
   unavailable cards, serialized metadata, currency/quantity validation, and
   explicit deferred WooCommerce/Square write metadata.
+- Guarded WooCommerce product projection executor that blocks by default,
+  requires explicit staging execution plus an injected product writer, records
+  audit-safe execution results, and keeps Square inventory writes, payment
+  capture, network calls, and production writes deferred.
 - Square inventory projection planning for exact serialized cards, including
   Square catalog variation payloads, physical-count payloads, scan-identity
   validation, zero-count updates for unavailable mapped cards, and deferred

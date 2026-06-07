@@ -656,6 +656,10 @@
   skips, scan identity and price validation, store-currency mismatch blocking,
   single-quantity enforcement, serialized metadata, and deferred WooCommerce
   write metadata.
+- Local unit coverage now includes guarded WooCommerce product projection
+  execution, covering default execution lockout, skipped/failed projection
+  handling, explicit staging writer execution, writer failure rejection, and
+  audit-safe deferral metadata.
 - WordPress integration staging smoke coverage now asserts staged inventory
   create responses expose WooCommerce product and Square inventory projection
   contracts while keeping external writes and network calls deferred.

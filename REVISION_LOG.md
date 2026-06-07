@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Guarded WooCommerce Product Projection Execution
+
+### What Changed
+
+- Added a guarded WooCommerce product projection executor for previously
+  planned exact-card product operations.
+- Added an execution result contract that reports blocked, executed, rejected,
+  and skipped outcomes with audit-safe metadata.
+- Default execution remains blocked unless staging code explicitly enables the
+  executor and injects a product-writer adapter.
+- Writer failures are caught and reported without exposing raw product payloads
+  as confirmed writes.
+
+### Why
+
+The plugin can now plan WooCommerce product payloads for exact serialized card
+inventory, but staging also needs a safe handoff point before live product
+writes are allowed. This revision creates that handoff while preserving the
+current no-live-writes default for local, staging review, and production.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutor.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionExecutorTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for default WooCommerce projection execution lockout.
+- Unit coverage for skipped and failed projection plans.
+- Unit coverage for explicit writer-backed staging execution.
+- Unit coverage for writer failure rejection and audit-safe deferral metadata.
+
+### Tests Run
+
+- `php -l` on the new WooCommerce executor/result classes and unit test:
+  passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductProjectionExecutionResult.php src\WooCommerce\InventoryProductProjectionExecutor.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 779 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the guarded WooCommerce projection executor,
+  execution result contract, and unit tests.
+- No schema rollback or WooCommerce cleanup is required unless a future staging
+  adapter has been explicitly enabled and used to write products.
+
 ## 2026-06-07 - Inventory Workspace Projection Planning Status
 
 ### What Changed

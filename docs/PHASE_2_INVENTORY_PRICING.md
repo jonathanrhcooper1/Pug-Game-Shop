@@ -123,6 +123,10 @@ staging database acceptance remains pending.
   including available/visible simple-product create and update payloads,
   unavailable mapped-card stockout payloads, serialized inventory metadata,
   store-currency and single-quantity validation, and deferred write metadata.
+- Guarded WooCommerce product projection execution for staging-only adapter
+  handoff, including default lockout, explicit execution requirements,
+  skipped/failed projection handling, writer failure rejection, audit-safe
+  result metadata, and continued production/payment/Square deferrals.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct

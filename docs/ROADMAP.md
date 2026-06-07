@@ -26,7 +26,8 @@ persistence planning plus explicit repository adapter and staged route handler
 factory, gated inventory route registration and dependency composition,
 health/admin readiness status, bootstrapper wiring, inventory search
 planning/SQL-template contracts, explicit repository read adapter, staged route
-handler factory, and WooCommerce product projection planning implemented
+handler factory, WooCommerce product projection planning, and guarded
+WooCommerce projection execution implemented
 
 Deliver reference/inventory/location tables, intake, barcode generation, label
 contracts, required minimum price, pricing policy, movement log, price log, and
