@@ -3,6 +3,102 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Route-Aware Provider Handoff
+
+### What Changed
+
+- Added `OfflinePullRouteChangeSetProvider` to resolve registered-device
+  headers, validate pull device context, and invoke the pull change-set provider
+  for explicitly injected route handlers.
+- Extended `OfflinePullRouteHandler` so injected change-set providers can opt in
+  to receiving normalized `OfflineRestRequestData` alongside the parsed pull
+  request.
+- Exposed staged route-aware pull provider readiness in registered-device sync
+  handler health and admin summaries while keeping default route-connected reads
+  deferred.
+- Added WordPress smoke assertions for route-aware provider readiness and
+  default route-connected read deferral metadata.
+- Added unit coverage for route-aware provider success, missing authorization
+  rejection before database reads, mismatched device context fail-closed
+  behavior, and handler request-data forwarding.
+- Updated project, plugin, and offline app package versions to `0.101.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The pull stack now has request parsing, trusted-device context planning, query
+planning, repository reads, and provider composition. This revision adds the
+next route-safe handoff: an explicitly injected provider can use normalized
+route headers to authorize the device and fetch change sets, while the default
+route factory still leaves route registration, default route-connected reads,
+cursor advancement, tombstone reads, and route-connected writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePullRouteChangeSetProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePullRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteChangeSetProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Route-aware provider coverage for successful registered-device header
+  resolution and provider fetches through the pull handler.
+- Fail-closed coverage for missing authorization before device/change queries
+  and mismatched request/device context before change queries.
+- Handler coverage proving data-aware providers receive normalized request
+  headers.
+- Sync handler readiness and WordPress smoke coverage for route-aware provider
+  readiness and default route-connected read deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove route-aware pull provider handoff and its
+  health/admin readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, default route-connected reads, cursor advancement,
+  tombstone reads, queue replay, route registration, and route-connected
+  database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pull Device Context Planning
 
 ### What Changed

@@ -219,6 +219,11 @@ authorized registered-device permission resolution against the pull request and
 produces the offline device ID/table prefix context required by the provider,
 while route-connected handoff, cursor advancement, tombstone reads, route
 registration, and writes remain deferred.
+Version `0.101.0` adds route-aware pull provider handoff. Explicitly injected
+pull handlers can now pass normalized request headers into a provider that
+resolves registered-device authorization and fetches change sets, while
+default route-connected reads, cursor advancement, tombstone reads, route
+registration, and writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

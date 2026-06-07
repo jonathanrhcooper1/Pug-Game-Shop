@@ -69,6 +69,41 @@ final class OfflinePullRouteHandlerTest extends TestCase {
 		$this->assert_true( $response['meta']['cursor_advance_deferred'] );
 	}
 
+	public function test_handler_passes_request_data_to_route_aware_provider(): void {
+		$provider_headers = array();
+		$handler          = new OfflinePullRouteHandler(
+			null,
+			null,
+			static function ( OfflinePullRequest $request, OfflineRestRequestData $data ) use ( &$provider_headers ): array {
+				$provider_headers = $data->headers();
+
+				return array(
+					'inventory' => array(
+						'cursor'   => 'inv-route-aware-01',
+						'has_more' => false,
+						'data'     => array(),
+					),
+				);
+			},
+			static fn (): string => '2026-06-06T20:03:00Z'
+		);
+		$response         = $handler->handle(
+			new OfflineRestRequestData(
+				$this->pull_payload(),
+				array(),
+				array(),
+				array(
+					'authorization' => 'Bearer test-device-token',
+				)
+			)
+		);
+
+		$this->assert_same( 'ready', $response['status'] );
+		$this->assert_same( 'inv-route-aware-01', $response['data']['domains']['inventory']['cursor'] );
+		$this->assert_same( 'Bearer test-device-token', $provider_headers['authorization'] );
+		$this->assert_true( $response['meta']['write_deferred'] );
+	}
+
 	public function test_handler_rejects_invalid_pull_payload_before_provider(): void {
 		$called  = false;
 		$handler = new OfflinePullRouteHandler(

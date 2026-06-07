@@ -415,6 +415,12 @@ an authorized registered-device permission resolution matches a pull request
 before constructing the provider, while route-connected handoff and live route
 registration remain disabled.
 
+Version `0.101.0` adds route-aware pull provider handoff. Staging can inject a
+provider-backed pull handler that resolves registered-device headers and fetches
+change sets without session writes or cursor advancement, while default
+route-connected reads, tombstone reads, route registration, and
+route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

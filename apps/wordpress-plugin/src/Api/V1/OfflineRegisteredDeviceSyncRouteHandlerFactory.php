@@ -51,16 +51,19 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
-		$handlers              = $this->handlers();
-		$issues                = array();
-		$pull_query_domains    = OfflinePullChangeQueryPlanner::supported_domains();
-		$pull_sql_ready        = array() !== $pull_query_domains
+		$handlers                  = $this->handlers();
+		$issues                    = array();
+		$pull_query_domains        = OfflinePullChangeQueryPlanner::supported_domains();
+		$pull_sql_ready            = array() !== $pull_query_domains
 			&& method_exists( OfflinePullChangeQueryBuilder::class, 'build' );
-		$pull_repository_ready = $pull_sql_ready
+		$pull_repository_ready     = $pull_sql_ready
 			&& method_exists( OfflinePullChangeRepository::class, 'fetch' );
-		$pull_provider_ready   = $pull_repository_ready
+		$pull_provider_ready       = $pull_repository_ready
 			&& method_exists( OfflinePullChangeSetProvider::class, 'fetch' );
-		$pull_context_ready    = method_exists( OfflinePullDeviceContextPlanner::class, 'plan' );
+		$pull_context_ready        = method_exists( OfflinePullDeviceContextPlanner::class, 'plan' );
+		$pull_route_provider_ready = $pull_provider_ready
+			&& $pull_context_ready
+			&& method_exists( OfflinePullRouteChangeSetProvider::class, '__invoke' );
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -81,10 +84,12 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_query_sql_template_ready'       => $pull_sql_ready,
 			'pull_change_repository_ready'               => $pull_repository_ready,
 			'pull_change_set_provider_ready'             => $pull_provider_ready,
+			'pull_route_change_set_provider_ready'       => $pull_route_provider_ready,
 			'pull_change_query_domains'                  => $pull_query_domains,
 			'pull_change_query_domain_count'             => count( $pull_query_domains ),
 			'pull_change_query_context_deferred'         => true,
 			'pull_device_context_route_deferred'         => true,
+			'pull_route_connected_reads_deferred'        => true,
 			'pull_change_query_cursor_filter_deferred'   => true,
 			'pull_change_query_execution_deferred'       => true,
 			'pull_change_query_cursor_advance_deferred'  => true,

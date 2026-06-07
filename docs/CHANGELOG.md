@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.101.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullRouteChangeSetProvider`, a route-aware provider adapter for
+  explicitly injected pull handlers that resolves registered-device headers,
+  validates pull device context, and fetches provider change sets.
+- Handler support for data-aware change-set providers that need normalized REST
+  request headers in addition to the parsed pull request.
+- Health/admin and WordPress smoke readiness metadata for the staged route-aware
+  pull provider while default route-connected reads remain deferred.
+- Unit coverage proving authorized header resolution fetches change sets, missing
+  authorization stops before database reads, mismatched context fails closed, and
+  session writes/cursor advancement remain deferred.
+
+### Not Added
+
+- No default live offline route wiring is enabled. Default route-connected
+  reads, cursor advancement, tombstone repository reads, queue replay, route
+  registration, and route-connected database mutation remain disabled.
+
 ## [0.100.0] - 2026-06-06
 
 ### Added

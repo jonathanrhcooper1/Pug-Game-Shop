@@ -64,6 +64,8 @@
   WordPress schema, SQLite schema, migration order, or rollback target changes.
 - Version `0.100.0` adds offline pull device context planning. No WordPress
   schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.101.0` adds route-aware offline pull provider handoff. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

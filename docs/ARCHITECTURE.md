@@ -53,6 +53,10 @@ default route wiring still stays deferred.
 The pull device context planner now validates authorized registered-device
 permission resolutions into the exact device ID, offline device database ID,
 and table prefix needed by that provider, while route handoff remains deferred.
+The route-aware pull change-set provider can now be injected into the pull
+handler to resolve registered-device headers and fetch provider change sets;
+default route-connected reads, cursor advancement, tombstone reads, route
+registration, and writes remain deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

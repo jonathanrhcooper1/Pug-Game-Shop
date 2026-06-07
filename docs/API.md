@@ -161,6 +161,11 @@ Version `0.100.0` adds pull device context planning. Authorized
 registered-device permission resolutions can now be validated against pull
 requests and converted into the offline device ID/table prefix context needed
 by the staged provider, while route-connected handoff remains disabled.
+Version `0.101.0` adds route-aware pull provider handoff for explicitly
+injected handlers. The handler can pass normalized request headers to a
+provider that resolves registered-device authorization and fetches change sets,
+while default route-connected reads, cursor advancement, tombstone reads, route
+registration, and writes remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -427,7 +432,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.100.0",
+  "app_version": "0.101.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

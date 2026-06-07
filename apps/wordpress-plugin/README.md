@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.100.0`
+Version: `0.101.0`
 
 ## Implemented Features
 
@@ -163,6 +163,10 @@ Version: `0.100.0`
 - Offline pull device context planning for authorized registered-device
   permission resolutions, request/device matching, offline device ID and table
   prefix handoff, and secret-free audits while route wiring stays deferred.
+- Offline pull route-aware provider handoff for explicitly injected pull
+  handlers that can resolve registered-device headers and fetch change sets
+  while default route-connected reads, cursor advancement, tombstone reads,
+  route registration, and route-connected writes stay deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

@@ -162,6 +162,10 @@
   authorized permission resolutions, request/device matching, required
   `offline_pull` scope, invalid table prefixes, and provider construction from
   valid context.
+- Local unit coverage now includes route-aware offline pull provider handoff
+  for registered-device header resolution, request-data forwarding,
+  provider-backed change reads, missing-authorization rejection before reads,
+  mismatched device context fail-closed behavior, and deferred session writes.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

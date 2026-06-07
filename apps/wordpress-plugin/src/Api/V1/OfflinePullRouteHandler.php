@@ -7,7 +7,11 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use Closure;
 use InvalidArgumentException;
+use ReflectionException;
+use ReflectionFunction;
+use ReflectionMethod;
 use TCGStorePlatform\Offline\OfflinePullRequest;
 use TCGStorePlatform\Offline\OfflinePullRequestParser;
 use TCGStorePlatform\Offline\OfflinePullResponsePresenter;
@@ -49,7 +53,7 @@ final class OfflinePullRouteHandler {
 		try {
 			$response = $this->presenter()->present(
 				$request,
-				$this->change_sets( $request ),
+				$this->change_sets( $request, $data ),
 				$this->server_time_utc()
 			);
 		} catch ( InvalidArgumentException $exception ) {
@@ -84,18 +88,40 @@ final class OfflinePullRouteHandler {
 	/**
 	 * @return array<string, mixed>
 	 */
-	private function change_sets( OfflinePullRequest $request ): array {
+	private function change_sets( OfflinePullRequest $request, OfflineRestRequestData $data ): array {
 		if ( ! is_callable( $this->change_set_provider ) ) {
 			return array();
 		}
 
-		$change_sets = ( $this->change_set_provider )( $request );
+		$provider    = $this->change_set_provider;
+		$change_sets = $this->provider_accepts_request_data( $provider )
+			? $provider( $request, $data )
+			: $provider( $request );
 
 		if ( ! is_array( $change_sets ) ) {
 			throw new InvalidArgumentException( 'Offline pull change set provider must return an array.' );
 		}
 
 		return $change_sets;
+	}
+
+	/**
+	 * @param callable $provider Change set provider.
+	 */
+	private function provider_accepts_request_data( callable $provider ): bool {
+		try {
+			if ( is_array( $provider ) ) {
+				$reflection = new ReflectionMethod( $provider[0], (string) $provider[1] );
+			} elseif ( is_object( $provider ) && ! $provider instanceof Closure ) {
+				$reflection = new ReflectionMethod( $provider, '__invoke' );
+			} else {
+				$reflection = new ReflectionFunction( $provider );
+			}
+		} catch ( ReflectionException ) {
+			return false;
+		}
+
+		return $reflection->isVariadic() || 2 <= $reflection->getNumberOfParameters();
 	}
 
 	private function server_time_utc(): string {
