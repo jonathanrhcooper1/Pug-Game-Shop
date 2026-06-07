@@ -230,7 +230,23 @@ $assert( 1 === (int) ( $create_data['data']['price_change_log_row_count'] ?? 0 )
 $assert( false === ( $create_data['meta']['route_connected_writes_deferred'] ?? null ), 'Inventory create writes should execute in staging smoke.' );
 $assert( true === ( $create_data['meta']['woocommerce_projection_deferred'] ?? null ), 'Inventory create should keep WooCommerce projection deferred.' );
 $assert( true === ( $create_data['meta']['square_inventory_projection_deferred'] ?? null ), 'Inventory create should keep Square projection deferred.' );
+$assert( false === ( $create_data['meta']['external_projection_planning_deferred'] ?? null ), 'Inventory create should plan external projections without executing writes.' );
 $assert( true === ( $create_data['meta']['label_print_deferred'] ?? null ), 'Inventory create should keep labels deferred.' );
+$projections = $create_data['meta']['projections'] ?? null;
+$assert( is_array( $projections ), 'Inventory create should expose projection contracts.' );
+$assert( 'inventory_external_projection_plans' === ( $projections['action'] ?? null ), 'Inventory create should expose projection plan action.' );
+$assert( true === ( $projections['network_request_deferred'] ?? null ), 'Inventory create projection plans should defer network calls.' );
+$woo_projection = is_array( $projections['woocommerce_product_projection'] ?? null ) ? $projections['woocommerce_product_projection'] : array();
+$assert( 'woocommerce' === ( $woo_projection['provider'] ?? null ), 'Inventory create should expose WooCommerce projection provider.' );
+$assert( 'ready' === ( $woo_projection['status'] ?? null ), 'Inventory create WooCommerce projection should be ready.' );
+$assert( true === ( $woo_projection['woocommerce_write_deferred'] ?? null ), 'WooCommerce projection should keep product writes deferred.' );
+$woo_operations = is_array( $woo_projection['product_operations'] ?? null ) ? $woo_projection['product_operations'] : array();
+$assert( isset( $woo_operations[0] ) && is_array( $woo_operations[0] ), 'WooCommerce projection should expose a product operation.' );
+$assert( 'create_product' === ( $woo_operations[0]['operation'] ?? null ), 'WooCommerce projection should plan a product create.' );
+$assert( 'PUG-STAGE-PKM-BULBA-001' === ( $woo_operations[0]['product']['sku'] ?? null ), 'WooCommerce projection should use the created SKU.' );
+$square_projection = is_array( $projections['square_inventory_projection'] ?? null ) ? $projections['square_inventory_projection'] : array();
+$assert( 'square' === ( $square_projection['provider'] ?? null ), 'Inventory create should expose Square projection provider.' );
+$assert( true === ( $square_projection['network_request_deferred'] ?? null ), 'Square projection should keep network calls deferred.' );
 
 $created_inventory_id = (int) ( $create_data['data']['inventory_id'] ?? 0 );
 $assert( $created_inventory_id > 0, 'Inventory create response should expose a created inventory ID.' );

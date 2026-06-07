@@ -213,6 +213,19 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $response['meta']['route_connected_writes_deferred'] );
 			$this->assert_true( $response['meta']['route_registration_deferred'] );
 			$this->assert_true( $response['meta']['woocommerce_projection_deferred'] );
+			$this->assert_false( $response['meta']['external_projection_planning_deferred'] );
+			$this->assert_same( 'inventory_external_projection_plans', $response['meta']['projections']['action'] );
+			$this->assert_same( 'planned', $response['meta']['projections']['status'] );
+			$this->assert_same( 1, $response['meta']['projections']['operation_count'] );
+			$this->assert_true( $response['meta']['projections']['network_request_deferred'] );
+			$this->assert_same( 'woocommerce', $response['meta']['projections']['woocommerce_product_projection']['provider'] );
+			$this->assert_same( 'ready', $response['meta']['projections']['woocommerce_product_projection']['status'] );
+			$this->assert_same( true, $response['meta']['projections']['woocommerce_product_projection']['woocommerce_write_deferred'] );
+			$this->assert_same( 'create_product', $response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['operation'] );
+			$this->assert_same( 'PCS-PIKA-000001', $response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['product']['sku'] );
+			$this->assert_same( 'square', $response['meta']['projections']['square_inventory_projection']['provider'] );
+			$this->assert_same( true, $response['meta']['projections']['square_inventory_projection']['network_request_deferred'] );
+			$this->assert_true( in_array( 'square_location_id_required', $response['meta']['projections']['square_inventory_projection']['errors'], true ) );
 			$this->assert_same( 'inserted', $response['meta']['repository']['status'] );
 			$this->assert_true( $response['meta']['repository']['price_change_log_persisted'] );
 			$this->assert_true( $response['meta']['repository']['transaction_committed'] );
@@ -279,6 +292,9 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['table_prefix_ready'] );
 			$this->assert_false( $summary['repository_configured'] );
 			$this->assert_true( $summary['route_connected_writes_deferred'] );
+			$this->assert_true( $summary['woocommerce_projection_planner_ready'] );
+			$this->assert_true( $summary['square_inventory_projection_planner_ready'] );
+			$this->assert_true( $summary['external_projection_planning_deferred'] );
 			$this->assert_same( array(), $summary['configuration_issues'] );
 			$this->assert_same( array(), $factory->handlers() );
 			$this->assert_same( null, $factory->handler() );
@@ -297,6 +313,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['repository_configured'] );
 			$this->assert_true( $summary['route_connected_handler_ready'] );
 			$this->assert_false( $summary['route_connected_writes_deferred'] );
+			$this->assert_false( $summary['external_projection_planning_deferred'] );
 			$this->assert_true( is_callable( $handlers['create_inventory_item'] ?? null ) );
 
 			$response = $handlers['create_inventory_item'](

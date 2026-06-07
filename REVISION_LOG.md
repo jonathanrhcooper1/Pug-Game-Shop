@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Staged Inventory Create Projection Contracts
+
+### What Changed
+
+- Wired side-effect-free WooCommerce product projection planning into the staged
+  inventory create handler after successful database writes.
+- Wired side-effect-free Square inventory projection planning into the same
+  created-item response metadata.
+- Added route-handler readiness metadata for WooCommerce and Square projection
+  planner availability while preserving deferred external writes.
+- Updated WordPress staging smoke assertions to verify created inventory
+  responses expose projection contracts without executing network calls.
+
+### Why
+
+The card-management workflow needs to prove that a newly created exact card can
+be translated into WooCommerce and Square projection intent before any live
+external writes are allowed. Returning these contracts in staging responses
+makes that handoff reviewable without changing production safety posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit assertions that staged inventory create responses include WooCommerce and
+  Square projection contracts while external writes remain deferred.
+- Staging smoke assertions that REST-backed inventory creation exposes
+  projection contracts in the WordPress/WooCommerce integration environment.
+
+### Tests Run
+
+- `php -l` on the modified handler/factory and staging smoke script: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Api\V1\InventoryIntakeRouteHandler.php src\Api\V1\InventoryIntakeRouteHandlerFactory.php`
+  from `apps/wordpress-plugin`: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-staging-inventory-smoke.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 773 tests.
+- `npm.cmd run test` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove projection contracts from staged inventory
+  create response metadata and readiness summaries.
+- No schema rollback or external cleanup is required because WooCommerce,
+  Square, label, and network writes remain deferred.
+
 ## 2026-06-07 - WooCommerce Product Projection Planning
 
 ### What Changed

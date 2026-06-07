@@ -80,6 +80,9 @@ staging database acceptance remains pending.
 - WordPress integration staging smoke coverage now creates a disposable
   Bulbasaur inventory item through REST and searches it back through the staff
   inventory route while verifying the initial price-change log row.
+- Staged inventory create responses now expose side-effect-free WooCommerce
+  product and Square inventory projection contracts after successful database
+  writes, keeping external writes and network calls deferred.
 - WordPress integration migration rehearsal now rolls the disposable database
   from the current target back to schema version `1`, verifies Phase 2
   inventory/pricing tables are dropped, migrates back to the target, and

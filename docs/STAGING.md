@@ -164,6 +164,10 @@ Before major database migrations:
   `tcg_pos_sync_log` and `tcg_payment_provider_log` rows through `$wpdb`;
   route-connected writes, provider capture, provider inventory writes, and
   WooCommerce gateway capture remain disabled.
+- Staged inventory create responses expose side-effect-free WooCommerce product
+  and Square inventory projection contracts after successful database writes;
+  WooCommerce writes, Square writes, label printing, and network calls remain
+  deferred.
 - Staged POS/payment transaction execution can wrap those explicit log writes
   in begin/commit/rollback handling for tests only. Route-connected writes,
   provider capture, provider inventory writes, webhook routes, POS

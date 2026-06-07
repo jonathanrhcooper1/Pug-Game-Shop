@@ -9,14 +9,20 @@ namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Inventory\InventoryIntakeParser;
 use TCGStorePlatform\Inventory\InventoryIntakePersistencePlanner;
+use TCGStorePlatform\Inventory\InventoryIntakePersistencePlan;
+use TCGStorePlatform\Inventory\InventoryIntakeRepositoryResult;
 use TCGStorePlatform\Inventory\InventoryIntakeRepository;
+use TCGStorePlatform\Square\SquareInventoryProjectionPlanner;
+use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
 
 final class InventoryIntakeRouteHandler {
 	public function __construct(
 		private InventoryIntakeRepository $repository,
 		private ?InventoryIntakeParser $parser = null,
 		private ?InventoryIntakePersistencePlanner $persistence_planner = null,
-		private string $table_prefix = 'wp_'
+		private string $table_prefix = 'wp_',
+		private ?InventoryProductProjectionPlanner $woocommerce_projection_planner = null,
+		private ?SquareInventoryProjectionPlanner $square_projection_planner = null
 	) {
 	}
 
@@ -77,6 +83,7 @@ final class InventoryIntakeRouteHandler {
 				array(
 					'persistence' => $plan->audit_payload(),
 					'repository'  => $result->audit_payload(),
+					'projections' => $this->projection_contracts( $plan, $result ),
 				)
 			),
 		);
@@ -88,6 +95,49 @@ final class InventoryIntakeRouteHandler {
 
 	private function persistence_planner(): InventoryIntakePersistencePlanner {
 		return $this->persistence_planner ?? new InventoryIntakePersistencePlanner();
+	}
+
+	private function woocommerce_projection_planner(): InventoryProductProjectionPlanner {
+		return $this->woocommerce_projection_planner ?? new InventoryProductProjectionPlanner();
+	}
+
+	private function square_projection_planner(): SquareInventoryProjectionPlanner {
+		return $this->square_projection_planner ?? new SquareInventoryProjectionPlanner();
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function projection_contracts(
+		InventoryIntakePersistencePlan $plan,
+		InventoryIntakeRepositoryResult $result
+	): array {
+		$row = array_merge(
+			$plan->insert_row(),
+			array(
+				'inventory_id' => $result->insert_id(),
+				'quantity'     => 1,
+			)
+		);
+
+		$woocommerce = $this->woocommerce_projection_planner()->plan_row(
+			$row,
+			array(
+				'store_currency' => (string) ( $row['sale_currency'] ?? 'USD' ),
+			)
+		);
+		$square      = $this->square_projection_planner()->plan_row( $row );
+
+		return array(
+			'action'                               => 'inventory_external_projection_plans',
+			'status'                               => 'planned',
+			'woocommerce_product_projection'       => $woocommerce->projection_contract(),
+			'square_inventory_projection'          => $square->projection_contract(),
+			'woocommerce_projection_deferred'      => true,
+			'square_inventory_projection_deferred' => true,
+			'network_request_deferred'             => true,
+			'operation_count'                      => $woocommerce->operation_count() + $square->operation_count(),
+		);
 	}
 
 	private function actor_user_id( OfflineRestRequestData $data ): ?int {
@@ -110,15 +160,16 @@ final class InventoryIntakeRouteHandler {
 	 */
 	private function ready_meta(): array {
 		return array(
-			'route_connected_writes_enabled'       => true,
-			'route_connected_writes_deferred'      => false,
-			'inventory_repository_deferred'        => false,
-			'route_registration_deferred'          => true,
-			'default_route_registration_deferred'  => true,
-			'route_still_gated'                    => true,
-			'woocommerce_projection_deferred'      => true,
-			'square_inventory_projection_deferred' => true,
-			'label_print_deferred'                 => true,
+			'route_connected_writes_enabled'        => true,
+			'route_connected_writes_deferred'       => false,
+			'inventory_repository_deferred'         => false,
+			'route_registration_deferred'           => true,
+			'default_route_registration_deferred'   => true,
+			'route_still_gated'                     => true,
+			'woocommerce_projection_deferred'       => true,
+			'square_inventory_projection_deferred'  => true,
+			'external_projection_planning_deferred' => false,
+			'label_print_deferred'                  => true,
 		);
 	}
 
@@ -149,6 +200,7 @@ final class InventoryIntakeRouteHandler {
 					'route_still_gated'                    => true,
 					'woocommerce_projection_deferred'      => true,
 					'square_inventory_projection_deferred' => true,
+					'external_projection_planning_deferred' => true,
 					'label_print_deferred'                 => true,
 				),
 				$extra_meta

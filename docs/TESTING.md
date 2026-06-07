@@ -64,7 +64,8 @@
   factory composition for successful created-item responses, invalid payload
   short-circuiting, repository failure rejection, default write deferral,
   explicitly enabled repository-backed writes, initial price-log response
-  metadata, provider failures, and table prefix issues.
+  metadata, side-effect-free WooCommerce/Square projection contracts, provider
+  failures, and table prefix issues.
 - Local unit coverage now includes gated inventory route registration planning
   and registrar behavior for default-disabled routes, explicit public-read
   gating, explicit write-gate clearing, injected controller handler readiness,
@@ -652,6 +653,9 @@
   skips, scan identity and price validation, store-currency mismatch blocking,
   single-quantity enforcement, serialized metadata, and deferred WooCommerce
   write metadata.
+- WordPress integration staging smoke coverage now asserts staged inventory
+  create responses expose WooCommerce product and Square inventory projection
+  contracts while keeping external writes and network calls deferred.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

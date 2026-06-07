@@ -70,6 +70,10 @@ All notable changes follow Semantic Versioning.
 - WordPress integration staging smoke coverage that creates a disposable
   Bulbasaur inventory row through REST and searches it back through the staff
   inventory route.
+- Staged inventory create responses now include side-effect-free WooCommerce
+  product and Square inventory projection contracts after successful database
+  writes, proving external projection intent while keeping WooCommerce, Square,
+  labels, and network calls deferred.
 - WordPress integration migration rehearsal that requires an explicit
   destructive-test environment flag, refuses production, rolls the disposable
   database from the current schema target back to version `1`, verifies Phase 2
