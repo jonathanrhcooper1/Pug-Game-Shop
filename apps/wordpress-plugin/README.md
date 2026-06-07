@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.91.0`
+Version: `0.92.0`
 
 ## Implemented Features
 
@@ -134,6 +134,9 @@ Version: `0.91.0`
 - Staged offline device registration route-handler assembly from `$wpdb`,
   repository, service, and settings-backed pairing authorizer readiness without
   enabling live route registration.
+- Staged registered-device permission resolver readiness for offline pull/push
+  callbacks from `$wpdb`, repository, and session update dependencies without
+  enabling live routes.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

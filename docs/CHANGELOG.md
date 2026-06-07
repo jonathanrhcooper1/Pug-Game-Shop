@@ -2,6 +2,30 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.92.0] - 2026-06-06
+
+### Added
+
+- Staged registered-device permission resolver factory that can assemble the
+  resolver from `$wpdb`, the registered-device repository adapter, and the
+  session update repository.
+- Health and admin System Status readiness summaries for registered-device
+  pull/push permission planning, including dependency flags, route scope
+  counts, and configuration issue fields.
+- Route bootstrap planning now receives the staged registered-device resolver
+  when database dependencies are available, allowing pull/push permission
+  callbacks to report ready while controller callbacks and live routes remain
+  locked.
+- Unit and WordPress smoke coverage proving resolver assembly, provider
+  fail-closed behavior, readiness presentation, and pull/push permission
+  planning without live route registration.
+
+### Not Added
+
+- No live offline route is enabled. Pull/push route registration,
+  route-connected queue replay, last-seen writes, and production database
+  mutation remain disabled.
+
 ## [0.91.0] - 2026-06-06
 
 ### Added

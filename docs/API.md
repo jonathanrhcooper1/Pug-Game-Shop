@@ -114,6 +114,13 @@ route callback proceeds.
 The planned registered-device permission callback adapter now turns
 WordPress-style request headers into that resolver call and returns a boolean
 permission result while preserving the last resolution for audits.
+Version `0.92.0` adds staged registered-device permission resolver readiness.
+`OfflineRegisteredDevicePermissionResolverFactory` can compose `$wpdb`, the
+registered-device repository, and the session update repository when database
+dependencies are available. Authenticated health now includes
+`offline_registered_device_permissions`, and route bootstrap planning can mark
+pull/push permission callbacks ready while controller callbacks, live route
+registration, queue replay, and route-connected writes remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -380,7 +387,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.91.0",
+  "app_version": "0.92.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

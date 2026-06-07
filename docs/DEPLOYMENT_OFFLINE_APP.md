@@ -368,6 +368,12 @@ WordPress database adapter, registration repository, registration service, and
 settings-backed pairing authorizer. Staging can verify handler readiness
 without enabling the live pairing route or issuing production device tokens.
 
+Version `0.92.0` adds staged registered-device permission resolver readiness
+from the WordPress database adapter, registered-device repository, and session
+update repository. Staging can verify pull/push permission callback readiness,
+but live pull/push routes, queue replay, and route-connected last-seen writes
+remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

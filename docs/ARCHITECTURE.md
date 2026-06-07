@@ -26,6 +26,11 @@ database adapter, registration repository, registration service, and
 settings-backed pairing authorizer when those dependencies are ready. That
 factory reports handler readiness to health/admin diagnostics but does not
 change route contracts or register live offline routes.
+Registered-device permission resolver readiness now composes the WordPress
+database adapter, registered-device repository, and session update repository
+for pull/push route planning only. It can make permission callbacks ready in
+the bootstrap summary while controller callbacks and route registration remain
+disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -295,6 +300,10 @@ registered-device resolver; pull and push permission callbacks still require
 that resolver before the factory returns them.
 The pairing permission adapter also reports whether its authorizer is
 configured, and the factory only returns configured pairing callbacks.
+Registered-device permission resolver readiness now assembles that resolver
+from `$wpdb`, the registered-device repository, and the session update
+repository for staged pull/push permission callbacks, without opening live
+routes or route-connected last-seen writes.
 The planned offline route registration planner now emits disabled registration
 metadata with fail-closed callbacks, callback readiness, controller readiness,
 and block reasons before any WordPress REST route can be registered.

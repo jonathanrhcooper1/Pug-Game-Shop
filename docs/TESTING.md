@@ -211,6 +211,11 @@
   assembly, proving configured database and hash-only pairing policy
   dependencies can make the controller callback ready without registering the
   route, and missing providers or incomplete policies fail closed.
+- Local unit and WordPress smoke coverage now include registered-device
+  permission resolver readiness, proving database-backed resolver assembly,
+  provider failure fail-closed behavior, health/admin readiness summaries, and
+  pull/push permission callback planning while controller callbacks and live
+  route registration remain disabled.
 - Local unit coverage now includes registration service pairing-authorization
   enforcement, proving authorized pairing can proceed and denied pairing stops
   before credential issuance or repository writes.

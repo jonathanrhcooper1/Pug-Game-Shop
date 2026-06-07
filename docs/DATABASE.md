@@ -42,6 +42,9 @@
 - Version `0.91.0` adds staged registration route-handler assembly and handler
   readiness reporting. No WordPress schema, SQLite schema, migration order, or
   rollback target changes.
+- Version `0.92.0` adds registered-device permission resolver readiness and
+  reporting. No WordPress schema, SQLite schema, migration order, or rollback
+  target changes.
 
 ## Relationship Overview
 

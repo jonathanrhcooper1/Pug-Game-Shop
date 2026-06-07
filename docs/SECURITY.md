@@ -113,6 +113,11 @@ policy shape and falls closed if the settings provider fails.
 The corresponding readiness summary exposes counts and configuration issue
 codes only; raw pairing codes and full hashes stay out of health and admin
 output.
+Registered-device permission readiness exposes only dependency booleans,
+configuration issue codes, registered-device route scope counts, and scope
+names. It does not expose bearer tokens, token hashes, SQL text, prepared
+arguments, or row data, and it does not enable live pull/push routes or
+route-connected last-seen writes.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

@@ -10,13 +10,18 @@ namespace TCGStorePlatform\Admin;
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineDeviceRegistrationRouteHandlerFactory;
+use TCGStorePlatform\Api\V1\OfflineRegisteredDevicePermissionReadinessStatusPresenter;
+use TCGStorePlatform\Api\V1\OfflineRouteBootstrapPlanner;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
+use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
+use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
+use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\Settings;
@@ -114,9 +119,21 @@ final class AdminMenu {
 		$scheduler                  = new DailyScheduler( $this->logger );
 		$status                     = DependencyChecker::status();
 		$branding                   = BrandingSettings::public_config( Settings::all() );
-		$offline                    = ( new OfflineRouteBootstrapStatusPresenter() )->admin_summary(
+		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
+		$offline                    = ( new OfflineRouteBootstrapStatusPresenter(
+			new OfflineRouteBootstrapPlanner(
+				new OfflineRouteRegistrationPlanner(
+					new OfflineRoutePermissionCallbackFactory(
+						$device_permission_factory->resolver()
+					)
+				)
+			)
+		) )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )
 		);
+		$device_permissions         = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
+			$device_permission_factory
+		) )->admin_summary();
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
 		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
@@ -168,6 +185,11 @@ final class AdminMenu {
 			__( 'Offline route bootstrap', 'tcg-store-platform' ),
 			$offline['value'],
 			$offline['status']
+		);
+		$this->render_status_row(
+			__( 'Offline device permissions', 'tcg-store-platform' ),
+			$device_permissions['value'],
+			$device_permissions['status']
 		);
 		$this->render_status_row(
 			__( 'Offline pairing route readiness', 'tcg-store-platform' ),

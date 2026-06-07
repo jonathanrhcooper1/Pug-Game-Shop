@@ -12,6 +12,7 @@ use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
+use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
@@ -72,9 +73,21 @@ final class HealthController {
 		$features                   = array();
 		$overall                    = 'ok';
 		$offline_feature_enabled    = FeatureFlags::is_enabled( 'offline_sync' );
-		$offline                    = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
+		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
+		$offline                    = ( new OfflineRouteBootstrapStatusPresenter(
+			new OfflineRouteBootstrapPlanner(
+				new OfflineRouteRegistrationPlanner(
+					new OfflineRoutePermissionCallbackFactory(
+						$device_permission_factory->resolver()
+					)
+				)
+			)
+		) )->health_payload(
 			$offline_feature_enabled
 		);
+		$device_permissions         = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
+			$device_permission_factory
+		) )->health_payload();
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
 		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
@@ -123,6 +136,7 @@ final class HealthController {
 				'hpos'                                   => Compatibility::hpos_status(),
 				'features'                               => $features,
 				'offline_route_bootstrap'                => $offline,
+				'offline_registered_device_permissions'  => $device_permissions,
 				'offline_device_pairing_route_readiness' => $pairing,
 				'timestamp'                              => gmdate( 'c' ),
 			),

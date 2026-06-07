@@ -3,6 +3,94 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Registered-Device Permission Readiness Assembly
+
+### What Changed
+
+- Added `OfflineRegisteredDevicePermissionResolverFactory` to assemble the
+  staged registered-device permission resolver from a WordPress database
+  adapter, registered-device repository, and session update repository.
+- Added a health/admin presenter for registered-device permission readiness,
+  exposing non-secret dependency flags, registered route scope counts, and
+  configuration issue codes.
+- Wired health output, admin System Status, and offline route bootstrap
+  planning through the staged resolver factory so pull/push permission
+  callbacks can be planned when database dependencies are ready.
+- Kept controller callbacks, route registration, queue replay, last-seen
+  route writes, and live offline routes disabled.
+- Added unit coverage for resolver factory assembly, provider failure
+  fail-closed behavior, session update application, and readiness presentation.
+- Extended the WordPress smoke test to verify registered-device permission
+  readiness and pull/push permission callback planning without live routes.
+- Updated project, plugin, and offline app package versions to `0.92.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, roadmap, and plugin docs.
+
+### Why
+
+Staging now needs to prove that future registered-device pull/push permission
+callbacks can be assembled from database-backed dependencies without opening
+the live offline sync routes. This revision adds that readiness boundary and
+keeps it fail-closed when database access is unavailable or a provider fails.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineRegisteredDevicePermissionResolverFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDevicePermissionReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Factory coverage for missing database configuration, configured resolver
+  assembly, provider failures, secret-free audits, and applied session updates.
+- Presenter coverage for blocked/ready health payloads and admin summaries.
+- Smoke coverage proving pull/push permission callbacks can be planned as
+  ready while controller callbacks and live routes remain disabled.
+
+### Rollback Notes
+
+- Revert this revision to remove registered-device permission resolver
+  assembly and readiness reporting.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pull/push handlers, queue replay, last-seen writes, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Staged Pairing Route Handler Assembly
 
 ### What Changed

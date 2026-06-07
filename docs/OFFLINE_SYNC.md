@@ -176,6 +176,12 @@ pairing-authorizer readiness before composing `$wpdb`, the registration
 repository, the registration service, and the settings-backed authorizer. If
 any dependency is missing or a provider fails, handler readiness stays locked
 and the live route remains unregistered.
+Version `0.92.0` adds staged registered-device permission resolver readiness.
+The resolver factory composes `$wpdb`, the registered-device repository, and
+the session update repository for pull/push permission planning when database
+dependencies are available. Health and admin output expose non-secret
+readiness metadata, while live pull/push handlers, route registration, queue
+replay, and route-connected last-seen writes remain disabled.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
