@@ -10,6 +10,10 @@ All notable changes follow Semantic Versioning.
   selected-card detail, sync queue, conflict review, customer credit snapshot,
   responsive layout, local favicon, Vite build dependency refresh, and UI shell
   contract coverage.
+- Typed offline app workspace state and SQLite-compatible staged inventory
+  operation envelope preview, with React type packages, package-level
+  typecheck, workspace-state contract coverage, and CI workflow installation
+  of nested offline app dependencies.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

@@ -1,115 +1,16 @@
 import { useMemo, useState } from "react"
 
+import {
+  buildInventoryUpdateOperation,
+  filterInventoryItems,
+  findInventoryItem,
+  formatMoney,
+  offlineWorkspaceSeed,
+  statusLabel,
+  type IconName,
+  type OfflineOperationEnvelope,
+} from "./data/offlineWorkspace"
 import "./styles.css"
-
-type IconName =
-  | "box"
-  | "sync"
-  | "queue"
-  | "alert"
-  | "customer"
-  | "settings"
-  | "scan"
-  | "wifi"
-  | "card"
-
-type InventoryItem = {
-  id: number
-  cardName: string
-  setName: string
-  number: string
-  condition: string
-  barcode: string
-  price: string
-  location: string
-  status: "available" | "reserved" | "conflict"
-  source: "cached" | "queued" | "accepted"
-}
-
-const navItems: Array<{ label: string; icon: IconName; active?: boolean }> = [
-  { label: "Inventory", icon: "box", active: true },
-  { label: "Sync", icon: "sync" },
-  { label: "Queue", icon: "queue" },
-  { label: "Conflicts", icon: "alert" },
-  { label: "Customers", icon: "customer" },
-  { label: "Settings", icon: "settings" },
-]
-
-const inventoryItems: InventoryItem[] = [
-  {
-    id: 42,
-    cardName: "Charizard",
-    setName: "Base Set",
-    number: "4/102",
-    condition: "NM",
-    barcode: "PKM-BASE-004-HOLO",
-    price: "$125.00",
-    location: "Case A3",
-    status: "available",
-    source: "accepted",
-  },
-  {
-    id: 87,
-    cardName: "Pikachu",
-    setName: "Jungle",
-    number: "60/64",
-    condition: "LP",
-    barcode: "PKM-JGL-060-YLW",
-    price: "$18.00",
-    location: "Binder 2",
-    status: "reserved",
-    source: "cached",
-  },
-  {
-    id: 118,
-    cardName: "Umbreon V",
-    setName: "Evolving Skies",
-    number: "94/203",
-    condition: "NM",
-    barcode: "PKM-EVS-094-V",
-    price: "$74.00",
-    location: "Case B1",
-    status: "available",
-    source: "queued",
-  },
-  {
-    id: 151,
-    cardName: "Mox Amber",
-    setName: "Dominaria",
-    number: "224/269",
-    condition: "MP",
-    barcode: "MTG-DOM-224-MOX",
-    price: "$32.00",
-    location: "MTG Tray",
-    status: "conflict",
-    source: "queued",
-  },
-]
-
-const syncRoutes = [
-  "/wp-json/tcg-store/v1/offline/devices/register",
-  "/wp-json/tcg-store/v1/offline/pull",
-  "/wp-json/tcg-store/v1/offline/push",
-]
-
-const queueItems = [
-  { label: "Inventory scans", count: 18, tone: "success" },
-  { label: "Credit updates", count: 3, tone: "warning" },
-  { label: "Event check-ins", count: 6, tone: "neutral" },
-]
-
-const conflicts = [
-  {
-    title: "Mox Amber location mismatch",
-    detail: "Local scan says MTG Tray; website snapshot says Sold.",
-    action: "Review",
-  },
-  {
-    title: "Credit redemption needs manager",
-    detail: "$28.00 offline credit use awaits approval.",
-    action: "Approve",
-  },
-]
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
@@ -132,32 +33,15 @@ function Icon({ name }: { name: IconName }) {
   )
 }
 
-function statusLabel(status: InventoryItem["status"]) {
-  return status === "available"
-    ? "Available"
-    : status === "reserved"
-      ? "Reserved"
-      : "Conflict"
-}
-
 export function App() {
+  const workspace = offlineWorkspaceSeed
   const [query, setQuery] = useState("PKM-BASE")
   const [selectedId, setSelectedId] = useState(42)
-  const selectedItem = inventoryItems.find((item) => item.id === selectedId) ?? inventoryItems[0]
+  const [stagedOperation, setStagedOperation] = useState<OfflineOperationEnvelope | null>(null)
+  const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
   const filteredItems = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-
-    if (!normalized) {
-      return inventoryItems
-    }
-
-    return inventoryItems.filter((item) =>
-      [item.cardName, item.setName, item.barcode, item.location]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalized),
-    )
-  }, [query])
+    return filterInventoryItems(workspace.inventoryItems, query)
+  }, [query, workspace.inventoryItems])
 
   return (
     <main className="offline-shell">
@@ -170,7 +54,7 @@ export function App() {
           </span>
         </div>
         <nav>
-          {navItems.map((item) => (
+          {workspace.navItems.map((item) => (
             <button
               className={item.active ? "nav-item is-active" : "nav-item"}
               type="button"
@@ -182,7 +66,7 @@ export function App() {
           ))}
         </nav>
         <div className="route-stack" aria-label="Sync endpoints">
-          {syncRoutes.map((route) => (
+          {workspace.syncRoutes.map((route) => (
             <span key={route}>{route.replace("/wp-json/tcg-store/v1", "")}</span>
           ))}
         </div>
@@ -191,36 +75,26 @@ export function App() {
       <section className="workspace">
         <header className="top-bar">
           <div>
-            <span className="micro-label">Front Counter</span>
+            <span className="micro-label">{workspace.device.storeLabel}</span>
             <h1>Offline Inventory Command</h1>
           </div>
           <div className="connection-pill" aria-label="Offline mode active">
             <Icon name="wifi" />
-            <span>Offline Mode</span>
+            <span>{workspace.device.modeLabel}</span>
           </div>
           <div className="sync-time">
             <span>Last sync</span>
-            <strong>Today 10:42 AM</strong>
+            <strong>{workspace.device.lastSyncLabel}</strong>
           </div>
         </header>
 
         <section className="sync-strip" aria-label="Sync summary">
-          <div>
-            <span>Queued writes</span>
-            <strong>27</strong>
-          </div>
-          <div>
-            <span>Cached cards</span>
-            <strong>14,218</strong>
-          </div>
-          <div>
-            <span>Open conflicts</span>
-            <strong>2</strong>
-          </div>
-          <div>
-            <span>Website authority</span>
-            <strong>After sync</strong>
-          </div>
+          {workspace.syncSummary.map((item) => (
+            <div key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
         </section>
 
         <section className="content-grid">
@@ -308,9 +182,28 @@ export function App() {
                 <dd>{selectedItem.source}</dd>
               </div>
             </dl>
-            <button className="wide-action" type="button">
+            <button
+              className="wide-action"
+              type="button"
+              onClick={() => setStagedOperation(buildInventoryUpdateOperation(selectedItem))}
+            >
               Stage Inventory Update
             </button>
+            <div className="operation-preview" aria-live="polite">
+              {stagedOperation ? (
+                <>
+                  <span>Queued envelope</span>
+                  <strong>{stagedOperation.client_operation_id}</strong>
+                  <small>{stagedOperation.operation_type} pending local push</small>
+                </>
+              ) : (
+                <>
+                  <span>Local queue ready</span>
+                  <strong>SQLite operation envelope</strong>
+                  <small>Updates stay local until push acceptance.</small>
+                </>
+              )}
+            </div>
           </aside>
 
           <section className="queue-panel" aria-label="Sync queue">
@@ -318,7 +211,7 @@ export function App() {
               <h2>Sync queue</h2>
               <span>27 pending</span>
             </div>
-            {queueItems.map((item) => (
+            {workspace.queueItems.map((item) => (
               <div className={`queue-row ${item.tone}`} key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.count}</strong>
@@ -331,7 +224,7 @@ export function App() {
               <h2>Conflicts</h2>
               <span>Needs review</span>
             </div>
-            {conflicts.map((item) => (
+            {workspace.conflicts.map((item) => (
               <article className="conflict-row" key={item.title}>
                 <div>
                   <strong>{item.title}</strong>
@@ -344,10 +237,15 @@ export function App() {
 
           <section className="credit-panel" aria-label="Customer credit snapshot">
             <div>
-              <span className="micro-label">Customer credit</span>
-              <h2>$246.00</h2>
+              <span className="micro-label">{workspace.customerCredit.label}</span>
+              <h2>
+                {formatMoney(
+                  workspace.customerCredit.availableMinorUnits,
+                  workspace.customerCredit.currency,
+                )}
+              </h2>
             </div>
-            <p>Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.</p>
+            <p>{workspace.customerCredit.note}</p>
           </section>
         </section>
       </section>

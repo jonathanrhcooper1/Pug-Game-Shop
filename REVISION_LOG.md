@@ -3,6 +3,80 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline App Local Workspace State Contract
+
+### What Changed
+
+- Added a typed offline app workspace state module for nav items, sync routes,
+  cached inventory, queue summaries, conflicts, customer credit, and device
+  sync status.
+- Added a SQLite-compatible staged inventory update operation envelope builder
+  that mirrors the local `operation_queue` schema fields.
+- Updated the React workspace to read from the local data module and show a
+  queued operation preview when staff stages an inventory update.
+- Added workspace-state contract coverage and tightened the app package
+  contract to run TypeScript type checking.
+- Added React type packages and updated offline app CI workflows to install
+  nested app dependencies before running the stricter package contract.
+- Fixed mobile navigation positioning so it cannot overlap content panels.
+
+### Why
+
+The offline app needs to evolve from a polished shell into a standalone,
+local-first tool. This revision gives the UI a typed local state boundary and
+starts modeling queued inventory updates in the same envelope shape the future
+SQLite push worker will persist.
+
+### Files Affected
+
+- `.github/workflows/offline-app-windows.yml`
+- `.github/workflows/pull-request-quality-gates.yml`
+- `apps/offline-app/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Workspace state contract coverage for required offline sync routes,
+  SQLite operation envelope fields, queued operation markers, and local-only
+  safety markers.
+- App package TypeScript type checking through `tsc --noEmit`.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:package-contract` from `apps/offline-app`: passed.
+- `npm.cmd audit` from `apps/offline-app`: passed with zero vulnerabilities.
+- Desktop and mobile Playwright interaction verification against the local
+  Vite dev server: passed, with no console errors or failed requests.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the typed local workspace state module,
+  staged operation preview, stricter app package contract, React type packages,
+  and workflow dependency-install changes.
+- No schema rollback is required because the SQLite migration contract was not
+  changed.
+
 ## 2026-06-07 - Offline App Inventory Command Workspace UI
 
 ### What Changed

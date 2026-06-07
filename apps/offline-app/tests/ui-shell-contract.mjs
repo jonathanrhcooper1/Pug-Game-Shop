@@ -7,7 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const appRoot = path.resolve(__dirname, "..")
 
 const appSource = await readFile(path.join(appRoot, "src/App.tsx"), "utf8")
+const workspaceSource = await readFile(path.join(appRoot, "src/data/offlineWorkspace.ts"), "utf8")
 const styles = await readFile(path.join(appRoot, "src/styles.css"), "utf8")
+const appSurface = `${appSource}\n${workspaceSource}`
 
 for (const requiredText of [
   "Offline Inventory Command",
@@ -18,7 +20,7 @@ for (const requiredText of [
   "Offline Mode",
   "Stage Inventory Update",
 ]) {
-  assert.ok(appSource.includes(requiredText), `Missing offline UI text: ${requiredText}`)
+  assert.ok(appSurface.includes(requiredText), `Missing offline UI text: ${requiredText}`)
 }
 
 for (const route of [
@@ -26,7 +28,7 @@ for (const route of [
   "/wp-json/tcg-store/v1/offline/pull",
   "/wp-json/tcg-store/v1/offline/push",
 ]) {
-  assert.ok(appSource.includes(route), `Missing sync route: ${route}`)
+  assert.ok(appSurface.includes(route), `Missing sync route: ${route}`)
 }
 
 for (const className of [
@@ -49,7 +51,7 @@ for (const forbidden of [
   ["production", "api", "key"].join("-"),
   "direct_mysql_access: true",
 ]) {
-  assert.equal(appSource.includes(forbidden), false, `Forbidden marker found: ${forbidden}`)
+  assert.equal(appSurface.includes(forbidden), false, `Forbidden marker found: ${forbidden}`)
   assert.equal(styles.includes(forbidden), false, `Forbidden marker found: ${forbidden}`)
 }
 

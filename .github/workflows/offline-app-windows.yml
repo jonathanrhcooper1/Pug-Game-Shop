@@ -29,8 +29,13 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install app dependencies
+        run: npm ci
+        working-directory: apps/offline-app
+
       - name: Verify package metadata
-        run: npm run test:offline-app
+        run: npm run test:package-contract
+        working-directory: apps/offline-app
 
   build:
     name: Manual Windows EXE build
@@ -49,7 +54,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install app dependencies
-        run: npm install
+        run: npm ci
         working-directory: apps/offline-app
 
       - name: Build Windows EXE installer

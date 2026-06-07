@@ -9,7 +9,8 @@
     "build": "vite build",
     "build:windows": "tauri build --target x86_64-pc-windows-msvc --bundles nsis",
     "package:windows": "npm run build:windows",
-    "test:package-contract": "node tests/windows-package-contract.mjs && node tests/sqlite-schema-contract.mjs && node tests/ui-shell-contract.mjs"
+    "typecheck": "tsc --noEmit",
+    "test:package-contract": "npm run typecheck && node tests/windows-package-contract.mjs && node tests/sqlite-schema-contract.mjs && node tests/workspace-state-contract.mjs && node tests/ui-shell-contract.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.5.0",
@@ -18,6 +19,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.5.0",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
     "@vitejs/plugin-react": "4.5.0",
     "typescript": "5.8.3",
     "vite": "6.4.3"

@@ -22,6 +22,11 @@
   inventory workspace keeps its scanner/search, sync queue, conflict center,
   customer credit, responsive layout, and no-production-secret UI markers in
   place.
+- `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
+  app's typed local workspace state includes the planned sync routes,
+  SQLite operation envelope fields, queued inventory operation markers, and no
+  direct external endpoint or database access markers. The offline app package
+  contract also runs `tsc --noEmit`.
 - `.github/workflows/php.yml` runs Composer validation, dependency audit,
   syntax checks, unit tests, bootstrap smoke, and WordPress coding standards
   against PHP 8.1, 8.2, and 8.3.
