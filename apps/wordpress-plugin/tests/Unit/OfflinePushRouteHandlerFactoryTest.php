@@ -532,7 +532,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'ready', $response['status'] );
 			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
 			$this->assert_same( 'event_reserved', $response['data']['results'][0]['code'] );
-			$this->assert_false( $response['data']['results'][0]['details']['queueTopDeck'] );
+			$this->assert_false( array_key_exists( 'queueTopDeck', $response['data']['results'][0]['details'] ) );
 			$this->assert_same( 4, $database->prepare_count );
 			$this->assert_same( 2, $database->get_row_count );
 			$this->assert_same( 1, $database->get_results_count );
@@ -723,8 +723,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'registered_count'    => '10',
 				'waitlist_enabled'    => '1',
 				'registration_status' => 'open',
-				'registration_mode'   => 'website_push_topdeck',
-				'topdeck_enabled'     => '1',
+				'registration_mode'   => 'local_only',
 				'row_version'         => '9',
 				'updated_at'          => '2026-06-06 18:01:00',
 			);

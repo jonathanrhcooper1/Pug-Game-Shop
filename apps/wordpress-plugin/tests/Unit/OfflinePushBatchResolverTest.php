@@ -68,7 +68,7 @@ final class OfflinePushBatchResolverTest extends TestCase {
 		$this->assert_same( array( 'op-inventory-0001', 'op-event-0001', 'op-credit-redemption-01' ), $audit['operation_ids'] );
 	}
 
-	public function test_batch_resolver_applies_per_operation_options(): void {
+	public function test_batch_resolver_accepts_event_without_provider_queue(): void {
 		$payload = $this->push_payload(
 			array(
 				$this->event_operation_payload(),
@@ -79,22 +79,15 @@ final class OfflinePushBatchResolverTest extends TestCase {
 			array(
 				0 => array(
 					'event' => array(
-						'seatsRemaining'  => 4,
-						'registrationMode' => 'website_push_topdeck',
-						'topDeckEnabled'   => true,
-						'rowVersion'       => 2,
+						'seatsRemaining' => 4,
+						'rowVersion'     => 2,
 					),
 				),
 			),
-			'2026-06-06T20:00:00Z',
-			array(
-				'op-event-0001' => array(
-					'paymentStatus' => 'pay_at_store',
-				),
-			)
+			'2026-06-06T20:00:00Z'
 		);
 
-		$this->assert_same( false, $plan->response_payload()['results'][0]['details']['queueTopDeck'] );
+		$this->assert_false( array_key_exists( 'queueTopDeck', $plan->response_payload()['results'][0]['details'] ) );
 	}
 
 	public function test_batch_resolver_rejects_missing_snapshots_bad_options_and_bad_time(): void {

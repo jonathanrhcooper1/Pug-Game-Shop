@@ -22,6 +22,6 @@ Remaining required integration coverage:
 - Reconnected reservation sync creates staff-review conflict when capacity or
   inventory is no longer available.
 - Offline event reservation queues locally when enabled for the event.
-- Offline event reservation pushes to WordPress, then TopDeck when applicable.
+- Offline event reservation pushes to WordPress for local registration review.
 - Customer credit offline redemption cannot silently overspend.
 - Device revocation blocks pull and push.

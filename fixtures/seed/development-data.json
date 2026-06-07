@@ -156,14 +156,7 @@
       "currency": "USD",
       "player_cap": 48,
       "registered_count": 40,
-      "registration_mode": "website_push_topdeck",
-      "topdeck_tid": "td-dev-1001"
+      "registration_mode": "local_only"
     }
-  ],
-  "topdeck": {
-    "owned_tournaments": [
-      "td-dev-1001",
-      "td-dev-1002"
-    ]
-  }
+  ]
 }

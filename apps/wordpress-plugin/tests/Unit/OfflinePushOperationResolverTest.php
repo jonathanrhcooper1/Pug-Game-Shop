@@ -67,24 +67,21 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		$this->assert_same( $conflict['conflict_id'], $plan->details()['conflict_id'] );
 	}
 
-	public function test_event_reservation_keeps_external_provider_queue_disabled(): void {
+	public function test_event_reservation_accepts_local_event_without_provider_queue(): void {
 		$plan = ( new OfflinePushOperationResolver() )->resolve(
 			$this->operation( 'event_reservation', 'event', 'event-100' ),
 			array(
 				'event' => array(
-					'seatsRemaining'  => 3,
-					'rowVersion'      => 2,
-					'registrationMode' => 'website_push_topdeck',
-					'topDeckEnabled'   => true,
+					'seatsRemaining' => 3,
+					'rowVersion'     => 2,
 				),
 			),
-			'2026-06-06T19:00:00Z',
-			array( 'paymentStatus' => 'not_required' )
+			'2026-06-06T19:00:00Z'
 		);
 
 		$this->assert_same( 'accepted', $plan->status() );
 		$this->assert_same( 'event_reserved', $plan->code() );
-		$this->assert_same( false, $plan->details()['queueTopDeck'] );
+		$this->assert_false( array_key_exists( 'queueTopDeck', $plan->details() ) );
 		$this->assert_same( 3, $plan->details()['rowVersion'] );
 	}
 
@@ -104,7 +101,7 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		$this->assert_same( 'accepted', $plan->status() );
 		$this->assert_same( 'event_waitlisted', $plan->code() );
 		$this->assert_same( 'waitlist', $plan->details()['canonicalStatus'] );
-		$this->assert_same( false, $plan->details()['queueTopDeck'] );
+		$this->assert_false( array_key_exists( 'queueTopDeck', $plan->details() ) );
 	}
 
 	public function test_credit_redemption_accepts_within_cached_and_server_balance(): void {

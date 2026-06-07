@@ -263,34 +263,34 @@ Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
 offline push inventory reservations, event registrations, and customer credit
 redemptions. Conflict and rejected push operations are skipped with explicit
 skip metadata. Health and admin readiness now report the planner as staged
-ready, while canonical entity writes, TopDeck workers, queue replay workers,
+ready, while canonical entity writes, external event-provider workers, queue replay workers,
 default route execution, and live route registration remain disabled.
 Version `0.121.0` connects that planner to explicitly enabled staged push route
 processing after persistence planning. Route responses and audits now expose
 canonical mutation counts, operation IDs, skipped operation IDs, and skip
 reasons. Replayed duplicate operations are skipped with `operation_replayed`
 before future canonical writes can be considered. Canonical entity writes,
-TopDeck workers, queue replay workers, default route execution, and live route
+external event-provider workers, queue replay workers, default route execution, and live route
 registration remain disabled.
 Version `0.122.0` adds staged canonical mutation SQL-template planning for
 those descriptors. The planner produces a guarded inventory status update
 template and event/customer-credit guard lookup templates for future
-repositories, while canonical write execution, repository execution, TopDeck
-workers, queue replay workers, default route execution, and live route
+repositories, while canonical write execution, repository execution, external
+event-provider workers, queue replay workers, default route execution, and live route
 registration remain disabled.
 Version `0.123.0` connects those SQL templates to explicitly enabled staged
 push route responses. The response payload, route meta, and audit now expose
 canonical SQL query counts, operation IDs, prepare-argument counts, and
 deferred execution/repository flags. Replayed duplicate operations report zero
 canonical SQL templates while still showing that route-connected SQL planning
-ran. Canonical write execution, repository execution, TopDeck workers, queue
+ran. Canonical write execution, repository execution, external event-provider workers, queue
 replay workers, default route execution, and live route registration remain
 disabled.
 Version `0.124.0` adds a deferred canonical mutation repository scaffold for
 those SQL plans. The repository result and audit expose query counts, operation
 IDs, prepare-argument counts, zero affected rows, and explicit deferred
 execution flags while canonical repository execution, inventory writes, event
-registration writes, customer-credit ledger writes, TopDeck workers, queue
+registration writes, customer-credit ledger writes, external event-provider workers, queue
 replay workers, default route execution, and live route registration remain
 disabled.
 Version `0.125.0` connects that deferred repository result into explicitly
@@ -298,7 +298,7 @@ enabled staged push route responses, route meta, and audits. Fresh accepted
 operations report deferred repository status and one staged canonical query;
 replayed duplicate operations report a deferred zero-query repository result.
 Canonical repository execution, inventory writes, event registration writes,
-customer-credit ledger writes, TopDeck workers, queue replay workers, default
+customer-credit ledger writes, external event-provider workers, queue replay workers, default
 route execution, and live route registration remain disabled.
 Version `0.126.0` adds a canonical mutation repository execution gate to those
 same staged push responses. Payloads, meta, and audits now expose execution
@@ -465,16 +465,12 @@ deterministic offer fingerprints.
 | POST | `/events/{id}/cancel` | owner or staff |
 | POST | `/events/{id}/check-in` | event staff |
 | GET | `/events/{id}/attendees` | event staff |
-| POST | `/events/{id}/sync-topdeck` | `sync_topdeck` |
-| POST | `/events/import-topdeck` | `sync_topdeck` |
-| POST | `/webhooks/topdeck` | disabled until documented/configured |
 
 `POST /events/{slug}/register` accepts free and pay-at-store local
 reservations only. It uses the `Idempotency-Key` header or `idempotency_key`
-body field, rejects TopDeck-hosted local writes, writes waitlist rows when
-capacity is full and waitlist is enabled, and does not capture online payments
-or call TopDeck yet. Eligible free website-push registrations write a pending
-local TopDeck sync-log record for a later worker phase. Active same-event/email
+body field, writes waitlist rows when capacity is full and waitlist is enabled,
+and does not capture online payments or call external event providers. Active
+same-event/email
 registrations are returned as `already_registered`; idempotency keys reused
 across another event or email return `idempotency_conflict`.
 
@@ -705,8 +701,8 @@ The batch planner requires server snapshots keyed by client operation ID,
 `entity_type:entity_id`, or operation index before resolving operations.
 Route-backed operation options may also be keyed by client operation ID,
 `entity_type:entity_id`, or operation index. Current staged options normalize
-event reservation payment status so pay-at-store events do not enter the
-TopDeck registration queue. Default push route execution, repository-backed
+event reservation payment status for future local registration writes. Default
+push route execution, repository-backed
 snapshot loading, and operation-options derivation remain disabled unless
 staging explicitly injects the route handler dependencies.
 Existing operation-row lookup planning now prepares the idempotency read shape

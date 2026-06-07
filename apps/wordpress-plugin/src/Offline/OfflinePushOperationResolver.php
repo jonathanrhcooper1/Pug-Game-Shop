@@ -35,6 +35,8 @@ final class OfflinePushOperationResolver {
 			throw new InvalidArgumentException( 'server_time_utc must be an ISO-8601 UTC timestamp.' );
 		}
 
+		unset( $options );
+
 		if ( $this->is_device_revoked( $server_state['device'] ?? array() ) ) {
 			return $this->outcome(
 				$operation,
@@ -50,7 +52,7 @@ final class OfflinePushOperationResolver {
 
 		return match ( $operation->operation_type() ) {
 			'inventory_reservation' => $this->resolve_inventory_reservation( $operation, $server_state, $server_time_utc ),
-			'event_reservation'     => $this->resolve_event_reservation( $operation, $server_state, $server_time_utc, $options ),
+			'event_reservation'     => $this->resolve_event_reservation( $operation, $server_state, $server_time_utc ),
 			'credit_redemption'     => $this->resolve_credit_redemption( $operation, $server_state, $server_time_utc ),
 			default                 => $this->outcome(
 				$operation,
@@ -108,13 +110,11 @@ final class OfflinePushOperationResolver {
 
 	/**
 	 * @param array<string, mixed> $server_state Canonical server snapshot.
-	 * @param array<string, mixed> $options Runtime options.
 	 */
 	private function resolve_event_reservation(
 		OfflineOperationEnvelope $operation,
 		array $server_state,
-		string $server_time_utc,
-		array $options
+		string $server_time_utc
 	): OfflinePushOperationResolutionPlan {
 		$event           = $this->section( $server_state, 'event' );
 		$seats_remaining = $this->minor_units( $this->value( $event, 'seatsRemaining', 'seats_remaining', 0 ) );
@@ -127,7 +127,6 @@ final class OfflinePushOperationResolver {
 				array(
 					'canonicalStatus' => 'reserved',
 					'rowVersion'      => $this->next_version( $this->value( $event, 'rowVersion', 'row_version', 0 ) ),
-					'queueTopDeck'    => $this->should_queue_topdeck( $event, $options ),
 				),
 				$server_time_utc
 			);
@@ -141,7 +140,6 @@ final class OfflinePushOperationResolver {
 				array(
 					'canonicalStatus' => 'waitlist',
 					'rowVersion'      => $this->next_version( $this->value( $event, 'rowVersion', 'row_version', 0 ) ),
-					'queueTopDeck'    => false,
 				),
 				$server_time_utc
 			);
@@ -378,16 +376,6 @@ final class OfflinePushOperationResolver {
 		$status = strtolower( trim( (string) ( $device['status'] ?? '' ) ) );
 
 		return true === ( $device['revoked'] ?? false ) || 'revoked' === $status;
-	}
-
-	/**
-	 * @param array<string, mixed> $event Event snapshot.
-	 * @param array<string, mixed> $options Runtime options.
-	 */
-	private function should_queue_topdeck( array $event, array $options ): bool {
-		unset( $event, $options );
-
-		return false;
 	}
 
 	private function bool_value( mixed $value ): bool {

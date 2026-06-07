@@ -101,7 +101,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 4, $inventory['inventory']['row_version'] );
 			$this->assert_same( 1, $event['event']['seatsRemaining'] );
 			$this->assert_true( $event['event']['waitlist_enabled'] );
-			$this->assert_true( $event['event']['topdeck_enabled'] );
+			$this->assert_false( array_key_exists( 'topdeck_enabled', $event['event'] ) );
 			$this->assert_same( 5025, $customer['customer']['creditBalanceMinorUnits'] );
 			$this->assert_same( 6, $customer['customer']['row_version'] );
 			$this->assert_same( 'offline_push_server_snapshot_repository', $audit['action'] );
@@ -232,8 +232,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'registered_count'    => '15',
 				'waitlist_enabled'    => '1',
 				'registration_status' => 'open',
-				'registration_mode'   => 'website_push_topdeck',
-				'topdeck_enabled'     => '1',
+				'registration_mode'   => 'local_only',
 				'row_version'         => '9',
 				'updated_at'          => '2026-06-06 18:01:00',
 			);

@@ -1,13 +1,13 @@
 <?php
 /**
- * Phase 3 events and TopDeck database schema.
+ * Phase 3 events database schema.
  *
  * @package TCGStorePlatform
  */
 
 namespace TCGStorePlatform\Migrations;
 
-final class EventsTopDeckSchema {
+final class EventsSchema {
 	/**
 	 * Return dbDelta-compatible CREATE TABLE statements.
 	 *
@@ -17,7 +17,6 @@ final class EventsTopDeckSchema {
 		$events_table            = $prefix . 'tcg_events';
 		$registrations_table     = $prefix . 'tcg_event_registrations';
 		$registration_logs_table = $prefix . 'tcg_event_registration_logs';
-		$topdeck_sync_log_table  = $prefix . 'tcg_event_topdeck_sync_log';
 		$waitlist_table          = $prefix . 'tcg_event_waitlist';
 		$checkins_table          = $prefix . 'tcg_event_checkins';
 		$event_templates_table   = $prefix . 'tcg_event_templates';
@@ -55,14 +54,6 @@ staff_notes longtext NULL,
 public_visibility varchar(32) NOT NULL DEFAULT 'draft',
 featured_event tinyint(1) unsigned NOT NULL DEFAULT 0,
 header_image varchar(255) NULL,
-topdeck_enabled tinyint(1) unsigned NOT NULL DEFAULT 0,
-topdeck_tid varchar(191) NULL,
-topdeck_event_url varchar(255) NULL,
-topdeck_registration_url varchar(255) NULL,
-topdeck_sync_status varchar(32) NOT NULL DEFAULT 'local_event',
-topdeck_last_sync_at datetime(6) NULL,
-topdeck_create_supported tinyint(1) unsigned NOT NULL DEFAULT 0,
-topdeck_raw_event_json longtext NULL,
 woocommerce_product_id bigint(20) unsigned NULL,
 allow_store_credit_payment tinyint(1) unsigned NOT NULL DEFAULT 0,
 allow_pay_at_store tinyint(1) unsigned NOT NULL DEFAULT 0,
@@ -75,12 +66,10 @@ row_version bigint(20) unsigned NOT NULL DEFAULT 1,
 PRIMARY KEY  (event_id),
 UNIQUE KEY public_id (public_id),
 UNIQUE KEY slug (slug),
-UNIQUE KEY topdeck_tid (topdeck_tid),
 KEY public_start (public_visibility, start_datetime),
 KEY game_format_start (game, format, start_datetime),
 KEY event_type_start (event_type, start_datetime),
-KEY registration_status_start (registration_status, start_datetime),
-KEY topdeck_sync (topdeck_enabled, topdeck_sync_status, topdeck_last_sync_at)
+KEY registration_status_start (registration_status, start_datetime)
 ) {$collation};",
 			$registrations_table     => "CREATE TABLE {$registrations_table} (
 registration_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -91,14 +80,11 @@ first_name varchar(100) NOT NULL,
 last_name varchar(100) NOT NULL,
 phone varchar(50) NULL,
 email varchar(191) NOT NULL,
-topdeck_email varchar(191) NULL,
-topdeck_uid varchar(191) NULL,
 status varchar(32) NOT NULL DEFAULT 'reserved',
 payment_status varchar(32) NOT NULL DEFAULT 'not_required',
 woocommerce_order_id bigint(20) unsigned NULL,
 amount_paid decimal(19,4) NOT NULL DEFAULT 0.0000,
 store_credit_used decimal(19,4) NOT NULL DEFAULT 0.0000,
-topdeck_response_json longtext NULL,
 checkin_status varchar(32) NOT NULL DEFAULT 'not_checked_in',
 checked_in_at datetime(6) NULL,
 idempotency_key varchar(191) NULL,
@@ -128,24 +114,6 @@ PRIMARY KEY  (registration_log_id),
 KEY event_created (event_id, created_at),
 KEY registration_created (registration_id, created_at),
 KEY action_created (action, created_at)
-) {$collation};",
-			$topdeck_sync_log_table  => "CREATE TABLE {$topdeck_sync_log_table} (
-event_sync_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-event_id bigint(20) unsigned NULL,
-topdeck_tid varchar(191) NULL,
-action varchar(64) NOT NULL,
-request_payload longtext NULL,
-response_payload longtext NULL,
-status varchar(32) NOT NULL,
-http_status int(10) unsigned NULL,
-error_code varchar(100) NULL,
-error_message varchar(255) NULL,
-created_at datetime(6) NOT NULL,
-PRIMARY KEY  (event_sync_id),
-KEY event_created (event_id, created_at),
-KEY topdeck_tid_created (topdeck_tid, created_at),
-KEY action_status_created (action, status, created_at),
-KEY error_created (error_code, created_at)
 ) {$collation};",
 			$waitlist_table          => "CREATE TABLE {$waitlist_table} (
 waitlist_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -210,7 +178,6 @@ KEY active_name (is_active, name)
 			$prefix . 'tcg_event_templates',
 			$prefix . 'tcg_event_checkins',
 			$prefix . 'tcg_event_waitlist',
-			$prefix . 'tcg_event_topdeck_sync_log',
 			$prefix . 'tcg_event_registration_logs',
 			$prefix . 'tcg_event_registrations',
 			$prefix . 'tcg_events',

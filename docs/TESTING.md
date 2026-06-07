@@ -203,8 +203,8 @@
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.
-- TopDeck adapter coverage is no longer an active staging requirement; legacy
-  provider scaffolding remains disabled until the scope is reopened.
+- Square inventory adapter coverage replaces removed external tournament
+  provider coverage as an active package-level scaffold.
 - Root automation now includes sync-engine offline conflict policy tests for
   inventory reservations, event reservations, customer credit redemption, and
   device revocation.
@@ -456,8 +456,8 @@
   server timestamps.
 - Local unit coverage now includes offline push operation resolution planning
   for accepted inventory/event/credit outcomes, sold-inventory conflicts,
-  TopDeck queue gating, event waitlisting, cached-limit rejection, overspend
-  conflicts, revoked devices, and invalid server timestamps.
+  event waitlisting, cached-limit rejection, overspend conflicts, revoked
+  devices, and invalid server timestamps.
 - Local unit coverage now includes offline push batch resolution planning for
   mixed accepted/conflict batches, response counts, operation result rows,
   conflict row enrichment, per-operation runtime options, missing snapshots,

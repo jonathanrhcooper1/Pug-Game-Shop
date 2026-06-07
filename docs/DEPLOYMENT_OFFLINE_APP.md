@@ -482,8 +482,8 @@ and production route-connected writes remain disabled.
 Version `0.113.0` adds route-aware offline push operation options provider
 composition. Explicitly enabled staged push handlers can now normalize event
 reservation payment status from route payloads before batch resolution, while
-default route execution, route registration, queue replay, TopDeck queue
-workers, canonical mutations, and production route-connected writes remain
+default route execution, route registration, queue replay, canonical
+mutations, and production route-connected writes remain
 disabled.
 
 Version `0.114.0` adds staged existing operation-row query planning for push
@@ -521,34 +521,34 @@ disabled.
 Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
 offline push inventory, event, and customer credit operations. Staging can
 inspect the future mutation shape, skipped operations, and readiness metadata,
-but canonical entity writes, TopDeck workers, queue replay workers, production
+but canonical entity writes, queue replay workers, production
 route registration, and default route execution remain disabled.
 Version `0.121.0` connects that planner to explicitly enabled staged push route
 processing, exposing canonical mutation counts and skipped replay IDs in
 staging responses/audits. Replayed duplicate operations are skipped before
-future canonical write planning. Canonical entity writes, TopDeck workers,
+future canonical write planning. Canonical entity writes,
 queue replay workers, production route registration, and default route
 execution remain disabled.
 Version `0.122.0` adds staged canonical mutation SQL-template planning for
 accepted mutation descriptors. Staging can inspect guarded inventory update
 templates and event/customer-credit lookup guards, but canonical write
-execution, repository execution, TopDeck workers, queue replay workers,
+execution, repository execution, queue replay workers,
 production route registration, and default route execution remain disabled.
 Version `0.123.0` connects those staged SQL templates into explicitly enabled
 push route response, meta, and audit payloads. Staging can verify query counts,
 operation IDs, prepare-argument counts, and replayed zero-query metadata, but
-canonical write execution, repository execution, TopDeck workers, queue replay
+canonical write execution, repository execution, queue replay
 workers, production route registration, and default route execution remain
 disabled.
 Version `0.124.0` adds a deferred canonical mutation repository scaffold.
 Staging can inspect repository result/audit metadata for SQL plans and confirm
 zero affected rows, but canonical write execution, repository execution,
-TopDeck workers, queue replay workers, production route registration, and
+queue replay workers, production route registration, and
 default route execution remain disabled.
 Version `0.125.0` exposes that deferred repository result from explicitly
 enabled staged push route responses and audits. Staging can confirm repository
 status and zero affected rows for fresh and replayed pushes, but canonical
-write execution, repository execution, TopDeck workers, queue replay workers,
+write execution, repository execution, queue replay workers,
 production route registration, and default route execution remain disabled.
 Version `0.126.0` adds the canonical repository execution gate. Staging can
 confirm canonical execution remains blocked by default, inspect block reasons,

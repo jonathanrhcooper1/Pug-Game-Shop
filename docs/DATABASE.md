@@ -497,15 +497,14 @@ remain disabled.
 
 | Table | Key fields |
 | --- | --- |
-| `tcg_events` | all requested event fields, local state, TopDeck linkage/capabilities, Woo product, row version |
-| `tcg_event_registrations` | event/customer/order, status, payment state, TopDeck state, email privacy fields, idempotency |
-| `tcg_event_registration_logs` | immutable transition and provider response summary |
+| `tcg_events` | requested event fields, local state, Woo product, row version |
+| `tcg_event_registrations` | event/customer/order, status, payment state, email privacy fields, idempotency |
+| `tcg_event_registration_logs` | immutable transition and staff/device summary |
 | `tcg_event_waitlist` | event/registration, position, joined/promoted timestamps |
 | `tcg_event_checkins` | event/registration, actor/device/location, timestamp |
 | `tcg_event_templates` | reusable local event defaults |
-| `tcg_event_topdeck_sync_log` | endpoint/TID, operation, request fingerprint, response/status, timestamps |
 
-Event capacity is guarded with an event-row lock. Payment success and external
+Event capacity is guarded with an event-row lock. Payment success and local
 registration success are separate states.
 
 ## Settings And Security

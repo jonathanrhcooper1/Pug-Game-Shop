@@ -43,15 +43,13 @@ final class EventStatusTest extends TestCase {
 		$this->assert_same( EventStatus::REGISTRATION_CLOSED, $status );
 	}
 
-	public function test_badges_include_today_decklist_topdeck_and_local_markers(): void {
+	public function test_badges_include_today_decklist_and_local_markers(): void {
 		$timezone = new DateTimeZone( 'America/New_York' );
 
-		$topdeck_badges = EventStatus::badges(
+		$todays_badges = EventStatus::badges(
 			EventStatus::OPEN,
 			new DateTimeImmutable( '2026-06-06 19:00:00', $timezone ),
 			true,
-			true,
-			'synced',
 			new DateTimeImmutable( '2026-06-06 09:00:00', $timezone )
 		);
 
@@ -59,12 +57,10 @@ final class EventStatusTest extends TestCase {
 			EventStatus::OPEN,
 			new DateTimeImmutable( '2026-06-07 19:00:00', $timezone ),
 			false,
-			false,
-			'local_event',
 			new DateTimeImmutable( '2026-06-06 09:00:00', $timezone )
 		);
 
-		$this->assert_same( array( 'open', 'today', 'decklist_required', 'topdeck_synced' ), $topdeck_badges );
+		$this->assert_same( array( 'open', 'today', 'decklist_required', 'local_event' ), $todays_badges );
 		$this->assert_same( array( 'open', 'local_event' ), $local_badges );
 	}
 }

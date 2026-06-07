@@ -102,9 +102,8 @@ default route reads, route registration, queue replay, and canonical mutations
 remain disabled.
 The route-aware operation-options provider now adapts parsed push payloads into
 resolver options for explicitly enabled staged handlers. Current options are
-limited to event reservation payment status, keeping pay-at-store reservations
-out of the TopDeck queue while default route execution and canonical mutations
-remain disabled.
+limited to event reservation payment status while default route execution and
+canonical mutations remain disabled.
 Existing operation-row query planning now prepares the idempotent replay lookup
 contract against `tcg_offline_sync_queue` by offline device ID and client
 operation IDs. The builder emits only prepared SQL templates and argument lists;
@@ -132,9 +131,8 @@ registration, and canonical mutations disabled.
 Canonical mutation planning now converts accepted offline push results into
 future inventory reservation, event registration, and customer credit ledger
 mutation descriptors. The descriptors carry target statuses, row versions,
-TopDeck queue intent, ledger amounts, and skip metadata for conflict/rejected
-operations, but they are inspection-only until staging explicitly enables
-canonical writes.
+ledger amounts, and skip metadata for conflict/rejected operations, but they
+are inspection-only until staging explicitly enables canonical writes.
 The staged push route now invokes that planner after persistence planning so
 replayed duplicate operations are skipped before canonical write planning.
 Response payloads, route meta, and audits expose counts and skipped IDs for
@@ -151,7 +149,7 @@ templates, and repository execution remains deferred.
 A deferred canonical mutation repository scaffold now converts valid SQL plans
 into repository result/audit metadata with zero affected rows. This establishes
 the next boundary for future guarded writes without executing inventory, event,
-customer-credit, TopDeck, or queue replay mutations.
+customer-credit, or queue replay mutations.
 Explicitly enabled staged push routes now include that repository result in
 response payloads, route meta, and route audits. Fresh accepted operations
 report one deferred repository query; replayed duplicate operations report a
@@ -270,7 +268,6 @@ flowchart LR
     Desktop --> SQLite[("Local SQLite + Image Cache")]
     Plugin <--> Queue["Action Scheduler"]
     Queue <--> ScryDex["ScryDex Adapter"]
-    Queue <--> TopDeck["TopDeck Adapter"]
     Plugin <--> POS["POS Adapters"]
     Woo <--> Payments["WooCommerce Payment Gateways"]
     Plugin --> Media["Private/Public Image Storage"]
@@ -286,7 +283,7 @@ flowchart LR
 | In-store payment | Configured POS/payment provider | Plugin POS reconciliation log |
 | Customer store credit | Immutable plugin ledger | Cached balance and SQLite read model |
 | Card reference/prices | Local normalized reference tables | ScryDex and future providers |
-| Events | Plugin event tables unless hosted mode | TopDeck projection/import |
+| Events | Plugin event tables | Woo event products, SQLite event cache |
 | Offline actions | Plugin after accepted sync | SQLite queue before acceptance |
 
 ## Transaction Boundaries

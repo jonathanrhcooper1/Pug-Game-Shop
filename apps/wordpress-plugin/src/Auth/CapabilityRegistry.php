@@ -25,7 +25,6 @@ final class CapabilityRegistry {
 			'redeem_credit',
 			'approve_buylist',
 			'manage_events',
-			'sync_topdeck',
 			'manage_pos',
 			'manage_settings',
 			'view_reports',

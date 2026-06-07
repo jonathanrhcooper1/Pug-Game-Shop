@@ -30,10 +30,8 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 				),
 				'op-event-0001'           => array(
 					'event' => array(
-						'seatsRemaining'  => 3,
-						'registrationMode' => 'website_push_topdeck',
-						'topDeckEnabled'   => true,
-						'rowVersion'       => 9,
+						'seatsRemaining' => 3,
+						'rowVersion'     => 9,
 					),
 				),
 				'op-credit-redemption-01' => array(
@@ -43,12 +41,7 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 					),
 				),
 			),
-			'2026-06-06T20:00:00Z',
-			array(
-				'op-event-0001' => array(
-					'paymentStatus' => 'paid',
-				),
-			)
+			'2026-06-06T20:00:00Z'
 		);
 
 		$plan      = ( new OfflinePushCanonicalMutationPlanner() )->plan( $payload, $resolution );
@@ -75,8 +68,8 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 		$this->assert_same( 'tcg_event_registrations', $mutations[1]['table_contract'] );
 		$this->assert_same( 'reserved', $mutations[1]['registration_status'] );
 		$this->assert_same( 10, $mutations[1]['target_row_version'] );
-		$this->assert_false( $mutations[1]['queue_topdeck'] );
-		$this->assert_true( $mutations[1]['topdeck_worker_deferred'] );
+		$this->assert_false( array_key_exists( 'queue_topdeck', $mutations[1] ) );
+		$this->assert_false( array_key_exists( 'topdeck_worker_deferred', $mutations[1] ) );
 		$this->assert_same( 'customer_credit_redemption', $mutations[2]['mutation_type'] );
 		$this->assert_same( 'tcg_customer_credit_ledger', $mutations[2]['table_contract'] );
 		$this->assert_same( 4500, $mutations[2]['amount_minor_units'] );
@@ -208,7 +201,7 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 			'accepted',
 			'event_reserved',
 			array(
-				'canonicalStatus' => 'reserved',
+				'canonicalStatus' => 'provider_reserved',
 				'rowVersion'      => 10,
 			),
 			array(

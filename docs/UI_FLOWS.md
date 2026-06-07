@@ -99,11 +99,10 @@ Manager reauthentication and reason are required at the decision point.
 
 Public list/calendar leads to event detail and one of:
 
-- Redirect/link to TopDeck-hosted registration.
-- Local registration with optional Woo payment, then TopDeck push.
 - Local-only reservation.
+- Local registration with optional Woo event product/payment once enabled.
 
-Staff event flow covers attendee sync, pending pushes, payment exceptions,
+Staff event flow covers attendee search, payment exceptions,
 waitlist, QR check-in, walk-ins, refunds, and exports.
 
 ## Accessibility

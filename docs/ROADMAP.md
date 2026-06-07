@@ -167,8 +167,8 @@ Exit criteria: test POS sales and refunds reconcile exact items idempotently.
 ## Phase 9: Events
 
 Status: In progress; schema, public read surface, and local free/pay-at-store
-registration writes implemented. TopDeck and other external tournament-provider
-integrations are deferred at owner request.
+registration writes implemented. External tournament-provider integrations are
+out of active scope at owner request.
 
 Deliver public events UI, local registration, Woo event products, waitlist,
 check-in, QR, local attribution, and offline event queue.

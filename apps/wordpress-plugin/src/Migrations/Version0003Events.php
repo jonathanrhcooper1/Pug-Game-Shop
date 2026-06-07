@@ -1,25 +1,25 @@
 <?php
 /**
- * Events and TopDeck schema migration.
+ * Events schema migration.
  *
  * @package TCGStorePlatform
  */
 
 namespace TCGStorePlatform\Migrations;
 
-final class Version0003EventsTopDeck implements Migration {
+final class Version0003Events implements Migration {
 	public function version(): int {
 		return 3;
 	}
 
 	public function name(): string {
-		return 'events_topdeck';
+		return 'events';
 	}
 
 	public function up( \wpdb $database ): void {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		$tables = EventsTopDeckSchema::tables(
+		$tables = EventsSchema::tables(
 			$database->prefix,
 			$database->get_charset_collate()
 		);
@@ -40,7 +40,7 @@ final class Version0003EventsTopDeck implements Migration {
 	}
 
 	public function down( \wpdb $database ): void {
-		foreach ( EventsTopDeckSchema::drop_order( $database->prefix ) as $table_name ) {
+		foreach ( EventsSchema::drop_order( $database->prefix ) as $table_name ) {
 			$database->query( "DROP TABLE IF EXISTS `{$table_name}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 	}
@@ -50,7 +50,7 @@ final class Version0003EventsTopDeck implements Migration {
 			'sha256',
 			implode(
 				"\n",
-				EventsTopDeckSchema::tables( 'wp_', 'DEFAULT CHARACTER SET utf8mb4' )
+				EventsSchema::tables( 'wp_', 'DEFAULT CHARACTER SET utf8mb4' )
 			)
 		);
 	}

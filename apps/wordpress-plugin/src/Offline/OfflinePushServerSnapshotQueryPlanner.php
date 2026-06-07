@@ -40,7 +40,6 @@ final class OfflinePushServerSnapshotQueryPlanner {
 				'waitlist_enabled',
 				'registration_status',
 				'registration_mode',
-				'topdeck_enabled',
 				'row_version',
 				'updated_at',
 			),
@@ -51,7 +50,6 @@ final class OfflinePushServerSnapshotQueryPlanner {
 				'waitlist_enabled',
 				'registration_status',
 				'registration_mode',
-				'topdeck_enabled',
 				'row_version',
 			),
 			'derived_fields'   => array(

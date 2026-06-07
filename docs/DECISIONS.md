@@ -45,12 +45,12 @@ Every external adapter publishes capability status:
 `supported`, `not_supported`, `not_configured`, `degraded`, or `unknown`.
 Unknown and unverified features are not exposed as working UI actions.
 
-## ADR-007: TopDeck Event Creation
+## ADR-007: External Tournament Providers
 
 Status: Accepted
 
-`createEvent()` remains in the interface but returns `not_supported` until a
-documented or private account endpoint is configured and verified.
+External tournament-provider integrations are outside active scope. Local event
+records, registrations, waitlists, and check-in remain plugin-owned.
 
 ## ADR-008: Offline Conflict Policy
 

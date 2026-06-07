@@ -122,7 +122,6 @@ final class EventRegistrationRepository {
 			'last_name'         => $input->last_name(),
 			'phone'             => $input->phone(),
 			'email'             => $input->email(),
-			'topdeck_email'     => $input->topdeck_email(),
 			'status'            => $decision->status(),
 			'payment_status'    => $decision->payment_status(),
 			'amount_paid'       => '0.0000',
@@ -140,7 +139,6 @@ final class EventRegistrationRepository {
 				'%s',
 				'%d',
 				'%d',
-				'%s',
 				'%s',
 				'%s',
 				'%s',
@@ -233,38 +231,6 @@ final class EventRegistrationRepository {
 				'created_at'      => $this->now(),
 			),
 			array( '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s' )
-		);
-	}
-
-	/**
-	 * @param array<string, mixed> $event Event row.
-	 * @param array<string, mixed> $registration Registration row.
-	 */
-	public function queue_topdeck_registration( array $event, array $registration ): void {
-		$table_name    = $this->database->prefix . 'tcg_event_topdeck_sync_log';
-		$topdeck_email = (string) ( $registration['topdeck_email'] ?? $registration['email'] ?? '' );
-		$payload       = array(
-			'registration_id'        => (int) ( $registration['registration_id'] ?? 0 ),
-			'registration_public_id' => (string) ( $registration['public_id'] ?? '' ),
-			'emails'                 => array( $topdeck_email ),
-			'source'                 => 'local_event_registration',
-		);
-
-		$this->database->insert(
-			$table_name,
-			array(
-				'event_id'         => (int) $event['event_id'],
-				'topdeck_tid'      => (string) $event['topdeck_tid'],
-				'action'           => 'register_players',
-				'request_payload'  => $this->encode_json( $payload ),
-				'response_payload' => null,
-				'status'           => 'pending',
-				'http_status'      => null,
-				'error_code'       => null,
-				'error_message'    => null,
-				'created_at'       => $this->now(),
-			),
-			array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
 		);
 	}
 

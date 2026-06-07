@@ -177,14 +177,6 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 			$errors[] = 'mutation_row_' . $index . '_registration_status_invalid';
 		}
 
-		if ( ! is_bool( $row['queue_topdeck'] ?? null ) ) {
-			$errors[] = 'mutation_row_' . $index . '_queue_topdeck_invalid';
-		}
-
-		if ( true !== ( $row['topdeck_worker_deferred'] ?? null ) ) {
-			$errors[] = 'mutation_row_' . $index . '_topdeck_worker_deferred_invalid';
-		}
-
 		return $errors;
 	}
 
@@ -285,9 +277,7 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 				(int) $row['expected_base_row_version'],
 			),
 			'registration_status'               => $row['registration_status'],
-			'queue_topdeck'                     => (bool) $row['queue_topdeck'],
 			'event_registration_write_deferred' => true,
-			'topdeck_worker_deferred'           => true,
 			'route_connected_writes_deferred'   => true,
 		);
 	}

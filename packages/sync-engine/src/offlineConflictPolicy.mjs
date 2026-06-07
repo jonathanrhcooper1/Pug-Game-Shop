@@ -2,7 +2,7 @@ const ACCEPTED = "accepted";
 const CONFLICT = "conflict";
 const REJECTED = "rejected";
 
-export function resolveOfflineOperation(operation, serverState, options = {}) {
+export function resolveOfflineOperation(operation, serverState) {
   if (serverState.device?.revoked === true) {
     return outcome(REJECTED, "device_revoked", {
       requiresManagerReview: false,
@@ -14,7 +14,7 @@ export function resolveOfflineOperation(operation, serverState, options = {}) {
     case "inventory_reservation":
       return resolveInventoryReservation(operation, serverState);
     case "event_reservation":
-      return resolveEventReservation(operation, serverState, options);
+      return resolveEventReservation(operation, serverState);
     case "credit_redemption":
       return resolveCreditRedemption(operation, serverState);
     default:
@@ -42,7 +42,7 @@ function resolveInventoryReservation(operation, serverState) {
   });
 }
 
-function resolveEventReservation(operation, serverState, options) {
+function resolveEventReservation(operation, serverState) {
   const event = serverState.event ?? {};
   const seatsRemaining = Number(event.seatsRemaining ?? 0);
 
@@ -50,7 +50,6 @@ function resolveEventReservation(operation, serverState, options) {
     return outcome(ACCEPTED, "event_reserved", {
       canonicalStatus: "reserved",
       rowVersion: nextVersion(event.rowVersion),
-      queueTopDeck: false,
     });
   }
 
@@ -58,7 +57,6 @@ function resolveEventReservation(operation, serverState, options) {
     return outcome(ACCEPTED, "event_waitlisted", {
       canonicalStatus: "waitlist",
       rowVersion: nextVersion(event.rowVersion),
-      queueTopDeck: false,
     });
   }
 

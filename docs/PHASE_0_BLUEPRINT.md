@@ -7,9 +7,9 @@ deliverables. Detailed contracts live in the linked documents.
 
 Custom plugin tables own serialized inventory and operational ledgers.
 WooCommerce owns online checkout and orders. A Tauri/React/SQLite app supplies
-offline kiosk and staff modes. Provider adapters isolate ScryDex, TopDeck,
-Square, payment gateways, search engines, printers, and future sports-card
-sources. See [Architecture](ARCHITECTURE.md).
+offline kiosk and staff modes. Provider adapters isolate ScryDex, Square,
+payment gateways, search engines, printers, and future sports-card sources.
+See [Architecture](ARCHITECTURE.md).
 
 ## 2. System Diagram
 
@@ -54,12 +54,11 @@ per game and account. Unsupported features return `not_supported`; no coverage
 is inferred. Sync is paged, checkpointed, credit-aware, webhook-assisted, and
 resumable. See [ScryDex Integration](SCRYDEX_INTEGRATION.md).
 
-## 9. TopDeck Provider Strategy
+## 9. Local Events Strategy
 
-TopDeck tournament read, owned-event import, attendee access, and player
-registration are capability checked. Tournament creation remains
-`not_supported` because the public documentation reviewed on June 6, 2026 does
-not document a create-event endpoint. See [TopDeck Integration](TOPDECK_INTEGRATION.md).
+Events are local-first records owned by the plugin. Public event reads, local
+free/pay-at-store registrations, waitlists, and check-in are active scope.
+External tournament-provider integrations are not active scope.
 
 ## 10. POS / Payment Adapter Strategy
 
@@ -112,9 +111,9 @@ Manager-only actions are isolated and reauthenticated. See [UI Flows](UI_FLOWS.m
 
 ## 17. Events UX Flow
 
-Events support TopDeck-hosted, local-reserve-and-push, and local-only modes.
+Events support local-only reservations and future Woo event products.
 Payment, registration, capacity, waitlist, and check-in have independent states
-so external failures are visible rather than silently rolled back. See
+so local partial failures are visible rather than silently rolled back. See
 [Events](EVENTS.md).
 
 ## 18. Offline Sync / Conflict Logic
@@ -151,8 +150,8 @@ Phase 1 may begin when:
 - Source-of-truth boundaries are accepted.
 - The shell-product/exact-inventory WooCommerce strategy is accepted.
 - Offline inventory and credit conflict policies are accepted.
-- ScryDex and TopDeck account credentials/plans are available for sandbox or
-  verified test calls.
+- ScryDex account credentials/plans are available for sandbox or verified test
+  calls.
 - GoDaddy hosting supports required PHP/MySQL versions, HTTPS, cron invocation,
   database backups, and sufficient disk space for image caching.
 - Initial barcode scanner and label-printer models are identified for hardware

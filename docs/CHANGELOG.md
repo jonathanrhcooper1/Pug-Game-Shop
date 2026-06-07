@@ -15,11 +15,27 @@ All notable changes follow Semantic Versioning.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 
+### Changed
+
+- Converted the active events module to local-only event registration by
+  removing provider registration modes, provider status outputs, provider
+  queue metadata, and provider capability requirements.
+- Replaced the required TopDeck adapter test scaffold with Square inventory
+  adapter coverage to match the current POS/inventory direction.
+
+### Removed
+
+- Removed TopDeck provider classes, event push adapters/planners, provider
+  fixtures, active provider docs, credential/settings references, provider
+  queue metadata, provider sync table planning, and provider-specific unit
+  tests from the active codebase.
+
 ### Not Added
 
 - No live inventory route registration, inventory database writes,
   WooCommerce product projection, barcode label printing, Square/POS inventory
-  writes, or production provider calls were added.
+  writes, external tournament-provider calls, or production provider calls were
+  added.
 
 ## [0.155.0] - 2026-06-07
 

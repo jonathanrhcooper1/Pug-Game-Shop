@@ -188,12 +188,6 @@ final class OfflinePushCanonicalMutationPlanner {
 		$registration_status = $this->required_status( $operation, $details, 'canonicalStatus', array( 'reserved', 'waitlist' ) );
 		$row_version         = $this->required_non_negative_int( $operation, $details, 'rowVersion' );
 
-		if ( ! array_key_exists( 'queueTopDeck', $details ) || ! is_bool( $details['queueTopDeck'] ) ) {
-			throw new InvalidArgumentException(
-				"Accepted event operation {$operation->client_operation_id()} must include boolean queueTopDeck."
-			);
-		}
-
 		return array_merge(
 			$this->base_row( $payload, $operation, $operation_plan, $server_time_utc ),
 			array(
@@ -201,8 +195,6 @@ final class OfflinePushCanonicalMutationPlanner {
 				'table_contract'          => 'tcg_event_registrations',
 				'registration_status'     => $registration_status,
 				'target_row_version'      => $row_version,
-				'queue_topdeck'           => $details['queueTopDeck'],
-				'topdeck_worker_deferred' => true,
 				'capacity_guard_deferred' => true,
 			)
 		);
