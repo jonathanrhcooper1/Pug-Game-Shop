@@ -14,6 +14,9 @@ All notable changes follow Semantic Versioning.
   operation envelope preview, with React type packages, package-level
   typecheck, workspace-state contract coverage, and CI workflow installation
   of nested offline app dependencies.
+- Browser-safe offline queue bridge contract for future Tauri/SQLite operation
+  persistence, with UI staging routed through the bridge and contract coverage
+  blocking direct network, storage, or database writes.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

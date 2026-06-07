@@ -10,6 +10,7 @@ import {
   type IconName,
   type OfflineOperationEnvelope,
 } from "./data/offlineWorkspace"
+import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
 import "./styles.css"
 
 function Icon({ name }: { name: IconName }) {
@@ -38,10 +39,17 @@ export function App() {
   const [query, setQuery] = useState("PKM-BASE")
   const [selectedId, setSelectedId] = useState(42)
   const [stagedOperation, setStagedOperation] = useState<OfflineOperationEnvelope | null>(null)
+  const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
   const filteredItems = useMemo(() => {
     return filterInventoryItems(workspace.inventoryItems, query)
   }, [query, workspace.inventoryItems])
+
+  async function handleStageInventoryUpdate() {
+    const operation = buildInventoryUpdateOperation(selectedItem)
+    setStagedOperation(operation)
+    setQueueSubmission(await submitOfflineOperation(operation))
+  }
 
   return (
     <main className="offline-shell">
@@ -185,16 +193,18 @@ export function App() {
             <button
               className="wide-action"
               type="button"
-              onClick={() => setStagedOperation(buildInventoryUpdateOperation(selectedItem))}
+              onClick={handleStageInventoryUpdate}
             >
               Stage Inventory Update
             </button>
             <div className="operation-preview" aria-live="polite">
               {stagedOperation ? (
                 <>
-                  <span>Queued envelope</span>
+                  <span>
+                    {queueSubmission?.status === "queued" ? "Queued envelope" : "Staged envelope"}
+                  </span>
                   <strong>{stagedOperation.client_operation_id}</strong>
-                  <small>{stagedOperation.operation_type} pending local push</small>
+                  <small>{queueSubmission?.message ?? "Ready for local queue handoff."}</small>
                 </>
               ) : (
                 <>

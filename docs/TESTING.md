@@ -27,6 +27,9 @@
   SQLite operation envelope fields, queued inventory operation markers, and no
   direct external endpoint or database access markers. The offline app package
   contract also runs `tsc --noEmit`.
+- `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
+  queue operations stay behind a Tauri command adapter boundary and do not use
+  direct browser storage or network writes.
 - `.github/workflows/php.yml` runs Composer validation, dependency audit,
   syntax checks, unit tests, bootstrap smoke, and WordPress coding standards
   against PHP 8.1, 8.2, and 8.3.

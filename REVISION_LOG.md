@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline App Queue Bridge Contract
+
+### What Changed
+
+- Added a browser-safe offline queue bridge that stages inventory operations
+  behind a future Tauri command adapter boundary.
+- Updated the React inventory workspace to submit staged inventory update
+  envelopes through the bridge and render the bridge result.
+- Added queue bridge contract coverage to confirm the bridge does not perform
+  direct browser storage, network, or database writes.
+- Wired the queue bridge contract into both root offline app checks and the
+  app package contract.
+
+### Why
+
+The offline app needs a clean handoff from UI intent to local persistence
+before the SQLite/Tauri command implementation is added. This revision creates
+that boundary while keeping the current browser/dev build side-effect-free.
+
+### Files Affected
+
+- `apps/offline-app/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Queue bridge contract coverage for the Tauri command boundary, preview-only
+  browser behavior, and local-only safety markers.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:package-contract` from `apps/offline-app`: passed.
+- Mobile Playwright interaction verification against the local Vite dev
+  server: passed, with no console errors or failed requests.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the queue bridge, bridge contract test, and
+  UI bridge submission path.
+- No schema rollback is required.
+
 ## 2026-06-07 - Offline App Local Workspace State Contract
 
 ### What Changed

@@ -14,12 +14,15 @@ future offline sync app.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, and SQLite-compatible staged operation
   envelopes.
+- Browser-safe offline queue bridge contract for staging inventory operations
+  before the desktop SQLite/Tauri command adapter is connected.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,
   cached branding/inventory/credit/events, sync logs, and conflicts.
 - Contract tests for package metadata, sync routes, branding tokens, local
-  schema shape, local workspace state, UI shell markers, and secret safety.
+  schema shape, local workspace state, queue bridge safety, UI shell markers,
+  and secret safety.
 
 The app does not yet implement live pairing, SQLite persistence, push/pull sync,
 printer/scanner adapters, kiosk lockdown, or signed updater behavior.

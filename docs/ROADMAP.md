@@ -137,6 +137,7 @@ plus push canonical mutation repository execution gate
 plus push canonical mutation transaction preflight
 plus polished offline inventory command workspace UI and shell contract
 plus typed local workspace state and staged operation envelope preview
+plus browser-safe offline queue bridge contract
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
