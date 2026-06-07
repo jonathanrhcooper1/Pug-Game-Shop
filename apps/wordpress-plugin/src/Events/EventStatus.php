@@ -62,8 +62,6 @@ final class EventStatus {
 		string $registration_status,
 		DateTimeImmutable $start_datetime,
 		bool $decklist_required,
-		bool $topdeck_enabled,
-		string $topdeck_sync_status,
 		?DateTimeImmutable $now = null
 	): array {
 		$now  ??= new DateTimeImmutable( 'now', $start_datetime->getTimezone() );
@@ -77,13 +75,7 @@ final class EventStatus {
 			$badges[] = 'decklist_required';
 		}
 
-		if ( $topdeck_enabled && 'synced' === $topdeck_sync_status ) {
-			$badges[] = 'topdeck_synced';
-		}
-
-		if ( ! $topdeck_enabled ) {
-			$badges[] = 'local_event';
-		}
+		$badges[] = 'local_event';
 
 		return array_values( array_unique( $badges ) );
 	}

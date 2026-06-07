@@ -277,8 +277,7 @@ while default route-connected reads, queue replay, canonical mutations, and
 route registration remain deferred.
 Version `0.113.0` adds route-aware offline push operation options provider
 composition. Explicitly enabled staged push handlers can now derive event
-reservation payment status options from operation payloads, including
-pay-at-store behavior that suppresses TopDeck queueing, while default route
+reservation payment status options from operation payloads, while default route
 execution, queue replay, canonical mutations, and route registration remain
 deferred.
 Version `0.114.0` adds plan-only existing operation-row lookup contracts for
@@ -317,7 +316,7 @@ Version `0.120.0` adds plan-only canonical mutation descriptors for accepted
 inventory reservation, event registration, and customer credit redemption push
 operations. Conflict and rejected operations are skipped with explicit
 metadata, and health/admin readiness reports the planner as staged ready while
-canonical entity writes, TopDeck workers, queue replay workers, production
+canonical entity writes, queue replay workers, production
 route registration, and default route execution remain disabled.
 Version `0.121.0` connects that planner to explicitly enabled staged push route
 processing. Replayed duplicate operation rows are skipped before future
@@ -334,11 +333,11 @@ staged push routes. Fresh accepted operations report canonical SQL query
 counts, operation IDs, prepare-argument counts, and deferred execution flags;
 replayed duplicate operations report zero SQL templates while preserving the
 original replayed response. Canonical repositories, queue replay workers,
-TopDeck workers, route registration, and production writes remain disabled.
+route registration, and production writes remain disabled.
 Version `0.124.0` adds a deferred canonical mutation repository result for the
 staged SQL plans. The repository scaffold reports query counts, operation IDs,
 prepare-argument counts, zero rows affected, and deferred execution flags
-without executing inventory, event, credit-ledger, TopDeck, queue replay, route
+without executing inventory, event, credit-ledger, queue replay, route
 registration, or production writes.
 Version `0.125.0` surfaces that deferred repository result from explicitly
 enabled staged push routes. Fresh and replayed push responses, route meta, and
@@ -447,7 +446,7 @@ mutation descriptors, while replayed duplicate operation rows are skipped with
 Canonical mutation SQL-template planning can now validate those descriptors and
 produce inspection-only guard templates. Inventory receives a guarded status
 update template, while event and customer-credit mutations receive lookup guard
-templates and keep registration, ledger, TopDeck, and repository execution
+templates and keep registration, ledger, and repository execution
 deferred.
 
 The first SQLite migration defines local tables for device identity, sync

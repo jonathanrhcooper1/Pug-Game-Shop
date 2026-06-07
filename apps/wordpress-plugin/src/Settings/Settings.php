@@ -45,7 +45,7 @@ final class Settings {
 			OfflinePairingAuthorizationSettings::defaults()
 		);
 
-		return self::without_deferred_provider_credentials( $settings );
+		return $settings;
 	}
 
 	public static function get( string $key, mixed $fallback = null ): mixed {
@@ -104,21 +104,6 @@ final class Settings {
 		$value = get_option( self::OPTION_NAME, array() );
 
 		return is_array( $value ) ? $value : array();
-	}
-
-	/**
-	 * @param array<string, mixed> $settings Settings payload.
-	 * @return array<string, mixed>
-	 */
-	private static function without_deferred_provider_credentials( array $settings ): array {
-		unset(
-			$settings['topdeck_api_key'],
-			$settings['topdeck_base_url'],
-			$settings['topdeck_create_enabled'],
-			$settings['topdeck_rate_limit']
-		);
-
-		return $settings;
 	}
 
 	private function __construct() {

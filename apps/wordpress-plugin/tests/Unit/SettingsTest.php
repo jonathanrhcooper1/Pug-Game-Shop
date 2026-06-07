@@ -31,29 +31,12 @@ final class SettingsTest extends TestCase {
 		$this->assert_same( 'America/New_York', $result['daily_timezone'] );
 	}
 
-	public function test_deferred_topdeck_settings_are_not_accepted(): void {
-		$result = Settings::sanitize(
-			array(
-				'topdeck_api_key'        => ' sandbox-test-key ',
-				'topdeck_base_url'       => 'https://topdeck.example.test/api',
-				'topdeck_rate_limit'     => 120,
-				'topdeck_create_enabled' => '1',
-			)
-		);
-
-		$this->assert_false( isset( $result['topdeck_api_key'] ) );
-		$this->assert_false( isset( $result['topdeck_base_url'] ) );
-		$this->assert_false( isset( $result['topdeck_rate_limit'] ) );
-		$this->assert_false( isset( $result['topdeck_create_enabled'] ) );
-	}
-
-	public function test_defaults_do_not_include_deferred_topdeck_credentials(): void {
+	public function test_defaults_only_include_active_local_settings(): void {
 		$defaults = Settings::defaults();
 
-		$this->assert_false( isset( $defaults['topdeck_api_key'] ) );
-		$this->assert_false( isset( $defaults['topdeck_base_url'] ) );
-		$this->assert_false( isset( $defaults['topdeck_rate_limit'] ) );
-		$this->assert_false( isset( $defaults['topdeck_create_enabled'] ) );
+		$this->assert_true( isset( $defaults['logging_level'] ) );
+		$this->assert_true( isset( $defaults['branding'] ) );
+		$this->assert_true( isset( $defaults['offline_pairing_authorization'] ) );
 	}
 
 	public function test_offline_pairing_authorization_defaults_are_secret_free(): void {
@@ -172,19 +155,17 @@ final class SettingsTest extends TestCase {
 	public function test_branding_public_config_exports_client_safe_theme_tokens(): void {
 		$config = BrandingSettings::public_config(
 			array(
-				'branding'        => array(
+				'branding' => array(
 					'company_name'       => 'Shop A',
 					'company_short_name' => 'Shop',
 					'primary_color'      => '#334455',
 				),
-				'topdeck_api_key' => 'secret-key',
 			)
 		);
 
 		$this->assert_same( 'Shop A', $config['company']['name'] );
 		$this->assert_same( '#334455', $config['theme']['primary_color'] );
 		$this->assert_same( '#334455', $config['css_variables']['--tcg-primary'] );
-		$this->assert_false( isset( $config['topdeck_api_key'] ) );
 	}
 
 	public function test_branding_css_variable_string_is_stable(): void {

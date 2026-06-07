@@ -14,18 +14,15 @@ final class EventRegistrationService {
 	private EventRegistrationRepository $repository;
 	private EventRegistrationPolicy $policy;
 	private EventRegistrationDuplicateGuard $duplicate_guard;
-	private EventTopDeckRegistrationPlanner $topdeck_planner;
 
 	public function __construct(
 		EventRegistrationRepository $repository,
 		?EventRegistrationPolicy $policy = null,
-		?EventRegistrationDuplicateGuard $duplicate_guard = null,
-		?EventTopDeckRegistrationPlanner $topdeck_planner = null
+		?EventRegistrationDuplicateGuard $duplicate_guard = null
 	) {
 		$this->repository      = $repository;
 		$this->policy          = $policy ?? new EventRegistrationPolicy();
 		$this->duplicate_guard = $duplicate_guard ?? new EventRegistrationDuplicateGuard();
-		$this->topdeck_planner = $topdeck_planner ?? new EventTopDeckRegistrationPlanner();
 	}
 
 	public function register_by_slug( string $slug, EventRegistrationInput $input ): EventRegistrationResult {
@@ -137,8 +134,6 @@ final class EventRegistrationService {
 				++$capacity_count;
 			}
 
-			$topdeck_queued = $this->topdeck_planner->should_queue( $event, $decision );
-
 			$this->repository->update_event_counts( $event, $capacity_count, new DateTimeImmutable( 'now' ) );
 			$this->repository->write_log(
 				(int) $event['event_id'],
@@ -151,24 +146,11 @@ final class EventRegistrationService {
 				)
 			);
 
-			if ( $topdeck_queued ) {
-				$this->repository->queue_topdeck_registration( $event, $registration );
-				$this->repository->write_log(
-					(int) $event['event_id'],
-					(int) $registration['registration_id'],
-					'topdeck_registration_queued',
-					'TopDeck registration sync was queued.',
-					array(
-						'topdeck_tid' => (string) $event['topdeck_tid'],
-					)
-				);
-			}
-
 			$this->repository->commit();
 
 			return EventRegistrationResult::success(
 				$this->present_registration( $registration ),
-				$topdeck_queued ? 'Local reservation accepted. TopDeck registration sync was queued.' : $decision->message()
+				$decision->message()
 			);
 		} catch ( Throwable ) {
 			if ( $transaction_started ) {
@@ -195,7 +177,6 @@ final class EventRegistrationService {
 		return match ( $code ) {
 			'online_payment_required' => 402,
 			'idempotency_conflict',
-			'topdeck_hosted_registration',
 			'registration_closed',
 			'sold_out' => 409,
 			default => 400,
@@ -252,7 +233,6 @@ final class EventRegistrationService {
 			'status'         => (string) ( $registration['status'] ?? '' ),
 			'payment_status' => (string) ( $registration['payment_status'] ?? '' ),
 			'email'          => (string) ( $registration['email'] ?? '' ),
-			'topdeck_email'  => (string) ( $registration['topdeck_email'] ?? '' ),
 			'created_at'     => (string) ( $registration['created_at'] ?? '' ),
 		);
 	}

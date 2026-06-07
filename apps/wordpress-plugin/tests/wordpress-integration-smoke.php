@@ -13,7 +13,7 @@ use TCGStorePlatform\Api\V1\PosPaymentRouteBootstrapper;
 use TCGStorePlatform\Auth\RoleManager;
 use TCGStorePlatform\Migrations\BuylistSchema;
 use TCGStorePlatform\Migrations\CustomerCreditSchema;
-use TCGStorePlatform\Migrations\EventsTopDeckSchema;
+use TCGStorePlatform\Migrations\EventsSchema;
 use TCGStorePlatform\Migrations\FoundationSchema;
 use TCGStorePlatform\Migrations\InventoryPricingSchema;
 use TCGStorePlatform\Migrations\MigrationRunner;
@@ -97,7 +97,7 @@ $assert( 2 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version
 $tables = array_merge(
 	FoundationSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	InventoryPricingSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
-	EventsTopDeckSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
+	EventsSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	CustomerCreditSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	BuylistSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	SyncSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),

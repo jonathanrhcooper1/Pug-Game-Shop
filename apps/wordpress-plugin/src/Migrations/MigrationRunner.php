@@ -134,7 +134,7 @@ final class MigrationRunner {
 		return array(
 			new Version0001Foundation(),
 			new Version0002InventoryPricing(),
-			new Version0003EventsTopDeck(),
+			new Version0003Events(),
 			new Version0004CustomerCredit(),
 			new Version0005Buylist(),
 			new Version0006Sync(),

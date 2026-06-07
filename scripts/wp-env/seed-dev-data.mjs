@@ -36,7 +36,7 @@ const payload = JSON.stringify({
     kiosk_carts: manifest.kiosk_carts.length,
     buylist_submissions: manifest.buylist_submissions.length,
     events: manifest.events.length,
-    topdeck_events: manifest.topdeck.owned_tournaments.length
+    square_inventory_projection: 'planned'
   }
 });
 

@@ -15,20 +15,6 @@ use TCGStorePlatform\Events\EventRegistrationStatus;
 use TCGStorePlatform\Tests\TestCase;
 
 final class EventRegistrationPolicyTest extends TestCase {
-	public function test_topdeck_hosted_events_are_not_registered_locally(): void {
-		$decision = ( new EventRegistrationPolicy() )->decide(
-			array_merge(
-				$this->event(),
-				array( 'registration_mode' => EventRegistrationMode::TOPDECK_HOSTED )
-			),
-			0,
-			new DateTimeImmutable( '2026-06-01 12:00:00' )
-		);
-
-		$this->assert_false( $decision->is_accepted() );
-		$this->assert_same( 'topdeck_hosted_registration', $decision->code() );
-	}
-
 	public function test_full_events_use_waitlist_when_enabled(): void {
 		$decision = ( new EventRegistrationPolicy() )->decide(
 			array_merge(

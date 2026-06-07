@@ -10,9 +10,9 @@ Version: `0.155.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events schema, and public Events REST/shortcode
-surface are implemented and locally verified. TopDeck has been removed from
-the active build scope for now; legacy tournament-provider scaffolding remains
-disabled and does not collect credentials or queue provider pushes by default.
+surface are implemented and locally verified. External tournament-provider
+integrations are out of the active build scope for now; local event workflows
+do not collect provider credentials or queue provider pushes.
 White-label company branding settings are implemented for configurable company
 names, support/logo URLs, receipt footer text, theme colors, staging banner
 color, and client-safe CSS variable export.

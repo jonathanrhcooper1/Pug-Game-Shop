@@ -78,10 +78,6 @@ final class EventShortcodes {
 			$html .= '<a class="button" href="' . esc_url( $event['register_url'] ) . '" rel="noopener noreferrer">' . esc_html__( 'Register', 'tcg-store-platform' ) . '</a>';
 		}
 
-		if ( ! empty( $event['topdeck']['attribution'] ) && '' !== $event['topdeck']['event_url'] ) {
-			$html .= '<p class="tcg-event-card__attribution"><a href="' . esc_url( $event['topdeck']['event_url'] ) . '" rel="noopener noreferrer">' . esc_html__( 'Powered by TopDeck', 'tcg-store-platform' ) . '</a></p>';
-		}
-
 		$html .= '</article>';
 
 		return $html;

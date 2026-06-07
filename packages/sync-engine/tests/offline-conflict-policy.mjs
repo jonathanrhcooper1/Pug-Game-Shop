@@ -58,7 +58,7 @@ test("offline inventory reservation creates staff conflict when item sold", () =
   assert.equal(result.details.serverStatus, "sold");
 });
 
-test("offline event reservation keeps external provider queue disabled", () => {
+test("offline event reservation accepts local event without provider queue", () => {
   const result = resolveOfflineOperation(
     {
       operationType: "event_reservation",
@@ -68,18 +68,13 @@ test("offline event reservation keeps external provider queue disabled", () => {
       event: {
         seatsRemaining: 3,
         rowVersion: 2,
-        registrationMode: "website_push_topdeck",
-        topDeckEnabled: true,
       },
-    },
-    {
-      paymentStatus: "not_required",
     },
   );
 
   assert.equal(result.status, OFFLINE_CONFLICT_OUTCOME.ACCEPTED);
   assert.equal(result.code, "event_reserved");
-  assert.equal(result.details.queueTopDeck, false);
+  assert.deepEqual(providerQueueDetailKeys(result.details), []);
 });
 
 test("offline event reservation waitlists full event when allowed", () => {
@@ -100,7 +95,7 @@ test("offline event reservation waitlists full event when allowed", () => {
   assert.equal(result.status, OFFLINE_CONFLICT_OUTCOME.ACCEPTED);
   assert.equal(result.code, "event_waitlisted");
   assert.equal(result.details.canonicalStatus, "waitlist");
-  assert.equal(result.details.queueTopDeck, false);
+  assert.deepEqual(providerQueueDetailKeys(result.details), []);
 });
 
 test("offline event reservation creates capacity conflict when full", () => {
@@ -207,3 +202,7 @@ test("device revocation blocks offline push before operation handling", () => {
   assert.equal(result.status, OFFLINE_CONFLICT_OUTCOME.REJECTED);
   assert.equal(result.code, "device_revoked");
 });
+
+function providerQueueDetailKeys(details) {
+  return Object.keys(details).filter((key) => /^queue[A-Z]/.test(key));
+}

@@ -18,7 +18,7 @@ WordPress capabilities gate UI and REST actions:
 `view_inventory`, `edit_inventory`, `create_inventory`, `delete_inventory`,
 `print_labels`, `edit_prices`, `override_minimum_price`, `view_credit`,
 `adjust_credit`, `redeem_credit`, `approve_buylist`, `manage_events`,
-`sync_topdeck`, `manage_settings`, `view_reports`, and `resolve_conflicts`.
+`manage_settings`, `view_reports`, and `resolve_conflicts`.
 
 Capabilities can be location-scoped. Manager approval is a second authorization
 event, not a boolean supplied by the employee request. Current local coverage
@@ -204,7 +204,7 @@ raw operation payload JSON, SQL templates, prepared arguments, bearer tokens,
 payment data, customer credit details, or raw database row contents.
 Canonical mutation planning exposes only future write descriptors for accepted
 operations and skip metadata for conflict/rejected operations. It does not
-execute inventory, event, TopDeck, or credit-ledger writes, and it keeps route
+execute inventory, event, or credit-ledger writes, and it keeps route
 execution, queue replay, and production route registration disabled.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
@@ -249,7 +249,7 @@ canonical repository executes from this metadata.
 The deferred canonical mutation repository scaffold reports only repository
 status, operation IDs, prepare-argument counts, zero affected rows, and deferred
 execution flags. It does not execute inventory updates, event registration
-writes, customer-credit ledger writes, TopDeck workers, queue replay workers,
+writes, customer-credit ledger writes, queue replay workers,
 or production route-connected mutations.
 Route-connected staged push responses now expose that deferred repository
 status and zero-row result metadata, but the repository still does not execute
@@ -257,7 +257,7 @@ canonical mutations or production route-connected writes.
 The canonical mutation repository execution gate adds an explicit second
 approval boundary after staging. Default route processing reports blocked
 execution with block reasons and transaction-adapter deferral; it does not run
-SQL writes, queue replay, TopDeck workers, or production route-connected
+SQL writes, queue replay, or production route-connected
 mutations.
 Transaction preflight only classifies staged canonical query kinds and reports
 deferred downstream write plans. It does not prepare, execute, or commit
@@ -319,7 +319,7 @@ Always audited:
 - Price overrides.
 - Credit transactions, voids, and customer merges.
 - Buylist approvals.
-- Event and TopDeck actions.
+- Event actions.
 - POS reconciliation.
 - Offline conflict resolution.
 - Settings, roles, devices, and secret rotation.

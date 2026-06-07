@@ -262,7 +262,7 @@ final class OfflinePushServerSnapshotRepository {
 			return $this->non_negative_int( $value );
 		}
 
-		if ( in_array( $field, array( 'waitlist_enabled', 'topdeck_enabled' ), true ) ) {
+		if ( 'waitlist_enabled' === $field ) {
 			return $this->bool_value( $value );
 		}
 

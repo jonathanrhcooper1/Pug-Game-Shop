@@ -3,6 +3,92 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Remove TopDeck From Active Scope
+
+### What Changed
+
+- Removed TopDeck provider classes, event push adapters/planners, provider
+  fixtures, and provider-specific unit tests from the active codebase.
+- Converted event registration to local-only mode by removing provider
+  registration modes, provider status mappings, provider email intake, provider
+  public presentation, provider queue metadata, and the `sync_topdeck`
+  capability.
+- Renamed the events schema/migration contracts from Events/TopDeck to Events
+  and removed provider sync table/columns from the planned active event schema.
+- Replaced the package-level TopDeck adapter test scaffold with Square
+  inventory adapter coverage.
+- Updated active README/docs/test-plan text to match local events and Square
+  inventory projection as the current scope.
+
+### Why
+
+The owner removed TopDeck from the current project scope. Keeping the provider
+classes, sync table, queue flags, and credential-shaped docs would create false
+implementation surface area and distract from the three active pillars: card
+management, Square inventory projection, and offline app sync.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Events/**`
+- `apps/wordpress-plugin/src/Migrations/EventsSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0003Events.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Offline/**`
+- `apps/wordpress-plugin/src/Auth/CapabilityRegistry.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/tests/Unit/**`
+- `fixtures/seed/development-data.json`
+- `fixtures/mocks/topdeck/**`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/sync-engine/**`
+- `scripts/wp-env/**`
+- `README.md`
+- `docs/**`
+- `tests/**`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No new migration version was added.
+- Planned migration version `3` was renamed from `events_topdeck` to `events`
+  and its active schema contract no longer creates provider sync tables or
+  provider columns.
+- WordPress database target remains `9`.
+- No offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Event schema tests now assert the local event schema has no provider sync
+  table or provider columns.
+- Offline resolver, batch, canonical mutation, route-handler, and sync-engine
+  tests now assert provider queue metadata is absent.
+- Square inventory adapter package-level scaffold replaces the removed provider
+  adapter scaffold.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 672 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 456 PHP files.
+- `node packages/sync-engine/tests/offline-conflict-policy.mjs`: passed, 9
+  tests.
+- `npm.cmd run test`: passed local plugin, sync-engine, POS payment,
+  offline-app, and required-matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `node scripts/wp-env/check-required-test-plan.mjs`: passed, 12/12 scaffold
+  checks.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist src/Settings/Settings.php`:
+  passed after removing provider credential shim.
+
+### Rollback Notes
+
+- Revert this revision to restore the previous provider adapter/scaffold and
+  provider-shaped event schema planning.
+- If staging has already applied the local-only event schema, restore from a
+  pre-migration database backup before reintroducing provider event columns or
+  sync tables.
+- No production rollback applies because no production deployment is performed
+  by Codex.
+
 ## 2026-06-07 - Card Management MVP Route And Parser Foundation
 
 ### What Changed

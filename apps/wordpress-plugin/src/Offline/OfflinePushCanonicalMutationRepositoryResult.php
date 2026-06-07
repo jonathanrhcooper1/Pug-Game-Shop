@@ -134,7 +134,6 @@ final class OfflinePushCanonicalMutationRepositoryResult {
 			'inventory_write_execution_deferred'     => true,
 			'event_registration_write_deferred'      => true,
 			'customer_credit_ledger_write_deferred'  => true,
-			'topdeck_worker_deferred'                => true,
 			'canonical_mutation_repository_deferred' => true,
 			'route_connected_writes_deferred'        => true,
 			'queue_replay_deferred'                  => true,

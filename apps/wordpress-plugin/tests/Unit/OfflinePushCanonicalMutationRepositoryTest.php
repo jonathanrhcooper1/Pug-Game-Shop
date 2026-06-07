@@ -49,7 +49,7 @@ final class OfflinePushCanonicalMutationRepositoryTest extends TestCase {
 		$this->assert_true( $audit['explicit_execution_required'] );
 		$this->assert_true( $audit['canonical_mutation_repository_deferred'] );
 		$this->assert_true( $audit['route_connected_writes_deferred'] );
-		$this->assert_true( $audit['topdeck_worker_deferred'] );
+		$this->assert_false( array_key_exists( 'topdeck_worker_deferred', $audit ) );
 		$this->assert_same( array(), $audit['errors'] );
 	}
 
@@ -102,10 +102,8 @@ final class OfflinePushCanonicalMutationRepositoryTest extends TestCase {
 				),
 				'op-event-0001'           => array(
 					'event' => array(
-						'seatsRemaining'  => 3,
-						'registrationMode' => 'website_push_topdeck',
-						'topDeckEnabled'   => true,
-						'rowVersion'       => 9,
+						'seatsRemaining' => 3,
+						'rowVersion'     => 9,
 					),
 				),
 				'op-credit-redemption-01' => array(
@@ -115,12 +113,7 @@ final class OfflinePushCanonicalMutationRepositoryTest extends TestCase {
 					),
 				),
 			),
-			'2026-06-06T20:00:00Z',
-			array(
-				'op-event-0001' => array(
-					'paymentStatus' => 'paid',
-				),
-			)
+			'2026-06-06T20:00:00Z'
 		);
 
 		return ( new OfflinePushCanonicalMutationPlanner() )->plan( $payload, $resolution );

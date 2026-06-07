@@ -8,7 +8,6 @@ const blockedPatterns = [
   /live[_-]?secret/i,
   /sk_live_/i,
   /sq0atp-/i,
-  /topdeck_live/i,
   /scrydex_live/i
 ];
 

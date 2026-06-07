@@ -13,7 +13,7 @@ const required = [
   ['Customer credit ledger tests', 'tests/rest/customer-credit-ledger.md'],
   ['Manager override tests', 'tests/rest/manager-overrides.md'],
   ['ScryDex checkpoint/resume tests', 'packages/sync-engine/tests/scrydex-checkpoint-resume.md'],
-  ['TopDeck adapter tests', 'packages/api-client/tests/topdeck-adapter.md'],
+  ['Square inventory adapter tests', 'packages/api-client/tests/square-inventory-adapter.md'],
   ['WooCommerce checkout hook tests', 'apps/wordpress-plugin/tests/Integration/WooCommerce/README.md'],
   ['Playwright E2E tests', 'tests/e2e/README.md'],
   ['Offline sync conflict tests', 'tests/offline-sync/README.md']

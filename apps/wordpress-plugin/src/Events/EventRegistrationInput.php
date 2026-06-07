@@ -12,7 +12,6 @@ final class EventRegistrationInput {
 	private string $last_name;
 	private string $phone;
 	private string $email;
-	private string $topdeck_email;
 	private string $idempotency_key;
 
 	/**
@@ -28,7 +27,6 @@ final class EventRegistrationInput {
 		string $last_name,
 		string $phone,
 		string $email,
-		string $topdeck_email,
 		string $idempotency_key,
 		array $errors
 	) {
@@ -36,7 +34,6 @@ final class EventRegistrationInput {
 		$this->last_name       = $last_name;
 		$this->phone           = $phone;
 		$this->email           = $email;
-		$this->topdeck_email   = $topdeck_email;
 		$this->idempotency_key = $idempotency_key;
 		$this->errors          = $errors;
 	}
@@ -49,7 +46,6 @@ final class EventRegistrationInput {
 		$last_name       = self::clean_text( $raw['last_name'] ?? '', 100 );
 		$phone           = self::clean_phone( $raw['phone'] ?? '' );
 		$email           = strtolower( self::clean_text( $raw['email'] ?? '', 191 ) );
-		$topdeck_email   = strtolower( self::clean_text( $raw['topdeck_email'] ?? '', 191 ) );
 		$idempotency_key = self::clean_text( $raw['idempotency_key'] ?? $fallback_idempotency_key, 191 );
 		$errors          = array();
 
@@ -65,11 +61,7 @@ final class EventRegistrationInput {
 			$errors[] = 'email_invalid';
 		}
 
-		if ( '' !== $topdeck_email && ! self::is_email( $topdeck_email ) ) {
-			$errors[] = 'topdeck_email_invalid';
-		}
-
-		return new self( $first_name, $last_name, $phone, $email, $topdeck_email, $idempotency_key, $errors );
+		return new self( $first_name, $last_name, $phone, $email, $idempotency_key, $errors );
 	}
 
 	public function is_valid(): bool {
@@ -99,10 +91,6 @@ final class EventRegistrationInput {
 		return $this->email;
 	}
 
-	public function topdeck_email(): string {
-		return '' === $this->topdeck_email ? $this->email : $this->topdeck_email;
-	}
-
 	public function idempotency_key(): string {
 		return $this->idempotency_key;
 	}
@@ -116,7 +104,6 @@ final class EventRegistrationInput {
 			'last_name'       => $this->last_name,
 			'phone'           => $this->phone,
 			'email'           => $this->email,
-			'topdeck_email'   => $this->topdeck_email(),
 			'idempotency_key' => $this->idempotency_key,
 		);
 	}

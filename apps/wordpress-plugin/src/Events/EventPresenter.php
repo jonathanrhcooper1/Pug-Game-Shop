@@ -16,17 +16,14 @@ final class EventPresenter {
 	 * @return array<string, mixed>
 	 */
 	public static function present( array $row, ?DateTimeImmutable $now = null ): array {
-		$timezone     = self::timezone( $row['timezone'] ?? 'America/New_York' );
-		$start        = self::datetime( $row['start_datetime'] ?? null, $timezone );
-		$deadline     = self::datetime( $row['registration_deadline'] ?? null, $timezone );
-		$player_cap   = self::nullable_int( $row['player_cap'] ?? null );
-		$count        = max( 0, (int) ( $row['registered_count'] ?? 0 ) );
-		$waitlist     = ! empty( $row['waitlist_enabled'] );
-		$status       = EventStatus::registration_status( $player_cap, $count, $waitlist, $deadline, $now );
-		$topdeck      = ! empty( $row['topdeck_enabled'] );
-		$sync_status  = (string) ( $row['topdeck_sync_status'] ?? 'local_event' );
-		$entry_fee    = (float) ( $row['entry_fee'] ?? 0 );
-		$register_url = self::registration_url( $row );
+		$timezone   = self::timezone( $row['timezone'] ?? 'America/New_York' );
+		$start      = self::datetime( $row['start_datetime'] ?? null, $timezone );
+		$deadline   = self::datetime( $row['registration_deadline'] ?? null, $timezone );
+		$player_cap = self::nullable_int( $row['player_cap'] ?? null );
+		$count      = max( 0, (int) ( $row['registered_count'] ?? 0 ) );
+		$waitlist   = ! empty( $row['waitlist_enabled'] );
+		$status     = EventStatus::registration_status( $player_cap, $count, $waitlist, $deadline, $now );
+		$entry_fee  = (float) ( $row['entry_fee'] ?? 0 );
 
 		return array(
 			'id'                    => (int) ( $row['event_id'] ?? 0 ),
@@ -57,39 +54,15 @@ final class EventPresenter {
 			'what_to_bring'         => (string) ( $row['what_to_bring'] ?? '' ),
 			'featured'              => ! empty( $row['featured_event'] ),
 			'header_image'          => (string) ( $row['header_image'] ?? '' ),
-			'register_url'          => $register_url,
+			'register_url'          => '',
 			'badges'                => $start ? EventStatus::badges(
 				$status,
 				$start,
 				! empty( $row['decklist_required'] ),
-				$topdeck,
-				$sync_status,
 				$now
 			) : array( $status ),
-			'topdeck'               => array(
-				'enabled'          => $topdeck,
-				'tid'              => (string) ( $row['topdeck_tid'] ?? '' ),
-				'event_url'        => (string) ( $row['topdeck_event_url'] ?? '' ),
-				'registration_url' => (string) ( $row['topdeck_registration_url'] ?? '' ),
-				'sync_status'      => $sync_status,
-				'attribution'      => $topdeck ? 'TopDeck' : '',
-			),
 		);
 	}
-
-	/**
-	 * @param array<string, mixed> $row Event database row.
-	 */
-	private static function registration_url( array $row ): string {
-		$mode = (string) ( $row['registration_mode'] ?? EventRegistrationMode::LOCAL_ONLY );
-
-		if ( EventRegistrationMode::TOPDECK_HOSTED === $mode && ! empty( $row['topdeck_registration_url'] ) ) {
-			return (string) $row['topdeck_registration_url'];
-		}
-
-		return '';
-	}
-
 	private static function format_datetime( mixed $value, DateTimeZone $timezone ): ?string {
 		$datetime = self::datetime( $value, $timezone );
 

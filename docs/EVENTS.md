@@ -3,13 +3,13 @@
 ## Implementation Status
 
 Schema migration `0003` creates durable event, registration, waitlist, check-in,
-legacy provider sync-log, and template tables. Local helper classes define
+and template tables. Local helper classes define
 registration modes, capacity-consuming statuses, seats remaining, public
 status, and badges. Read-only public REST endpoints and shortcodes are
 implemented for published events. Local registration writes are implemented for
 free and pay-at-store reservations. WooCommerce event-entry products and the
-staff dashboard remain staging-gated. TopDeck and other external
-tournament-provider integrations are removed from the active scope for now.
+staff dashboard remain staging-gated. External tournament-provider
+integrations are removed from the active scope for now.
 
 ## Public Read Surface
 
@@ -65,9 +65,7 @@ This keeps local registration, payment, waitlist, and check-in state separate.
 ## Capacity
 
 Capacity-changing operations lock the event row. Seats remaining are calculated
-from active capacity-consuming statuses. TopDeck counts are treated as provider
-observations and reconciled with local records; they do not silently delete
-local registrations.
+from active capacity-consuming statuses and local registration rows.
 
 ## Paid Registration
 
@@ -91,14 +89,13 @@ adapter. Offline capacity conflicts may enter the waitlist if enabled.
 ## Check-In
 
 Staff may scan registration QR/customer code or search manually. Check-in stores
-event, registration, actor, device, location, and timestamp. TopDeck attendee
-sync can assist lookup but does not expose attendee emails publicly.
+event, registration, actor, device, location, and timestamp.
 
 ## Public UX
 
 Events provide list/calendar/featured views, game and status filters, event
 detail, registration deadlines, prize support, rules, what to bring, calendar
-link, share action, QR signup, and required TopDeck attribution.
+link, share action, and QR signup.
 
 ## Offline
 

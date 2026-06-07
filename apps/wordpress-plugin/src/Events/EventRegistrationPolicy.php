@@ -14,15 +14,6 @@ final class EventRegistrationPolicy {
 	 * @param array<string, mixed> $event Event row.
 	 */
 	public function decide( array $event, int $capacity_count, ?DateTimeImmutable $now = null ): EventRegistrationDecision {
-		$mode = (string) ( $event['registration_mode'] ?? EventRegistrationMode::LOCAL_ONLY );
-
-		if ( EventRegistrationMode::TOPDECK_HOSTED === $mode ) {
-			return EventRegistrationDecision::rejected(
-				'topdeck_hosted_registration',
-				'This event is hosted by TopDeck. Use the hosted registration link.'
-			);
-		}
-
 		$deadline = $this->datetime( $event['registration_deadline'] ?? null );
 		$status   = EventStatus::registration_status(
 			$this->nullable_int( $event['player_cap'] ?? null ),
