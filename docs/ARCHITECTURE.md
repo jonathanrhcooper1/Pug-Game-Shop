@@ -201,6 +201,11 @@ Planned POS/payment REST route contracts now describe the future webhook,
 event-ingestion, reconciliation, conflict, and fee-snapshot surface. Those
 contracts remain disabled by default and expose deferral metadata instead of
 registering live routes.
+The POS/payment route readiness planner now turns those contracts into
+health/admin diagnostics with planned/registerable route counts, missing
+handler and permission callback state, transaction executor gating, webhook
+verification gating, and provider capture/inventory/gateway deferrals. This is
+inspection-only; it does not register routes or call provider/payment services.
 
 ## System Diagram
 

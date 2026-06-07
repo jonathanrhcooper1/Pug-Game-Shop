@@ -172,5 +172,9 @@ Before major database migrations:
 - Planned POS/payment route contracts exist for webhooks, event ingestion,
   reconciliation, conflicts, and fee snapshots, but route registration remains
   disabled until staging-gated wiring is explicitly enabled.
+- System status and authenticated health report POS/payment route readiness
+  with zero registerable routes by default, missing route-handler and
+  permission-callback dependencies, webhook verifier deferral, and provider
+  capture/inventory/gateway deferrals.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

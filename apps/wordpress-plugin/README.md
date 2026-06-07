@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.136.0`
+Version: `0.137.0`
 
 ## Implemented Features
 
@@ -99,6 +99,10 @@ Version: `0.136.0`
 - Planned POS/payment REST route contracts for provider webhooks, POS event
   ingestion/status, reconciliation runs, conflict review/resolution, and fee
   snapshots, all disabled by default with route/provider/capture deferrals.
+- POS/payment route readiness planning and presentation for health/admin
+  diagnostics, keeping all POS/payment routes unregistered and provider
+  capture, provider inventory writes, webhooks, and WooCommerce gateway capture
+  deferred by default.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

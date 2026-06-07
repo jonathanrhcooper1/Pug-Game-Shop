@@ -207,6 +207,22 @@ These contracts are disabled by default and carry explicit route-registration,
 transaction, route-connected write, provider capture, provider inventory,
 webhook registration, and WooCommerce gateway capture deferral metadata.
 
+## Route Readiness
+
+POS/payment route readiness now converts those planned contracts into
+health/admin diagnostics for staging review. The readiness payload reports:
+
+- Planned and registerable route counts.
+- Feature-flag status for `pos_payments`.
+- Missing route handler and permission callback dependencies.
+- Route-connected write, transaction executor, and webhook verifier deferrals.
+- Provider capture, provider inventory write, webhook registration, and
+  WooCommerce gateway capture safety deferrals.
+
+By default every route remains unregistered. The readiness layer is
+inspection-only and does not call providers, capture payments, mutate inventory,
+register webhooks, or enable WooCommerce gateway capture.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

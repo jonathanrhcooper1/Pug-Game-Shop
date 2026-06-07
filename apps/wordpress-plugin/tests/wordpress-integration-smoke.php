@@ -88,7 +88,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.136.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.137.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -138,6 +138,8 @@ $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)'] ), 'Eve
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/register'] ), 'Events REST registration route was not registered.' );
 $assert( ! isset( $routes['/tcg-store/v1/offline/pull'] ), 'Offline pull route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/offline/push'] ), 'Offline push route should remain unregistered.' );
+$assert( ! isset( $routes['/tcg-store/v1/pos/events'] ), 'POS event route should remain unregistered.' );
+$assert( ! isset( $routes['/tcg-store/v1/payments/fee-snapshots'] ), 'Payment fee snapshot route should remain unregistered.' );
 
 $response = rest_do_request( '/tcg-store/v1/health' );
 $assert( ! $response->is_error(), 'Health REST route returned an error.' );
@@ -145,7 +147,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.136.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.137.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -273,5 +275,19 @@ $assert( 'POST /offline/devices/register' === ( $data['offline_device_pairing_ro
 $assert( false === ( $data['offline_device_pairing_route_readiness']['handler_injected'] ?? null ), 'Offline pairing readiness should not report a default handler.' );
 $assert( false === ( $data['offline_device_pairing_route_readiness']['permission_callback_ready'] ?? null ), 'Offline pairing readiness permission should remain locked.' );
 $assert( true === ( $data['offline_device_pairing_route_readiness']['registration_deferred'] ?? null ), 'Offline pairing route registration should remain deferred.' );
+$assert( 'blocked' === ( $data['pos_payment_route_readiness']['status'] ?? null ), 'POS/payment route readiness should remain blocked.' );
+$assert( false === ( $data['pos_payment_route_readiness']['feature_enabled'] ?? null ), 'POS/payment feature should remain disabled.' );
+$assert( 8 === (int) ( $data['pos_payment_route_readiness']['planned_route_count'] ?? 0 ), 'POS/payment readiness should report planned routes.' );
+$assert( 0 === (int) ( $data['pos_payment_route_readiness']['registerable_route_count'] ?? -1 ), 'POS/payment readiness should report zero registerable routes.' );
+$assert( true === ( $data['pos_payment_route_readiness']['registration_deferred'] ?? null ), 'POS/payment route registration should remain deferred.' );
+$assert( false === ( $data['pos_payment_route_readiness']['route_handlers_configured'] ?? null ), 'POS/payment route handlers should remain unconfigured by default.' );
+$assert( false === ( $data['pos_payment_route_readiness']['permission_callbacks_configured'] ?? null ), 'POS/payment permission callbacks should remain unconfigured by default.' );
+$assert( true === ( $data['pos_payment_route_readiness']['provider_capture_deferred'] ?? null ), 'POS/payment provider capture should remain deferred.' );
+$pos_payment_routes = $data['pos_payment_route_readiness']['route_registration_summary'] ?? array();
+$assert( is_array( $pos_payment_routes ), 'POS/payment route summary should be present.' );
+$assert( false === ( $pos_payment_routes['POST /pos/events']['should_register'] ?? null ), 'POS event ingestion route should remain unregistered.' );
+$assert( true === ( $pos_payment_routes['POST /pos/events']['route_connected_writes_deferred'] ?? null ), 'POS event ingestion writes should remain deferred.' );
+$assert( false === ( $pos_payment_routes['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['should_register'] ?? null ), 'Payment webhook route should remain unregistered.' );
+$assert( false === ( $pos_payment_routes['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['webhook_verifier_ready'] ?? null ), 'Payment webhook verifier should remain unconfigured.' );
 
 echo "PASS WordPress integration smoke test\n";

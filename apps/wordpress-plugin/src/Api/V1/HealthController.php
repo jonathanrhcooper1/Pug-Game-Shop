@@ -73,6 +73,7 @@ final class HealthController {
 		$features                   = array();
 		$overall                    = 'ok';
 		$offline_feature_enabled    = FeatureFlags::is_enabled( 'offline_sync' );
+		$pos_payments_enabled       = FeatureFlags::is_enabled( 'pos_payments' );
 		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
 		$sync_handler_factory       = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
 		$offline                    = ( new OfflineRouteBootstrapStatusPresenter(
@@ -103,6 +104,9 @@ final class HealthController {
 			)
 		) )->health_payload(
 			$offline_feature_enabled
+		);
+		$pos_payment_routes         = ( new PosPaymentRouteReadinessStatusPresenter() )->health_payload(
+			$pos_payments_enabled
 		);
 
 		foreach ( $dependencies as $dependency ) {
@@ -144,6 +148,7 @@ final class HealthController {
 				'offline_registered_device_permissions'   => $device_permissions,
 				'offline_registered_device_sync_handlers' => $sync_handlers,
 				'offline_device_pairing_route_readiness'  => $pairing,
+				'pos_payment_route_readiness'             => $pos_payment_routes,
 				'timestamp'                               => gmdate( 'c' ),
 			),
 			200

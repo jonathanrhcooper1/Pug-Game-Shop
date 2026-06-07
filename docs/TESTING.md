@@ -178,6 +178,10 @@
 - Local unit coverage now includes REST route contracts for health and public
   Events endpoints, including namespace/method/callback/access-mode checks and
   guards that unimplemented write modules are not registered.
+- Local unit and WordPress smoke coverage now include POS/payment route
+  readiness diagnostics for planned webhook, event ingestion, reconciliation,
+  conflict, and fee-snapshot routes, proving the routes stay unregistered while
+  blocked reasons and provider/capture deferrals remain visible.
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.

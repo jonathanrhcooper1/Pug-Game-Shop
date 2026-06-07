@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Route Readiness Diagnostics
+
+### What Changed
+
+- Added `PosPaymentRouteReadinessPlanner` and
+  `PosPaymentRouteReadinessStatusPresenter`.
+- Health and admin System Status now expose POS/payment route readiness for
+  planned webhook, event ingestion, reconciliation, conflict, and fee-snapshot
+  routes.
+- Readiness metadata reports feature gating, planned/registerable route counts,
+  route-handler readiness, permission-callback readiness, transaction executor
+  readiness, webhook verifier readiness, and provider/capture/inventory/gateway
+  deferrals.
+- Added unit and WordPress smoke coverage proving POS/payment routes remain
+  unregistered by default.
+- Updated project, plugin, and offline app package versions to `0.137.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+Phase 8 now has planned POS/payment REST contracts, but staging needs a visible
+readiness surface before any route can be safely registered. This revision makes
+the current blockers explicit while preserving the safety boundary: no route
+registration, no webhooks, no provider capture, no provider inventory writes,
+and no WooCommerce gateway capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteReadinessPlannerTest` coverage for default blocked
+  readiness, feature-enabled gated status, future read-only readiness, future
+  write-route transaction requirements, and webhook verifier requirements.
+- `PosPaymentRouteReadinessStatusPresenterTest` coverage for health payload and
+  admin summary output.
+- WordPress smoke assertions that POS/payment routes remain unregistered while
+  health exposes blocked readiness metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment route readiness diagnostics,
+  tests, health/admin output, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Planned Route Contracts
 
 ### What Changed

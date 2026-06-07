@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.137.0] - 2026-06-06
+
+### Added
+
+- POS/payment route readiness planner and status presenter for the planned
+  webhook, event ingestion, reconciliation, conflict, and fee-snapshot routes.
+- Health and admin System Status diagnostics for POS/payment route readiness,
+  including feature gating, planned/registerable route counts, route-handler
+  readiness, permission-callback readiness, transaction executor readiness,
+  webhook verifier readiness, and production safety deferrals.
+- Unit and WordPress smoke coverage proving POS/payment routes remain
+  unregistered by default while readiness metadata is visible for staging.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.136.0] - 2026-06-06
 
 ### Added

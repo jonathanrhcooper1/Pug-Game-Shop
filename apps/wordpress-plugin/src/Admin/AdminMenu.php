@@ -17,6 +17,7 @@ use TCGStorePlatform\Api\V1\OfflineRouteBootstrapPlanner;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+use TCGStorePlatform\Api\V1\PosPaymentRouteReadinessStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
@@ -152,6 +153,9 @@ final class AdminMenu {
 		) )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )
 		);
+		$pos_payment_routes         = ( new PosPaymentRouteReadinessStatusPresenter() )->admin_summary(
+			FeatureFlags::is_enabled( 'pos_payments' )
+		);
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
@@ -207,6 +211,11 @@ final class AdminMenu {
 			__( 'Offline pairing route readiness', 'tcg-store-platform' ),
 			$pairing['value'],
 			$pairing['status']
+		);
+		$this->render_status_row(
+			__( 'POS/payment route readiness', 'tcg-store-platform' ),
+			$pos_payment_routes['value'],
+			$pos_payment_routes['status']
 		);
 
 		echo '</tbody></table></div>';
