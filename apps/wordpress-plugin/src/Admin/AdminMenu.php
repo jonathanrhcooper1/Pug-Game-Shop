@@ -7,6 +7,7 @@
 
 namespace TCGStorePlatform\Admin;
 
+use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
@@ -113,6 +114,9 @@ final class AdminMenu {
 		$offline   = ( new OfflineRouteBootstrapStatusPresenter() )->admin_summary(
 			FeatureFlags::is_enabled( 'offline_sync' )
 		);
+		$pairing   = ( new OfflineDevicePairingRouteReadinessStatusPresenter() )->admin_summary(
+			FeatureFlags::is_enabled( 'offline_sync' )
+		);
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
@@ -153,6 +157,11 @@ final class AdminMenu {
 			__( 'Offline route bootstrap', 'tcg-store-platform' ),
 			$offline['value'],
 			$offline['status']
+		);
+		$this->render_status_row(
+			__( 'Offline pairing route readiness', 'tcg-store-platform' ),
+			$pairing['value'],
+			$pairing['status']
 		);
 
 		echo '</tbody></table></div>';

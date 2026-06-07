@@ -189,6 +189,9 @@
   proving missing handler/permission dependencies stay blocked, configured
   staged dependencies report ready-but-gated, and unconfigured authorizers keep
   permission readiness locked.
+- Local unit and WordPress smoke coverage now include staged pairing route
+  readiness status presentation in health/admin surfaces, proving the default
+  remains blocked, handlerless, permission-locked, and deferred.
 - Local unit coverage now includes offline device access policy checks for
   active allowed devices, revoked/inactive/expired devices, required and
   unsupported scopes, supported modes/scopes, location IDs, and UTC timestamp

@@ -145,7 +145,7 @@ final class OfflineDevicePairingPermissionCallbackAdapterTest extends TestCase {
 			'device_mode'      => 'kiosk',
 			'location_id'      => 2,
 			'manager_id'       => 42,
-			'app_version'      => '0.83.0',
+			'app_version'      => '0.84.0',
 			'platform'         => 'windows',
 			'capabilities'     => array(
 				'barcode_scanner' => true,

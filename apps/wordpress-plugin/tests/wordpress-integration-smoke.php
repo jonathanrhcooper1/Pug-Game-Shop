@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.83.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.84.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.83.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.84.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -154,5 +154,10 @@ $assert( 5 === (int) ( $data['offline_route_bootstrap']['planned_route_count'] ?
 $assert( 0 === (int) ( $data['offline_route_bootstrap']['registerable_route_count'] ?? -1 ), 'Offline route bootstrap should report zero registerable routes.' );
 $assert( false === ( $data['offline_route_bootstrap']['should_register_routes'] ?? null ), 'Offline route bootstrap should not register routes.' );
 $assert( true === ( $data['offline_route_bootstrap']['registration_deferred'] ?? null ), 'Offline route bootstrap should remain deferred.' );
+$assert( 'blocked' === ( $data['offline_device_pairing_route_readiness']['status'] ?? null ), 'Offline pairing readiness should remain blocked.' );
+$assert( 'POST /offline/devices/register' === ( $data['offline_device_pairing_route_readiness']['route_key'] ?? null ), 'Offline pairing readiness should report the pairing route.' );
+$assert( false === ( $data['offline_device_pairing_route_readiness']['handler_injected'] ?? null ), 'Offline pairing readiness should not report a default handler.' );
+$assert( false === ( $data['offline_device_pairing_route_readiness']['permission_callback_ready'] ?? null ), 'Offline pairing readiness permission should remain locked.' );
+$assert( true === ( $data['offline_device_pairing_route_readiness']['registration_deferred'] ?? null ), 'Offline pairing route registration should remain deferred.' );
 
 echo "PASS WordPress integration smoke test\n";

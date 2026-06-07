@@ -328,6 +328,11 @@ injected registration handler and configured pairing permission callback into
 the existing bootstrap plan. It proves handler and permission readiness while
 the pairing route remains disabled by default and registration stays deferred.
 
+Version `0.84.0` surfaces that staged pairing readiness summary in authenticated
+health output and admin System Status. The visible default should remain
+blocked, handlerless, permission-locked, and deferred until a reviewed staging
+route-enablement slice changes the gate.
+
 ## Hardware Gate
 
 Before production, test the actual:

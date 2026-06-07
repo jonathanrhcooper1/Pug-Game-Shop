@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pairing Readiness Health And Admin Status
+
+### What Changed
+
+- Added `OfflineDevicePairingRouteReadinessStatusPresenter` for health and
+  admin summaries of the staged pairing route readiness plan.
+- Exposed `offline_device_pairing_route_readiness` in the authenticated health
+  payload.
+- Added an admin System Status row for offline pairing route readiness.
+- Added presenter tests and WordPress integration smoke assertions proving the
+  default pairing route stays blocked, handlerless, permission-locked, and
+  deferred.
+- Updated project, plugin, and offline app package versions to `0.84.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The staged pairing readiness summary should be visible to authorized staging
+reviewers without registering a live WordPress REST route. This revision puts
+the existing readiness metadata into health and admin inspection surfaces while
+preserving the disabled route gate.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Pairing readiness status presenter tests for blocked default health payloads.
+- Pairing readiness status presenter tests for ready-but-gated staged admin
+  summaries.
+- WordPress integration smoke assertions for the new authenticated health
+  payload field.
+
+### Rollback Notes
+
+- Revert this revision to remove health/admin exposure of pairing readiness.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pairing Route Readiness Summary
 
 ### What Changed

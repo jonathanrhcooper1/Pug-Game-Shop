@@ -16,7 +16,8 @@ Offline REST routes move through explicit readiness objects before live
 registration. The staged pairing route now has a compact readiness planner that
 composes the injected registration handler and configured pairing permission
 callback into the existing bootstrap summary while preserving the
-disabled-by-default route gate.
+disabled-by-default route gate. Health and admin System Status expose that
+pairing readiness as inspection metadata only; they do not register routes.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

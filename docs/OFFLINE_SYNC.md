@@ -156,7 +156,9 @@ deny-only pairing adapters are not returned as route callbacks.
 The staged pairing route readiness planner now composes the injected
 registration handler and configured pairing permission callback into a compact
 bootstrap summary for staging checks while preserving disabled-by-default route
-registration.
+registration. Authenticated health output and admin System Status now surface
+that pairing readiness summary so staging can inspect the blocked default and
+future staged dependencies without registering live routes.
 The planned offline route registration planner now turns those contracts into
 disabled route registration metadata with fail-closed callbacks and block
 reasons, without calling WordPress route registration.

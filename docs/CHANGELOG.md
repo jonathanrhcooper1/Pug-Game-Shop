@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.84.0] - 2026-06-06
+
+### Added
+
+- Authenticated health payload reporting for staged offline device pairing route
+  readiness.
+- Admin System Status row for staged offline pairing route handler and
+  permission readiness.
+- Presenter and WordPress integration smoke coverage proving the default
+  pairing route remains blocked, handlerless, permission-locked, and deferred.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.83.0] - 2026-06-06
 
 ### Added

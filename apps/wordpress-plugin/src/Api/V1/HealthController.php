@@ -66,12 +66,16 @@ final class HealthController {
 	public function get_health( \WP_REST_Request $request ): \WP_REST_Response {
 		unset( $request );
 
-		$runner       = new MigrationRunner();
-		$dependencies = DependencyChecker::status();
-		$features     = array();
-		$overall      = 'ok';
-		$offline      = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
-			FeatureFlags::is_enabled( 'offline_sync' )
+		$runner                  = new MigrationRunner();
+		$dependencies            = DependencyChecker::status();
+		$features                = array();
+		$overall                 = 'ok';
+		$offline_feature_enabled = FeatureFlags::is_enabled( 'offline_sync' );
+		$offline                 = ( new OfflineRouteBootstrapStatusPresenter() )->health_payload(
+			$offline_feature_enabled
+		);
+		$pairing                 = ( new OfflineDevicePairingRouteReadinessStatusPresenter() )->health_payload(
+			$offline_feature_enabled
 		);
 
 		foreach ( $dependencies as $dependency ) {
@@ -99,18 +103,19 @@ final class HealthController {
 
 		return new \WP_REST_Response(
 			array(
-				'status'                  => $overall,
-				'version'                 => Version::PLUGIN,
-				'database'                => array(
+				'status'                                  => $overall,
+				'version'                                 => Version::PLUGIN,
+				'database'                                => array(
 					'current' => $runner->current_version(),
 					'target'  => Version::DATABASE,
 				),
-				'dependencies'            => $dependencies,
-				'scheduler'               => $this->scheduler->status(),
-				'hpos'                    => Compatibility::hpos_status(),
-				'features'                => $features,
-				'offline_route_bootstrap' => $offline,
-				'timestamp'               => gmdate( 'c' ),
+				'dependencies'                            => $dependencies,
+				'scheduler'                               => $this->scheduler->status(),
+				'hpos'                                    => Compatibility::hpos_status(),
+				'features'                                => $features,
+				'offline_route_bootstrap'                 => $offline,
+				'offline_device_pairing_route_readiness' => $pairing,
+				'timestamp'                               => gmdate( 'c' ),
 			),
 			200
 		);

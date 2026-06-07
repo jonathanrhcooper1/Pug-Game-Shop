@@ -365,7 +365,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.83.0",
+  "app_version": "0.84.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -387,6 +387,12 @@ controller readiness, disabled-by-default registration state, and bootstrap
 block reasons. Even with both staged dependencies injected, the current pairing
 route remains `registration_deferred` because offline routes are still disabled
 by default.
+
+Authenticated health responses also expose this summary under
+`offline_device_pairing_route_readiness` for staging review. The default
+production-safe payload remains blocked, handlerless, permission-locked, and
+deferred until later route-enablement work injects and approves live
+dependencies.
 
 When the future route is enabled, the planned successful response body is:
 

@@ -97,7 +97,9 @@ Unconfigured pairing permission adapters are no longer treated as route-ready;
 they still deny direct calls but are not exposed by the permission factory.
 The staged pairing route readiness planner reports handler and permission
 configuration as inspection metadata only; it does not register live routes or
-turn pairing writes on.
+turn pairing writes on. Health and admin System Status expose that metadata to
+authorized staff/admin users while keeping the default route handlerless,
+permission-locked, and deferred.
 
 ## Secret Storage
 
