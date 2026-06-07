@@ -209,6 +209,13 @@ final class OfflinePullChangeQueryPlanner {
 		return array_values( array_keys( self::DOMAIN_CONTRACTS ) );
 	}
 
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function domain_contracts(): array {
+		return self::DOMAIN_CONTRACTS;
+	}
+
 	public function plan(
 		OfflinePullRequest $request,
 		int $offline_device_id,

@@ -98,6 +98,7 @@ registered-device resolver readiness plus staged sync route handler readiness
 plus staged pull response handler readiness
 plus pull change-query planning
 plus pull query readiness metadata
+plus pull query SQL template planning
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

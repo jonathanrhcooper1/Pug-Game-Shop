@@ -56,6 +56,8 @@
 - Version `0.96.0` adds pull change-query readiness metadata in health/admin
   status. No WordPress schema, SQLite schema, migration order, or rollback
   target changes.
+- Version `0.97.0` adds offline pull change-query SQL template planning. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

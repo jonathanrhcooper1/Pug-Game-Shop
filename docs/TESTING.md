@@ -148,6 +148,9 @@
 - Local unit and WordPress smoke coverage now assert staged pull change-query
   readiness metadata, supported domain counts, trusted-context deferral, and
   query-execution deferral in health/admin status payloads.
+- Local unit coverage now includes offline pull change-query SQL template
+  planning for prepared per-domain `SELECT` statements, conflict-device
+  filters, cursor carry-forward deferral, and fail-closed tampered contracts.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

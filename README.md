@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.96.0`
+Version: `0.97.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -144,6 +144,10 @@ advancement, and route registration still deferred.
 Health and admin System Status now expose non-secret pull change-query
 readiness metadata for staged review while trusted device context handoff and
 database execution remain deferred.
+Offline pull change-query SQL planning now compiles those safe contracts into
+prepared per-domain SQL templates and argument arrays for staging review while
+cursor filtering, execution, tombstone reads, cursor advancement, and route
+registration remain deferred.
 Offline device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp

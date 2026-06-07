@@ -24,12 +24,15 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['configured'] );
 		$this->assert_same( 2, $summary['handler_count'] );
 		$this->assert_true( $summary['pull_change_query_ready'] );
+		$this->assert_true( $summary['pull_change_query_sql_ready'] );
+		$this->assert_true( $summary['pull_change_query_sql_template_ready'] );
 		$this->assert_same( 5, $summary['pull_change_query_domain_count'] );
 		$this->assert_same(
 			array( 'branding', 'inventory', 'customer_credit', 'events', 'conflicts' ),
 			$summary['pull_change_query_domains']
 		);
 		$this->assert_true( $summary['pull_change_query_context_deferred'] );
+		$this->assert_true( $summary['pull_change_query_cursor_filter_deferred'] );
 		$this->assert_true( $summary['pull_change_query_execution_deferred'] );
 		$this->assert_true( $summary['write_deferred'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
@@ -107,7 +110,10 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_handler_configured'] );
 		$this->assert_true( $payload['pull_response_ready'] );
 		$this->assert_true( $payload['pull_change_query_ready'] );
+		$this->assert_true( $payload['pull_change_query_sql_ready'] );
+		$this->assert_true( $payload['pull_change_query_sql_template_ready'] );
 		$this->assert_same( 5, $payload['pull_change_query_domain_count'] );
+		$this->assert_true( $payload['pull_change_query_cursor_filter_deferred'] );
 		$this->assert_true( $payload['pull_change_query_execution_deferred'] );
 		$this->assert_same( 2, $payload['handler_count'] );
 		$this->assert_true( $payload['write_deferred'] );
@@ -116,6 +122,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'pull ready', $summary['value'] );
 		$this->assert_contains( 'push ready', $summary['value'] );
 		$this->assert_contains( 'query plan ready', $summary['value'] );
+		$this->assert_contains( 'SQL plan ready', $summary['value'] );
 	}
 
 	/**

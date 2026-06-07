@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.97.0] - 2026-06-06
+
+### Added
+
+- Prepared SQL template planning for offline pull change queries across
+  branding, inventory, customer credit, events, and conflicts domains.
+- A build-plan DTO that exposes per-domain SQL templates, prepared arguments,
+  cursor carry-forward, and deferred execution/cursor/tombstone flags without
+  executing database reads.
+- Fail-closed unit coverage for tampered pull query contracts, selected
+  columns, filters, cursors, page sizes, ordering, and invalid base plans.
+- Health and admin readiness metadata for staged pull SQL template planning.
+
+### Not Added
+
+- No live offline route is enabled. Cursor filtering, pull query execution,
+  tombstone repository reads, cursor advancement, queue replay, route
+  registration, and route-connected database mutation remain disabled.
+
 ## [0.96.0] - 2026-06-06
 
 ### Added

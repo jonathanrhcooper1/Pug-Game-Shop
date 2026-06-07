@@ -200,6 +200,11 @@ registration remain disabled.
 Version `0.96.0` exposes pull change-query readiness in health and admin
 System Status, including supported domains and explicit trusted-context,
 query-execution, cursor, and tombstone deferral flags.
+Version `0.97.0` adds prepared SQL template planning for those pull contracts.
+The builder validates table/column/filter/order contracts and returns
+allowlisted SQL templates plus prepared arguments while cursor filtering,
+execution, tombstone reads, cursor advancement, and live route registration
+remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

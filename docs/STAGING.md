@@ -60,6 +60,9 @@ Before major database migrations:
   device-scoped conflict filters while query execution remains disabled.
 - Health/System Status exposes pull change-query readiness and supported
   domains while trusted device context handoff and execution remain deferred.
+- Pull change-query SQL planning exposes only allowlisted prepared templates
+  and argument counts while cursor filtering, execution, tombstones, cursor
+  advancement, and route registration remain disabled.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

@@ -394,6 +394,11 @@ Version `0.96.0` surfaces pull change-query readiness in health/admin status
 payloads. Staging can verify supported domains and deferred trusted-context,
 query, tombstone, and cursor flags before any live database read path is wired.
 
+Version `0.97.0` adds prepared SQL template planning for pull change-query
+contracts. Staging can inspect allowlisted `SELECT` templates and prepared
+argument counts before cursor filtering, execution, tombstone reads, cursor
+advancement, route registration, or route-connected writes are enabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

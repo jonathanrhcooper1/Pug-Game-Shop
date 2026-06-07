@@ -133,6 +133,10 @@ any SQL execution path exists.
 Health/admin pull query readiness exposes only supported domain names and
 deferred-state booleans; trusted device context handoff, SQL execution,
 tombstone reads, and cursor advancement remain disabled.
+Pull change-query SQL planning validates those table, column, filter, order,
+cursor, and limit contracts before returning prepared templates. It still
+does not execute SQL, parse opaque cursors into filters, read tombstones,
+advance cursors, or enable route-connected writes.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

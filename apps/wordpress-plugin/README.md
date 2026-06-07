@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.96.0`
+Version: `0.97.0`
 
 ## Implemented Features
 
@@ -149,6 +149,10 @@ Version: `0.96.0`
 - Health and admin System Status readiness metadata for staged offline pull
   change-query planning while trusted context handoff and execution stay
   deferred.
+- Offline pull change-query SQL planning that converts safe domain contracts
+  into prepared per-domain SQL templates and argument arrays while cursor
+  filtering, execution, tombstone reads, cursor advancement, and route
+  registration stay deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

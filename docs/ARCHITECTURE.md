@@ -39,6 +39,10 @@ The pull change-query planner adds safe domain contracts for future read
 repositories, and sync handler readiness exposes those supported domains plus
 trusted-context, query, cursor, and tombstone deferral flags without executing
 database reads.
+The pull change-query SQL builder now turns those contracts into prepared
+per-domain SQL templates and argument arrays for staging review, while cursor
+filtering, execution, tombstones, cursor advancement, and route registration
+remain deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -216,6 +220,9 @@ and any future change-set provider remains injected behind the same boundary
 while live queries and cursor writes stay disabled. Pull change-query planning
 now defines plan-only table, column, payload-field, cursor, and device-scoped
 conflict contracts for those domains before any repository execution is wired.
+Pull change-query SQL planning now compiles those contracts into safe prepared
+`SELECT` templates for future repositories while keeping cursor filtering and
+all database execution deferred.
 Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location

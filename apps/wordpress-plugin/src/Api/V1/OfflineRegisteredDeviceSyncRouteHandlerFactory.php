@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Offline\OfflinePullChangeQueryPlanner;
+use TCGStorePlatform\Offline\OfflinePullChangeQueryBuilder;
 
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	private const HANDLER_CALLBACKS = array(
@@ -50,6 +51,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		$handlers           = $this->handlers();
 		$issues             = array();
 		$pull_query_domains = OfflinePullChangeQueryPlanner::supported_domains();
+		$pull_sql_ready     = array() !== $pull_query_domains
+			&& method_exists( OfflinePullChangeQueryBuilder::class, 'build' );
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -65,9 +68,12 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_handler_configured'                    => is_callable( $handlers['push_offline_operations'] ?? null ),
 			'pull_response_ready'                        => is_callable( $handlers['pull_offline_changes'] ?? null ),
 			'pull_change_query_ready'                    => array() !== $pull_query_domains,
+			'pull_change_query_sql_ready'                => $pull_sql_ready,
+			'pull_change_query_sql_template_ready'       => $pull_sql_ready,
 			'pull_change_query_domains'                  => $pull_query_domains,
 			'pull_change_query_domain_count'             => count( $pull_query_domains ),
 			'pull_change_query_context_deferred'         => true,
+			'pull_change_query_cursor_filter_deferred'   => true,
 			'pull_change_query_execution_deferred'       => true,
 			'pull_change_query_cursor_advance_deferred'  => true,
 			'pull_change_query_tombstone_reads_deferred' => true,

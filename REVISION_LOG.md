@@ -3,6 +3,98 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Query SQL Template Planning
+
+### What Changed
+
+- Added `OfflinePullChangeQueryBuilder` to convert accepted offline pull
+  change-query contracts into prepared per-domain SQL templates and argument
+  arrays.
+- Added `OfflinePullChangeQueryBuildPlan` for safe audit/readiness metadata
+  without executing database reads or exposing raw SQL arguments in health
+  output.
+- Exposed pull SQL planning readiness in registered-device sync handler health
+  and admin summaries.
+- Added fail-closed unit coverage for invalid base plans, tampered selected
+  columns, filters, cursors, page sizes, and ordering.
+- Added WordPress smoke assertions for the new non-secret SQL planning
+  readiness fields.
+- Updated project, plugin, and offline app package versions to `0.97.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The pull query planner has safe domain contracts, but future repositories need
+reviewable prepared SQL templates before live reads are considered. This
+revision proves those templates can be built from allowlisted contracts while
+keeping opaque cursor filtering, execution, tombstone reads, cursor
+advancement, route registration, and route-connected writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeQueryPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullChangeQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Pull change-query SQL builder coverage for prepared inventory and conflict
+  templates, prepared arguments, cursor carry-forward deferral, and no cursor
+  interpolation into SQL.
+- Fail-closed coverage for invalid base plans, tampered table/column/filter
+  contracts, cursor mutations, unsupported limits, and unsafe ordering.
+- Sync handler readiness and WordPress smoke coverage for SQL planning
+  readiness and cursor-filter deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove pull SQL template planning and its
+  health/admin readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, cursor filtering, pull query execution, tombstone reads,
+  cursor advancement, queue replay, and route-connected database writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Pull Query Readiness Metadata
 
 ### What Changed
