@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - WordPress Migration Rollback Restore Rehearsal
+
+### What Changed
+
+- Added a WP-CLI migration rehearsal script for disposable WordPress
+  integration/staging databases.
+- The script requires `TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL=1` and refuses
+  to run in production.
+- The rehearsal verifies the current schema target, rolls back to schema
+  version `1`, checks Phase 2 inventory/pricing tables were dropped, migrates
+  back to the current target, and checks those tables returned.
+- Added the rehearsal as the final step in the WordPress integration workflow
+  after the staging inventory smoke.
+
+### Why
+
+The project needs executable proof that rollback and restore are rehearsed in a
+real WordPress/MySQL environment before doing the same operation on the GoDaddy
+staging database.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The new script exercises existing migrations and rollbacks only in an
+  explicitly approved disposable non-production database.
+
+### Tests Added
+
+- WordPress integration workflow coverage for destructive rollback/restore
+  rehearsal in the disposable CI database.
+- Syntax/lint coverage for the new WP-CLI rehearsal script.
+
+### Tests Run
+
+- `php -l apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php`:
+  passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-migration-rehearsal.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the workflow rehearsal step and WP-CLI script.
+- No schema rollback is required for code rollback.
+- If the rehearsal ran in a disposable database, it should already have restored
+  the plugin schema back to the current target before exiting.
+
 ## 2026-06-07 - Inventory Public Read Rate Limit Gate
 
 ### What Changed

@@ -80,6 +80,11 @@ staging database acceptance remains pending.
 - WordPress integration staging smoke coverage now creates a disposable
   Bulbasaur inventory item through REST and searches it back through the staff
   inventory route while verifying the initial price-change log row.
+- WordPress integration migration rehearsal now rolls the disposable database
+  from the current target back to schema version `1`, verifies Phase 2
+  inventory/pricing tables are dropped, migrates back to the target, and
+  verifies those tables return. The rehearsal requires an explicit destructive
+  test flag and refuses production.
 - Staff Inventory Workspace search form, route-readiness lockout, and
   REST-backed read-only results panel for the staging staff inventory search
   route.
@@ -127,9 +132,11 @@ On PHP 8.2.29:
 
 ## Acceptance Still Required
 
-1. Clean migration from schema version `1` to `2` on staging.
-2. Rollback from schema version `2` to `1` on staging.
-3. `dbDelta` compatibility on the target WordPress database configuration.
+1. Clean migration from schema version `1` to `2` on the GoDaddy staging
+   database.
+2. Rollback from schema version `2` to `1` on the GoDaddy staging database.
+3. `dbDelta` compatibility on the target GoDaddy WordPress database
+   configuration.
 4. Search and pagination benchmarks after the 50,000-item seed fixture exists.
 5. Live route registration remains disabled until target-staging permission,
    rate-limit, and route smoke tests are complete.

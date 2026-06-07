@@ -117,3 +117,10 @@ jobs:
           WP_DIR: ${{ runner.temp }}/wordpress
           WP_ENVIRONMENT_TYPE: staging
         run: wp eval-file apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php --path="$WP_DIR"
+
+      - name: Rehearse migration rollback and restore
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+          WP_ENVIRONMENT_TYPE: staging
+          TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL: "1"
+        run: wp eval-file apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php --path="$WP_DIR"

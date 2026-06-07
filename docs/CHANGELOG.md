@@ -70,6 +70,11 @@ All notable changes follow Semantic Versioning.
 - WordPress integration staging smoke coverage that creates a disposable
   Bulbasaur inventory row through REST and searches it back through the staff
   inventory route.
+- WordPress integration migration rehearsal that requires an explicit
+  destructive-test environment flag, refuses production, rolls the disposable
+  database from the current schema target back to version `1`, verifies Phase 2
+  inventory/pricing tables are dropped, migrates back to the target, and
+  verifies those tables return.
 - Staff Inventory Workspace search panel with safe filter sanitization,
   route-readiness lockout messaging, and a REST-backed read-only results table
   for the staging staff inventory search route.

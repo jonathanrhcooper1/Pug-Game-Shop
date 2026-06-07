@@ -32,7 +32,10 @@
   ingestion, and production route availability remain closed. The staging smoke
   seeds one disposable Pokemon inventory row, creates one disposable Bulbasaur
   row through REST, verifies its initial price-change log row, and asserts
-  staff search returns both rows with staff SKU data.
+  staff search returns both rows with staff SKU data. The workflow also runs an
+  explicit destructive migration rehearsal in the disposable database, rolling
+  from the current target to schema version `1`, verifying Phase 2 tables are
+  dropped, migrating back to the target, and verifying those tables return.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
