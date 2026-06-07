@@ -20,6 +20,7 @@ namespace {
 			public string $last_output_type = '';
 			private ?array $row = null;
 			private int|false $query_result = 1;
+			private array $query_results = array();
 			private array|false $result_set = array();
 			private mixed $var_result = 0;
 
@@ -33,12 +34,16 @@ namespace {
 			 */
 			public function __construct(
 				?array $row = null,
-				int|false $query_result = 1,
+				int|false|array $query_result = 1,
 				array|false $result_set = array(),
 				mixed $var_result = 0
 			) {
 				$this->row          = $row;
-				$this->query_result = $query_result;
+				if ( is_array( $query_result ) ) {
+					$this->query_results = array_values( $query_result );
+				} else {
+					$this->query_result = $query_result;
+				}
 				$this->result_set   = $result_set;
 				$this->var_result   = $var_result;
 			}
@@ -87,6 +92,10 @@ namespace {
 				++$this->query_count;
 				$this->last_query = $query;
 
+				if ( array() !== $this->query_results ) {
+					return array_shift( $this->query_results );
+				}
+
 				return $this->query_result;
 			}
 		}
@@ -97,9 +106,16 @@ namespace {
 			public string $prefix = 'wp_';
 			public int $insert_id = 909;
 			public int $prepare_count = 0;
+			public int $get_row_count = 0;
 			public int $query_count = 0;
 			public string $last_prepare_query = '';
 			public string $last_query = '';
+			public string $last_output_type = '';
+			public array $prepare_queries = array();
+			public array $queries = array();
+			private int|false $query_result = 1;
+			private array $query_results = array();
+			private ?array $row = null;
 
 			/**
 			 * @var list<mixed>
@@ -107,12 +123,17 @@ namespace {
 			public array $last_prepare_args = array();
 
 			public function __construct(
-				private int|false $query_result = 1,
+				int|false|array $query_result = 1,
 				string $prefix = 'wp_',
 				int $insert_id = 909
 			) {
 				$this->prefix    = $prefix;
 				$this->insert_id = $insert_id;
+				if ( is_array( $query_result ) ) {
+					$this->query_results = array_values( $query_result );
+				} else {
+					$this->query_result = $query_result;
+				}
 			}
 
 			/**
@@ -122,13 +143,30 @@ namespace {
 				++$this->prepare_count;
 				$this->last_prepare_query = $query;
 				$this->last_prepare_args  = array_values( $args );
+				$this->prepare_queries[]  = $query;
 
 				return 'prepared:' . $query;
+			}
+
+			/**
+			 * @return array<string, mixed>|null
+			 */
+			public function get_row( string $query, string $output_type ): ?array {
+				++$this->get_row_count;
+				$this->last_query       = $query;
+				$this->last_output_type = $output_type;
+
+				return $this->row;
 			}
 
 			public function query( string $query ): int|false {
 				++$this->query_count;
 				$this->last_query = $query;
+				$this->queries[]  = $query;
+
+				if ( array() !== $this->query_results ) {
+					return array_shift( $this->query_results );
+				}
 
 				return $this->query_result;
 			}
@@ -164,14 +202,20 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'inventory_item_created', $response['code'] );
 			$this->assert_same( 909, $response['data']['inventory_id'] );
 			$this->assert_same( 'PCS-000001', $response['data']['barcode'] );
-			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_true( $response['data']['price_change_log_persisted'] );
+			$this->assert_same( 1, $response['data']['price_change_log_row_count'] );
+			$this->assert_same( 3, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
-			$this->assert_same( 1, $database->query_count );
-			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->last_prepare_query );
+			$this->assert_same( 4, $database->query_count );
+			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->prepare_queries[1] );
+			$this->assert_contains( 'INSERT INTO `wp_tcg_price_change_log`', $database->prepare_queries[2] );
+			$this->assert_same( 'COMMIT', $database->last_query );
 			$this->assert_false( $response['meta']['route_connected_writes_deferred'] );
 			$this->assert_true( $response['meta']['route_registration_deferred'] );
 			$this->assert_true( $response['meta']['woocommerce_projection_deferred'] );
 			$this->assert_same( 'inserted', $response['meta']['repository']['status'] );
+			$this->assert_true( $response['meta']['repository']['price_change_log_persisted'] );
+			$this->assert_true( $response['meta']['repository']['transaction_committed'] );
 			$this->assert_not_contains( 'header-intake-1', (string) json_encode( $response['meta'] ) );
 		}
 
@@ -203,7 +247,7 @@ namespace TCGStorePlatform\Tests\Unit {
 		}
 
 		public function test_handler_rejects_repository_failures(): void {
-			$database = new \InventoryIntakeRouteHandlerWpdb( false );
+			$database = new \InventoryIntakeRouteHandlerWpdb( array( 1, false, 1 ) );
 			$handler  = new InventoryIntakeRouteHandler(
 				new InventoryIntakeRepository( $database ),
 				null,
@@ -261,6 +305,7 @@ namespace TCGStorePlatform\Tests\Unit {
 
 			$this->assert_same( 'created', $response['status'] );
 			$this->assert_same( 909, $response['data']['inventory_id'] );
+			$this->assert_true( $response['data']['price_change_log_persisted'] );
 		}
 
 		public function test_factory_reports_provider_and_prefix_issues(): void {

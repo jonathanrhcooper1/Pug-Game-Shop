@@ -31,8 +31,8 @@
   public reads, WooCommerce projection, Square projection, labels, POS
   ingestion, and production route availability remain closed. The staging smoke
   seeds one disposable Pokemon inventory row, creates one disposable Bulbasaur
-  row through REST, and asserts staff search returns both rows with staff SKU
-  data.
+  row through REST, verifies its initial price-change log row, and asserts
+  staff search returns both rows with staff SKU data.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
@@ -51,12 +51,13 @@
   adapter for prepared `$wpdb` inserts, invalid-plan short-circuiting,
   table-prefix mismatch rejection, failed insert handling, zero/unexpected
   insert-count rejection, duplicate barcode/SKU preflight rejection,
-  created-item response payloads, and audit redaction.
+  transactional initial price-change log persistence, rollback on price-log
+  insert failure, created-item response payloads, and audit redaction.
 - Local unit coverage now includes staged inventory intake route handler and
   factory composition for successful created-item responses, invalid payload
   short-circuiting, repository failure rejection, default write deferral,
-  explicitly enabled repository-backed writes, provider failures, and table
-  prefix issues.
+  explicitly enabled repository-backed writes, initial price-log response
+  metadata, provider failures, and table prefix issues.
 - Local unit coverage now includes gated inventory route registration planning
   and registrar behavior for default-disabled routes, explicit public-read
   gating, explicit write-gate clearing, injected controller handler readiness,

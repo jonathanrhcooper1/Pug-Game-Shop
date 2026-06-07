@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Intake Price Change Log Persistence
+
+### What Changed
+
+- Wrapped staged inventory intake creates in a database transaction.
+- Added initial `tcg_price_change_log` persistence for every successful
+  inventory create, recording new sale price, minimum price, currency, source,
+  floor-hit state, actor, and intake reason.
+- Repository results and REST responses now expose whether the initial price
+  change log row persisted.
+- The staged WordPress inventory smoke now verifies the REST-created card has
+  a matching price change log row.
+
+### Why
+
+Staff-created cards need an audit trail from the first sale price forward
+before staging intake is useful for real operations. The inventory row and
+initial price log now commit together or roll back together.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Uses the existing Phase 2 `tcg_price_change_log` table.
+
+### Tests Added
+
+- Unit coverage proving successful inventory intake writes the initial price
+  log inside a committed transaction.
+- Unit coverage proving price-log insert failure rolls back the inventory
+  create.
+- REST route-handler coverage proving created responses expose price-log
+  persistence metadata.
+- Staging smoke assertions proving a REST-created inventory item has an
+  initial price change log row.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 755 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Inventory\InventoryIntakeRepository.php src\Inventory\InventoryIntakeRepositoryResult.php`
+  from `apps/wordpress-plugin`: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-staging-inventory-smoke.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the transactional price-log write.
+- If rollback is needed after staging test data was created, delete matching
+  disposable `tcg_price_change_log` rows before deleting their inventory rows.
+- No schema rollback is required.
+
 ## 2026-06-07 - Inventory Intake Identity Collision Guard
 
 ### What Changed

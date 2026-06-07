@@ -20,6 +20,7 @@ namespace {
 			public string $last_output_type = '';
 			private ?array $row = null;
 			private int|false $query_result = 1;
+			private array $query_results = array();
 			private array|false $result_set = array();
 			private mixed $var_result = 0;
 
@@ -33,12 +34,16 @@ namespace {
 			 */
 			public function __construct(
 				?array $row = null,
-				int|false $query_result = 1,
+				int|false|array $query_result = 1,
 				array|false $result_set = array(),
 				mixed $var_result = 0
 			) {
 				$this->row          = $row;
-				$this->query_result = $query_result;
+				if ( is_array( $query_result ) ) {
+					$this->query_results = array_values( $query_result );
+				} else {
+					$this->query_result = $query_result;
+				}
 				$this->result_set   = $result_set;
 				$this->var_result   = $var_result;
 			}
@@ -87,6 +92,10 @@ namespace {
 				++$this->query_count;
 				$this->last_query = $query;
 
+				if ( array() !== $this->query_results ) {
+					return array_shift( $this->query_results );
+				}
+
 				return $this->query_result;
 			}
 		}
@@ -102,6 +111,10 @@ namespace {
 			public string $last_prepare_query = '';
 			public string $last_query = '';
 			public string $last_output_type = '';
+			public array $prepare_queries = array();
+			public array $queries = array();
+			private int|false $query_result = 1;
+			private array $query_results = array();
 
 			/**
 			 * @var list<mixed>
@@ -109,13 +122,18 @@ namespace {
 			public array $last_prepare_args = array();
 
 			public function __construct(
-				private int|false $query_result = 1,
+				int|false|array $query_result = 1,
 				string $prefix = 'wp_',
 				int $insert_id = 707,
 				private ?array $row = null
 			) {
 				$this->prefix    = $prefix;
 				$this->insert_id = $insert_id;
+				if ( is_array( $query_result ) ) {
+					$this->query_results = array_values( $query_result );
+				} else {
+					$this->query_result = $query_result;
+				}
 			}
 
 			/**
@@ -125,6 +143,7 @@ namespace {
 				++$this->prepare_count;
 				$this->last_prepare_query = $query;
 				$this->last_prepare_args  = array_values( $args );
+				$this->prepare_queries[]  = $query;
 
 				return 'prepared:' . $query;
 			}
@@ -143,6 +162,11 @@ namespace {
 			public function query( string $query ): int|false {
 				++$this->query_count;
 				$this->last_query = $query;
+				$this->queries[]  = $query;
+
+				if ( array() !== $this->query_results ) {
+					return array_shift( $this->query_results );
+				}
 
 				return $this->query_result;
 			}
@@ -170,21 +194,33 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'inserted', $result->status() );
 			$this->assert_same( 1, $result->rows_affected() );
 			$this->assert_same( 707, $result->insert_id() );
+			$this->assert_same( 1, $result->price_change_log_rows_affected() );
 			$this->assert_same( array(), $result->errors() );
-			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 3, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
-			$this->assert_same( 1, $database->query_count );
-			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->last_prepare_query );
-			$this->assert_contains( '`public_id`', $database->last_prepare_query );
-			$this->assert_contains( '`row_version`', $database->last_prepare_query );
-			$this->assert_contains( 'prepared:INSERT', $database->last_query );
-			$this->assert_same( $plan->prepare_arg_count(), count( $database->last_prepare_args ) );
+			$this->assert_same( 4, $database->query_count );
+			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->prepare_queries[1] );
+			$this->assert_contains( '`public_id`', $database->prepare_queries[1] );
+			$this->assert_contains( '`row_version`', $database->prepare_queries[1] );
+			$this->assert_contains( 'INSERT INTO `wp_tcg_price_change_log`', $database->prepare_queries[2] );
+			$this->assert_contains( '`new_sale_price`', $database->prepare_queries[2] );
+			$this->assert_same( 'COMMIT', $database->last_query );
+			$this->assert_true( in_array( 'START TRANSACTION', $database->queries, true ) );
+			$this->assert_true( in_array( 'COMMIT', $database->queries, true ) );
 			$this->assert_same( 707, $result->response_payload()['inventory_id'] );
 			$this->assert_same( $plan->insert_row()['public_id'], $result->response_payload()['public_id'] );
 			$this->assert_same( 'PCS-000001', $result->response_payload()['barcode'] );
+			$this->assert_true( $result->response_payload()['price_change_log_persisted'] );
+			$this->assert_same( 1, $result->response_payload()['price_change_log_row_count'] );
 			$this->assert_same( 'inventory_intake_repository_insert', $audit['action'] );
 			$this->assert_same( 707, $audit['insert_id'] );
+			$this->assert_true( $audit['price_change_log_persisted'] );
+			$this->assert_same( 1, $audit['price_change_log_rows_affected'] );
+			$this->assert_true( $audit['transaction_started'] );
+			$this->assert_true( $audit['transaction_committed'] );
+			$this->assert_false( $audit['transaction_rolled_back'] );
 			$this->assert_false( $audit['repository_execution_deferred'] );
+			$this->assert_false( $audit['price_change_log_execution_deferred'] );
 			$this->assert_true( $audit['route_connected_writes_deferred'] );
 			$this->assert_not_contains( 'header-inventory-1', (string) json_encode( $audit ) );
 		}
@@ -240,23 +276,45 @@ namespace TCGStorePlatform\Tests\Unit {
 
 		public function test_repository_rejects_failed_and_unexpected_insert_counts(): void {
 			$failed_result = ( new InventoryIntakeRepository(
-				new \InventoryIntakeRepositoryWpdb( false )
+				new \InventoryIntakeRepositoryWpdb( array( 1, false, 1 ) )
 			) )->create( $this->valid_plan() );
 			$zero_result   = ( new InventoryIntakeRepository(
-				new \InventoryIntakeRepositoryWpdb( 0 )
+				new \InventoryIntakeRepositoryWpdb( array( 1, 0, 1 ) )
 			) )->create( $this->valid_plan() );
 			$two_result    = ( new InventoryIntakeRepository(
-				new \InventoryIntakeRepositoryWpdb( 2 )
+				new \InventoryIntakeRepositoryWpdb( array( 1, 2, 1 ) )
 			) )->create( $this->valid_plan() );
 
 			$this->assert_true( $failed_result->is_rejected() );
 			$this->assert_same( array( 'inventory_intake_insert_failed' ), $failed_result->errors() );
+			$this->assert_true( $failed_result->audit_payload()['transaction_rolled_back'] );
 			$this->assert_true( $zero_result->is_rejected() );
 			$this->assert_same( 0, $zero_result->rows_affected() );
 			$this->assert_same( array( 'inventory_intake_insert_no_rows' ), $zero_result->errors() );
+			$this->assert_true( $zero_result->audit_payload()['transaction_rolled_back'] );
 			$this->assert_true( $two_result->is_rejected() );
 			$this->assert_same( 2, $two_result->rows_affected() );
 			$this->assert_same( array( 'inventory_intake_insert_unexpected_rows' ), $two_result->errors() );
+			$this->assert_true( $two_result->audit_payload()['transaction_rolled_back'] );
+		}
+
+		public function test_repository_rolls_back_when_price_change_log_insert_fails(): void {
+			$database = new \InventoryIntakeRepositoryWpdb( array( 1, 1, false, 1 ) );
+			$result   = ( new InventoryIntakeRepository( $database ) )->create( $this->valid_plan() );
+			$audit    = $result->audit_payload();
+
+			$this->assert_true( $result->is_rejected() );
+			$this->assert_same( 1, $result->rows_affected() );
+			$this->assert_same( 0, $result->price_change_log_rows_affected() );
+			$this->assert_same( array( 'inventory_price_change_log_insert_failed' ), $result->errors() );
+			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 4, $database->query_count );
+			$this->assert_contains( 'INSERT INTO `wp_tcg_price_change_log`', $database->prepare_queries[2] );
+			$this->assert_same( 'ROLLBACK', $database->last_query );
+			$this->assert_true( $audit['transaction_started'] );
+			$this->assert_false( $audit['transaction_committed'] );
+			$this->assert_true( $audit['transaction_rolled_back'] );
+			$this->assert_false( $audit['price_change_log_persisted'] );
 		}
 
 		private function valid_plan(): InventoryIntakePersistencePlan {

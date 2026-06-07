@@ -33,8 +33,9 @@ staging database acceptance remains pending.
   explicit write/projection deferral metadata.
 - Explicit inventory intake repository adapter for staged `$wpdb` inserts,
   including invalid-plan short-circuiting, active table-prefix validation,
-  insert-count outcome handling, created-item response payloads, and write/
-  projection deferral audits.
+  insert-count outcome handling, transactional initial price-change log
+  persistence, created-item response payloads, and write/projection deferral
+  audits.
 - Inventory intake repository duplicate barcode/SKU preflight checks with
   stable staff-facing collision error codes before insert.
 - Staged inventory intake route handler and factory for explicitly enabled
@@ -74,7 +75,7 @@ staging database acceptance remains pending.
   production routes or external WooCommerce/Square/POS/label side effects.
 - WordPress integration staging smoke coverage now creates a disposable
   Bulbasaur inventory item through REST and searches it back through the staff
-  inventory route.
+  inventory route while verifying the initial price-change log row.
 - Staff Inventory Workspace search form, route-readiness lockout, and
   REST-backed read-only results panel for the staging staff inventory search
   route.
@@ -122,8 +123,7 @@ On PHP 8.2.29:
 1. Clean migration from schema version `1` to `2` on staging.
 2. Rollback from schema version `2` to `1` on staging.
 3. `dbDelta` compatibility on the target WordPress database configuration.
-4. Pricing change log persistence once inventory write services are added.
-5. Manager override persistence and reauthentication tests.
-6. Search and pagination benchmarks after the 50,000-item seed fixture exists.
-7. Live route registration remains disabled until repository writes, staff
+4. Manager override persistence and reauthentication tests.
+5. Search and pagination benchmarks after the 50,000-item seed fixture exists.
+6. Live route registration remains disabled until repository writes, staff
    permissions, rate limiting, and staging smoke tests are complete.

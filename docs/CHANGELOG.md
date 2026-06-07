@@ -15,6 +15,10 @@ All notable changes follow Semantic Versioning.
 - Inventory intake repository collision guard that reports duplicate barcode
   and SKU errors before insert while keeping database unique keys as the final
   safety net.
+- Transactional inventory intake price-change logging that writes the initial
+  `tcg_price_change_log` row with each staged inventory create, rolls back the
+  create if the log cannot be written, and exposes persistence metadata in the
+  REST response.
 - Plan-only inventory intake persistence for staged card creation, including
   deterministic public IDs, fallback barcode/SKU generation for pending intake,
   schema-aligned insert rows, prepared SQL templates, timestamp/date planning,

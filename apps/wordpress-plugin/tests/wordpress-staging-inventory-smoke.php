@@ -71,6 +71,7 @@ global $wpdb;
 $now                 = '2026-06-07 12:00:00.000000';
 $locations_table     = $wpdb->prefix . 'tcg_inventory_locations';
 $inventory_table     = $wpdb->prefix . 'tcg_inventory_items';
+$price_log_table     = $wpdb->prefix . 'tcg_price_change_log';
 $location_public_id  = '00000000-0000-4000-8000-000000000101';
 $inventory_public_id = '00000000-0000-4000-8000-000000000201';
 $seed_barcode        = 'PUG-STAGE-PKM-BASE-058';
@@ -78,6 +79,16 @@ $seed_sku            = 'PUG-STAGE-PKM-BASE-058';
 $create_barcode      = 'PUG-STAGE-PKM-BULBA-001';
 $create_sku          = 'PUG-STAGE-PKM-BULBA-001';
 
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$price_log_table} WHERE inventory_id IN (SELECT inventory_id FROM {$inventory_table} WHERE public_id = %s OR barcode IN (%s, %s) OR sku IN (%s, %s))", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$inventory_public_id,
+		$seed_barcode,
+		$create_barcode,
+		$seed_sku,
+		$create_sku
+	)
+);
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$inventory_table} WHERE public_id = %s OR barcode IN (%s, %s) OR sku IN (%s, %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -214,10 +225,29 @@ $assert( 'created' === ( $create_data['status'] ?? null ), 'Inventory create res
 $assert( 201 === (int) ( $create_data['status_code'] ?? 0 ), 'Inventory create response did not report created status code.' );
 $assert( 'inventory_item_created' === ( $create_data['code'] ?? null ), 'Inventory create response did not report created code.' );
 $assert( 'PUG-STAGE-PKM-BULBA-001' === ( $create_data['data']['sku'] ?? null ), 'Inventory create response should expose created SKU.' );
+$assert( true === ( $create_data['data']['price_change_log_persisted'] ?? null ), 'Inventory create should persist the initial price change log.' );
+$assert( 1 === (int) ( $create_data['data']['price_change_log_row_count'] ?? 0 ), 'Inventory create should report one price change log row.' );
 $assert( false === ( $create_data['meta']['route_connected_writes_deferred'] ?? null ), 'Inventory create writes should execute in staging smoke.' );
 $assert( true === ( $create_data['meta']['woocommerce_projection_deferred'] ?? null ), 'Inventory create should keep WooCommerce projection deferred.' );
 $assert( true === ( $create_data['meta']['square_inventory_projection_deferred'] ?? null ), 'Inventory create should keep Square projection deferred.' );
 $assert( true === ( $create_data['meta']['label_print_deferred'] ?? null ), 'Inventory create should keep labels deferred.' );
+
+$created_inventory_id = (int) ( $create_data['data']['inventory_id'] ?? 0 );
+$assert( $created_inventory_id > 0, 'Inventory create response should expose a created inventory ID.' );
+
+$price_log_row = $wpdb->get_row(
+	$wpdb->prepare(
+		"SELECT * FROM {$price_log_table} WHERE inventory_id = %d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$created_inventory_id
+	),
+	ARRAY_A
+);
+$assert( is_array( $price_log_row ), 'Inventory create should write a price change log row.' );
+$assert( '2.50' === number_format( (float) ( $price_log_row['new_sale_price'] ?? 0 ), 2, '.', '' ), 'Price change log should record created sale price.' );
+$assert( '1.00' === number_format( (float) ( $price_log_row['minimum_sale_price'] ?? 0 ), 2, '.', '' ), 'Price change log should record created minimum sale price.' );
+$assert( 'USD' === ( $price_log_row['currency'] ?? null ), 'Price change log should record created currency.' );
+$assert( 'staff' === ( $price_log_row['change_source'] ?? null ), 'Price change log should record intake source.' );
+$assert( 'initial_inventory_intake' === ( $price_log_row['reason'] ?? null ), 'Price change log should record intake reason.' );
 
 $request = new WP_REST_Request( 'GET', '/tcg-store/v1/inventory/search' );
 $request->set_param( 'q', 'Pikachu' );
