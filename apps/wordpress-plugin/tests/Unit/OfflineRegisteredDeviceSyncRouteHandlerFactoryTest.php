@@ -63,6 +63,12 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_persistence_sql_ready'] );
 		$this->assert_true( $summary['push_persistence_sql_template_ready'] );
 		$this->assert_true( $summary['push_persistence_repository_ready'] );
+		$this->assert_true( $summary['push_snapshot_query_planner_ready'] );
+		$this->assert_true( $summary['push_snapshot_query_sql_ready'] );
+		$this->assert_true( $summary['push_snapshot_query_sql_template_ready'] );
+		$this->assert_true( $summary['push_snapshot_query_execution_deferred'] );
+		$this->assert_true( $summary['push_snapshot_repository_deferred'] );
+		$this->assert_true( $summary['push_snapshot_route_reads_deferred'] );
 		$this->assert_true( $summary['push_route_handler_ready'] );
 		$this->assert_true( $summary['push_route_persistence_provider_ready'] );
 		$this->assert_true( $summary['push_handler_dependency_factory_ready'] );
@@ -191,6 +197,12 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_persistence_sql_ready'] );
 		$this->assert_true( $payload['push_persistence_sql_template_ready'] );
 		$this->assert_true( $payload['push_persistence_repository_ready'] );
+		$this->assert_true( $payload['push_snapshot_query_planner_ready'] );
+		$this->assert_true( $payload['push_snapshot_query_sql_ready'] );
+		$this->assert_true( $payload['push_snapshot_query_sql_template_ready'] );
+		$this->assert_true( $payload['push_snapshot_query_execution_deferred'] );
+		$this->assert_true( $payload['push_snapshot_repository_deferred'] );
+		$this->assert_true( $payload['push_snapshot_route_reads_deferred'] );
 		$this->assert_true( $payload['push_route_handler_ready'] );
 		$this->assert_true( $payload['push_route_persistence_provider_ready'] );
 		$this->assert_true( $payload['push_handler_dependency_factory_ready'] );
@@ -227,6 +239,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'route dependencies deferred', $summary['value'] );
 		$this->assert_contains( 'push persistence ready', $summary['value'] );
 		$this->assert_contains( 'push SQL ready', $summary['value'] );
+		$this->assert_contains( 'push snapshots ready', $summary['value'] );
+		$this->assert_contains( 'push snapshot SQL ready', $summary['value'] );
 		$this->assert_contains( 'push repository ready', $summary['value'] );
 		$this->assert_contains( 'push route handler ready', $summary['value'] );
 		$this->assert_contains( 'push route provider ready', $summary['value'] );

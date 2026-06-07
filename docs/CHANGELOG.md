@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.110.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushServerSnapshotQueryPlanner` and
+  `OfflinePushServerSnapshotQueryPlan` for translating parsed offline push
+  operations into allowlisted server snapshot lookup contracts.
+- `OfflinePushServerSnapshotQueryBuilder` and
+  `OfflinePushServerSnapshotQueryBuildPlan` for converting those contracts into
+  prepared SQL templates against inventory, event, and customer credit tables.
+- Health/admin and WordPress smoke readiness metadata for push snapshot query
+  planning, SQL template readiness, execution deferral, repository deferral,
+  and route-read deferral.
+- Unit coverage for supported operation snapshot planning, invalid context
+  rejection, unsupported/tampered operations, prepared SQL templates, and
+  tampered snapshot contracts.
+
+### Not Added
+
+- No snapshot query execution or repository-backed snapshot loading is enabled.
+  Default push route execution, route registration, queue replay, canonical
+  entity mutations, and route-connected database reads/writes remain disabled.
+
 ## [0.109.0] - 2026-06-06
 
 ### Added

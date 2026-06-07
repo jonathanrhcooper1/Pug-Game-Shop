@@ -154,6 +154,11 @@ registered-device authorization, injected server snapshots, and the staged
 persistence repository. The default push route remains validation-only and
 does not perform queue writes, conflict writes, canonical mutations, queue
 replay, or live route registration.
+Push server snapshot query planning validates allowlisted tables, selected
+columns, lookup IDs, result keys, and deferred execution flags before emitting
+prepared read templates. It does not execute snapshot reads, expose SQL
+arguments in health/admin summaries, load repository rows, or mutate canonical
+entities.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

@@ -87,6 +87,9 @@
   for default route-connected deferral, explicit registered-device
   authorization, injected server snapshot resolution, queue persistence, and
   sync handler factory injection.
+- Local unit coverage now includes offline push server snapshot query planning
+  and SQL template generation for supported operations, invalid contexts,
+  unsupported or mismatched operations, and tampered snapshot contracts.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

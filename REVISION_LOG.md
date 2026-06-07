@@ -3,6 +3,93 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Server Snapshot Query Planning
+
+### What Changed
+
+- Added `OfflinePushServerSnapshotQueryPlanner` and
+  `OfflinePushServerSnapshotQueryPlan` to translate parsed offline push
+  operations into allowlisted inventory, event, and customer-credit server
+  snapshot lookup contracts.
+- Added `OfflinePushServerSnapshotQueryBuilder` and
+  `OfflinePushServerSnapshotQueryBuildPlan` to convert those contracts into
+  prepared SQL templates without executing database reads.
+- Added snapshot query readiness metadata to the registered-device sync handler
+  factory and admin summary.
+- Added WordPress smoke assertions for push snapshot query planner readiness,
+  SQL template readiness, execution deferral, repository deferral, and
+  route-read deferral.
+- Added unit coverage for supported operation snapshot planning, invalid
+  context rejection, unsupported or mismatched operations, prepared SQL
+  templates, and tampered snapshot contracts.
+- Updated project, plugin, and offline app package versions to `0.110.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The staged push route handler can accept injected server snapshots, but staging
+still needs a safe database-read contract before any repository-backed snapshot
+loading is added. This revision defines and validates the read templates first,
+matching the existing staged-query pattern and keeping all execution disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotQueryPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotQueryPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotQueryBuilder.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Push server snapshot query planner tests for inventory, event, and
+  customer-credit operation contracts.
+- Push server snapshot SQL builder tests for prepared lookup templates,
+  prepare arguments, audit metadata, invalid plans, and tampered contracts.
+- Sync handler factory and WordPress smoke assertions for snapshot query
+  readiness and deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push snapshot query planning and return
+  to injected snapshot-provider-only route tests.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Snapshot query execution, repository-backed snapshot loading, live route
+  registration, queue replay, canonical entity mutations, and route-connected
+  database reads/writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Route Handler Factory Composition
 
 ### What Changed

@@ -260,6 +260,11 @@ registered-device authorization, server snapshots, batch outcomes, and
 queue/conflict persistence through the controller boundary, while default push
 route execution, route registration, queue replay, canonical mutations, and
 production route-connected writes remain deferred.
+Version `0.110.0` adds staged offline push server snapshot query planning.
+Push operations now produce allowlisted inventory, event, and customer-credit
+snapshot lookup contracts plus prepared SQL templates for future repositories,
+while snapshot execution, repository loading, queue replay, canonical
+mutations, and route registration remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

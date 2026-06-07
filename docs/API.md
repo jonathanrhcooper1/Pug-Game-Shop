@@ -202,6 +202,11 @@ push batch from injected server snapshots, and call the staged persistence
 repository through the controller boundary. Default push route execution,
 route registration, queue replay, canonical mutations, and production
 route-connected writes remain disabled.
+Version `0.110.0` adds staged offline push server snapshot query planning.
+Push operations can now be translated into allowlisted inventory, event, and
+customer-credit snapshot lookup contracts plus prepared SQL templates for
+future repositories. Snapshot query execution, repository loading, canonical
+mutations, and live route registration remain deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -468,7 +473,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.109.0",
+  "app_version": "0.110.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

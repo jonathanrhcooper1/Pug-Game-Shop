@@ -88,6 +88,11 @@ resolution, server snapshot providers, batch resolution, persistence planning,
 and repository execution only when staging explicitly enables route-connected
 push processing. The default controller path remains validation-only and does
 not read from or write to the database.
+Offline push server snapshot query planning now defines the allowlisted
+inventory, event, and customer-credit read contracts needed by the push batch
+resolver before any repository-backed snapshot loading is added. Those SQL
+templates are inspection-only; route-connected reads and canonical mutations
+remain deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

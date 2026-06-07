@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.109.0`
+Version: `0.110.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -207,7 +207,10 @@ idempotent replay rows without mutating the database. Offline push route
 handler factory composition now lets explicitly enabled staging tests
 authenticate registered devices, resolve push batches from injected server
 snapshots, and persist queue/conflict rows while default route execution
-remains deferred. Offline bearer-token
+remains deferred. Offline push server snapshot query planning now prepares
+allowlisted inventory, event, and customer credit lookup SQL templates for
+future repositories while keeping snapshot reads and canonical mutations
+deferred. Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash
 comparison, persisted offline-device ID enforcement, and delegated

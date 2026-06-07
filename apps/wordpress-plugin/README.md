@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.109.0`
+Version: `0.110.0`
 
 ## Implemented Features
 
@@ -82,6 +82,9 @@ Version: `0.109.0`
 - Offline push route handler and factory composition for explicitly enabled
   staging tests that authenticate registered devices, resolve push batches, and
   persist queue/conflict rows while default route execution remains deferred.
+- Offline push server snapshot query planning for future inventory, event, and
+  customer credit snapshot repositories, including allowlisted read contracts,
+  prepared SQL templates, and deferred execution metadata.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

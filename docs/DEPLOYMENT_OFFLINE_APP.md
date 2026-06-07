@@ -461,6 +461,12 @@ snapshots, and persists accepted queue/conflict rows through the staged
 repository. Default push route execution, route registration, queue replay,
 canonical mutations, and production route-connected writes remain disabled.
 
+Version `0.110.0` adds staged offline push server snapshot query planning.
+Staging can inspect prepared inventory, event, and customer-credit snapshot
+lookup templates for future repositories, while snapshot query execution,
+repository-backed loading, route registration, queue replay, canonical
+mutations, and production route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:
