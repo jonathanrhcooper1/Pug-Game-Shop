@@ -104,7 +104,7 @@ final class OfflinePushCanonicalMutationQueryBuildPlan {
 		);
 	}
 
-	private function prepare_arg_count(): int {
+	public function prepare_arg_count(): int {
 		$count = 0;
 
 		foreach ( $this->mutation_queries as $query ) {

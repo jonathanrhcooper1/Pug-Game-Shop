@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.123.0] - 2026-06-06
+
+### Added
+
+- Route-connected staged push responses now expose canonical mutation SQL
+  planning counts, operation IDs, prepare-argument counts, and deferred
+  execution/repository flags.
+- Replay-aware SQL planning metadata so duplicate-push replay responses report
+  zero canonical SQL templates while still proving SQL planning ran.
+- Sync readiness propagation for route-connected canonical SQL planning versus
+  default-gated handler wiring.
+- Unit and WordPress smoke coverage for fresh and replayed route-connected
+  canonical SQL metadata.
+
+### Not Added
+
+- Canonical mutation repository execution, event registration writes,
+  customer-credit ledger writes, TopDeck workers, queue replay workers, default
+  route execution, live route registration, and production route-connected
+  writes remain deferred.
+
 ## [0.122.0] - 2026-06-06
 
 ### Added

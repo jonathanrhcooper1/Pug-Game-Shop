@@ -10,6 +10,7 @@ namespace TCGStorePlatform\Api\V1;
 use RuntimeException;
 use TCGStorePlatform\Offline\OfflinePushBatchResolver;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushPayload;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
@@ -21,6 +22,8 @@ final class OfflinePushRoutePersistenceProvider {
 	private OfflinePushBatchResolver $batch_resolver;
 	private OfflinePushPersistencePlanner $persistence_planner;
 	private OfflinePushCanonicalMutationPlanner $canonical_mutation_planner;
+	private OfflinePushCanonicalMutationQueryBuilder $canonical_mutation_query_builder;
+	private string $table_prefix;
 
 	/**
 	 * @var callable|null
@@ -51,13 +54,17 @@ final class OfflinePushRoutePersistenceProvider {
 		?callable $server_snapshots_provider = null,
 		?callable $operation_options_provider = null,
 		?callable $existing_operation_rows_provider = null,
-		?OfflinePushCanonicalMutationPlanner $canonical_mutation_planner = null
+		?OfflinePushCanonicalMutationPlanner $canonical_mutation_planner = null,
+		?OfflinePushCanonicalMutationQueryBuilder $canonical_mutation_query_builder = null,
+		string $table_prefix = ''
 	) {
 		$this->permission_resolver              = $permission_resolver;
 		$this->persistence_repository           = $persistence_repository;
 		$this->batch_resolver                   = $batch_resolver ?? new OfflinePushBatchResolver();
 		$this->persistence_planner              = $persistence_planner ?? new OfflinePushPersistencePlanner();
 		$this->canonical_mutation_planner       = $canonical_mutation_planner ?? new OfflinePushCanonicalMutationPlanner();
+		$this->canonical_mutation_query_builder = $canonical_mutation_query_builder ?? new OfflinePushCanonicalMutationQueryBuilder();
+		$this->table_prefix                     = trim( $table_prefix );
 		$this->server_time_provider             = $server_time_provider;
 		$this->server_snapshots_provider        = $server_snapshots_provider;
 		$this->operation_options_provider       = $operation_options_provider;
@@ -127,13 +134,18 @@ final class OfflinePushRoutePersistenceProvider {
 			$resolution,
 			$this->row_operation_ids( $plan->operation_replay_rows() )
 		);
+		$canonical_sql = $this->canonical_mutation_query_builder->build(
+			$canonical,
+			$this->table_prefix
+		);
 
 		return new OfflinePushRouteProcessingResult(
 			$resolution,
 			$this->persistence_repository->persist( $plan ),
 			$permission->audit_payload(),
 			$plan->operation_replay_rows(),
-			$canonical
+			$canonical,
+			$canonical_sql
 		);
 	}
 
@@ -149,6 +161,8 @@ final class OfflinePushRoutePersistenceProvider {
 			'persistence_planner_ready'                   => method_exists( $this->persistence_planner, 'plan' ),
 			'persistence_repository_ready'                => method_exists( $this->persistence_repository, 'persist' ),
 			'canonical_mutation_planner_ready'            => method_exists( $this->canonical_mutation_planner, 'plan' ),
+			'canonical_mutation_sql_ready'                => method_exists( $this->canonical_mutation_query_builder, 'build' )
+				&& $this->table_prefix_ready(),
 			'server_snapshot_provider_configured'         => is_callable( $this->server_snapshots_provider ),
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
 			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
@@ -157,6 +171,9 @@ final class OfflinePushRoutePersistenceProvider {
 			'default_route_execution_deferred'            => true,
 			'queue_replay_deferred'                       => true,
 			'canonical_mutation_planning_deferred'        => false,
+			'canonical_mutation_sql_planning_deferred'    => false,
+			'canonical_mutation_sql_execution_deferred'   => true,
+			'canonical_mutation_repository_deferred'      => true,
 			'canonical_mutations_deferred'                => true,
 		);
 	}
@@ -166,7 +183,9 @@ final class OfflinePushRoutePersistenceProvider {
 			&& method_exists( $this->batch_resolver, 'resolve' )
 			&& method_exists( $this->persistence_planner, 'plan' )
 			&& method_exists( $this->canonical_mutation_planner, 'plan' )
+			&& method_exists( $this->canonical_mutation_query_builder, 'build' )
 			&& method_exists( $this->persistence_repository, 'persist' )
+			&& $this->table_prefix_ready()
 			&& is_callable( $this->server_snapshots_provider );
 	}
 
@@ -200,6 +219,10 @@ final class OfflinePushRoutePersistenceProvider {
 		}
 
 		return gmdate( 'Y-m-d\TH:i:s\Z' );
+	}
+
+	private function table_prefix_ready(): bool {
+		return '' !== $this->table_prefix && 1 === preg_match( '/^[A-Za-z0-9_]+$/', $this->table_prefix );
 	}
 
 	/**

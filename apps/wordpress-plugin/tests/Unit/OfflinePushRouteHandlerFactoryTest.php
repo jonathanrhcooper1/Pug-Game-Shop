@@ -158,7 +158,11 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['existing_operation_rows_provider_configured'] );
 			$this->assert_true( $summary['existing_operation_rows_route_provider_ready'] );
 			$this->assert_true( $summary['canonical_mutation_planner_ready'] );
+			$this->assert_true( $summary['canonical_mutation_sql_ready'] );
 			$this->assert_false( $summary['route_connected_canonical_mutation_planning_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_mutation_sql_planning_deferred'] );
+			$this->assert_true( $summary['route_connected_canonical_mutation_sql_execution_deferred'] );
+			$this->assert_true( $summary['route_connected_canonical_repository_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_writes_deferred'] );
 			$this->assert_true( $summary['route_connected_handler_ready'] );
 			$this->assert_false( $summary['route_connected_handler_deferred'] );
@@ -182,15 +186,29 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( array( 'op-push-route-01' ), $response['data']['canonical_mutation_operation_ids'] );
 			$this->assert_same( array(), $response['data']['canonical_mutation_skipped_ids'] );
 			$this->assert_false( $response['data']['canonical_mutation_planning_deferred'] );
+			$this->assert_same( 1, $response['data']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( array( 'op-push-route-01' ), $response['data']['canonical_mutation_sql_operation_ids'] );
+			$this->assert_same( 6, $response['data']['canonical_mutation_sql_prepare_arg_count'] );
+			$this->assert_false( $response['data']['canonical_mutation_sql_planning_deferred'] );
+			$this->assert_true( $response['data']['canonical_mutation_sql_execution_deferred'] );
+			$this->assert_true( $response['data']['canonical_mutation_repository_deferred'] );
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 1, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
 			$this->assert_false( $response['meta']['push_queue_persistence_deferred'] );
 			$this->assert_false( $response['meta']['push_canonical_mutation_planning_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_sql_planning_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_sql_execution_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_repository_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutations_deferred'] );
 			$this->assert_same( 1, $response['meta']['canonical_mutation_count'] );
 			$this->assert_same( array( 'op-push-route-01' ), $response['meta']['canonical_mutation_operation_ids'] );
+			$this->assert_same( 1, $response['meta']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( array( 'op-push-route-01' ), $response['meta']['canonical_mutation_sql_operation_ids'] );
+			$this->assert_same( 6, $response['meta']['canonical_mutation_sql_prepare_arg_count'] );
 			$this->assert_same( 1, $response['meta']['audit']['canonical_mutation_count'] );
+			$this->assert_same( 1, $response['meta']['audit']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( 6, $response['meta']['audit']['canonical_mutation_sql_prepare_arg_count'] );
 			$this->assert_same( 3, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->get_results_count );
@@ -243,6 +261,12 @@ namespace TCGStorePlatform\Tests\Unit {
 				'operation_replayed',
 				$response['data']['canonical_mutation_skipped_reasons']['op-push-route-01']
 			);
+			$this->assert_same( 0, $response['data']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( array(), $response['data']['canonical_mutation_sql_operation_ids'] );
+			$this->assert_same( 0, $response['data']['canonical_mutation_sql_prepare_arg_count'] );
+			$this->assert_false( $response['data']['canonical_mutation_sql_planning_deferred'] );
+			$this->assert_true( $response['data']['canonical_mutation_sql_execution_deferred'] );
+			$this->assert_true( $response['data']['canonical_mutation_repository_deferred'] );
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 0, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
@@ -251,6 +275,12 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 0, $response['meta']['canonical_mutation_count'] );
 			$this->assert_same( array(), $response['meta']['canonical_mutation_operation_ids'] );
 			$this->assert_same( array( 'op-push-route-01' ), $response['meta']['canonical_mutation_skipped_ids'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_sql_planning_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_sql_execution_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_repository_deferred'] );
+			$this->assert_same( 0, $response['meta']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( array(), $response['meta']['canonical_mutation_sql_operation_ids'] );
+			$this->assert_same( 0, $response['meta']['canonical_mutation_sql_prepare_arg_count'] );
 			$this->assert_same( 2, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->get_results_count );
@@ -269,6 +299,9 @@ namespace TCGStorePlatform\Tests\Unit {
 				$response['meta']['audit']['operation_replay_response_hydrated_ids']
 			);
 			$this->assert_same( 0, $response['meta']['audit']['canonical_mutation_count'] );
+			$this->assert_same( 0, $response['meta']['audit']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( array(), $response['meta']['audit']['canonical_mutation_sql_operation_ids'] );
+			$this->assert_same( 0, $response['meta']['audit']['canonical_mutation_sql_prepare_arg_count'] );
 			$this->assert_same(
 				array( 'op-push-route-01' ),
 				$response['meta']['audit']['canonical_mutation_skipped_ids']
@@ -384,6 +417,10 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['push_handler_route_database_configured'] );
 			$this->assert_true( $summary['push_handler_canonical_mutation_planner_ready'] );
 			$this->assert_false( $summary['push_handler_canonical_mutation_planning_deferred'] );
+			$this->assert_true( $summary['push_handler_canonical_mutation_sql_ready'] );
+			$this->assert_false( $summary['push_handler_canonical_mutation_sql_planning_deferred'] );
+			$this->assert_true( $summary['push_handler_canonical_mutation_sql_execution_deferred'] );
+			$this->assert_true( $summary['push_handler_canonical_repository_deferred'] );
 			$this->assert_true( $summary['push_handler_canonical_writes_deferred'] );
 			$this->assert_false( $summary['push_handler_route_queue_writes_deferred'] );
 			$this->assert_false( $summary['push_handler_conflict_writes_deferred'] );

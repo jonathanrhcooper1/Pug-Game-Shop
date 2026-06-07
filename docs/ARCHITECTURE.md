@@ -144,6 +144,10 @@ prepares inspection-only guards for future repositories. Inventory receives a
 row-version and available-status guarded update template; event registration
 and customer-credit redemption receive lookup guards until repository hydration
 can safely provide internal IDs and write rows.
+Explicitly enabled staged push routes now attach that SQL-template planning to
+response payloads, route meta, and audits with query counts, operation IDs, and
+prepare-argument counts. Replayed duplicate operations report zero SQL
+templates, and repository execution remains deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

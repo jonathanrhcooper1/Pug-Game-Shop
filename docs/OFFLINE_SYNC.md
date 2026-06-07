@@ -329,6 +329,12 @@ accepted mutation descriptors. Guarded inventory update templates require the
 expected row version and available status, while event registration and
 customer-credit redemption templates stay as lookup guards until later
 repositories can hydrate internal IDs and write safely.
+Version `0.123.0` surfaces that SQL-template planning from explicitly enabled
+staged push routes. Fresh accepted operations report canonical SQL query
+counts, operation IDs, prepare-argument counts, and deferred execution flags;
+replayed duplicate operations report zero SQL templates while preserving the
+original replayed response. Canonical repositories, queue replay workers,
+TopDeck workers, route registration, and production writes remain disabled.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

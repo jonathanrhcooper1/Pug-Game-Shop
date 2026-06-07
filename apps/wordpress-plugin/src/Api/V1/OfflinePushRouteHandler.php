@@ -117,6 +117,9 @@ final class OfflinePushRouteHandler {
 			'push_conflict_persistence_deferred' => false,
 			'push_queue_replay_deferred'         => true,
 			'push_canonical_mutation_planning_deferred' => null === $route_result->canonical_mutation_plan(),
+			'push_canonical_mutation_sql_planning_deferred' => null === $route_result->canonical_mutation_query_build_plan(),
+			'push_canonical_mutation_sql_execution_deferred' => true,
+			'push_canonical_mutation_repository_deferred' => true,
 			'push_canonical_mutations_deferred'  => true,
 			'route_still_gated'                  => true,
 			'default_route_execution_deferred'   => true,
@@ -138,8 +141,36 @@ final class OfflinePushRouteHandler {
 			'canonical_mutation_skipped_ids'     => null !== $route_result->canonical_mutation_plan()
 				? $route_result->canonical_mutation_plan()->skipped_operation_ids()
 				: array(),
+			'canonical_mutation_sql_query_count' => null !== $route_result->canonical_mutation_query_build_plan()
+				? count( $route_result->canonical_mutation_query_build_plan()->mutation_queries() )
+				: 0,
+			'canonical_mutation_sql_operation_ids' => $this->canonical_mutation_sql_operation_ids( $route_result ),
+			'canonical_mutation_sql_prepare_arg_count' => null !== $route_result->canonical_mutation_query_build_plan()
+				? $route_result->canonical_mutation_query_build_plan()->prepare_arg_count()
+				: 0,
 			'audit'                              => $route_result->audit_payload(),
 		);
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function canonical_mutation_sql_operation_ids( OfflinePushRouteProcessingResult $route_result ): array {
+		if ( null === $route_result->canonical_mutation_query_build_plan() ) {
+			return array();
+		}
+
+		$ids = array();
+
+		foreach ( $route_result->canonical_mutation_query_build_plan()->mutation_queries() as $query ) {
+			$operation_id = trim( (string) ( $query['client_operation_id'] ?? '' ) );
+
+			if ( '' !== $operation_id ) {
+				$ids[] = $operation_id;
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
 	}
 
 	/**

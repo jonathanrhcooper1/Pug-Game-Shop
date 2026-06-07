@@ -534,6 +534,12 @@ accepted mutation descriptors. Staging can inspect guarded inventory update
 templates and event/customer-credit lookup guards, but canonical write
 execution, repository execution, TopDeck workers, queue replay workers,
 production route registration, and default route execution remain disabled.
+Version `0.123.0` connects those staged SQL templates into explicitly enabled
+push route response, meta, and audit payloads. Staging can verify query counts,
+operation IDs, prepare-argument counts, and replayed zero-query metadata, but
+canonical write execution, repository execution, TopDeck workers, queue replay
+workers, production route registration, and default route execution remain
+disabled.
 
 ## Hardware Gate
 

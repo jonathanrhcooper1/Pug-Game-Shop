@@ -278,6 +278,14 @@ template and event/customer-credit guard lookup templates for future
 repositories, while canonical write execution, repository execution, TopDeck
 workers, queue replay workers, default route execution, and live route
 registration remain disabled.
+Version `0.123.0` connects those SQL templates to explicitly enabled staged
+push route responses. The response payload, route meta, and audit now expose
+canonical SQL query counts, operation IDs, prepare-argument counts, and
+deferred execution/repository flags. Replayed duplicate operations report zero
+canonical SQL templates while still showing that route-connected SQL planning
+ran. Canonical write execution, repository execution, TopDeck workers, queue
+replay workers, default route execution, and live route registration remain
+disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains

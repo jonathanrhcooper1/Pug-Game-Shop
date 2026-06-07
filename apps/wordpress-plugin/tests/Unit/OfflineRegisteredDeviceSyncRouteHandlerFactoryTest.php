@@ -101,6 +101,10 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_handler_existing_operation_rows_deferred'] );
 		$this->assert_true( $summary['push_handler_canonical_mutation_planner_ready'] );
 		$this->assert_true( $summary['push_handler_canonical_mutation_planning_deferred'] );
+		$this->assert_false( $summary['push_handler_canonical_mutation_sql_ready'] );
+		$this->assert_true( $summary['push_handler_canonical_mutation_sql_planning_deferred'] );
+		$this->assert_true( $summary['push_handler_canonical_mutation_sql_execution_deferred'] );
+		$this->assert_true( $summary['push_handler_canonical_repository_deferred'] );
 		$this->assert_true( $summary['push_handler_canonical_writes_deferred'] );
 		$this->assert_true( $summary['push_handler_route_queue_writes_deferred'] );
 		$this->assert_true( $summary['push_handler_conflict_writes_deferred'] );
@@ -261,6 +265,10 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_handler_existing_operation_rows_deferred'] );
 		$this->assert_true( $payload['push_handler_canonical_mutation_planner_ready'] );
 		$this->assert_true( $payload['push_handler_canonical_mutation_planning_deferred'] );
+		$this->assert_false( $payload['push_handler_canonical_mutation_sql_ready'] );
+		$this->assert_true( $payload['push_handler_canonical_mutation_sql_planning_deferred'] );
+		$this->assert_true( $payload['push_handler_canonical_mutation_sql_execution_deferred'] );
+		$this->assert_true( $payload['push_handler_canonical_repository_deferred'] );
 		$this->assert_true( $payload['push_handler_canonical_writes_deferred'] );
 		$this->assert_true( $payload['push_handler_route_queue_writes_deferred'] );
 		$this->assert_true( $payload['push_handler_conflict_writes_deferred'] );

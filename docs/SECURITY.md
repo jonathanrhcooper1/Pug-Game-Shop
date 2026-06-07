@@ -241,6 +241,10 @@ Canonical mutation SQL-template planning remains inspection-only. It validates
 table contracts, identifiers, row versions, deferred flags, and guard metadata
 before producing templates, and it keeps repository execution and canonical
 entity writes disabled.
+Route-connected staged push responses expose only canonical SQL counts,
+operation IDs, prepare-argument counts, and deferred execution/repository
+flags. Replayed operations produce zero SQL templates, and no route-connected
+canonical repository executes from this metadata.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

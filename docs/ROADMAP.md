@@ -124,6 +124,7 @@ plus push replay response hydration
 plus push canonical mutation planning
 plus route-connected push canonical mutation planning metadata
 plus push canonical mutation SQL-template planning
+plus route-connected push canonical mutation SQL planning metadata
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

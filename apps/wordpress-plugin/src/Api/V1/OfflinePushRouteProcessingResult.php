@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Offline\OfflinePushBatchResolutionPlan;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlan;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuildPlan;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepositoryResult;
 
 final class OfflinePushRouteProcessingResult {
@@ -21,7 +22,8 @@ final class OfflinePushRouteProcessingResult {
 		private OfflinePushPersistenceRepositoryResult $persistence_result,
 		private array $permission_audit = array(),
 		private array $operation_replay_rows = array(),
-		private ?OfflinePushCanonicalMutationPlan $canonical_mutation_plan = null
+		private ?OfflinePushCanonicalMutationPlan $canonical_mutation_plan = null,
+		private ?OfflinePushCanonicalMutationQueryBuildPlan $canonical_mutation_query_build_plan = null
 	) {
 	}
 
@@ -35,6 +37,10 @@ final class OfflinePushRouteProcessingResult {
 
 	public function canonical_mutation_plan(): ?OfflinePushCanonicalMutationPlan {
 		return $this->canonical_mutation_plan;
+	}
+
+	public function canonical_mutation_query_build_plan(): ?OfflinePushCanonicalMutationQueryBuildPlan {
+		return $this->canonical_mutation_query_build_plan;
 	}
 
 	/**
@@ -98,6 +104,17 @@ final class OfflinePushRouteProcessingResult {
 			$payload['canonical_mutations_deferred']      = true;
 		}
 
+		if ( null !== $this->canonical_mutation_query_build_plan ) {
+			$payload['canonical_mutation_sql_query_count'] = count(
+				$this->canonical_mutation_query_build_plan->mutation_queries()
+			);
+			$payload['canonical_mutation_sql_operation_ids'] = $this->canonical_mutation_sql_operation_ids();
+			$payload['canonical_mutation_sql_prepare_arg_count'] = $this->canonical_mutation_query_build_plan->prepare_arg_count();
+			$payload['canonical_mutation_sql_planning_deferred'] = false;
+			$payload['canonical_mutation_sql_execution_deferred'] = true;
+			$payload['canonical_mutation_repository_deferred'] = true;
+		}
+
 		return $payload;
 	}
 
@@ -130,10 +147,20 @@ final class OfflinePushRouteProcessingResult {
 			'canonical_mutation_skipped_ids'          => null !== $this->canonical_mutation_plan
 				? $this->canonical_mutation_plan->skipped_operation_ids()
 				: array(),
+			'canonical_mutation_sql_query_count'      => null !== $this->canonical_mutation_query_build_plan
+				? count( $this->canonical_mutation_query_build_plan->mutation_queries() )
+				: 0,
+			'canonical_mutation_sql_operation_ids'    => $this->canonical_mutation_sql_operation_ids(),
+			'canonical_mutation_sql_prepare_arg_count' => null !== $this->canonical_mutation_query_build_plan
+				? $this->canonical_mutation_query_build_plan->prepare_arg_count()
+				: 0,
 			'batch_resolution'                        => $this->resolution_plan->audit_payload(),
 			'persistence'                             => $this->persistence_result->audit_payload(),
 			'canonical_mutation_planning'             => null !== $this->canonical_mutation_plan
 				? $this->canonical_mutation_plan->audit_payload()
+				: array(),
+			'canonical_mutation_sql_planning'         => null !== $this->canonical_mutation_query_build_plan
+				? $this->canonical_mutation_query_build_plan->audit_payload()
 				: array(),
 			'permission'                              => $this->permission_audit,
 			'default_route_execution_deferred'        => true,
@@ -173,6 +200,27 @@ final class OfflinePushRouteProcessingResult {
 
 		foreach ( $this->persistence_result->operation_replay_ids() as $operation_id ) {
 			if ( isset( $rows[ $operation_id ] ) ) {
+				$ids[] = $operation_id;
+			}
+		}
+
+		return array_values( array_unique( $ids ) );
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function canonical_mutation_sql_operation_ids(): array {
+		if ( null === $this->canonical_mutation_query_build_plan ) {
+			return array();
+		}
+
+		$ids = array();
+
+		foreach ( $this->canonical_mutation_query_build_plan->mutation_queries() as $query ) {
+			$operation_id = trim( (string) ( $query['client_operation_id'] ?? '' ) );
+
+			if ( '' !== $operation_id ) {
 				$ids[] = $operation_id;
 			}
 		}
