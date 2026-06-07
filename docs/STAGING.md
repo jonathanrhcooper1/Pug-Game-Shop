@@ -161,5 +161,9 @@ Before major database migrations:
 - POS/payment transaction preflight metadata reports supported insert
   readiness, inherited gate blocks, unsupported query-kind blocks, zero
   affected rows, and deferred transaction execution.
+- Explicit staged POS/payment log execution writes only preflight-approved
+  `tcg_pos_sync_log` and `tcg_payment_provider_log` rows through `$wpdb`;
+  route-connected writes, provider capture, provider inventory writes, and
+  WooCommerce gateway capture remain disabled.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

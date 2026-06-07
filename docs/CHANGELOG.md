@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.134.0] - 2026-06-06
+
+### Added
+
+- Explicit POS/payment log execution repository and result contract for
+  preflight-approved `tcg_pos_sync_log` and `tcg_payment_provider_log` insert
+  templates through `$wpdb`.
+- Execution safeguards for invalid query plans, blocked/rejected preflights,
+  table-prefix mismatches, failed inserts, invalid affected-row counts, partial
+  affected-row summaries, idempotency key summaries, and audit metadata.
+- Unit coverage for successful prepared inserts, blocked preflight rejection,
+  invalid query-plan rejection, table-prefix mismatch rejection, and failed
+  payment insert partial counts.
+
+### Not Added
+
+- Route-connected POS/payment writes, Square/POS network calls, production
+  payment capture, provider inventory writes, payment webhook route
+  registration, WooCommerce gateway capture, and POS reconciliation service
+  wiring remain disabled.
+
 ## [0.133.0] - 2026-06-06
 
 ### Added

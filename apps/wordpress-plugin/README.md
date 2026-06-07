@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.133.0`
+Version: `0.134.0`
 
 ## Implemented Features
 
@@ -88,6 +88,10 @@ Version: `0.133.0`
 - POS/payment transaction preflight metadata for staged log inserts, inherited
   execution-gate blocks, unsupported query-kind blocking, idempotency keys, and
   zero affected rows while transaction execution remains disabled.
+- Explicit POS/payment log execution repository for preflight-approved staged
+  `tcg_pos_sync_log` and `tcg_payment_provider_log` inserts through `$wpdb`,
+  with route-connected writes, provider capture, provider inventory writes,
+  and WooCommerce gateway capture still disabled.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

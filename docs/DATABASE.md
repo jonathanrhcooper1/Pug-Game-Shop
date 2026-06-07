@@ -165,6 +165,10 @@
 - Version `0.133.0` adds POS/payment transaction preflight metadata over those
   existing table plans. No WordPress schema, SQLite schema, migration order,
   query execution, transaction execution, or rollback target changes.
+- Version `0.134.0` adds explicit POS/payment log execution for staged
+  `tcg_pos_sync_log` and `tcg_payment_provider_log` inserts through `$wpdb`.
+  No WordPress schema, SQLite schema, migration order, or rollback target
+  changes.
 
 ## Relationship Overview
 

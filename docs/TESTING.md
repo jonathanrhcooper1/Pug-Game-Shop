@@ -465,6 +465,11 @@
   for inherited execution-gate blocks, explicitly ready supported inserts,
   unsupported query-kind blocking, idempotency keys, zero affected rows, and
   rejected repository staging.
+- Local unit coverage now includes explicit POS/payment log execution
+  repository behavior for successful prepared inserts, blocked preflight
+  rejection, invalid query-plan rejection, table-prefix mismatch rejection,
+  failed payment inserts, partial affected-row counts, and deferred
+  route/provider-capture flags.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

@@ -165,6 +165,21 @@ Supported preflight query kinds are `pos_sync_insert` and
 execution, repository inserts, provider capture, provider inventory writes, and
 route-connected POS/payment writes remain disabled.
 
+## Explicit Log Execution
+
+The explicit POS/payment log execution repository can run preflight-approved
+insert templates through `$wpdb` in controlled staging tests. It rejects:
+
+- Invalid SQL build plans.
+- Blocked or rejected transaction preflights.
+- Table-prefix mismatches between the query plan and the provided database.
+- Failed inserts and invalid affected-row counts.
+
+The result reports POS sync rows affected, payment provider rows affected,
+partial failure state, idempotency keys, and route-connected/provider-capture
+deferral flags. This repository does not register routes, call providers,
+capture payments, mutate inventory, or enable WooCommerce gateway capture.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

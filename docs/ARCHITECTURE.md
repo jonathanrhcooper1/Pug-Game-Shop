@@ -188,6 +188,10 @@ repository execution remain disabled.
 The POS/payment transaction preflight follows that gate to classify supported
 POS sync and payment provider insert plans, inherit gate blocks, and reject
 unsupported query kinds before any transaction executor can exist.
+An explicit POS/payment log execution repository can now write preflight-ready
+log rows through `$wpdb` for staged tests only. It is not connected to routes,
+providers, payment capture, provider inventory writes, or WooCommerce gateway
+capture.
 
 ## System Diagram
 

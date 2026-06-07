@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Log Execution Repository
+
+### What Changed
+
+- Added `PosPaymentLogExecutionRepository` and
+  `PosPaymentLogExecutionRepositoryResult`.
+- The repository executes preflight-approved POS/payment SQL-template plans
+  through an explicitly provided `$wpdb` adapter.
+- Added safeguards for invalid query plans, non-ready preflights, table-prefix
+  mismatches, failed inserts, invalid affected-row counts, partial affected-row
+  summaries, idempotency key summaries, and secret-free audit metadata.
+- Updated project, plugin, and offline app package versions to `0.134.0`.
+- Updated project, plugin, payments/POS, staging, database, testing, roadmap,
+  changelog, architecture, and revision docs.
+
+### Why
+
+The POS/payment path now has planning, SQL templates, repository staging,
+execution gating, and transaction preflight metadata. This revision adds the
+first explicit staged write boundary for durable POS/payment log rows while
+keeping live route wiring, provider capture, provider inventory writes,
+webhook routes, and WooCommerce gateway capture disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogExecutionRepository.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogExecutionRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentLogExecutionRepositoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentLogExecutionRepositoryTest` coverage for successful prepared POS
+  sync and payment provider inserts, blocked preflight rejection before
+  database access, invalid query-plan rejection, table-prefix mismatch
+  rejection, failed payment insert rejection, and partial affected-row counts.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment log execution repository
+  classes, tests, and version/doc updates.
+- No database rollback is required because no schema migration, route wiring,
+  provider capture, or inventory write service was added.
+- If this repository was explicitly invoked in staging before rollback, export
+  or truncate only the staged `tcg_pos_sync_log` and
+  `tcg_payment_provider_log` rows created by that test run.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation route services, and route-connected POS/payment
+  writes remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Log Transaction Preflight
 
 ### What Changed
