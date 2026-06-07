@@ -45,6 +45,10 @@ final class SquareInventoryProjectionPlannerTest extends TestCase {
 		$this->assert_same( true, $contract['network_request_deferred'] );
 		$this->assert_same( true, $contract['provider_inventory_write_deferred'] );
 		$this->assert_same( 'required_for_payments', $contract['official_square_payment_extension'] );
+		$this->assert_same( 'official_woocommerce_square_extension', $contract['payment_capture_authority'] );
+		$this->assert_false( $contract['plugin_square_payment_capture_allowed'] );
+		$this->assert_false( $contract['plugin_square_custom_gateway_allowed'] );
+		$this->assert_same( 'catalog_inventory_projection_and_reconciliation_only', $contract['square_inventory_sync_scope'] );
 	}
 
 	public function test_existing_square_mapping_for_unavailable_item_projects_zero_count_only(): void {

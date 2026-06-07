@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
+
 final class PosPaymentRouteDependencyFactory {
 	private const HANDLER_CALLBACKS = array(
 		'ingest_pos_event',
@@ -119,6 +121,7 @@ final class PosPaymentRouteDependencyFactory {
 		$permission_callbacks            = $this->permission_callback_factory()->callbacks_for_contracts( $route_contracts );
 		$validation_summary              = $this->validation_handler_factory()->readiness_summary();
 		$fee_snapshot_summary            = $this->fee_snapshot_handler_factory_summary();
+		$payment_policy                  = SquarePaymentDelegationPolicy::audit_payload();
 		$capability_route_keys           = array_keys( PosPaymentRoutePermissionCallbackFactory::capability_map( $route_contracts ) );
 		$webhook_route_keys              = PosPaymentRoutePermissionCallbackFactory::webhook_route_keys( $route_contracts );
 		$handler_keys                    = array_keys( $this->handlers() );
@@ -187,6 +190,11 @@ final class PosPaymentRouteDependencyFactory {
 			'provider_inventory_write_deferred'           => true,
 			'webhook_registration_deferred'               => true,
 			'woocommerce_gateway_capture_deferred'        => true,
+			'payment_capture_authority'                   => $payment_policy['payment_capture_authority'],
+			'official_square_payment_extension'           => $payment_policy['official_square_payment_extension'],
+			'plugin_square_payment_capture_allowed'       => $payment_policy['plugin_square_payment_capture_allowed'],
+			'plugin_square_custom_gateway_allowed'        => $payment_policy['plugin_square_custom_gateway_allowed'],
+			'square_payment_delegation_policy'            => $payment_policy,
 			'route_connected_reads_ready'                 => false,
 			'route_connected_writes_ready'                => false,
 			'configuration_issues'                        => array_values( array_unique( $issues ) ),

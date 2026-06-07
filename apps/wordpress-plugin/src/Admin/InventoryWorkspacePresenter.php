@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Admin;
 
 use TCGStorePlatform\Inventory\InventoryStatus;
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
 
 final class InventoryWorkspacePresenter {
 	private const SEARCH_ROUTE_KEY = 'GET /inventory/search';
@@ -91,6 +92,12 @@ final class InventoryWorkspacePresenter {
 				true === ( $dependency_payload['square_inventory_projection_deferred'] ?? true ) ? 'Deferred' : 'Ready',
 				true === ( $dependency_payload['square_inventory_projection_deferred'] ?? true ) ? 'deferred' : 'ready',
 				'inventory projection only; Square payments handled by WooCommerce Square'
+			),
+			$this->row(
+				'Square payments',
+				SquarePaymentDelegationPolicy::status_label(),
+				'ready',
+				SquarePaymentDelegationPolicy::admin_note()
 			),
 			$this->row(
 				'Labels',

@@ -40,6 +40,14 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $summary['provider_inventory_write_deferred'] );
 		$this->assert_true( $summary['webhook_registration_deferred'] );
 		$this->assert_true( $summary['woocommerce_gateway_capture_deferred'] );
+		$this->assert_same( 'official_woocommerce_square_extension', $summary['payment_capture_authority'] );
+		$this->assert_same( 'required_for_payments', $summary['official_square_payment_extension'] );
+		$this->assert_false( $summary['plugin_square_payment_capture_allowed'] );
+		$this->assert_false( $summary['plugin_square_custom_gateway_allowed'] );
+		$this->assert_same(
+			'catalog_inventory_projection_and_reconciliation_only',
+			$summary['square_payment_delegation_policy']['square_inventory_sync_scope']
+		);
 		$this->assert_false( $summary['route_connected_reads_ready'] );
 		$this->assert_false( $summary['route_connected_writes_ready'] );
 		$this->assert_same(

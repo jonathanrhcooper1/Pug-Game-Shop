@@ -24,7 +24,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$rows  = $presenter->readiness_rows( $bootstrap, $dependencies );
 		$index = $this->rows_by_label( $rows );
 
-		$this->assert_same( 10, count( $rows ) );
+		$this->assert_same( 11, count( $rows ) );
 		$this->assert_same( 'Disabled', $index['Feature flag']['value'] );
 		$this->assert_same( 'blocked', $index['Feature flag']['status'] );
 		$this->assert_same( '0 / 16 registerable', $index['Live routes']['value'] );
@@ -39,6 +39,9 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_contains( 'waiting for staged inventory create handler', $index['Projection planning']['notes'] );
 		$this->assert_same( 'Deferred', $index['WooCommerce projection']['value'] );
 		$this->assert_same( 'Deferred', $index['Square projection']['value'] );
+		$this->assert_same( 'Delegated to WooCommerce Square', $index['Square payments']['value'] );
+		$this->assert_same( 'ready', $index['Square payments']['status'] );
+		$this->assert_contains( 'inventory only', $index['Square payments']['notes'] );
 	}
 
 	public function test_readiness_rows_surface_projection_planning_ready_state(): void {
@@ -75,6 +78,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_contains( 'contracts planned', $index['Projection planning']['notes'] );
 		$this->assert_same( 'Deferred', $index['WooCommerce projection']['value'] );
 		$this->assert_same( 'Deferred', $index['Square projection']['value'] );
+		$this->assert_same( 'Delegated to WooCommerce Square', $index['Square payments']['value'] );
 	}
 
 	public function test_route_rows_surface_planned_contract_lockout(): void {

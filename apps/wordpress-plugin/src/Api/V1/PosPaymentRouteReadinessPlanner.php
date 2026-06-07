@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
+
 final class PosPaymentRouteReadinessPlanner {
 	private const DEFAULT_DEPENDENCIES = array(
 		'route_handlers_configured'                  => false,
@@ -44,6 +46,7 @@ final class PosPaymentRouteReadinessPlanner {
 		$route_contracts      = $route_contracts ?? PosPaymentRouteContracts::route_contracts();
 		$permission_callbacks = $this->permission_callbacks( $route_contracts );
 		$controller_handlers  = $this->controller_handlers( $route_contracts );
+		$payment_policy       = SquarePaymentDelegationPolicy::audit_payload();
 		$dependencies         = $this->dependencies(
 			$dependency_overrides,
 			$route_contracts,
@@ -95,6 +98,11 @@ final class PosPaymentRouteReadinessPlanner {
 			'provider_capture_enabled'                   => true === $dependencies['provider_capture_enabled'],
 			'provider_inventory_writes_enabled'          => true === $dependencies['provider_inventory_writes_enabled'],
 			'woocommerce_gateway_capture_enabled'        => true === $dependencies['woocommerce_gateway_capture_enabled'],
+			'payment_capture_authority'                  => $payment_policy['payment_capture_authority'],
+			'official_square_payment_extension'          => $payment_policy['official_square_payment_extension'],
+			'plugin_square_payment_capture_allowed'      => $payment_policy['plugin_square_payment_capture_allowed'],
+			'plugin_square_custom_gateway_allowed'       => $payment_policy['plugin_square_custom_gateway_allowed'],
+			'square_payment_delegation_policy'           => $payment_policy,
 			'route_registration_deferred'                => $this->any_route_flag( $route_plans, 'route_registration_deferred' ),
 			'route_connected_reads_deferred'             => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
 			'route_connected_writes_deferred'            => $this->any_route_flag( $route_plans, 'route_connected_writes_deferred' ),

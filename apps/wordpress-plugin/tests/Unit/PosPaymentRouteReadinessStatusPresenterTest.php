@@ -35,5 +35,6 @@ final class PosPaymentRouteReadinessStatusPresenterTest extends TestCase {
 		$this->assert_contains( 'permissions not ready', $summary['value'] );
 		$this->assert_contains( 'transactions deferred', $summary['value'] );
 		$this->assert_contains( 'capture deferred', $summary['value'] );
+		$this->assert_contains( 'Square payments Delegated to WooCommerce Square', $summary['value'] );
 	}
 }

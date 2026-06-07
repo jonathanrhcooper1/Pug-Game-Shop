@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Payment Delegation Policy Surfaces
+
+### What Changed
+
+- Added a reusable PHP `SquarePaymentDelegationPolicy` that declares the
+  official WooCommerce Square extension as the Square payment capture, refund,
+  and gateway authority.
+- Reused the policy from Square inventory projection contracts and execution
+  audit payloads.
+- Exposed the policy in POS/payment route readiness and dependency health
+  payloads.
+- Added an Inventory admin workspace row showing that Square payments are
+  delegated while this platform syncs serialized inventory only.
+- Added unit coverage for the policy, projection contracts, POS/payment
+  readiness/dependency payloads, and admin workspace row.
+
+### Why
+
+The platform should let Square POS pull/sync inventory from the card
+management source of truth, but the custom plugin should not become a Square
+payment gateway. This revision makes that boundary reusable and visible in the
+places staff/admin and staging reviewers inspect.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquarePaymentDelegationPolicy.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionPlan.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/SquarePaymentDelegationPolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Direct policy coverage for official WooCommerce Square payment delegation.
+- Projection contract coverage for payment authority and inventory-only sync
+  scope.
+- POS/payment readiness and dependency payload assertions for disallowed custom
+  Square capture/custom gateway behavior.
+- Inventory workspace assertion for the visible Square payments delegation row.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquarePaymentDelegationPolicy.php src\Square\SquareInventoryProjectionExecutionResult.php src\Square\SquareInventoryProjectionPlan.php src\Api\V1\PosPaymentRouteReadinessPlanner.php src\Api\V1\PosPaymentRouteDependencyFactory.php src\Api\V1\PosPaymentRouteReadinessStatusPresenter.php src\Api\V1\PosPaymentRouteDependencyStatusPresenter.php src\Admin\InventoryWorkspacePresenter.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF array alignment cleanup.
+- `php tests\run.php --filter SquarePaymentDelegationPolicyTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 785-test
+  suite.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the reusable PHP policy and the health/admin
+  visibility for Square payment delegation.
+- No schema rollback is required.
+
 ## 2026-06-07 - Square Payment Delegation Boundary
 
 ### What Changed

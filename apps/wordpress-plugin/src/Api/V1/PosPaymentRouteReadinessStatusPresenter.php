@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
+
 final class PosPaymentRouteReadinessStatusPresenter {
 	private PosPaymentRouteReadinessPlanner $planner;
 
@@ -31,7 +33,7 @@ final class PosPaymentRouteReadinessStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'%d / %d registerable; %s; handlers %s; permissions %s; transactions %s; webhooks %s; capture %s; inventory %s; gateway %s',
+				'%d / %d registerable; %s; handlers %s; permissions %s; transactions %s; webhooks %s; capture %s; inventory %s; gateway %s; Square payments %s',
 				(int) ( $payload['registerable_route_count'] ?? 0 ),
 				(int) ( $payload['planned_route_count'] ?? 0 ),
 				$details,
@@ -41,7 +43,8 @@ final class PosPaymentRouteReadinessStatusPresenter {
 				( true === ( $payload['webhook_verifier_configured'] ?? false ) ) ? 'ready' : 'not ready',
 				( true === ( $payload['provider_capture_deferred'] ?? false ) ) ? 'deferred' : 'enabled',
 				( true === ( $payload['provider_inventory_write_deferred'] ?? false ) ) ? 'deferred' : 'enabled',
-				( true === ( $payload['woocommerce_gateway_capture_deferred'] ?? false ) ) ? 'deferred' : 'enabled'
+				( true === ( $payload['woocommerce_gateway_capture_deferred'] ?? false ) ) ? 'deferred' : 'enabled',
+				SquarePaymentDelegationPolicy::status_label()
 			),
 			'status' => (string) ( $payload['status'] ?? 'blocked' ),
 		);

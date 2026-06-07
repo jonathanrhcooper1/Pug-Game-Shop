@@ -20,9 +20,10 @@ All notable changes follow Semantic Versioning.
 - Tauri queue command scaffold and frontend Tauri adapter detection for staged
   inventory operation envelopes, plus Windows workflow Rust test coverage for
   the desktop command path.
-- Explicit Square payment delegation policy proving the custom platform keeps
-  Square payment capture with the official WooCommerce Square extension while
-  allowing inventory sync/reconciliation contracts to proceed.
+- Explicit reusable Square payment delegation policy proving the custom
+  platform keeps Square payment capture/refund/gateway ownership with the
+  official WooCommerce Square extension while allowing inventory
+  sync/reconciliation contracts to proceed, with health/admin visibility.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

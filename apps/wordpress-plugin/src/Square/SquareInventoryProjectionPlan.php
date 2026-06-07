@@ -142,22 +142,24 @@ final class SquareInventoryProjectionPlan {
 	 * @return array<string, mixed>
 	 */
 	public function projection_contract(): array {
-		return array(
-			'provider'                             => 'square',
-			'status'                               => $this->status,
-			'code'                                 => $this->code,
-			'idempotency_key'                      => $this->idempotency_key,
-			'catalog_objects'                      => $this->catalog_objects,
-			'inventory_changes'                    => $this->inventory_changes,
-			'operation_count'                      => $this->operation_count(),
-			'requires_catalog_id_resolution'       => $this->requires_catalog_id_resolution,
-			'source_of_truth'                      => 'tcg_store_platform',
-			'payment_capture_deferred'             => true,
-			'provider_inventory_write_deferred'    => true,
-			'network_request_deferred'             => true,
-			'official_square_payment_extension'    => 'required_for_payments',
-			'woocommerce_gateway_capture_deferred' => true,
-			'errors'                               => $this->errors,
+		return array_merge(
+			array(
+				'provider'                          => 'square',
+				'status'                            => $this->status,
+				'code'                              => $this->code,
+				'idempotency_key'                   => $this->idempotency_key,
+				'catalog_objects'                   => $this->catalog_objects,
+				'inventory_changes'                 => $this->inventory_changes,
+				'operation_count'                   => $this->operation_count(),
+				'requires_catalog_id_resolution'    => $this->requires_catalog_id_resolution,
+				'source_of_truth'                   => 'tcg_store_platform',
+				'provider_inventory_write_deferred' => true,
+				'network_request_deferred'          => true,
+			),
+			SquarePaymentDelegationPolicy::audit_payload(),
+			array(
+				'errors' => $this->errors,
+			)
 		);
 	}
 }

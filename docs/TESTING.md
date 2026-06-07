@@ -688,6 +688,11 @@
 - Shared POS validation now includes Square payment delegation coverage,
   proving plugin payment capture, refund execution, and custom gateway capture
   remain disallowed while inventory sync and reconciliation stay permitted.
+- Local WordPress unit coverage now includes the reusable Square payment
+  delegation policy plus POS/payment readiness, POS/payment dependency,
+  Square projection, and inventory workspace assertions proving admin/health
+  surfaces show that payment capture/refunds/custom gateway behavior belong to
+  the official WooCommerce Square extension.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup
