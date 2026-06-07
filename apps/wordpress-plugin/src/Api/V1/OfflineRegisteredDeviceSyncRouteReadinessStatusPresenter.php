@@ -36,7 +36,7 @@ final class OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'pull %s; push %s; context %s; query plan %s; SQL plan %s; repository %s; provider %s; route provider %s; cursor planner %s; cursor SQL %s; cursor repository %s; route cursor provider %s; handler cursor %s; %d callbacks; writes deferred; routes deferred',
+				'pull %s; push %s; context %s; query plan %s; SQL plan %s; repository %s; provider %s; route provider %s; cursor planner %s; cursor SQL %s; cursor repository %s; route cursor provider %s; handler cursor %s; handler factory %s; route dependencies %s; %d callbacks; writes deferred; routes deferred',
 				true === ( $payload['pull_handler_configured'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_handler_configured'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['pull_device_context_planner_ready'] ?? false ) ? 'ready' : 'not ready',
@@ -50,6 +50,8 @@ final class OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter {
 				true === ( $payload['pull_cursor_advance_repository_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['pull_route_cursor_advance_provider_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['pull_handler_cursor_advance_ready'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['pull_handler_dependency_factory_ready'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['pull_handler_route_dependencies_ready'] ?? false ) ? 'ready' : 'deferred',
 				(int) ( $payload['handler_count'] ?? 0 )
 			),
 			'status' => (string) $payload['status'],

@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.106.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.107.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.106.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.107.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -180,6 +180,9 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_curso
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_cursor_advance_repository_ready'] ?? null ), 'Offline pull cursor advance repository should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_route_cursor_advance_provider_ready'] ?? null ), 'Offline pull route cursor advance provider should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_cursor_advance_ready'] ?? null ), 'Offline pull handler cursor advance orchestration should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_dependency_factory_ready'] ?? null ), 'Offline pull handler dependency factory should be staged ready.' );
+$assert( false === ( $data['offline_registered_device_sync_handlers']['pull_handler_route_dependencies_ready'] ?? null ), 'Offline pull handler route dependencies should remain deferred by default.' );
+$assert( false === ( $data['offline_registered_device_sync_handlers']['pull_handler_route_execution_enabled'] ?? null ), 'Offline pull handler route execution should remain disabled by default.' );
 $assert( 5 === (int) ( $data['offline_registered_device_sync_handlers']['pull_change_query_domain_count'] ?? 0 ), 'Offline pull change-query planner should report every staged domain.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_context_deferred'] ?? null ), 'Offline pull change-query context handoff should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_device_context_route_deferred'] ?? null ), 'Offline pull device context route handoff should remain deferred.' );
@@ -191,6 +194,8 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_curso
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_cursor_advance_route_deferred'] ?? null ), 'Offline pull cursor advance route execution should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_route_cursor_advance_route_deferred'] ?? null ), 'Offline pull route cursor advance provider should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_cursor_advance_deferred'] ?? null ), 'Offline pull handler cursor advance orchestration should remain deferred.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_route_dependencies_deferred'] ?? null ), 'Offline pull handler route dependency injection should remain deferred.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_route_cursor_writes_deferred'] ?? null ), 'Offline pull handler route cursor writes should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_repository_route_deferred'] ?? null ), 'Offline pull change repository route connection should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_set_provider_route_deferred'] ?? null ), 'Offline pull change-set provider route connection should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_configured'] ?? null ), 'Offline push handler should be configured.' );

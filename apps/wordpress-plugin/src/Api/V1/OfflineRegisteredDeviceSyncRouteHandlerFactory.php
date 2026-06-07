@@ -25,7 +25,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	public function __construct(
 		private ?OfflineRouteValidationHandlerFactory $validation_handler_factory = null,
 		private ?OfflineRestRequestAdapter $request_adapter = null,
-		private ?OfflinePullRouteHandler $pull_handler = null
+		private ?OfflinePullRouteHandler $pull_handler = null,
+		private ?OfflinePullRouteHandlerFactory $pull_handler_factory = null
 	) {
 	}
 
@@ -77,6 +78,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePullRouteCursorAdvanceProvider::class, 'advance' );
 		$pull_handler_cursor_ready = $pull_route_cursor_ready
 			&& method_exists( OfflinePullRouteHandler::class, 'handle' );
+		$pull_handler_factory      = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
+		$pull_handler_dependencies = $pull_handler_factory->readiness_summary();
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -103,6 +106,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_cursor_advance_repository_ready'       => $pull_cursor_repo_ready,
 			'pull_route_cursor_advance_provider_ready'   => $pull_route_cursor_ready,
 			'pull_handler_cursor_advance_ready'          => $pull_handler_cursor_ready,
+			'pull_handler_dependency_factory_ready'      => true === ( $pull_handler_dependencies['handler_factory_ready'] ?? false ),
+			'pull_handler_route_dependencies_ready'      => true === ( $pull_handler_dependencies['route_connected_handler_ready'] ?? false ),
+			'pull_handler_route_dependencies_deferred'   => true === ( $pull_handler_dependencies['route_connected_handler_deferred'] ?? true ),
+			'pull_handler_route_execution_enabled'       => true === ( $pull_handler_dependencies['route_connected_execution_enabled'] ?? false ),
+			'pull_handler_route_database_configured'     => true === ( $pull_handler_dependencies['database_configured'] ?? false ),
+			'pull_handler_route_cursor_writes_deferred'  => true === ( $pull_handler_dependencies['route_connected_cursor_writes_deferred'] ?? true ),
+			'pull_handler_route_dependency_issues'       => $pull_handler_dependencies['configuration_issues'] ?? array(),
 			'pull_change_query_domains'                  => $pull_query_domains,
 			'pull_change_query_domain_count'             => count( $pull_query_domains ),
 			'pull_change_query_context_deferred'         => true,
@@ -127,6 +137,10 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	}
 
 	private function pull_handler(): OfflinePullRouteHandler {
-		return $this->pull_handler ?? new OfflinePullRouteHandler();
+		if ( null !== $this->pull_handler ) {
+			return $this->pull_handler;
+		}
+
+		return ( $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory() )->handler();
 	}
 }

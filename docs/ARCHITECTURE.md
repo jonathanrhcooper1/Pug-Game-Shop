@@ -73,6 +73,10 @@ The pull handler now has a backward-compatible explicit cursor-advance
 provider hook that can run after change sets are returned, fail closed on
 cursor write rejection, and report cursor advancement metadata while default
 handler execution remains deferred.
+The pull route handler factory now composes the route-aware change-set and
+cursor-advance providers only when explicitly enabled with WordPress database
+dependencies, leaving default route dependency injection and route registration
+deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

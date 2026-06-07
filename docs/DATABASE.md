@@ -81,6 +81,9 @@
 - Version `0.106.0` adds opt-in pull handler cursor advancement orchestration
   over existing cursor provider/repository contracts. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.107.0` adds pull route handler factory composition over existing
+  registered-device, pull repository, and cursor repository contracts. No
+  WordPress schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

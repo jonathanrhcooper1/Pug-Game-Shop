@@ -187,6 +187,10 @@ An explicitly injected cursor advance provider can now run after change sets
 are returned, with ready metadata for advanced cursors and fail-closed
 responses for rejected cursor writes, while the default handler still defers
 cursor advancement.
+Version `0.107.0` adds staged pull route handler factory composition. The sync
+handler factory can receive an explicitly enabled pull handler factory that
+wires route-aware providers from `$wpdb` for staging tests, while default route
+dependency injection and route execution remain deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -453,7 +457,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.106.0",
+  "app_version": "0.107.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

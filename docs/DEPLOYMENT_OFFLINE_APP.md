@@ -444,6 +444,11 @@ Staging can inject a cursor advance provider into the pull handler after
 change sets are returned, while default handler cursor advancement and
 route-connected writes remain disabled.
 
+Version `0.107.0` adds staged pull route handler factory composition. Staging
+tests can explicitly enable factory-built route-aware pull reads and cursor
+advancement from `$wpdb`, while default route dependency injection, route
+registration, and production route execution remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

@@ -103,6 +103,9 @@ injected boundary and default route execution stays deferred.
 Opt-in pull handler cursor advancement fails closed on rejected cursor results
 or invalid provider returns, so staging cannot silently send pull data when an
 explicit cursor write path rejects.
+Staged pull route handler factory composition stays disabled by default and
+requires explicit route execution enablement plus WordPress database
+dependencies before route-aware reads or cursor writes can run in tests.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.

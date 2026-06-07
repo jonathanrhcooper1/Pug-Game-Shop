@@ -184,6 +184,9 @@
 - Local unit coverage now includes opt-in pull handler cursor advancement
   orchestration for default deferral, successful explicit advancement metadata,
   rejected cursor results, invalid provider returns, and readiness reporting.
+- Local unit coverage now includes staged pull route handler factory composition
+  for default route dependency deferral, explicitly enabled route-aware provider
+  wiring, and sync factory injection of the composed handler.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

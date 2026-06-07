@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.106.0`
+Version: `0.107.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -177,6 +177,11 @@ while default route execution remains deferred.
 The staged pull handler can now accept an explicit cursor-advance provider and
 fail closed on cursor write rejection, while the default handler continues to
 defer cursor advancement and route-connected writes.
+Staged pull route handler factory composition can now assemble route-aware
+change-set and cursor-advance providers from `$wpdb` only when explicitly
+enabled for staging tests; default sync handler construction still keeps route
+dependencies, route-connected reads, cursor writes, and route registration
+deferred.
 Offline device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp

@@ -66,6 +66,9 @@ Before major database migrations:
   provider readiness while default route execution remains deferred.
 - System status and authenticated health report staged pull handler cursor
   advancement readiness while default handler cursor execution remains deferred.
+- System status and authenticated health report staged pull handler dependency
+  factory readiness while default route dependency injection, route-connected
+  reads, and cursor writes remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

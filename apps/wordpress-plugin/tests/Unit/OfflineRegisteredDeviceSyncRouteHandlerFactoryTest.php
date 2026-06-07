@@ -35,6 +35,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['pull_cursor_advance_repository_ready'] );
 		$this->assert_true( $summary['pull_route_cursor_advance_provider_ready'] );
 		$this->assert_true( $summary['pull_handler_cursor_advance_ready'] );
+		$this->assert_true( $summary['pull_handler_dependency_factory_ready'] );
+		$this->assert_false( $summary['pull_handler_route_dependencies_ready'] );
+		$this->assert_true( $summary['pull_handler_route_dependencies_deferred'] );
+		$this->assert_false( $summary['pull_handler_route_execution_enabled'] );
+		$this->assert_false( $summary['pull_handler_route_database_configured'] );
+		$this->assert_true( $summary['pull_handler_route_cursor_writes_deferred'] );
+		$this->assert_same( array(), $summary['pull_handler_route_dependency_issues'] );
 		$this->assert_same( 5, $summary['pull_change_query_domain_count'] );
 		$this->assert_same(
 			array( 'branding', 'inventory', 'customer_credit', 'events', 'conflicts' ),
@@ -139,6 +146,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['pull_cursor_advance_repository_ready'] );
 		$this->assert_true( $payload['pull_route_cursor_advance_provider_ready'] );
 		$this->assert_true( $payload['pull_handler_cursor_advance_ready'] );
+		$this->assert_true( $payload['pull_handler_dependency_factory_ready'] );
+		$this->assert_false( $payload['pull_handler_route_dependencies_ready'] );
+		$this->assert_true( $payload['pull_handler_route_dependencies_deferred'] );
+		$this->assert_false( $payload['pull_handler_route_execution_enabled'] );
+		$this->assert_false( $payload['pull_handler_route_database_configured'] );
+		$this->assert_true( $payload['pull_handler_route_cursor_writes_deferred'] );
+		$this->assert_same( array(), $payload['pull_handler_route_dependency_issues'] );
 		$this->assert_same( 5, $payload['pull_change_query_domain_count'] );
 		$this->assert_true( $payload['pull_device_context_route_deferred'] );
 		$this->assert_true( $payload['pull_route_connected_reads_deferred'] );
@@ -168,6 +182,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'cursor repository ready', $summary['value'] );
 		$this->assert_contains( 'route cursor provider ready', $summary['value'] );
 		$this->assert_contains( 'handler cursor ready', $summary['value'] );
+		$this->assert_contains( 'handler factory ready', $summary['value'] );
+		$this->assert_contains( 'route dependencies deferred', $summary['value'] );
 	}
 
 	/**

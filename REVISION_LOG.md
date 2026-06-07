@@ -3,6 +3,94 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Route Handler Factory Composition
+
+### What Changed
+
+- Added `OfflinePullRouteHandlerFactory` to compose a staged pull handler from
+  `$wpdb`, registered-device permission resolution, route-aware change-set
+  provider, and route-aware cursor-advance provider dependencies.
+- Kept the factory default path fail-safe: without explicit route execution
+  enablement, it returns the existing bare pull handler with route dependencies
+  deferred.
+- Added optional pull handler factory injection to
+  `OfflineRegisteredDeviceSyncRouteHandlerFactory` while preserving explicit
+  pull handler overrides.
+- Exposed sync handler readiness metadata for pull handler dependency factory
+  readiness, route dependency readiness, route execution enablement, database
+  readiness, cursor-write deferral, and dependency issues.
+- Updated the sync readiness admin summary to show handler factory readiness and
+  route dependency deferral.
+- Added WordPress smoke assertions for the new default-deferred readiness keys.
+- Added unit coverage for default factory deferral, explicitly enabled
+  route-aware handler composition, and sync factory injection of the composed
+  handler.
+- Updated project, plugin, and offline app package versions to `0.107.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous checkpoint let the pull handler call an explicitly injected cursor
+advance provider, but staging still needed one audited composition boundary that
+can assemble the route-aware read and cursor-write providers from WordPress
+database dependencies. This revision adds that boundary while keeping default
+route wiring, route registration, and production execution disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePullRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Pull handler factory tests for default route dependency deferral and explicit
+  route-aware provider composition from a `$wpdb` test double.
+- Sync handler factory coverage proving the composed pull handler factory can be
+  injected and can advance cursors only when explicitly enabled.
+- WordPress integration smoke assertions for default-deferred route dependency
+  injection and cursor-write readiness metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove the pull route handler factory composition and
+  its sync handler readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default live offline routes, default route dependency injection,
+  route-connected reads, tombstone reads, queue replay, route registration,
+  cursor writes, and route-connected database writes remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - Pull Handler Cursor Advance Orchestration
 
 ### What Changed

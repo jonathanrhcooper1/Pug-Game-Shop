@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.107.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullRouteHandlerFactory` for staged composition of route-aware pull
+  change-set and cursor-advance providers from explicit `$wpdb` dependencies.
+- Optional pull handler factory injection in
+  `OfflineRegisteredDeviceSyncRouteHandlerFactory`, preserving the existing
+  explicit handler override.
+- Health/admin and WordPress smoke readiness metadata for pull handler route
+  dependency readiness, route execution enablement, database availability, and
+  route cursor-write deferral.
+- Unit coverage for the default deferred factory path, explicitly enabled
+  route-aware handler composition, and sync factory injection of that composed
+  handler.
+
+### Not Added
+
+- No default live offline route execution is enabled. Route dependency injection,
+  route-connected reads, cursor writes, route registration, tombstone repository
+  reads, queue replay, and canonical route-connected mutations remain disabled
+  unless a staging test explicitly injects and enables the factory path.
+
 ## [0.106.0] - 2026-06-06
 
 ### Added

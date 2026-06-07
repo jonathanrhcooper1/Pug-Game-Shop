@@ -243,6 +243,11 @@ Version `0.106.0` adds opt-in pull handler cursor advancement orchestration.
 The handler can call an explicitly injected cursor advance provider after
 change sets are returned and fail closed on cursor write rejection, while
 default handler cursor advancement and route-connected writes remain deferred.
+Version `0.107.0` adds staged pull route handler factory composition. Explicit
+staging tests can enable a factory-built handler that wires route-aware
+change-set reads and cursor advancement from `$wpdb`, while default route
+dependency injection, route-connected reads, cursor writes, and route
+registration remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
