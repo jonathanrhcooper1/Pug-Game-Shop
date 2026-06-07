@@ -42,6 +42,11 @@
   adapter for prepared `$wpdb` inserts, invalid-plan short-circuiting,
   table-prefix mismatch rejection, failed insert handling, zero/unexpected
   insert-count rejection, created-item response payloads, and audit redaction.
+- Local unit coverage now includes staged inventory intake route handler and
+  factory composition for successful created-item responses, invalid payload
+  short-circuiting, repository failure rejection, default write deferral,
+  explicitly enabled repository-backed writes, provider failures, and table
+  prefix issues.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit

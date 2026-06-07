@@ -35,6 +35,10 @@ staging database acceptance remains pending.
   including invalid-plan short-circuiting, active table-prefix validation,
   insert-count outcome handling, created-item response payloads, and write/
   projection deferral audits.
+- Staged inventory intake route handler and factory for explicitly enabled
+  `POST /inventory` creation tests, composing parser, persistence planner,
+  repository execution, created responses, default route deferral, and
+  projection/label-print deferral metadata.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

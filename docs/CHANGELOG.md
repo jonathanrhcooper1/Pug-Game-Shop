@@ -20,6 +20,9 @@ All notable changes follow Semantic Versioning.
   inventory insert plans through injected `$wpdb`, with table-prefix mismatch
   guards, exact insert-count handling, response payloads, and route/projection
   deferral audit metadata.
+- Staged inventory intake route handler and factory that can explicitly compose
+  parser, persistence planner, and repository execution for `POST /inventory`
+  creation tests while default live route registration remains disabled.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

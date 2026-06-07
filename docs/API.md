@@ -364,11 +364,11 @@ search responses for staging tests. Default live route registration remains
 disabled until permission callbacks, rate limits, target database performance,
 and staging smoke tests are accepted.
 Inventory item creation now has plan-only persistence coverage that can shape a
-validated intake request into a schema-aligned prepared insert template, but
-the live `POST /inventory` route, barcode label printing, and WooCommerce/
-Square projection writes remain disabled. The staged repository adapter can
-execute those insert plans only when explicitly called in tests or future
-staging orchestration.
+validated intake request into a schema-aligned prepared insert template. A
+staged route handler factory can explicitly compose the parser, persistence
+planner, and repository adapter into a created-item response for `POST
+/inventory` tests, but the live route registration, barcode label printing, and
+WooCommerce/Square projection writes remain disabled until staging acceptance.
 
 ### Pricing And Overrides
 

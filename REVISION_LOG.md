@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Intake Route Handler Factory
+
+### What Changed
+
+- Added `InventoryIntakeRouteHandler` to orchestrate inventory intake request
+  parsing, persistence planning, repository execution, and created-item
+  responses for the planned `create_inventory_item` callback.
+- Added `InventoryIntakeRouteHandlerFactory` to compose the staged handler from
+  an explicitly injected database provider only when route-connected writes are
+  enabled.
+- Added readiness summaries for parser, planner, repository, database provider,
+  table prefix validation, default route-registration deferral,
+  WooCommerce/Square projection deferral, and label-print deferral.
+- Added fail-closed response envelopes for invalid payloads, invalid
+  persistence plans, and repository rejections before any default live route is
+  registered.
+
+### Why
+
+The admin card-management UI and offline intake flow both need a single
+route-level creation boundary before live route registration can be safely
+enabled. This revision proves the staged `POST /inventory` orchestration path
+with injected dependencies while keeping production/staging route wiring,
+WooCommerce projection, Square projection, and label printing gated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live `POST /inventory` route registration, barcode label printing,
+  WooCommerce projection, Square provider writes, and offline sync writes
+  remain deferred.
+
+### Tests Added
+
+- Route-handler success tests for parser/planner/repository orchestration and
+  created-item response payloads.
+- Invalid-payload tests proving bad intake bodies short-circuit before
+  repository writes.
+- Repository rejection tests proving failed staged inserts map to stable
+  rejected responses.
+- Factory tests proving default route-connected writes remain deferred and
+  explicitly enabled handlers report database provider and table-prefix issues.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 711 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 482 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new route source
+  files: passed after auto-fixing alignment with `vendor/bin/phpcbf`.
+- `npm.cmd run test` from the repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from the repository root: passed.
+- `git diff --check`: passed with only normal Windows line-ending warnings.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged inventory intake route handler,
+  factory, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- If the handler was explicitly invoked in staging before rollback, delete only
+  the test inventory rows created by that staging run after confirming they are
+  not linked to reservations, orders, POS events, or offline sync rows.
+- No production rollback applies because default route registration,
+  WooCommerce projection, Square network calls, barcode label printing, and
+  offline sync mutation remain disabled.
+
 ## 2026-06-07 - Inventory Intake Repository Adapter
 
 ### What Changed
