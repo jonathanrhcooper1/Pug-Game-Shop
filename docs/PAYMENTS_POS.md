@@ -117,6 +117,20 @@ payloads:
 The planner does not insert rows, call providers, capture payments, or mutate
 serialized inventory.
 
+## SQL Template Planning
+
+The WordPress plugin also includes a POS/payment SQL-template builder for the
+planned log rows. It validates table prefixes, idempotency keys, timestamps,
+JSON payloads, row versions, reconciliation statuses, payment operations, and
+currency before emitting deferred insert templates for:
+
+- `tcg_pos_sync_log`
+- `tcg_payment_provider_log`
+
+The builder reports prepare-argument counts and audit metadata for staging
+review. It does not call `$wpdb`, insert rows, execute repository writes, call
+providers, capture payments, or mutate inventory.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the
@@ -189,6 +203,8 @@ transaction-ingestion policy with sanitized sandbox fixtures:
   hardcoded live rates were used.
 - WordPress log planning prepares redacted provider rows, per-line POS sync
   rows, conflict/replay summaries, and audit events without live writes.
+- WordPress SQL-template planning validates those rows and prepares deferred
+  insert templates without repository execution.
 
 Live Square/POS connections, payment webhooks, WooCommerce gateway capture, and
 production credentials remain disabled until staging acceptance.

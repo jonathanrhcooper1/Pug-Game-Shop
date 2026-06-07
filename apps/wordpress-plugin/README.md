@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.130.0`
+Version: `0.131.0`
 
 ## Implemented Features
 
@@ -78,6 +78,9 @@ Version: `0.130.0`
 - POS/payment log payload planning for redacted provider operation rows,
   per-line POS reconciliation rows, conflict/replay summary rows, deterministic
   idempotency keys, and audit metadata without live writes.
+- POS/payment log SQL-template planning for validated POS/payment insert
+  templates, prepare-argument metadata, tamper rejection, and deferred
+  repository execution.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

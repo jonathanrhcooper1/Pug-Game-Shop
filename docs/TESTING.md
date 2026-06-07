@@ -453,6 +453,10 @@
   redacted provider operation rows, per-line POS sync rows, conflict/replay
   summaries, deterministic idempotency keys, missing-field failures, and audit
   metadata.
+- Local unit coverage now includes POS/payment log SQL-template planning for
+  accepted sale templates, conflict summary templates, prepare-argument counts,
+  table-prefix validation, row tamper rejection, failed source plans, JSON
+  validation, timestamp validation, and idempotency key validation.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

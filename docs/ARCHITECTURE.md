@@ -177,6 +177,9 @@ The WordPress POS/payment log planner converts those normalized outcomes into
 redacted provider-operation rows, per-line POS sync rows, conflict/replay
 summaries, deterministic idempotency keys, and audit metadata without executing
 provider calls, captures, or inventory writes.
+The POS/payment SQL-template builder validates those planned rows and produces
+deferred insert templates for staging review while repository execution remains
+disabled.
 
 ## System Diagram
 

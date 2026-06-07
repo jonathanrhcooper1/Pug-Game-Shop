@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.130.0`
+Version: `0.131.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -58,6 +58,8 @@ logs, masked payment provider logs, and effective-dated fee snapshots.
 POS/payment log planning now prepares redacted payment provider rows,
 idempotent per-line POS sync rows, conflict/replay summary rows, and audit
 metadata without executing provider captures or inventory writes.
+POS/payment SQL-template planning now validates those planned rows and prepares
+deferred insert templates for staging review without executing database writes.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

@@ -156,6 +156,9 @@
   existing `tcg_pos_sync_log` and `tcg_payment_provider_log` tables. No
   WordPress schema, SQLite schema, migration order, query execution, or rollback
   target changes.
+- Version `0.131.0` adds POS/payment log SQL-template planning over those
+  existing tables. No WordPress schema, SQLite schema, migration order,
+  repository execution, or rollback target changes.
 
 ## Relationship Overview
 

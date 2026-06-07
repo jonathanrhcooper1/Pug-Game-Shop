@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.131.0] - 2026-06-06
+
+### Added
+
+- POS/payment log SQL-template builder for validated `tcg_pos_sync_log` and
+  `tcg_payment_provider_log` insert rows, prepare-argument counts, and deferred
+  execution metadata.
+- Unit coverage for accepted sale templates, conflict summary templates,
+  tampered row rejection, bad table prefixes, failed source plans, JSON
+  validation, timestamp validation, and idempotency key validation.
+
+### Not Added
+
+- POS/payment repository execution, live Square/POS network calls, production
+  payment capture, provider inventory writes, payment webhook route
+  registration, WooCommerce gateway capture, and POS reconciliation write
+  services remain disabled.
+
 ## [0.130.0] - 2026-06-06
 
 ### Added
