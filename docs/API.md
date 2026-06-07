@@ -121,6 +121,13 @@ dependencies are available. Authenticated health now includes
 `offline_registered_device_permissions`, and route bootstrap planning can mark
 pull/push permission callbacks ready while controller callbacks, live route
 registration, queue replay, and route-connected writes remain disabled.
+Version `0.93.0` adds staged registered-device sync route handler readiness.
+`OfflineRegisteredDeviceSyncRouteHandlerFactory` injects parser-only
+`pull_offline_changes` and `push_offline_operations` handlers into the
+controller used for bootstrap planning. Authenticated health now includes
+`offline_registered_device_sync_handlers`, and pull/push controller callbacks
+can report ready while `should_register` remains false and route-connected
+writes stay deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -387,7 +394,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.92.0",
+  "app_version": "0.93.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

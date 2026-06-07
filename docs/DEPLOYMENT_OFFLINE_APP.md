@@ -374,6 +374,12 @@ update repository. Staging can verify pull/push permission callback readiness,
 but live pull/push routes, queue replay, and route-connected last-seen writes
 remain disabled.
 
+Version `0.93.0` adds staged registered-device sync route handler readiness for
+parser-only pull/push controller callbacks. Staging can verify controller
+callback readiness and request validation, but live route registration, queue
+replay, pull queries, cursor advancement, and route-connected writes remain
+disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

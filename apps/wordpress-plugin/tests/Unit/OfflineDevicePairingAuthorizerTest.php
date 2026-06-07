@@ -152,7 +152,7 @@ final class OfflineDevicePairingAuthorizerTest extends TestCase {
 			'device_mode'      => 'kiosk',
 			'location_id'      => 2,
 			'manager_id'       => 42,
-			'app_version'      => '0.92.0',
+			'app_version'      => '0.93.0',
 			'platform'         => 'windows',
 			'capabilities'     => array(
 				'barcode_scanner' => true,

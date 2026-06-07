@@ -216,6 +216,10 @@
   provider failure fail-closed behavior, health/admin readiness summaries, and
   pull/push permission callback planning while controller callbacks and live
   route registration remain disabled.
+- Local unit and WordPress smoke coverage now include registered-device sync
+  route handler readiness, proving parser-only pull/push controller handlers
+  validate requests, keep writes deferred, and remain unregistered by route
+  gates.
 - Local unit coverage now includes registration service pairing-authorization
   enforcement, proving authorized pairing can proceed and denied pairing stops
   before credential issuance or repository writes.

@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.92.0`
+Version: `0.93.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -131,6 +131,9 @@ while route registration remains disabled.
 Registered-device permission resolver readiness now composes `$wpdb`, the
 registered-device repository, and the session update repository for staged
 pull/push permission planning while live pull/push handlers remain disabled.
+Staged registered-device sync route handler readiness now injects parser-only
+pull/push controller handlers into bootstrap planning, keeping route
+registration, queue replay, pull queries, and route-connected writes disabled.
 Offline device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp

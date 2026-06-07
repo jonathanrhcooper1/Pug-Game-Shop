@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.93.0] - 2026-06-06
+
+### Added
+
+- Staged registered-device sync route handler factory that injects parser-only
+  pull/push controller callbacks through the offline controller.
+- Health and admin System Status readiness summaries for staged pull/push
+  handlers, including handler counts, callback names, write-deferred state,
+  and route-registration-deferred state.
+- Route bootstrap planning now receives a controller with pull/push handlers,
+  allowing registered-device permission and controller callbacks to report
+  ready together while live routes remain disabled.
+- Unit and WordPress smoke coverage proving pull/push handlers validate
+  requests, keep writes deferred, and do not make routes registerable.
+
+### Not Added
+
+- No live offline route is enabled. Pull/push route registration, queue replay,
+  pull queries, cursor advancement, last-seen route writes, and production
+  database mutation remain disabled.
+
 ## [0.92.0] - 2026-06-06
 
 ### Added

@@ -182,6 +182,11 @@ the session update repository for pull/push permission planning when database
 dependencies are available. Health and admin output expose non-secret
 readiness metadata, while live pull/push handlers, route registration, queue
 replay, and route-connected last-seen writes remain disabled.
+Version `0.93.0` adds staged registered-device sync route handler readiness.
+The handler factory exposes parser-only pull/push controller callbacks for
+bootstrap planning, so staging can verify request validation and controller
+callback readiness without executing pull queries, queue replay, cursor
+advancement, or route-connected writes.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

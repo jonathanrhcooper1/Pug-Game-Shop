@@ -11,6 +11,8 @@ use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineDeviceRegistrationRouteHandlerFactory;
 use TCGStorePlatform\Api\V1\OfflineRegisteredDevicePermissionReadinessStatusPresenter;
+use TCGStorePlatform\Api\V1\OfflineRegisteredDeviceSyncRouteHandlerFactory;
+use TCGStorePlatform\Api\V1\OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapPlanner;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
@@ -120,12 +122,14 @@ final class AdminMenu {
 		$status                     = DependencyChecker::status();
 		$branding                   = BrandingSettings::public_config( Settings::all() );
 		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
+		$sync_handler_factory       = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
 		$offline                    = ( new OfflineRouteBootstrapStatusPresenter(
 			new OfflineRouteBootstrapPlanner(
 				new OfflineRouteRegistrationPlanner(
 					new OfflineRoutePermissionCallbackFactory(
 						$device_permission_factory->resolver()
-					)
+					),
+					$sync_handler_factory->controller()
 				)
 			)
 		) )->admin_summary(
@@ -133,6 +137,9 @@ final class AdminMenu {
 		);
 		$device_permissions         = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
 			$device_permission_factory
+		) )->admin_summary();
+		$sync_handlers              = ( new OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter(
+			$sync_handler_factory
 		) )->admin_summary();
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
 		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
@@ -190,6 +197,11 @@ final class AdminMenu {
 			__( 'Offline device permissions', 'tcg-store-platform' ),
 			$device_permissions['value'],
 			$device_permissions['status']
+		);
+		$this->render_status_row(
+			__( 'Offline sync handlers', 'tcg-store-platform' ),
+			$sync_handlers['value'],
+			$sync_handlers['status']
 		);
 		$this->render_status_row(
 			__( 'Offline pairing route readiness', 'tcg-store-platform' ),

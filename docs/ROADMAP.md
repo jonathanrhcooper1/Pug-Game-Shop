@@ -94,7 +94,8 @@ building plus registered-device repository adaptation and permission resolution
 plus session update query building, repository adaptation, and
 permission-resolution session update application plus planned permission
 callback adapter plus settings-backed staged pairing handler assembly and
-registered-device resolver readiness implemented
+registered-device resolver readiness plus staged sync route handler readiness
+implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
 operation queue, pull cursor, conflict center, kiosk/staff/admin modes, labels,

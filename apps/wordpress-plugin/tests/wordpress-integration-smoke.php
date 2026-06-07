@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.92.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.93.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.92.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.93.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -158,11 +158,17 @@ $route_summary = $data['offline_route_bootstrap']['route_registration_summary'] 
 $assert( is_array( $route_summary ), 'Offline route summary should be present.' );
 $assert( true === ( $route_summary['POST /offline/pull']['permission_callback_ready'] ?? null ), 'Offline pull permission callback should be staged ready.' );
 $assert( true === ( $route_summary['POST /offline/push']['permission_callback_ready'] ?? null ), 'Offline push permission callback should be staged ready.' );
-$assert( false === ( $route_summary['POST /offline/pull']['controller_callback_ready'] ?? null ), 'Offline pull controller callback should remain locked.' );
-$assert( false === ( $route_summary['POST /offline/push']['controller_callback_ready'] ?? null ), 'Offline push controller callback should remain locked.' );
+$assert( true === ( $route_summary['POST /offline/pull']['controller_callback_ready'] ?? null ), 'Offline pull controller callback should be staged ready.' );
+$assert( true === ( $route_summary['POST /offline/push']['controller_callback_ready'] ?? null ), 'Offline push controller callback should be staged ready.' );
+$assert( false === ( $route_summary['POST /offline/pull']['should_register'] ?? null ), 'Offline pull route should remain unregistered.' );
+$assert( false === ( $route_summary['POST /offline/push']['should_register'] ?? null ), 'Offline push route should remain unregistered.' );
 $assert( 'ready' === ( $data['offline_registered_device_permissions']['status'] ?? null ), 'Offline registered-device permissions should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_permissions']['database_configured'] ?? null ), 'Offline registered-device permissions should report database readiness.' );
 $assert( 2 === (int) ( $data['offline_registered_device_permissions']['registered_device_route_count'] ?? 0 ), 'Offline registered-device permissions should report pull/push scope count.' );
+$assert( 'ready' === ( $data['offline_registered_device_sync_handlers']['status'] ?? null ), 'Offline registered-device sync handlers should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_configured'] ?? null ), 'Offline pull handler should be configured.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_configured'] ?? null ), 'Offline push handler should be configured.' );
+$assert( false === ( $data['offline_registered_device_sync_handlers']['route_connected_writes_ready'] ?? null ), 'Offline sync handlers should keep writes deferred.' );
 $assert( 'blocked' === ( $data['offline_device_pairing_route_readiness']['status'] ?? null ), 'Offline pairing readiness should remain blocked.' );
 $assert( 'POST /offline/devices/register' === ( $data['offline_device_pairing_route_readiness']['route_key'] ?? null ), 'Offline pairing readiness should report the pairing route.' );
 $assert( false === ( $data['offline_device_pairing_route_readiness']['handler_injected'] ?? null ), 'Offline pairing readiness should not report a default handler.' );

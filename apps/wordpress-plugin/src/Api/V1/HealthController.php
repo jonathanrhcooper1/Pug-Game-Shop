@@ -74,12 +74,14 @@ final class HealthController {
 		$overall                    = 'ok';
 		$offline_feature_enabled    = FeatureFlags::is_enabled( 'offline_sync' );
 		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
+		$sync_handler_factory       = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
 		$offline                    = ( new OfflineRouteBootstrapStatusPresenter(
 			new OfflineRouteBootstrapPlanner(
 				new OfflineRouteRegistrationPlanner(
 					new OfflineRoutePermissionCallbackFactory(
 						$device_permission_factory->resolver()
-					)
+					),
+					$sync_handler_factory->controller()
 				)
 			)
 		) )->health_payload(
@@ -87,6 +89,9 @@ final class HealthController {
 		);
 		$device_permissions         = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
 			$device_permission_factory
+		) )->health_payload();
+		$sync_handlers              = ( new OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter(
+			$sync_handler_factory
 		) )->health_payload();
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
 		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
@@ -125,20 +130,21 @@ final class HealthController {
 
 		return new \WP_REST_Response(
 			array(
-				'status'                                 => $overall,
-				'version'                                => Version::PLUGIN,
-				'database'                               => array(
+				'status'                                  => $overall,
+				'version'                                 => Version::PLUGIN,
+				'database'                                => array(
 					'current' => $runner->current_version(),
 					'target'  => Version::DATABASE,
 				),
-				'dependencies'                           => $dependencies,
-				'scheduler'                              => $this->scheduler->status(),
-				'hpos'                                   => Compatibility::hpos_status(),
-				'features'                               => $features,
-				'offline_route_bootstrap'                => $offline,
-				'offline_registered_device_permissions'  => $device_permissions,
-				'offline_device_pairing_route_readiness' => $pairing,
-				'timestamp'                              => gmdate( 'c' ),
+				'dependencies'                            => $dependencies,
+				'scheduler'                               => $this->scheduler->status(),
+				'hpos'                                    => Compatibility::hpos_status(),
+				'features'                                => $features,
+				'offline_route_bootstrap'                 => $offline,
+				'offline_registered_device_permissions'   => $device_permissions,
+				'offline_registered_device_sync_handlers' => $sync_handlers,
+				'offline_device_pairing_route_readiness'  => $pairing,
+				'timestamp'                               => gmdate( 'c' ),
 			),
 			200
 		);

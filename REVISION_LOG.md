@@ -3,6 +3,100 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Registered-Device Sync Handler Readiness
+
+### What Changed
+
+- Added `OfflineRegisteredDeviceSyncRouteHandlerFactory` to assemble staged
+  parser-only controller handlers for `pull_offline_changes` and
+  `push_offline_operations`.
+- Added `OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter` for
+  health/admin summaries of pull/push handler readiness, callback counts,
+  write-deferred state, and route-registration-deferred state.
+- Wired health output, admin System Status, and offline route bootstrap
+  planning through the staged pull/push controller so registered-device
+  permission and controller callbacks can both report ready in staging
+  metadata.
+- Kept live route registration, queue replay, pull queries, cursor
+  advancement, last-seen route writes, and route-connected database writes
+  disabled.
+- Added unit coverage for handler filtering, controller readiness, pull/push
+  parser-only validation, and readiness presentation.
+- Extended the WordPress smoke test to verify staged pull/push controller
+  readiness while `should_register` remains false.
+- Updated project, plugin, and offline app package versions to `0.93.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, roadmap, and plugin docs.
+
+### Why
+
+Registered-device permission callbacks can now be assembled from database
+dependencies, but staging also needs controller callback readiness for pull and
+push before any future route enablement review. This revision wires only
+parser-level handlers into the controller boundary so requests can be
+validated without replaying queues, querying pull data, advancing cursors, or
+registering live routes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Factory coverage proving only pull/push handlers are exposed for
+  registered-device sync routes.
+- Controller coverage proving parser-only pull/push handlers validate requests
+  while writes remain deferred.
+- Presenter and smoke coverage proving staged handler readiness appears in
+  health/admin metadata without making routes registerable.
+
+### Rollback Notes
+
+- Revert this revision to remove staged registered-device sync handler
+  readiness from health/admin/bootstrap planning.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pull/push handlers, queue replay, pull queries, cursor
+  advancement, last-seen writes, and route-connected database writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Registered-Device Permission Readiness Assembly
 
 ### What Changed

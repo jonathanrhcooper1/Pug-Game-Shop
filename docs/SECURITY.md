@@ -118,6 +118,10 @@ configuration issue codes, registered-device route scope counts, and scope
 names. It does not expose bearer tokens, token hashes, SQL text, prepared
 arguments, or row data, and it does not enable live pull/push routes or
 route-connected last-seen writes.
+Registered-device sync handler readiness exposes only callback names, handler
+counts, and deferred-state booleans. The staged pull/push handlers validate
+request envelopes only; they do not execute queue replay, pull queries, cursor
+advancement, last-seen writes, or route-connected database mutations.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

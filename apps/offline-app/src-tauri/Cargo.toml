@@ -1,6 +1,6 @@
 [package]
 name = "tcg-store-offline"
-version = "0.92.0"
+version = "0.93.0"
 description = "Windows offline sync app for the TCG Store Platform."
 authors = ["Configured per deployment"]
 edition = "2021"

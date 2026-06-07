@@ -31,6 +31,10 @@ database adapter, registered-device repository, and session update repository
 for pull/push route planning only. It can make permission callbacks ready in
 the bootstrap summary while controller callbacks and route registration remain
 disabled.
+Registered-device sync route handler readiness now injects parser-only pull
+and push handlers into the bootstrap controller boundary. Those handlers
+validate request shape and report deferred writes, but they do not replay
+queues, query pull data, advance cursors, or register routes.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -304,6 +308,9 @@ Registered-device permission resolver readiness now assembles that resolver
 from `$wpdb`, the registered-device repository, and the session update
 repository for staged pull/push permission callbacks, without opening live
 routes or route-connected last-seen writes.
+Registered-device sync route handler readiness now limits staged controller
+handler injection to `pull_offline_changes` and `push_offline_operations`,
+using parser-only handlers that keep write execution deferred.
 The planned offline route registration planner now emits disabled registration
 metadata with fail-closed callbacks, callback readiness, controller readiness,
 and block reasons before any WordPress REST route can be registered.
