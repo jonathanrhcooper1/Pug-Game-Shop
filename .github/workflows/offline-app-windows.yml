@@ -29,6 +29,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install app dependencies
         run: npm ci
         working-directory: apps/offline-app
@@ -36,6 +39,10 @@ jobs:
       - name: Verify package metadata
         run: npm run test:package-contract
         working-directory: apps/offline-app
+
+      - name: Verify Tauri command tests
+        run: cargo test
+        working-directory: apps/offline-app/src-tauri
 
   build:
     name: Manual Windows EXE build
@@ -56,6 +63,10 @@ jobs:
       - name: Install app dependencies
         run: npm ci
         working-directory: apps/offline-app
+
+      - name: Verify Tauri command tests
+        run: cargo test
+        working-directory: apps/offline-app/src-tauri
 
       - name: Build Windows EXE installer
         run: npm run build:windows

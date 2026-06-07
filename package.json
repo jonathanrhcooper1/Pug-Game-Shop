@@ -15,7 +15,7 @@
     "test:local": "cd apps/wordpress-plugin && php tests/run.php && php tests/bootstrap-smoke.php && php tests/lint.php",
     "test:sync-engine": "node packages/sync-engine/tests/offline-conflict-policy.mjs",
     "test:pos-payments": "node packages/validation/tests/pos-payment-policy.mjs",
-    "test:offline-app": "node apps/offline-app/tests/windows-package-contract.mjs && node apps/offline-app/tests/sqlite-schema-contract.mjs && node apps/offline-app/tests/workspace-state-contract.mjs && node apps/offline-app/tests/queue-bridge-contract.mjs && node apps/offline-app/tests/ui-shell-contract.mjs",
+    "test:offline-app": "node apps/offline-app/tests/windows-package-contract.mjs && node apps/offline-app/tests/sqlite-schema-contract.mjs && node apps/offline-app/tests/workspace-state-contract.mjs && node apps/offline-app/tests/queue-bridge-contract.mjs && node apps/offline-app/tests/tauri-command-contract.mjs && node apps/offline-app/tests/ui-shell-contract.mjs",
     "test:required-matrix": "node scripts/wp-env/check-required-test-plan.mjs",
     "test:e2e": "playwright test",
     "test:wordpress": "npm run wp-env:start && npm run wp-env:test",

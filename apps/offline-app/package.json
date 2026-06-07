@@ -10,7 +10,7 @@
     "build:windows": "tauri build --target x86_64-pc-windows-msvc --bundles nsis",
     "package:windows": "npm run build:windows",
     "typecheck": "tsc --noEmit",
-    "test:package-contract": "npm run typecheck && node tests/windows-package-contract.mjs && node tests/sqlite-schema-contract.mjs && node tests/workspace-state-contract.mjs && node tests/queue-bridge-contract.mjs && node tests/ui-shell-contract.mjs"
+    "test:package-contract": "npm run typecheck && node tests/windows-package-contract.mjs && node tests/sqlite-schema-contract.mjs && node tests/workspace-state-contract.mjs && node tests/queue-bridge-contract.mjs && node tests/tauri-command-contract.mjs && node tests/ui-shell-contract.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.5.0",

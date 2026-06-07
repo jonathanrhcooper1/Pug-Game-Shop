@@ -17,6 +17,9 @@ All notable changes follow Semantic Versioning.
 - Browser-safe offline queue bridge contract for future Tauri/SQLite operation
   persistence, with UI staging routed through the bridge and contract coverage
   blocking direct network, storage, or database writes.
+- Tauri queue command scaffold and frontend Tauri adapter detection for staged
+  inventory operation envelopes, plus Windows workflow Rust test coverage for
+  the desktop command path.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

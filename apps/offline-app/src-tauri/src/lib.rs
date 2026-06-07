@@ -1,6 +1,148 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+struct OfflineOperationEnvelope {
+    client_operation_id: String,
+    device_id: String,
+    location_id: u64,
+    actor_id: u64,
+    operation_type: String,
+    entity_type: String,
+    entity_id: String,
+    base_row_version: u64,
+    occurred_at_local: String,
+    queued_at_utc: String,
+    payload_json: String,
+    authorization_context_json: String,
+    schema_version: u8,
+}
+
+#[derive(Debug, Serialize)]
+struct QueueOfflineOperationResponse {
+    status: &'static str,
+    persistence_mode: &'static str,
+    client_operation_id: String,
+    direct_mysql_access: bool,
+    network_write: bool,
+    schema_version: u8,
+}
+
+#[tauri::command]
+fn queue_offline_operation(
+    operation: OfflineOperationEnvelope,
+) -> Result<QueueOfflineOperationResponse, String> {
+    validate_operation(&operation)?;
+
+    Ok(QueueOfflineOperationResponse {
+        status: "accepted_for_local_queue",
+        persistence_mode: "command_scaffold",
+        client_operation_id: operation.client_operation_id,
+        direct_mysql_access: false,
+        network_write: false,
+        schema_version: 1,
+    })
+}
+
+fn validate_operation(operation: &OfflineOperationEnvelope) -> Result<(), String> {
+    if operation.client_operation_id.trim().is_empty() {
+        return Err("missing_client_operation_id".to_string());
+    }
+
+    if operation.device_id.trim().is_empty() {
+        return Err("missing_device_id".to_string());
+    }
+
+    if operation.location_id == 0 || operation.actor_id == 0 {
+        return Err("missing_actor_or_location".to_string());
+    }
+
+    if operation.operation_type != "inventory_update" || operation.entity_type != "inventory" {
+        return Err("unsupported_operation".to_string());
+    }
+
+    if operation.entity_id.trim().is_empty() {
+        return Err("missing_entity_id".to_string());
+    }
+
+    if operation.base_row_version == 0 {
+        return Err("missing_base_row_version".to_string());
+    }
+
+    if operation.occurred_at_local.trim().is_empty() || operation.queued_at_utc.trim().is_empty() {
+        return Err("missing_operation_timestamps".to_string());
+    }
+
+    serde_json::from_str::<serde_json::Value>(&operation.payload_json)
+        .map_err(|_| "invalid_payload_json".to_string())?;
+    serde_json::from_str::<serde_json::Value>(&operation.authorization_context_json)
+        .map_err(|_| "invalid_authorization_context_json".to_string())?;
+
+    if operation.schema_version != 1 {
+        return Err("unsupported_schema_version".to_string());
+    }
+
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![queue_offline_operation])
         .run(tauri::generate_context!())
         .expect("error while running TCG Store Offline");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_operation() -> OfflineOperationEnvelope {
+        OfflineOperationEnvelope {
+            client_operation_id: "offline-inventory-42-20260607120000".to_string(),
+            device_id: "local-device-preview".to_string(),
+            location_id: 1,
+            actor_id: 1,
+            operation_type: "inventory_update".to_string(),
+            entity_type: "inventory".to_string(),
+            entity_id: "42".to_string(),
+            base_row_version: 12,
+            occurred_at_local: "2026-06-07T12:00:00.000Z".to_string(),
+            queued_at_utc: "2026-06-07T12:00:00.000Z".to_string(),
+            payload_json: "{\"status\":\"available\"}".to_string(),
+            authorization_context_json: "{\"manager_override\":false}".to_string(),
+            schema_version: 1,
+        }
+    }
+
+    #[test]
+    fn queue_command_accepts_valid_inventory_operation() {
+        let result = queue_offline_operation(valid_operation()).expect("operation should validate");
+
+        assert_eq!(result.status, "accepted_for_local_queue");
+        assert_eq!(result.persistence_mode, "command_scaffold");
+        assert!(!result.direct_mysql_access);
+        assert!(!result.network_write);
+    }
+
+    #[test]
+    fn queue_command_rejects_invalid_payload_json() {
+        let mut operation = valid_operation();
+        operation.payload_json = "{".to_string();
+
+        assert_eq!(
+            queue_offline_operation(operation).expect_err("payload should fail"),
+            "invalid_payload_json"
+        );
+    }
+
+    #[test]
+    fn queue_command_rejects_unsupported_operation_type() {
+        let mut operation = valid_operation();
+        operation.operation_type = "customer_credit_update".to_string();
+
+        assert_eq!(
+            queue_offline_operation(operation).expect_err("operation type should fail"),
+            "unsupported_operation"
+        );
+    }
 }

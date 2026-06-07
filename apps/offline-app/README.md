@@ -16,6 +16,9 @@ future offline sync app.
   envelopes.
 - Browser-safe offline queue bridge contract for staging inventory operations
   before the desktop SQLite/Tauri command adapter is connected.
+- Tauri command scaffold for validating staged inventory operation envelopes
+  before future SQLite persistence, with CI-level Rust tests planned in the
+  offline app Windows workflow.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,
@@ -37,6 +40,13 @@ npm run typecheck
 npm run test:package-contract
 npm audit
 npm run build:windows
+```
+
+When Rust is installed, run the desktop command tests with:
+
+```sh
+cd src-tauri
+cargo test
 ```
 
 `build:windows` targets `x86_64-pc-windows-msvc` and `nsis`. The expected

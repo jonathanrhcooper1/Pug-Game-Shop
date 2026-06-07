@@ -11,6 +11,7 @@ import {
   type OfflineOperationEnvelope,
 } from "./data/offlineWorkspace"
 import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
+import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import "./styles.css"
 
 function Icon({ name }: { name: IconName }) {
@@ -36,6 +37,7 @@ function Icon({ name }: { name: IconName }) {
 
 export function App() {
   const workspace = offlineWorkspaceSeed
+  const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
   const [query, setQuery] = useState("PKM-BASE")
   const [selectedId, setSelectedId] = useState(42)
   const [stagedOperation, setStagedOperation] = useState<OfflineOperationEnvelope | null>(null)
@@ -48,7 +50,7 @@ export function App() {
   async function handleStageInventoryUpdate() {
     const operation = buildInventoryUpdateOperation(selectedItem)
     setStagedOperation(operation)
-    setQueueSubmission(await submitOfflineOperation(operation))
+    setQueueSubmission(await submitOfflineOperation(operation, queueAdapter))
   }
 
   return (

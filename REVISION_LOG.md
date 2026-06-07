@@ -3,6 +3,75 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline App Tauri Queue Command Scaffold
+
+### What Changed
+
+- Added a Tauri `queue_offline_operation` command scaffold that validates
+  staged inventory operation envelopes and returns an audit-safe local queue
+  response.
+- Added Rust serde dependencies for command payload validation.
+- Added frontend Tauri runtime detection and an adapter that invokes the queue
+  command only when the app is running inside Tauri.
+- Added Tauri command contract coverage and wired it into root offline app and
+  package-level checks.
+- Updated the offline app Windows workflow to install Rust and run `cargo test`
+  in the contract and manual build jobs.
+
+### Why
+
+The offline queue bridge now needs a real desktop command target before SQLite
+write implementation begins. This scaffold validates the handoff shape without
+performing database or network writes.
+
+### Files Affected
+
+- `.github/workflows/offline-app-windows.yml`
+- `apps/offline-app/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriQueueAdapter.ts`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Rust unit tests for valid queue command payloads, invalid payload JSON, and
+  unsupported operation types.
+- Contract coverage for Rust command registration, serde dependencies, frontend
+  Tauri adapter detection, and no direct browser storage/network markers.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:package-contract` from `apps/offline-app`: passed.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+- `cargo test` from `apps/offline-app/src-tauri`: not run locally because
+  `cargo` is not installed on this machine; it is now configured in the
+  offline app Windows workflow.
+
+### Rollback Notes
+
+- Revert this revision to remove the Tauri queue command scaffold, frontend
+  Tauri adapter, Rust serde dependencies, command contract coverage, and
+  workflow Rust test additions.
+- No schema rollback is required because the command does not write SQLite yet.
+
 ## 2026-06-07 - Offline App Queue Bridge Contract
 
 ### What Changed

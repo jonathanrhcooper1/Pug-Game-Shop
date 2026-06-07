@@ -22,9 +22,10 @@ for (const marker of [
   assert.ok(bridgeSource.includes(marker), `Missing queue bridge marker: ${marker}`)
 }
 
-assert.ok(appSource.includes("submitOfflineOperation(operation)"))
+assert.ok(appSource.includes("submitOfflineOperation(operation, queueAdapter)"))
 assert.ok(appSource.includes("OfflineQueueSubmissionResult"))
 assert.ok(appSource.includes("queueSubmission?.message"))
+assert.ok(appSource.includes("createTauriQueueAdapter"))
 
 for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
   assert.equal(bridgeSource.includes(forbidden), false, `Forbidden queue bridge marker: ${forbidden}`)
