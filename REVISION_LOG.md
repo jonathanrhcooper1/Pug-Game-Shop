@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Card Management MVP Route And Parser Foundation
+
+### What Changed
+
+- Added planned inventory/card-search REST route contracts covering exact
+  serialized inventory CRUD, reservation actions, movement, price locking,
+  bulk intake, import/export, public search, reference search, inventory search,
+  and version grouping.
+- Added dependency-free inventory intake parsing for staff, offline, buylist,
+  and ScryDex-import payloads with normalized card fields, exact-item pricing,
+  visibility, IDs, condition/grading, and deferred WooCommerce/label side
+  effects.
+- Added dependency-free inventory search query parsing with normalized query,
+  game, status, location, visibility, sort, and pagination filters.
+
+### Why
+
+The next project phase needs a stable card-management contract for the
+WordPress admin surface, website search, offline app sync, and future
+WooCommerce/Square inventory projection. These contracts and parsers can be
+tested safely before enabling live route registration or database writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteContracts.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeValidationResult.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchValidationResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRequestParserTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Inventory route-contract tests for route count, permissions, default
+  disabled state, and duplicate method/path protection.
+- Inventory intake parser tests for raw staff intake, graded ScryDex-import
+  intake, missing required fields, invalid IDs/visibility, and below-floor
+  pricing.
+- Inventory search parser tests for normalized filters, defaults, invalid
+  filters, and page-size limits.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 692 tests.
+- Targeted PHP_CodeSniffer over changed source files: passed.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 465 PHP
+  files checked.
+- `npm run test`: passed, including plugin unit tests, WordPress bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, offline app
+  package/contracts, and test matrix coverage checks.
+
+### Rollback Notes
+
+- Revert this revision to remove the planned card-management route/parser
+  surface without touching database schema.
+- No database rollback is required.
+
 ## 2026-06-07 - CI Standards And WordPress Smoke Fix
 
 ### What Changed

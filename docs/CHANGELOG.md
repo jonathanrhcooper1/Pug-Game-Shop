@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+
+- Planned inventory and card-search REST route contracts for card management,
+  serialized inventory operations, reference search, and public/staff search
+  surfaces while keeping live route registration disabled by default.
+- Dependency-free inventory intake parsing for staff/offline/ScryDex-import
+  card management payloads, including exact-item normalization, price floor
+  checks, visibility normalization, and deferred WooCommerce projection flags.
+- Dependency-free inventory search query parsing for public/staff filters,
+  pagination, sorting, status filters, and location scoping.
+
+### Not Added
+
+- No live inventory route registration, inventory database writes,
+  WooCommerce product projection, barcode label printing, Square/POS inventory
+  writes, or production provider calls were added.
+
 ## [0.155.0] - 2026-06-07
 
 ### Fixed
