@@ -30,7 +30,7 @@ final class OfflinePullRouteHandler {
 		?callable $change_set_provider = null,
 		?callable $server_time_provider = null
 	) {
-		$this->change_set_provider = $change_set_provider;
+		$this->change_set_provider  = $change_set_provider;
 		$this->server_time_provider = $server_time_provider;
 	}
 

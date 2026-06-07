@@ -35,7 +35,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
 	public function handlers(): array {
-		$handlers = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
+		$handlers                         = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
 		$handlers['pull_offline_changes'] = array( $this->pull_handler(), 'handle' );
 
 		return array_intersect_key( $handlers, array_flip( self::HANDLER_CALLBACKS ) );
