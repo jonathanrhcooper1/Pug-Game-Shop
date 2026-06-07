@@ -131,6 +131,24 @@ The builder reports prepare-argument counts and audit metadata for staging
 review. It does not call `$wpdb`, insert rows, execute repository writes, call
 providers, capture payments, or mutate inventory.
 
+## Repository Staging And Gate
+
+The WordPress plugin now includes a POS/payment log repository staging adapter
+and execution gate. The repository converts valid SQL-template plans into
+deferred per-query results for:
+
+- POS sync log inserts.
+- Payment provider log inserts.
+
+The result reports idempotency keys, query counts, prepare-argument counts,
+zero affected rows, and source query audit metadata. The execution gate reports
+blocked, ready, or rejected status with explicit execution requirements,
+transaction-adapter deferral, no-query blocking, and failed staging rejection.
+
+This layer still does not call `$wpdb`, insert rows, call providers, capture
+payments, mutate inventory, register webhook routes, or enable WooCommerce
+gateway capture.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

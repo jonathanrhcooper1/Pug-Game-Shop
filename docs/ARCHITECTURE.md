@@ -180,6 +180,11 @@ provider calls, captures, or inventory writes.
 The POS/payment SQL-template builder validates those planned rows and produces
 deferred insert templates for staging review while repository execution remains
 disabled.
+The POS/payment repository staging adapter now wraps those insert templates in
+deferred repository result metadata, and the execution gate reports
+blocked/ready/rejected status before any future `$wpdb` executor can run.
+Provider capture, provider inventory writes, route-connected writes, and live
+repository execution remain disabled.
 
 ## System Diagram
 

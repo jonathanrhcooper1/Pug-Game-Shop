@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.132.0] - 2026-06-06
+
+### Added
+
+- POS/payment log repository staging adapter and result contract for deferred
+  `tcg_pos_sync_log` and `tcg_payment_provider_log` insert plans, idempotency
+  key summaries, prepare-argument counts, zero affected rows, and audit
+  metadata.
+- POS/payment log repository execution gate and result contract for
+  blocked/ready/rejected status, explicit execution requirements, transaction
+  adapter deferral, no-query blocking, and failed staging rejection.
+- Unit coverage for accepted repository staging, empty valid plans, invalid
+  query-plan rejection, default blocked gates, explicitly ready gates, empty
+  gate blocking, and failed staging rejection.
+
+### Not Added
+
+- Live POS/payment repository execution, `$wpdb` inserts, Square/POS network
+  calls, production payment capture, provider inventory writes, payment webhook
+  route registration, WooCommerce gateway capture, and route-connected
+  POS/payment write services remain disabled.
+
 ## [0.131.0] - 2026-06-06
 
 ### Added

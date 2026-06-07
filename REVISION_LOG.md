@@ -3,6 +3,85 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Log Repository Gate
+
+### What Changed
+
+- Added `PosPaymentLogRepository` and `PosPaymentLogRepositoryResult`.
+- Added `PosPaymentLogRepositoryExecutionGate` and
+  `PosPaymentLogRepositoryExecutionResult`.
+- Repository staging now converts valid POS/payment SQL build plans into
+  deferred per-query repository result metadata for POS sync and payment
+  provider inserts.
+- Execution-gate metadata now reports blocked, ready, and rejected states with
+  explicit execution requirements, transaction-adapter deferral, no-query
+  blocking, zero affected rows, idempotency key summaries, and source audit
+  payloads.
+- Updated project, plugin, and offline app package versions to `0.132.0`.
+- Updated project, plugin, payments/POS, staging, database, testing, roadmap,
+  changelog, architecture, and revision docs.
+
+### Why
+
+Phase 8 now has POS/payment schema, log payload planning, and SQL-template
+planning. This revision adds the next staging boundary before any live
+repository write can exist: staged plans can be inspected through a repository
+result and an execution gate while `$wpdb` inserts, provider capture, route
+writes, and inventory mutations remain disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogRepository.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogRepositoryResult.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogRepositoryExecutionGate.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentLogRepositoryExecutionResult.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentLogRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentLogRepositoryExecutionGateTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentLogRepositoryTest` coverage for accepted repository staging,
+  idempotency key summaries, prepare-argument counts, zero affected rows, empty
+  valid query plans, and invalid query-plan rejection.
+- `PosPaymentLogRepositoryExecutionGateTest` coverage for default blocked
+  gates, explicit ready gates, no-query blocking, and rejected repository
+  staging.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment repository staging and
+  execution-gate classes, tests, and version/doc updates.
+- No database rollback is required because no schema migration, `$wpdb`
+  execution, live route wiring, provider capture, or inventory write service
+  was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation write services, and POS/payment repository
+  execution remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Log SQL Planning
 
 ### What Changed

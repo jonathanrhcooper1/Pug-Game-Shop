@@ -155,5 +155,8 @@ Before major database migrations:
 - Kiosk/offline sync queue test completes.
 - POS/payment sandbox response produces redacted provider/POS sync log plans
   and deferred SQL templates without live capture or inventory writes.
+- POS/payment repository staging and execution-gate metadata report deferred
+  log writes, zero affected rows, and blocked execution by default without
+  live repository inserts, provider capture, or inventory writes.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

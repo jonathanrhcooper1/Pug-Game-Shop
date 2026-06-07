@@ -457,6 +457,10 @@
   accepted sale templates, conflict summary templates, prepare-argument counts,
   table-prefix validation, row tamper rejection, failed source plans, JSON
   validation, timestamp validation, and idempotency key validation.
+- Local unit coverage now includes POS/payment log repository staging and
+  execution-gate metadata for accepted staged plans, empty valid plans, invalid
+  query-plan rejection, default blocked gates, explicitly ready gates, no-query
+  blocking, and failed staging rejection.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

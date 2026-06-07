@@ -159,6 +159,9 @@
 - Version `0.131.0` adds POS/payment log SQL-template planning over those
   existing tables. No WordPress schema, SQLite schema, migration order,
   repository execution, or rollback target changes.
+- Version `0.132.0` adds POS/payment log repository staging and execution-gate
+  metadata over those existing tables. No WordPress schema, SQLite schema,
+  migration order, query execution, or rollback target changes.
 
 ## Relationship Overview
 
