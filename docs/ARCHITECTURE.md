@@ -148,6 +148,10 @@ Explicitly enabled staged push routes now attach that SQL-template planning to
 response payloads, route meta, and audits with query counts, operation IDs, and
 prepare-argument counts. Replayed duplicate operations report zero SQL
 templates, and repository execution remains deferred.
+A deferred canonical mutation repository scaffold now converts valid SQL plans
+into repository result/audit metadata with zero affected rows. This establishes
+the next boundary for future guarded writes without executing inventory, event,
+customer-credit, TopDeck, or queue replay mutations.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

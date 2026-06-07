@@ -540,6 +540,11 @@ operation IDs, prepare-argument counts, and replayed zero-query metadata, but
 canonical write execution, repository execution, TopDeck workers, queue replay
 workers, production route registration, and default route execution remain
 disabled.
+Version `0.124.0` adds a deferred canonical mutation repository scaffold.
+Staging can inspect repository result/audit metadata for SQL plans and confirm
+zero affected rows, but canonical write execution, repository execution,
+TopDeck workers, queue replay workers, production route registration, and
+default route execution remain disabled.
 
 ## Hardware Gate
 

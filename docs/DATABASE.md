@@ -133,6 +133,9 @@
 - Version `0.123.0` surfaces route-connected canonical mutation SQL planning
   metadata for staged push responses and replay paths. No WordPress schema,
   SQLite schema, migration order, query execution, or rollback target changes.
+- Version `0.124.0` adds a deferred canonical mutation repository result for
+  staged SQL plans. No WordPress schema, SQLite schema, migration order, query
+  execution, or rollback target changes.
 
 ## Relationship Overview
 

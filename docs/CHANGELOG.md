@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.124.0] - 2026-06-06
+
+### Added
+
+- Deferred canonical mutation repository scaffold and result contract for
+  staged offline push canonical SQL plans.
+- Repository audit metadata for canonical SQL query counts, operation IDs,
+  prepare-argument counts, zero affected rows, and deferred execution flags.
+- Health, admin System Status, WordPress smoke, and unit coverage for the
+  canonical mutation repository contract.
+
+### Not Added
+
+- Canonical mutation repository execution, inventory writes, event registration
+  writes, customer-credit ledger writes, TopDeck workers, queue replay workers,
+  default route execution, live route registration, and production
+  route-connected writes remain deferred.
+
 ## [0.123.0] - 2026-06-06
 
 ### Added

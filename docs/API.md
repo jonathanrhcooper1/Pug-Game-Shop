@@ -286,6 +286,13 @@ canonical SQL templates while still showing that route-connected SQL planning
 ran. Canonical write execution, repository execution, TopDeck workers, queue
 replay workers, default route execution, and live route registration remain
 disabled.
+Version `0.124.0` adds a deferred canonical mutation repository scaffold for
+those SQL plans. The repository result and audit expose query counts, operation
+IDs, prepare-argument counts, zero affected rows, and explicit deferred
+execution flags while canonical repository execution, inventory writes, event
+registration writes, customer-credit ledger writes, TopDeck workers, queue
+replay workers, default route execution, and live route registration remain
+disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains

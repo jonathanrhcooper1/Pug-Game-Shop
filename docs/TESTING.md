@@ -137,6 +137,9 @@
   metadata for fresh staged push responses and duplicate replay responses,
   including query counts, operation IDs, prepare-argument counts, and deferred
   repository/execution flags.
+- Local unit and WordPress smoke coverage now include the deferred canonical
+  mutation repository scaffold, repository result/audit metadata, rejected SQL
+  plans, empty valid plans, readiness metadata, and zero-affected-row behavior.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

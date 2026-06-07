@@ -335,6 +335,11 @@ counts, operation IDs, prepare-argument counts, and deferred execution flags;
 replayed duplicate operations report zero SQL templates while preserving the
 original replayed response. Canonical repositories, queue replay workers,
 TopDeck workers, route registration, and production writes remain disabled.
+Version `0.124.0` adds a deferred canonical mutation repository result for the
+staged SQL plans. The repository scaffold reports query counts, operation IDs,
+prepare-argument counts, zero rows affected, and deferred execution flags
+without executing inventory, event, credit-ledger, TopDeck, queue replay, route
+registration, or production writes.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

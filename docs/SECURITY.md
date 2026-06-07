@@ -245,6 +245,11 @@ Route-connected staged push responses expose only canonical SQL counts,
 operation IDs, prepare-argument counts, and deferred execution/repository
 flags. Replayed operations produce zero SQL templates, and no route-connected
 canonical repository executes from this metadata.
+The deferred canonical mutation repository scaffold reports only repository
+status, operation IDs, prepare-argument counts, zero affected rows, and deferred
+execution flags. It does not execute inventory updates, event registration
+writes, customer-credit ledger writes, TopDeck workers, queue replay workers,
+or production route-connected mutations.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

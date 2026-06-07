@@ -66,6 +66,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_canonical_mutation_planner_ready'] );
 		$this->assert_true( $summary['push_canonical_mutation_sql_ready'] );
 		$this->assert_true( $summary['push_canonical_mutation_sql_template_ready'] );
+		$this->assert_true( $summary['push_canonical_mutation_repository_ready'] );
 		$this->assert_true( $summary['push_canonical_mutation_planning_deferred'] );
 		$this->assert_true( $summary['push_canonical_mutation_sql_execution_deferred'] );
 		$this->assert_true( $summary['push_canonical_mutation_repository_deferred'] );
@@ -230,6 +231,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_canonical_mutation_planner_ready'] );
 		$this->assert_true( $payload['push_canonical_mutation_sql_ready'] );
 		$this->assert_true( $payload['push_canonical_mutation_sql_template_ready'] );
+		$this->assert_true( $payload['push_canonical_mutation_repository_ready'] );
 		$this->assert_true( $payload['push_canonical_mutation_planning_deferred'] );
 		$this->assert_true( $payload['push_canonical_mutation_sql_execution_deferred'] );
 		$this->assert_true( $payload['push_canonical_mutation_repository_deferred'] );
@@ -301,6 +303,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'push SQL ready', $summary['value'] );
 		$this->assert_contains( 'push canonical planner ready', $summary['value'] );
 		$this->assert_contains( 'push canonical SQL ready', $summary['value'] );
+		$this->assert_contains( 'push canonical repository ready', $summary['value'] );
 		$this->assert_contains( 'push snapshots ready', $summary['value'] );
 		$this->assert_contains( 'push snapshot SQL ready', $summary['value'] );
 		$this->assert_contains( 'push snapshot repository ready', $summary['value'] );

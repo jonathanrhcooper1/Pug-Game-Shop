@@ -119,6 +119,10 @@ Before major database migrations:
 - Route-connected staged push responses expose canonical SQL query counts,
   operation IDs, prepare-argument counts, and replayed zero-query metadata
   while repository execution and canonical writes remain deferred.
+- Canonical mutation repository staging reports deferred repository results,
+  operation IDs, prepare-argument counts, and zero affected rows while
+  inventory, event, credit-ledger, TopDeck, and queue replay writes remain
+  deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and
