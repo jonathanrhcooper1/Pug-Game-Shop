@@ -2,6 +2,31 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.109.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushRouteHandler`, `OfflinePushRoutePersistenceProvider`,
+  `OfflinePushRouteProcessingResult`, and `OfflinePushRouteHandlerFactory` for
+  staged route-aware push processing when explicitly enabled in tests.
+- Optional push handler/factory injection in
+  `OfflineRegisteredDeviceSyncRouteHandlerFactory`, preserving the existing
+  default validation-only push callback behavior.
+- Health/admin and WordPress smoke readiness metadata for push route handler
+  readiness, push persistence-provider readiness, dependency factory status,
+  route execution enablement, queue/conflict write deferral, and route
+  dependency issues.
+- Unit coverage for default route-connected push deferral, explicitly enabled
+  registered-device authorization plus queue persistence, and sync factory
+  injection of the composed push route handler.
+
+### Not Added
+
+- No default live offline push route execution is enabled. Route registration,
+  queue replay, canonical entity mutations, production queue/conflict writes,
+  and default route-connected database writes remain disabled unless staging
+  tests explicitly inject dependencies and enable the factory path.
+
 ## [0.108.0] - 2026-06-06
 
 ### Added

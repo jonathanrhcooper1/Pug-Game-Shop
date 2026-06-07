@@ -3,6 +3,100 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Route Handler Factory Composition
+
+### What Changed
+
+- Added `OfflinePushRouteHandler`,
+  `OfflinePushRoutePersistenceProvider`,
+  `OfflinePushRouteProcessingResult`, and `OfflinePushRouteHandlerFactory` for
+  staged route-aware push processing.
+- Kept the factory default path fail-safe: without explicit route execution
+  enablement, it returns the validation-only push handler and performs no
+  database reads or writes.
+- Added optional push handler/factory injection to
+  `OfflineRegisteredDeviceSyncRouteHandlerFactory` while preserving explicit
+  push handler overrides.
+- Exposed sync handler readiness metadata for push handler dependency factory
+  readiness, route dependency readiness, route execution enablement, database
+  readiness, queue/conflict write deferral, and dependency issues.
+- Updated the sync readiness admin summary and WordPress smoke assertions for
+  the new staged push route handler/factory readiness keys.
+- Added unit coverage for default push route deferral, explicitly enabled
+  registered-device authorization plus queue persistence, and sync factory
+  injection of the composed push handler.
+- Updated project, plugin, and offline app package versions to `0.109.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+Offline push plans could be persisted through the staged repository, but the
+REST boundary still needed an explicit factory that can authenticate registered
+devices, hydrate server snapshots, resolve the pushed batch, and call the
+repository in controlled staging tests. This revision adds that route-aware
+composition point while keeping production route execution and default
+route-connected writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Push route handler factory tests for default route-connected deferral without
+  database access.
+- Push route handler factory tests for explicitly enabled registered-device
+  authorization, batch resolution from injected server snapshots, and queue
+  persistence through the staged repository.
+- Sync handler factory tests for injecting the push route handler factory into
+  the offline controller boundary.
+- WordPress smoke assertions for the new push handler/factory readiness and
+  deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged push route handler/factory composition
+  and return to validation-only push controller handling.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default live offline routes, queue replay, queue persistence, conflict
+  persistence, canonical entity mutations, route registration, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Persistence SQL And Repository
 
 ### What Changed

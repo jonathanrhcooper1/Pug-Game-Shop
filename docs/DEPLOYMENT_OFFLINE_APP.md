@@ -454,6 +454,13 @@ execution. Staging tests can explicitly execute prepared queue/conflict inserts
 against the existing offline sync tables, while default queue replay, canonical
 mutations, route registration, and production route execution remain disabled.
 
+Version `0.109.0` adds staged offline push route handler factory composition.
+Staging tests can explicitly enable a factory-built route handler that
+authenticates registered devices, resolves push batches from injected server
+snapshots, and persists accepted queue/conflict rows through the staged
+repository. Default push route execution, route registration, queue replay,
+canonical mutations, and production route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

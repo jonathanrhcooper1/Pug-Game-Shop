@@ -83,6 +83,11 @@ accepted queue and conflict persistence plans into prepared inserts for
 explicitly invoked by tests. Default route execution, queue replay, conflict
 persistence, canonical entity mutations, and route-connected writes remain
 deferred.
+The push route handler factory now composes registered-device permission
+resolution, server snapshot providers, batch resolution, persistence planning,
+and repository execution only when staging explicitly enables route-connected
+push processing. The default controller path remains validation-only and does
+not read from or write to the database.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

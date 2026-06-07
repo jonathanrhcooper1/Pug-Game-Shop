@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.108.0
+Stable tag: 0.109.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -232,6 +232,9 @@ Phase 7.73 adds staged pull route handler factory composition while keeping
 route dependency injection disabled by default.
 Phase 7.74 adds offline push persistence SQL and repository staging while
 keeping queue replay, canonical mutations, and route-connected writes disabled.
+Phase 7.75 adds staged offline push route handler factory composition while
+keeping default route execution, route registration, and route-connected writes
+disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -249,6 +252,15 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.109.0 =
+
+* Added staged offline push route handler and factory composition for explicitly
+  enabled push resolution and queue/conflict persistence.
+* Added route-aware push persistence provider readiness metadata for handler
+  factory, route dependency, queue-write, and conflict-write state.
+* Kept default push route execution, route registration, queue replay, canonical
+  mutations, and route-connected writes disabled.
 
 = 0.108.0 =
 

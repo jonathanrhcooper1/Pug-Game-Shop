@@ -87,6 +87,10 @@
 - Version `0.108.0` adds offline push persistence SQL/repository staging over
   the existing `tcg_offline_sync_queue` and `tcg_sync_conflicts` tables. No
   WordPress schema, SQLite schema, migration order, or rollback target changes.
+- Version `0.109.0` adds offline push route handler/factory composition over
+  the existing registered-device, push resolution, and push persistence
+  contracts. No WordPress schema, SQLite schema, migration order, or rollback
+  target changes.
 
 ## Relationship Overview
 

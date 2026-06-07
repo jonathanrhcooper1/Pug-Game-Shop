@@ -83,6 +83,10 @@
   staging for prepared queue/conflict insert templates, replay-only no-op
   plans, invalid table prefixes, tampered rows, explicit `$wpdb` execution,
   database failures, and invalid affected-row results.
+- Local unit coverage now includes offline push route handler factory staging
+  for default route-connected deferral, explicit registered-device
+  authorization, injected server snapshot resolution, queue persistence, and
+  sync handler factory injection.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

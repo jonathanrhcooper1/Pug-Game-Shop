@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.108.0`
+Version: `0.109.0`
 
 ## Implemented Features
 
@@ -79,6 +79,9 @@ Version: `0.108.0`
   `tcg_offline_sync_queue` and `tcg_sync_conflicts` writes, including prepared
   templates, explicit `$wpdb` execution, replay-only no-op plans, and deferred
   route/canonical mutation flags.
+- Offline push route handler and factory composition for explicitly enabled
+  staging tests that authenticate registered devices, resolve push batches, and
+  persist queue/conflict rows while default route execution remains deferred.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

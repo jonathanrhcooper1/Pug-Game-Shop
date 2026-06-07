@@ -149,6 +149,11 @@ Registered-device sync handler readiness exposes only callback names, handler
 counts, and deferred-state booleans. The staged pull/push handlers validate
 request envelopes only; they do not execute queue replay, pull queries, cursor
 advancement, last-seen writes, or route-connected database mutations.
+Route-connected push processing requires an explicitly enabled staging factory,
+registered-device authorization, injected server snapshots, and the staged
+persistence repository. The default push route remains validation-only and
+does not perform queue writes, conflict writes, canonical mutations, queue
+replay, or live route registration.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

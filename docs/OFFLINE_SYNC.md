@@ -254,6 +254,12 @@ execution. Accepted queue/conflict persistence plans can now become prepared
 executed only when explicitly called by staging tests, while default route
 execution, queue replay, conflict persistence, canonical mutations, and route
 registration remain deferred.
+Version `0.109.0` adds staged offline push route handler factory composition.
+Explicit staging tests can enable a factory-built push handler that resolves
+registered-device authorization, server snapshots, batch outcomes, and
+queue/conflict persistence through the controller boundary, while default push
+route execution, route registration, queue replay, canonical mutations, and
+production route-connected writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -321,15 +327,16 @@ payloads after repository-provided server snapshots are available. WordPress
 schema migration `0008_offline-sync` now adds the server-side tables for
 registered devices, idempotent operation queue/result rows, manager-reviewed
 sync conflicts, and per-device pull cursors. Live route callbacks, bearer-token
-database lookup, queue replay workers, canonical entity mutations, conflict
-mutation writes, and cursor advancement remain disabled until staging
-integration tests pass. Offline push persistence planning now
-maps a parsed payload and batch resolution into future queue/result rows,
-manager-reviewed conflict insert rows, idempotent replay rows, and redacted
-audit payloads. Offline push persistence SQL and repository staging now convert
-those planned rows into prepared queue/conflict inserts and explicitly invoked
-`$wpdb` execution results, while live route callbacks, queue replay, canonical
-mutations, and default route-connected writes remain disabled.
+database lookup by default, queue replay workers, canonical entity mutations,
+conflict mutation writes, and cursor advancement remain disabled until staging
+integration tests explicitly enable route dependencies. Offline push
+persistence planning now maps a parsed payload and batch resolution into future
+queue/result rows, manager-reviewed conflict insert rows, idempotent replay
+rows, and redacted audit payloads. Offline push persistence SQL and repository
+staging now convert those planned rows into prepared queue/conflict inserts and
+explicitly invoked `$wpdb` execution results, while default live route
+execution, queue replay, canonical mutations, and route-connected writes remain
+disabled.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

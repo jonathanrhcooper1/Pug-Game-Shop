@@ -63,6 +63,16 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $summary['push_persistence_sql_ready'] );
 		$this->assert_true( $summary['push_persistence_sql_template_ready'] );
 		$this->assert_true( $summary['push_persistence_repository_ready'] );
+		$this->assert_true( $summary['push_route_handler_ready'] );
+		$this->assert_true( $summary['push_route_persistence_provider_ready'] );
+		$this->assert_true( $summary['push_handler_dependency_factory_ready'] );
+		$this->assert_false( $summary['push_handler_route_dependencies_ready'] );
+		$this->assert_true( $summary['push_handler_route_dependencies_deferred'] );
+		$this->assert_false( $summary['push_handler_route_execution_enabled'] );
+		$this->assert_false( $summary['push_handler_route_database_configured'] );
+		$this->assert_true( $summary['push_handler_route_queue_writes_deferred'] );
+		$this->assert_true( $summary['push_handler_conflict_writes_deferred'] );
+		$this->assert_same( array(), $summary['push_handler_route_dependency_issues'] );
 		$this->assert_true( $summary['push_persistence_route_deferred'] );
 		$this->assert_true( $summary['push_queue_persistence_deferred'] );
 		$this->assert_true( $summary['push_conflict_persistence_deferred'] );
@@ -132,6 +142,9 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_same( 1, $response['data']['operation_count'] );
 		$this->assert_true( $response['data']['write_deferred'] );
 		$this->assert_true( $response['data']['route_still_gated'] );
+		$this->assert_true( $response['data']['push_queue_persistence_deferred'] );
+		$this->assert_true( $response['data']['push_conflict_persistence_deferred'] );
+		$this->assert_true( $response['data']['push_canonical_mutations_deferred'] );
 	}
 
 	public function test_readiness_presenter_reports_ready_deferred_handlers(): void {
@@ -178,6 +191,16 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_true( $payload['push_persistence_sql_ready'] );
 		$this->assert_true( $payload['push_persistence_sql_template_ready'] );
 		$this->assert_true( $payload['push_persistence_repository_ready'] );
+		$this->assert_true( $payload['push_route_handler_ready'] );
+		$this->assert_true( $payload['push_route_persistence_provider_ready'] );
+		$this->assert_true( $payload['push_handler_dependency_factory_ready'] );
+		$this->assert_false( $payload['push_handler_route_dependencies_ready'] );
+		$this->assert_true( $payload['push_handler_route_dependencies_deferred'] );
+		$this->assert_false( $payload['push_handler_route_execution_enabled'] );
+		$this->assert_false( $payload['push_handler_route_database_configured'] );
+		$this->assert_true( $payload['push_handler_route_queue_writes_deferred'] );
+		$this->assert_true( $payload['push_handler_conflict_writes_deferred'] );
+		$this->assert_same( array(), $payload['push_handler_route_dependency_issues'] );
 		$this->assert_true( $payload['push_persistence_route_deferred'] );
 		$this->assert_true( $payload['push_queue_persistence_deferred'] );
 		$this->assert_true( $payload['push_conflict_persistence_deferred'] );
@@ -205,6 +228,10 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_contains( 'push persistence ready', $summary['value'] );
 		$this->assert_contains( 'push SQL ready', $summary['value'] );
 		$this->assert_contains( 'push repository ready', $summary['value'] );
+		$this->assert_contains( 'push route handler ready', $summary['value'] );
+		$this->assert_contains( 'push route provider ready', $summary['value'] );
+		$this->assert_contains( 'push handler factory ready', $summary['value'] );
+		$this->assert_contains( 'push route dependencies deferred', $summary['value'] );
 	}
 
 	/**

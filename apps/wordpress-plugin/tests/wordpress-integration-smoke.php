@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.108.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.109.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.108.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.109.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -203,6 +203,13 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['push_persi
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_persistence_sql_ready'] ?? null ), 'Offline push persistence SQL planning should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_persistence_sql_template_ready'] ?? null ), 'Offline push persistence SQL templates should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_persistence_repository_ready'] ?? null ), 'Offline push persistence repository should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_route_handler_ready'] ?? null ), 'Offline push route handler should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_route_persistence_provider_ready'] ?? null ), 'Offline push route persistence provider should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_dependency_factory_ready'] ?? null ), 'Offline push handler dependency factory should be staged ready.' );
+$assert( false === ( $data['offline_registered_device_sync_handlers']['push_handler_route_dependencies_ready'] ?? null ), 'Offline push handler route dependencies should remain deferred by default.' );
+$assert( false === ( $data['offline_registered_device_sync_handlers']['push_handler_route_execution_enabled'] ?? null ), 'Offline push handler route execution should remain disabled by default.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_route_queue_writes_deferred'] ?? null ), 'Offline push handler route queue writes should remain deferred.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_conflict_writes_deferred'] ?? null ), 'Offline push handler route conflict writes should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_persistence_route_deferred'] ?? null ), 'Offline push persistence route execution should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_queue_persistence_deferred'] ?? null ), 'Offline push queue persistence should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_conflict_persistence_deferred'] ?? null ), 'Offline push conflict persistence should remain deferred.' );

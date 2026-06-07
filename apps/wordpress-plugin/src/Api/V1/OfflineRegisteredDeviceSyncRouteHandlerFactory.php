@@ -29,7 +29,9 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		private ?OfflineRouteValidationHandlerFactory $validation_handler_factory = null,
 		private ?OfflineRestRequestAdapter $request_adapter = null,
 		private ?OfflinePullRouteHandler $pull_handler = null,
-		private ?OfflinePullRouteHandlerFactory $pull_handler_factory = null
+		private ?OfflinePullRouteHandlerFactory $pull_handler_factory = null,
+		private ?OfflinePushRouteHandler $push_handler = null,
+		private ?OfflinePushRouteHandlerFactory $push_handler_factory = null
 	) {
 	}
 
@@ -48,8 +50,9 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
 	public function handlers(): array {
-		$handlers                         = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
-		$handlers['pull_offline_changes'] = array( $this->pull_handler(), 'handle' );
+		$handlers                            = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
+		$handlers['pull_offline_changes']    = array( $this->pull_handler(), 'handle' );
+		$handlers['push_offline_operations'] = array( $this->push_handler(), 'handle' );
 
 		return array_intersect_key( $handlers, array_flip( self::HANDLER_CALLBACKS ) );
 	}
@@ -88,6 +91,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePushPersistenceRepository::class, 'persist' );
 		$pull_handler_factory           = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
 		$pull_handler_dependencies      = $pull_handler_factory->readiness_summary();
+		$push_handler_factory           = $this->push_handler_factory ?? new OfflinePushRouteHandlerFactory();
+		$push_handler_dependencies      = $push_handler_factory->readiness_summary();
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -141,14 +146,24 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_persistence_sql_ready'                 => $push_persistence_sql_ready,
 			'push_persistence_sql_template_ready'        => $push_persistence_sql_ready,
 			'push_persistence_repository_ready'          => $push_persistence_repo_ready,
-			'push_persistence_route_deferred'            => true,
-			'push_queue_persistence_deferred'            => true,
-			'push_conflict_persistence_deferred'         => true,
+			'push_route_handler_ready'                   => method_exists( OfflinePushRouteHandler::class, 'handle' ),
+			'push_route_persistence_provider_ready'      => method_exists( OfflinePushRoutePersistenceProvider::class, '__invoke' ),
+			'push_handler_dependency_factory_ready'      => true === ( $push_handler_dependencies['handler_factory_ready'] ?? false ),
+			'push_handler_route_dependencies_ready'      => true === ( $push_handler_dependencies['route_connected_handler_ready'] ?? false ),
+			'push_handler_route_dependencies_deferred'   => true === ( $push_handler_dependencies['route_connected_handler_deferred'] ?? true ),
+			'push_handler_route_execution_enabled'       => true === ( $push_handler_dependencies['route_connected_execution_enabled'] ?? false ),
+			'push_handler_route_database_configured'     => true === ( $push_handler_dependencies['database_configured'] ?? false ),
+			'push_handler_route_queue_writes_deferred'   => true === ( $push_handler_dependencies['route_connected_queue_writes_deferred'] ?? true ),
+			'push_handler_conflict_writes_deferred'      => true === ( $push_handler_dependencies['route_connected_conflict_writes_deferred'] ?? true ),
+			'push_handler_route_dependency_issues'       => $push_handler_dependencies['configuration_issues'] ?? array(),
+			'push_persistence_route_deferred'            => true === ( $push_handler_dependencies['route_connected_handler_deferred'] ?? true ),
+			'push_queue_persistence_deferred'            => true === ( $push_handler_dependencies['route_connected_queue_writes_deferred'] ?? true ),
+			'push_conflict_persistence_deferred'         => true === ( $push_handler_dependencies['route_connected_conflict_writes_deferred'] ?? true ),
 			'push_queue_replay_deferred'                 => true,
 			'push_canonical_mutations_deferred'          => true,
 			'write_deferred'                             => true,
 			'route_registration_deferred'                => true,
-			'route_connected_writes_ready'               => false,
+			'route_connected_writes_ready'               => true === ( $push_handler_dependencies['route_connected_writes_ready'] ?? false ),
 			'configuration_issues'                       => array_values( array_unique( $issues ) ),
 		);
 	}
@@ -159,5 +174,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		}
 
 		return ( $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory() )->handler();
+	}
+
+	private function push_handler(): OfflinePushRouteHandler {
+		if ( null !== $this->push_handler ) {
+			return $this->push_handler;
+		}
+
+		return ( $this->push_handler_factory ?? new OfflinePushRouteHandlerFactory() )->handler();
 	}
 }

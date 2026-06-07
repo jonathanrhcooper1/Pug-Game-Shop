@@ -196,6 +196,12 @@ readiness. Health and admin output now expose push persistence planner, SQL
 template, repository, queue persistence, conflict persistence, queue replay, and
 canonical mutation deferral metadata while default route execution remains
 disabled.
+Version `0.109.0` adds staged offline push route handler factory composition.
+An explicitly enabled factory can authenticate a registered device, resolve a
+push batch from injected server snapshots, and call the staged persistence
+repository through the controller boundary. Default push route execution,
+route registration, queue replay, canonical mutations, and production
+route-connected writes remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -462,7 +468,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.108.0",
+  "app_version": "0.109.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -589,9 +595,9 @@ The planned batch response wraps per-operation results with stable counts:
 ```
 
 The batch planner requires server snapshots keyed by client operation ID,
-`entity_type:entity_id`, or operation index before resolving operations. Live
-push route handlers and repository-backed snapshot loading remain disabled
-until staging tests pass.
+`entity_type:entity_id`, or operation index before resolving operations.
+Default push route execution and repository-backed snapshot loading remain
+disabled unless staging explicitly injects the route handler dependencies.
 
 Schema migration `0008_offline-sync` now defines the future persistence tables
 for registered offline devices, idempotent operation queue/result rows,
