@@ -33,7 +33,42 @@ final class OfflinePushRouteProcessingResult {
 	 * @return array<string, mixed>
 	 */
 	public function response_payload(): array {
-		return $this->resolution_plan->response_payload();
+		$payload = $this->resolution_plan->response_payload();
+
+		if ( ! isset( $payload['results'] ) || ! is_array( $payload['results'] ) ) {
+			return $payload;
+		}
+
+		$replay_ids         = array_fill_keys( $this->persistence_result->operation_replay_ids(), true );
+		$annotated_results  = array();
+		$operation_statuses = array();
+
+		foreach ( $payload['results'] as $result ) {
+			if ( ! is_array( $result ) ) {
+				$annotated_results[] = $result;
+				continue;
+			}
+
+			$operation_id = trim( (string) ( $result['client_operation_id'] ?? '' ) );
+			$is_replayed  = '' !== $operation_id && isset( $replay_ids[ $operation_id ] );
+			$status       = $is_replayed ? 'replayed' : 'inserted';
+
+			$result['persistence'] = array(
+				'status'   => $status,
+				'replayed' => $is_replayed,
+			);
+
+			if ( '' !== $operation_id ) {
+				$operation_statuses[ $operation_id ] = $status;
+			}
+
+			$annotated_results[] = $result;
+		}
+
+		$payload['results']                       = $annotated_results;
+		$payload['operation_persistence_statuses'] = $operation_statuses;
+
+		return $payload;
 	}
 
 	/**

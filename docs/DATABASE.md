@@ -115,6 +115,9 @@
 - Version `0.117.0` adds replay metadata to staged push planning, repository,
   and route response contracts. No WordPress schema, SQLite schema, migration
   order, or rollback target changes.
+- Version `0.118.0` adds per-operation staged push response annotations for
+  inserted/replayed persistence status. No WordPress schema, SQLite schema,
+  migration order, or rollback target changes.
 
 ## Relationship Overview
 

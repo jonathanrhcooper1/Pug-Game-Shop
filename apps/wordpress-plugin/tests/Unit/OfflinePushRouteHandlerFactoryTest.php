@@ -166,6 +166,12 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'offline_push_response_ready', $response['code'] );
 			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
 			$this->assert_same( 'inventory_reserved', $response['data']['results'][0]['code'] );
+			$this->assert_same( 'inserted', $response['data']['results'][0]['persistence']['status'] );
+			$this->assert_false( $response['data']['results'][0]['persistence']['replayed'] );
+			$this->assert_same(
+				array( 'op-push-route-01' => 'inserted' ),
+				$response['data']['operation_persistence_statuses']
+			);
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 1, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
@@ -199,6 +205,12 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'offline_push_response_ready', $response['code'] );
 			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
 			$this->assert_same( 'inventory_reserved', $response['data']['results'][0]['code'] );
+			$this->assert_same( 'replayed', $response['data']['results'][0]['persistence']['status'] );
+			$this->assert_true( $response['data']['results'][0]['persistence']['replayed'] );
+			$this->assert_same(
+				array( 'op-push-route-01' => 'replayed' ),
+				$response['data']['operation_persistence_statuses']
+			);
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 0, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
@@ -485,7 +497,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'token_expires_at'  => '2026-06-07 16:00:00.123456',
 				'scopes_json'       => '["offline_pull","offline_push","kiosk"]',
 				'capabilities_json' => '{"barcode_scanner":true,"label_printer":false}',
-				'app_version'       => '0.117.0',
+				'app_version'       => '0.118.0',
 				'platform'          => 'windows',
 				'last_seen_at'      => '2026-06-06 19:30:00.000000',
 				'revoked_at'        => null,

@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Per-Operation Persistence Annotations
+
+### What Changed
+
+- Added per-operation persistence annotations to staged offline push response
+  results.
+- Added a batch-level `operation_persistence_statuses` response map keyed by
+  client operation ID.
+- Annotated fresh operation rows as `inserted` and duplicate replayed operation
+  rows as `replayed`.
+- Added route handler factory coverage for both inserted and replayed response
+  result annotations.
+- Updated project, plugin, and offline app package versions to `0.118.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The previous checkpoint exposed replay counts and replayed operation IDs in
+response metadata and audits. This revision gives offline clients a direct,
+per-result persistence signal so they can render or reconcile duplicate-push
+responses without deriving state from batch-level arrays or nested audits.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Staged push route handler factory assertions for inserted per-operation
+  persistence annotations.
+- Staged push route handler factory assertions for replayed duplicate
+  per-operation persistence annotations.
+
+### Rollback Notes
+
+- Revert this revision to remove per-operation persistence annotations from
+  staged push responses while keeping prior replay count/ID metadata intact.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Queue replay workers, canonical mutations, default route execution, live
+  route registration, and production route-connected writes remain disabled
+  before and after rollback.
+
 ## 2026-06-06 - Offline Push Replay Response Metadata
 
 ### What Changed

@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.117.0`
+Version: `0.118.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -234,6 +234,10 @@ while default route execution and live route registration stay deferred.
 Staged push responses now surface operation replay counts and replay operation
 IDs in response metadata and audits, so idempotent duplicate-push behavior can
 be verified without enabling queue replay workers or canonical mutations.
+Those staged push response results now also include per-operation persistence
+annotations and a batch-level operation persistence-status map, so clients can
+distinguish fresh inserted operation rows from replayed duplicate rows without
+parsing nested audits.
 Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash

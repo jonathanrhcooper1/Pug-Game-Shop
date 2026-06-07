@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.117.0`
+Version: `0.118.0`
 
 ## Implemented Features
 
@@ -106,6 +106,8 @@ Version: `0.117.0`
   planning while default route execution remains deferred.
 - Offline push replay metadata for staged route responses, including replay
   counts and replay operation IDs for idempotency verification.
+- Offline push per-operation persistence annotations in staged route response
+  results, including inserted/replayed status for duplicate-push verification.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,
@@ -339,6 +341,8 @@ Version: `0.117.0`
   duplicate-push no-write coverage.
 - Offline push replay metadata coverage for persistence plans, repository
   audits, and staged route response meta.
+- Offline push per-operation persistence annotation coverage for inserted and
+  replayed staged route response results.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

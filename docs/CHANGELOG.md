@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.118.0] - 2026-06-06
+
+### Added
+
+- Per-operation persistence annotations for staged offline push route response
+  results.
+- Batch-level `operation_persistence_statuses` response map keyed by client
+  operation ID.
+- Unit coverage for inserted fresh operation responses and replayed duplicate
+  operation responses.
+
+### Not Added
+
+- Queue replay workers, canonical entity mutations, default route execution,
+  live route registration, and production route-connected writes remain
+  deferred.
+
 ## [0.117.0] - 2026-06-06
 
 ### Added

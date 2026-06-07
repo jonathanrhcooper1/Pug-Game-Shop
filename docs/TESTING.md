@@ -118,6 +118,9 @@
 - Local unit coverage now includes offline push replay metadata for persistence
   insert IDs, replay IDs, repository replay helper methods, repository audits,
   and staged route response meta.
+- Local unit coverage now includes staged offline push per-operation
+  persistence annotations for fresh inserted results and duplicate-push
+  replayed results.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

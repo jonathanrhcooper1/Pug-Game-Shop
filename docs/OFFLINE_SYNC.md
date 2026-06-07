@@ -303,6 +303,11 @@ repository audits, route processing audits, and response metadata now expose
 operation replay counts and replayed client operation IDs, so duplicate-push
 idempotency can be verified directly while queue replay workers and canonical
 mutations remain deferred.
+Version `0.118.0` adds per-operation persistence annotations to staged push
+response results. Each result now includes inserted/replayed persistence status
+metadata and the payload includes an operation persistence-status map, letting
+offline clients identify duplicate replays without inspecting nested audits.
+Queue replay workers and canonical mutations remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

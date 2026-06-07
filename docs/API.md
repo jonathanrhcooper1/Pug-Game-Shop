@@ -245,6 +245,12 @@ Version `0.117.0` adds staged offline push replay metadata. Route response
 client operation IDs, giving staging tests a direct way to verify idempotent
 duplicate-push behavior while queue replay workers and canonical mutations
 remain disabled.
+Version `0.118.0` adds per-operation persistence annotations to staged offline
+push response results. Each result now reports `persistence.status` as
+`inserted` or `replayed` plus a `persistence.replayed` boolean, and the response
+payload includes an `operation_persistence_statuses` map keyed by client
+operation ID. Queue replay workers, canonical mutations, default route
+execution, and live route registration remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -511,7 +517,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.117.0",
+  "app_version": "0.118.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

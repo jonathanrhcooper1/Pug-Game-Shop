@@ -121,6 +121,10 @@ Replay counts and replayed client operation IDs now flow from persistence
 planning through repository audits and staged route response metadata, giving
 staging tests direct observability into insert-vs-replay behavior without
 enabling queue replay workers or canonical mutations.
+Staged push response payloads now also annotate each operation result with
+inserted/replayed persistence status and expose an operation persistence-status
+map, keeping client-facing replay handling observable without enabling route
+registration, queue replay workers, or canonical mutations.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

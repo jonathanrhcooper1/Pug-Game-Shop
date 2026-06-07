@@ -508,6 +508,11 @@ Version `0.117.0` adds staged push replay metadata. Staging responses and
 audits now expose replay counts and replayed operation IDs for duplicate-push
 verification, while queue replay workers, canonical mutations, production route
 registration, and default route execution remain disabled.
+Version `0.118.0` adds per-operation persistence annotations to staged push
+response results. Staging responses can now distinguish inserted operation rows
+from replayed duplicate rows without parsing nested audits; queue replay
+workers, canonical mutations, production route registration, and default route
+execution remain disabled.
 
 ## Hardware Gate
 

@@ -100,6 +100,10 @@ Before major database migrations:
 - Staged push responses expose operation replay counts and replay operation IDs
   for duplicate-push verification while queue replay workers and canonical
   mutations remain deferred.
+- Staged push response results expose per-operation inserted/replayed
+  persistence annotations and an operation persistence-status map for
+  duplicate-push verification while queue replay workers and canonical
+  mutations remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and
