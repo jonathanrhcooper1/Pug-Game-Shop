@@ -36,7 +36,7 @@ final class InventoryRouteDependencyStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'handlers %d / %d; permissions %d; public reads %s; limiter %s; search handler %s; intake handler %s; registrar %s; routes %s; reads %s; writes %s',
+				'handlers %d / %d; permissions %d; public reads %s; limiter %s; search handler %s; intake handler %s; registrar %s; routes %s; reads %s; writes %s; projection planning %s',
 				(int) ( $payload['controller_handler_count'] ?? 0 ),
 				(int) ( $payload['staged_handler_route_count'] ?? 0 ),
 				(int) ( $payload['permission_callback_count'] ?? 0 ),
@@ -47,7 +47,8 @@ final class InventoryRouteDependencyStatusPresenter {
 				true === ( $payload['registrar_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['route_registration_deferred'] ?? true ) ? 'deferred' : 'ready',
 				true === ( $payload['route_connected_reads_deferred'] ?? true ) ? 'deferred' : 'ready',
-				true === ( $payload['route_connected_writes_deferred'] ?? true ) ? 'deferred' : 'ready'
+				true === ( $payload['route_connected_writes_deferred'] ?? true ) ? 'deferred' : 'ready',
+				true === ( $payload['external_projection_planning_deferred'] ?? true ) ? 'deferred' : 'ready'
 			),
 			'status' => (string) $payload['status'],
 		);

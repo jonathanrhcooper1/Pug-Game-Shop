@@ -19,6 +19,8 @@ final class InventoryWorkspacePresenter {
 	 * @return list<array{label:string,value:string,status:string,notes:string}>
 	 */
 	public function readiness_rows( array $bootstrap_payload, array $dependency_payload ): array {
+		$projection_planning_row = $this->projection_planning_row( $dependency_payload );
+
 		return array(
 			$this->row(
 				'Feature flag',
@@ -56,6 +58,7 @@ final class InventoryWorkspacePresenter {
 					? 'route-connected writes deferred'
 					: 'route-connected writes ready'
 			),
+			$projection_planning_row,
 			$this->row(
 				'Public reads',
 				true === ( $dependency_payload['public_read_routes_enabled'] ?? false ) ? 'Enabled' : 'Disabled',
@@ -225,6 +228,12 @@ final class InventoryWorkspacePresenter {
 				'connect guarded create/update/reserve storage execution'
 			),
 			$this->row(
+				'Projection contracts',
+				true === ( $dependency_payload['external_projection_planning_deferred'] ?? true ) ? 'Pending' : 'Ready',
+				true === ( $dependency_payload['external_projection_planning_deferred'] ?? true ) ? 'pending' : 'ready',
+				'plan WooCommerce/Square contracts before enabling external writes'
+			),
+			$this->row(
 				'Square inventory sync',
 				true === ( $dependency_payload['square_inventory_projection_deferred'] ?? true ) ? 'Pending' : 'Ready',
 				true === ( $dependency_payload['square_inventory_projection_deferred'] ?? true ) ? 'pending' : 'ready',
@@ -237,6 +246,69 @@ final class InventoryWorkspacePresenter {
 				'cover search, intake, cart, credit, and offline conflict flows'
 			),
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @return array{label:string,value:string,status:string,notes:string}
+	 */
+	private function projection_planning_row( array $dependency_payload ): array {
+		$woocommerce_ready = true === ( $dependency_payload['woocommerce_projection_planner_ready'] ?? false );
+		$square_ready      = true === ( $dependency_payload['square_inventory_projection_planner_ready'] ?? false );
+		$planning_deferred = true === ( $dependency_payload['external_projection_planning_deferred'] ?? true );
+
+		if ( $planning_deferred ) {
+			return $this->row(
+				'Projection planning',
+				'Deferred',
+				'deferred',
+				$this->projection_planning_notes(
+					$planning_deferred,
+					$woocommerce_ready,
+					$square_ready
+				)
+			);
+		}
+
+		if ( $woocommerce_ready && $square_ready ) {
+			return $this->row(
+				'Projection planning',
+				'Ready',
+				'ready',
+				'WooCommerce and Square contracts planned; external writes stay deferred'
+			);
+		}
+
+		return $this->row(
+			'Projection planning',
+			sprintf( '%d / 2 planners ready', (int) $woocommerce_ready + (int) $square_ready ),
+			'blocked',
+			$this->projection_planning_notes(
+				$planning_deferred,
+				$woocommerce_ready,
+				$square_ready
+			)
+		);
+	}
+
+	private function projection_planning_notes( bool $planning_deferred, bool $woocommerce_ready, bool $square_ready ): string {
+		$notes = array();
+
+		if ( $planning_deferred ) {
+			$notes[] = 'waiting for staged inventory create handler';
+		}
+
+		if ( ! $woocommerce_ready ) {
+			$notes[] = 'WooCommerce planner missing';
+		}
+
+		if ( ! $square_ready ) {
+			$notes[] = 'Square planner missing';
+		}
+
+		return array() === $notes
+			? 'WooCommerce and Square contracts planned; external writes stay deferred'
+			: implode( '; ', $notes );
 	}
 
 	/**

@@ -74,6 +74,9 @@ All notable changes follow Semantic Versioning.
   product and Square inventory projection contracts after successful database
   writes, proving external projection intent while keeping WooCommerce, Square,
   labels, and network calls deferred.
+- Staff Inventory workspace readiness now separates side-effect-free
+  WooCommerce/Square projection planning from deferred external writes, with a
+  dedicated projection-contract checkpoint for staging review.
 - WordPress integration migration rehearsal that requires an explicit
   destructive-test environment flag, refuses production, rolls the disposable
   database from the current schema target back to version `1`, verifies Phase 2

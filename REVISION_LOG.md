@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Workspace Projection Planning Status
+
+### What Changed
+
+- Propagated WooCommerce and Square projection planner readiness from the
+  staged inventory intake handler into the overall inventory dependency health
+  payload.
+- Added a Staff Inventory workspace readiness row that separates
+  side-effect-free projection planning from still-deferred WooCommerce/Square
+  external writes.
+- Added a projection-contract checkpoint row for staging review before live
+  external sync is enabled.
+- Updated the inventory dependency admin summary to report projection planning
+  readiness.
+
+### Why
+
+Staged inventory create responses now expose WooCommerce and Square projection
+contracts, but the admin workspace still showed only deferred external writes.
+Staff/admin users need to see that contract planning is ready while production
+side effects remain deliberately gated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for the Staff Inventory projection-planning readiness row in
+  both default-deferred and staging-ready states.
+- Unit assertions that inventory dependency health propagates planner readiness
+  and projection-planning deferral metadata.
+
+### Tests Run
+
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 774 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Admin\InventoryWorkspacePresenter.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the projection-planning readiness row,
+  projection-contract checkpoint, and propagated dependency summary flags.
+- No schema rollback or external cleanup is required because WooCommerce,
+  Square, label, and network writes remain deferred.
+
 ## 2026-06-07 - Staged Inventory Create Projection Contracts
 
 ### What Changed

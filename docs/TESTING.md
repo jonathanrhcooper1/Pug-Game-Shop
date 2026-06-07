@@ -97,6 +97,9 @@
 - Local unit coverage now includes the staff Inventory admin intake panel,
   covering default lockout, staging-ready route state, safe form sanitization,
   and route metadata for the gated REST-backed create form.
+- Local unit coverage now includes Staff Inventory workspace projection
+  planning readiness, proving WooCommerce/Square contracts can be marked ready
+  while external writes remain deferred.
 - Local unit coverage now includes inventory route runtime settings,
   staging-only staff search/create route contract configuration, and dependency
   factory proof that staff inventory search and create routes register only
