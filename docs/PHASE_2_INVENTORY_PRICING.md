@@ -21,6 +21,14 @@ staging database acceptance remains pending.
   removed workflows.
 - Intake validation for required minimum sale price, raw/graded requirements,
   active item barcode/location, and listed item reference identity.
+- Planned inventory/search REST contracts for exact serialized inventory CRUD,
+  reservation actions, movement, price lock, bulk intake, import/export,
+  public search, reference search, inventory search, and version grouping.
+- Dependency-free staff/offline/ScryDex-import intake parser with normalized
+  exact-card fields, visibility, pricing floor checks, and deferred
+  WooCommerce/label side-effect flags.
+- Dependency-free inventory search parser with query, game, status, location,
+  visibility, sort, and pagination filters.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct
@@ -47,3 +55,5 @@ On PHP 8.2.29:
 6. Pricing change log persistence once inventory write services are added.
 7. Manager override persistence and reauthentication tests.
 8. Search and pagination benchmarks after the 50,000-item seed fixture exists.
+9. Live route registration remains disabled until repository writes, staff
+   permissions, rate limiting, and staging smoke tests are complete.
