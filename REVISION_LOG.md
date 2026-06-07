@@ -3,6 +3,72 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Inventory Projection Planning
+
+### What Changed
+
+- Added `SquareInventoryProjectionPlanner` and `SquareInventoryProjectionPlan`
+  to convert exact serialized card inventory rows into deferred Square catalog
+  and inventory payload contracts.
+- Planned Square `ITEM`/`ITEM_VARIATION` catalog payloads for visible available
+  cards, using store SKU/barcode scan identity, fixed pricing, location
+  presence, inventory tracking flags, and bounded metadata.
+- Planned Square `PHYSICAL_COUNT` inventory changes with quantity `1` for
+  sellable visible cards and quantity `0` for unavailable cards that already
+  have an existing Square variation mapping.
+- Kept Square network requests, provider inventory writes, WooCommerce gateway
+  capture, and payment capture explicitly deferred. Payments remain assigned to
+  the official WooCommerce Square extension.
+
+### Why
+
+Square POS needs a tested way to mirror or pull sellable card inventory from
+the website without making Square the source of truth for exact serialized card
+state. This projection layer gives the next adapter/repository step a stable,
+testable payload contract while avoiding live provider writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionPlan.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No Square credentials, provider tables, or live network calls were added.
+- Existing POS/payment schema remains unchanged.
+
+### Tests Added
+
+- Square projection tests for visible available card catalog/count payloads.
+- Zero-count projection tests for unavailable mapped cards.
+- Skip tests for hidden unmapped cards.
+- Validation tests for missing scan identity, price, currency, and Square
+  location.
+- Existing Square ID tests proving catalog ID resolution is not needed when
+  external mappings are already known.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 683 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 464 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new Square source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove the Square inventory projection planner and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No provider rollback is required because no Square network calls, payment
+  capture, or provider inventory writes are enabled.
+
 ## 2026-06-07 - Inventory Search Planning And Presentation
 
 ### What Changed

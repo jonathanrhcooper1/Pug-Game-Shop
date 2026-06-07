@@ -546,6 +546,11 @@
   execution is explicitly cleared.
 - Local unit coverage now includes POS/payment dependency health/admin status
   assertions for route-connected read deferral and read-ready state.
+- Local unit coverage now includes Square inventory projection planning for
+  visible available serialized cards, zero-count unavailable mapped cards,
+  hidden/unmapped skip behavior, required scan identity/price/location
+  validation, existing Square ID handling, and explicit network/payment
+  deferrals.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.
@@ -578,8 +583,9 @@ corresponding modules are implemented:
   callback wiring, device last-seen database writes, live conflict reads/writes,
   conflict audit persistence, device auth, and full reconnect integration
   tests.
-- Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
-  and provider webhook reconciliation tests.
+- Live POS/payment sandbox contract tests, Square catalog/inventory sandbox
+  projection tests, WooCommerce gateway lifecycle tests, and provider webhook
+  reconciliation tests.
 
 ## Critical Business Tests
 

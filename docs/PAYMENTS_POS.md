@@ -70,6 +70,29 @@ Square webhook event IDs and external order/payment IDs are idempotency keys.
 Refunds do not automatically return a card to `available`; the configured
 default is `pending_review`.
 
+## Square Inventory Projection Planning
+
+The WordPress plugin now includes a plan-only Square inventory projection
+contract for exact serialized cards. Given a canonical inventory row, it can
+prepare:
+
+- A Square `ITEM` catalog object with one `ITEM_VARIATION` for a single
+  serialized card.
+- A variation SKU derived from the store SKU or barcode so POS scanning can map
+  back to the store-owned exact item identity.
+- Fixed-price `price_money`, inventory tracking flags, location visibility, and
+  bounded user metadata.
+- A Square `PHYSICAL_COUNT` change with quantity `1` for sellable visible
+  cards.
+- A zero-count `PHYSICAL_COUNT` change for unavailable cards that already have
+  a known Square variation mapping.
+
+The planner rejects visible sellable cards that lack card name, scan identity,
+valid sale price/currency, or a Square location. Hidden/unmapped cards are
+skipped without provider payloads. All plans keep Square network requests,
+provider inventory writes, WooCommerce gateway capture, and payment capture
+explicitly deferred.
+
 ## Transaction Ingestion Contract
 
 The shared validation package now includes a sandbox-safe POS transaction

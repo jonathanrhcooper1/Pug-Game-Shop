@@ -20,6 +20,10 @@ All notable changes follow Semantic Versioning.
 - Inventory search response presentation with public redaction and staff-only
   operational fields for barcode, SKU, cost, location, visibility, and row
   version details.
+- Square inventory projection planning for exact serialized cards, including
+  Square catalog variation payloads, physical-count payloads, scan-identity
+  validation, zero-count updates for unavailable mapped cards, and deferred
+  network/provider write metadata.
 
 ### Changed
 
@@ -40,8 +44,8 @@ All notable changes follow Semantic Versioning.
 
 - No live inventory route registration, inventory database writes,
   WooCommerce product projection, barcode label printing, Square/POS inventory
-  writes, external tournament-provider calls, or production provider calls were
-  added.
+  writes, Square network calls, payment capture, external tournament-provider
+  calls, or production provider calls were added.
 
 ## [0.155.0] - 2026-06-07
 
