@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.140.0`
+Version: `0.141.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -94,6 +94,9 @@ pattern: default plans remain locked, permission/controller readiness is
 visible, read routes require cleared registration deferrals, write routes also
 require cleared route-connected write deferrals, and webhook routes require
 cleared webhook-registration deferrals.
+A guarded POS/payment route registrar can now consume those enabled plans and
+call WordPress route registration only for future routes that pass every
+planner gate; current defaults still register zero POS/payment routes.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

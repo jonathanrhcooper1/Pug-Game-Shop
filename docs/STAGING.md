@@ -185,5 +185,8 @@ Before major database migrations:
 - POS/payment route registration planning reports zero enabled registrations
   by default. Future read/write/webhook routes require explicitly cleared
   registration, write, and webhook deferrals before route args can be emitted.
+- POS/payment guarded route registrar registers zero routes by default and may
+  only call WordPress route registration for future planner-enabled route
+  plans.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

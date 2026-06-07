@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.140.0`
+Version: `0.141.0`
 
 ## Implemented Features
 
@@ -112,6 +112,8 @@ Version: `0.140.0`
 - POS/payment route registration planning metadata for default-locked route
   plans, permission/controller readiness, route deferral checks, write-route
   deferral checks, webhook deferral checks, and future enabled route args.
+- POS/payment guarded route registrar for future enabled route plans, keeping
+  current POS/payment REST route registration disabled by default.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

@@ -193,6 +193,10 @@
   default-locked plans, capability and webhook permission readiness, injected
   controller handler readiness, future read/write/webhook route gates, and
   public permission-bypass prevention.
+- Local unit coverage now includes POS/payment guarded route registrar
+  behavior for disabled defaults, future enabled read/write/webhook routes,
+  missing permission callbacks, missing injected handlers, and write/webhook
+  gate enforcement.
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.

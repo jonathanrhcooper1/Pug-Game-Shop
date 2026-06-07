@@ -284,6 +284,23 @@ configured signature verifier and cleared webhook-registration deferral.
 Current production and staging defaults still produce zero enabled POS/payment
 route registrations.
 
+## Guarded Route Registrar
+
+The guarded POS/payment route registrar consumes only enabled route plans from
+the registration planner. It calls `register_rest_route()` or an injected test
+registrar with:
+
+- The planned route namespace.
+- The planned route path.
+- The planned HTTP method.
+- The injected controller callback.
+- The fail-closed permission callback.
+
+Because current route contracts are disabled by default and carry registration
+deferrals, the registrar registers zero POS/payment routes under default
+settings. Future routes must first pass the planner's permission, handler,
+registration, write, and webhook gates before the registrar can expose them.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

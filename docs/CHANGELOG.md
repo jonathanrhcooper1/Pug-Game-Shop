@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.141.0] - 2026-06-06
+
+### Added
+
+- Guarded POS/payment route registrar that consumes enabled registration plans
+  and calls WordPress REST route registration only for future routes that pass
+  planner gates.
+- Unit coverage proving default POS/payment routes remain unregistered,
+  future read routes can register only when ready, live-flagged routes without
+  permission/controller callbacks stay blocked, write routes respect
+  route-connected write deferral, and webhook routes require signature and
+  webhook-registration gates.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.140.0] - 2026-06-06
 
 ### Added

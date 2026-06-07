@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Guarded Route Registrar
+
+### What Changed
+
+- Added `PosPaymentRouteRegistrar` for guarded POS/payment REST route
+  registration.
+- The registrar consumes only `PosPaymentRouteRegistrationPlanner` plans whose
+  `should_register` flag is true.
+- Registered route args include the planned namespace, path, HTTP method,
+  injected controller callback, and fail-closed permission callback.
+- Current default POS/payment route contracts still produce zero enabled route
+  registrations.
+- Added `PosPaymentRouteRegistrarTest` coverage for default disabled routes,
+  future enabled read routes, missing permission callbacks, missing injected
+  controller handlers, deferred write-route gates, future write routes, and
+  future webhook routes with signature/webhook gates.
+- Updated project, plugin, and offline app package versions to `0.141.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The route registration planner now defines when POS/payment routes may become
+registerable. This revision adds the registrar boundary that future staging
+phases can call after those gates are satisfied, while preserving zero live
+route registration for the current default configuration.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteRegistrar.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteRegistrarTest` coverage for guarded route registration,
+  disabled defaults, future enabled read/write/webhook routes, missing
+  permission callbacks, missing controller handlers, deferred write gates, and
+  signature/webhook gate requirements.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment guarded route registrar,
+  tests, and version/doc updates.
+- No database rollback is required because no schema migration, default live
+  route registration, provider capture, provider inventory write service,
+  webhook handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Route Registration Planning
 
 ### What Changed

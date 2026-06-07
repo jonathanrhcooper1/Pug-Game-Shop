@@ -223,6 +223,9 @@ future route plans require cleared route-registration deferrals, write routes
 also require cleared route-connected write deferrals, and webhook routes also
 require cleared webhook-registration deferrals plus a configured signature
 verifier.
+The guarded POS/payment route registrar consumes only those enabled plans and
+passes their controller and permission callbacks to WordPress route
+registration. With current defaults, it registers no POS/payment routes.
 
 ## System Diagram
 
