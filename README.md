@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.126.0`
+Version: `0.127.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -264,6 +264,10 @@ fresh and replayed operations.
 Those staged push routes now also report a canonical repository execution gate
 with blocked/ready/rejected status, block reasons, and transaction-adapter
 deferral so canonical writes still require an explicit future approval path.
+Canonical mutation transaction preflight now classifies those staged query
+kinds before execution: inventory guarded updates can be marked preflight-ready,
+while event registration and customer-credit ledger write plans remain
+explicitly deferred.
 Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash

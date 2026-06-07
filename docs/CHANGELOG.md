@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.127.0] - 2026-06-06
+
+### Added
+
+- Canonical mutation transaction preflight contracts after repository staging
+  and execution-gate evaluation.
+- Route response, route meta, audit, sync readiness, admin summary, and smoke
+  metadata for preflight status, ready/blocked counts, operation IDs, block
+  reasons, and transaction execution deferral.
+- Unit coverage for default-gated preflight, explicit inventory-ready
+  preflight, deferred event/credit write plans, and rejected staging.
+
+### Not Added
+
+- Canonical transaction execution, event registration write plans,
+  customer-credit ledger write plans, TopDeck workers, queue replay workers,
+  default route execution, live route registration, and production
+  route-connected writes remain deferred.
+
 ## [0.126.0] - 2026-06-06
 
 ### Added

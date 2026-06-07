@@ -142,6 +142,9 @@
 - Version `0.126.0` adds a canonical mutation repository execution gate and
   route/readiness metadata. No WordPress schema, SQLite schema, migration
   order, query execution, or rollback target changes.
+- Version `0.127.0` adds canonical mutation transaction preflight metadata. No
+  WordPress schema, SQLite schema, migration order, query execution, or
+  rollback target changes.
 
 ## Relationship Overview
 

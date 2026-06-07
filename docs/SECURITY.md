@@ -258,6 +258,9 @@ approval boundary after staging. Default route processing reports blocked
 execution with block reasons and transaction-adapter deferral; it does not run
 SQL writes, queue replay, TopDeck workers, or production route-connected
 mutations.
+Transaction preflight only classifies staged canonical query kinds and reports
+deferred downstream write plans. It does not prepare, execute, or commit
+canonical transaction SQL.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

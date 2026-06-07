@@ -160,6 +160,10 @@ The canonical mutation repository execution gate now sits after repository
 staging and before any transaction executor. It reports blocked/ready/rejected
 state, block reasons, and transaction-adapter deferral so production writes
 remain impossible until the execution path is explicitly configured and tested.
+Transaction preflight now follows that gate to classify staged query kinds
+before execution. Inventory guarded updates can become preflight-ready once the
+gate is open, while event registration and customer-credit ledger write plans
+remain separate deferred boundaries.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

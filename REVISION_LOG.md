@@ -3,6 +3,92 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Canonical Mutation Transaction Preflight
+
+### What Changed
+
+- Added `OfflinePushCanonicalMutationTransactionPreflight`.
+- Added `OfflinePushCanonicalMutationTransactionPreflightResult`.
+- Connected transaction preflight into explicitly enabled offline push route
+  processing after deferred repository staging and execution-gate evaluation.
+- Added route response, route meta, audit, sync readiness, admin summary, and
+  smoke metadata for preflight status, ready/blocked counts, operation IDs,
+  block reasons, and transaction execution deferral.
+- Added unit coverage for default-gated inventory preflight, explicit
+  inventory-ready preflight, deferred event/customer-credit write plans, and
+  rejected-staging preflight outcomes.
+- Updated project, plugin, and offline app package versions to `0.127.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The execution gate proves canonical writes cannot run by default, but staging
+also needs to know which staged canonical query kinds are ready for a future
+transaction executor. This revision adds that classification without executing
+canonical SQL or enabling production route-connected writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionPreflight.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionPreflightResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationTransactionPreflightTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `OfflinePushCanonicalMutationTransactionPreflightTest` coverage for
+  default-gated, explicit-ready, deferred downstream write-plan, and rejected
+  preflight outcomes.
+- Route-connected push handler assertions for transaction preflight status,
+  ready/blocked counts, operation IDs, block reasons, and audit metadata.
+- Registered-device sync readiness and WordPress smoke assertions for
+  transaction preflight readiness and execution deferral.
+
+### Rollback Notes
+
+- Revert this revision to remove transaction preflight contracts and
+  route/readiness metadata.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Canonical transaction execution, event registration writes,
+  customer-credit ledger writes, queue replay workers, TopDeck workers,
+  default route execution, live route registration, and production
+  route-connected writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Push Canonical Mutation Repository Execution Gate
 
 ### What Changed

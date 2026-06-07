@@ -554,6 +554,9 @@ Version `0.126.0` adds the canonical repository execution gate. Staging can
 confirm canonical execution remains blocked by default, inspect block reasons,
 and distinguish transaction-adapter deferral from future ready-for-executor
 state before any Windows offline app push can trigger canonical writes.
+Version `0.127.0` adds transaction preflight metadata. Staging can confirm
+inventory guarded updates are the first preflight-ready canonical query kind
+while event registration and customer-credit ledger write plans stay deferred.
 
 ## Hardware Gate
 

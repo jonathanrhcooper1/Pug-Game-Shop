@@ -304,6 +304,11 @@ Version `0.126.0` adds a canonical mutation repository execution gate to those
 same staged push responses. Payloads, meta, and audits now expose execution
 status, blocked/ready flags, block reasons, transaction-adapter deferral, and
 zero affected rows before any canonical write executor can be attached.
+Version `0.127.0` adds canonical mutation transaction preflight metadata after
+the execution gate. Payloads, meta, and audits now report preflight status,
+ready and blocked mutation counts, operation IDs, block reasons, and deferred
+transaction execution. Inventory guarded-update queries can be preflight-ready;
+event registration and customer-credit ledger write plans remain deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains

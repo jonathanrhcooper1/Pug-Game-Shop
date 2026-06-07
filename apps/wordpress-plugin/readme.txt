@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.126.0
+Stable tag: 0.127.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -286,6 +286,8 @@ canonical repository execution remains disabled.
 Phase 7.92 adds a canonical mutation repository execution gate so staged push
 routes report blocked/ready/rejected execution status and transaction-adapter
 deferral before any canonical writes can run.
+Phase 7.93 adds canonical mutation transaction preflight metadata to classify
+staged query kinds before any future transaction executor can run.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
@@ -303,6 +305,15 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.127.0 =
+
+* Added canonical mutation transaction preflight metadata after repository
+  staging and execution-gate evaluation.
+* Classified inventory guarded updates as preflight-ready while event
+  registration and customer-credit ledger write plans remain deferred.
+* Added route response, route meta, sync readiness, smoke, and unit coverage
+  for preflight status, counts, block reasons, and transaction deferral.
 
 = 0.126.0 =
 

@@ -13,6 +13,7 @@ use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepository;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryExecutionGate;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationTransactionPreflight;
 use TCGStorePlatform\Offline\OfflinePushPayload;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
@@ -27,6 +28,7 @@ final class OfflinePushRoutePersistenceProvider {
 	private OfflinePushCanonicalMutationQueryBuilder $canonical_mutation_query_builder;
 	private OfflinePushCanonicalMutationRepository $canonical_mutation_repository;
 	private OfflinePushCanonicalMutationRepositoryExecutionGate $canonical_mutation_execution_gate;
+	private OfflinePushCanonicalMutationTransactionPreflight $canonical_mutation_transaction_preflight;
 	private string $table_prefix;
 
 	/**
@@ -62,6 +64,7 @@ final class OfflinePushRoutePersistenceProvider {
 		?OfflinePushCanonicalMutationQueryBuilder $canonical_mutation_query_builder = null,
 		?OfflinePushCanonicalMutationRepository $canonical_mutation_repository = null,
 		?OfflinePushCanonicalMutationRepositoryExecutionGate $canonical_mutation_execution_gate = null,
+		?OfflinePushCanonicalMutationTransactionPreflight $canonical_mutation_transaction_preflight = null,
 		string $table_prefix = ''
 	) {
 		$this->permission_resolver              = $permission_resolver;
@@ -72,6 +75,7 @@ final class OfflinePushRoutePersistenceProvider {
 		$this->canonical_mutation_query_builder = $canonical_mutation_query_builder ?? new OfflinePushCanonicalMutationQueryBuilder();
 		$this->canonical_mutation_repository    = $canonical_mutation_repository ?? new OfflinePushCanonicalMutationRepository();
 		$this->canonical_mutation_execution_gate = $canonical_mutation_execution_gate ?? new OfflinePushCanonicalMutationRepositoryExecutionGate();
+		$this->canonical_mutation_transaction_preflight = $canonical_mutation_transaction_preflight ?? new OfflinePushCanonicalMutationTransactionPreflight();
 		$this->table_prefix                     = trim( $table_prefix );
 		$this->server_time_provider             = $server_time_provider;
 		$this->server_snapshots_provider        = $server_snapshots_provider;
@@ -148,6 +152,10 @@ final class OfflinePushRoutePersistenceProvider {
 		);
 		$canonical_repository = $this->canonical_mutation_repository->stage( $canonical_sql );
 		$canonical_execution  = $this->canonical_mutation_execution_gate->evaluate( $canonical_repository );
+		$canonical_preflight  = $this->canonical_mutation_transaction_preflight->evaluate(
+			$canonical_repository,
+			$canonical_execution
+		);
 
 		return new OfflinePushRouteProcessingResult(
 			$resolution,
@@ -157,7 +165,8 @@ final class OfflinePushRoutePersistenceProvider {
 			$canonical,
 			$canonical_sql,
 			$canonical_repository,
-			$canonical_execution
+			$canonical_execution,
+			$canonical_preflight
 		);
 	}
 
@@ -177,6 +186,7 @@ final class OfflinePushRoutePersistenceProvider {
 				&& $this->table_prefix_ready(),
 			'canonical_mutation_repository_ready'         => method_exists( $this->canonical_mutation_repository, 'stage' ),
 			'canonical_mutation_repository_execution_gate_ready' => method_exists( $this->canonical_mutation_execution_gate, 'evaluate' ),
+			'canonical_mutation_transaction_preflight_ready' => method_exists( $this->canonical_mutation_transaction_preflight, 'evaluate' ),
 			'server_snapshot_provider_configured'         => is_callable( $this->server_snapshots_provider ),
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
 			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
@@ -191,6 +201,8 @@ final class OfflinePushRoutePersistenceProvider {
 			'canonical_mutation_repository_execution_deferred' => true,
 			'canonical_mutation_repository_execution_gate_deferred' => true,
 			'canonical_mutation_repository_transaction_deferred' => true,
+			'canonical_mutation_transaction_preflight_deferred' => true,
+			'canonical_mutation_transaction_execution_deferred' => true,
 			'canonical_mutation_repository_deferred'      => true,
 			'canonical_mutations_deferred'                => true,
 		);
@@ -204,6 +216,7 @@ final class OfflinePushRoutePersistenceProvider {
 			&& method_exists( $this->canonical_mutation_query_builder, 'build' )
 			&& method_exists( $this->canonical_mutation_repository, 'stage' )
 			&& method_exists( $this->canonical_mutation_execution_gate, 'evaluate' )
+			&& method_exists( $this->canonical_mutation_transaction_preflight, 'evaluate' )
 			&& method_exists( $this->persistence_repository, 'persist' )
 			&& $this->table_prefix_ready()
 			&& is_callable( $this->server_snapshots_provider );

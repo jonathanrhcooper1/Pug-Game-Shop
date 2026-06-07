@@ -129,6 +129,8 @@ Before major database migrations:
 - Canonical repository execution gate metadata reports blocked status, block
   reasons, and transaction-adapter deferral while canonical writes remain
   disabled.
+- Canonical transaction preflight metadata reports ready/blocked mutation
+  counts and confirms event/credit write plans remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

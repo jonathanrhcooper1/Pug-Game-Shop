@@ -349,6 +349,10 @@ Version `0.126.0` adds a canonical mutation repository execution gate after
 that staging result. Staged push responses now report blocked, ready, or
 rejected execution status plus block reasons and transaction-adapter deferral,
 so canonical writes still cannot run without an explicit future executor path.
+Version `0.127.0` adds transaction preflight after the execution gate. Staged
+push responses now classify canonical query kinds before execution, reporting
+inventory guarded updates as preflight-ready while event registration and
+customer-credit ledger write plans remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

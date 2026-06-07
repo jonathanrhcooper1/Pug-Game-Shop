@@ -19,6 +19,7 @@ use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepository;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryExecutionGate;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationTransactionPreflight;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryPlanner;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsRepository;
@@ -127,6 +128,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePushCanonicalMutationRepository::class, 'stage' );
 		$push_canonical_mutation_execution_gate_ready = $push_canonical_mutation_repository_ready
 			&& method_exists( OfflinePushCanonicalMutationRepositoryExecutionGate::class, 'evaluate' );
+		$push_canonical_mutation_preflight_ready      = $push_canonical_mutation_execution_gate_ready
+			&& method_exists( OfflinePushCanonicalMutationTransactionPreflight::class, 'evaluate' );
 		$pull_handler_factory           = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
 		$pull_handler_dependencies      = $pull_handler_factory->readiness_summary();
 		$push_handler_factory           = $this->push_handler_factory ?? new OfflinePushRouteHandlerFactory();
@@ -189,10 +192,13 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_canonical_mutation_sql_template_ready' => $push_canonical_mutation_sql_ready,
 			'push_canonical_mutation_repository_ready'   => $push_canonical_mutation_repository_ready,
 			'push_canonical_mutation_repository_execution_gate_ready' => $push_canonical_mutation_execution_gate_ready,
+			'push_canonical_mutation_transaction_preflight_ready' => $push_canonical_mutation_preflight_ready,
 			'push_canonical_mutation_planning_deferred'  => true,
 			'push_canonical_mutation_sql_execution_deferred' => true,
 			'push_canonical_mutation_repository_execution_gate_deferred' => true,
 			'push_canonical_mutation_repository_transaction_deferred' => true,
+			'push_canonical_mutation_transaction_preflight_deferred' => true,
+			'push_canonical_mutation_transaction_execution_deferred' => true,
 			'push_canonical_mutation_repository_deferred' => true,
 			'push_snapshot_query_planner_ready'          => $push_snapshot_planner_ready,
 			'push_snapshot_query_sql_ready'              => $push_snapshot_sql_ready,
@@ -239,6 +245,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_handler_canonical_repository_execution_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_repository_execution_deferred'] ?? true ),
 			'push_handler_canonical_repository_execution_gate_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_repository_execution_gate_deferred'] ?? true ),
 			'push_handler_canonical_repository_transaction_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_repository_transaction_deferred'] ?? true ),
+			'push_handler_canonical_transaction_preflight_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_transaction_preflight_deferred'] ?? true ),
+			'push_handler_canonical_transaction_execution_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_mutation_transaction_execution_deferred'] ?? true ),
 			'push_handler_canonical_repository_deferred' => true === ( $push_handler_dependencies['route_connected_canonical_repository_deferred'] ?? true ),
 			'push_handler_canonical_writes_deferred'  => true === ( $push_handler_dependencies['route_connected_canonical_writes_deferred'] ?? true ),
 			'push_handler_route_queue_writes_deferred'   => true === ( $push_handler_dependencies['route_connected_queue_writes_deferred'] ?? true ),

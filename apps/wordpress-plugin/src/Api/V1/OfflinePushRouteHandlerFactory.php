@@ -11,6 +11,7 @@ use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepository;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryExecutionGate;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationTransactionPreflight;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
@@ -87,6 +88,7 @@ final class OfflinePushRouteHandlerFactory {
 				null,
 				null,
 				null,
+				null,
 				$database->prefix
 			)
 		);
@@ -158,6 +160,7 @@ final class OfflinePushRouteHandlerFactory {
 				&& $table_prefix_ready,
 			'canonical_mutation_repository_ready'         => method_exists( OfflinePushCanonicalMutationRepository::class, 'stage' ),
 			'canonical_mutation_repository_execution_gate_ready' => method_exists( OfflinePushCanonicalMutationRepositoryExecutionGate::class, 'evaluate' ),
+			'canonical_mutation_transaction_preflight_ready' => method_exists( OfflinePushCanonicalMutationTransactionPreflight::class, 'evaluate' ),
 			'route_connected_canonical_mutation_planning_deferred' => ! $route_dependencies_ready,
 			'route_connected_canonical_mutation_sql_planning_deferred' => ! $route_dependencies_ready,
 			'route_connected_canonical_mutation_sql_execution_deferred' => true,
@@ -165,6 +168,8 @@ final class OfflinePushRouteHandlerFactory {
 			'route_connected_canonical_mutation_repository_execution_deferred' => true,
 			'route_connected_canonical_mutation_repository_execution_gate_deferred' => true,
 			'route_connected_canonical_mutation_repository_transaction_deferred' => true,
+			'route_connected_canonical_mutation_transaction_preflight_deferred' => true,
+			'route_connected_canonical_mutation_transaction_execution_deferred' => true,
 			'route_connected_canonical_repository_deferred' => true,
 			'persistence_provider_configured'             => $route_dependencies_ready,
 			'route_connected_handler_ready'               => $route_dependencies_ready,

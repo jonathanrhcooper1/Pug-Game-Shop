@@ -161,6 +161,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['canonical_mutation_sql_ready'] );
 			$this->assert_true( $summary['canonical_mutation_repository_ready'] );
 			$this->assert_true( $summary['canonical_mutation_repository_execution_gate_ready'] );
+			$this->assert_true( $summary['canonical_mutation_transaction_preflight_ready'] );
 			$this->assert_false( $summary['route_connected_canonical_mutation_planning_deferred'] );
 			$this->assert_false( $summary['route_connected_canonical_mutation_sql_planning_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_sql_execution_deferred'] );
@@ -168,6 +169,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['route_connected_canonical_mutation_repository_execution_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_repository_execution_gate_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_true( $summary['route_connected_canonical_mutation_transaction_preflight_deferred'] );
+			$this->assert_true( $summary['route_connected_canonical_mutation_transaction_execution_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_repository_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_writes_deferred'] );
 			$this->assert_true( $summary['route_connected_handler_ready'] );
@@ -223,6 +226,23 @@ namespace TCGStorePlatform\Tests\Unit {
 				)
 			);
 			$this->assert_true( $response['data']['canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_same( 'blocked', $response['data']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_true( $response['data']['canonical_mutation_transaction_preflight_blocked'] );
+			$this->assert_false( $response['data']['canonical_mutation_transaction_preflight_ready'] );
+			$this->assert_same( 1, $response['data']['canonical_mutation_transaction_preflight_ready_count'] );
+			$this->assert_same( 0, $response['data']['canonical_mutation_transaction_preflight_blocked_count'] );
+			$this->assert_same(
+				array( 'op-push-route-01' ),
+				$response['data']['canonical_mutation_transaction_preflight_operation_ids']
+			);
+			$this->assert_true(
+				in_array(
+					'canonical_mutation_repository_execution_disabled',
+					$response['data']['canonical_mutation_transaction_preflight_block_reasons'],
+					true
+				)
+			);
+			$this->assert_true( $response['data']['canonical_mutation_transaction_execution_deferred'] );
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 1, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
@@ -234,6 +254,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_execution_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_execution_gate_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_transaction_preflight_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_transaction_execution_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutations_deferred'] );
 			$this->assert_same( 1, $response['meta']['canonical_mutation_count'] );
@@ -256,6 +278,11 @@ namespace TCGStorePlatform\Tests\Unit {
 					true
 				)
 			);
+			$this->assert_same( 'blocked', $response['meta']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_true( $response['meta']['canonical_mutation_transaction_preflight_blocked'] );
+			$this->assert_false( $response['meta']['canonical_mutation_transaction_preflight_ready'] );
+			$this->assert_same( 1, $response['meta']['canonical_mutation_transaction_preflight_ready_count'] );
+			$this->assert_same( 0, $response['meta']['canonical_mutation_transaction_preflight_blocked_count'] );
 			$this->assert_same( 1, $response['meta']['audit']['canonical_mutation_count'] );
 			$this->assert_same( 1, $response['meta']['audit']['canonical_mutation_sql_query_count'] );
 			$this->assert_same( 6, $response['meta']['audit']['canonical_mutation_sql_prepare_arg_count'] );
@@ -267,6 +294,11 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same(
 				'offline_push_canonical_mutation_repository_execution_gate',
 				$response['meta']['audit']['canonical_mutation_repository_execution']['action']
+			);
+			$this->assert_same( 'blocked', $response['meta']['audit']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_same(
+				'offline_push_canonical_mutation_transaction_preflight',
+				$response['meta']['audit']['canonical_mutation_transaction_preflight']['action']
 			);
 			$this->assert_same( 3, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
@@ -341,6 +373,18 @@ namespace TCGStorePlatform\Tests\Unit {
 					true
 				)
 			);
+			$this->assert_same( 'blocked', $response['data']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_true( $response['data']['canonical_mutation_transaction_preflight_blocked'] );
+			$this->assert_same( 0, $response['data']['canonical_mutation_transaction_preflight_ready_count'] );
+			$this->assert_same( 0, $response['data']['canonical_mutation_transaction_preflight_blocked_count'] );
+			$this->assert_same( array(), $response['data']['canonical_mutation_transaction_preflight_operation_ids'] );
+			$this->assert_true(
+				in_array(
+					'canonical_mutation_repository_no_mutation_queries',
+					$response['data']['canonical_mutation_transaction_preflight_block_reasons'],
+					true
+				)
+			);
 			$this->assert_same( 'persisted', $response['meta']['persistence_status'] );
 			$this->assert_same( 0, $response['meta']['operation_rows_affected'] );
 			$this->assert_same( 0, $response['meta']['conflict_rows_affected'] );
@@ -355,6 +399,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_execution_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_execution_gate_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_transaction_preflight_deferred'] );
+			$this->assert_true( $response['meta']['push_canonical_mutation_transaction_execution_deferred'] );
 			$this->assert_true( $response['meta']['push_canonical_mutation_repository_deferred'] );
 			$this->assert_same( 0, $response['meta']['canonical_mutation_sql_query_count'] );
 			$this->assert_same( array(), $response['meta']['canonical_mutation_sql_operation_ids'] );
@@ -367,6 +413,11 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'blocked', $response['meta']['canonical_mutation_repository_execution_status'] );
 			$this->assert_true( $response['meta']['canonical_mutation_repository_execution_blocked'] );
 			$this->assert_false( $response['meta']['canonical_mutation_repository_execution_ready'] );
+			$this->assert_same( 'blocked', $response['meta']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_true( $response['meta']['canonical_mutation_transaction_preflight_blocked'] );
+			$this->assert_false( $response['meta']['canonical_mutation_transaction_preflight_ready'] );
+			$this->assert_same( 0, $response['meta']['canonical_mutation_transaction_preflight_ready_count'] );
+			$this->assert_same( 0, $response['meta']['canonical_mutation_transaction_preflight_blocked_count'] );
 			$this->assert_same( 2, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 1, $database->get_results_count );
@@ -396,6 +447,14 @@ namespace TCGStorePlatform\Tests\Unit {
 				in_array(
 					'canonical_mutation_repository_no_mutation_queries',
 					$response['meta']['audit']['canonical_mutation_repository_execution_block_reasons'],
+					true
+				)
+			);
+			$this->assert_same( 'blocked', $response['meta']['audit']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_true(
+				in_array(
+					'canonical_mutation_repository_no_mutation_queries',
+					$response['meta']['audit']['canonical_mutation_transaction_preflight_block_reasons'],
 					true
 				)
 			);
@@ -522,6 +581,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['push_handler_canonical_repository_execution_deferred'] );
 			$this->assert_true( $summary['push_handler_canonical_repository_execution_gate_deferred'] );
 			$this->assert_true( $summary['push_handler_canonical_repository_transaction_deferred'] );
+			$this->assert_true( $summary['push_handler_canonical_transaction_preflight_deferred'] );
+			$this->assert_true( $summary['push_handler_canonical_transaction_execution_deferred'] );
 			$this->assert_true( $summary['push_handler_canonical_repository_deferred'] );
 			$this->assert_true( $summary['push_handler_canonical_writes_deferred'] );
 			$this->assert_false( $summary['push_handler_route_queue_writes_deferred'] );

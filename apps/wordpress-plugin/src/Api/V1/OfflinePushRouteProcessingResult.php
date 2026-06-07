@@ -12,6 +12,7 @@ use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlan;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuildPlan;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryExecutionResult;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryResult;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationTransactionPreflightResult;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepositoryResult;
 
 final class OfflinePushRouteProcessingResult {
@@ -27,7 +28,8 @@ final class OfflinePushRouteProcessingResult {
 		private ?OfflinePushCanonicalMutationPlan $canonical_mutation_plan = null,
 		private ?OfflinePushCanonicalMutationQueryBuildPlan $canonical_mutation_query_build_plan = null,
 		private ?OfflinePushCanonicalMutationRepositoryResult $canonical_mutation_repository_result = null,
-		private ?OfflinePushCanonicalMutationRepositoryExecutionResult $canonical_mutation_repository_execution_result = null
+		private ?OfflinePushCanonicalMutationRepositoryExecutionResult $canonical_mutation_repository_execution_result = null,
+		private ?OfflinePushCanonicalMutationTransactionPreflightResult $canonical_mutation_transaction_preflight_result = null
 	) {
 	}
 
@@ -53,6 +55,10 @@ final class OfflinePushRouteProcessingResult {
 
 	public function canonical_mutation_repository_execution_result(): ?OfflinePushCanonicalMutationRepositoryExecutionResult {
 		return $this->canonical_mutation_repository_execution_result;
+	}
+
+	public function canonical_mutation_transaction_preflight_result(): ?OfflinePushCanonicalMutationTransactionPreflightResult {
+		return $this->canonical_mutation_transaction_preflight_result;
 	}
 
 	/**
@@ -149,6 +155,18 @@ final class OfflinePushRouteProcessingResult {
 			$payload['canonical_mutation_repository_deferred'] = true;
 		}
 
+		if ( null !== $this->canonical_mutation_transaction_preflight_result ) {
+			$payload['canonical_mutation_transaction_preflight_status'] = $this->canonical_mutation_transaction_preflight_result->status();
+			$payload['canonical_mutation_transaction_preflight_blocked'] = $this->canonical_mutation_transaction_preflight_result->is_blocked();
+			$payload['canonical_mutation_transaction_preflight_ready'] = $this->canonical_mutation_transaction_preflight_result->is_ready();
+			$payload['canonical_mutation_transaction_preflight_block_reasons'] = $this->canonical_mutation_transaction_preflight_result->block_reasons();
+			$payload['canonical_mutation_transaction_preflight_errors'] = $this->canonical_mutation_transaction_preflight_result->errors();
+			$payload['canonical_mutation_transaction_preflight_ready_count'] = $this->canonical_mutation_transaction_preflight_result->ready_mutation_count();
+			$payload['canonical_mutation_transaction_preflight_blocked_count'] = $this->canonical_mutation_transaction_preflight_result->blocked_mutation_count();
+			$payload['canonical_mutation_transaction_preflight_operation_ids'] = $this->canonical_mutation_transaction_preflight_result->mutation_operation_ids();
+			$payload['canonical_mutation_transaction_execution_deferred'] = true;
+		}
+
 		return $payload;
 	}
 
@@ -215,6 +233,24 @@ final class OfflinePushRouteProcessingResult {
 			'canonical_mutation_repository_execution_block_reasons' => null !== $this->canonical_mutation_repository_execution_result
 				? $this->canonical_mutation_repository_execution_result->block_reasons()
 				: array(),
+			'canonical_mutation_transaction_preflight_status' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->status()
+				: 'blocked',
+			'canonical_mutation_transaction_preflight_blocked' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->is_blocked()
+				: true,
+			'canonical_mutation_transaction_preflight_ready' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->is_ready()
+				: false,
+			'canonical_mutation_transaction_preflight_block_reasons' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->block_reasons()
+				: array(),
+			'canonical_mutation_transaction_preflight_ready_count' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->ready_mutation_count()
+				: 0,
+			'canonical_mutation_transaction_preflight_blocked_count' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->blocked_mutation_count()
+				: 0,
 			'batch_resolution'                        => $this->resolution_plan->audit_payload(),
 			'persistence'                             => $this->persistence_result->audit_payload(),
 			'canonical_mutation_planning'             => null !== $this->canonical_mutation_plan
@@ -228,6 +264,9 @@ final class OfflinePushRouteProcessingResult {
 				: array(),
 			'canonical_mutation_repository_execution' => null !== $this->canonical_mutation_repository_execution_result
 				? $this->canonical_mutation_repository_execution_result->audit_payload()
+				: array(),
+			'canonical_mutation_transaction_preflight' => null !== $this->canonical_mutation_transaction_preflight_result
+				? $this->canonical_mutation_transaction_preflight_result->audit_payload()
 				: array(),
 			'permission'                              => $this->permission_audit,
 			'default_route_execution_deferred'        => true,

@@ -123,6 +123,8 @@ final class OfflinePushRouteHandler {
 			'push_canonical_mutation_repository_execution_deferred' => true,
 			'push_canonical_mutation_repository_execution_gate_deferred' => true,
 			'push_canonical_mutation_repository_transaction_deferred' => true,
+			'push_canonical_mutation_transaction_preflight_deferred' => true,
+			'push_canonical_mutation_transaction_execution_deferred' => true,
 			'push_canonical_mutation_repository_deferred' => true,
 			'push_canonical_mutations_deferred'  => true,
 			'route_still_gated'                  => true,
@@ -179,6 +181,24 @@ final class OfflinePushRouteHandler {
 			'canonical_mutation_repository_execution_block_reasons' => null !== $route_result->canonical_mutation_repository_execution_result()
 				? $route_result->canonical_mutation_repository_execution_result()->block_reasons()
 				: array(),
+			'canonical_mutation_transaction_preflight_status' => null !== $route_result->canonical_mutation_transaction_preflight_result()
+				? $route_result->canonical_mutation_transaction_preflight_result()->status()
+				: 'blocked',
+			'canonical_mutation_transaction_preflight_blocked' => null !== $route_result->canonical_mutation_transaction_preflight_result()
+				? $route_result->canonical_mutation_transaction_preflight_result()->is_blocked()
+				: true,
+			'canonical_mutation_transaction_preflight_ready' => null !== $route_result->canonical_mutation_transaction_preflight_result()
+				? $route_result->canonical_mutation_transaction_preflight_result()->is_ready()
+				: false,
+			'canonical_mutation_transaction_preflight_block_reasons' => null !== $route_result->canonical_mutation_transaction_preflight_result()
+				? $route_result->canonical_mutation_transaction_preflight_result()->block_reasons()
+				: array(),
+			'canonical_mutation_transaction_preflight_ready_count' => null !== $route_result->canonical_mutation_transaction_preflight_result()
+				? $route_result->canonical_mutation_transaction_preflight_result()->ready_mutation_count()
+				: 0,
+			'canonical_mutation_transaction_preflight_blocked_count' => null !== $route_result->canonical_mutation_transaction_preflight_result()
+				? $route_result->canonical_mutation_transaction_preflight_result()->blocked_mutation_count()
+				: 0,
 			'audit'                              => $route_result->audit_payload(),
 		);
 	}
