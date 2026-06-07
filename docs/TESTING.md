@@ -501,6 +501,11 @@
   disabled-by-default webhooks, event ingestion/status, reconciliation,
   conflict review/resolution, fee snapshots, permissions, workflow labels, and
   route/provider/capture deferral metadata.
+- Local unit and WordPress smoke coverage now include POS/payment route
+  bootstrapper wiring for disabled feature-gate deferral, gated current route
+  plans, future-ready registrar execution, feature-blocked future-ready plans,
+  and the `rest_api_init` hook while default POS/payment REST routes remain
+  unregistered.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

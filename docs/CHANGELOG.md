@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.143.0] - 2026-06-07
+
+### Added
+
+- POS/payment route bootstrapper orchestration wired to WordPress
+  `rest_api_init` after the offline bootstrapper.
+- Unit coverage proving disabled feature gates, gated current plans,
+  future-ready route plans, and feature-blocked future plans do not call the
+  registrar unless bootstrap status is ready.
+- WordPress smoke coverage proving the POS/payment route bootstrapper hook is
+  registered while default POS/payment REST routes remain absent.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.142.0] - 2026-06-06
 
 ### Added

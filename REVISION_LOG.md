@@ -3,6 +3,82 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Route Bootstrapper Wiring
+
+### What Changed
+
+- Added `PosPaymentRouteBootstrapper` for POS/payment route bootstrap
+  orchestration.
+- Wired the POS/payment route bootstrapper to WordPress `rest_api_init` at
+  priority `21`, after the offline route bootstrapper.
+- Added unit coverage proving the bootstrapper does not call the registrar
+  while the POS/payment feature flag is disabled, while current route plans are
+  gated, or while a future-ready plan is feature-blocked.
+- Added unit coverage proving future ready registration plans call the injected
+  registrar exactly when the feature flag and route plan are ready.
+- Added WordPress smoke coverage proving the hook is registered and default
+  POS/payment routes remain absent after `rest_api_init`.
+- Updated project, plugin, and offline app package versions to `0.143.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The POS/payment route bootstrap status can now be inspected, but the actual
+bootstrap hook also needs to exist in WordPress so staging can verify lifecycle
+wiring before any live route is allowed. This revision adds that hook while
+preserving the current zero-route default state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteBootstrapperTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteBootstrapperTest` coverage for disabled feature-gate
+  deferral, gated current route plans, future-ready registrar execution, and
+  feature-blocked future-ready plans.
+- WordPress smoke coverage for the POS/payment `rest_api_init` bootstrapper
+  hook while POS/payment REST routes remain unregistered by default.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment bootstrapper wiring, tests, and
+  version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Route Bootstrap Status
 
 ### What Changed

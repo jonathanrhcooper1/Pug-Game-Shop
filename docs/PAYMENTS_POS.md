@@ -316,6 +316,11 @@ route counts, registerable route counts, route keys, registration deferral, and
 bootstrap block reasons. Current defaults keep bootstrap blocked with zero
 registerable POS/payment routes.
 
+The POS/payment route bootstrapper is now registered on WordPress
+`rest_api_init` after the offline route bootstrapper. It calls the guarded
+registrar only when bootstrap status is ready, so default staging checks can
+verify lifecycle wiring while POS/payment REST routes remain absent.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

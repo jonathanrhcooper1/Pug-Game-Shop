@@ -9,6 +9,7 @@
  */
 
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
+use TCGStorePlatform\Api\V1\PosPaymentRouteBootstrapper;
 use TCGStorePlatform\Auth\RoleManager;
 use TCGStorePlatform\Migrations\BuylistSchema;
 use TCGStorePlatform\Migrations\CustomerCreditSchema;
@@ -88,7 +89,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.142.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.143.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 2 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -129,6 +130,10 @@ $assert(
 	$has_hook_callback( 'rest_api_init', OfflineRouteBootstrapper::class, 'bootstrap_current_routes', 20 ),
 	'Offline route bootstrapper was not registered on rest_api_init.'
 );
+$assert(
+	$has_hook_callback( 'rest_api_init', PosPaymentRouteBootstrapper::class, 'bootstrap_current_routes', 21 ),
+	'POS/payment route bootstrapper was not registered on rest_api_init.'
+);
 
 wp_set_current_user( 1 );
 do_action( 'rest_api_init' );
@@ -149,7 +154,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.142.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.143.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );

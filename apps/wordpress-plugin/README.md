@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.142.0`
+Version: `0.143.0`
 
 ## Implemented Features
 
@@ -116,6 +116,8 @@ Version: `0.142.0`
   current POS/payment REST route registration disabled by default.
 - POS/payment route bootstrap planning and health/admin status presentation
   for blocked/gated/ready registration orchestration diagnostics.
+- POS/payment route bootstrapper wiring on `rest_api_init` while keeping
+  current POS/payment REST routes unregistered by default.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

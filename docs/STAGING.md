@@ -191,5 +191,7 @@ Before major database migrations:
 - System status and authenticated health report POS/payment route bootstrap
   status with zero registerable routes by default, blocked feature-gate
   reasons, and registration deferral.
+- The POS/payment route bootstrapper hook is registered on `rest_api_init`,
+  but it remains inert by default and does not expose POS/payment REST routes.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

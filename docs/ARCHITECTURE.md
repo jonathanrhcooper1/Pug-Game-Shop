@@ -229,7 +229,9 @@ registration. With current defaults, it registers no POS/payment routes.
 POS/payment route bootstrap status now mirrors the offline bootstrap status
 pattern for health/admin diagnostics, reporting blocked, gated, or ready
 registration orchestration with planned/registerable route counts and block
-reasons. It remains inspection-only and does not register POS/payment routes.
+reasons. The POS/payment route bootstrapper is wired to WordPress
+`rest_api_init`, but it only calls the guarded registrar when bootstrap status
+is ready; current defaults still register no POS/payment routes.
 
 ## System Diagram
 
