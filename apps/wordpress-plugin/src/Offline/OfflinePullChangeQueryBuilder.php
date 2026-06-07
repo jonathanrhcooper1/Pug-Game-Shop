@@ -52,7 +52,8 @@ final class OfflinePullChangeQueryBuilder {
 		$sql_queries = array();
 
 		foreach ( $domain_queries as $domain => $domain_query ) {
-			$domain                      = strtolower( trim( (string) $domain ) );
+			$domain = strtolower( trim( (string) $domain ) );
+
 			$sql_queries[ $domain ] = $this->build_domain_query( $domain, $domain_query );
 		}
 
@@ -76,7 +77,7 @@ final class OfflinePullChangeQueryBuilder {
 		$domain    = strtolower( trim( (string) ( $domain_query['domain'] ?? $domain_key ) ) );
 		$contracts = OfflinePullChangeQueryPlanner::domain_contracts();
 
-		if ( $domain !== strtolower( trim( $domain_key ) ) ) {
+		if ( strtolower( trim( $domain_key ) ) !== $domain ) {
 			$errors[] = 'domain_mismatch';
 		}
 
@@ -101,7 +102,7 @@ final class OfflinePullChangeQueryBuilder {
 		);
 		$expected_table    = $change_query_plan->table_prefix() . (string) $contract['table'];
 
-		if ( $expected_table !== ( $domain_query['table_name'] ?? '' ) ) {
+		if ( ( $domain_query['table_name'] ?? '' ) !== $expected_table ) {
 			$errors[] = 'table_unsupported';
 		}
 
@@ -109,7 +110,7 @@ final class OfflinePullChangeQueryBuilder {
 			$errors[] = 'table_identifier_invalid';
 		}
 
-		if ( $row_id_column !== ( $domain_query['row_id_column'] ?? '' ) ) {
+		if ( ( $domain_query['row_id_column'] ?? '' ) !== $row_id_column ) {
 			$errors[] = 'row_id_column_unsupported';
 		}
 
@@ -133,7 +134,7 @@ final class OfflinePullChangeQueryBuilder {
 			$errors[] = 'payload_fields_invalid';
 		}
 
-		if ( $expected_where !== ( $domain_query['where'] ?? array() ) ) {
+		if ( ( $domain_query['where'] ?? array() ) !== $expected_where ) {
 			$errors[] = 'where_unsupported';
 		}
 
@@ -141,7 +142,7 @@ final class OfflinePullChangeQueryBuilder {
 			$errors[] = 'where_invalid';
 		}
 
-		if ( $expected_order_by !== ( $domain_query['order_by'] ?? array() ) ) {
+		if ( ( $domain_query['order_by'] ?? array() ) !== $expected_order_by ) {
 			$errors[] = 'order_by_unsupported';
 		}
 
@@ -222,6 +223,7 @@ final class OfflinePullChangeQueryBuilder {
 			' ORDER BY `updated_at` ASC, %s ASC LIMIT %%d',
 			$this->quote_identifier( (string) $domain_query['row_id_column'] )
 		);
+
 		$prepare_args[] = (int) $domain_query['limit'];
 
 		return array(
