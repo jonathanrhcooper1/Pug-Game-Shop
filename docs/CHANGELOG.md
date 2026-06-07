@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.133.0] - 2026-06-06
+
+### Added
+
+- POS/payment log transaction preflight and result contract for staged POS sync
+  and payment provider log inserts after repository staging and execution-gate
+  evaluation.
+- Preflight metadata for ready/blocked/rejected status, inherited execution
+  gate blocks, unsupported query-kind blocking, log counts, idempotency keys,
+  zero affected rows, and deferred transaction flags.
+- Unit coverage for inherited default execution blocks, explicitly ready
+  supported inserts, unsupported query-kind blocking, and rejected repository
+  staging.
+
+### Not Added
+
+- Live POS/payment transaction execution, `$wpdb` inserts, Square/POS network
+  calls, production payment capture, provider inventory writes, payment webhook
+  route registration, WooCommerce gateway capture, and route-connected
+  POS/payment write services remain disabled.
+
 ## [0.132.0] - 2026-06-06
 
 ### Added

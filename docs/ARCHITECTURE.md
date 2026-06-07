@@ -185,6 +185,9 @@ deferred repository result metadata, and the execution gate reports
 blocked/ready/rejected status before any future `$wpdb` executor can run.
 Provider capture, provider inventory writes, route-connected writes, and live
 repository execution remain disabled.
+The POS/payment transaction preflight follows that gate to classify supported
+POS sync and payment provider insert plans, inherit gate blocks, and reject
+unsupported query kinds before any transaction executor can exist.
 
 ## System Diagram
 

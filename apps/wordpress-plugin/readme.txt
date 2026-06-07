@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.132.0
+Stable tag: 0.133.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -305,6 +305,9 @@ execution.
 Phase 8.6 adds POS/payment log repository staging and execution-gate metadata
 while keeping live repository execution, provider capture, and inventory writes
 disabled.
+Phase 8.7 adds POS/payment transaction preflight metadata while keeping
+transaction execution, repository inserts, provider capture, and inventory
+writes disabled.
 Phase 3.3 adds ScryDex sync page processing for normalized upsert planning and
 checkpoint advancement.
 Phase 3.4 adds ScryDex reference-card persistence planning for inserts, updates,
@@ -320,6 +323,15 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.133.0 =
+
+* Added POS/payment transaction preflight metadata for staged POS sync and
+  payment provider log insert results.
+* Added coverage for inherited execution-gate blocks, explicit ready states,
+  unsupported query-kind blocking, and rejected repository staging.
+* Kept transaction execution, live repository inserts, provider capture,
+  provider inventory writes, and route-connected POS/payment writes disabled.
 
 = 0.132.0 =
 

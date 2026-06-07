@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.132.0`
+Version: `0.133.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -64,6 +64,9 @@ POS/payment repository staging and execution-gate metadata now report deferred
 POS/payment log write results, explicit block reasons, zero affected rows, and
 transaction-adapter deferral while repository execution, provider capture, and
 inventory writes remain disabled.
+POS/payment transaction preflight now classifies staged POS sync and payment
+provider log inserts after the execution gate so unsupported query kinds and
+gate blocks are visible before any future transaction executor can run.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is

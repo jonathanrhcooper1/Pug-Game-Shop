@@ -158,5 +158,8 @@ Before major database migrations:
 - POS/payment repository staging and execution-gate metadata report deferred
   log writes, zero affected rows, and blocked execution by default without
   live repository inserts, provider capture, or inventory writes.
+- POS/payment transaction preflight metadata reports supported insert
+  readiness, inherited gate blocks, unsupported query-kind blocks, zero
+  affected rows, and deferred transaction execution.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

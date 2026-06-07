@@ -149,6 +149,22 @@ This layer still does not call `$wpdb`, insert rows, call providers, capture
 payments, mutate inventory, register webhook routes, or enable WooCommerce
 gateway capture.
 
+## Transaction Preflight
+
+The POS/payment transaction preflight evaluates repository staging results
+after the execution gate. It reports:
+
+- POS sync and payment provider log counts.
+- Ready, blocked, and rejected status.
+- Inherited execution-gate block reasons.
+- Unsupported query-kind blocks before a future executor can run.
+- Idempotency keys, zero affected rows, and transaction-deferred metadata.
+
+Supported preflight query kinds are `pos_sync_insert` and
+`payment_provider_insert`. Even when these are preflight-ready, transaction
+execution, repository inserts, provider capture, provider inventory writes, and
+route-connected POS/payment writes remain disabled.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

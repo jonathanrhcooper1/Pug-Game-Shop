@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.132.0`
+Version: `0.133.0`
 
 ## Implemented Features
 
@@ -85,6 +85,9 @@ Version: `0.132.0`
   POS sync/payment provider writes, explicit block reasons, transaction
   adapter deferral, and zero affected rows while live execution remains
   disabled.
+- POS/payment transaction preflight metadata for staged log inserts, inherited
+  execution-gate blocks, unsupported query-kind blocking, idempotency keys, and
+  zero affected rows while transaction execution remains disabled.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

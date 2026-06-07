@@ -461,6 +461,10 @@
   execution-gate metadata for accepted staged plans, empty valid plans, invalid
   query-plan rejection, default blocked gates, explicitly ready gates, no-query
   blocking, and failed staging rejection.
+- Local unit coverage now includes POS/payment transaction preflight metadata
+  for inherited execution-gate blocks, explicitly ready supported inserts,
+  unsupported query-kind blocking, idempotency keys, zero affected rows, and
+  rejected repository staging.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.
