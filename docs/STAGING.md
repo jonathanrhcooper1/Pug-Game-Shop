@@ -123,6 +123,9 @@ Before major database migrations:
   operation IDs, prepare-argument counts, and zero affected rows while
   inventory, event, credit-ledger, TopDeck, and queue replay writes remain
   deferred.
+- Explicitly enabled staged push responses expose deferred canonical
+  repository status for fresh and replayed operations while canonical
+  repository execution remains deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

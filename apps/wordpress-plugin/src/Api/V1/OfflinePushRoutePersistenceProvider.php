@@ -11,6 +11,7 @@ use RuntimeException;
 use TCGStorePlatform\Offline\OfflinePushBatchResolver;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepository;
 use TCGStorePlatform\Offline\OfflinePushPayload;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
@@ -23,6 +24,7 @@ final class OfflinePushRoutePersistenceProvider {
 	private OfflinePushPersistencePlanner $persistence_planner;
 	private OfflinePushCanonicalMutationPlanner $canonical_mutation_planner;
 	private OfflinePushCanonicalMutationQueryBuilder $canonical_mutation_query_builder;
+	private OfflinePushCanonicalMutationRepository $canonical_mutation_repository;
 	private string $table_prefix;
 
 	/**
@@ -56,6 +58,7 @@ final class OfflinePushRoutePersistenceProvider {
 		?callable $existing_operation_rows_provider = null,
 		?OfflinePushCanonicalMutationPlanner $canonical_mutation_planner = null,
 		?OfflinePushCanonicalMutationQueryBuilder $canonical_mutation_query_builder = null,
+		?OfflinePushCanonicalMutationRepository $canonical_mutation_repository = null,
 		string $table_prefix = ''
 	) {
 		$this->permission_resolver              = $permission_resolver;
@@ -64,6 +67,7 @@ final class OfflinePushRoutePersistenceProvider {
 		$this->persistence_planner              = $persistence_planner ?? new OfflinePushPersistencePlanner();
 		$this->canonical_mutation_planner       = $canonical_mutation_planner ?? new OfflinePushCanonicalMutationPlanner();
 		$this->canonical_mutation_query_builder = $canonical_mutation_query_builder ?? new OfflinePushCanonicalMutationQueryBuilder();
+		$this->canonical_mutation_repository    = $canonical_mutation_repository ?? new OfflinePushCanonicalMutationRepository();
 		$this->table_prefix                     = trim( $table_prefix );
 		$this->server_time_provider             = $server_time_provider;
 		$this->server_snapshots_provider        = $server_snapshots_provider;
@@ -138,6 +142,7 @@ final class OfflinePushRoutePersistenceProvider {
 			$canonical,
 			$this->table_prefix
 		);
+		$canonical_repository = $this->canonical_mutation_repository->stage( $canonical_sql );
 
 		return new OfflinePushRouteProcessingResult(
 			$resolution,
@@ -145,7 +150,8 @@ final class OfflinePushRoutePersistenceProvider {
 			$permission->audit_payload(),
 			$plan->operation_replay_rows(),
 			$canonical,
-			$canonical_sql
+			$canonical_sql,
+			$canonical_repository
 		);
 	}
 
@@ -163,6 +169,7 @@ final class OfflinePushRoutePersistenceProvider {
 			'canonical_mutation_planner_ready'            => method_exists( $this->canonical_mutation_planner, 'plan' ),
 			'canonical_mutation_sql_ready'                => method_exists( $this->canonical_mutation_query_builder, 'build' )
 				&& $this->table_prefix_ready(),
+			'canonical_mutation_repository_ready'         => method_exists( $this->canonical_mutation_repository, 'stage' ),
 			'server_snapshot_provider_configured'         => is_callable( $this->server_snapshots_provider ),
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
 			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
@@ -173,6 +180,8 @@ final class OfflinePushRoutePersistenceProvider {
 			'canonical_mutation_planning_deferred'        => false,
 			'canonical_mutation_sql_planning_deferred'    => false,
 			'canonical_mutation_sql_execution_deferred'   => true,
+			'canonical_mutation_repository_planning_deferred' => false,
+			'canonical_mutation_repository_execution_deferred' => true,
 			'canonical_mutation_repository_deferred'      => true,
 			'canonical_mutations_deferred'                => true,
 		);
@@ -184,6 +193,7 @@ final class OfflinePushRoutePersistenceProvider {
 			&& method_exists( $this->persistence_planner, 'plan' )
 			&& method_exists( $this->canonical_mutation_planner, 'plan' )
 			&& method_exists( $this->canonical_mutation_query_builder, 'build' )
+			&& method_exists( $this->canonical_mutation_repository, 'stage' )
 			&& method_exists( $this->persistence_repository, 'persist' )
 			&& $this->table_prefix_ready()
 			&& is_callable( $this->server_snapshots_provider );

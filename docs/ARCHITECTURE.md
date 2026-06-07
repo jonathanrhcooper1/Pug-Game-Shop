@@ -152,6 +152,10 @@ A deferred canonical mutation repository scaffold now converts valid SQL plans
 into repository result/audit metadata with zero affected rows. This establishes
 the next boundary for future guarded writes without executing inventory, event,
 customer-credit, TopDeck, or queue replay mutations.
+Explicitly enabled staged push routes now include that repository result in
+response payloads, route meta, and route audits. Fresh accepted operations
+report one deferred repository query; replayed duplicate operations report a
+deferred zero-query repository result.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

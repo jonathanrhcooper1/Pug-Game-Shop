@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.124.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.125.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.124.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.125.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -243,6 +243,9 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handl
 $assert( false === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_mutation_sql_ready'] ?? null ), 'Offline push handler canonical mutation SQL planning should remain unconfigured by default.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_mutation_sql_planning_deferred'] ?? null ), 'Offline push handler canonical mutation SQL planning should remain deferred by default.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_mutation_sql_execution_deferred'] ?? null ), 'Offline push handler canonical mutation SQL execution should remain deferred.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_repository_ready'] ?? null ), 'Offline push handler canonical repository should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_repository_staging_deferred'] ?? null ), 'Offline push handler canonical repository staging should remain deferred by default.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_repository_execution_deferred'] ?? null ), 'Offline push handler canonical repository execution should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_repository_deferred'] ?? null ), 'Offline push handler canonical mutation repository should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_canonical_writes_deferred'] ?? null ), 'Offline push handler canonical writes should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_handler_route_queue_writes_deferred'] ?? null ), 'Offline push handler route queue writes should remain deferred.' );

@@ -119,6 +119,8 @@ final class OfflinePushRouteHandler {
 			'push_canonical_mutation_planning_deferred' => null === $route_result->canonical_mutation_plan(),
 			'push_canonical_mutation_sql_planning_deferred' => null === $route_result->canonical_mutation_query_build_plan(),
 			'push_canonical_mutation_sql_execution_deferred' => true,
+			'push_canonical_mutation_repository_staging_deferred' => null === $route_result->canonical_mutation_repository_result(),
+			'push_canonical_mutation_repository_execution_deferred' => true,
 			'push_canonical_mutation_repository_deferred' => true,
 			'push_canonical_mutations_deferred'  => true,
 			'route_still_gated'                  => true,
@@ -147,6 +149,21 @@ final class OfflinePushRouteHandler {
 			'canonical_mutation_sql_operation_ids' => $this->canonical_mutation_sql_operation_ids( $route_result ),
 			'canonical_mutation_sql_prepare_arg_count' => null !== $route_result->canonical_mutation_query_build_plan()
 				? $route_result->canonical_mutation_query_build_plan()->prepare_arg_count()
+				: 0,
+			'canonical_mutation_repository_status' => null !== $route_result->canonical_mutation_repository_result()
+				? $route_result->canonical_mutation_repository_result()->status()
+				: 'deferred',
+			'canonical_mutation_repository_query_count' => null !== $route_result->canonical_mutation_repository_result()
+				? $route_result->canonical_mutation_repository_result()->mutation_query_count()
+				: 0,
+			'canonical_mutation_repository_operation_ids' => null !== $route_result->canonical_mutation_repository_result()
+				? $route_result->canonical_mutation_repository_result()->mutation_operation_ids()
+				: array(),
+			'canonical_mutation_repository_prepare_arg_count' => null !== $route_result->canonical_mutation_repository_result()
+				? $route_result->canonical_mutation_repository_result()->prepare_arg_count()
+				: 0,
+			'canonical_mutation_repository_rows_affected' => null !== $route_result->canonical_mutation_repository_result()
+				? $route_result->canonical_mutation_repository_result()->rows_affected()
 				: 0,
 			'audit'                              => $route_result->audit_payload(),
 		);

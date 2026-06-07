@@ -250,6 +250,9 @@ status, operation IDs, prepare-argument counts, zero affected rows, and deferred
 execution flags. It does not execute inventory updates, event registration
 writes, customer-credit ledger writes, TopDeck workers, queue replay workers,
 or production route-connected mutations.
+Route-connected staged push responses now expose that deferred repository
+status and zero-row result metadata, but the repository still does not execute
+canonical mutations or production route-connected writes.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

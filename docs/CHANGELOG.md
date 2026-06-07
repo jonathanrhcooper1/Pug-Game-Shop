@@ -2,6 +2,25 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.125.0] - 2026-06-06
+
+### Added
+
+- Route-connected canonical mutation repository staging metadata for explicitly
+  enabled offline push route responses, route meta, and audits.
+- Fresh and replayed staged push metadata for repository status, query counts,
+  operation IDs, prepare-argument counts, zero affected rows, and deferred
+  execution flags.
+- Route factory, sync readiness, WordPress smoke, and unit coverage for
+  canonical repository staging metadata.
+
+### Not Added
+
+- Canonical mutation repository execution, inventory writes, event registration
+  writes, customer-credit ledger writes, TopDeck workers, queue replay workers,
+  default route execution, live route registration, and production
+  route-connected writes remain deferred.
+
 ## [0.124.0] - 2026-06-06
 
 ### Added

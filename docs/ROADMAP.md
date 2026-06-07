@@ -126,6 +126,7 @@ plus route-connected push canonical mutation planning metadata
 plus push canonical mutation SQL-template planning
 plus route-connected push canonical mutation SQL planning metadata
 plus deferred push canonical mutation repository scaffold
+plus route-connected deferred push canonical mutation repository metadata
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

@@ -340,6 +340,11 @@ staged SQL plans. The repository scaffold reports query counts, operation IDs,
 prepare-argument counts, zero rows affected, and deferred execution flags
 without executing inventory, event, credit-ledger, TopDeck, queue replay, route
 registration, or production writes.
+Version `0.125.0` surfaces that deferred repository result from explicitly
+enabled staged push routes. Fresh and replayed push responses, route meta, and
+audits now report repository status, query counts, operation IDs,
+prepare-argument counts, zero affected rows, and deferred execution flags
+without executing canonical repository writes.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

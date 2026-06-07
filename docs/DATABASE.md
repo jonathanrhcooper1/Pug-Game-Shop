@@ -136,6 +136,9 @@
 - Version `0.124.0` adds a deferred canonical mutation repository result for
   staged SQL plans. No WordPress schema, SQLite schema, migration order, query
   execution, or rollback target changes.
+- Version `0.125.0` surfaces that deferred repository result from staged push
+  route responses, meta, and audits. No WordPress schema, SQLite schema,
+  migration order, query execution, or rollback target changes.
 
 ## Relationship Overview
 

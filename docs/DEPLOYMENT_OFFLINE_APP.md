@@ -545,6 +545,11 @@ Staging can inspect repository result/audit metadata for SQL plans and confirm
 zero affected rows, but canonical write execution, repository execution,
 TopDeck workers, queue replay workers, production route registration, and
 default route execution remain disabled.
+Version `0.125.0` exposes that deferred repository result from explicitly
+enabled staged push route responses and audits. Staging can confirm repository
+status and zero affected rows for fresh and replayed pushes, but canonical
+write execution, repository execution, TopDeck workers, queue replay workers,
+production route registration, and default route execution remain disabled.
 
 ## Hardware Gate
 

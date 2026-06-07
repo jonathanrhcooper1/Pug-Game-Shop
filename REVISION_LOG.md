@@ -3,6 +3,89 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Route-Connected Offline Push Canonical Mutation Repository Staging
+
+### What Changed
+
+- Connected `OfflinePushCanonicalMutationRepository` staging into explicitly
+  enabled offline push route processing.
+- Added route response, route meta, and audit metadata for canonical repository
+  status, query counts, operation IDs, prepare-argument counts, zero affected
+  rows, and deferred execution flags.
+- Added replay-aware repository staging metadata so duplicate-push replay
+  responses report a deferred zero-query repository result.
+- Added route factory and registered-device sync readiness metadata for
+  handler-level canonical repository staging.
+- Added unit and WordPress smoke coverage for fresh and replayed
+  route-connected canonical repository staging metadata.
+- Updated project, plugin, and offline app package versions to `0.125.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The canonical mutation repository contract existed as a deferred scaffold, but
+route-connected staged push responses could not yet expose its result. This
+revision makes the repository boundary visible in staging without executing
+canonical inventory, event, credit-ledger, TopDeck, queue replay, or production
+writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Route-connected push handler coverage for deferred canonical repository
+  metadata on fresh accepted operations.
+- Route-connected replay coverage proving duplicate operations report a
+  deferred zero-query repository result.
+- Registered-device sync readiness and smoke assertions for handler-level
+  canonical repository staging/deferred flags.
+
+### Rollback Notes
+
+- Revert this revision to remove route-connected canonical repository staging
+  metadata from staged push response/meta/audit payloads.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Canonical repository execution, canonical entity writes, queue replay
+  workers, TopDeck workers, default route execution, live route registration,
+  and production route-connected writes remain disabled before and after
+  rollback.
+
 ## 2026-06-06 - Deferred Offline Push Canonical Mutation Repository
 
 ### What Changed

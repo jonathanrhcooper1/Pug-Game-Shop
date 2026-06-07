@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.124.0`
+Version: `0.125.0`
 
 ## Implemented Features
 
@@ -125,6 +125,9 @@ Version: `0.124.0`
   plans, and deferred execution/repository flags.
 - Deferred canonical mutation repository results for staged SQL plans, with
   audit metadata and zero affected rows while canonical writes stay disabled.
+- Route-connected staged push response metadata for deferred canonical
+  repository results, including status, query counts, operation IDs, zero rows
+  affected, and execution-deferred flags.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

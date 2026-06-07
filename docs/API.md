@@ -293,6 +293,13 @@ execution flags while canonical repository execution, inventory writes, event
 registration writes, customer-credit ledger writes, TopDeck workers, queue
 replay workers, default route execution, and live route registration remain
 disabled.
+Version `0.125.0` connects that deferred repository result into explicitly
+enabled staged push route responses, route meta, and audits. Fresh accepted
+operations report deferred repository status and one staged canonical query;
+replayed duplicate operations report a deferred zero-query repository result.
+Canonical repository execution, inventory writes, event registration writes,
+customer-credit ledger writes, TopDeck workers, queue replay workers, default
+route execution, and live route registration remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains

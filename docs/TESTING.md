@@ -140,6 +140,10 @@
 - Local unit and WordPress smoke coverage now include the deferred canonical
   mutation repository scaffold, repository result/audit metadata, rejected SQL
   plans, empty valid plans, readiness metadata, and zero-affected-row behavior.
+- Local unit coverage now includes route-connected canonical mutation
+  repository staging metadata for fresh and replayed staged push responses,
+  including repository status, query counts, operation IDs, zero affected rows,
+  and deferred execution flags.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

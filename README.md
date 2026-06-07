@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.124.0`
+Version: `0.125.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -258,6 +258,9 @@ A deferred canonical mutation repository scaffold now turns those SQL plans
 into audit-only repository results with zero affected rows while inventory,
 event, credit-ledger, TopDeck, queue replay, and production writes stay
 disabled.
+Explicitly enabled staged push route responses now include those deferred
+canonical repository results in response payloads, route meta, and audits for
+fresh and replayed operations.
 Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash

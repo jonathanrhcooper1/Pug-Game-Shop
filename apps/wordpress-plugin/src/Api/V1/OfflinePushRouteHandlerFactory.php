@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepository;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
@@ -83,6 +84,7 @@ final class OfflinePushRouteHandlerFactory {
 				$this->existing_operation_rows_provider ?? new OfflinePushRouteExistingOperationRowsProvider( $database ),
 				null,
 				null,
+				null,
 				$database->prefix
 			)
 		);
@@ -152,9 +154,12 @@ final class OfflinePushRouteHandlerFactory {
 			'canonical_mutation_planner_ready'            => method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' ),
 			'canonical_mutation_sql_ready'                => method_exists( OfflinePushCanonicalMutationQueryBuilder::class, 'build' )
 				&& $table_prefix_ready,
+			'canonical_mutation_repository_ready'         => method_exists( OfflinePushCanonicalMutationRepository::class, 'stage' ),
 			'route_connected_canonical_mutation_planning_deferred' => ! $route_dependencies_ready,
 			'route_connected_canonical_mutation_sql_planning_deferred' => ! $route_dependencies_ready,
 			'route_connected_canonical_mutation_sql_execution_deferred' => true,
+			'route_connected_canonical_mutation_repository_planning_deferred' => ! $route_dependencies_ready,
+			'route_connected_canonical_mutation_repository_execution_deferred' => true,
 			'route_connected_canonical_repository_deferred' => true,
 			'persistence_provider_configured'             => $route_dependencies_ready,
 			'route_connected_handler_ready'               => $route_dependencies_ready,
