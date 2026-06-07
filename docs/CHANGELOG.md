@@ -2,6 +2,23 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.96.0] - 2026-06-06
+
+### Added
+
+- Health and admin System Status readiness metadata for staged offline pull
+  change-query planning.
+- A supported-domain contract on the offline pull query planner for branding,
+  inventory, customer credit, events, and conflicts.
+- Unit and WordPress smoke coverage proving pull query planning readiness is
+  visible while execution and trusted device context handoff remain deferred.
+
+### Not Added
+
+- No live offline route is enabled. Trusted device context handoff, pull query
+  execution, tombstone repository reads, cursor advancement, queue replay,
+  route registration, and route-connected database mutation remain disabled.
+
 ## [0.95.0] - 2026-06-06
 
 ### Added

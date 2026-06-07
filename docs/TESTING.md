@@ -145,6 +145,9 @@
   branding, inventory, customer credit, events, and conflicts domain contracts,
   including safe table/column allowlists, device-scoped conflict filters,
   request cursor carry-forward, and fail-closed invalid inputs.
+- Local unit and WordPress smoke coverage now assert staged pull change-query
+  readiness metadata, supported domain counts, trusted-context deferral, and
+  query-execution deferral in health/admin status payloads.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

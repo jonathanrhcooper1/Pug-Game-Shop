@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Query Readiness Metadata
+
+### What Changed
+
+- Added `OfflinePullChangeQueryPlanner::supported_domains()` so staged health
+  and admin surfaces can report the exact pull-query domains under contract.
+- Extended `OfflineRegisteredDeviceSyncRouteHandlerFactory` readiness metadata
+  with pull change-query readiness, supported domains, and explicit trusted
+  context/query/cursor/tombstone deferral flags.
+- Updated the sync route readiness admin summary to show query-plan readiness.
+- Added unit and WordPress smoke assertions for the new non-secret readiness
+  fields.
+- Updated project, plugin, and offline app package versions to `0.96.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The pull query planner now has safe domain contracts, but staging needs to see
+that readiness separately from live database execution. This revision exposes
+that non-secret readiness metadata while preserving the deferred trusted device
+context handoff and keeping all live pull reads disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullChangeQueryPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullChangeQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Supported-domain coverage for the pull change-query planner contract.
+- Sync handler readiness coverage for pull change-query readiness, domain count,
+  trusted-context deferral, and query-execution deferral.
+- WordPress smoke coverage for the new health payload fields.
+
+### Rollback Notes
+
+- Revert this revision to remove the health/admin pull query readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, trusted device context handoff, pull query execution,
+  tombstone reads, cursor advancement, queue replay, and route-connected
+  database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Pull Change-Query Planning
 
 ### What Changed

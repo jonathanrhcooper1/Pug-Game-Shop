@@ -197,6 +197,9 @@ domains. The planner records safe source tables, selected columns, payload
 fields, request cursors, page-size limits, and device-scoped conflict filters,
 while query execution, tombstone reads, cursor advancement, and live route
 registration remain disabled.
+Version `0.96.0` exposes pull change-query readiness in health and admin
+System Status, including supported domains and explicit trusted-context,
+query-execution, cursor, and tombstone deferral flags.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

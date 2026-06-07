@@ -35,6 +35,10 @@ Registered-device sync route handler readiness now injects parser-only pull
 and push handlers into the bootstrap controller boundary. Those handlers
 validate request shape and report deferred writes, but they do not replay
 queues, query pull data, advance cursors, or register routes.
+The pull change-query planner adds safe domain contracts for future read
+repositories, and sync handler readiness exposes those supported domains plus
+trusted-context, query, cursor, and tombstone deferral flags without executing
+database reads.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

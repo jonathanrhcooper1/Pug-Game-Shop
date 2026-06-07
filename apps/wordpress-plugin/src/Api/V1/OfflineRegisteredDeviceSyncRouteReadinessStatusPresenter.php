@@ -36,9 +36,10 @@ final class OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'pull %s; push %s; %d callbacks; writes deferred; routes deferred',
+				'pull %s; push %s; query plan %s; %d callbacks; writes deferred; routes deferred',
 				true === ( $payload['pull_handler_configured'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['push_handler_configured'] ?? false ) ? 'ready' : 'not ready',
+				true === ( $payload['pull_change_query_ready'] ?? false ) ? 'ready' : 'not ready',
 				(int) ( $payload['handler_count'] ?? 0 )
 			),
 			'status' => (string) $payload['status'],

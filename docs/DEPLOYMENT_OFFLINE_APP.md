@@ -390,6 +390,10 @@ domain source tables, selected columns, payload fields, request cursor
 carry-forward, and device-scoped conflict filters before any live query
 execution or cursor advancement is enabled.
 
+Version `0.96.0` surfaces pull change-query readiness in health/admin status
+payloads. Staging can verify supported domains and deferred trusted-context,
+query, tombstone, and cursor flags before any live database read path is wired.
+
 ## Hardware Gate
 
 Before production, test the actual:

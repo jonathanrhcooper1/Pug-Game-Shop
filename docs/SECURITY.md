@@ -130,6 +130,9 @@ The pull change-query planner exposes only table names, allowlisted columns,
 payload fields, request cursors, and device-scoped conflict filters for future
 repositories. It rejects invalid table prefixes and unsupported domains before
 any SQL execution path exists.
+Health/admin pull query readiness exposes only supported domain names and
+deferred-state booleans; trusted device context handoff, SQL execution,
+tombstone reads, and cursor advancement remain disabled.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

@@ -139,6 +139,10 @@ inventory, customer credit, events, and conflicts domains. The planner carries
 safe table/column allowlists, request cursors, page sizes, and device-scoped
 conflict filters for future repositories, but the route still does not execute
 queries, read tombstones, advance cursors, or register live endpoints.
+Version `0.96.0` surfaces that planner readiness in
+`offline_registered_device_sync_handlers` health metadata, including supported
+domains and explicit trusted-context/query/cursor/tombstone deferral flags.
+No pull query execution or live route registration is enabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -405,7 +409,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.95.0",
+  "app_version": "0.96.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

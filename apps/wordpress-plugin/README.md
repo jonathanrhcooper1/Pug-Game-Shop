@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.95.0`
+Version: `0.96.0`
 
 ## Implemented Features
 
@@ -146,6 +146,9 @@ Version: `0.95.0`
 - Offline pull change-query planning for branding, inventory, customer credit,
   events, and conflicts cache domains, with table/column contracts and
   device-scoped conflict filters while execution stays deferred.
+- Health and admin System Status readiness metadata for staged offline pull
+  change-query planning while trusted context handoff and execution stay
+  deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

@@ -58,6 +58,8 @@ Before major database migrations:
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and
   device-scoped conflict filters while query execution remains disabled.
+- Health/System Status exposes pull change-query readiness and supported
+  domains while trusted device context handoff and execution remain deferred.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

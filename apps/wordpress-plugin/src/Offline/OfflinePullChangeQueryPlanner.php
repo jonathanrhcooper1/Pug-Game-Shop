@@ -202,6 +202,13 @@ final class OfflinePullChangeQueryPlanner {
 		),
 	);
 
+	/**
+	 * @return list<string>
+	 */
+	public static function supported_domains(): array {
+		return array_values( array_keys( self::DOMAIN_CONTRACTS ) );
+	}
+
 	public function plan(
 		OfflinePullRequest $request,
 		int $offline_device_id,

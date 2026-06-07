@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Offline\OfflinePullChangeQueryPlanner;
+
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	private const HANDLER_CALLBACKS = array(
 		'pull_offline_changes',
@@ -45,8 +47,9 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
-		$handlers = $this->handlers();
-		$issues   = array();
+		$handlers           = $this->handlers();
+		$issues             = array();
+		$pull_query_domains = OfflinePullChangeQueryPlanner::supported_domains();
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -55,16 +58,23 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		}
 
 		return array(
-			'configured'                   => array() === $issues,
-			'handler_count'                => count( $handlers ),
-			'controller_callbacks'         => array_values( array_keys( $handlers ) ),
-			'pull_handler_configured'      => is_callable( $handlers['pull_offline_changes'] ?? null ),
-			'push_handler_configured'      => is_callable( $handlers['push_offline_operations'] ?? null ),
-			'pull_response_ready'          => is_callable( $handlers['pull_offline_changes'] ?? null ),
-			'write_deferred'               => true,
-			'route_registration_deferred'  => true,
-			'route_connected_writes_ready' => false,
-			'configuration_issues'         => array_values( array_unique( $issues ) ),
+			'configured'                                  => array() === $issues,
+			'handler_count'                               => count( $handlers ),
+			'controller_callbacks'                        => array_values( array_keys( $handlers ) ),
+			'pull_handler_configured'                     => is_callable( $handlers['pull_offline_changes'] ?? null ),
+			'push_handler_configured'                     => is_callable( $handlers['push_offline_operations'] ?? null ),
+			'pull_response_ready'                         => is_callable( $handlers['pull_offline_changes'] ?? null ),
+			'pull_change_query_ready'                     => array() !== $pull_query_domains,
+			'pull_change_query_domains'                   => $pull_query_domains,
+			'pull_change_query_domain_count'              => count( $pull_query_domains ),
+			'pull_change_query_context_deferred'          => true,
+			'pull_change_query_execution_deferred'        => true,
+			'pull_change_query_cursor_advance_deferred'   => true,
+			'pull_change_query_tombstone_reads_deferred'  => true,
+			'write_deferred'                              => true,
+			'route_registration_deferred'                 => true,
+			'route_connected_writes_ready'                => false,
+			'configuration_issues'                        => array_values( array_unique( $issues ) ),
 		);
 	}
 

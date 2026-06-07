@@ -12,6 +12,13 @@ use TCGStorePlatform\Offline\OfflinePullRequest;
 use TCGStorePlatform\Tests\TestCase;
 
 final class OfflinePullChangeQueryPlannerTest extends TestCase {
+	public function test_supported_domains_match_staged_pull_contracts(): void {
+		$this->assert_same(
+			array( 'branding', 'inventory', 'customer_credit', 'events', 'conflicts' ),
+			OfflinePullChangeQueryPlanner::supported_domains()
+		);
+	}
+
 	public function test_planner_builds_domain_query_contracts_without_execution(): void {
 		$request = new OfflinePullRequest(
 			'device-main-01',
