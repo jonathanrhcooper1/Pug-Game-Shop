@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Controller Scaffold
+
+### What Changed
+
+- Added `PosPaymentController` with fail-closed callbacks for every planned
+  POS/payment route contract.
+- Default controller responses report disabled status plus route registration,
+  route-connected write, transaction execution, provider capture, provider
+  inventory write, webhook registration, and WooCommerce gateway capture
+  deferrals.
+- POS/payment route readiness can now consume an injected controller and report
+  controller handler counts and route keys.
+- Added `PosPaymentControllerTest` coverage for planned callback exposure,
+  disabled default responses, injected handler dispatch with normalized request
+  data, handler readiness, and unhandled callback safety.
+- Updated project, plugin, and offline app package versions to `0.139.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The planned POS/payment routes have contracts, readiness diagnostics, and
+permissions. This revision adds the controller boundary those future route
+registrars can target, while keeping default execution disabled and preserving
+explicit test-only handler injection.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentController.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentControllerTest` coverage for every planned callback, fail-closed
+  disabled defaults, injected handler dispatch, request normalization, and
+  handler readiness.
+- `PosPaymentRouteReadinessPlannerTest` coverage for injected controller
+  handler readiness.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment controller scaffold, readiness
+  integration, tests, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-06 - POS Payment Route Permission Callbacks
 
 ### What Changed

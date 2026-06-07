@@ -21,9 +21,14 @@ final class PosPaymentRouteReadinessPlanner {
 	);
 
 	private ?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory;
+	private ?PosPaymentController $controller;
 
-	public function __construct( ?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory = null ) {
+	public function __construct(
+		?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory = null,
+		?PosPaymentController $controller = null
+	) {
 		$this->permission_callback_factory = $permission_callback_factory;
+		$this->controller                  = $controller;
 	}
 
 	/**
@@ -38,10 +43,12 @@ final class PosPaymentRouteReadinessPlanner {
 	): array {
 		$route_contracts      = $route_contracts ?? PosPaymentRouteContracts::route_contracts();
 		$permission_callbacks = $this->permission_callbacks( $route_contracts );
+		$controller_handlers  = $this->controller_handlers( $route_contracts );
 		$dependencies         = $this->dependencies(
 			$dependency_overrides,
 			$route_contracts,
-			$permission_callbacks
+			$permission_callbacks,
+			$controller_handlers
 		);
 		$route_plans          = array();
 
@@ -76,6 +83,8 @@ final class PosPaymentRouteReadinessPlanner {
 			'registerable_route_keys'                 => $registerable_route_keys,
 			'route_registration_summary'              => $route_plans,
 			'route_handlers_configured'               => true === $dependencies['route_handlers_configured'],
+			'controller_handler_count'                => count( $controller_handlers ),
+			'controller_handler_keys'                 => $controller_handlers,
 			'permission_callbacks_configured'         => true === $dependencies['permission_callbacks_configured'],
 			'permission_callback_count'               => count( $permission_callbacks ),
 			'permission_callback_keys'                => array_keys( $permission_callbacks ),
@@ -258,12 +267,14 @@ final class PosPaymentRouteReadinessPlanner {
 	 * @param array<string, mixed> $dependency_overrides Dependency readiness overrides.
 	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
 	 * @param array<string, callable>    $permission_callbacks Resolved permission callbacks.
+	 * @param list<string>               $controller_handlers Resolved controller handler route keys.
 	 * @return array<string, bool>
 	 */
 	private function dependencies(
 		array $dependency_overrides,
 		array $route_contracts,
-		array $permission_callbacks
+		array $permission_callbacks,
+		array $controller_handlers
 	): array {
 		$dependencies = self::DEFAULT_DEPENDENCIES;
 
@@ -271,6 +282,13 @@ final class PosPaymentRouteReadinessPlanner {
 			if ( array_key_exists( $key, $dependencies ) ) {
 				$dependencies[ $key ] = true === $value;
 			}
+		}
+
+		if (
+			! array_key_exists( 'route_handlers_configured', $dependency_overrides )
+			&& null !== $this->controller
+		) {
+			$dependencies['route_handlers_configured'] = count( $controller_handlers ) === count( $route_contracts );
 		}
 
 		if (
@@ -303,6 +321,26 @@ final class PosPaymentRouteReadinessPlanner {
 		}
 
 		return $this->permission_callback_factory->callbacks_for_contracts( $route_contracts );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @return list<string>
+	 */
+	private function controller_handlers( array $route_contracts ): array {
+		if ( null === $this->controller ) {
+			return array();
+		}
+
+		$route_keys = array();
+
+		foreach ( $route_contracts as $route_contract ) {
+			if ( $this->controller->has_handler( $this->route_value( $route_contract, 'callback' ) ) ) {
+				$route_keys[] = PosPaymentRoutePermissionCallbackFactory::route_key( $route_contract );
+			}
+		}
+
+		return $route_keys;
 	}
 
 	/**

@@ -211,6 +211,11 @@ callbacks for `manage_pos`, `resolve_conflicts`, and `manage_settings`, plus a
 signed-webhook callback that only exists when a verifier is injected. The
 `manage_pos` capability is manager/system only and does not grant staff live
 route access.
+The POS/payment controller scaffold now exposes the planned callbacks behind an
+injectable handler map. Without injected handlers, every callback returns a
+disabled response and repeats the route/write, transaction, webhook, capture,
+inventory, and gateway deferrals; readiness can report injected handler keys
+without registering routes.
 
 ## System Diagram
 

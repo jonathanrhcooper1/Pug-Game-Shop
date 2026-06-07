@@ -179,5 +179,8 @@ Before major database migrations:
 - Manager/system roles receive `manage_pos`; staff roles do not. POS/payment
   permission callbacks remain fail-closed until capability checks and webhook
   verifiers are explicitly configured for staging route tests.
+- POS/payment controller callbacks exist for staged handler injection, but
+  default callbacks return disabled responses with route/provider/capture
+  deferrals and no live route registration.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

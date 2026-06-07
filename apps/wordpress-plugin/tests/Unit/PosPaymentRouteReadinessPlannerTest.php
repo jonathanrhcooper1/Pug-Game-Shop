@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\PosPaymentRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\PosPaymentRoutePermissionCallbackFactory;
+use TCGStorePlatform\Api\V1\PosPaymentController;
 use TCGStorePlatform\Tests\TestCase;
 
 final class PosPaymentRouteReadinessPlannerTest extends TestCase {
@@ -172,6 +173,29 @@ final class PosPaymentRouteReadinessPlannerTest extends TestCase {
 		$this->assert_true(
 			$plan['route_registration_summary']['POST /payments/webhooks/(?P<provider>[a-zA-Z0-9_-]+)']['webhook_verifier_ready']
 		);
+	}
+
+	public function test_readiness_can_use_injected_controller_handlers_for_callback_readiness(): void {
+		$plan = ( new PosPaymentRouteReadinessPlanner(
+			new PosPaymentRoutePermissionCallbackFactory(
+				static fn (): bool => true
+			),
+			new PosPaymentController(
+				null,
+				array(
+					'list_payment_fee_snapshots' => static fn (): array => array( 'status' => 'handled' ),
+				)
+			)
+		) )->plan(
+			true,
+			array( $this->future_read_only_contract() )
+		);
+
+		$this->assert_same( 'ready', $plan['status'] );
+		$this->assert_true( $plan['route_handlers_configured'] );
+		$this->assert_same( 1, $plan['controller_handler_count'] );
+		$this->assert_same( array( 'GET /payments/fee-snapshots' ), $plan['controller_handler_keys'] );
+		$this->assert_true( $plan['route_registration_summary']['GET /payments/fee-snapshots']['controller_callback_ready'] );
 	}
 
 	/**

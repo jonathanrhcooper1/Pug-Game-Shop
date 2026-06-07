@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.139.0] - 2026-06-06
+
+### Added
+
+- POS/payment fail-closed controller scaffold exposing every planned route
+  callback for future event ingestion/status, reconciliation, conflict,
+  webhook, and fee-snapshot handlers.
+- Disabled default response metadata for route registration, route-connected
+  writes, transaction execution, webhook registration, provider capture,
+  provider inventory writes, and WooCommerce gateway capture.
+- POS/payment route readiness metadata for injected controller handler counts
+  and handler route keys.
+- Unit coverage for disabled controller callbacks, injected handler dispatch,
+  normalized request data, and handler readiness.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.138.0] - 2026-06-06
 
 ### Added

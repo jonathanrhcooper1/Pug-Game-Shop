@@ -238,6 +238,25 @@ WordPress `current_user_can()` when available or an injected checker in tests.
 Webhook callbacks require an injected signature verifier; without one, the
 factory returns no webhook permission callback and readiness stays blocked.
 
+## Route Controller
+
+The POS/payment controller scaffold now exposes every planned route callback:
+
+- `ingest_pos_event`
+- `get_pos_event_status`
+- `run_pos_reconciliation`
+- `list_pos_reconciliation_conflicts`
+- `resolve_pos_reconciliation_conflict`
+- `receive_payment_provider_webhook`
+- `list_payment_fee_snapshots`
+- `create_payment_fee_snapshot`
+
+The default controller path returns disabled responses with route registration,
+route-connected writes, transaction execution, webhook registration, provider
+capture, provider inventory write, and WooCommerce gateway capture deferrals.
+Injected handlers can be used in controlled tests, but no live route
+registration or provider side effect is enabled by the scaffold.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

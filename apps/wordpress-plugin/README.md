@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.138.0`
+Version: `0.139.0`
 
 ## Implemented Features
 
@@ -106,6 +106,9 @@ Version: `0.138.0`
 - POS/payment fail-closed permission callback factory and adapters for
   manager/system `manage_pos`, conflict-resolution/settings capabilities, and
   signed provider webhooks, with `manage_pos` kept out of staff roles.
+- POS/payment fail-closed controller scaffold exposing all planned route
+  callbacks for future injected handlers while default responses remain
+  disabled with route/provider/capture deferrals.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

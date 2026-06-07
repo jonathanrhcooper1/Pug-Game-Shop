@@ -186,6 +186,9 @@
   permission callbacks, manager/system-only `manage_pos`, webhook verifier
   fail-closed behavior, and readiness metadata for injected permission
   callbacks.
+- Local unit coverage now includes the fail-closed POS/payment controller
+  scaffold, disabled default responses, injected handler dispatch, normalized
+  route request data, and controller handler readiness metadata.
 - Local unit coverage now includes migration runner planning for clean install,
   prior-schema upgrade, current-schema idempotency, rollback order, and no-op
   rollback plans.
