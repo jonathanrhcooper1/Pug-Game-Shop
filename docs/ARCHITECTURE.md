@@ -63,6 +63,8 @@ cursor writes remain deferred.
 The pull cursor SQL planner now converts those accepted cursor rows into
 prepared upsert templates for staging review, while cursor execution remains
 deferred.
+The pull cursor repository now executes those upsert templates only when
+explicitly called, leaving default route cursor execution deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

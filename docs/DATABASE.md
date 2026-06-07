@@ -72,6 +72,9 @@
 - Version `0.103.0` adds prepared SQL planning for the existing
   `tcg_offline_pull_cursors` table. No WordPress schema, SQLite schema,
   migration order, or rollback target changes.
+- Version `0.104.0` adds explicit repository execution for prepared cursor
+  upserts against the existing `tcg_offline_pull_cursors` table. No WordPress
+  schema, SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

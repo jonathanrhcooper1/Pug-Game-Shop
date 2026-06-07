@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.103.0`
+Version: `0.104.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -168,6 +168,9 @@ provider change sets, cursors, UTC server time, and complete pages before
 preparing future per-device cursor rows while cursor writes remain deferred.
 Offline pull cursor SQL planning now converts accepted cursor rows into
 prepared upsert templates while cursor write execution remains deferred.
+Offline pull cursor repository adaptation can now explicitly execute those
+prepared cursor upserts through `$wpdb` for staged tests, while default route
+connection and route-connected writes remain deferred.
 Offline device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,
 required scopes, supported modes/scopes, location IDs, and UTC timestamp

@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.104.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullCursorAdvanceRepository` and
+  `OfflinePullCursorAdvanceRepositoryResult` for explicitly executing prepared
+  cursor upsert plans through `$wpdb`.
+- Repository audit metadata for cursor query counts, rows affected, per-domain
+  execution results, explicit execution requirements, and default route
+  deferral.
+- Health/admin and WordPress smoke readiness metadata for staged cursor
+  repository availability.
+- Unit coverage for successful cursor upserts, empty plans, invalid plans before
+  writes, database failures, and invalid affected-row results.
+
+### Not Added
+
+- No default live offline route cursor execution is enabled. Default
+  route-connected reads, tombstone repository reads, queue replay, route
+  registration, and route-connected database mutation remain disabled.
+
 ## [0.103.0] - 2026-06-06
 
 ### Added

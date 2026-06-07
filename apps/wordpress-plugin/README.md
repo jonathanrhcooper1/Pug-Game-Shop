@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.103.0`
+Version: `0.104.0`
 
 ## Implemented Features
 
@@ -172,6 +172,9 @@ Version: `0.103.0`
   metadata.
 - Offline pull cursor SQL planning for prepared per-device cursor upsert
   templates, with execution and route-connected writes still deferred.
+- Offline pull cursor repository adaptation for explicitly called `$wpdb`
+  cursor upserts, with default route connection and route-connected writes
+  still deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

@@ -174,6 +174,10 @@ Version `0.103.0` adds pull cursor SQL planning. Accepted cursor rows can now
 be converted into prepared per-device upsert templates for staging inspection,
 while cursor execution, route registration, and route-connected writes remain
 disabled.
+Version `0.104.0` adds explicit pull cursor repository adaptation. Staging can
+directly execute prepared cursor upsert plans through `$wpdb`, while default
+route cursor execution, route registration, and route-connected writes remain
+disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -440,7 +444,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.103.0",
+  "app_version": "0.104.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

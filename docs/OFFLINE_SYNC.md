@@ -231,6 +231,9 @@ writes remain deferred.
 Version `0.103.0` adds pull cursor SQL planning. Those accepted cursor row
 payloads can now be transformed into prepared upsert templates, while cursor
 execution, route registration, and route-connected writes remain deferred.
+Version `0.104.0` adds explicit pull cursor repository adaptation. Prepared
+cursor upserts can run when directly invoked by staged tests, while default
+route cursor execution and route-connected writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

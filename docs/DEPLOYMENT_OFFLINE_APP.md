@@ -429,6 +429,10 @@ Version `0.103.0` adds pull cursor SQL planning. Staging can inspect prepared
 cursor upsert templates and argument counts before cursor execution, route
 registration, or route-connected writes are enabled.
 
+Version `0.104.0` adds explicit pull cursor repository adaptation. Staging can
+run prepared cursor upsert plans in controlled tests, while default route cursor
+execution, route registration, and route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

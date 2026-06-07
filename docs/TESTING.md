@@ -174,6 +174,9 @@
   prepared upsert templates, null cursor literals, empty valid plans, invalid
   source plans, tampered cursor rows, invalid table names, and deferred
   execution metadata.
+- Local unit coverage now includes offline pull cursor repository adaptation
+  for explicit cursor upserts, empty plans, invalid plans before writes,
+  database failures, invalid affected-row results, and route-deferred audits.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

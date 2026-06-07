@@ -94,6 +94,9 @@ disabled until staging explicitly enables the write repository.
 Pull cursor SQL planning validates the target table name, domain, timestamps,
 row counts, row versions, and prepared arguments before emitting staged upsert
 templates, and keeps execution deferred.
+Pull cursor repository adaptation executes only prepared upsert templates from
+accepted plans and remains outside default route wiring, so staged writes stay
+explicit and route-connected cursor execution remains disabled.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.
