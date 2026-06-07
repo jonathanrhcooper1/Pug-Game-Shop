@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.99.0`
+Version: `0.100.0`
 
 ## Implemented Features
 
@@ -160,6 +160,9 @@ Version: `0.99.0`
 - Offline pull change-set provider composition for explicit registered-device
   context, query planning, repository fetches, pull handler injection tests,
   and provider readiness metadata while default route wiring stays deferred.
+- Offline pull device context planning for authorized registered-device
+  permission resolutions, request/device matching, offline device ID and table
+  prefix handoff, and secret-free audits while route wiring stays deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

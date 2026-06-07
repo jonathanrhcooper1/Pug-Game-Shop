@@ -157,6 +157,10 @@ provider requires injected registered-device context before planning and
 fetching repository-backed changes, and staged pull handler tests can inject it
 without enabling default route wiring, cursor advancement, tombstone reads, or
 route-connected writes.
+Version `0.100.0` adds pull device context planning. Authorized
+registered-device permission resolutions can now be validated against pull
+requests and converted into the offline device ID/table prefix context needed
+by the staged provider, while route-connected handoff remains disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -423,7 +427,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.99.0",
+  "app_version": "0.100.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

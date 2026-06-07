@@ -50,6 +50,9 @@ registration remain deferred.
 The pull change-set provider now composes request, explicit registered-device
 context, query planning, and repository fetches behind an injectable boundary;
 default route wiring still stays deferred.
+The pull device context planner now validates authorized registered-device
+permission resolutions into the exact device ID, offline device database ID,
+and table prefix needed by that provider, while route handoff remains deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -237,6 +240,9 @@ deferred.
 Pull change-set provider composition now gives staged tests a single explicit
 provider to inject into the pull handler, without making that provider the
 default route behavior.
+Pull device context planning now creates the missing trusted-context handoff
+contract from registered-device permission resolution to provider construction,
+without wiring it into the default route path.
 Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location

@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.99.0`
+Version: `0.100.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -154,6 +154,10 @@ cursor advancement, and tombstone reads remain deferred.
 Offline pull change-set provider composition now ties validated pull requests,
 explicit registered-device context, query planning, and repository fetches
 together behind an injectable boundary while default route wiring remains
+deferred.
+Offline pull device context planning now validates that an authorized
+registered-device permission resolution matches the pull request, carries the
+offline device ID/table prefix needed by the provider, and keeps route handoff
 deferred.
 Offline device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,

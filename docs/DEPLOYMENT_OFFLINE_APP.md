@@ -410,6 +410,11 @@ registered-device context, while default route wiring, cursor advancement,
 tombstone reads, route registration, and route-connected writes remain
 disabled.
 
+Version `0.100.0` adds pull device context planning. Staging can validate that
+an authorized registered-device permission resolution matches a pull request
+before constructing the provider, while route-connected handoff and live route
+registration remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

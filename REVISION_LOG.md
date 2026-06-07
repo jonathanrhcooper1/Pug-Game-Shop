@@ -3,6 +3,98 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Device Context Planning
+
+### What Changed
+
+- Added `OfflinePullDeviceContextPlanner` to validate authorized registered
+  device permission resolutions before pull provider construction.
+- Added `OfflinePullDeviceContextPlan` to carry the request-matched device ID,
+  offline device database ID, table prefix, session context, and secret-free
+  audit metadata.
+- Added validation for authorized resolution state, session context presence,
+  positive offline device IDs, request/device mismatches, `offline_pull` scope,
+  and table-prefix safety.
+- Exposed staged pull device-context planner readiness in registered-device
+  sync handler health and admin summaries while keeping route handoff deferred.
+- Added unit coverage for accepted context, denied resolution rejection,
+  mismatched device/scope/prefix rejection, and provider construction from a
+  valid context plan.
+- Added WordPress smoke assertions for device-context readiness and route
+  deferral metadata.
+- Updated project, plugin, and offline app package versions to `0.100.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The pull change-set provider requires an explicit offline device database ID
+and table prefix, but the route stack must only supply those values after a
+registered-device permission resolution has authorized the pull request. This
+revision creates that secret-free handoff contract without wiring default
+routes, cursor advancement, tombstone reads, or route-connected writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullDeviceContextPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePullDeviceContextPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullDeviceContextPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Pull device context planner coverage for authorized pull contexts, denied
+  permission resolutions, device mismatches, wrong required scopes, invalid
+  table prefixes, and provider construction from a valid context plan.
+- Sync handler readiness and WordPress smoke coverage for device-context
+  planner readiness and route-handoff deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove pull device context planning and its
+  health/admin readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, route-connected context handoff, pull execution, cursor
+  advancement, tombstone reads, queue replay, route registration, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Pull Change-Set Provider Composition
 
 ### What Changed

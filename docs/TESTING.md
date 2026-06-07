@@ -158,6 +158,10 @@
   composition for explicit registered-device context, planner/repository
   composition, staged pull-handler injection, and fail-closed provider
   rejection.
+- Local unit coverage now includes offline pull device context planning for
+  authorized permission resolutions, request/device matching, required
+  `offline_pull` scope, invalid table prefixes, and provider construction from
+  valid context.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

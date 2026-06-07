@@ -11,6 +11,7 @@ use TCGStorePlatform\Offline\OfflinePullChangeQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePullChangeQueryPlanner;
 use TCGStorePlatform\Offline\OfflinePullChangeRepository;
 use TCGStorePlatform\Offline\OfflinePullChangeSetProvider;
+use TCGStorePlatform\Offline\OfflinePullDeviceContextPlanner;
 
 final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	private const HANDLER_CALLBACKS = array(
@@ -59,6 +60,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePullChangeRepository::class, 'fetch' );
 		$pull_provider_ready   = $pull_repository_ready
 			&& method_exists( OfflinePullChangeSetProvider::class, 'fetch' );
+		$pull_context_ready    = method_exists( OfflinePullDeviceContextPlanner::class, 'plan' );
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {
@@ -73,6 +75,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_handler_configured'                    => is_callable( $handlers['pull_offline_changes'] ?? null ),
 			'push_handler_configured'                    => is_callable( $handlers['push_offline_operations'] ?? null ),
 			'pull_response_ready'                        => is_callable( $handlers['pull_offline_changes'] ?? null ),
+			'pull_device_context_planner_ready'          => $pull_context_ready,
 			'pull_change_query_ready'                    => array() !== $pull_query_domains,
 			'pull_change_query_sql_ready'                => $pull_sql_ready,
 			'pull_change_query_sql_template_ready'       => $pull_sql_ready,
@@ -81,6 +84,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'pull_change_query_domains'                  => $pull_query_domains,
 			'pull_change_query_domain_count'             => count( $pull_query_domains ),
 			'pull_change_query_context_deferred'         => true,
+			'pull_device_context_route_deferred'         => true,
 			'pull_change_query_cursor_filter_deferred'   => true,
 			'pull_change_query_execution_deferred'       => true,
 			'pull_change_query_cursor_advance_deferred'  => true,

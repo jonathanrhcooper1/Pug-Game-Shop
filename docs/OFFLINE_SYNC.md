@@ -214,6 +214,11 @@ provider combines a pull request, injected registered-device context, query
 planning, and repository fetches for staged tests, while default route wiring,
 cursor advancement, tombstone reads, route registration, and writes remain
 deferred.
+Version `0.100.0` adds pull device context planning. The planner validates an
+authorized registered-device permission resolution against the pull request and
+produces the offline device ID/table prefix context required by the provider,
+while route-connected handoff, cursor advancement, tombstone reads, route
+registration, and writes remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

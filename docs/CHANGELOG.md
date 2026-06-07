@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.100.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullDeviceContextPlanner` and `OfflinePullDeviceContextPlan` for
+  transforming authorized registered-device permission resolutions into
+  pull-provider context.
+- Validation that the trusted registered-device context is authorized, scoped
+  to `offline_pull`, matches the request device ID, carries a positive
+  `offline_device_id`, and uses a safe table prefix.
+- Unit coverage proving accepted context, denied resolution rejection,
+  device/scope/prefix rejection, and provider construction from context.
+- Health/admin and WordPress smoke coverage for staged pull device-context
+  readiness and route deferral metadata.
+
+### Not Added
+
+- No default live offline route wiring is enabled. Route-connected context
+  handoff, pull execution, cursor advancement, tombstone repository reads,
+  queue replay, route registration, and route-connected database mutation
+  remain disabled.
+
 ## [0.99.0] - 2026-06-06
 
 ### Added

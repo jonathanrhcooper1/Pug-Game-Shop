@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.99.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.100.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.99.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.100.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -168,6 +168,7 @@ $assert( 2 === (int) ( $data['offline_registered_device_permissions']['registere
 $assert( 'ready' === ( $data['offline_registered_device_sync_handlers']['status'] ?? null ), 'Offline registered-device sync handlers should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_handler_configured'] ?? null ), 'Offline pull handler should be configured.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_response_ready'] ?? null ), 'Offline pull response handler should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['pull_device_context_planner_ready'] ?? null ), 'Offline pull device context planner should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_ready'] ?? null ), 'Offline pull change-query planner should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_sql_ready'] ?? null ), 'Offline pull change-query SQL planning should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_sql_template_ready'] ?? null ), 'Offline pull change-query SQL templates should be staged ready.' );
@@ -175,6 +176,7 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_chang
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_set_provider_ready'] ?? null ), 'Offline pull change-set provider should be staged ready.' );
 $assert( 5 === (int) ( $data['offline_registered_device_sync_handlers']['pull_change_query_domain_count'] ?? 0 ), 'Offline pull change-query planner should report every staged domain.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_context_deferred'] ?? null ), 'Offline pull change-query context handoff should remain deferred.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['pull_device_context_route_deferred'] ?? null ), 'Offline pull device context route handoff should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_cursor_filter_deferred'] ?? null ), 'Offline pull change-query cursor filtering should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_query_execution_deferred'] ?? null ), 'Offline pull change-query execution should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['pull_change_repository_route_deferred'] ?? null ), 'Offline pull change repository route connection should remain deferred.' );

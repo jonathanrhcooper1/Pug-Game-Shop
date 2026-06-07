@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TCG Store Platform
  * Description:       Serialized trading-card inventory and store operations for WooCommerce.
- * Version:           0.99.0
+ * Version:           0.100.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * WC requires at least: 8.2
