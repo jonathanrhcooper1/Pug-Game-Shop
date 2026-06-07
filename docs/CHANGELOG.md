@@ -14,6 +14,12 @@ All notable changes follow Semantic Versioning.
   checks, visibility normalization, and deferred WooCommerce projection flags.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
+- Inventory search query planning for public/staff/hidden card listings with
+  safe selected columns, visibility-aware filters, stable ordering, pagination,
+  and deferred WooCommerce/Square projection flags.
+- Inventory search response presentation with public redaction and staff-only
+  operational fields for barcode, SKU, cost, location, visibility, and row
+  version details.
 
 ### Changed
 

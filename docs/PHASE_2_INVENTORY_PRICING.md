@@ -29,6 +29,11 @@ staging database acceptance remains pending.
   WooCommerce/label side-effect flags.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
+- Plan-only inventory search query contracts for public, staff, hidden, and all
+  inventory views, including public defaults for visible/available cards,
+  barcode/SKU search for staff views, and deferred route/database execution.
+- Inventory search response presentation with public-safe redaction and
+  staff-only operational fields for exact-card handling.
 - Pricing policy helper for market plus 10 percent, currency mismatch blocking,
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct

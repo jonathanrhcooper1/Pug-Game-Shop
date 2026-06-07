@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Search Planning And Presentation
+
+### What Changed
+
+- Added `InventorySearchQueryPlanner` and `InventorySearchQueryPlan` to convert
+  parsed card/inventory search requests into safe, deferred read contracts.
+- Added public/staff/hidden visibility rules, public default scoping to
+  visible available cards, staff barcode/SKU/cert-number search columns, stable
+  sort contracts, pagination offsets, and deferred WooCommerce/Square projection
+  metadata.
+- Added `InventorySearchResponsePresenter` to shape card listing responses and
+  redact staff-only fields from public search results.
+
+### Why
+
+The card management system needs a tested inventory search layer before live
+REST route registration or database execution is enabled. This gives the
+website, staff tools, Square inventory projection work, and offline app sync a
+stable card-listing contract without adding production writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlan.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchResponsePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchResponsePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Route-connected reads and writes remain deferred.
+
+### Tests Added
+
+- Query planner tests for public visible/available defaults, staff barcode/SKU
+  lookup columns, hidden visibility filters, and invalid table prefixes.
+- Response presenter tests for public redaction and staff operational fields.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 678 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 461 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the three new inventory
+  source files: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the planned inventory search read contracts
+  and response presenter.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no production deployment is performed
+  by Codex.
+
 ## 2026-06-07 - Remove TopDeck From Active Scope
 
 ### What Changed
