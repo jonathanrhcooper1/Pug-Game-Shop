@@ -106,6 +106,7 @@ plus route-aware pull provider handoff
 plus pull cursor advancement planning
 plus pull cursor advance SQL planning
 plus pull cursor advance repository adaptation
+plus route-aware pull cursor advance provider
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

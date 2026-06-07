@@ -2,6 +2,27 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.105.0] - 2026-06-06
+
+### Added
+
+- `OfflinePullRouteCursorAdvanceProvider` for explicitly injected route
+  orchestration that resolves registered-device headers, plans cursor rows, and
+  invokes the cursor advance repository.
+- Provider readiness metadata for route-aware cursor advancement while default
+  route execution and route-connected writes remain deferred.
+- Health/admin and WordPress smoke readiness metadata for staged route cursor
+  provider availability.
+- Unit coverage for successful route-aware cursor advancement, missing
+  authorization rejection before cursor writes, and missing change-set
+  rejection after device context resolution.
+
+### Not Added
+
+- No default live offline route cursor execution is enabled. Default
+  route-connected reads, tombstone repository reads, queue replay, route
+  registration, and route-connected database mutation remain disabled.
+
 ## [0.104.0] - 2026-06-06
 
 ### Added

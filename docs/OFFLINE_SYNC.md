@@ -234,6 +234,11 @@ execution, route registration, and route-connected writes remain deferred.
 Version `0.104.0` adds explicit pull cursor repository adaptation. Prepared
 cursor upserts can run when directly invoked by staged tests, while default
 route cursor execution and route-connected writes remain deferred.
+Version `0.105.0` adds route-aware pull cursor advancement provider
+composition. Explicit staging orchestration can resolve registered-device
+headers, validate pull context, plan cursor rows, and invoke the cursor
+repository after returned change sets, while default route execution remains
+deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

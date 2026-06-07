@@ -433,6 +433,12 @@ Version `0.104.0` adds explicit pull cursor repository adaptation. Staging can
 run prepared cursor upsert plans in controlled tests, while default route cursor
 execution, route registration, and route-connected writes remain disabled.
 
+Version `0.105.0` adds route-aware pull cursor advancement provider
+composition. Staging can inject orchestration that resolves registered-device
+headers and invokes explicit cursor repository writes after provider change
+sets are returned, while default route execution and route-connected writes
+remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

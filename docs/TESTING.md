@@ -177,6 +177,10 @@
 - Local unit coverage now includes offline pull cursor repository adaptation
   for explicit cursor upserts, empty plans, invalid plans before writes,
   database failures, invalid affected-row results, and route-deferred audits.
+- Local unit coverage now includes route-aware offline pull cursor advancement
+  provider composition for registered-device header resolution, explicit cursor
+  repository invocation, missing authorization before writes, and missing
+  change-set rejection after context lookup.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

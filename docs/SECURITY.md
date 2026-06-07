@@ -97,6 +97,9 @@ templates, and keeps execution deferred.
 Pull cursor repository adaptation executes only prepared upsert templates from
 accepted plans and remains outside default route wiring, so staged writes stay
 explicit and route-connected cursor execution remains disabled.
+Route-aware pull cursor advancement now resolves registered-device headers
+before planning and invoking that repository, but it remains an explicitly
+injected boundary and default route execution stays deferred.
 The planned permission callback adapter keeps raw bearer tokens inside the
 resolver path and exposes only the redacted last resolution for future audit
 logging.

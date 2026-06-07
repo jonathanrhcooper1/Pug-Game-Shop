@@ -65,6 +65,10 @@ prepared upsert templates for staging review, while cursor execution remains
 deferred.
 The pull cursor repository now executes those upsert templates only when
 explicitly called, leaving default route cursor execution deferred.
+The route-aware pull cursor advancement provider can now be injected into
+future orchestration to resolve registered-device headers, plan cursor rows
+from returned change sets, and call that explicit repository while default
+route execution remains deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,

@@ -3,6 +3,94 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Pull Route Cursor Advance Provider
+
+### What Changed
+
+- Added `OfflinePullRouteCursorAdvanceProvider` to compose registered-device
+  header resolution, pull device context planning, cursor advancement planning,
+  and explicit cursor repository execution for staged route orchestration.
+- Exposed staged route cursor provider readiness in registered-device sync
+  handler health and admin summaries while keeping default route execution
+  deferred.
+- Added WordPress smoke assertions for route cursor provider readiness and
+  route-level deferral metadata.
+- Added unit coverage for successful route-aware cursor advancement, missing
+  authorization rejection before cursor writes, and missing change-set rejection
+  after registered-device context resolution.
+- Updated project, plugin, and offline app package versions to `0.105.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+Cursor planning and repository execution can now run in isolation, but staging
+needs an explicit route-aware adapter that proves the write path can be
+composed from trusted registered-device headers and returned change sets. This
+revision adds that injectable boundary without enabling default pull route
+cursor execution, route registration, or route-connected writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePullRouteCursorAdvanceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteCursorAdvanceProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteChangeSetProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Route cursor provider coverage for registered-device header resolution,
+  cursor plan/repository composition, missing authorization before writes, and
+  missing change-set rejection after context lookup.
+- Sync handler readiness and WordPress smoke coverage for route cursor provider
+  readiness and default route execution deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove the route-aware pull cursor advancement
+  provider and its health/admin readiness fields.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default live offline routes, default route-connected reads, tombstone reads,
+  queue replay, route registration, and route-connected database writes remain
+  disabled before and after rollback.
+
 ## 2026-06-06 - Pull Cursor Advance Repository Adaptation
 
 ### What Changed
