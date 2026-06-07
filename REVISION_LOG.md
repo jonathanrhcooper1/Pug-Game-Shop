@@ -3,6 +3,80 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Fee Snapshot Query Planning
+
+### What Changed
+
+- Added staged POS/payment fee snapshot query planning for future admin review
+  reads.
+- The planner normalizes provider, channel, currency, effective-date, and
+  page-size filters while keeping read execution deferred.
+- Parser-only fee snapshot list route responses now include a safe query
+  contract instead of only echoing raw request filters.
+- Added unit coverage for accepted query plans, rejected filter/prefix plans,
+  and fee snapshot route validation metadata.
+- Updated project, plugin, and offline app package versions to `0.147.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Phase 8 needs a safe read-planning layer before staged admin review screens can
+inspect payment fee assumptions. This revision adds the allowlisted query
+contract without enabling route registration, database reads, writes, provider
+capture, provider inventory writes, or WooCommerce gateway capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Payments/PosPaymentFeeSnapshotQueryPlan.php`
+- `apps/wordpress-plugin/src/Payments/PosPaymentFeeSnapshotQueryPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteValidationHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentFeeSnapshotQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteValidationHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentFeeSnapshotQueryPlannerTest` coverage for safe query contracts and
+  rejected tampered filter/prefix inputs.
+- `PosPaymentRouteValidationHandlerFactoryTest` coverage for fee snapshot
+  route query metadata and deferred read execution.
+
+### Rollback Notes
+
+- Revert this revision to remove staged fee snapshot query planning and return
+  the parser-only fee snapshot list route to basic filter validation.
+- No database rollback is required because no schema migration, database read
+  execution, route registration, write path, provider capture, provider
+  inventory write service, webhook processing, or WooCommerce gateway capture
+  was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment reads
+  and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Dependency-Backed Bootstrap Wiring
 
 ### What Changed

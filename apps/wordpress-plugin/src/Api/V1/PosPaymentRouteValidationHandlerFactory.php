@@ -7,14 +7,23 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Payments\PosPaymentFeeSnapshotQueryPlanner;
 use TCGStorePlatform\Payments\PosPaymentLogPlan;
 use TCGStorePlatform\Payments\PosPaymentLogPlanner;
 
 final class PosPaymentRouteValidationHandlerFactory {
 	private PosPaymentLogPlanner $log_planner;
+	private PosPaymentFeeSnapshotQueryPlanner $fee_snapshot_query_planner;
+	private string $table_prefix;
 
-	public function __construct( ?PosPaymentLogPlanner $log_planner = null ) {
-		$this->log_planner = $log_planner ?? new PosPaymentLogPlanner();
+	public function __construct(
+		?PosPaymentLogPlanner $log_planner = null,
+		?PosPaymentFeeSnapshotQueryPlanner $fee_snapshot_query_planner = null,
+		string $table_prefix = 'wp_'
+	) {
+		$this->log_planner                 = $log_planner ?? new PosPaymentLogPlanner();
+		$this->fee_snapshot_query_planner  = $fee_snapshot_query_planner ?? new PosPaymentFeeSnapshotQueryPlanner();
+		$this->table_prefix                = $table_prefix;
 	}
 
 	/**
@@ -160,14 +169,27 @@ final class PosPaymentRouteValidationHandlerFactory {
 	 * @return array<string, mixed>
 	 */
 	public function list_payment_fee_snapshots( OfflineRestRequestData $data ): array {
-		$params = $this->params( $data );
+		$params     = $this->params( $data );
+		$query_plan = $this->fee_snapshot_query_planner->plan( $params, $this->table_prefix );
+
+		if ( ! $query_plan->is_valid() ) {
+			return $this->rejected( 'list_payment_fee_snapshots', $query_plan->errors() );
+		}
+
+		$filters = $query_plan->filters();
 
 		return $this->validated(
 			'list_payment_fee_snapshots',
 			array(
-				'provider'      => $this->string_value( $params['provider'] ?? '' ),
-				'currency'      => $this->currency( $params['currency'] ?? '' ),
-				'read_deferred' => true,
+				'provider'                      => $filters['provider'],
+				'channel'                       => $filters['channel'],
+				'currency'                      => $filters['currency'],
+				'effective_on'                  => $filters['effective_on'],
+				'page_size'                     => $query_plan->limit(),
+				'fee_snapshot_query_ready'      => true,
+				'fee_snapshot_read_query'       => $query_plan->query_contract(),
+				'read_deferred'                 => true,
+				'fee_snapshot_read_deferred'    => true,
 			),
 			200
 		);

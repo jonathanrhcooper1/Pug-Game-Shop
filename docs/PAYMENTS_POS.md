@@ -343,6 +343,22 @@ same parser-only controller, permission callback factory, guarded registrar,
 and bootstrapper path that WordPress registers on `rest_api_init`, while
 default route contracts still expose zero POS/payment routes.
 
+## Fee Snapshot Query Planning
+
+Fee snapshot list requests now use a staged query planner before any future
+admin review read can execute. The planner normalizes:
+
+- Provider and channel slugs.
+- Three-letter currency codes.
+- Optional effective-date filters.
+- Bounded page sizes.
+
+The query contract allowlists the `tcg_payment_fee_snapshots` table, selected
+columns, stable ordering, filters, and limit. It reports query readiness and
+read-execution deferral without calling `$wpdb`, returning fee rows, writing
+fee rows, registering REST routes, calling providers, capturing payments,
+mutating inventory, or enabling WooCommerce gateway capture.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

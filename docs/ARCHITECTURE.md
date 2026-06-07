@@ -244,6 +244,11 @@ WordPress bootstrap obtains the POS/payment route bootstrapper from the staged
 dependency factory, keeping the lifecycle path aligned with those parser-only
 handlers and fail-closed permission callbacks while default contracts register
 zero routes.
+Fee snapshot route validation now uses a staged query planner for future admin
+review reads. It normalizes provider, channel, currency, effective-date, and
+page-size filters into an allowlisted `tcg_payment_fee_snapshots` query
+contract while read execution, fee writes, provider capture, provider inventory
+writes, route registration, and WooCommerce gateway capture remain deferred.
 
 ## System Diagram
 

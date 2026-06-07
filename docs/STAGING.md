@@ -203,5 +203,9 @@ Before major database migrations:
 - WordPress POS/payment bootstrap uses the staged dependency factory, so
   future route registration tests exercise the same dependency path while
   default route contracts still register zero POS/payment routes.
+- POS/payment fee snapshot list requests expose staged query planning metadata
+  for provider, channel, currency, effective-date, and page-size filters while
+  read execution, writes, capture, inventory updates, gateway capture, and
+  route registration remain disabled.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

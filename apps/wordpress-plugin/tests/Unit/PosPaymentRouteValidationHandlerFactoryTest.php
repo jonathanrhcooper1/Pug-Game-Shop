@@ -143,8 +143,11 @@ final class PosPaymentRouteValidationHandlerFactoryTest extends TestCase {
 		$list   = $this->controller()->list_payment_fee_snapshots(
 			array(
 				'query' => array(
-					'provider' => 'square-sandbox',
-					'currency' => 'usd',
+					'provider'     => 'square-sandbox',
+					'channel'      => 'pos',
+					'currency'     => 'usd',
+					'effective_on' => '2026-06-07',
+					'page_size'    => '250',
 				),
 			)
 		);
@@ -159,8 +162,15 @@ final class PosPaymentRouteValidationHandlerFactoryTest extends TestCase {
 		);
 
 		$this->assert_same( 'square-sandbox', $list['data']['provider'] );
+		$this->assert_same( 'pos', $list['data']['channel'] );
 		$this->assert_same( 'USD', $list['data']['currency'] );
+		$this->assert_same( '2026-06-07', $list['data']['effective_on'] );
+		$this->assert_same( 100, $list['data']['page_size'] );
+		$this->assert_true( $list['data']['fee_snapshot_query_ready'] );
+		$this->assert_same( 'wp_tcg_payment_fee_snapshots', $list['data']['fee_snapshot_read_query']['table_name'] );
+		$this->assert_true( $list['data']['fee_snapshot_read_query']['read_execution_deferred'] );
 		$this->assert_true( $list['data']['read_deferred'] );
+		$this->assert_true( $list['data']['fee_snapshot_read_deferred'] );
 		$this->assert_same( 'validated', $create['status'] );
 		$this->assert_true( $create['data']['fee_basis_points_configured'] );
 		$this->assert_true( $create['data']['fee_write_deferred'] );

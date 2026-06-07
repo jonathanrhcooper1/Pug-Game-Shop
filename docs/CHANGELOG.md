@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.147.0] - 2026-06-07
+
+### Added
+
+- Staged POS/payment fee snapshot query planning for future admin review reads,
+  including normalized provider, channel, currency, effective-date, and
+  page-size filters.
+- Parser-only fee snapshot list route metadata now reports a safe query
+  contract while keeping read execution deferred.
+- Unit coverage for accepted and rejected fee snapshot query plans plus route
+  validation metadata.
+
+### Not Added
+
+- Live POS/payment route registration, fee snapshot read execution,
+  fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.146.0] - 2026-06-07
 
 ### Added

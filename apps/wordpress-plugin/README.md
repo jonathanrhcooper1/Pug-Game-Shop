@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.146.0`
+Version: `0.147.0`
 
 ## Implemented Features
 
@@ -126,6 +126,10 @@ Version: `0.146.0`
   writes/capture remain deferred.
 - POS/payment bootstrapper wiring now uses the staged dependency factory while
   current route registration remains disabled by default.
+- POS/payment fee snapshot query planning for staged admin review reads with
+  normalized provider, channel, currency, effective-date, and page-size filters
+  while read execution, writes, capture, inventory updates, and route
+  registration remain deferred.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

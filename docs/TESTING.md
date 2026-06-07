@@ -517,6 +517,10 @@
 - Local unit coverage now proves dependency-backed POS/payment bootstrap can
   register a future explicitly enabled read route in tests while default route
   contracts still register zero routes.
+- Local unit coverage now includes POS/payment fee snapshot query planning for
+  normalized provider, channel, currency, effective-date, and page-size
+  filters, rejected tampered inputs, and parser-only route metadata while read
+  execution remains deferred.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.
