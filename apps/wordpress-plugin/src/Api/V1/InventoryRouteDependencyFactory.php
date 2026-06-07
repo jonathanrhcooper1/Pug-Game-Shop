@@ -84,12 +84,8 @@ final class InventoryRouteDependencyFactory {
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
 	public function handlers(): array {
-		$search_handlers = null !== $this->search_handler_factory
-			? $this->search_handler_factory->handlers()
-			: array();
-		$intake_handlers = null !== $this->intake_handler_factory
-			? $this->intake_handler_factory->handlers()
-			: array();
+		$search_handlers = $this->search_handler_factory()->handlers();
+		$intake_handlers = $this->intake_handler_factory()->handlers();
 
 		return array_intersect_key(
 			array_filter( array_merge( $search_handlers, $intake_handlers, $this->handlers ), 'is_callable' ),
@@ -186,34 +182,30 @@ final class InventoryRouteDependencyFactory {
 	 * @return array<string, mixed>
 	 */
 	private function search_handler_factory_summary(): array {
-		if ( null === $this->search_handler_factory ) {
-			return array(
-				'handler_factory_ready'          => false,
-				'route_connected_handler_ready'  => false,
-				'route_connected_reads_deferred' => true,
-				'database_configured'            => false,
-				'configuration_issues'           => array(),
-			);
-		}
-
-		return $this->search_handler_factory->readiness_summary();
+		return $this->search_handler_factory()->readiness_summary();
 	}
 
 	/**
 	 * @return array<string, mixed>
 	 */
 	private function intake_handler_factory_summary(): array {
-		if ( null === $this->intake_handler_factory ) {
-			return array(
-				'handler_factory_ready'           => false,
-				'route_connected_handler_ready'   => false,
-				'route_connected_writes_deferred' => true,
-				'database_configured'             => false,
-				'configuration_issues'            => array(),
-			);
+		return $this->intake_handler_factory()->readiness_summary();
+	}
+
+	private function search_handler_factory(): InventorySearchRouteHandlerFactory {
+		if ( null === $this->search_handler_factory ) {
+			$this->search_handler_factory = new InventorySearchRouteHandlerFactory();
 		}
 
-		return $this->intake_handler_factory->readiness_summary();
+		return $this->search_handler_factory;
+	}
+
+	private function intake_handler_factory(): InventoryIntakeRouteHandlerFactory {
+		if ( null === $this->intake_handler_factory ) {
+			$this->intake_handler_factory = new InventoryIntakeRouteHandlerFactory();
+		}
+
+		return $this->intake_handler_factory;
 	}
 
 	/**

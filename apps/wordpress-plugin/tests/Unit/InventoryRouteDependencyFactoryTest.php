@@ -34,8 +34,12 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $summary['registration_planner_ready'] );
 		$this->assert_true( $summary['registrar_ready'] );
 		$this->assert_true( $summary['bootstrapper_ready'] );
+		$this->assert_true( $summary['inventory_search_route_handler_factory_ready'] );
 		$this->assert_false( $summary['inventory_search_route_handler_ready'] );
+		$this->assert_true( $summary['inventory_search_route_reads_deferred'] );
+		$this->assert_true( $summary['inventory_intake_route_handler_factory_ready'] );
 		$this->assert_false( $summary['inventory_intake_route_handler_ready'] );
+		$this->assert_true( $summary['inventory_intake_route_writes_deferred'] );
 		$this->assert_same( 0, $summary['registerable_route_count'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
 		$this->assert_true( $summary['route_connected_reads_deferred'] );

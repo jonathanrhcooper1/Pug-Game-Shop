@@ -52,6 +52,9 @@ staging database acceptance remains pending.
 - Inventory route bootstrap planning, status presentation, dependency-factory
   composition, and WordPress `rest_api_init` hook wiring while route
   registration remains blocked by default.
+- Default inventory dependency composition now includes staged search and
+  intake handler factories so health/admin diagnostics can report factory and
+  database readiness while route execution remains deferred.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

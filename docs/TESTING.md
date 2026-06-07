@@ -62,6 +62,9 @@
 - Local unit and WordPress smoke coverage now include the inventory route
   bootstrapper, proving blocked, gated, and future-ready route registration
   paths while the production default remains unregistered.
+- Local unit coverage now verifies the default inventory dependency graph
+  exposes staged search/intake handler factories while route-connected reads
+  and writes remain deferred.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit

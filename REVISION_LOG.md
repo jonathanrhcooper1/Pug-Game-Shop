@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Handler Factory Dependency Defaults
+
+### What Changed
+
+- Updated `InventoryRouteDependencyFactory` so the staged inventory search and
+  intake route handler factories are part of the default dependency graph.
+- Kept route-connected reads and writes disabled by default, so the default
+  factory still exposes zero live controller handlers and zero registerable
+  routes.
+- Extended dependency-factory tests to prove the staged search/intake factories
+  are ready while route execution remains deferred.
+
+### Why
+
+Health and admin diagnostics need to distinguish between missing composition
+and intentionally deferred execution. This revision makes the WordPress
+dependency graph report that search/intake factories exist and can inspect
+database readiness, while preserving the route lockout until staging explicitly
+enables reads or writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Default live inventory route registration, route-connected reads, and
+  route-connected writes remain disabled.
+
+### Tests Added
+
+- Unit assertions proving the default inventory dependency factory exposes
+  staged search/intake handler factories while their read/write paths remain
+  deferred.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 734 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 497 PHP files.
+
+### Rollback Notes
+
+- Revert this revision to return the default inventory dependency factory to
+  reporting absent handler factories unless they are explicitly injected.
+- No database rollback or route disablement is required because no migration or
+  live route registration was added.
+
 ## 2026-06-07 - Inventory Route Bootstrap Wiring
 
 ### What Changed
