@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Search Benchmark Fixture
+
+### What Changed
+
+- Added a WP-CLI inventory search benchmark script for disposable
+  WordPress integration/staging databases.
+- The script requires `TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK=1`, refuses
+  production, verifies the current schema target, and seeds 50,000 deterministic
+  disposable inventory rows.
+- The benchmark exercises public visible search, staff deep pagination, and
+  staff barcode lookup through the staged inventory search handler.
+- Added the benchmark to the WordPress integration workflow with cleanup
+  enabled after the migration rehearsal step.
+
+### Why
+
+Phase 2 needs an executable 50,000-item fixture before approving search and
+pagination performance on GoDaddy staging. The benchmark records actual timing
+baselines without inventing production pass/fail budgets before target-hosting
+data exists.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/tests/wordpress-inventory-search-benchmark.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The benchmark creates disposable rows marked with the
+  `PUG-BENCH-SEARCH` code/notes in an explicitly approved non-production
+  database.
+
+### Tests Added
+
+- WordPress integration workflow coverage for a 50,000-row inventory search
+  fixture baseline.
+- Syntax/lint coverage for the new WP-CLI benchmark script.
+
+### Tests Run
+
+- `php -l apps/wordpress-plugin/tests/wordpress-inventory-search-benchmark.php`:
+  passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-inventory-search-benchmark.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the workflow benchmark step and WP-CLI script.
+- No schema rollback is required for code rollback.
+- If benchmark cleanup was disabled or interrupted, delete rows where
+  `notes = 'PUG-BENCH-SEARCH'` and remove the matching benchmark inventory
+  location from the non-production database.
+
 ## 2026-06-07 - WordPress Migration Rollback Restore Rehearsal
 
 ### What Changed

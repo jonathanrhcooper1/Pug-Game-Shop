@@ -35,7 +35,11 @@
   staff search returns both rows with staff SKU data. The workflow also runs an
   explicit destructive migration rehearsal in the disposable database, rolling
   from the current target to schema version `1`, verifying Phase 2 tables are
-  dropped, migrating back to the target, and verifying those tables return.
+  dropped, migrating back to the target, and verifying those tables return. It
+  then runs an explicit non-production inventory search benchmark fixture that
+  seeds 50,000 disposable rows and emits baselines for public visible search,
+  staff deep pagination, and staff barcode lookup through the staged search
+  handler.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
@@ -642,6 +646,11 @@
   short-circuiting, repository failure rejection, default read deferral,
   explicitly enabled repository-backed reads, provider failures, and table
   prefix issues.
+- WordPress integration coverage now includes a non-production inventory search
+  benchmark fixture that seeds 50,000 deterministic disposable rows, runs
+  public visible search, staff deep pagination, and staff barcode lookup
+  through the staged search handler, and emits timing baselines for target
+  staging review.
 
 ## Required Test Backlog
 

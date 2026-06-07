@@ -85,6 +85,11 @@ staging database acceptance remains pending.
   inventory/pricing tables are dropped, migrates back to the target, and
   verifies those tables return. The rehearsal requires an explicit destructive
   test flag and refuses production.
+- WordPress integration inventory search benchmark fixture now seeds 50,000
+  deterministic disposable inventory rows, exercises public visible search,
+  staff deep pagination, and staff barcode lookup through the staged search
+  handler, emits timing baselines, and refuses production unless explicitly
+  enabled for a non-production database.
 - Staff Inventory Workspace search form, route-readiness lockout, and
   REST-backed read-only results panel for the staging staff inventory search
   route.
@@ -137,6 +142,7 @@ On PHP 8.2.29:
 2. Rollback from schema version `2` to `1` on the GoDaddy staging database.
 3. `dbDelta` compatibility on the target GoDaddy WordPress database
    configuration.
-4. Search and pagination benchmarks after the 50,000-item seed fixture exists.
+4. Review and approve search and pagination benchmark baselines on GoDaddy
+   staging after running the 50,000-item fixture there.
 5. Live route registration remains disabled until target-staging permission,
    rate-limit, and route smoke tests are complete.

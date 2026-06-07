@@ -124,3 +124,11 @@ jobs:
           WP_ENVIRONMENT_TYPE: staging
           TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL: "1"
         run: wp eval-file apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php --path="$WP_DIR"
+
+      - name: Benchmark inventory search fixture
+        env:
+          WP_DIR: ${{ runner.temp }}/wordpress
+          WP_ENVIRONMENT_TYPE: staging
+          TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK: "1"
+          TCG_INVENTORY_SEARCH_BENCHMARK_CLEANUP: "1"
+        run: wp eval-file apps/wordpress-plugin/tests/wordpress-inventory-search-benchmark.php --path="$WP_DIR"
