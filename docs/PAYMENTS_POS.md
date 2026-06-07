@@ -83,6 +83,22 @@ Unmapped provider-only lines create durable staff-review conflicts. The
 provider may record payments and orders, but exact serialized inventory status
 continues to belong to the plugin.
 
+## Log And Fee Storage
+
+Migration `0009_pos-payments` adds three tables:
+
+- `tcg_pos_sync_log` records provider/location references, external
+  order/transaction/line IDs, inventory/barcode mapping, reconciliation status,
+  result details, and provider idempotency keys.
+- `tcg_payment_provider_log` records masked payment/refund provider operations,
+  Woo order links, amount/currency, status, and idempotency keys.
+- `tcg_payment_fee_snapshots` records effective-dated fee assumptions with
+  source notes and verification timestamps.
+
+These tables do not enable live network calls. They exist so staged adapters
+can be tested with durable, reversible storage before webhook routes or
+provider write services are allowed.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

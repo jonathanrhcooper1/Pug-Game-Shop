@@ -145,6 +145,13 @@
 - Version `0.127.0` adds canonical mutation transaction preflight metadata. No
   WordPress schema, SQLite schema, migration order, query execution, or
   rollback target changes.
+- Version `0.128.0` adds POS transaction-ingestion contracts and configurable
+  fee-estimate fixtures. No WordPress schema, SQLite schema, migration order,
+  or rollback target changes.
+- Version `0.129.0` adds WordPress migration `0009_pos-payments`, advancing the
+  database target to `9` with reversible POS sync log, payment provider log,
+  and fee snapshot tables. Roll back to target `8` to drop those tables in a
+  controlled maintenance window.
 
 ## Relationship Overview
 
@@ -451,6 +458,11 @@ boundary.
 | `tcg_offline_pull_cursors` | device/domain cursor, last server time, last pull timestamp, row count |
 
 ## POS And Payments
+
+Schema migration `0009_pos-payments` creates the POS/payment tables. The
+tables are for idempotent reconciliation logs, masked provider records, and
+effective-dated fee assumptions only; live provider writes and webhook routes
+remain disabled.
 
 | Table | Key fields |
 | --- | --- |

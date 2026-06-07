@@ -446,6 +446,9 @@
   event idempotency, duplicate-event replay, scan-gated sales, declined
   payments, unmapped line conflicts, refunds to pending review, and
   configurable fee estimates without hardcoded live rates.
+- Local unit and WordPress smoke coverage now include POS/payment schema
+  migration `0009`, idempotency indexes, masked provider payload fields,
+  fee snapshot effective dates, dbDelta compatibility, and rollback order.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

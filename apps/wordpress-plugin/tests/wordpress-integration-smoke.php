@@ -17,6 +17,7 @@ use TCGStorePlatform\Migrations\FoundationSchema;
 use TCGStorePlatform\Migrations\InventoryPricingSchema;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Migrations\OfflineSyncSchema;
+use TCGStorePlatform\Migrations\PosPaymentSchema;
 use TCGStorePlatform\Migrations\ReservationSchema;
 use TCGStorePlatform\Migrations\SyncSchema;
 use TCGStorePlatform\Version;
@@ -87,9 +88,9 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.128.0' === Version::PLUGIN, 'Unexpected plugin version.' );
-$assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
-$assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
+$assert( '0.129.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
+$assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
 
 $tables = array_merge(
@@ -100,7 +101,8 @@ $tables = array_merge(
 	BuylistSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	SyncSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	ReservationSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
-	OfflineSyncSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() )
+	OfflineSyncSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
+	PosPaymentSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() )
 );
 
 foreach ( array_keys( $tables ) as $table_name ) {
@@ -143,9 +145,9 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.128.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
-$assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
-$assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
+$assert( '0.129.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
+$assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
 $assert( false === ( $data['features']['inventory_pricing']['enabled'] ?? null ), 'Inventory feature flag should remain disabled.' );
 $assert( 'blocked' === ( $data['offline_route_bootstrap']['status'] ?? null ), 'Offline route bootstrap should remain blocked.' );

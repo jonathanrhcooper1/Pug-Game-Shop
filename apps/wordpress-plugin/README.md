@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.128.0`
+Version: `0.129.0`
 
 ## Implemented Features
 
@@ -73,6 +73,8 @@ Version: `0.128.0`
   provider event idempotency, duplicate-event replay, scan-gated sale/refund
   reconciliation, durable conflict signaling, and configurable fee estimates
   without hardcoded live rates.
+- POS/payment schema migration for idempotent POS sync logs, masked payment
+  provider logs, and effective-dated fee snapshots.
 - Offline device pairing, push, pull, conflict list, and conflict resolution
   planned REST route contracts with permission strategy metadata,
   registered-device required scopes, and live registration disabled.

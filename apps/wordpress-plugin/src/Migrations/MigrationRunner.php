@@ -140,6 +140,7 @@ final class MigrationRunner {
 			new Version0006Sync(),
 			new Version0007Reservations(),
 			new Version0008OfflineSync(),
+			new Version0009PosPayments(),
 		);
 	}
 

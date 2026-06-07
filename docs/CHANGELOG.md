@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.129.0] - 2026-06-06
+
+### Added
+
+- POS/payment adapter schema migration `0009_pos-payments` with reversible
+  tables for POS sync logs, payment provider logs, and effective-dated fee
+  snapshots.
+- Migration runner planning for database target `9` and rollback from the new
+  POS/payment schema boundary.
+- Unit and WordPress smoke coverage for the new POS/payment tables, indexes,
+  dbDelta compatibility, database target, and rollback order.
+
+### Not Added
+
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, and POS reconciliation write services remain disabled.
+
 ## [0.128.0] - 2026-06-06
 
 ### Added

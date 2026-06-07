@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - POS Payment Schema Migration
+
+### What Changed
+
+- Added `PosPaymentSchema` with dbDelta-compatible tables for POS sync logs,
+  payment provider logs, and payment fee snapshots.
+- Added reversible migration `Version0009PosPayments`.
+- Wired migration `9` into `MigrationRunner` and updated the WordPress
+  database target to `9`.
+- Added schema tests for POS provider idempotency, inventory mapping,
+  reconciliation status indexes, masked payment provider payload fields,
+  effective-dated fee snapshot configuration, dbDelta compatibility, and
+  rollback drop order.
+- Updated WordPress smoke coverage to require the POS/payment tables and schema
+  target `9`.
+- Updated project, plugin, and offline app package versions to `0.129.0`.
+- Updated project, plugin, database, payments/POS, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Phase 8 now has a contract for sandbox transaction ingestion, but staging also
+needs durable tables for idempotent POS reconciliation logs, masked provider
+transaction records, and effective-dated fee assumptions. This revision adds
+only the schema and planning boundary; no live provider routes or write
+services are enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/PosPaymentSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0009PosPayments.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- Added WordPress database migration `0009_pos-payments`.
+- New tables: `tcg_pos_sync_log`, `tcg_payment_provider_log`, and
+  `tcg_payment_fee_snapshots`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentSchemaTest` coverage for all three tables, required fields,
+  idempotency/index contracts, dbDelta compatibility, and drop order.
+- Migration runner plan coverage for clean install, prior-schema upgrade, and
+  rollback including migration `9`.
+- WordPress smoke assertions for plugin version `0.129.0`, database target `9`,
+  and expected POS/payment tables.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment schema migration and database
+  target bump.
+- If migration `9` has been applied in staging, roll back to target `8` in a
+  controlled maintenance window. That drops `tcg_payment_fee_snapshots`,
+  `tcg_payment_provider_log`, and `tcg_pos_sync_log`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, and POS reconciliation write services remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - POS Transaction Ingestion Contract
 
 ### What Changed
