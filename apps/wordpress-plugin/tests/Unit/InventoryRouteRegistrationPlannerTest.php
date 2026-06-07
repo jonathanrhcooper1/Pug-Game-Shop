@@ -10,6 +10,7 @@ namespace TCGStorePlatform\Tests\Unit;
 use TCGStorePlatform\Api\V1\InventoryCapabilityPermissionCallbackAdapter;
 use TCGStorePlatform\Api\V1\InventoryController;
 use TCGStorePlatform\Api\V1\InventoryPublicReadPermissionCallbackAdapter;
+use TCGStorePlatform\Api\V1\InventoryPublicReadRateLimitPolicy;
 use TCGStorePlatform\Api\V1\InventoryRouteContracts;
 use TCGStorePlatform\Api\V1\InventoryRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\InventoryRouteRegistrationPlanner;
@@ -43,7 +44,8 @@ final class InventoryRouteRegistrationPlannerTest extends TestCase {
 	public function test_permission_factory_maps_inventory_capabilities_and_public_reads(): void {
 		$factory   = new InventoryRoutePermissionCallbackFactory(
 			static fn ( string $capability ): bool => in_array( $capability, array( 'create_inventory', 'view_inventory' ), true ),
-			true
+			true,
+			$this->rate_limit_policy()
 		);
 		$callbacks = $factory->callbacks_for_contracts();
 		$create    = $callbacks['POST /inventory'];
@@ -57,7 +59,9 @@ final class InventoryRouteRegistrationPlannerTest extends TestCase {
 		$this->assert_same( 'public_or_staff_inventory_fields', $search->permission() );
 		$this->assert_same( 'view_inventory', $search->fallback_capability() );
 		$this->assert_true( $search->public_reads_enabled() );
+		$this->assert_true( $search->public_rate_limiter_configured() );
 		$this->assert_true( $search->authorize() );
+		$this->assert_same( 'public_read_rate_limited', $search->last_audit_payload()['strategy'] );
 	}
 
 	public function test_public_routes_stay_locked_when_public_reads_and_capabilities_are_unconfigured(): void {
@@ -175,8 +179,32 @@ final class InventoryRouteRegistrationPlannerTest extends TestCase {
 
 	private function planner( bool $public_read_routes_enabled = false ): InventoryRouteRegistrationPlanner {
 		return new InventoryRouteRegistrationPlanner(
-			new InventoryRoutePermissionCallbackFactory( static fn (): bool => true, $public_read_routes_enabled ),
+			new InventoryRoutePermissionCallbackFactory(
+				static fn (): bool => true,
+				$public_read_routes_enabled,
+				$public_read_routes_enabled ? $this->rate_limit_policy() : null
+			),
 			new InventoryController( null, $this->handlers_for_all_routes() )
+		);
+	}
+
+	private function rate_limit_policy(): InventoryPublicReadRateLimitPolicy {
+		$store = array();
+
+		return new InventoryPublicReadRateLimitPolicy(
+			60,
+			60,
+			static function ( string $key ) use ( &$store ): mixed {
+				return $store[ $key ] ?? false;
+			},
+			static function ( string $key, array $state, int $ttl ) use ( &$store ): bool {
+				unset( $ttl );
+
+				$store[ $key ] = $state;
+
+				return true;
+			},
+			static fn (): int => 1000
 		);
 	}
 

@@ -10,6 +10,7 @@ namespace TCGStorePlatform\Tests\Unit;
 use TCGStorePlatform\Api\V1\InventoryCapabilityPermissionCallbackAdapter;
 use TCGStorePlatform\Api\V1\InventoryController;
 use TCGStorePlatform\Api\V1\InventoryPublicReadPermissionCallbackAdapter;
+use TCGStorePlatform\Api\V1\InventoryPublicReadRateLimitPolicy;
 use TCGStorePlatform\Api\V1\InventoryRouteContracts;
 use TCGStorePlatform\Api\V1\InventoryRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\InventoryRouteRegistrar;
@@ -153,8 +154,32 @@ final class InventoryRouteRegistrarTest extends TestCase {
 
 	private function planner( bool $public_read_routes_enabled = false ): InventoryRouteRegistrationPlanner {
 		return new InventoryRouteRegistrationPlanner(
-			new InventoryRoutePermissionCallbackFactory( static fn (): bool => true, $public_read_routes_enabled ),
+			new InventoryRoutePermissionCallbackFactory(
+				static fn (): bool => true,
+				$public_read_routes_enabled,
+				$public_read_routes_enabled ? $this->rate_limit_policy() : null
+			),
 			$this->controller()
+		);
+	}
+
+	private function rate_limit_policy(): InventoryPublicReadRateLimitPolicy {
+		$store = array();
+
+		return new InventoryPublicReadRateLimitPolicy(
+			60,
+			60,
+			static function ( string $key ) use ( &$store ): mixed {
+				return $store[ $key ] ?? false;
+			},
+			static function ( string $key, array $state, int $ttl ) use ( &$store ): bool {
+				unset( $ttl );
+
+				$store[ $key ] = $state;
+
+				return true;
+			},
+			static fn (): int => 1000
 		);
 	}
 

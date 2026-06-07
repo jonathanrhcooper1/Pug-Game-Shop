@@ -31,7 +31,8 @@ final class InventoryRouteDependencyFactory {
 		private bool $public_read_routes_enabled = false,
 		private ?InventorySearchRouteHandlerFactory $search_handler_factory = null,
 		private ?InventoryIntakeRouteHandlerFactory $intake_handler_factory = null,
-		private ?array $route_contracts = null
+		private ?array $route_contracts = null,
+		private ?InventoryPublicReadRateLimitPolicy $public_read_rate_limit_policy = null
 	) {
 		$this->capability_checker      = $capability_checker;
 		$this->register_route_callback = $register_route_callback;
@@ -75,7 +76,8 @@ final class InventoryRouteDependencyFactory {
 			$configurator->public_read_routes_enabled( $settings ),
 			new InventorySearchRouteHandlerFactory( null, $configurator->route_connected_reads_enabled( $settings ) ),
 			new InventoryIntakeRouteHandlerFactory( null, $configurator->route_connected_writes_enabled( $settings ) ),
-			$configurator->route_contracts( $settings )
+			$configurator->route_contracts( $settings ),
+			InventoryPublicReadRateLimitPolicy::for_wordpress_transients()
 		);
 	}
 
@@ -89,7 +91,8 @@ final class InventoryRouteDependencyFactory {
 	public function permission_callback_factory(): InventoryRoutePermissionCallbackFactory {
 		return new InventoryRoutePermissionCallbackFactory(
 			$this->capability_checker,
-			$this->public_read_routes_enabled
+			$this->public_read_routes_enabled,
+			$this->public_read_rate_limit_policy
 		);
 	}
 
@@ -156,6 +159,7 @@ final class InventoryRouteDependencyFactory {
 		$permission_callbacks     = $this->permission_callback_factory()->callbacks_for_contracts( $route_contracts );
 		$capability_route_keys    = array_keys( InventoryRoutePermissionCallbackFactory::capability_map( $route_contracts ) );
 		$public_read_route_keys   = InventoryRoutePermissionCallbackFactory::public_read_route_keys( $route_contracts );
+		$rate_limited_route_keys  = InventoryRoutePermissionCallbackFactory::public_rate_limited_route_keys( $route_contracts );
 		$handler_keys             = array_keys( $this->handlers() );
 		$registerable_route_keys  = array_keys(
 			array_filter(
@@ -167,6 +171,7 @@ final class InventoryRouteDependencyFactory {
 		$intake_summary           = $this->intake_handler_factory_summary();
 		$capability_configured    = $this->all_keys_present( $capability_route_keys, $permission_callbacks );
 		$public_callbacks_present = $this->all_keys_present( $public_read_route_keys, $permission_callbacks );
+		$rate_limiter_configured  = $this->permission_callback_factory()->public_rate_limiter_configured();
 		$handlers_configured      = $this->all_keys_present( self::HANDLER_CALLBACKS, array_fill_keys( $handler_keys, true ) );
 		$issues                   = array();
 
@@ -180,6 +185,10 @@ final class InventoryRouteDependencyFactory {
 
 		if ( ! $this->public_read_routes_enabled ) {
 			$issues[] = 'inventory_public_read_routes_not_enabled';
+		}
+
+		if ( $this->public_read_routes_enabled && ! $rate_limiter_configured ) {
+			$issues[] = 'inventory_public_rate_limiter_not_configured';
 		}
 
 		if ( ! $public_callbacks_present ) {
@@ -200,7 +209,9 @@ final class InventoryRouteDependencyFactory {
 			'capability_permission_route_count'            => count( $capability_route_keys ),
 			'capability_permission_callbacks_configured'   => $capability_configured,
 			'public_read_route_count'                      => count( $public_read_route_keys ),
+			'public_rate_limited_route_count'              => count( $rate_limited_route_keys ),
 			'public_read_routes_enabled'                   => $this->public_read_routes_enabled,
+			'public_rate_limiter_configured'               => $rate_limiter_configured,
 			'public_read_permission_callbacks_configured'  => $public_callbacks_present,
 			'registration_planner_ready'                   => method_exists( InventoryRouteRegistrationPlanner::class, 'planned_registration_args' ),
 			'registrar_ready'                              => method_exists( InventoryRouteRegistrar::class, 'register_enabled_routes' ),

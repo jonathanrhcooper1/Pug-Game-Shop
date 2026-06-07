@@ -36,6 +36,10 @@ All notable changes follow Semantic Versioning.
 - Gated inventory REST controller, permission callbacks, registration planner,
   and registrar for future `/inventory/search` reads and `POST /inventory`
   writes, with public reads and route-connected writes disabled by default.
+- Public inventory read rate-limit policy wiring for future public search
+  routes, including transient-backed WordPress storage support, hashed bucket
+  audit data, fail-closed behavior when no limiter is configured, and staff
+  capability fallback for staging/admin reads.
 - Inventory route dependency factory and readiness presenter that compose
   staged search/create handlers, permission callbacks, registration planner,
   and registrar while keeping live inventory routes gated.

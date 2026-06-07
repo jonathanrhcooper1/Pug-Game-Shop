@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Public Read Rate Limit Gate
+
+### What Changed
+
+- Added a public inventory read rate-limit policy with configurable limit,
+  window, clock, storage reader, and storage writer dependencies.
+- Added WordPress transient-backed limiter construction for future live public
+  search routes.
+- Updated inventory public-read permission callbacks so public access fails
+  closed when public reads are enabled without a configured limiter.
+- Preserved staff/admin fallback authorization through `view_inventory` so
+  staging staff search remains usable when public reads are disabled or unsafe.
+- Exposed public rate-limiter readiness in inventory route dependency health
+  and admin summaries.
+
+### Why
+
+Future public search/reference routes must not become publicly usable unless a
+rate limiter is configured. Staff search still needs a capability-backed path
+for staging and admin workflows while public access remains guarded.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryPublicReadRateLimitPolicy.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryPublicReadPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryPublicReadPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrarTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- WordPress transient storage is used only when public inventory reads are
+  explicitly enabled and the route graph is composed inside WordPress.
+
+### Tests Added
+
+- Unit coverage for missing-limiter public denial.
+- Unit coverage for per-bucket public read rate-limit enforcement.
+- Unit coverage for rate-limit window reset behavior.
+- Unit coverage for staff fallback authorization when public reads are unsafe.
+- Dependency-factory coverage proving public-read routes enabled without a
+  limiter report a blocked readiness state.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 768 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Api\V1\InventoryPublicReadRateLimitPolicy.php src\Api\V1\InventoryPublicReadPermissionCallbackAdapter.php src\Api\V1\InventoryRoutePermissionCallbackFactory.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit rate-limit dependency from
+  inventory public-read permission callbacks.
+- Confirm public inventory read settings remain disabled after rollback.
+- No schema rollback is required.
+
 ## 2026-06-07 - Manager Override Persistence And Reauthentication
 
 ### What Changed

@@ -46,6 +46,10 @@ staging database acceptance remains pending.
   permission adapter, capability permission adapter, registration planner, and
   registrar for future inventory search/create routes while default live
   registration remains disabled.
+- Public inventory read rate-limit policy for future public search routes,
+  including WordPress transient storage support, hashed bucket audit data,
+  fail-closed public access when no limiter is configured, and staff fallback
+  authorization for staging/admin reads.
 - Inventory route dependency factory and readiness presenter for composing
   staged search/create handlers, controller dispatch, permission callbacks,
   registration planning, and registrar readiness without enabling live routes.
@@ -127,5 +131,5 @@ On PHP 8.2.29:
 2. Rollback from schema version `2` to `1` on staging.
 3. `dbDelta` compatibility on the target WordPress database configuration.
 4. Search and pagination benchmarks after the 50,000-item seed fixture exists.
-5. Live route registration remains disabled until repository writes, staff
-   permissions, rate limiting, and staging smoke tests are complete.
+5. Live route registration remains disabled until target-staging permission,
+   rate-limit, and route smoke tests are complete.

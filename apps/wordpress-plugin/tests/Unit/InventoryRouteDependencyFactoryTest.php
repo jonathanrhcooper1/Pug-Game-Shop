@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\InventoryCapabilityPermissionCallbackAdapter;
 use TCGStorePlatform\Api\V1\InventoryPublicReadPermissionCallbackAdapter;
+use TCGStorePlatform\Api\V1\InventoryPublicReadRateLimitPolicy;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyStatusPresenter;
 use TCGStorePlatform\Api\V1\InventoryRouteContracts;
@@ -30,7 +31,9 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_same( 8, $summary['capability_permission_route_count'] );
 		$this->assert_false( $summary['capability_permission_callbacks_configured'] );
 		$this->assert_same( 5, $summary['public_read_route_count'] );
+		$this->assert_same( 1, $summary['public_rate_limited_route_count'] );
 		$this->assert_false( $summary['public_read_routes_enabled'] );
+		$this->assert_false( $summary['public_rate_limiter_configured'] );
 		$this->assert_false( $summary['public_read_permission_callbacks_configured'] );
 		$this->assert_true( $summary['registration_planner_ready'] );
 		$this->assert_true( $summary['registrar_ready'] );
@@ -64,7 +67,11 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 			$this->handlers_for_staged_routes(),
 			static fn (): bool => true,
 			static fn (): bool => true,
-			true
+			true,
+			null,
+			null,
+			null,
+			$this->rate_limit_policy()
 		);
 		$summary = $factory->readiness_summary();
 
@@ -75,6 +82,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_same( 13, $summary['permission_callback_count'] );
 		$this->assert_true( $summary['capability_permission_callbacks_configured'] );
 		$this->assert_true( $summary['public_read_permission_callbacks_configured'] );
+		$this->assert_true( $summary['public_rate_limiter_configured'] );
 		$this->assert_same( 0, $summary['registerable_route_count'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
 		$this->assert_same( array(), $summary['configuration_issues'] );
@@ -121,11 +129,36 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 			array(),
 			static fn (): bool => true,
 			null,
-			true
+			true,
+			null,
+			null,
+			null,
+			$this->rate_limit_policy()
 		) )->permission_callback_factory()->callbacks_for_contracts();
 
 		$this->assert_true( $callbacks['POST /inventory'] instanceof InventoryCapabilityPermissionCallbackAdapter );
 		$this->assert_true( $callbacks['GET /inventory/search'] instanceof InventoryPublicReadPermissionCallbackAdapter );
+	}
+
+	public function test_public_read_routes_enabled_without_limiter_reports_blocked_state(): void {
+		$summary = ( new InventoryRouteDependencyFactory(
+			null,
+			$this->handlers_for_staged_routes(),
+			static fn (): bool => true,
+			null,
+			true
+		) )->readiness_summary();
+
+		$this->assert_false( $summary['configured'] );
+		$this->assert_true( $summary['public_read_permission_callbacks_configured'] );
+		$this->assert_false( $summary['public_rate_limiter_configured'] );
+		$this->assert_true(
+			in_array(
+				'inventory_public_rate_limiter_not_configured',
+				$summary['configuration_issues'],
+				true
+			)
+		);
 	}
 
 	public function test_registrar_uses_injected_dependencies_for_future_ready_inventory_routes(): void {
@@ -236,7 +269,11 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 				$this->handlers_for_staged_routes(),
 				static fn (): bool => true,
 				null,
-				true
+				true,
+				null,
+				null,
+				null,
+				$this->rate_limit_policy()
 			)
 		) )->admin_summary();
 
@@ -263,6 +300,26 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 					'idempotency_key' => (string) $data->idempotency_key(),
 				);
 			},
+		);
+	}
+
+	private function rate_limit_policy(): InventoryPublicReadRateLimitPolicy {
+		$store = array();
+
+		return new InventoryPublicReadRateLimitPolicy(
+			60,
+			60,
+			static function ( string $key ) use ( &$store ): mixed {
+				return $store[ $key ] ?? false;
+			},
+			static function ( string $key, array $state, int $ttl ) use ( &$store ): bool {
+				unset( $ttl );
+
+				$store[ $key ] = $state;
+
+				return true;
+			},
+			static fn (): int => 1000
 		);
 	}
 

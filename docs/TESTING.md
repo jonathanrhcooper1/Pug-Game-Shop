@@ -63,6 +63,10 @@
   gating, explicit write-gate clearing, injected controller handler readiness,
   capability permission callbacks, public-read permission callbacks, and locked
   device/owner permission routes.
+- Local unit coverage now includes inventory public-read rate limiting,
+  covering missing-limiter public denial, per-bucket limit enforcement, window
+  reset behavior, readiness reporting, and staff capability fallback when
+  public reads are not safely open.
 - Local unit coverage now includes inventory route dependency factory and
   status presentation behavior for blocked default dependencies, staged
   search/create handler composition, permission callback assembly, registrar
