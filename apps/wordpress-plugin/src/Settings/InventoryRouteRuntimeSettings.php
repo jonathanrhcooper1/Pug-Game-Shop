@@ -16,6 +16,7 @@ final class InventoryRouteRuntimeSettings {
 	public static function defaults(): array {
 		return array(
 			'staff_search_route_enabled'  => false,
+			'staff_create_route_enabled'  => false,
 			'public_search_route_enabled' => false,
 		);
 	}
@@ -35,9 +36,11 @@ final class InventoryRouteRuntimeSettings {
 	public static function sanitize( mixed $value ): array {
 		$value                = is_array( $value ) ? $value : array();
 		$staff_search_enabled = ! empty( $value['staff_search_route_enabled'] );
+		$staff_create_enabled = ! empty( $value['staff_create_route_enabled'] );
 
 		return array(
 			'staff_search_route_enabled'  => $staff_search_enabled,
+			'staff_create_route_enabled'  => $staff_create_enabled,
 			'public_search_route_enabled' => $staff_search_enabled
 				&& ! empty( $value['public_search_route_enabled'] ),
 		);

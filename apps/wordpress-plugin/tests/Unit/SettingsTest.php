@@ -39,6 +39,7 @@ final class SettingsTest extends TestCase {
 		$this->assert_true( isset( $defaults['offline_pairing_authorization'] ) );
 		$this->assert_true( isset( $defaults['inventory_route_runtime'] ) );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_search_route_enabled'] );
+		$this->assert_false( $defaults['inventory_route_runtime']['staff_create_route_enabled'] );
 	}
 
 	public function test_inventory_route_runtime_settings_are_sanitized(): void {
@@ -46,23 +47,27 @@ final class SettingsTest extends TestCase {
 			array(
 				'inventory_route_runtime' => array(
 					'staff_search_route_enabled'  => true,
+					'staff_create_route_enabled'  => true,
 					'public_search_route_enabled' => true,
 				),
 			)
 		);
 
 		$this->assert_true( $result['inventory_route_runtime']['staff_search_route_enabled'] );
+		$this->assert_true( $result['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_true( $result['inventory_route_runtime']['public_search_route_enabled'] );
 
 		$result = Settings::sanitize(
 			array(
 				'inventory_route_runtime' => array(
+					'staff_create_route_enabled'  => true,
 					'public_search_route_enabled' => true,
 				),
 			)
 		);
 
 		$this->assert_false( $result['inventory_route_runtime']['staff_search_route_enabled'] );
+		$this->assert_true( $result['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_false( $result['inventory_route_runtime']['public_search_route_enabled'] );
 	}
 

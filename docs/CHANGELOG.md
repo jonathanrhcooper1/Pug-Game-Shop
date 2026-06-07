@@ -50,6 +50,12 @@ All notable changes follow Semantic Versioning.
   `/inventory/search` route after staging feature/runtime gates are enabled and
   verifies writes, public reads, WooCommerce projection, Square projection, and
   POS ingestion stay closed.
+- Staging-only staff inventory create runtime gate for `POST /inventory`,
+  keeping production defaults locked while external WooCommerce, Square, POS,
+  and label side effects remain deferred.
+- WordPress integration staging smoke coverage that creates a disposable
+  Bulbasaur inventory row through REST and searches it back through the staff
+  inventory route.
 - Staff Inventory Workspace search panel with safe filter sanitization,
   route-readiness lockout messaging, and a REST-backed read-only results table
   for the staging staff inventory search route.
@@ -96,7 +102,8 @@ All notable changes follow Semantic Versioning.
 
 ### Not Added
 
-- No live inventory route registration, inventory database writes,
+- No production live inventory route registration, production inventory
+  database writes,
   WooCommerce product projection, barcode label printing, Square/POS inventory
   writes, Square network calls, payment capture, external tournament-provider
   calls, or production provider calls were added.

@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Staff Create Runtime Gate
+
+### What Changed
+
+- Added a separate staff inventory create runtime gate for staging/local
+  environments.
+- Updated inventory route contract configuration so only `POST /inventory`
+  becomes registerable and write-ready when the create gate is explicitly
+  enabled.
+- Kept `/inventory/search` reads, `/inventory` creates, public reads,
+  WooCommerce projection, Square projection, and label printing on separate
+  deferral flags.
+- Updated the WordPress settings UI with a staging create-route checkbox.
+- Expanded the WordPress staging inventory smoke script to create a disposable
+  Bulbasaur inventory row through REST, search it back, and confirm Square,
+  WooCommerce, POS, public reads, and label side effects remain deferred.
+
+### Why
+
+Staging needs a controlled first write path for staff card intake before the
+larger inventory workflow can move into admin UX and Square/WooCommerce
+projection work. This keeps production defaults locked while proving the REST
+create path can safely write to the disposable staging database.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Settings/InventoryRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The new create smoke writes only to the disposable staging/integration
+  database after the staging feature flag and explicit create runtime gate are
+  enabled.
+
+### Tests Added
+
+- Unit coverage for staff create runtime setting sanitization and default
+  lockout.
+- Unit coverage proving the create gate clears only `POST /inventory` route
+  registration and write deferrals.
+- Dependency factory coverage proving the staff create route registers only
+  when handlers, permissions, and the runtime gate are ready.
+- WordPress staging smoke coverage for REST inventory create plus follow-up
+  staff search of the created row.
+
+### Tests Run
+
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  src\Settings\InventoryRouteRuntimeSettings.php
+  src\Api\V1\InventoryRouteRuntimeConfigurator.php
+  src\Api\V1\InventoryRouteDependencyFactory.php
+  src\Settings\SettingsPage.php tests\wordpress-staging-inventory-smoke.php`:
+  passed.
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 751 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Disable the staff create runtime checkbox or revert this revision to relock
+  `POST /inventory`.
+- No production data rollback is required because the route stays production
+  unavailable by default.
+- If needed in a disposable staging database, delete rows with SKU/barcode
+  `PUG-STAGE-PKM-BULBA-001`.
+
 ## 2026-06-07 - Seeded Inventory Staging Smoke
 
 ### What Changed

@@ -11,6 +11,7 @@ use TCGStorePlatform\Settings\InventoryRouteRuntimeSettings;
 
 final class InventoryRouteRuntimeConfigurator {
 	private const STAFF_SEARCH_ROUTE_KEY = 'GET /inventory/search';
+	private const STAFF_CREATE_ROUTE_KEY = 'POST /inventory';
 
 	/**
 	 * @param array<string, mixed>             $runtime_settings Runtime settings.
@@ -31,6 +32,19 @@ final class InventoryRouteRuntimeConfigurator {
 				$route_contract['route_registration_deferred']          = false;
 				$route_contract['route_connected_reads_deferred']       = false;
 				$route_contract['route_connected_writes_deferred']      = true;
+				$route_contract['woocommerce_projection_deferred']      = true;
+				$route_contract['square_inventory_projection_deferred'] = true;
+				$route_contract['label_print_deferred']                 = true;
+			}
+
+			if (
+				self::STAFF_CREATE_ROUTE_KEY === InventoryRoutePermissionCallbackFactory::route_key( $route_contract )
+				&& true === $settings['staff_create_route_enabled']
+			) {
+				$route_contract['live_enabled_by_default']              = true;
+				$route_contract['route_registration_deferred']          = false;
+				$route_contract['route_connected_reads_deferred']       = true;
+				$route_contract['route_connected_writes_deferred']      = false;
 				$route_contract['woocommerce_projection_deferred']      = true;
 				$route_contract['square_inventory_projection_deferred'] = true;
 				$route_contract['label_print_deferred']                 = true;
@@ -58,5 +72,14 @@ final class InventoryRouteRuntimeConfigurator {
 		$settings = InventoryRouteRuntimeSettings::sanitize( $runtime_settings );
 
 		return true === $settings['staff_search_route_enabled'];
+	}
+
+	/**
+	 * @param array<string, mixed> $runtime_settings Runtime settings.
+	 */
+	public function route_connected_writes_enabled( array $runtime_settings ): bool {
+		$settings = InventoryRouteRuntimeSettings::sanitize( $runtime_settings );
+
+		return true === $settings['staff_create_route_enabled'];
 	}
 }

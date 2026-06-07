@@ -74,7 +74,7 @@ final class InventoryRouteDependencyFactory {
 			$register_route_callback,
 			$configurator->public_read_routes_enabled( $settings ),
 			new InventorySearchRouteHandlerFactory( null, $configurator->route_connected_reads_enabled( $settings ) ),
-			new InventoryIntakeRouteHandlerFactory(),
+			new InventoryIntakeRouteHandlerFactory( null, $configurator->route_connected_writes_enabled( $settings ) ),
 			$configurator->route_contracts( $settings )
 		);
 	}

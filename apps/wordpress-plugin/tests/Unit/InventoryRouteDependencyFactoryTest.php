@@ -190,6 +190,44 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_same( 'GET', $calls[0]['args']['methods'] );
 	}
 
+	public function test_runtime_enabled_staff_create_contract_registers_when_dependencies_are_ready(): void {
+		$calls           = array();
+		$route_contracts = ( new InventoryRouteRuntimeConfigurator() )->route_contracts(
+			array( 'staff_create_route_enabled' => true )
+		);
+		$factory         = new InventoryRouteDependencyFactory(
+			null,
+			$this->handlers_for_staged_routes(),
+			static fn ( string $capability ): bool => 'create_inventory' === $capability,
+			static function ( string $route_namespace, string $route, array $args ) use ( &$calls ): bool {
+				$calls[] = array(
+					'namespace' => $route_namespace,
+					'route'     => $route,
+					'args'      => $args,
+				);
+
+				return true;
+			},
+			false,
+			null,
+			null,
+			$route_contracts
+		);
+		$summary         = $factory->readiness_summary();
+		$bootstrap       = $factory->bootstrapper()->bootstrap( true );
+
+		$this->assert_same( 1, $summary['registerable_route_count'] );
+		$this->assert_same( array( 'POST /inventory' ), $summary['registerable_route_keys'] );
+		$this->assert_true( $summary['route_connected_reads_deferred'] );
+		$this->assert_true( $summary['route_connected_writes_deferred'] );
+		$this->assert_same( 'ready', $bootstrap['status'] );
+		$this->assert_same( 1, $bootstrap['registered_route_count'] );
+		$this->assert_same( array( 'POST /inventory' ), $bootstrap['registered_route_keys'] );
+		$this->assert_same( 1, count( $calls ) );
+		$this->assert_same( '/inventory', $calls[0]['route'] );
+		$this->assert_same( 'POST', $calls[0]['args']['methods'] );
+	}
+
 	public function test_dependency_status_presenter_reports_blocked_and_ready_states(): void {
 		$blocked = ( new InventoryRouteDependencyStatusPresenter() )->health_payload();
 		$ready   = ( new InventoryRouteDependencyStatusPresenter(

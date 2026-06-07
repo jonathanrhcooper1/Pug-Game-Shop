@@ -91,7 +91,7 @@ jobs:
           WP_DIR: ${{ runner.temp }}/wordpress
         run: wp eval-file apps/wordpress-plugin/tests/wordpress-integration-smoke.php --path="$WP_DIR"
 
-      - name: Enable staging inventory search gates
+      - name: Enable staging inventory route gates
         env:
           WP_DIR: ${{ runner.temp }}/wordpress
           WP_ENVIRONMENT_TYPE: staging
@@ -103,6 +103,7 @@ jobs:
 
           $settings = \TCGStorePlatform\Settings\Settings::defaults();
           $settings["inventory_route_runtime"]["staff_search_route_enabled"] = true;
+          $settings["inventory_route_runtime"]["staff_create_route_enabled"] = true;
           $settings["inventory_route_runtime"]["public_search_route_enabled"] = false;
           update_option(
             \TCGStorePlatform\Settings\Settings::OPTION_NAME,
@@ -111,7 +112,7 @@ jobs:
           );
           ' --path="$WP_DIR"
 
-      - name: Verify staging inventory search route
+      - name: Verify staging inventory route gates
         env:
           WP_DIR: ${{ runner.temp }}/wordpress
           WP_ENVIRONMENT_TYPE: staging

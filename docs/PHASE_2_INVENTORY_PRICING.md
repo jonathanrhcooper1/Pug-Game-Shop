@@ -67,6 +67,12 @@ staging database acceptance remains pending.
 - WordPress integration staging smoke coverage for enabling only the staff
   `/inventory/search` route while writes, public reads, WooCommerce projection,
   Square projection, and POS ingestion stay closed.
+- Staging-only staff inventory create runtime gate for `POST /inventory`,
+  proving REST-backed card intake writes can be enabled without enabling
+  production routes or external WooCommerce/Square/POS/label side effects.
+- WordPress integration staging smoke coverage now creates a disposable
+  Bulbasaur inventory item through REST and searches it back through the staff
+  inventory route.
 - Staff Inventory Workspace search form, route-readiness lockout, and
   REST-backed read-only results panel for the staging staff inventory search
   route.
@@ -111,10 +117,9 @@ On PHP 8.2.29:
 1. Clean migration from schema version `1` to `2` on staging.
 2. Rollback from schema version `2` to `1` on staging.
 3. `dbDelta` compatibility on the target WordPress database configuration.
-4. Seeded inventory intake tests using real WordPress database writes.
-5. Barcode collision and SKU collision handling through service-layer tests.
-6. Pricing change log persistence once inventory write services are added.
-7. Manager override persistence and reauthentication tests.
-8. Search and pagination benchmarks after the 50,000-item seed fixture exists.
-9. Live route registration remains disabled until repository writes, staff
+4. Duplicate barcode and SKU collision handling through service-layer tests.
+5. Pricing change log persistence once inventory write services are added.
+6. Manager override persistence and reauthentication tests.
+7. Search and pagination benchmarks after the 50,000-item seed fixture exists.
+8. Live route registration remains disabled until repository writes, staff
    permissions, rate limiting, and staging smoke tests are complete.

@@ -25,12 +25,14 @@
   in GitHub Actions, installs WooCommerce, activates the plugin, and runs
   `apps/wordpress-plugin/tests/wordpress-integration-smoke.php` through WP-CLI.
   It then switches to `WP_ENVIRONMENT_TYPE=staging`, enables only the
-  inventory/pricing feature and staff search runtime gate, and runs
+  inventory/pricing feature plus staff search/create runtime gates, and runs
   `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php` to prove
-  the staff `/inventory/search` route can execute while writes, public reads,
-  WooCommerce projection, Square projection, and POS ingestion remain closed.
-  The staging smoke seeds one disposable Pokemon inventory row and asserts the
-  REST search returns it with staff SKU data.
+  the staff `/inventory/search` and `POST /inventory` routes can execute while
+  public reads, WooCommerce projection, Square projection, labels, POS
+  ingestion, and production route availability remain closed. The staging smoke
+  seeds one disposable Pokemon inventory row, creates one disposable Bulbasaur
+  row through REST, and asserts staff search returns both rows with staff SKU
+  data.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
@@ -79,9 +81,10 @@
   covering default lockout, staging-ready route state, safe filter
   sanitization, and route metadata for the read-only REST-backed results table.
 - Local unit coverage now includes inventory route runtime settings,
-  staging-only staff search route contract configuration, and dependency
-  factory proof that the staff search route registers only when the runtime
-  contract, handler, and permission dependencies are explicitly ready.
+  staging-only staff search/create route contract configuration, and dependency
+  factory proof that staff inventory search and create routes register only
+  when their runtime contracts, handlers, and permission dependencies are
+  explicitly ready.
 - Local unit coverage now includes environment-aware feature flag availability,
   proving inventory/pricing can be enabled for local/development/staging while
   production sanitizes it off.
