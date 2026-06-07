@@ -61,7 +61,7 @@ final class OfflinePullRouteHandler {
 		try {
 			$server_time_utc = $this->server_time_utc();
 			$change_sets     = $this->change_sets( $request, $data );
-			$response = $this->presenter()->present(
+			$response        = $this->presenter()->present(
 				$request,
 				$change_sets,
 				$server_time_utc
