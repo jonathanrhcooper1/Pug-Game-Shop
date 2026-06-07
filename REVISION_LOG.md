@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Payment Delegation Boundary
+
+### What Changed
+
+- Added explicit Square payment delegation fields to Square inventory
+  projection execution audit payloads.
+- Added unit assertions proving the platform does not allow custom Square
+  payment capture through the inventory projection path.
+- Added shared POS validation policy for Square payment delegation to the
+  official WooCommerce Square extension.
+- Added POS validation coverage proving payment capture, refund execution, and
+  custom gateway capture stay disallowed while inventory sync/reconciliation
+  remain allowed.
+
+### Why
+
+Square should pull/sync inventory from the card-management source of truth, but
+online payment capture should remain with the official WooCommerce Square
+extension. This revision makes that boundary explicit in code and tests.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `packages/validation/src/posPaymentPolicy.mjs`
+- `packages/validation/tests/pos-payment-policy.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Square inventory projection executor assertions for payment authority
+  delegation and disallowed plugin Square payment capture.
+- Shared POS validation coverage for official WooCommerce Square payment
+  delegation.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventoryProjectionExecutionResult.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF alignment cleanup.
+- `php tests\run.php --filter SquareInventoryProjectionExecutorTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 784-test
+  suite.
+- `npm.cmd run test:pos-payments` from repository root: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove explicit Square payment delegation metadata
+  and shared POS delegation policy coverage.
+- No schema rollback is required.
+
 ## 2026-06-07 - Offline App Tauri Queue Command Scaffold
 
 ### What Changed

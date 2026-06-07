@@ -165,6 +165,8 @@ plus explicit staged fee snapshot route handler plus staged fee snapshot route
 handler factory composition plus POS/payment route-connected read deferral
 gates plus dependency health/admin read-gate status
 plus Square inventory projection planning
+plus explicit Square payment delegation to the official WooCommerce Square
+extension
 implemented
 
 Deliver WooCommerce/Square payment observation, transaction ingestion, barcode

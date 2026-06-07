@@ -683,8 +683,11 @@
 - Local unit coverage now includes guarded Square inventory projection
   execution, covering default network-write lockout, skipped/failed projection
   handling, explicit catalog/inventory writer execution, writer failure
-  rejection, and payment-capture deferral through the official WooCommerce
-  Square extension.
+  rejection, and payment-capture authority delegation through the official
+  WooCommerce Square extension.
+- Shared POS validation now includes Square payment delegation coverage,
+  proving plugin payment capture, refund execution, and custom gateway capture
+  remain disallowed while inventory sync and reconciliation stay permitted.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

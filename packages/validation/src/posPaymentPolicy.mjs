@@ -4,6 +4,7 @@ const REJECTED = "rejected";
 const SCAN_GATE = "scan_gate";
 const CATALOG_MIRROR = "catalog_mirror";
 const RECONCILIATION_ONLY = "reconciliation_only";
+const OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION = "official_woocommerce_square_extension";
 
 export function normalizePosPaymentResponse(response) {
   const status = String(response.status ?? "");
@@ -63,6 +64,7 @@ export function normalizePosAdapterEvent(event, options = {}) {
     providerInventoryWritesPermitted: false,
     routeConnectedWritesDeferred: true,
     productionCaptureDeferred: true,
+    paymentDelegation: squarePaymentDelegationPolicy({ provider }),
   };
 }
 
@@ -100,7 +102,23 @@ export function planPosTransactionIngestion(event, lineItems = [], options = {})
     durableConflictRequired: reconciliation.status === CONFLICT,
     routeConnectedWritesDeferred: true,
     productionCaptureDeferred: true,
+    paymentDelegation: ingestion.paymentDelegation,
   });
+}
+
+export function squarePaymentDelegationPolicy(options = {}) {
+  const provider = normalizeSlug(options.provider ?? "square");
+
+  return {
+    provider,
+    paymentCaptureAuthority: OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION,
+    pluginPaymentCapturePermitted: false,
+    pluginRefundExecutionPermitted: false,
+    customGatewayCapturePermitted: false,
+    inventorySyncPermitted: true,
+    reconciliationPermitted: true,
+    officialWooCommerceSquareExtensionRequired: provider.includes("square"),
+  };
 }
 
 export function planPosSaleReconciliation(paymentResponse, lineItems) {
@@ -332,4 +350,8 @@ export const POS_PROVIDER_MODE = {
   SCAN_GATE,
   CATALOG_MIRROR,
   RECONCILIATION_ONLY,
+};
+
+export const POS_PAYMENT_DELEGATION = {
+  OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION,
 };

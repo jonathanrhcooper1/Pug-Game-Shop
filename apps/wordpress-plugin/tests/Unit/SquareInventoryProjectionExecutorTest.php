@@ -38,6 +38,9 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 		$this->assert_true( $audit['network_request_deferred'] );
 		$this->assert_true( $audit['payment_capture_deferred'] );
 		$this->assert_same( 'required_for_payments', $audit['official_square_payment_extension'] );
+		$this->assert_same( 'official_woocommerce_square_extension', $audit['payment_capture_authority'] );
+		$this->assert_false( $audit['plugin_square_payment_capture_allowed'] );
+		$this->assert_same( 'delegated_to_official_extension', $audit['plugin_square_payment_gateway_mode'] );
 	}
 
 	public function test_executor_skips_skipped_projection_without_writers(): void {
@@ -131,6 +134,8 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 		$this->assert_false( $audit['network_request_deferred'] );
 		$this->assert_true( $audit['production_provider_write_deferred'] );
 		$this->assert_true( $audit['payment_capture_deferred'] );
+		$this->assert_same( 'official_woocommerce_square_extension', $audit['payment_capture_authority'] );
+		$this->assert_false( $audit['plugin_square_payment_capture_allowed'] );
 		$this->assert_same( 'catalog_upsert', $audit['operation_results'][0]['operation'] );
 		$this->assert_same( 'inventory_change', $audit['operation_results'][1]['operation'] );
 	}
