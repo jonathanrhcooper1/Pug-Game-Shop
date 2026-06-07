@@ -30,6 +30,7 @@ final class PosPaymentRouteRegistrationPlannerTest extends TestCase {
 			$this->assert_same( null, $plan['controller_callback'] );
 			$this->assert_same( '__return_false', $plan['permission_callback'] );
 			$this->assert_true( $plan['route_registration_deferred'] );
+			$this->assert_true( $plan['route_connected_reads_deferred'] );
 			$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
 			$this->assert_true( in_array( 'route_registration_deferred', $plan['registration_block_reasons'], true ) );
 			$this->assert_true( in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true ) );
@@ -106,6 +107,21 @@ final class PosPaymentRouteRegistrationPlannerTest extends TestCase {
 		$this->assert_true( is_callable( $registrations[0]['controller_callback'] ) );
 		$this->assert_true( $registrations[0]['permission_callback'] instanceof PosPaymentCapabilityPermissionCallbackAdapter );
 		$this->assert_same( array(), $registrations[0]['registration_block_reasons'] );
+	}
+
+	public function test_future_read_only_route_stays_blocked_while_connected_reads_are_deferred(): void {
+		$plans = $this->planner_with_every_handler()->planned_registration_args(
+			$this->future_enabled_fee_review_route(
+				array(
+					'route_connected_reads_deferred' => true,
+				)
+			)
+		);
+		$plan  = $plans['GET /payments/fee-snapshots'];
+
+		$this->assert_false( $plan['should_register'] );
+		$this->assert_true( $plan['route_connected_reads_deferred'] );
+		$this->assert_true( in_array( 'route_connected_reads_deferred', $plan['registration_block_reasons'], true ) );
 	}
 
 	public function test_future_write_route_stays_blocked_while_connected_writes_are_deferred(): void {
@@ -241,6 +257,7 @@ final class PosPaymentRouteRegistrationPlannerTest extends TestCase {
 			$routes[ $index ]['route_registration_deferred'] = ! $routes[ $index ]['live_enabled_by_default'];
 
 			if ( $routes[ $index ]['live_enabled_by_default'] ) {
+				$routes[ $index ]['route_connected_reads_deferred'] = 'GET' === $method ? false : true;
 				$routes[ $index ] = array_merge( $routes[ $index ], $overrides );
 			}
 		}

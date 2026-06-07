@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.153.0] - 2026-06-07
+
+### Added
+
+- POS/payment route-connected read deferral metadata in route contracts,
+  registration plans, readiness plans, and bootstrap summaries.
+- Registration and readiness gates that block future GET routes while
+  route-connected reads remain deferred.
+- Unit coverage proving future fee snapshot GET routes stay blocked until read
+  execution is explicitly cleared, then can register with injected handlers and
+  permissions.
+
+### Not Added
+
+- Default POS/payment route registration, default route-connected fee snapshot
+  reads, fee-snapshot writes, webhook processing, Square/POS network calls,
+  production payment capture, provider inventory writes, POS reconciliation
+  services, WooCommerce gateway capture, and production provider credentials
+  remain disabled.
+
 ## [0.152.0] - 2026-06-07
 
 ### Added

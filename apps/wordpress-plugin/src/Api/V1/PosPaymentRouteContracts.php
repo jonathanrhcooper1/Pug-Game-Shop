@@ -93,6 +93,7 @@ final class PosPaymentRouteContracts {
 			'workflow'                          => $workflow,
 			'live_enabled_by_default'           => false,
 			'route_registration_deferred'       => true,
+			'route_connected_reads_deferred'    => true,
 			'route_connected_writes_deferred'   => true,
 			'transaction_execution_deferred'    => true,
 			'provider_capture_deferred'         => true,

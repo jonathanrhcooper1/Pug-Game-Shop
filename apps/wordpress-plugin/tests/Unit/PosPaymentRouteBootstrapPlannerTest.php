@@ -27,6 +27,7 @@ final class PosPaymentRouteBootstrapPlannerTest extends TestCase {
 		$this->assert_same( '/pos/events', $summary['path'] );
 		$this->assert_false( $summary['should_register'] );
 		$this->assert_true( $summary['route_registration_deferred'] );
+		$this->assert_true( $summary['route_connected_reads_deferred'] );
 		$this->assert_true( in_array( 'route_disabled_by_default', $summary['registration_block_reasons'], true ) );
 	}
 
@@ -86,6 +87,7 @@ final class PosPaymentRouteBootstrapPlannerTest extends TestCase {
 			'controller_callback_ready'              => true,
 			'live_enabled_by_default'                => true,
 			'route_registration_deferred'            => false,
+			'route_connected_reads_deferred'         => false,
 			'route_connected_writes_deferred'        => true,
 			'webhook_registration_deferred'          => true,
 			'transaction_execution_deferred'         => true,

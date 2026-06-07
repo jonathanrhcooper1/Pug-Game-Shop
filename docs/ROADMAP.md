@@ -152,7 +152,8 @@ validation handlers plus dependency-backed bootstrap wiring and fee snapshot
 query planning plus fee snapshot SQL-template planning plus explicit fee
 snapshot repository adaptation plus fee snapshot repository readiness metadata
 plus explicit staged fee snapshot route handler plus staged fee snapshot route
-handler factory composition
+handler factory composition plus POS/payment route-connected read deferral
+gates
 implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional

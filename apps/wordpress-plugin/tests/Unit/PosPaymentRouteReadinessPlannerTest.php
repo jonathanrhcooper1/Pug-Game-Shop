@@ -31,6 +31,7 @@ final class PosPaymentRouteReadinessPlannerTest extends TestCase {
 		$this->assert_false( $plan['permission_callbacks_configured'] );
 		$this->assert_false( $plan['route_transaction_executor_configured'] );
 		$this->assert_true( $plan['route_registration_deferred'] );
+		$this->assert_true( $plan['route_connected_reads_deferred'] );
 		$this->assert_true( $plan['route_connected_writes_deferred'] );
 		$this->assert_true( $plan['transaction_execution_deferred'] );
 		$this->assert_true( $plan['provider_capture_deferred'] );
@@ -78,6 +79,26 @@ final class PosPaymentRouteReadinessPlannerTest extends TestCase {
 		$this->assert_same( array( 'GET /payments/fee-snapshots' ), $plan['registerable_route_keys'] );
 		$this->assert_same( array(), $plan['route_readiness_block_reasons'] );
 		$this->assert_true( $plan['route_registration_summary']['GET /payments/fee-snapshots']['should_register'] );
+		$this->assert_false( $plan['route_registration_summary']['GET /payments/fee-snapshots']['route_connected_reads_deferred'] );
+	}
+
+	public function test_future_read_only_route_requires_cleared_read_deferral(): void {
+		$contract                                      = $this->future_read_only_contract();
+		$contract['route_connected_reads_deferred'] = true;
+		$plan                                          = ( new PosPaymentRouteReadinessPlanner() )->plan(
+			true,
+			array( $contract ),
+			array(
+				'route_handlers_configured'       => true,
+				'permission_callbacks_configured' => true,
+			)
+		);
+		$route                                         = $plan['route_registration_summary']['GET /payments/fee-snapshots'];
+
+		$this->assert_same( 'gated', $plan['status'] );
+		$this->assert_false( $route['should_register'] );
+		$this->assert_true( $route['route_connected_reads_deferred'] );
+		$this->assert_true( in_array( 'route_connected_reads_deferred', $route['registration_block_reasons'], true ) );
 	}
 
 	public function test_future_write_route_requires_transaction_executor_and_cleared_write_deferrals(): void {
@@ -260,6 +281,7 @@ final class PosPaymentRouteReadinessPlannerTest extends TestCase {
 			'workflow'                          => $workflow,
 			'live_enabled_by_default'           => true,
 			'route_registration_deferred'       => false,
+			'route_connected_reads_deferred'    => false,
 			'route_connected_writes_deferred'   => $deferred,
 			'transaction_execution_deferred'    => $deferred,
 			'provider_capture_deferred'         => true,

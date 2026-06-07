@@ -96,6 +96,7 @@ final class PosPaymentRouteReadinessPlanner {
 			'provider_inventory_writes_enabled'       => true === $dependencies['provider_inventory_writes_enabled'],
 			'woocommerce_gateway_capture_enabled'     => true === $dependencies['woocommerce_gateway_capture_enabled'],
 			'route_registration_deferred'             => $this->any_route_flag( $route_plans, 'route_registration_deferred' ),
+			'route_connected_reads_deferred'          => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
 			'route_connected_writes_deferred'         => $this->any_route_flag( $route_plans, 'route_connected_writes_deferred' ),
 			'transaction_execution_deferred'          => $this->any_route_flag( $route_plans, 'transaction_execution_deferred' ),
 			'provider_capture_deferred'               => $this->any_route_flag( $route_plans, 'provider_capture_deferred' )
@@ -120,9 +121,11 @@ final class PosPaymentRouteReadinessPlanner {
 	private function route_plan( array $route_contract, array $dependencies ): array {
 		$method                  = strtoupper( $this->route_value( $route_contract, 'method' ) );
 		$path                    = $this->route_value( $route_contract, 'path' );
-		$is_write_workflow       = 'GET' !== $method;
+		$is_read_workflow        = 'GET' === $method;
+		$is_write_workflow       = ! $is_read_workflow;
 		$is_webhook_workflow     = str_starts_with( $path, '/payments/webhooks/' );
 		$registration_deferred   = true === ( $route_contract['route_registration_deferred'] ?? false );
+		$route_reads_deferred    = true === ( $route_contract['route_connected_reads_deferred'] ?? false );
 		$route_writes_deferred   = true === ( $route_contract['route_connected_writes_deferred'] ?? false );
 		$transaction_deferred    = true === ( $route_contract['transaction_execution_deferred'] ?? false );
 		$webhook_deferred        = true === ( $route_contract['webhook_registration_deferred'] ?? false );
@@ -130,8 +133,10 @@ final class PosPaymentRouteReadinessPlanner {
 		$block_reasons           = $this->route_block_reasons(
 			$live_enabled_by_default,
 			$registration_deferred,
+			$is_read_workflow,
 			$is_write_workflow,
 			$is_webhook_workflow,
+			$route_reads_deferred,
 			$route_writes_deferred,
 			$transaction_deferred,
 			$webhook_deferred,
@@ -148,6 +153,7 @@ final class PosPaymentRouteReadinessPlanner {
 			'callback'                          => $this->route_value( $route_contract, 'callback' ),
 			'permission'                        => $this->route_value( $route_contract, 'permission' ),
 			'workflow'                          => $this->route_value( $route_contract, 'workflow' ),
+			'read_workflow'                     => $is_read_workflow,
 			'write_workflow'                    => $is_write_workflow,
 			'webhook_workflow'                  => $is_webhook_workflow,
 			'permission_callback_ready'         => true === $dependencies['permission_callbacks_configured'],
@@ -156,6 +162,7 @@ final class PosPaymentRouteReadinessPlanner {
 			'webhook_verifier_ready'            => true === $dependencies['webhook_verifier_configured'],
 			'live_enabled_by_default'           => $live_enabled_by_default,
 			'route_registration_deferred'       => $registration_deferred,
+			'route_connected_reads_deferred'    => $route_reads_deferred,
 			'route_connected_writes_deferred'   => $route_writes_deferred,
 			'transaction_execution_deferred'    => $transaction_deferred,
 			'provider_capture_deferred'         => true === ( $route_contract['provider_capture_deferred'] ?? false ),
@@ -175,8 +182,10 @@ final class PosPaymentRouteReadinessPlanner {
 	private function route_block_reasons(
 		bool $live_enabled_by_default,
 		bool $registration_deferred,
+		bool $is_read_workflow,
 		bool $is_write_workflow,
 		bool $is_webhook_workflow,
+		bool $route_reads_deferred,
 		bool $route_writes_deferred,
 		bool $transaction_deferred,
 		bool $webhook_deferred,
@@ -198,6 +207,10 @@ final class PosPaymentRouteReadinessPlanner {
 
 		if ( true !== $dependencies['permission_callbacks_configured'] ) {
 			$reasons[] = 'permission_callbacks_not_configured';
+		}
+
+		if ( $is_read_workflow && $route_reads_deferred ) {
+			$reasons[] = 'route_connected_reads_deferred';
 		}
 
 		if ( $is_webhook_workflow && $webhook_deferred ) {

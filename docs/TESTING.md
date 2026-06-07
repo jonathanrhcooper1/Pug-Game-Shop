@@ -541,6 +541,10 @@
   handler factory composition for default read deferral, explicitly enabled
   repository-backed reads, dependency issue reporting, dependency-factory
   injection, and admin status metadata.
+- Local unit coverage now includes POS/payment route-connected read deferral
+  gates in route registration, readiness, bootstrap, dependency factory, and
+  registrar flows, proving future GET routes cannot register until read
+  execution is explicitly cleared.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

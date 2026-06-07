@@ -229,6 +229,7 @@ final class PosPaymentRouteRegistrarTest extends TestCase {
 			$routes[ $index ]['route_registration_deferred'] = ! $routes[ $index ]['live_enabled_by_default'];
 
 			if ( $routes[ $index ]['live_enabled_by_default'] ) {
+				$routes[ $index ]['route_connected_reads_deferred'] = 'GET' === $method ? false : true;
 				$routes[ $index ] = array_merge( $routes[ $index ], $overrides );
 			}
 		}

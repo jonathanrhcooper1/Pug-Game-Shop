@@ -394,6 +394,12 @@ and table prefix are present. The POS/payment dependency factory can receive
 that factory for repository-backed staging tests, while default dependency
 wiring keeps fee snapshot callbacks parser-only, deferred, and unregistered.
 
+POS/payment route contracts and planners now track route-connected read
+deferral separately from write, transaction, capture, inventory, gateway, and
+webhook deferrals. Future GET routes, including fee snapshot review reads, must
+clear the read deferral explicitly before registration planning or readiness
+planning can mark them registerable.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

@@ -87,6 +87,7 @@ final class PosPaymentRouteBootstrapPlanner {
 				'controller_callback_ready'              => true === $route_plan['controller_callback_ready'],
 				'live_enabled_by_default'                => true === $route_plan['live_enabled_by_default'],
 				'route_registration_deferred'            => true === $route_plan['route_registration_deferred'],
+				'route_connected_reads_deferred'         => true === ( $route_plan['route_connected_reads_deferred'] ?? true ),
 				'route_connected_writes_deferred'        => true === $route_plan['route_connected_writes_deferred'],
 				'webhook_registration_deferred'          => true === $route_plan['webhook_registration_deferred'],
 				'transaction_execution_deferred'         => true === $route_plan['transaction_execution_deferred'],

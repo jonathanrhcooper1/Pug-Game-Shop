@@ -3,6 +3,90 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Route Read Deferral Gate
+
+### What Changed
+
+- Added `route_connected_reads_deferred` metadata to POS/payment route
+  contracts.
+- Updated POS/payment route registration planning so future GET routes are
+  blocked while route-connected reads remain deferred.
+- Updated POS/payment route readiness planning and bootstrap summaries to
+  expose route-connected read deferral separately from write, transaction,
+  capture, inventory, gateway, and webhook deferrals.
+- Added unit coverage proving future fee snapshot GET routes remain blocked
+  until the read gate is explicitly cleared, then can register with injected
+  handlers and permissions.
+- Updated project, plugin, and offline app package versions to `0.153.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  and revision docs.
+
+### Why
+
+Staging needs a separate safety gate for repository-backed POS/payment GET
+routes. Handler and permission readiness alone should not make a future read
+route registerable; the read execution gate must be explicitly cleared so
+parser-only defaults cannot accidentally expose route-connected database reads.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteContracts.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteBootstrapPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteBootstrapPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteRegistrationPlannerTest` coverage for future GET route
+  blocking while route-connected reads are deferred.
+- `PosPaymentRouteReadinessPlannerTest` coverage for future GET route
+  readiness blocking while route-connected reads are deferred.
+- Updated bootstrap, dependency factory, and registrar fixtures to prove future
+  read routes become registerable only when the read gate is explicitly
+  cleared.
+
+### Rollback Notes
+
+- Revert this revision to remove the POS/payment route-connected read deferral
+  gate and return GET route registration planning to handler/permission and
+  route-registration gates only.
+- No database rollback is required because no schema migration, default route
+  registration, default route-connected read execution, write path, provider
+  capture, provider inventory write service, webhook processing, or WooCommerce
+  gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and default route-connected POS/payment
+  reads and writes remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Fee Snapshot Handler Factory
 
 ### What Changed

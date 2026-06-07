@@ -225,5 +225,8 @@ Before major database migrations:
   the POS/payment dependency factory for explicitly enabled repository-backed
   read tests while default route-connected reads and route registration remain
   deferred.
+- POS/payment route contracts, registration planning, readiness planning, and
+  bootstrap summaries expose route-connected read deferral, and future GET
+  routes stay blocked until staging explicitly clears the read gate.
 - Customer credit ledger replay matches cached balance.
 - Event registration flow works for local and TopDeck-linked events.

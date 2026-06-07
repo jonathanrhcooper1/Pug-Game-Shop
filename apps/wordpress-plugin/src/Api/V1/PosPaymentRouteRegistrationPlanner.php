@@ -74,6 +74,7 @@ final class PosPaymentRouteRegistrationPlanner {
 			'controller_callback_ready'              => $controller_ready,
 			'live_enabled_by_default'                => true === ( $route_contract['live_enabled_by_default'] ?? false ),
 			'route_registration_deferred'            => true === ( $route_contract['route_registration_deferred'] ?? true ),
+			'route_connected_reads_deferred'         => true === ( $route_contract['route_connected_reads_deferred'] ?? true ),
 			'route_connected_writes_deferred'        => true === ( $route_contract['route_connected_writes_deferred'] ?? true ),
 			'webhook_registration_deferred'          => true === ( $route_contract['webhook_registration_deferred'] ?? true ),
 			'transaction_execution_deferred'         => true === ( $route_contract['transaction_execution_deferred'] ?? true ),
@@ -167,6 +168,10 @@ final class PosPaymentRouteRegistrationPlanner {
 			$reasons[] = 'route_registration_deferred';
 		}
 
+		if ( $this->is_read_route( $route_contract ) && true === ( $route_contract['route_connected_reads_deferred'] ?? true ) ) {
+			$reasons[] = 'route_connected_reads_deferred';
+		}
+
 		if ( $this->is_write_route( $route_contract ) && true === ( $route_contract['route_connected_writes_deferred'] ?? true ) ) {
 			$reasons[] = 'route_connected_writes_deferred';
 		}
@@ -191,6 +196,13 @@ final class PosPaymentRouteRegistrationPlanner {
 	 */
 	private function is_write_route( array $route_contract ): bool {
 		return 'GET' !== strtoupper( $this->route_value( $route_contract, 'method' ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $route_contract Planned route contract.
+	 */
+	private function is_read_route( array $route_contract ): bool {
+		return 'GET' === strtoupper( $this->route_value( $route_contract, 'method' ) );
 	}
 
 	/**

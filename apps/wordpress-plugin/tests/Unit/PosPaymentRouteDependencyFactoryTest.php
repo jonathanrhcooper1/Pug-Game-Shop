@@ -197,6 +197,7 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 				&& 'GET' === $route['method'];
 			$routes[ $index ]['live_enabled_by_default']     = $is_target;
 			$routes[ $index ]['route_registration_deferred'] = ! $is_target;
+			$routes[ $index ]['route_connected_reads_deferred'] = ! $is_target;
 		}
 
 		return $routes;
