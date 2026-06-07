@@ -62,6 +62,24 @@ final class InventoryRouteDependencyFactory {
 		);
 	}
 
+	public function bootstrapper(): InventoryRouteBootstrapper {
+		return new InventoryRouteBootstrapper(
+			new InventoryRouteBootstrapStatusPresenter(
+				new InventoryRouteBootstrapPlanner( $this->registration_planner() )
+			),
+			function ( ?array $route_contracts, array $payload ): array {
+				$registered_count = $this->registrar()->register_enabled_routes( $route_contracts );
+				$route_keys       = array_slice(
+					$this->list_values( $payload['registerable_route_keys'] ?? array() ),
+					0,
+					$registered_count
+				);
+
+				return array_fill_keys( $route_keys, array( 'registered' => true ) );
+			}
+		);
+	}
+
 	/**
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
@@ -140,6 +158,7 @@ final class InventoryRouteDependencyFactory {
 			'public_read_permission_callbacks_configured'  => $public_callbacks_present,
 			'registration_planner_ready'                   => method_exists( InventoryRouteRegistrationPlanner::class, 'planned_registration_args' ),
 			'registrar_ready'                              => method_exists( InventoryRouteRegistrar::class, 'register_enabled_routes' ),
+			'bootstrapper_ready'                           => method_exists( InventoryRouteBootstrapper::class, 'bootstrap_current_routes' ),
 			'inventory_search_route_handler_factory_ready' => true === ( $search_summary['handler_factory_ready'] ?? false ),
 			'inventory_search_route_handler_ready'         => true === ( $search_summary['route_connected_handler_ready'] ?? false ),
 			'inventory_search_route_reads_deferred'        => true === ( $search_summary['route_connected_reads_deferred'] ?? true ),

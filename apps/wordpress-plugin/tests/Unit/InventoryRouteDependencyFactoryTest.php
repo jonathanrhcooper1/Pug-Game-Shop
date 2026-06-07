@@ -33,6 +33,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_false( $summary['public_read_permission_callbacks_configured'] );
 		$this->assert_true( $summary['registration_planner_ready'] );
 		$this->assert_true( $summary['registrar_ready'] );
+		$this->assert_true( $summary['bootstrapper_ready'] );
 		$this->assert_false( $summary['inventory_search_route_handler_ready'] );
 		$this->assert_false( $summary['inventory_intake_route_handler_ready'] );
 		$this->assert_same( 0, $summary['registerable_route_count'] );
@@ -76,6 +77,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $factory->controller()->has_handler( 'create_inventory_item' ) );
 		$this->assert_false( $factory->controller()->has_handler( 'reserve_inventory_item' ) );
 		$this->assert_same( 0, $factory->registrar()->register_enabled_routes() );
+		$this->assert_same( 'gated', $factory->bootstrapper()->bootstrap( true )['status'] );
 	}
 
 	public function test_factory_controller_dispatches_injected_search_and_create_handlers(): void {
@@ -192,7 +194,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$routes = InventoryRouteContracts::route_contracts();
 
 		foreach ( $routes as $index => $route ) {
-			$is_target                                        = '/inventory/search' === $route['path']
+			$is_target                                       = '/inventory/search' === $route['path']
 				&& 'GET' === $route['method'];
 			$routes[ $index ]['live_enabled_by_default']     = $is_target;
 			$routes[ $index ]['route_registration_deferred'] = ! $is_target;

@@ -10,6 +10,7 @@ namespace TCGStorePlatform\Bootstrap;
 use TCGStorePlatform\Admin\AdminMenu;
 use TCGStorePlatform\Api\V1\EventsController;
 use TCGStorePlatform\Api\V1\HealthController;
+use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
 use TCGStorePlatform\Auth\AdminAccess;
@@ -67,6 +68,7 @@ final class Plugin {
 		( new HealthController( $scheduler ) )->register();
 		( new OfflineRouteBootstrapper() )->register();
 		( new PosPaymentRouteDependencyFactory() )->bootstrapper()->register();
+		( new InventoryRouteDependencyFactory() )->bootstrapper()->register();
 		( new EventsController() )->register();
 		( new EventShortcodes() )->register();
 		$scheduler->register();

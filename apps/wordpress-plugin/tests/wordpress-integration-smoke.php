@@ -8,6 +8,7 @@
  * @package TCGStorePlatform
  */
 
+use TCGStorePlatform\Api\V1\InventoryRouteBootstrapper;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
 use TCGStorePlatform\Api\V1\PosPaymentRouteBootstrapper;
 use TCGStorePlatform\Auth\RoleManager;
@@ -133,6 +134,10 @@ $assert(
 $assert(
 	$has_hook_callback( 'rest_api_init', PosPaymentRouteBootstrapper::class, 'bootstrap_current_routes', 21 ),
 	'POS/payment route bootstrapper was not registered on rest_api_init.'
+);
+$assert(
+	$has_hook_callback( 'rest_api_init', InventoryRouteBootstrapper::class, 'bootstrap_current_routes', 22 ),
+	'Inventory route bootstrapper was not registered on rest_api_init.'
 );
 
 wp_set_current_user( 1 );
@@ -320,6 +325,18 @@ $assert( true === ( $data['pos_payment_route_dependencies']['route_registration_
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_reads_deferred'] ?? null ), 'POS/payment dependency route reads should remain deferred.' );
 $assert( false === ( $data['pos_payment_route_dependencies']['route_connected_reads_ready'] ?? null ), 'POS/payment dependency route reads should not be ready by default.' );
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_writes_deferred'] ?? null ), 'POS/payment dependency route writes should remain deferred.' );
+$assert( 'blocked' === ( $data['inventory_route_bootstrap']['status'] ?? null ), 'Inventory route bootstrap should remain blocked.' );
+$assert( false === ( $data['inventory_route_bootstrap']['feature_enabled'] ?? null ), 'Inventory route bootstrap feature should remain disabled.' );
+$assert( 16 === (int) ( $data['inventory_route_bootstrap']['planned_route_count'] ?? 0 ), 'Inventory route bootstrap should report planned routes.' );
+$assert( 0 === (int) ( $data['inventory_route_bootstrap']['registerable_route_count'] ?? -1 ), 'Inventory route bootstrap should report zero registerable routes.' );
+$assert( false === ( $data['inventory_route_bootstrap']['should_register_routes'] ?? null ), 'Inventory route bootstrap should not register routes.' );
+$assert( true === ( $data['inventory_route_bootstrap']['registration_deferred'] ?? null ), 'Inventory route bootstrap should remain deferred.' );
+$inventory_routes = $data['inventory_route_bootstrap']['route_registration_summary'] ?? array();
+$assert( is_array( $inventory_routes ), 'Inventory route summary should be present.' );
+$assert( false === ( $inventory_routes['GET /inventory/search']['should_register'] ?? null ), 'Inventory search route should remain unregistered.' );
+$assert( true === ( $inventory_routes['GET /inventory/search']['route_connected_reads_deferred'] ?? null ), 'Inventory search route reads should remain deferred.' );
+$assert( false === ( $inventory_routes['POST /inventory']['should_register'] ?? null ), 'Inventory create route should remain unregistered.' );
+$assert( true === ( $inventory_routes['POST /inventory']['route_connected_writes_deferred'] ?? null ), 'Inventory create route writes should remain deferred.' );
 $assert( 'blocked' === ( $data['inventory_route_dependencies']['status'] ?? null ), 'Inventory route dependencies should remain blocked.' );
 $assert( false === ( $data['inventory_route_dependencies']['configured'] ?? null ), 'Inventory route dependencies should not be fully configured by default.' );
 $assert( 16 === (int) ( $data['inventory_route_dependencies']['route_contract_count'] ?? 0 ), 'Inventory route dependencies should report planned route contracts.' );

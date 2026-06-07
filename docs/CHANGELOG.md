@@ -31,6 +31,9 @@ All notable changes follow Semantic Versioning.
   and registrar while keeping live inventory routes gated.
 - Authenticated health payload, admin System Status row, and WordPress smoke
   assertions for blocked-by-default inventory route dependency readiness.
+- Inventory route bootstrap planner, status presenter, and `rest_api_init`
+  bootstrapper wiring that keep live inventory routes deferred until feature,
+  permission, handler, and route deferral gates are explicitly cleared.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

@@ -382,6 +382,12 @@ Authenticated health now exposes this route dependency summary under
 `inventory_route_dependencies`, and admin System Status mirrors the same
 blocked/ready summary for staging review. WordPress smoke coverage asserts the
 inventory search and create routes remain unregistered by default.
+The inventory route bootstrapper is now wired to WordPress `rest_api_init`, but
+authenticated health reports `inventory_route_bootstrap.status = blocked` by
+default because the `inventory_pricing` feature flag is unavailable and no
+inventory route is registerable. The bootstrap summary exposes per-route
+registration, read/write deferral, permission, handler, WooCommerce projection,
+Square projection, and label-print flags for staging review.
 
 ### Pricing And Overrides
 

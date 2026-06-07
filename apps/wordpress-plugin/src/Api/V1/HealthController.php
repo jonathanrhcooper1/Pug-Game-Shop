@@ -114,6 +114,9 @@ final class HealthController {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->health_payload();
+		$inventory_bootstrap        = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload(
+			FeatureFlags::is_enabled( 'inventory_pricing' )
+		);
 		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
 			new InventoryRouteDependencyFactory()
 		) )->health_payload();
@@ -159,6 +162,7 @@ final class HealthController {
 				'pos_payment_route_readiness'             => $pos_payment_routes,
 				'pos_payment_route_bootstrap'             => $pos_payment_bootstrap,
 				'pos_payment_route_dependencies'          => $pos_payment_dependencies,
+				'inventory_route_bootstrap'               => $inventory_bootstrap,
 				'inventory_route_dependencies'            => $inventory_dependencies,
 				'timestamp'                               => gmdate( 'c' ),
 			),

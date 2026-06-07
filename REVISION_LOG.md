@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Route Bootstrap Wiring
+
+### What Changed
+
+- Added `InventoryRouteBootstrapPlanner`, `InventoryRouteBootstrapStatusPresenter`,
+  and `InventoryRouteBootstrapper` for gated inventory REST route registration.
+- Wired the inventory route dependency factory to compose the bootstrapper and
+  registrar with injected dependencies.
+- Registered the inventory bootstrapper on WordPress `rest_api_init` at
+  priority `22`.
+- Added authenticated health and admin System Status reporting for inventory
+  route bootstrap state.
+- Extended WordPress smoke coverage to verify the bootstrapper hook is present
+  while inventory routes remain unregistered by default.
+
+### Why
+
+Inventory search and create routes need a real WordPress bootstrap path before
+staging can safely enable them. This revision installs that path behind the
+existing feature flag, route registration deferral, read/write deferrals,
+permission gates, and handler gates.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteBootstrapperTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Inventory route registration remains blocked by the unavailable
+  `inventory_pricing` feature flag and by per-route registration/read/write
+  deferrals.
+- Public inventory reads, route-connected inventory writes, WooCommerce
+  projection, Square projection, barcode label printing, and production
+  provider calls remain deferred.
+
+### Tests Added
+
+- Unit tests for blocked, gated, future-ready, and feature-disabled inventory
+  bootstrap paths.
+- Unit coverage proving the inventory dependency factory exposes a staged
+  bootstrapper.
+- WordPress smoke assertions proving the `rest_api_init` hook is registered and
+  the default bootstrap plan remains blocked.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 734 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 497 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on touched source and smoke
+  files: passed after auto-fixing touched-file line endings with
+  `vendor/bin/phpcbf`.
+
+### Rollback Notes
+
+- Revert this revision to remove the inventory bootstrapper hook, bootstrap
+  status payload, and related tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No staged or production route disablement is required after rollback because
+  inventory REST routes still default to unregistered.
+
 ## 2026-06-07 - Inventory Route Health And Admin Status
 
 ### What Changed

@@ -17,6 +17,7 @@ use TCGStorePlatform\Api\V1\OfflineRouteBootstrapPlanner;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+use TCGStorePlatform\Api\V1\InventoryRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyStatusPresenter;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
@@ -167,6 +168,9 @@ final class AdminMenu {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->admin_summary();
+		$inventory_bootstrap        = ( new InventoryRouteBootstrapStatusPresenter() )->admin_summary(
+			FeatureFlags::is_enabled( 'inventory_pricing' )
+		);
 		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
 			new InventoryRouteDependencyFactory()
 		) )->admin_summary();
@@ -239,6 +243,11 @@ final class AdminMenu {
 			__( 'POS/payment route dependencies', 'tcg-store-platform' ),
 			$pos_payment_dependencies['value'],
 			$pos_payment_dependencies['status']
+		);
+		$this->render_status_row(
+			__( 'Inventory route bootstrap', 'tcg-store-platform' ),
+			$inventory_bootstrap['value'],
+			$inventory_bootstrap['status']
 		);
 		$this->render_status_row(
 			__( 'Inventory route dependencies', 'tcg-store-platform' ),
