@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.88.0`
+Version: `0.89.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -119,6 +119,9 @@ credential or repository path runs, while preserving secret-free audit payloads.
 Offline pairing authorization settings now normalize hash-only pairing-code
 policies, manager/location allowlists, mode scopes, and UTC expiry windows
 without accepting or retaining raw pairing codes.
+A settings-backed pairing authorizer factory can now construct the staged
+authorizer or permission callback from those sanitized settings while keeping
+live route registration disabled.
 Offline
 device access policy checks are implemented for future registered-device
 permission callbacks, covering active status, revocation timestamps, token expiry,

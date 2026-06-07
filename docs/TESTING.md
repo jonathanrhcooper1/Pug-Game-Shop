@@ -201,6 +201,9 @@
   settings, proving SHA-256 hashes, manager/location allowlists, mode scopes,
   UTC expiry windows, partial updates, and raw pairing-code omission are
   handled deterministically.
+- Local unit coverage now includes the settings-backed pairing authorizer
+  factory, proving sanitized settings can authorize staged callbacks, raw-code
+  only settings fail closed, and settings provider failures do not leak secrets.
 - Local unit coverage now includes registration service pairing-authorization
   enforcement, proving authorized pairing can proceed and denied pairing stops
   before credential issuance or repository writes.

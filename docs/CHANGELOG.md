@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.89.0] - 2026-06-06
+
+### Added
+
+- Settings-backed offline pairing authorizer factory for future staged pairing
+  route wiring.
+- Factory helpers to build a plan-only pairing authorizer or permission
+  callback from sanitized hash-only settings without opening live routes.
+- Unit coverage proving settings-backed callbacks authorize valid policies,
+  raw-pairing-code-only settings fail closed, and settings provider failures
+  do not leak secrets.
+
+### Not Added
+
+- No live offline route is enabled. Pairing route registration,
+  route-connected device writes, queue replay, and production database mutation
+  remain disabled.
+
 ## [0.88.0] - 2026-06-06
 
 ### Added

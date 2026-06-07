@@ -380,7 +380,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.88.0",
+  "app_version": "0.89.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -419,6 +419,10 @@ The matching settings contract stores only policy metadata for future staging
 wiring: `pairing_code_hashes`, `manager_ids`, `location_ids`,
 `allowed_scopes_by_mode`, and `expires_at_utc`. Submitted raw pairing-code
 fields are ignored.
+Staging code can now build the same plan-only authorizer or pairing permission
+callback from those sanitized settings through
+`OfflineDevicePairingAuthorizerFactory`; this does not enable live route
+registration.
 
 The registration service can consume the same authorizer as a defense-in-depth
 stage. When the supplied authorizer denies a parsed pairing request, the

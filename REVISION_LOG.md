@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Settings-Backed Pairing Authorizer Factory
+
+### What Changed
+
+- Added `OfflineDevicePairingAuthorizerFactory` to build a plan-only pairing
+  authorizer or pairing permission callback from sanitized offline pairing
+  authorization settings.
+- Added fail-closed handling for missing, malformed, or failing settings
+  providers so staged pairing authorization falls back to an empty deny policy.
+- Added unit tests for settings-backed callback authorization, raw-pairing-code
+  omission, provider-failure denial, and secret-free audits.
+- Updated project, plugin, and offline app package versions to `0.89.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, and plugin docs.
+
+### Why
+
+The hash-only pairing settings now need a safe runtime bridge for future
+staging bootstrap code. This revision provides that bridge without changing
+default route registration, without issuing production tokens, and without
+allowing raw pairing codes to become a stored policy source.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineDevicePairingAuthorizerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing schema version `8`.
+
+### Tests Added
+
+- Factory test proving sanitized settings can authorize a valid staged pairing
+  permission callback.
+- Factory test proving raw pairing-code-only settings are ignored and fail
+  closed.
+- Factory test proving settings provider failures fall back to denial without
+  leaking exception details or pairing codes.
+
+### Rollback Notes
+
+- Revert this revision to remove settings-backed staged pairing authorizer
+  construction.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pairing registration writes, queue replay, and
+  route-connected database writes remain disabled before and after rollback.
+
 ## 2026-06-06 - Offline Pairing Authorization Settings
 
 ### What Changed

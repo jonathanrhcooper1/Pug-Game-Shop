@@ -354,6 +354,11 @@ contract for future staged policy wiring. Store SHA-256 pairing-code hashes,
 manager/location allowlists, mode scopes, and UTC expiry windows only; raw
 pairing codes are ignored and must not be saved in settings.
 
+Version `0.89.0` adds a settings-backed pairing authorizer factory for future
+staged callback wiring. It can construct the plan-only authorizer or permission
+callback from sanitized settings, but live route registration and production
+device-token issuance remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

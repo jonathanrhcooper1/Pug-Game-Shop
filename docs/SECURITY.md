@@ -108,6 +108,8 @@ full hashes.
 Offline pairing authorization settings follow the same rule: they normalize
 stored SHA-256 hashes and policy metadata only, and raw pairing-code fields are
 ignored during sanitization.
+A settings-backed pairing authorizer factory now consumes only that sanitized
+policy shape and falls closed if the settings provider fails.
 When injected into the offline device registration service, that authorization
 must pass before one-time credentials are issued or the registration repository
 is called.

@@ -165,6 +165,9 @@ expiry windows for that staged permission callback while retaining only a short
 pairing-code fingerprint in audits.
 Offline pairing authorization settings now normalize the same hash-only policy
 shape for future staging wiring without saving raw pairing codes.
+A settings-backed pairing authorizer factory now turns that sanitized settings
+policy into the staged authorizer or permission callback without registering
+live routes.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
