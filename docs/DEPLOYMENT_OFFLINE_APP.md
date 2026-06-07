@@ -486,6 +486,12 @@ default route execution, route registration, queue replay, TopDeck queue
 workers, canonical mutations, and production route-connected writes remain
 disabled.
 
+Version `0.114.0` adds staged existing operation-row query planning for push
+idempotency checks. Staging can inspect the prepared lookup contract for
+`tcg_offline_sync_queue` rows by offline device ID and client operation IDs,
+while route-connected query execution, repository reads, queue replay,
+canonical mutations, and production route registration remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

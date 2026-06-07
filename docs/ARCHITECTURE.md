@@ -105,6 +105,11 @@ resolver options for explicitly enabled staged handlers. Current options are
 limited to event reservation payment status, keeping pay-at-store reservations
 out of the TopDeck queue while default route execution and canonical mutations
 remain disabled.
+Existing operation-row query planning now prepares the idempotent replay lookup
+contract against `tcg_offline_sync_queue` by offline device ID and client
+operation IDs. The builder emits only prepared SQL templates and argument lists;
+repository execution, queue replay, route reads, and canonical mutations remain
+deferred.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -458,6 +463,9 @@ before live `$wpdb` writes are enabled.
 Route operation-options staging now feeds normalized event payment status into
 that resolution path for explicitly enabled tests without enabling live TopDeck
 queue workers or canonical event mutation.
+Existing operation-row query planning now stages the next idempotent replay
+lookup boundary against `tcg_offline_sync_queue` without enabling repository
+reads, queue replay, or canonical mutation.
 
 ## Storefront Product Strategy
 

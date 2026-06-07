@@ -88,6 +88,9 @@ Before major database migrations:
 - System status and authenticated health report staged push operation-options
   provider readiness while default route execution, route registration, TopDeck
   queue workers, and canonical mutations remain deferred.
+- System status and authenticated health report staged push existing
+  operation-row query and SQL readiness while route-connected reads,
+  repository execution, queue replay, and canonical mutations remain deferred.
 - Staged offline pull handler returns a contract-shaped response in local or
   staging tests while live pull queries and cursor advancement remain disabled.
 - Pull change-query planning exposes only safe table/column contracts and

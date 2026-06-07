@@ -115,6 +115,7 @@ plus push server snapshot query planning
 plus push server snapshot repository adaptation
 plus push route server snapshot provider composition
 plus push route operation-options provider composition
+plus push existing operation-row query planning
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,

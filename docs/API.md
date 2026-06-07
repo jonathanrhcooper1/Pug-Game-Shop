@@ -222,6 +222,12 @@ composition. Explicitly enabled staged push handlers can now normalize
 per-operation event payment status from route payloads before batch resolution,
 while default route execution, route registration, TopDeck queue workers,
 canonical mutations, and route-connected writes remain deferred.
+Version `0.114.0` adds staged existing operation-row query planning for offline
+push idempotency checks. Validated push batches can now produce allowlisted
+`tcg_offline_sync_queue` lookup contracts and prepared SQL templates scoped by
+offline device ID and client operation IDs, while query execution, repository
+reads, queue replay, canonical mutations, and live route registration remain
+deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -488,7 +494,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.113.0",
+  "app_version": "0.114.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -622,6 +628,11 @@ event reservation payment status so pay-at-store events do not enter the
 TopDeck registration queue. Default push route execution, repository-backed
 snapshot loading, and operation-options derivation remain disabled unless
 staging explicitly injects the route handler dependencies.
+Existing operation-row lookup planning now prepares the idempotency read shape
+for future route replay checks. The contract selects allowlisted
+`tcg_offline_sync_queue` columns by offline device ID and client operation ID,
+and the SQL builder returns only a prepared template plus arguments; it does
+not execute reads or enable queue replay by default.
 
 Schema migration `0008_offline-sync` now defines the future persistence tables
 for registered offline devices, idempotent operation queue/result rows,

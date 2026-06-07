@@ -15,6 +15,8 @@ use TCGStorePlatform\Offline\OfflinePullCursorAdvancePlanner;
 use TCGStorePlatform\Offline\OfflinePullCursorAdvanceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePullCursorAdvanceRepository;
 use TCGStorePlatform\Offline\OfflinePullDeviceContextPlanner;
+use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryBuilder;
+use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryPlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
@@ -98,6 +100,12 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			OfflinePushRouteOperationOptionsProvider::class,
 			'__invoke'
 		);
+		$push_existing_operation_rows_query_ready = method_exists(
+			OfflinePushExistingOperationRowsQueryPlanner::class,
+			'plan'
+		);
+		$push_existing_operation_rows_sql_ready   = $push_existing_operation_rows_query_ready
+			&& method_exists( OfflinePushExistingOperationRowsQueryBuilder::class, 'build' );
 		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
 		$push_persistence_sql_ready     = $push_persistence_planner_ready
 			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
@@ -166,8 +174,14 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_snapshot_repository_ready'             => $push_snapshot_repository_ready,
 			'push_snapshot_route_provider_ready'         => $push_snapshot_route_provider_ready,
 			'push_snapshot_route_provider_deferred'      => true,
-			'push_operation_options_provider_ready'      => $push_operation_options_route_provider_ready,
-			'push_operation_options_provider_deferred'   => true,
+			'push_operation_options_provider_ready'        => $push_operation_options_route_provider_ready,
+			'push_operation_options_provider_deferred'     => true,
+			'push_existing_operation_rows_query_ready'     => $push_existing_operation_rows_query_ready,
+			'push_existing_operation_rows_query_sql_ready' => $push_existing_operation_rows_sql_ready,
+			'push_existing_operation_rows_query_sql_template_ready' => $push_existing_operation_rows_sql_ready,
+			'push_existing_operation_rows_query_execution_deferred' => true,
+			'push_existing_operation_rows_repository_deferred'      => true,
+			'push_existing_operation_rows_route_reads_deferred'     => true,
 			'push_snapshot_repo_execution_deferred'      => true,
 			'push_snapshot_query_execution_deferred'     => true,
 			'push_snapshot_repository_deferred'          => true,

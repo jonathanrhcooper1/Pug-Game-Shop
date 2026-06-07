@@ -103,6 +103,10 @@
   not-required handling, invalid or unsupported status rejection, non-event
   operation skipping, and staged event decisions that suppress TopDeck queueing
   for pay-at-store reservations.
+- Local unit coverage now includes offline push existing operation-row query
+  planning and SQL building for idempotent replay preparation, including
+  accepted lookup contracts, invalid contexts, duplicate/invalid operation IDs,
+  prepared SQL shape, rejected plans, and tampered contract rejection.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

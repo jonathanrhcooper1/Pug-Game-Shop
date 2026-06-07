@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.113.0`
+Version: `0.114.0`
 
 ## Implemented Features
 
@@ -94,6 +94,10 @@ Version: `0.113.0`
 - Offline push route operation-options provider composition for explicitly
   enabled staged handlers that normalize event reservation payment status before
   push resolution while keeping default route execution deferred.
+- Offline push existing operation-row query planning and SQL template building
+  for future idempotent replay checks against `tcg_offline_sync_queue`, while
+  route-connected reads, repository execution, queue replay, and canonical
+  mutations remain deferred.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,
@@ -316,6 +320,9 @@ Version: `0.113.0`
 - Offline push route operation-options planning for future staged handlers,
   including event payment status normalization and TopDeck queue suppression for
   pay-at-store reservations.
+- Offline push existing operation-row query planning for future idempotent
+  replay checks, including allowlisted queue columns and prepared SQL templates
+  without default route-connected reads.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

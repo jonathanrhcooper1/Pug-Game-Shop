@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.113.0`
+Version: `0.114.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -219,7 +219,12 @@ registration, route reads, queue replay, and canonical mutations remain
 deferred. Route-aware offline push operation options provider composition now
 normalizes event reservation payment status from route payloads for explicitly
 enabled staged handlers, including pay-at-store behavior that suppresses
-TopDeck queueing, while default route execution remains deferred. Offline bearer-token
+TopDeck queueing, while default route execution remains deferred. Offline push
+existing operation-row query planning now prepares allowlisted
+`tcg_offline_sync_queue` lookups by offline device ID and client operation IDs
+for future idempotent replay checks, while repository execution,
+route-connected reads, queue replay, and canonical mutations remain deferred.
+Offline bearer-token
 authentication planning is implemented for future REST permission callbacks,
 including header normalization, token shape validation, SHA-256 token hash
 comparison, persisted offline-device ID enforcement, and delegated

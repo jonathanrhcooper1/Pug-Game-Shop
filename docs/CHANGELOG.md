@@ -2,6 +2,32 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.114.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushExistingOperationRowsQueryPlanner` and
+  `OfflinePushExistingOperationRowsQueryPlan` for translating validated offline
+  push batches into allowlisted existing-operation row lookup contracts against
+  `tcg_offline_sync_queue`.
+- `OfflinePushExistingOperationRowsQueryBuilder` and
+  `OfflinePushExistingOperationRowsQueryBuildPlan` for converting those
+  contracts into prepared SQL templates keyed by offline device ID and client
+  operation IDs.
+- Sync handler health/admin and WordPress smoke readiness metadata for staged
+  existing operation-row query planning, SQL template readiness, repository
+  deferral, route-read deferral, queue replay deferral, and canonical mutation
+  deferral.
+- Unit coverage for accepted lookup contracts, invalid device/table contexts,
+  duplicate/invalid/mismatched operation IDs, prepared SQL shape, rejected
+  plans, and tampered contract rejection.
+
+### Not Added
+
+- Existing operation-row query execution, repository-backed route reads,
+  idempotent queue replay, canonical entity mutations, and live route
+  registration remain deferred.
+
 ## [0.113.0] - 2026-06-06
 
 ### Added

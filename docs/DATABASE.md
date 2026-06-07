@@ -103,6 +103,9 @@
 - Version `0.113.0` adds route-aware offline push operation-options provider
   composition over existing event payment status contracts. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.114.0` adds offline push existing operation-row query planning
+  over the existing `tcg_offline_sync_queue` table. No WordPress schema,
+  SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 

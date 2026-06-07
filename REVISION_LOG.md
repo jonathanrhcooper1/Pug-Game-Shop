@@ -3,6 +3,94 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Offline Push Existing Operation Rows Query Planning
+
+### What Changed
+
+- Added `OfflinePushExistingOperationRowsQueryPlanner` to plan allowlisted
+  existing-operation row lookups for offline push idempotency checks.
+- Added `OfflinePushExistingOperationRowsQueryBuilder` to turn those contracts
+  into prepared SQL templates scoped by offline device ID and client operation
+  IDs.
+- Added accepted/rejected value objects with secret-free audit payloads for
+  planning and SQL template generation.
+- Added registered-device sync handler health/admin readiness metadata for
+  staged existing operation-row query planning and SQL template readiness.
+- Added WordPress smoke readiness assertions for staged existing operation-row
+  planning while route reads and repository execution remain deferred.
+- Added unit coverage for accepted plans, invalid contexts, duplicate/invalid
+  operation IDs, tampered contracts, and prepared SQL shape.
+- Updated project, plugin, and offline app package versions to `0.114.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, staging, testing, roadmap, and plugin docs.
+
+### Why
+
+The staged push route can now derive operation options and load server
+snapshots, but idempotent replay still needs a safe way to identify existing
+queue rows before any route-connected replay worker is enabled. This revision
+adds the plan-only query and SQL-template boundary for those existing
+operation rows while keeping repository execution, route reads, queue replay,
+canonical mutations, and live route registration disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushExistingOperationRowsQueryPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushExistingOperationRowsQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushExistingOperationRowsQueryPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushExistingOperationRowsQueryBuilder.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushExistingOperationRowsQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushExistingOperationRowsQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Existing operation-row query planner tests for accepted lookup contracts,
+  invalid offline device/table prefix contexts, duplicate client operation IDs,
+  invalid client operation IDs, and mismatched operation devices.
+- Existing operation-row query builder tests for prepared SQL templates,
+  prepare arguments, invalid plan rejection, and tampered contract rejection.
+- Sync handler factory and WordPress smoke assertions for existing
+  operation-row query/SQL readiness and deferral metadata.
+
+### Rollback Notes
+
+- Revert this revision to remove staged existing operation-row lookup planning
+  and return idempotent replay work to push persistence planning only.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Default route-connected reads, route registration, queue replay, canonical
+  mutations, and route-connected database writes remain disabled before and
+  after rollback.
+
 ## 2026-06-06 - Offline Push Route Operation Options Provider
 
 ### What Changed
