@@ -106,6 +106,9 @@ staging database acceptance remains pending.
   price lock blocking, status exclusions, and minimum price floor hits.
 - Manager override policy helper for below-minimum sale approval, distinct
   manager requirement, required reason, and override-row persistence signal.
+- Manager override reauthentication checks, stable override public ID planning,
+  reauthentication audit metadata, and staged `$wpdb` repository persistence
+  for approved below-minimum sale override rows.
 
 ## Verification Performed
 
@@ -123,7 +126,6 @@ On PHP 8.2.29:
 1. Clean migration from schema version `1` to `2` on staging.
 2. Rollback from schema version `2` to `1` on staging.
 3. `dbDelta` compatibility on the target WordPress database configuration.
-4. Manager override persistence and reauthentication tests.
-5. Search and pagination benchmarks after the 50,000-item seed fixture exists.
-6. Live route registration remains disabled until repository writes, staff
+4. Search and pagination benchmarks after the 50,000-item seed fixture exists.
+5. Live route registration remains disabled until repository writes, staff
    permissions, rate limiting, and staging smoke tests are complete.

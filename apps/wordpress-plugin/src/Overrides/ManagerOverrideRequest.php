@@ -15,10 +15,13 @@ final class ManagerOverrideRequest {
 		private int $override_price_minor_units,
 		private int $minimum_sale_price_minor_units,
 		private string $currency,
-		private string $reason
+		private string $reason,
+		private bool $manager_reauthenticated = false,
+		private string $manager_reauthenticated_at = ''
 	) {
-		$this->currency = strtoupper( trim( $currency ) );
-		$this->reason   = trim( $reason );
+		$this->currency                   = strtoupper( trim( $currency ) );
+		$this->reason                     = trim( $reason );
+		$this->manager_reauthenticated_at = trim( $manager_reauthenticated_at );
 	}
 
 	public function employee_user_id(): int {
@@ -47,5 +50,13 @@ final class ManagerOverrideRequest {
 
 	public function reason(): string {
 		return $this->reason;
+	}
+
+	public function manager_reauthenticated(): bool {
+		return $this->manager_reauthenticated;
+	}
+
+	public function manager_reauthenticated_at(): string {
+		return $this->manager_reauthenticated_at;
 	}
 }

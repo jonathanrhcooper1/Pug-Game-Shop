@@ -19,6 +19,9 @@ All notable changes follow Semantic Versioning.
   `tcg_price_change_log` row with each staged inventory create, rolls back the
   create if the log cannot be written, and exposes persistence metadata in the
   REST response.
+- Manager override reauthentication requirements plus staged
+  `tcg_manager_overrides` repository persistence for accepted below-minimum
+  sale approvals.
 - Plan-only inventory intake persistence for staged card creation, including
   deterministic public IDs, fallback barcode/SKU generation for pending intake,
   schema-aligned insert rows, prepared SQL templates, timestamp/date planning,

@@ -25,7 +25,7 @@ final class ManagerOverridePersistencePlanner {
 		}
 
 		$row_data = array(
-			'public_id'        => trim( (string) ( $context['public_id'] ?? '' ) ),
+			'public_id'        => $this->public_id( $request, $context ),
 			'override_type'    => 'below_minimum_sale',
 			'inventory_id'     => $this->optional_positive_int( $context['inventory_id'] ?? null ),
 			'employee_user_id' => $request->employee_user_id(),
@@ -53,6 +53,8 @@ final class ManagerOverridePersistencePlanner {
 			'minimum_sale_price' => $this->format_minor_units( $request->minimum_sale_price_minor_units() ),
 			'currency'           => $row_data['currency'],
 			'reason_hash'        => hash( 'sha256', $row_data['reason'] ),
+			'reauthenticated_at' => $request->manager_reauthenticated_at(),
+			'reauth_hash'        => hash( 'sha256', $request->manager_reauthenticated_at() ),
 			'decision_code'      => $decision->code(),
 			'order_id'           => $row_data['order_id'],
 			'location_id'        => $row_data['location_id'],
@@ -81,5 +83,46 @@ final class ManagerOverridePersistencePlanner {
 		$prefix   = $negative ? '-' : '';
 
 		return sprintf( '%s%d.%04d', $prefix, $whole, $fraction * 100 );
+	}
+
+	/**
+	 * @param array<string, mixed> $context Optional inventory/order/location context.
+	 */
+	private function public_id( ManagerOverrideRequest $request, array $context ): string {
+		$public_id = trim( (string) ( $context['public_id'] ?? '' ) );
+
+		if ( '' !== $public_id ) {
+			return $public_id;
+		}
+
+		return $this->stable_uuid(
+			'manager-override:'
+			. implode(
+				':',
+				array(
+					$request->employee_user_id(),
+					$request->manager_user_id(),
+					$request->original_price_minor_units(),
+					$request->override_price_minor_units(),
+					$request->minimum_sale_price_minor_units(),
+					$request->currency(),
+					hash( 'sha256', $request->reason() ),
+					$request->manager_reauthenticated_at(),
+					(string) ( $context['inventory_id'] ?? '' ),
+					(string) ( $context['cart_id'] ?? '' ),
+					(string) ( $context['order_id'] ?? '' ),
+				)
+			)
+		);
+	}
+
+	private function stable_uuid( string $seed ): string {
+		$hex = hash( 'sha256', $seed );
+
+		return substr( $hex, 0, 8 )
+			. '-' . substr( $hex, 8, 4 )
+			. '-' . substr( $hex, 12, 4 )
+			. '-' . substr( $hex, 16, 4 )
+			. '-' . substr( $hex, 20, 12 );
 	}
 }

@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Manager Override Persistence And Reauthentication
+
+### What Changed
+
+- Added explicit manager reauthentication fields to manager override requests.
+- Below-minimum manager approval now requires a reauthenticated manager signal
+  plus a reauthentication timestamp before the policy accepts the override.
+- Manager override persistence planning now generates stable public IDs when
+  callers do not provide one and records reauthentication audit metadata.
+- Added a `$wpdb` repository and result object for persisting approved manager
+  override rows into `tcg_manager_overrides`.
+
+### Why
+
+Below-minimum pricing overrides need a durable manager approval record and a
+fresh-manager-auth signal before they are safe to rely on during checkout,
+offline sync, or POS reconciliation work.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRequest.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePolicy.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePersistencePlanner.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRepository.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverridePolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverridePersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverrideRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Uses the existing Phase 2 `tcg_manager_overrides` table.
+
+### Tests Added
+
+- Unit coverage for missing manager reauthentication and missing
+  reauthentication timestamp rejection.
+- Unit coverage for stable fallback manager override public IDs and
+  reauthentication audit payloads.
+- Unit coverage for manager override repository persistence, skipped plans,
+  invalid table prefixes, invalid rows, failed inserts, and unexpected insert
+  counts.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 762 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Overrides\ManagerOverrideRequest.php src\Overrides\ManagerOverridePolicy.php src\Overrides\ManagerOverridePersistencePlanner.php src\Overrides\ManagerOverrideRepository.php src\Overrides\ManagerOverrideRepositoryResult.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return manager override checks to reason/manager-only
+  policy behavior and remove repository persistence.
+- If staging test override rows were inserted, delete matching disposable
+  `tcg_manager_overrides` rows by `public_id`.
+- No schema rollback is required.
+
 ## 2026-06-07 - Inventory Intake Price Change Log Persistence
 
 ### What Changed

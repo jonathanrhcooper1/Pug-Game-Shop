@@ -216,10 +216,16 @@
   hold transitions back to available inventory.
 - Local unit coverage now includes manager override policy behavior for
   below-minimum sale approval, distinct manager checks, required reasons,
-  invalid amounts, and override-row persistence requirements.
+  manager reauthentication, reauthentication timestamps, invalid amounts, and
+  override-row persistence requirements.
 - Local unit coverage now includes manager override persistence/audit payload
   planning for accepted below-minimum approvals, rejected decisions,
-  no-row-required decisions, optional context IDs, and price formatting.
+  no-row-required decisions, optional context IDs, price formatting, stable
+  fallback public IDs, and reauthentication audit hashes.
+- Local unit coverage now includes manager override repository persistence for
+  approved override rows, skipped plans, table-prefix validation, invalid-row
+  rejection, failed inserts, unexpected insert counts, and raw reason redaction
+  from repository audit payloads.
 - Local unit coverage now includes WooCommerce serialized cart item metadata
   validation for exact inventory/reservation identifiers, owner token hashes,
   quantity-one enforcement, reservation expiry, price snapshots, and currency.
@@ -643,7 +649,7 @@ corresponding modules are implemented:
 - Reservation database integration, concurrent double-sell prevention tests,
   Action Scheduler cleanup workers, and WooCommerce cart timer integration.
 - Customer credit ledger database integration and replay tests.
-- Manager override persistence, manager reauthentication, and audit tests.
+- Manager override REST/checkout integration and live database replay tests.
 - ScryDex database write workers, scheduled worker, image download,
   usage-budget, and webhook integration tests.
 - External tournament-provider registration worker tests are deferred.
