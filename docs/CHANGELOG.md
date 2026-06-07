@@ -2,6 +2,29 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.115.0] - 2026-06-06
+
+### Added
+
+- `OfflinePushExistingOperationRowsRepository` and
+  `OfflinePushExistingOperationRowsRepositoryResult` for explicitly executing
+  staged existing operation-row lookup templates through `$wpdb`.
+- Existing queue-row normalization for idempotent replay preparation, including
+  offline device and device-public-ID checks, operation ID allowlisting,
+  timestamp normalization, result-details JSON decoding, duplicate-row
+  rejection, and count-only audit metadata.
+- Sync handler health/admin and WordPress smoke readiness metadata for staged
+  existing operation-row repository availability while route reads and queue
+  replay remain deferred.
+- Unit coverage for successful row loading, empty result sets, invalid query
+  plans, database failures, malformed rows, duplicate rows, and repository
+  audit payloads.
+
+### Not Added
+
+- Default route-connected existing-row reads, idempotent queue replay,
+  canonical entity mutations, and live route registration remain deferred.
+
 ## [0.114.0] - 2026-06-06
 
 ### Added

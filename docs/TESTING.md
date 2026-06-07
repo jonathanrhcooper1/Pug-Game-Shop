@@ -107,6 +107,10 @@
   planning and SQL building for idempotent replay preparation, including
   accepted lookup contracts, invalid contexts, duplicate/invalid operation IDs,
   prepared SQL shape, rejected plans, and tampered contract rejection.
+- Local unit coverage now includes offline push existing operation-row
+  repository loading for successful replay candidate reads, empty result sets,
+  invalid plans, database failures, malformed rows, duplicate rows, and
+  repository audit payloads.
 - Local unit coverage now includes reservation expiry cleanup planning for
   expired active holds, equal-to-now expiries, future holds, inactive rows,
   invalid rows, deterministic cleanup idempotency keys, and explicit expired

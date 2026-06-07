@@ -492,6 +492,12 @@ idempotency checks. Staging can inspect the prepared lookup contract for
 while route-connected query execution, repository reads, queue replay,
 canonical mutations, and production route registration remain disabled.
 
+Version `0.115.0` adds explicit existing operation-row repository adaptation.
+Staging can call the repository to execute the prepared lookup through `$wpdb`
+and normalize replay candidate rows, while default route-connected reads,
+queue replay, canonical mutations, and production route registration remain
+disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

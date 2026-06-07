@@ -228,6 +228,12 @@ push idempotency checks. Validated push batches can now produce allowlisted
 offline device ID and client operation IDs, while query execution, repository
 reads, queue replay, canonical mutations, and live route registration remain
 deferred.
+Version `0.115.0` adds explicit existing operation-row repository adaptation.
+Staging can now execute those lookup templates through `$wpdb`, normalize
+existing queue rows keyed by client operation ID, and reject malformed or
+duplicate rows before replay preparation, while default route-connected reads,
+queue replay, canonical mutations, and live route registration remain
+deferred.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -494,7 +500,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.114.0",
+  "app_version": "0.115.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,
@@ -633,6 +639,10 @@ for future route replay checks. The contract selects allowlisted
 `tcg_offline_sync_queue` columns by offline device ID and client operation ID,
 and the SQL builder returns only a prepared template plus arguments; it does
 not execute reads or enable queue replay by default.
+Existing operation-row repository adaptation can now explicitly execute that
+template in staged tests, returning normalized rows keyed by client operation
+ID. Default route wiring still does not call the repository, and loaded rows
+are not replayed or mutated automatically.
 
 Schema migration `0008_offline-sync` now defines the future persistence tables
 for registered offline devices, idempotent operation queue/result rows,

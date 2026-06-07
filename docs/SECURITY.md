@@ -177,6 +177,12 @@ the `tcg_offline_sync_queue` table, selects fixed queue/result columns,
 validates offline device IDs, table prefixes, and client operation IDs, and
 returns prepared SQL templates without executing route-connected reads or
 logging raw queue payloads.
+Existing push operation-row repository loading executes only those prepared
+templates when explicitly called in staging tests. It validates device IDs,
+operation IDs, timestamps, row versions, and result-details JSON before
+returning replay candidates, rejects duplicate or malformed rows, and keeps
+default route reads, queue replay, raw queue payload logs, and canonical
+mutations disabled.
 The staged pull response handler returns contract-shaped empty domain responses
 by default and exposes only deferred-state metadata. Injected change-set
 providers fail closed on exceptions, and the handler still avoids SQL, cursor

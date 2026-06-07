@@ -87,7 +87,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.114.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.115.0' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( 8 === Version::DATABASE, 'Unexpected database target version.' );
 $assert( 8 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 1 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
@@ -143,7 +143,7 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.114.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( '0.115.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
 $assert( 8 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
 $assert( 8 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
@@ -214,6 +214,7 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['push_opera
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_query_ready'] ?? null ), 'Offline push existing operation row query planner should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_query_sql_ready'] ?? null ), 'Offline push existing operation row SQL planning should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_query_sql_template_ready'] ?? null ), 'Offline push existing operation row SQL template should be staged ready.' );
+$assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_repository_ready'] ?? null ), 'Offline push existing operation row repository should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_query_execution_deferred'] ?? null ), 'Offline push existing operation row query execution should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_repository_deferred'] ?? null ), 'Offline push existing operation row repository should remain deferred.' );
 $assert( true === ( $data['offline_registered_device_sync_handlers']['push_existing_operation_rows_route_reads_deferred'] ?? null ), 'Offline push existing operation row route reads should remain deferred.' );

@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.114.0`
+Version: `0.115.0`
 
 ## Implemented Features
 
@@ -98,6 +98,9 @@ Version: `0.114.0`
   for future idempotent replay checks against `tcg_offline_sync_queue`, while
   route-connected reads, repository execution, queue replay, and canonical
   mutations remain deferred.
+- Offline push existing operation-row repository adaptation for explicitly
+  called staged replay candidate reads, row normalization, duplicate rejection,
+  and secret-free repository audits while default route reads stay deferred.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,
@@ -323,6 +326,9 @@ Version: `0.114.0`
 - Offline push existing operation-row query planning for future idempotent
   replay checks, including allowlisted queue columns and prepared SQL templates
   without default route-connected reads.
+- Offline push existing operation-row repository adaptation for future
+  idempotent replay preparation, including explicit `$wpdb` reads and malformed
+  row rejection without default route-connected reads.
 - Dependency-free REST route contract tests for health and public Events
   endpoints.
 - Migration runner planning coverage for clean install, upgrade, idempotent

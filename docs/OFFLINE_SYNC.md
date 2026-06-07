@@ -287,6 +287,11 @@ allowlisted `tcg_offline_sync_queue` lookup plans and prepared SQL templates by
 offline device ID plus client operation IDs, while repository execution,
 route-connected reads, queue replay, canonical mutations, and route
 registration remain deferred.
+Version `0.115.0` adds explicit existing operation-row repository adaptation.
+Staging can now execute those prepared lookup templates through `$wpdb`,
+normalize queue rows keyed by client operation ID, and reject malformed or
+duplicate rows before replay preparation, while default route-connected reads,
+queue replay, canonical mutations, and route registration remain deferred.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -370,6 +375,9 @@ Existing operation-row query planning now prepares the future idempotent replay
 lookup against `tcg_offline_sync_queue` by offline device ID and client
 operation IDs, while repository reads, queue replay, route registration, and
 canonical mutations remain disabled by default.
+Existing operation-row repository adaptation now lets staged tests explicitly
+load and normalize those replay candidates while default route wiring still
+avoids queue reads, replay workers, and canonical mutations.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

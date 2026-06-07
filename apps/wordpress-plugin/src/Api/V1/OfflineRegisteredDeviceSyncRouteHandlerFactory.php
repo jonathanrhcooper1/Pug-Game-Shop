@@ -17,6 +17,7 @@ use TCGStorePlatform\Offline\OfflinePullCursorAdvanceRepository;
 use TCGStorePlatform\Offline\OfflinePullDeviceContextPlanner;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsQueryPlanner;
+use TCGStorePlatform\Offline\OfflinePushExistingOperationRowsRepository;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
 use TCGStorePlatform\Offline\OfflinePushPersistenceQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushPersistenceRepository;
@@ -106,6 +107,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 		);
 		$push_existing_operation_rows_sql_ready   = $push_existing_operation_rows_query_ready
 			&& method_exists( OfflinePushExistingOperationRowsQueryBuilder::class, 'build' );
+		$push_existing_operation_rows_repository_ready = $push_existing_operation_rows_sql_ready
+			&& method_exists( OfflinePushExistingOperationRowsRepository::class, 'fetch' );
 		$push_persistence_planner_ready = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
 		$push_persistence_sql_ready     = $push_persistence_planner_ready
 			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
@@ -179,6 +182,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'push_existing_operation_rows_query_ready'     => $push_existing_operation_rows_query_ready,
 			'push_existing_operation_rows_query_sql_ready' => $push_existing_operation_rows_sql_ready,
 			'push_existing_operation_rows_query_sql_template_ready' => $push_existing_operation_rows_sql_ready,
+			'push_existing_operation_rows_repository_ready' => $push_existing_operation_rows_repository_ready,
 			'push_existing_operation_rows_query_execution_deferred' => true,
 			'push_existing_operation_rows_repository_deferred'      => true,
 			'push_existing_operation_rows_route_reads_deferred'     => true,

@@ -110,6 +110,9 @@ contract against `tcg_offline_sync_queue` by offline device ID and client
 operation IDs. The builder emits only prepared SQL templates and argument lists;
 repository execution, queue replay, route reads, and canonical mutations remain
 deferred.
+Existing operation-row repository adaptation can now execute those templates
+only when explicitly called, normalize replay candidate queue rows, and reject
+malformed or duplicate rows while default route wiring remains read-disabled.
 
 External services are isolated behind capability-reporting adapters. A method
 can exist while returning `not_supported` until the capability is documented,
@@ -466,6 +469,9 @@ queue workers or canonical event mutation.
 Existing operation-row query planning now stages the next idempotent replay
 lookup boundary against `tcg_offline_sync_queue` without enabling repository
 reads, queue replay, or canonical mutation.
+Existing operation-row repository adaptation now gives staging an explicit read
+adapter for those replay candidates while keeping default route reads and queue
+replay disabled.
 
 ## Storefront Product Strategy
 

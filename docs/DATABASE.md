@@ -106,6 +106,9 @@
 - Version `0.114.0` adds offline push existing operation-row query planning
   over the existing `tcg_offline_sync_queue` table. No WordPress schema,
   SQLite schema, migration order, or rollback target changes.
+- Version `0.115.0` adds explicit existing operation-row repository adaptation
+  over the existing `tcg_offline_sync_queue` table. No WordPress schema,
+  SQLite schema, migration order, or rollback target changes.
 
 ## Relationship Overview
 
