@@ -3,6 +3,91 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - POS Payment Route Dependency Status
+
+### What Changed
+
+- Added `PosPaymentRouteDependencyFactory` for staged POS/payment controller,
+  permission callback, registration planner, registrar, and bootstrapper
+  dependency assembly.
+- Added `PosPaymentRouteDependencyStatusPresenter` for health/admin readiness
+  summaries.
+- Authenticated health now reports `pos_payment_route_dependencies` with
+  handler counts, permission callback counts, webhook verifier state,
+  registrar/bootstrapper readiness, route deferral, write deferral, and
+  configuration issues.
+- Admin System Status now displays a POS/payment route dependencies row.
+- Added unit coverage for default blocked dependencies, fully injected staged
+  dependencies, injected controller dispatch, permission callback types, and
+  admin summary text.
+- Added WordPress smoke coverage proving default POS/payment dependencies
+  remain blocked while capability callbacks are available inside WordPress and
+  webhook/handler dependencies remain unconfigured.
+- Updated project, plugin, and offline app package versions to `0.144.0`.
+- Updated project, plugin, payments/POS, staging, testing, roadmap, changelog,
+  architecture, and revision docs.
+
+### Why
+
+The POS/payment bootstrapper is wired, but staging also needs a clear view of
+which route dependencies are assembled before any future endpoint can be made
+live. This revision exposes that readiness without enabling route registration
+or route-connected writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+- WordPress database target remains `9`.
+- Role capability target remains `2`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- `PosPaymentRouteDependencyFactoryTest` coverage for default blocked
+  dependencies, fully injected staged dependencies, injected controller
+  dispatch, and permission callback types.
+- `PosPaymentRouteDependencyStatusPresenterTest` coverage for health payloads,
+  admin summary text, and ready injected dependency summaries.
+- WordPress smoke coverage for blocked default POS/payment route dependencies.
+
+### Rollback Notes
+
+- Revert this revision to remove POS/payment route dependency status,
+  health/admin presentation, tests, and version/doc updates.
+- No database rollback is required because no schema migration, live route
+  registration, provider capture, provider inventory write service, webhook
+  handler, or WooCommerce gateway capture was added.
+- Live Square/POS network calls, production payment capture, provider
+  inventory writes, payment webhook route registration, WooCommerce gateway
+  capture, POS reconciliation services, and route-connected POS/payment writes
+  remain disabled before and after rollback.
+
 ## 2026-06-07 - POS Payment Route Bootstrapper Wiring
 
 ### What Changed

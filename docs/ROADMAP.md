@@ -147,7 +147,7 @@ preflight metadata, explicit staged log execution, and staged transaction
 execution plus planned route contracts and route readiness diagnostics
 plus fail-closed route permission callbacks, controller scaffold, route
 registration planning, guarded registrar, route bootstrap status, and
-bootstrapper wiring
+bootstrapper wiring plus route dependency status
 implemented
 
 Deliver Square connection, transaction ingestion, barcode scan gate, optional

@@ -232,6 +232,10 @@ registration orchestration with planned/registerable route counts and block
 reasons. The POS/payment route bootstrapper is wired to WordPress
 `rest_api_init`, but it only calls the guarded registrar when bootstrap status
 is ready; current defaults still register no POS/payment routes.
+POS/payment route dependency status now reports controller handler,
+permission callback, webhook verifier, registrar, and bootstrapper readiness
+separately from route exposure. This keeps staging diagnostics explicit while
+route registration and route-connected writes remain deferred.
 
 ## System Diagram
 

@@ -111,6 +111,9 @@ final class HealthController {
 		$pos_payment_bootstrap      = ( new PosPaymentRouteBootstrapStatusPresenter() )->health_payload(
 			$pos_payments_enabled
 		);
+		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
+			new PosPaymentRouteDependencyFactory()
+		) )->health_payload();
 
 		foreach ( $dependencies as $dependency ) {
 			if ( 'blocked' === $dependency['status'] ) {
@@ -153,6 +156,7 @@ final class HealthController {
 				'offline_device_pairing_route_readiness'  => $pairing,
 				'pos_payment_route_readiness'             => $pos_payment_routes,
 				'pos_payment_route_bootstrap'             => $pos_payment_bootstrap,
+				'pos_payment_route_dependencies'          => $pos_payment_dependencies,
 				'timestamp'                               => gmdate( 'c' ),
 			),
 			200

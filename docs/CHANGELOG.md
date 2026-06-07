@@ -2,6 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.144.0] - 2026-06-07
+
+### Added
+
+- POS/payment route dependency factory for assembling staged controller,
+  permission callback, registration planner, registrar, and bootstrapper
+  dependencies.
+- POS/payment route dependency status presenter plus authenticated health and
+  admin System Status reporting for controller handlers, capability callbacks,
+  webhook verifier, registrar, bootstrapper, route deferral, and write
+  deferral state.
+- Unit and WordPress smoke coverage proving POS/payment dependencies remain
+  blocked by default while route registration and route-connected writes stay
+  deferred.
+
+### Not Added
+
+- Live POS/payment route registration, webhook processing, Square/POS network
+  calls, production payment capture, provider inventory writes, POS
+  reconciliation services, WooCommerce gateway capture, and production provider
+  credentials remain disabled.
+
 ## [0.143.0] - 2026-06-07
 
 ### Added

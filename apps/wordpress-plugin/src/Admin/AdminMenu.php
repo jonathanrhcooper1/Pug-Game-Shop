@@ -160,6 +160,9 @@ final class AdminMenu {
 		$pos_payment_bootstrap      = ( new PosPaymentRouteBootstrapStatusPresenter() )->admin_summary(
 			FeatureFlags::is_enabled( 'pos_payments' )
 		);
+		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
+			new PosPaymentRouteDependencyFactory()
+		) )->admin_summary();
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
@@ -225,6 +228,11 @@ final class AdminMenu {
 			__( 'POS/payment route bootstrap', 'tcg-store-platform' ),
 			$pos_payment_bootstrap['value'],
 			$pos_payment_bootstrap['status']
+		);
+		$this->render_status_row(
+			__( 'POS/payment route dependencies', 'tcg-store-platform' ),
+			$pos_payment_dependencies['value'],
+			$pos_payment_dependencies['status']
 		);
 
 		echo '</tbody></table></div>';

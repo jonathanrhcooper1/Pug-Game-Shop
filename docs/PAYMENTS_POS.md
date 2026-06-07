@@ -321,6 +321,15 @@ The POS/payment route bootstrapper is now registered on WordPress
 registrar only when bootstrap status is ready, so default staging checks can
 verify lifecycle wiring while POS/payment REST routes remain absent.
 
+## Route Dependencies
+
+POS/payment route dependency status reports whether the staged route controller
+has injected handlers, whether capability permission callbacks can be built,
+whether a webhook signature verifier is configured, and whether the guarded
+registrar/bootstrapper classes are available. Current defaults keep controller
+handlers and the webhook verifier unconfigured, route registration deferred,
+and route-connected writes deferred.
+
 ## GoDaddy Payments
 
 The public GoDaddy developer portal reviewed on June 6, 2026 states that the

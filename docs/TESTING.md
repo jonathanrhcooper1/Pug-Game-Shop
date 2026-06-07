@@ -506,6 +506,10 @@
   plans, future-ready registrar execution, feature-blocked future-ready plans,
   and the `rest_api_init` hook while default POS/payment REST routes remain
   unregistered.
+- Local unit and WordPress smoke coverage now include POS/payment route
+  dependency status for controller handlers, permission callbacks, webhook
+  verifier, registrar/bootstrapper readiness, injected handler dispatch, and
+  default route/write deferral.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.

@@ -6,7 +6,7 @@ customer store credit, buylist intake, kiosk carts, and events.
 
 ## Current Status
 
-Version: `0.143.0`
+Version: `0.144.0`
 
 Phase 0 architecture is complete. The WordPress plugin foundation,
 inventory/pricing schema, Events/TopDeck schema and adapter contracts, and
@@ -102,6 +102,10 @@ the route-registration path reports blocked/gated/ready state separately from
 readiness, while still registering no routes by default.
 The POS/payment route bootstrapper is now wired to WordPress `rest_api_init`,
 but default feature and route gates still register zero POS/payment routes.
+POS/payment route dependency status now reports controller handler,
+permission callback, webhook verifier, registrar, and bootstrapper readiness
+in health/admin diagnostics while route registration and writes remain
+deferred.
 The offline app now has a Tauri/React/TypeScript Windows packaging scaffold,
 NSIS `.exe` target metadata, contract tests, and a manual GitHub Actions
 workflow for unsigned installer builds. Its first SQLite schema contract is
