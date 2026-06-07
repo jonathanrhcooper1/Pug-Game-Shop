@@ -55,14 +55,18 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 			)
 		);
 
-		$this->assert_same( 'validated', $response['status'] );
+		$this->assert_same( 'ready', $response['status'] );
 		$this->assert_same( 200, $response['status_code'] );
+		$this->assert_same( 'offline_pull_response_ready', $response['code'] );
 		$this->assert_same( 'pull_offline_changes', $response['callback'] );
 		$this->assert_same( 'device-main-01', $response['data']['device_id'] );
-		$this->assert_same( array( 'inventory', 'events' ), $response['data']['domains'] );
-		$this->assert_same( 1, $response['data']['cursor_count'] );
-		$this->assert_true( $response['data']['write_deferred'] );
-		$this->assert_true( $response['data']['route_still_gated'] );
+		$this->assert_true( isset( $response['data']['domains']['inventory'] ) );
+		$this->assert_same( 'cursor-inventory-01', $response['data']['domains']['inventory']['cursor'] );
+		$this->assert_same( array(), $response['data']['domains']['inventory']['data'] );
+		$this->assert_true( $response['meta']['query_deferred'] );
+		$this->assert_true( $response['meta']['cursor_advance_deferred'] );
+		$this->assert_true( $response['meta']['write_deferred'] );
+		$this->assert_true( $response['meta']['route_still_gated'] );
 	}
 
 	public function test_push_handler_validates_request_without_queue_persistence(): void {
@@ -93,6 +97,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactoryTest extends TestCase 
 		$this->assert_same( 'ready', $payload['status'] );
 		$this->assert_true( $payload['pull_handler_configured'] );
 		$this->assert_true( $payload['push_handler_configured'] );
+		$this->assert_true( $payload['pull_response_ready'] );
 		$this->assert_same( 2, $payload['handler_count'] );
 		$this->assert_true( $payload['write_deferred'] );
 		$this->assert_true( $payload['route_registration_deferred'] );

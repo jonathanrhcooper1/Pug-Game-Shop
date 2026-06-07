@@ -122,6 +122,10 @@ Registered-device sync handler readiness exposes only callback names, handler
 counts, and deferred-state booleans. The staged pull/push handlers validate
 request envelopes only; they do not execute queue replay, pull queries, cursor
 advancement, last-seen writes, or route-connected database mutations.
+The staged pull response handler returns contract-shaped empty domain responses
+by default and exposes only deferred-state metadata. Injected change-set
+providers fail closed on exceptions, and the handler still avoids SQL, cursor
+writes, queue replay, last-seen writes, and route-connected database mutation.
 The staged registration handler factory reports only database, repository,
 pairing policy, pairing authorizer, and configuration issue readiness. It does
 not expose pairing codes, full hashes, one-time device tokens, or query SQL in

@@ -3,6 +3,94 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-06 - Staged Pull Response Handler
+
+### What Changed
+
+- Added `OfflinePullRouteHandler` to parse registered-device pull requests and
+  return the existing presenter-shaped pull response contract.
+- Wired `OfflineRegisteredDeviceSyncRouteHandlerFactory` to use the staged pull
+  response handler for `pull_offline_changes`, while retaining parser-only push
+  validation.
+- Added readiness metadata for `pull_response_ready`, with pull query, cursor
+  advancement, write, and route-registration deferral flags preserved.
+- Added unit coverage for empty default responses, injected change-set
+  providers, invalid payload short-circuiting, and provider failure handling.
+- Updated the registered-device sync handler factory tests to assert the new
+  staged pull response envelope while pull/push routes remain unregistered.
+- Updated project, plugin, and offline app package versions to `0.94.0`.
+- Updated API, offline sync, architecture, database, deployment, changelog,
+  security, testing, roadmap, and plugin docs.
+
+### Why
+
+The pull callback can now prove the offline app response contract end-to-end
+without querying live change tables or advancing device cursors. This gives
+staging a safer integration surface for future repository adapters while the
+current route-registration and database-write gates remain closed.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePullRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePullRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingAuthorizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDeviceRegistrationServiceTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDevicePermissionResolverFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `README.md`
+- `docs/API.md`
+- `docs/ARCHITECTURE.md`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+
+### Migrations Added
+
+- None. This revision uses existing WordPress schema version `8`.
+- No local offline app SQLite schema changes were made.
+
+### Tests Added
+
+- Pull route handler coverage for presenter-shaped empty responses without
+  live queries.
+- Pull route handler coverage for injected change-set providers and deferred
+  cursor advancement.
+- Pull route handler coverage proving invalid requests skip providers and
+  provider failures fail closed.
+- Registered-device sync handler factory coverage for the new pull response
+  readiness envelope.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged pull response handler and return
+  `pull_offline_changes` to parser-only validation.
+- No WordPress schema rollback is required; database target remains `8`.
+- No SQLite rollback is required; the local offline app SQLite schema is
+  unchanged.
+- Live offline routes, pull queries, cursor advancement, queue replay,
+  last-seen writes, and route-connected database writes remain disabled before
+  and after rollback.
+
 ## 2026-06-06 - Registered-Device Sync Handler Readiness
 
 ### What Changed

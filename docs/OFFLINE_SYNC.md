@@ -187,6 +187,11 @@ The handler factory exposes parser-only pull/push controller callbacks for
 bootstrap planning, so staging can verify request validation and controller
 callback readiness without executing pull queries, queue replay, cursor
 advancement, or route-connected writes.
+Version `0.94.0` upgrades the staged pull callback from validation-only output
+to the real pull response contract. It returns presenter-shaped empty domain
+responses by default, supports an injected change-set provider for future
+staging adapters, and still reports live query, cursor advancement,
+route-registration, and write deferral.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

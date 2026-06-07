@@ -128,6 +128,12 @@ controller used for bootstrap planning. Authenticated health now includes
 `offline_registered_device_sync_handlers`, and pull/push controller callbacks
 can report ready while `should_register` remains false and route-connected
 writes stay deferred.
+Version `0.94.0` replaces the staged pull callback's validation-only response
+with the existing pull response contract. Valid pull requests now receive
+`offline_pull_response_ready` with `data` from the pull response presenter and
+deferred-state metadata for `query_deferred`, `cursor_advance_deferred`,
+`write_deferred`, and `route_still_gated`. Live pull queries, cursor
+advancement, route registration, and route-connected writes remain disabled.
 Offline REST request adaptation now normalizes body params, query params, route
 params, headers, and `Idempotency-Key`/`X-Idempotency-Key`/`X-Request-Id`
 headers for future offline controller handlers. The default controller remains
@@ -394,7 +400,7 @@ The planned pairing request body is shaped as:
   "device_mode": "kiosk",
   "location_id": 2,
   "manager_id": 15,
-  "app_version": "0.93.0",
+  "app_version": "0.94.0",
   "platform": "windows",
   "capabilities": {
     "barcode_scanner": true,

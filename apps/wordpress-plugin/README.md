@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.93.0`
+Version: `0.94.0`
 
 ## Implemented Features
 
@@ -140,6 +140,9 @@ Version: `0.93.0`
 - Staged registered-device sync route handler readiness for offline pull/push
   parser-only controller callbacks, keeping route registration and
   route-connected writes deferred.
+- Staged offline pull route handler responses for registered-device pull
+  requests, returning presenter-shaped empty domain responses while live
+  change queries, cursor advancement, and route registration stay deferred.
 - Offline device access policy checks for future registered-device permission
   callbacks, including active/revoked/expired state, required scopes, supported
   modes/scopes, location IDs, and UTC timestamp validation.

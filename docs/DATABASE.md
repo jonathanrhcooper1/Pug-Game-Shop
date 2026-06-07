@@ -48,6 +48,9 @@
 - Version `0.93.0` adds staged registered-device sync handler readiness and
   reporting. No WordPress schema, SQLite schema, migration order, or rollback
   target changes.
+- Version `0.94.0` adds a staged offline pull response handler and reporting.
+  No WordPress schema, SQLite schema, migration order, or rollback target
+  changes.
 
 ## Relationship Overview
 

@@ -54,6 +54,8 @@ Before major database migrations:
 - System status and authenticated health report blocked offline route bootstrap
   by default, with `registration_deferred = true`, the bootstrapper hook
   registered, and offline pull/push routes still unregistered.
+- Staged offline pull handler returns a contract-shaped response in local or
+  staging tests while live pull queries and cursor advancement remain disabled.
 - WooCommerce checkout test order completes in sandbox mode.
 - ScryDex mock or sandbox sync completes.
 - TopDeck mock or sandbox sync completes.

@@ -15,7 +15,8 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 
 	public function __construct(
 		private ?OfflineRouteValidationHandlerFactory $validation_handler_factory = null,
-		private ?OfflineRestRequestAdapter $request_adapter = null
+		private ?OfflineRestRequestAdapter $request_adapter = null,
+		private ?OfflinePullRouteHandler $pull_handler = null
 	) {
 	}
 
@@ -35,6 +36,7 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 	 */
 	public function handlers(): array {
 		$handlers = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
+		$handlers['pull_offline_changes'] = array( $this->pull_handler(), 'handle' );
 
 		return array_intersect_key( $handlers, array_flip( self::HANDLER_CALLBACKS ) );
 	}
@@ -58,10 +60,15 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			'controller_callbacks'         => array_values( array_keys( $handlers ) ),
 			'pull_handler_configured'      => is_callable( $handlers['pull_offline_changes'] ?? null ),
 			'push_handler_configured'      => is_callable( $handlers['push_offline_operations'] ?? null ),
+			'pull_response_ready'          => is_callable( $handlers['pull_offline_changes'] ?? null ),
 			'write_deferred'               => true,
 			'route_registration_deferred'  => true,
 			'route_connected_writes_ready' => false,
 			'configuration_issues'         => array_values( array_unique( $issues ) ),
 		);
+	}
+
+	private function pull_handler(): OfflinePullRouteHandler {
+		return $this->pull_handler ?? new OfflinePullRouteHandler();
 	}
 }

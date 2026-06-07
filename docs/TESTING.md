@@ -137,6 +137,10 @@
   domain responses, request cursor carry-forward, normalized data rows,
   tombstone inclusion/exclusion, UTC timestamps, entity IDs, row versions, and
   invalid response contract inputs.
+- Local unit coverage now includes the staged offline pull route handler,
+  proving valid requests return the presenter-shaped response contract,
+  injected change-set providers are passed through without cursor advancement,
+  invalid payloads skip providers, and provider failures fail closed.
 - Local unit coverage now includes offline device pairing request validation
   for pairing codes, installation IDs, device modes, manager/location IDs, app
   versions, Windows platform checks, hardware capabilities, requested scopes,

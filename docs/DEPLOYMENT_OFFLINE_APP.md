@@ -380,6 +380,11 @@ callback readiness and request validation, but live route registration, queue
 replay, pull queries, cursor advancement, and route-connected writes remain
 disabled.
 
+Version `0.94.0` adds a staged pull response handler for the
+`pull_offline_changes` callback. Staging can verify the response contract the
+Windows app will consume, but live pull queries, tombstone reads, cursor
+advancement, route registration, and route-connected writes remain disabled.
+
 ## Hardware Gate
 
 Before production, test the actual:

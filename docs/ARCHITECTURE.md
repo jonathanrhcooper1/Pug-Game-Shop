@@ -206,7 +206,10 @@ devices can ask for known cached domains and cursors before live change queries
 or cursor advancement are enabled. Pull response presentation is implemented so
 repository-backed change sets can later be shaped into stable per-domain
 cursors, change rows, tombstones, server timestamps, and `has_more` pagination
-flags without changing the offline app contract. Device pairing request
+flags without changing the offline app contract. The staged pull route handler
+now returns that response contract with empty domain change sets by default,
+and any future change-set provider remains injected behind the same boundary
+while live queries and cursor writes stay disabled. Device pairing request
 validation is implemented so the future registration route can reject malformed
 installation IDs, unsupported modes/scopes/capabilities, bad manager/location
 IDs, unsupported platforms, and schema mismatches before any token or device row

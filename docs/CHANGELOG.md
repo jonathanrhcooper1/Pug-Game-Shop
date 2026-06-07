@@ -2,6 +2,26 @@
 
 All notable changes follow Semantic Versioning.
 
+## [0.94.0] - 2026-06-06
+
+### Added
+
+- Staged offline pull route handler that parses registered-device pull
+  requests and returns the existing contract-shaped pull response envelope.
+- Empty default pull change sets for each requested domain, with injected
+  change-set and server-time providers available for future staging adapters.
+- Readiness metadata now distinguishes `pull_response_ready` from route
+  registration, write persistence, live pull queries, and cursor advancement.
+- Unit coverage proving valid pull requests receive presenter-shaped
+  responses, injected change sets are passed through, provider failures fail
+  closed, and invalid requests do not call providers.
+
+### Not Added
+
+- No live offline route is enabled. Pull route registration, database change
+  queries, tombstone repository reads, cursor advancement, queue replay,
+  last-seen writes, and route-connected database mutation remain disabled.
+
 ## [0.93.0] - 2026-06-06
 
 ### Added
