@@ -378,6 +378,10 @@ deferral before a future `POST /inventory` route can register. The inventory
 route dependency factory can now assemble the staged create handler into that
 controller for readiness checks. Barcode label printing and WooCommerce/Square
 projection writes remain disabled until staging acceptance.
+Authenticated health now exposes this route dependency summary under
+`inventory_route_dependencies`, and admin System Status mirrors the same
+blocked/ready summary for staging review. WordPress smoke coverage asserts the
+inventory search and create routes remain unregistered by default.
 
 ### Pricing And Overrides
 

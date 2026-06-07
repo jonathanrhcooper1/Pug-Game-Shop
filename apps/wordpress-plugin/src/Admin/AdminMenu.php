@@ -17,6 +17,10 @@ use TCGStorePlatform\Api\V1\OfflineRouteBootstrapPlanner;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
+use TCGStorePlatform\Api\V1\InventoryRouteDependencyStatusPresenter;
+use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
+use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyStatusPresenter;
 use TCGStorePlatform\Api\V1\PosPaymentRouteBootstrapStatusPresenter;
 use TCGStorePlatform\Api\V1\PosPaymentRouteReadinessStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
@@ -163,7 +167,9 @@ final class AdminMenu {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->admin_summary();
-
+		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
+			new InventoryRouteDependencyFactory()
+		) )->admin_summary();
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
 		echo '</h1><table class="widefat striped"><tbody>';
@@ -234,10 +240,14 @@ final class AdminMenu {
 			$pos_payment_dependencies['value'],
 			$pos_payment_dependencies['status']
 		);
+		$this->render_status_row(
+			__( 'Inventory route dependencies', 'tcg-store-platform' ),
+			$inventory_dependencies['value'],
+			$inventory_dependencies['status']
+		);
 
 		echo '</tbody></table></div>';
 	}
-
 	private function render_feature_table(): void {
 		echo '<h2>' . esc_html__( 'Modules', 'tcg-store-platform' ) . '</h2>';
 		echo '<table class="widefat striped"><thead><tr><th>';

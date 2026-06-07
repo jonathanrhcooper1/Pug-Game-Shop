@@ -147,7 +147,8 @@ $assert( ! isset( $routes['/tcg-store/v1/offline/pull'] ), 'Offline pull route s
 $assert( ! isset( $routes['/tcg-store/v1/offline/push'] ), 'Offline push route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/pos/events'] ), 'POS event route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/payments/fee-snapshots'] ), 'Payment fee snapshot route should remain unregistered.' );
-
+$assert( ! isset( $routes['/tcg-store/v1/inventory/search'] ), 'Inventory search route should remain unregistered.' );
+$assert( ! isset( $routes['/tcg-store/v1/inventory'] ), 'Inventory create route should remain unregistered.' );
 $response = rest_do_request( '/tcg-store/v1/health' );
 $assert( ! $response->is_error(), 'Health REST route returned an error.' );
 $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP 200.' );
@@ -319,5 +320,18 @@ $assert( true === ( $data['pos_payment_route_dependencies']['route_registration_
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_reads_deferred'] ?? null ), 'POS/payment dependency route reads should remain deferred.' );
 $assert( false === ( $data['pos_payment_route_dependencies']['route_connected_reads_ready'] ?? null ), 'POS/payment dependency route reads should not be ready by default.' );
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_writes_deferred'] ?? null ), 'POS/payment dependency route writes should remain deferred.' );
-
+$assert( 'blocked' === ( $data['inventory_route_dependencies']['status'] ?? null ), 'Inventory route dependencies should remain blocked.' );
+$assert( false === ( $data['inventory_route_dependencies']['configured'] ?? null ), 'Inventory route dependencies should not be fully configured by default.' );
+$assert( 16 === (int) ( $data['inventory_route_dependencies']['route_contract_count'] ?? 0 ), 'Inventory route dependencies should report planned route contracts.' );
+$assert( 2 === (int) ( $data['inventory_route_dependencies']['staged_handler_route_count'] ?? 0 ), 'Inventory route dependencies should report staged search/create handlers.' );
+$assert( 0 === (int) ( $data['inventory_route_dependencies']['controller_handler_count'] ?? -1 ), 'Inventory route handlers should remain uninjected by default.' );
+$assert( false === ( $data['inventory_route_dependencies']['controller_handlers_configured'] ?? null ), 'Inventory route handlers should not be configured by default.' );
+$assert( false === ( $data['inventory_route_dependencies']['capability_permission_callbacks_configured'] ?? null ), 'Inventory capability callbacks should remain unconfigured outside explicit route setup.' );
+$assert( false === ( $data['inventory_route_dependencies']['public_read_routes_enabled'] ?? null ), 'Inventory public reads should remain disabled by default.' );
+$assert( true === ( $data['inventory_route_dependencies']['registrar_ready'] ?? null ), 'Inventory registrar dependency should be staged ready.' );
+$assert( 0 === (int) ( $data['inventory_route_dependencies']['registerable_route_count'] ?? -1 ), 'Inventory dependencies should not report registerable routes by default.' );
+$assert( true === ( $data['inventory_route_dependencies']['route_registration_deferred'] ?? null ), 'Inventory dependency route registration should remain deferred.' );
+$assert( true === ( $data['inventory_route_dependencies']['route_connected_reads_deferred'] ?? null ), 'Inventory dependency route reads should remain deferred.' );
+$assert( false === ( $data['inventory_route_dependencies']['route_connected_reads_ready'] ?? null ), 'Inventory dependency route reads should not be ready by default.' );
+$assert( true === ( $data['inventory_route_dependencies']['route_connected_writes_deferred'] ?? null ), 'Inventory dependency route writes should remain deferred.' );
 echo "PASS WordPress integration smoke test\n";

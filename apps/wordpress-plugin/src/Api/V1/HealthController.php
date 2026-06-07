@@ -114,7 +114,9 @@ final class HealthController {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->health_payload();
-
+		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
+			new InventoryRouteDependencyFactory()
+		) )->health_payload();
 		foreach ( $dependencies as $dependency ) {
 			if ( 'blocked' === $dependency['status'] ) {
 				$overall = 'blocked';
@@ -157,6 +159,7 @@ final class HealthController {
 				'pos_payment_route_readiness'             => $pos_payment_routes,
 				'pos_payment_route_bootstrap'             => $pos_payment_bootstrap,
 				'pos_payment_route_dependencies'          => $pos_payment_dependencies,
+				'inventory_route_dependencies'            => $inventory_dependencies,
 				'timestamp'                               => gmdate( 'c' ),
 			),
 			200

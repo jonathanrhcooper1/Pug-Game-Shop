@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Route Health And Admin Status
+
+### What Changed
+
+- Added inventory route dependency readiness to the authenticated health
+  response under `inventory_route_dependencies`.
+- Added an Inventory route dependencies row to the WordPress admin System
+  Status screen.
+- Extended the WordPress integration smoke script to assert that inventory
+  search and create routes remain unregistered by default while their
+  dependency readiness is visible.
+- Added missing POS/payment dependency imports in the System Status screen
+  while wiring the new inventory status row.
+
+### Why
+
+Staging needs to inspect inventory route readiness before live route
+registration, public search, staff writes, WooCommerce projection, or Square
+projection are enabled. This revision exposes that readiness in the same
+health/admin surfaces already used by offline sync and POS/payment staging.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Default live inventory route registration remains disabled.
+- Public inventory reads, route-connected inventory writes, WooCommerce
+  projection, Square projection, barcode label printing, and production
+  provider calls remain deferred.
+
+### Tests Added
+
+- WordPress integration smoke assertions proving inventory search/create REST
+  routes remain unregistered by default.
+- WordPress integration smoke assertions proving authenticated health exposes
+  blocked inventory route dependency readiness by default.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 729 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 493 PHP files.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory route dependency status from
+  authenticated health, admin System Status, and smoke assertions.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No route or provider disablement is required after rollback because live
+  inventory route registration and external side effects remain disabled.
+
 ## 2026-06-07 - Inventory Route Dependency Composition
 
 ### What Changed

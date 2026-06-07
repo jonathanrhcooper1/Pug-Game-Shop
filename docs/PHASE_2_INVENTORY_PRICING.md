@@ -46,6 +46,9 @@ staging database acceptance remains pending.
 - Inventory route dependency factory and readiness presenter for composing
   staged search/create handlers, controller dispatch, permission callbacks,
   registration planning, and registrar readiness without enabling live routes.
+- Authenticated health and admin System Status reporting for inventory route
+  dependency readiness, with WordPress smoke coverage proving inventory search
+  and create routes stay unregistered by default.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

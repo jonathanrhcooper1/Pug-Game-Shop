@@ -56,6 +56,9 @@
   status presentation behavior for blocked default dependencies, staged
   search/create handler composition, permission callback assembly, registrar
   handoff, controller dispatch, and admin/health readiness summaries.
+- WordPress integration smoke coverage now asserts authenticated health exposes
+  inventory route dependency readiness while inventory search and create routes
+  remain unregistered by default.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit

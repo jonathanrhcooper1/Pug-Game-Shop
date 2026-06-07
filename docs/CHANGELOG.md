@@ -29,6 +29,8 @@ All notable changes follow Semantic Versioning.
 - Inventory route dependency factory and readiness presenter that compose
   staged search/create handlers, permission callbacks, registration planner,
   and registrar while keeping live inventory routes gated.
+- Authenticated health payload, admin System Status row, and WordPress smoke
+  assertions for blocked-by-default inventory route dependency readiness.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with
