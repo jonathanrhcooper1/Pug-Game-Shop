@@ -53,6 +53,8 @@ All notable changes follow Semantic Versioning.
 - Staff Inventory Workspace search panel with safe filter sanitization,
   route-readiness lockout messaging, and a REST-backed read-only results table
   for the staging staff inventory search route.
+- Seeded WordPress staging inventory smoke data for a disposable Pokemon card
+  row so CI verifies staff inventory search against real table data.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
 - Inventory search query planning for public/staff/hidden card listings with

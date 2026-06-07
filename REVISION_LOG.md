@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Seeded Inventory Staging Smoke
+
+### What Changed
+
+- Updated the WordPress staging inventory smoke test to seed a deterministic
+  disposable inventory location and one Pokemon inventory row.
+- The smoke test now searches for the seeded card through
+  `/tcg-store/v1/inventory/search` and verifies staff-only fields, normalized
+  pricing, and result metadata.
+- The seed remains scoped to the disposable GitHub Actions WordPress/MySQL
+  integration site.
+
+### Why
+
+Staging search needs to be proven against actual inventory data, not only an
+empty table. This gives the admin search UI and REST route a concrete seeded
+card to validate before real staging data is used.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Seeded rows are created only during the disposable staging smoke script.
+
+### Tests Added
+
+- WordPress staging smoke assertions for a seeded location and seeded inventory
+  item.
+- WordPress staging smoke assertions that staff inventory search returns the
+  seeded card and exposes staff SKU data.
+
+### Tests Run
+
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  tests\wordpress-staging-inventory-smoke.php`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return the staging smoke to empty-table verification.
+- No database rollback is required outside the disposable integration database.
+
 ## 2026-06-07 - Inventory Admin Search Workspace
 
 ### What Changed

@@ -29,6 +29,8 @@
   `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php` to prove
   the staff `/inventory/search` route can execute while writes, public reads,
   WooCommerce projection, Square projection, and POS ingestion remain closed.
+  The staging smoke seeds one disposable Pokemon inventory row and asserts the
+  REST search returns it with staff SKU data.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
