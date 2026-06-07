@@ -27,6 +27,10 @@ staging database acceptance remains pending.
 - Dependency-free staff/offline/ScryDex-import intake parser with normalized
   exact-card fields, visibility, pricing floor checks, and deferred
   WooCommerce/label side-effect flags.
+- Plan-only intake persistence for staged inventory item creation, including
+  schema-aligned insert rows, prepared SQL templates, deterministic public IDs,
+  fallback pending-intake barcode/SKU generation, money/timestamp planning, and
+  explicit write/projection deferral metadata.
 - Dependency-free inventory search parser with query, game, status, location,
   visibility, sort, and pagination filters.
 - Plan-only inventory search query contracts for public, staff, hidden, and all

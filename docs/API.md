@@ -363,6 +363,10 @@ can compose repository-backed reads and return public-redacted or staff-visible
 search responses for staging tests. Default live route registration remains
 disabled until permission callbacks, rate limits, target database performance,
 and staging smoke tests are accepted.
+Inventory item creation now has plan-only persistence coverage that can shape a
+validated intake request into a schema-aligned prepared insert template, but
+the live `POST /inventory` route, repository execution, barcode label printing,
+and WooCommerce/Square projection writes remain disabled.
 
 ### Pricing And Overrides
 

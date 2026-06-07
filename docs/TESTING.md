@@ -33,6 +33,11 @@
 - Local unit coverage now includes event registration input validation,
   registration policy outcomes, and registration response shaping. WordPress
   integration smoke coverage asserts the local registration route is registered.
+- Local unit coverage now includes inventory intake persistence planning for
+  schema-aligned insert templates, stable public IDs, fallback barcode/SKU
+  generation, money normalization, listed/sold timestamps, actor attribution,
+  unsafe table-prefix rejection, incomplete request rejection, and deferred
+  repository/projection metadata.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit

@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Inventory Intake Persistence Planning
+
+### What Changed
+
+- Added `InventoryIntakePersistencePlanner` and
+  `InventoryIntakePersistencePlan` to turn accepted inventory intake requests
+  into schema-aligned `tcg_inventory_items` insert rows and prepared SQL
+  templates without executing database writes.
+- Added deterministic public ID generation from the idempotency key and
+  fallback barcode/SKU generation for pending-intake items that have not yet
+  received a physical scan label.
+- Added money normalization from minor units to decimal strings, timestamp
+  planning for acquired/listed/sold dates, actor attribution, visibility
+  fields, pricing flags, manual reference payloads, and row-version defaults.
+- Added fail-closed planning errors for invalid table prefixes, missing
+  idempotency keys, incomplete card identity, missing minimum prices, invalid
+  sale prices, invalid currency, and invalid status.
+
+### Why
+
+Card management needs a write-side boundary before staff/admin intake screens,
+offline intake, ScryDex imports, and future WooCommerce projection can create
+inventory rows. This revision prepares and tests the database insert contract
+while keeping live route registration and repository execution disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakePersistencePlan.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakePersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakePersistencePlannerTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Inventory repository execution, live `POST /inventory` route registration,
+  barcode label printing, WooCommerce projection, Square provider writes, and
+  offline sync writes remain deferred.
+
+### Tests Added
+
+- Intake persistence tests for available staff intake rows, prepared insert
+  templates, pricing fields, visibility fields, actor fields, and listed dates.
+- Pending-intake tests proving fallback barcode/SKU generation and sale-price
+  defaulting to the minimum price while label printing remains deferred.
+- Sold-item tests proving sold inventory receives both listed and sold
+  timestamps.
+- Rejection tests for unsafe table prefixes, missing idempotency, invalid
+  currency, missing card identity, missing minimum price, and invalid status.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 701 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 476 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory intake persistence planning and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no live route registration, inventory
+  repository execution, barcode label printing, WooCommerce projection, Square
+  network call, or offline sync mutation was enabled.
+
 ## 2026-06-07 - Inventory Search Route Handler Factory
 
 ### What Changed
