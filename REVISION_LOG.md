@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Gated Staging Inventory Search Benchmark Runner
+
+### What Changed
+
+- Added `npm run staging:search-benchmark` backed by
+  `scripts/staging-run-search-benchmark.mjs`.
+- The runner uploads the existing WordPress 50,000-row inventory search
+  benchmark PHP script to staging uploads, runs it through WP-CLI `eval-file`
+  with `TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK=1`, then removes only that
+  temporary benchmark file through SFTP.
+- Required explicit acknowledgement before seeding 50,000 deterministic
+  disposable staging rows.
+- Set `TCG_INVENTORY_SEARCH_BENCHMARK_CLEANUP=1` by default so fixture rows
+  are removed after the baseline run unless the caller explicitly opts to keep
+  rows for investigation.
+- Added `scripts/tests/staging-search-benchmark-contract.mjs` and wired it
+  into `npm run test:packaging`.
+- Updated staging documentation and detailed changelog notes.
+
+### Why
+
+Phase 2 acceptance requires search and pagination baselines on the target
+GoDaddy staging database. This makes the benchmark repeatable and gated while
+keeping production, plugin activation, and active plugin files untouched.
+
+### Files Affected
+
+- `package.json`
+- `scripts/staging-run-search-benchmark.mjs`
+- `scripts/tests/staging-search-benchmark-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging search benchmark contract coverage for required SSH/WP-CLI
+  environment gates, explicit benchmark confirmation, 50,000-row staging seed
+  acknowledgement, default fixture cleanup, optional benchmark threshold
+  wiring, temporary SFTP upload, WP-CLI `eval-file`, scoped temporary-file
+  cleanup, output tailing, no plugin activation, no active plugin overwrite,
+  no production deployment, and no credential printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:search-benchmark -- --dry-run` with placeholder
+  staging env values, 50,000-row acknowledgement, and benchmark confirmation:
+  passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging search benchmark runner, contract
+  test, npm script, and documentation.
+- No staging cleanup is required for dry-run verification.
+- A real benchmark run removes its own temporary PHP file and, by default,
+  removes benchmark fixture rows after collecting baselines.
+- If benchmark cleanup is intentionally disabled or interrupted, delete rows
+  with barcode/SKU prefixes `PUG-BENCH-SEARCH-*` and the benchmark location
+  code `PUG-BENCH-SEARCH` from staging.
+
 ## 2026-06-08 - Backup-Gated Staging Migration Rehearsal Runner
 
 ### What Changed

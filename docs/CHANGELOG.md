@@ -18,6 +18,9 @@ All notable changes follow Semantic Versioning.
 - Gated staging migration rehearsal runner for the WordPress rollback/restore
   script, requiring explicit staging confirmation plus a backup confirmation
   and backup reference before WP-CLI can run the destructive rehearsal.
+- Gated staging inventory search benchmark runner for the 50,000-row WordPress
+  fixture, requiring explicit row-seed acknowledgement and cleaning benchmark
+  rows by default after public/staff/deep-pagination/barcode baselines run.
 - Offline app local button behavior now distinguishes `Add Scan`, generic
   inventory updates, and quantity adjustments with separate queue operation
   IDs and payload intents, while `Sync Now` records a visible deferred sync

@@ -111,6 +111,31 @@ back to the current target and verifies the inventory/pricing and provider
 price observation tables. It does not activate the plugin, overwrite active
 plugin files, deploy production, or print credentials.
 
+## Gated Search Benchmark
+
+Run the 50,000-row inventory search benchmark on staging after migration
+acceptance and before approving search/pagination baselines:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_BENCHMARK_ROW_ACK=seed-50000-staging-rows \
+PUG_STAGING_CONFIRM_SEARCH_BENCHMARK=run-staging-search-benchmark \
+npm run staging:search-benchmark
+```
+
+The benchmark runner uploads a temporary
+`wordpress-inventory-search-benchmark-*.php` file under
+`/html/wp-content/uploads`, runs WP-CLI `eval-file` with
+`TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK=1`, and removes only that temporary file
+through SFTP. It seeds 50,000 deterministic disposable inventory rows, runs
+public/staff/deep-pagination/barcode lookup baselines, and sets
+`TCG_INVENTORY_SEARCH_BENCHMARK_CLEANUP=1` by default so the fixture rows are
+removed after the benchmark. It refuses production through the PHP fixture and
+does not activate the plugin, overwrite active plugin files, deploy
+production, or print credentials.
+
 ## Staging Smoke Checks
 
 - Plugin activates cleanly.
