@@ -29,10 +29,14 @@ try {
     applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
     applyOfflinePushResultToQueue,
+    buildCustomerCreditRedemptionOperation,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
     buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
+    creditRedemptionInputFromMinorUnits,
+    creditRedemptionInputToMinorUnits,
+    customerCreditAvailableAfterPending,
     findInventoryItemByScan,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
@@ -440,6 +444,31 @@ try {
   assert.equal(eventCheckinPayload.sync_intent, "offline_event_checkin")
   assert.equal(eventCheckinAuthorization.manager_override, false)
   assert.equal(eventCheckinAuthorization.source, "offline_app")
+
+  assert.equal(creditRedemptionInputFromMinorUnits(2800), "28.00")
+  assert.equal(creditRedemptionInputFromMinorUnits(-1), "0.00")
+  assert.equal(creditRedemptionInputToMinorUnits("$1,234.56"), 123456)
+  assert.equal(creditRedemptionInputToMinorUnits("28.1"), 2810)
+  assert.equal(creditRedemptionInputToMinorUnits("28.123"), null)
+  assert.equal(customerCreditAvailableAfterPending(creditResult.customerCredit, 400), 1700)
+
+  const creditRedemptionOperation = buildCustomerCreditRedemptionOperation(
+    creditResult.customerCredit,
+    {
+      amountMinorUnits: 1250,
+      reason: "offline customer credit redemption $12.50",
+      occurredAtLocal: "2026-06-08T08:20:00Z",
+      queuedAtUtc: "2026-06-08T12:20:00Z",
+    },
+  )
+  const creditRedemptionPayload = JSON.parse(creditRedemptionOperation.payload_json)
+  const creditRedemptionAuthorization = JSON.parse(
+    creditRedemptionOperation.authorization_context_json,
+  )
+  assert.equal(creditRedemptionOperation.client_operation_id, "offline-credit-91-20260608122000")
+  assert.equal(creditRedemptionPayload.amount_minor_units, 1250)
+  assert.equal(creditRedemptionPayload.available_credit_snapshot_minor_units, 2100)
+  assert.equal(creditRedemptionAuthorization.reason, "offline customer credit redemption $12.50")
 
   const scopedSessionKey = offlineSessionStorageKey("Pug Game Shop Staging!")
   assert.equal(scopedSessionKey, "tcg-store-offline-session-state-v1:pug-game-shop-staging")

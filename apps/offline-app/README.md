@@ -25,7 +25,8 @@ future offline sync app.
   desktop SQLite queue restore, secret-free paired-device metadata restore,
   desktop secure-store token status reporting, guarded desktop pull/push sync
   execution summaries, exact barcode/public-ID scan targeting with
-  Enter-to-stage support, accepted push-result queue clearing, conflict-review history, print-label job
+  Enter-to-stage support, customer-credit amount entry with cached-balance
+  guards, accepted push-result queue clearing, conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,

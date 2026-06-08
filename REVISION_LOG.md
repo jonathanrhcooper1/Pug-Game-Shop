@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Credit Amount Workflow
+
+### What Changed
+
+- Added reusable customer-credit currency input helpers for formatting,
+  parsing, and pending-hold availability checks.
+- Added a customer-credit redemption amount field to the offline app.
+- Updated credit staging so the queued `credit_redemption` operation uses the
+  staff-entered minor-unit amount and a specific redemption reason.
+- Added validation that blocks blank, malformed, zero, and over-balance amounts
+  before any local queue operation is staged.
+
+### Why
+
+The customer-credit button previously staged the seeded preview amount only.
+Staff need to enter the actual redemption amount during offline checkout while
+still respecting the cached balance and existing local holds.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for credit input formatting/parsing and
+  pending-hold balance checks.
+- Credit redemption operation coverage proving the staff-entered amount is
+  written into `amount_minor_units`.
+- UI shell markers for the amount field, validation state, and custom
+  amount-based operation builder call.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for `$12.50`
+  staging, pending local hold display, over-balance blocking, and no console
+  warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to return `Stage Credit Use` to the default seeded
+  redemption preview amount.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Scan Target Workflow
 
 ### What Changed

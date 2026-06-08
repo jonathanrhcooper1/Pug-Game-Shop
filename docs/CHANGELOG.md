@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app customer-credit staging now includes a staff-entered redemption
+  amount, inline cached-balance validation, currency input normalization, and
+  exact minor-unit payloads for queued credit redemption operations.
 - Offline app scanner/search staging now resolves exact barcodes and public
   inventory IDs before queuing `Add Scan`, supports Enter-to-stage from the
   scanner field, and blocks unmatched scans with staff-facing guidance instead

@@ -950,6 +950,35 @@ export function formatMoney(minorUnits: number, currency: "USD") {
   }).format(minorUnits / 100)
 }
 
+export function creditRedemptionInputFromMinorUnits(minorUnits: number) {
+  const safeMinorUnits = Math.max(0, Math.trunc(minorUnits))
+
+  return (safeMinorUnits / 100).toFixed(2)
+}
+
+export function creditRedemptionInputToMinorUnits(value: string) {
+  const normalized = value.trim().replace(/^\$/, "").replaceAll(",", "")
+
+  if (!/^\d+(\.\d{0,2})?$/.test(normalized)) {
+    return null
+  }
+
+  const parsed = Number(normalized)
+
+  if (!Number.isFinite(parsed)) {
+    return null
+  }
+
+  return Math.round(parsed * 100)
+}
+
+export function customerCreditAvailableAfterPending(
+  credit: CustomerCreditSnapshot,
+  pendingMinorUnits: number,
+) {
+  return Math.max(0, credit.availableMinorUnits - Math.max(0, pendingMinorUnits))
+}
+
 export function connectorDisplayUrl(profile: StoreConnectorProfile) {
   return `${profile.wordpress.scheme}://${profile.wordpress.host}`
 }

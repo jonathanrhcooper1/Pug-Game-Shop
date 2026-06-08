@@ -32,6 +32,9 @@ import {
   connectorHealthSummary,
   connectorProfileDraftFromProfile,
   connectorStatusLabel,
+  creditRedemptionInputFromMinorUnits,
+  creditRedemptionInputToMinorUnits,
+  customerCreditAvailableAfterPending,
   createEmptyConnectorProfileDraft,
   buildInventoryUpdateOperation,
   buildInventoryReservationOperation,
@@ -304,6 +307,9 @@ export function App() {
     offlineSessionStorage.queuedOperations,
   )
   const [pendingCreditMinorUnits, setPendingCreditMinorUnits] = useState(0)
+  const [creditRedemptionInput, setCreditRedemptionInput] = useState(() =>
+    creditRedemptionInputFromMinorUnits(workspace.customerCredit.redemptionPreviewMinorUnits),
+  )
   const [pendingEventRegistrationIds, setPendingEventRegistrationIds] = useState<string[]>([])
   const [pendingEventCheckinIds, setPendingEventCheckinIds] = useState<string[]>([])
   const [showCreditLedger, setShowCreditLedger] = useState(false)
@@ -438,9 +444,24 @@ export function App() {
     eventSnapshots.length + pendingEventRegistrationIds.length + pendingEventCheckinIds.length
   const pendingEventRegistrationCount = pendingEventRegistrationIds.length
   const pendingEventCheckinCount = pendingEventCheckinIds.length
-  const displayedCreditMinorUnits = Math.max(
-    0,
-    customerCredit.availableMinorUnits - pendingCreditMinorUnits,
+  const displayedCreditMinorUnits = customerCreditAvailableAfterPending(
+    customerCredit,
+    pendingCreditMinorUnits,
+  )
+  const creditRedemptionMinorUnits = creditRedemptionInputToMinorUnits(creditRedemptionInput)
+  const creditRedemptionIssue =
+    creditRedemptionInput.trim() === ""
+      ? "Enter a credit amount before staging."
+      : creditRedemptionMinorUnits === null
+        ? "Use a valid dollar amount with up to two decimals."
+        : creditRedemptionMinorUnits <= 0
+          ? "Credit amount must be greater than $0.00."
+          : creditRedemptionMinorUnits > displayedCreditMinorUnits
+            ? "Amount exceeds the cached balance after local holds."
+            : ""
+  const creditRedemptionAmountLabel = formatMoney(
+    creditRedemptionMinorUnits ?? 0,
+    customerCredit.currency,
   )
 
   useEffect(() => {
@@ -979,20 +1000,29 @@ export function App() {
   }
 
   async function handleCreditRedemption() {
-    const amount = formatMoney(
-      customerCredit.redemptionPreviewMinorUnits,
-      customerCredit.currency,
-    )
+    if (creditRedemptionIssue || creditRedemptionMinorUnits === null) {
+      setActiveSection("Customers")
+      setActivityMessage({
+        title: "Credit amount blocked",
+        detail: creditRedemptionIssue || "Enter a valid customer credit amount.",
+      })
+      return
+    }
+
+    const amount = formatMoney(creditRedemptionMinorUnits, customerCredit.currency)
 
     await stageOfflineOperation(
-      buildCustomerCreditRedemptionOperation(customerCredit),
+      buildCustomerCreditRedemptionOperation(customerCredit, {
+        amountMinorUnits: creditRedemptionMinorUnits,
+        reason: `offline customer credit redemption ${amount}`,
+      }),
       "Credit redemption staged",
       `${amount} customer credit redemption prepared from cached balance; ledger replay remains deferred until website sync acceptance.`,
     )
     setPendingCreditMinorUnits((current) =>
       Math.min(
         customerCredit.availableMinorUnits,
-        current + customerCredit.redemptionPreviewMinorUnits,
+        current + creditRedemptionMinorUnits,
       ),
     )
     setShowCreditLedger(true)
@@ -3114,6 +3144,33 @@ export function App() {
                 </h2>
               </div>
               <p>{customerCredit.note}</p>
+              <div className="credit-redemption-control" aria-label="Customer credit redemption amount">
+                <label htmlFor="credit-redemption-amount">
+                  <span className="micro-label">Redemption amount</span>
+                  <input
+                    id="credit-redemption-amount"
+                    inputMode="decimal"
+                    value={creditRedemptionInput}
+                    onBlur={() => {
+                      const parsed = creditRedemptionInputToMinorUnits(creditRedemptionInput)
+
+                      if (parsed !== null) {
+                        setCreditRedemptionInput(creditRedemptionInputFromMinorUnits(parsed))
+                      }
+                    }}
+                    onChange={(event) => setCreditRedemptionInput(event.target.value)}
+                    placeholder="0.00"
+                  />
+                </label>
+                <div>
+                  <span className="micro-label">Ready to stage</span>
+                  <strong>{creditRedemptionIssue ? "Needs amount" : creditRedemptionAmountLabel}</strong>
+                  <small>
+                    Available after local holds: {formatMoney(displayedCreditMinorUnits, customerCredit.currency)}
+                  </small>
+                  {creditRedemptionIssue ? <small>{creditRedemptionIssue}</small> : null}
+                </div>
+              </div>
               {showCreditLedger ? (
                 <div className="ledger-preview" aria-label="Offline credit ledger preview">
                   <div>

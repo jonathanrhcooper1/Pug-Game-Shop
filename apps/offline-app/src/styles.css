@@ -918,6 +918,53 @@ h2 {
   border: 1px solid rgba(121, 215, 143, 0.26);
 }
 
+.credit-redemption-control {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(170px, 0.65fr) minmax(220px, 1fr);
+  gap: 8px;
+}
+
+.credit-redemption-control label,
+.credit-redemption-control div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.credit-redemption-control input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  color: #172016;
+  font-size: 16px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(35, 100, 70, 0.24);
+  border-radius: 8px;
+}
+
+.credit-redemption-control input:focus {
+  outline: 2px solid rgba(92, 171, 119, 0.45);
+  outline-offset: 2px;
+}
+
+.credit-redemption-control strong {
+  color: #249344;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.credit-redemption-control small {
+  color: #596a58;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .scanner-row {
   position: relative;
   display: grid;
@@ -2180,6 +2227,7 @@ dd {
   .connector-editor,
   .connector-actions,
   .credit-actions,
+  .credit-redemption-control,
   .pairing-panel,
   .ledger-preview,
   .credit-panel {

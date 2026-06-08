@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract and browser coverage now verifies customer-credit
+  redemption amount controls: valid staff-entered dollar amounts stage exact
+  minor-unit payloads, while over-balance amounts are blocked against the
+  cached balance after local holds.
 - Offline app contract and browser coverage now verifies scanner/search
   targeting for exact barcodes and public inventory IDs: pressing Enter stages
   the matched cached card, and unmatched scans display the "Scan needs one
