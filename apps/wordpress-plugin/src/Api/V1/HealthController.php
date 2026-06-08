@@ -16,6 +16,7 @@ use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
+use TCGStorePlatform\ScryDex\ScryDexSyncDryRunPlanner;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
 
@@ -123,7 +124,9 @@ final class HealthController {
 		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
 			$inventory_factory
 		) )->health_payload();
-		$scrydex                    = ( new ScryDexProviderFactory( Settings::all() ) )->readiness_summary();
+		$scrydex_factory            = new ScryDexProviderFactory( Settings::all() );
+		$scrydex                    = $scrydex_factory->readiness_summary();
+		$scrydex_sync_dry_run       = ( new ScryDexSyncDryRunPlanner( $scrydex_factory ) )->plan_cards_sync();
 		foreach ( $dependencies as $dependency ) {
 			if ( 'blocked' === $dependency['status'] ) {
 				$overall = 'blocked';
@@ -169,6 +172,7 @@ final class HealthController {
 				'inventory_route_bootstrap'               => $inventory_bootstrap,
 				'inventory_route_dependencies'            => $inventory_dependencies,
 				'scrydex_provider'                        => $scrydex,
+				'scrydex_sync_dry_run'                    => $scrydex_sync_dry_run,
 				'timestamp'                               => gmdate( 'c' ),
 			),
 			200

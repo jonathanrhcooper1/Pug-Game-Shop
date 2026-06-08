@@ -25,6 +25,9 @@
 - Local unit coverage now includes ScryDex provider factory readiness, injected
   transport provider construction, missing-settings behavior, and admin/health
   redaction guarantees.
+- Local unit coverage now includes ScryDex sync dry-run planning for first-page
+  requests, checkpoint resume cursors, configured-state redaction, page-size
+  clamping, invalid game fallback, and execution deferrals.
 - `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
   inventory workspace keeps its scanner/search, sync queue, conflict center,
   customer credit, grouped sync controls, selected-card visual frame, detail

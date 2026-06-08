@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex sync dry-run planning that exposes the next cards-page request,
+  checkpoint row, provider readiness, and explicit deferrals through health
+  output without provider network calls, worker execution, image downloads, or
+  database writes.
 - ScryDex provider factory readiness that consumes staged WordPress settings,
   builds the HTTP provider through an injectable transport for tests, and
   exposes secret-free health/admin status while keeping provider requests,

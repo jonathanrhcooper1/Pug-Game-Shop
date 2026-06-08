@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Sync Dry-Run Planning
+
+### What Changed
+
+- Added `ScryDexSyncDryRunPlanner` for secret-free first-page and checkpoint
+  planning.
+- Added a `scrydex_sync_dry_run` health payload entry for staging readiness
+  checks.
+- Added dry-run safeguards for provider readiness, credential redaction,
+  endpoint/method reporting, checkpoint row output, page-size clamping, invalid
+  game fallback, and explicit execution deferrals.
+- Added unit coverage for default blocked planning, configured ready planning,
+  checkpoint resume planning, and invalid request fallback.
+
+### Why
+
+Before enabling ScryDex workers, staging needs a safe way to confirm that
+provider settings, checkpoint state, and next request shape are coherent. This
+revision adds that dry-run path while keeping network requests, persistence
+planning, image downloads, webhooks, scheduled workers, and database writes
+disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncDryRunPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncDryRunPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Dry-run planning coverage for default blocked readiness and first-page
+  request shaping.
+- Dry-run planning coverage for configured readiness without leaking Team ID or
+  key values.
+- Dry-run planning coverage for checkpoint resume cursor/page output.
+- Dry-run planning coverage for invalid game/checkpoint fallback and page-size
+  clamping.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 814 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexSyncDryRunPlanner.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex dry-run planning, health output, and
+  related tests.
+- No schema rollback or provider cleanup is required because no network calls,
+  workers, image downloads, webhooks, persistence plans, or database writes
+  were enabled.
+
 ## 2026-06-07 - ScryDex Provider Factory Readiness
 
 ### What Changed

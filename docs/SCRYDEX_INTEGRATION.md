@@ -8,8 +8,10 @@ requests and serialize committed checkpoints. The ScryDex provider adapter is
 implemented with injectable transport, credential redaction, and mock-backed
 card-search/rate-limit tests. The ScryDex provider factory now consumes staged
 WordPress settings, exposes secret-free readiness, and can build the HTTP
-provider through injected transports for tests. Card and current market price
-normalization is implemented against sanitized fixtures. Persistence planning now prepares
+provider through injected transports for tests. The health payload also exposes
+a sync dry-run plan with the next cards-page request and checkpoint row while
+all execution remains deferred. Card and current market price normalization is
+implemented against sanitized fixtures. Persistence planning now prepares
 deterministic reference-card inserts, changed-row updates, unchanged row
 detection, and current price observations from normalized page plans. Scheduled
 ScryDex workers, database write workers, image workers, usage-budget
@@ -38,6 +40,14 @@ into password fields; blank submissions preserve existing values, and explicit
 clear checkboxes remove them. Health and System Status output only expose
 configured/missing booleans, the selected environment, provider class, active
 key slot, a short key fingerprint, and explicit deferrals.
+
+## Dry-Run Planning
+
+The health endpoint includes `scrydex_sync_dry_run` for staging checks. It
+reports the provider method (`search_cards`), provider endpoint
+(`/cards/search`), next request parameters, checkpoint row, configured state,
+and execution deferrals. It does not call ScryDex, normalize card rows, write
+checkpoints, download images, register webhooks, or enqueue workers.
 
 Expected non-production configuration keys:
 
