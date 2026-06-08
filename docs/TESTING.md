@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract and browser coverage now verifies event queue review:
+  queued registrations and check-ins render as readable staff rows with event,
+  attendee, payment/check-in, local queue source, timestamp, and payload
+  summary details, while fresh browser console logs remain clean.
 - Offline app contract and browser coverage now verifies customer credit
   ledger review: cached website ledger rows and pending local queue redemption
   rows render together, and pending-hold totals are derived from queued

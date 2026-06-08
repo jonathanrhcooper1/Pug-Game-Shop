@@ -13,6 +13,7 @@ import {
   buildDevicePairingRequestBody,
   buildEventCheckinOperation,
   buildEventRegistrationOperation,
+  buildOfflineEventQueuePreviewEntries,
   buildOfflineLabelPrintJob,
   buildOfflineConflictResolutionRequestBody,
   buildOfflinePullRefreshPreview,
@@ -77,6 +78,7 @@ import {
   type ConnectorProfileDraft,
   type ConnectorProfileStorageRestoreResult,
   type DevicePairingRequestPlan,
+  type EventPaymentStatus,
   type EventSnapshot,
   type IconName,
   type InventoryStatus,
@@ -126,7 +128,6 @@ type AppIconName =
   | "tag"
 
 type ViewMode = "list" | "grid"
-type EventPaymentStatus = "not_required" | "pay_at_store"
 
 type ActivityMessage = {
   title: string
@@ -484,9 +485,9 @@ export function App() {
   const queueBadgeCount =
     workspace.queueItems.reduce((total, item) => total + item.count, 0) + queuedOperations.length
   const conflictBadgeCount = openConflicts.length
-  const queuedEventOperations = queuedOperations.filter(
-    (operation) =>
-      operation.operation_type === "event_reservation" || operation.operation_type === "event_checkin",
+  const eventQueuePreviewEntries = useMemo(
+    () => buildOfflineEventQueuePreviewEntries(queuedOperations, eventSnapshots),
+    [queuedOperations, eventSnapshots],
   )
   const eventBadgeCount =
     eventSnapshots.length + pendingEventRegistrationIds.length + pendingEventCheckinIds.length
@@ -2917,7 +2918,7 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => {
-                      setShowEventQueue((shown) => !shown)
+                      setShowEventQueue(true)
                       setActiveSection("Events")
                     }}
                   >
@@ -2928,15 +2929,34 @@ export function App() {
               ) : null}
               {showEventQueue ? (
                 <div className="event-queue-preview" aria-label="Queued event operations">
-                  {queuedEventOperations.length > 0 ? (
-                    queuedEventOperations.slice(0, 4).map((operation) => (
-                      <div key={operation.client_operation_id}>
-                        <span>{operation.entity_id}</span>
-                        <strong>{operation.client_operation_id}</strong>
-                      </div>
+                  {eventQueuePreviewEntries.length > 0 ? (
+                    eventQueuePreviewEntries.slice(0, 4).map((entry) => (
+                      <article
+                        className={
+                          entry.operationType === "event_checkin"
+                            ? "event-queue-entry is-checkin"
+                            : "event-queue-entry is-registration"
+                        }
+                        key={entry.operationId}
+                      >
+                        <header>
+                          <span>{entry.statusLabel}</span>
+                          <small>{entry.occurredAtLabel}</small>
+                        </header>
+                        <strong>{entry.title}</strong>
+                        <p>{entry.detail}</p>
+                        <div className="event-queue-meta">
+                          <span>{entry.attendeeLabel}</span>
+                          <span>{entry.sourceLabel}</span>
+                          {entry.registrationPublicId ? (
+                            <span>{entry.registrationPublicId}</span>
+                          ) : null}
+                        </div>
+                        <small className="event-queue-payload">{entry.payloadSummary}</small>
+                      </article>
                     ))
                   ) : (
-                    <p className="panel-empty">No event registrations staged this session.</p>
+                    <p className="panel-empty">No event registrations or check-ins staged this session.</p>
                   )}
                 </div>
               ) : null}

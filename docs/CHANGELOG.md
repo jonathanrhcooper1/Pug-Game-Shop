@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app event queue review now renders queued registrations and check-ins
+  as staff-readable rows with event title, attendee, payment/check-in detail,
+  local queue source, timestamp, and payload summary instead of raw operation
+  IDs.
 - Offline app customer credit ledger review now shows cached website ledger
   entries together with pending local queue redemptions, with pending-hold
   totals derived from queued operations after browser/session restore.

@@ -119,6 +119,7 @@ export type CustomerCreditLedgerEntry = {
 }
 
 export type EventRegistrationStatus = "open" | "waitlist" | "full" | "closed"
+export type EventPaymentStatus = "not_required" | "pay_at_store"
 
 export type EventSnapshot = {
   eventId: string
@@ -131,6 +132,21 @@ export type EventSnapshot = {
   registeredCount: number
   locationLabel: string
   note: string
+}
+
+export type OfflineEventQueuePreviewEntry = {
+  operationId: string
+  eventId: string
+  operationType: "event_reservation" | "event_checkin"
+  title: string
+  attendeeLabel: string
+  detail: string
+  statusLabel: string
+  sourceLabel: "Local queue"
+  occurredAtLabel: string
+  payloadSummary: string
+  paymentStatus?: EventPaymentStatus
+  registrationPublicId?: string
 }
 
 export type OfflineDeviceProfile = {
@@ -1149,6 +1165,157 @@ export function buildOfflineLabelPrintJob(
 
 export function eventRegistrationStatusLabel(status: EventRegistrationStatus) {
   return status === "open" ? "Open" : status === "waitlist" ? "Waitlist" : status === "full" ? "Full" : "Closed"
+}
+
+function eventQueueOperationDateLabel(utcValue: string): string {
+  const date = new Date(utcValue)
+
+  if (Number.isNaN(date.getTime())) {
+    return "Pending sync"
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  }).format(date)
+}
+
+function eventPaymentStatusQueueLabel(status?: EventPaymentStatus): string {
+  return status === "pay_at_store" ? "Pay at store" : "Payment not required"
+}
+
+function cleanEventPaymentStatus(value: unknown): EventPaymentStatus {
+  return stringValue(value) === "pay_at_store" ? "pay_at_store" : "not_required"
+}
+
+function eventRegistrationSourceQueueLabel(value: unknown): string {
+  const source = stringValue(value)
+
+  if (source === "phone") {
+    return "Phone"
+  }
+
+  if (source === "staff") {
+    return "Staff"
+  }
+
+  return "Walk-in"
+}
+
+function eventCheckinMethodQueueLabel(value: unknown): string {
+  const method = stringValue(value)
+
+  if (method === "qr_scan") {
+    return "QR scan"
+  }
+
+  if (method === "manual_lookup") {
+    return "Manual lookup"
+  }
+
+  return "Offline app"
+}
+
+function eventQueueRegistrationStatusLabel(value: unknown): string {
+  const status = stringValue(value)
+
+  if (status === "waitlist") {
+    return "Waitlist registration"
+  }
+
+  if (status === "full") {
+    return "Capacity review"
+  }
+
+  return "Registration"
+}
+
+export function buildOfflineEventQueuePreviewEntries(
+  operations: OfflineOperationEnvelope[],
+  events: EventSnapshot[],
+): OfflineEventQueuePreviewEntry[] {
+  const eventsById = new Map(events.map((event) => [event.eventId, event]))
+
+  return operations
+    .filter(
+      (operation) =>
+        operation.entity_type === "event" &&
+        (operation.operation_type === "event_reservation" ||
+          operation.operation_type === "event_checkin"),
+    )
+    .map((operation) => {
+      const payload = parseJsonObject(operation.payload_json)
+      const eventId = stringValue(payload.event_id) || operation.entity_id
+      const event = eventsById.get(eventId)
+      const title = stringValue(payload.event_title) || event?.title || eventId
+      const occurredAtLabel = eventQueueOperationDateLabel(operation.queued_at_utc)
+
+      if (operation.operation_type === "event_checkin") {
+        const attendeeLabel = cleanOfflineEventAttendeeLabel(
+          stringValue(payload.attendee_label),
+          "Offline attendee",
+        )
+        const registrationPublicId =
+          stringValue(payload.registration_public_id) ||
+          cleanOfflineEventRegistrationPublicId("", eventId)
+        const methodLabel = eventCheckinMethodQueueLabel(payload.checkin_method)
+        const checkinStatus = stringValue(payload.checkin_status) || "checked_in"
+
+        return {
+          operationId: operation.client_operation_id,
+          eventId,
+          operationType: "event_checkin",
+          title,
+          attendeeLabel,
+          detail:
+            `${attendeeLabel} check-in queued for ${title}; ` +
+            `registration ${registrationPublicId}; ${methodLabel}.`,
+          statusLabel: "Check-in",
+          sourceLabel: "Local queue",
+          occurredAtLabel,
+          payloadSummary:
+            `${methodLabel}; method ${stringValue(payload.checkin_method) || "offline_app"}; ` +
+            `status ${checkinStatus}; operation ${operation.client_operation_id}`,
+          registrationPublicId,
+        }
+      }
+
+      const attendeeLabel = cleanOfflineEventAttendeeLabel(
+        stringValue(payload.attendee_label),
+        "Offline walk-in",
+      )
+      const paymentStatus = cleanEventPaymentStatus(payload.payment_status)
+      const paymentLabel = eventPaymentStatusQueueLabel(paymentStatus)
+      const seatsRemaining = numberValue(payload.seats_remaining_snapshot)
+      const seatsLabel =
+        seatsRemaining === null
+          ? "capacity snapshot unavailable"
+          : `${seatsRemaining} cached seat${seatsRemaining === 1 ? "" : "s"} remaining`
+      const sourceLabel = eventRegistrationSourceQueueLabel(payload.registration_source)
+      const statusLabel = eventQueueRegistrationStatusLabel(
+        payload.registration_status_snapshot,
+      )
+
+      return {
+        operationId: operation.client_operation_id,
+        eventId,
+        operationType: "event_reservation",
+        title,
+        attendeeLabel,
+        detail:
+          `${attendeeLabel} registration queued for ${title}; ` +
+          `${paymentLabel}; ${seatsLabel}.`,
+        statusLabel,
+        sourceLabel: "Local queue",
+        occurredAtLabel,
+        payloadSummary:
+          `${sourceLabel} source; ${paymentLabel}; operation ${operation.client_operation_id}`,
+        paymentStatus,
+      }
+    })
 }
 
 export function cleanOfflineEventAttendeeLabel(
@@ -3018,7 +3185,7 @@ export function buildEventRegistrationOperation(
     queuedAtUtc?: string
     attendeeLabel?: string
     registrationSource?: "walk_in" | "phone" | "staff"
-    paymentStatus?: "not_required" | "pay_at_store"
+    paymentStatus?: EventPaymentStatus
   } = {},
 ): OfflineOperationEnvelope {
   const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()

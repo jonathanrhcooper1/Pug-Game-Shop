@@ -16,7 +16,9 @@ for (const requiredExport of [
   "OfflineWorkspaceState",
   "OfflineOperationEnvelope",
   "EventRegistrationStatus",
+  "EventPaymentStatus",
   "EventSnapshot",
+  "OfflineEventQueuePreviewEntry",
   "OfflineConnectorSyncSessionPlan",
   "OfflinePushBatchPayload",
   "OfflineConflictResolutionRequestBody",
@@ -61,6 +63,7 @@ for (const requiredExport of [
   "buildInventoryReservationOperation",
   "buildEventCheckinOperation",
   "buildEventRegistrationOperation",
+  "buildOfflineEventQueuePreviewEntries",
   "buildOfflineLabelPrintJob",
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
@@ -167,6 +170,13 @@ for (const marker of [
   "registration_source",
   "seats_remaining_snapshot",
   "payment_status",
+  "eventQueueOperationDateLabel",
+  "eventPaymentStatusQueueLabel",
+  "eventRegistrationSourceQueueLabel",
+  "eventCheckinMethodQueueLabel",
+  "payloadSummary",
+  "operationType: \"event_checkin\"",
+  "operationType: \"event_reservation\"",
   "routeConnectedPushReady",
   "canonicalInventoryWritesEnabled",
   "canonical_inventory_execution_enabled",
@@ -306,6 +316,10 @@ assert.ok(appSource.includes("adjustmentReason: reason"))
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
 assert.ok(appSource.includes("buildEventCheckinOperation(event"))
 assert.ok(appSource.includes("buildEventRegistrationOperation(event"))
+assert.ok(appSource.includes("buildOfflineEventQueuePreviewEntries(queuedOperations, eventSnapshots)"))
+assert.ok(appSource.includes("eventQueuePreviewEntries.slice(0, 4)"))
+assert.ok(appSource.includes("entry.payloadSummary"))
+assert.ok(appSource.includes("entry.operationType === \"event_checkin\""))
 assert.ok(appSource.includes("eventAttendeeLabel"))
 assert.ok(appSource.includes("eventPaymentStatus"))
 assert.ok(appSource.includes("eventCheckinLookup"))

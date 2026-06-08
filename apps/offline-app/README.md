@@ -19,7 +19,8 @@ future offline sync app.
   website profiles, local preview validation, pairing-code request preview,
   credential-free pairing route preflight, connector-aware guarded inventory
   hold staging, offline event registration/waitlist staging from cached event
-  snapshots, offline event check-in staging, event queue preview, profile-scoped
+  snapshots, offline event check-in staging, readable event queue review,
+  profile-scoped
   local queue/session restore for multi-company use, per-company connector test
   reports, visible local queue rows,
   desktop SQLite queue restore, secret-free paired-device metadata restore,
@@ -114,6 +115,9 @@ offline holds scoped to the selected customer while website ledger replay
 remains authoritative after sync acceptance.
 Review Ledger shows cached website ledger rows alongside pending local queued
 redemptions, and pending-hold totals are recomputed from restored queue rows.
+Review Event Queue shows queued registrations and check-ins as readable staff
+rows with event, attendee, payment/check-in, source, timestamp, and payload
+summary details instead of raw local operation IDs.
 
 ## Local Commands
 

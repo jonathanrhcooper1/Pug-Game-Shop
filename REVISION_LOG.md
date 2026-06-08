@@ -3,6 +3,56 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Event Queue Review
+
+### What Changed
+
+- Added a typed event queue preview entry model for offline registrations and
+  check-ins.
+- Added event queue helpers that parse queued event operation payloads into
+  staff-readable event title, attendee, status, payment/check-in, timestamp,
+  source, and payload summary details.
+- Updated Review Event Queue so it opens the queue panel and renders readable
+  rows instead of raw event/operation IDs.
+
+### Why
+
+The offline app could already stage event registrations and check-ins, but the
+review panel exposed raw queued operation IDs. Staff need to confirm which
+attendee, event, payment/check-in method, and registration ID are waiting for
+sync before reconnecting a device.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for event queue preview entries built
+  from queued `event_reservation` and `event_checkin` operations.
+- UI/workspace contract markers proving Review Event Queue renders readable
+  entries and stays wired to queued operations.
+- Browser verification staged event queue rows in the local app and confirmed a
+  fresh reload/review pass had no console warnings or errors.
+
+### Rollback Notes
+
+- Revert this revision to return Review Event Queue to raw operation ID display.
+- No WordPress, SQLite schema, staging data, or production rollback is required.
+
 ## 2026-06-08 - Offline App Customer Credit Ledger Review
 
 ### What Changed

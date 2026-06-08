@@ -32,6 +32,7 @@ try {
     buildCustomerCreditRedemptionOperation,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
+    buildOfflineEventQueuePreviewEntries,
     buildOfflineLabelPrintJob,
     buildInventoryUpdateOperation,
     buildOfflineConflictResolutionRequestBody,
@@ -536,6 +537,37 @@ try {
   assert.equal(eventCheckinPayload.sync_intent, "offline_event_checkin")
   assert.equal(eventCheckinAuthorization.manager_override, false)
   assert.equal(eventCheckinAuthorization.source, "offline_app")
+
+  const eventQueuePreviewEntries = buildOfflineEventQueuePreviewEntries(
+    [eventRegistrationOperation, eventCheckinOperation],
+    [
+      {
+        eventId: "event-200",
+        rowVersion: 4,
+        title: "Commander Night",
+        startsAtUtc: "2026-06-12T23:00:00Z",
+        startsAtLabel: "Fri Jun 12, 7:00 PM",
+        registrationStatus: "open",
+        capacity: 24,
+        registeredCount: 23,
+        locationLabel: "Event Room",
+        note: "Cached event ready for offline queue review.",
+      },
+    ],
+  )
+  assert.equal(eventQueuePreviewEntries.length, 2)
+  assert.equal(eventQueuePreviewEntries[0].operationType, "event_reservation")
+  assert.equal(eventQueuePreviewEntries[0].title, "Commander Night")
+  assert.equal(eventQueuePreviewEntries[0].attendeeLabel, "Offline walk-in")
+  assert.equal(eventQueuePreviewEntries[0].statusLabel, "Registration")
+  assert.equal(eventQueuePreviewEntries[0].paymentStatus, "pay_at_store")
+  assert.ok(eventQueuePreviewEntries[0].detail.includes("Pay at store"))
+  assert.ok(eventQueuePreviewEntries[0].detail.includes("1 cached seat remaining"))
+  assert.ok(eventQueuePreviewEntries[0].payloadSummary.includes("Walk-in source"))
+  assert.equal(eventQueuePreviewEntries[1].operationType, "event_checkin")
+  assert.equal(eventQueuePreviewEntries[1].registrationPublicId, "registration-event-200-walkin")
+  assert.ok(eventQueuePreviewEntries[1].detail.includes("Manual lookup"))
+  assert.ok(eventQueuePreviewEntries[1].payloadSummary.includes("manual_lookup"))
 
   assert.equal(creditRedemptionInputFromMinorUnits(2800), "28.00")
   assert.equal(creditRedemptionInputFromMinorUnits(-1), "0.00")
