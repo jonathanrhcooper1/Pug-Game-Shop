@@ -10,6 +10,10 @@ All notable changes follow Semantic Versioning.
   the active website connector, pull and push endpoint URLs, queued operation
   count, pairing readiness, desktop secure-token storage, and deferred network
   status without exposing credentials.
+- Offline app prepared pairing requests now persist in a separate versioned,
+  redacted local-storage envelope, allowing sync sessions to remember
+  prepared-local pairing state after reloads without storing manager codes or
+  tokens.
 - Offline app prepared pairing request history for multi-company connector
   setup. Preparing a device pairing now records the selected company, endpoint,
   requested offline scopes, desktop secure-token storage, and a redacted

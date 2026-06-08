@@ -119,6 +119,7 @@ export type ConnectorProfileDraftResult = {
 }
 
 export const CONNECTOR_PROFILE_STORAGE_KEY = "tcg-store-offline-connector-profiles-v1"
+export const PREPARED_PAIRING_STORAGE_KEY = "tcg-store-offline-prepared-pairings-v1"
 
 export type ConnectorProfileStorageSnapshot = {
   action: "offline_connector_profiles_local_storage"
@@ -132,6 +133,21 @@ export type ConnectorProfileStorageSnapshot = {
 export type ConnectorProfileStorageRestoreResult = {
   profiles: StoreConnectorProfile[]
   activeProfileId: string
+  restored: boolean
+  issues: string[]
+}
+
+export type PreparedPairingStorageSnapshot = {
+  action: "offline_prepared_pairings_local_storage"
+  schema_version: 1
+  requests: PreparedDevicePairingRequest[]
+  saved_at_utc: string
+  rawPairingCodeStored: false
+  credentialsSyncedToApp: false
+}
+
+export type PreparedPairingStorageRestoreResult = {
+  requests: PreparedDevicePairingRequest[]
   restored: boolean
   issues: string[]
 }
@@ -754,6 +770,65 @@ export function restoreConnectorProfileStorageSnapshot(
   }
 }
 
+export function buildPreparedPairingStorageSnapshot(
+  requests: PreparedDevicePairingRequest[],
+  profiles: StoreConnectorProfile[],
+  options: { savedAtUtc?: string } = {},
+): PreparedPairingStorageSnapshot {
+  return {
+    action: "offline_prepared_pairings_local_storage",
+    schema_version: 1,
+    requests: sanitizePreparedPairingRequests(requests, profiles),
+    saved_at_utc: options.savedAtUtc ?? new Date().toISOString(),
+    rawPairingCodeStored: false,
+    credentialsSyncedToApp: false,
+  }
+}
+
+export function restorePreparedPairingStorageSnapshot(
+  rawValue: string | null,
+  profiles: StoreConnectorProfile[],
+): PreparedPairingStorageRestoreResult {
+  if (!rawValue) {
+    return {
+      requests: [],
+      restored: false,
+      issues: [],
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PreparedPairingStorageSnapshot>
+    const requests = sanitizePreparedPairingRequests(parsed.requests ?? [], profiles)
+
+    if (
+      parsed.action !== "offline_prepared_pairings_local_storage" ||
+      parsed.schema_version !== 1 ||
+      parsed.rawPairingCodeStored !== false ||
+      parsed.credentialsSyncedToApp !== false ||
+      requests.length === 0
+    ) {
+      return {
+        requests: [],
+        restored: false,
+        issues: ["prepared_pairing_storage_invalid"],
+      }
+    }
+
+    return {
+      requests,
+      restored: true,
+      issues: [],
+    }
+  } catch {
+    return {
+      requests: [],
+      restored: false,
+      issues: ["prepared_pairing_storage_parse_failed"],
+    }
+  }
+}
+
 export function connectorStatusLabel(status: ConnectorStatus) {
   return status === "ready"
     ? "Ready"
@@ -1206,6 +1281,30 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
   }
 
   return safeProfiles.length > 0 ? safeProfiles : offlineWorkspaceSeed.connectorProfiles
+}
+
+function sanitizePreparedPairingRequests(
+  requests: PreparedDevicePairingRequest[],
+  profiles: StoreConnectorProfile[],
+): PreparedDevicePairingRequest[] {
+  const profileIds = new Set(profiles.map((profile) => profile.id))
+
+  return requests
+    .filter((request) =>
+      request &&
+      profileIds.has(request.profileId) &&
+      request.method === "POST" &&
+      request.path === "/wp-json/tcg-store/v1/offline/devices/register" &&
+      Array.isArray(request.requestedScopes) &&
+      request.requestedScopes.includes("offline_pull") &&
+      request.requestedScopes.includes("offline_push") &&
+      request.requestedScopes.includes("conflicts") &&
+      request.tokenStorage === "desktop_secure_store" &&
+      request.status === "prepared_local" &&
+      request.rawPairingCodeStored === false &&
+      request.networkRequestDeferred === true
+    )
+    .slice(0, 12)
 }
 
 function pairingCodeFingerprint(pairingCode: string) {

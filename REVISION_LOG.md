@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Prepared Pairing Local Persistence
+
+### What Changed
+
+- Added a versioned `tcg-store-offline-prepared-pairings-v1` local-storage
+  envelope for redacted prepared device pairing requests.
+- Added restore/snapshot helpers that reject malformed storage, reject raw-code
+  storage, and keep only prepared pairing records tied to known connector
+  profiles.
+- Updated offline app startup and save behavior so prepared-local pairing state
+  survives reloads and is available to the connector sync session plan.
+- Updated offline app contracts and changelog coverage for the new storage
+  path.
+
+### Why
+
+The multi-company offline app should not forget a prepared pairing request
+after a restart. Persisting only redacted pairing metadata keeps the sync panel
+accurate while avoiding local storage of manager codes, device tokens,
+WordPress credentials, ScryDex keys, or Square secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for
+  `PreparedPairingStorageSnapshot`,
+  `PreparedPairingStorageRestoreResult`, storage key markers, restore/snapshot
+  helpers, and invalid-storage fallback markers.
+- Offline app UI contract checks for prepared-pairing storage wiring.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: passed. A fake pairing code
+  created a redacted prepared pairing, reload preserved the prepared-local
+  state, and `Sync Now` showed `Prepared locally` with only the fingerprint and
+  token-storage label. No console warnings/errors appeared.
+
+### Rollback Notes
+
+- Revert this revision to make prepared pairing requests session-only again.
+- Clear local-storage key `tcg-store-offline-prepared-pairings-v1` to discard
+  persisted prepared pairing metadata.
+- No database migration or staging cleanup is required.
+
 ## 2026-06-08 - Offline Connector Sync Session Plan
 
 ### What Changed

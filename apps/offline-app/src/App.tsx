@@ -10,6 +10,7 @@ import {
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
   buildPreparedDevicePairingRequest,
+  buildPreparedPairingStorageSnapshot,
   CONNECTOR_PROFILE_STORAGE_KEY,
   connectorDisplayUrl,
   connectorHealthSummary,
@@ -23,6 +24,8 @@ import {
   findInventoryItem,
   formatMoney,
   offlineWorkspaceSeed,
+  PREPARED_PAIRING_STORAGE_KEY,
+  restorePreparedPairingStorageSnapshot,
   restoreConnectorProfileStorageSnapshot,
   statusLabel,
   summarizeOfflinePushResult,
@@ -41,6 +44,7 @@ import {
   type OfflinePushRequestPlan,
   type OfflinePushResultSummary,
   type PreparedDevicePairingRequest,
+  type PreparedPairingStorageRestoreResult,
 } from "./data/offlineWorkspace"
 import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
@@ -75,6 +79,19 @@ function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
   return restoreConnectorProfileStorageSnapshot(
     window.localStorage.getItem(CONNECTOR_PROFILE_STORAGE_KEY),
     offlineWorkspaceSeed.connectorProfiles,
+  )
+}
+
+function loadPreparedPairingStorage(
+  profiles: ReturnType<typeof loadConnectorProfileStorage>["profiles"],
+): PreparedPairingStorageRestoreResult {
+  if (typeof window === "undefined") {
+    return restorePreparedPairingStorageSnapshot(null, profiles)
+  }
+
+  return restorePreparedPairingStorageSnapshot(
+    window.localStorage.getItem(PREPARED_PAIRING_STORAGE_KEY),
+    profiles,
   )
 }
 
@@ -123,6 +140,11 @@ export function App() {
     connectorProfileStorageRef.current = loadConnectorProfileStorage()
   }
   const connectorProfileStorage = connectorProfileStorageRef.current
+  const preparedPairingStorageRef = useRef<PreparedPairingStorageRestoreResult | null>(null)
+  if (preparedPairingStorageRef.current === null) {
+    preparedPairingStorageRef.current = loadPreparedPairingStorage(connectorProfileStorage.profiles)
+  }
+  const preparedPairingStorage = preparedPairingStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
@@ -160,7 +182,9 @@ export function App() {
   const [connectorDraftIssues, setConnectorDraftIssues] = useState<string[]>([])
   const [pairingCode, setPairingCode] = useState("")
   const [pairingPlan, setPairingPlan] = useState<DevicePairingRequestPlan | null>(null)
-  const [preparedPairingRequests, setPreparedPairingRequests] = useState<PreparedDevicePairingRequest[]>([])
+  const [preparedPairingRequests, setPreparedPairingRequests] = useState<PreparedDevicePairingRequest[]>(
+    preparedPairingStorage.requests,
+  )
   const activeProfile = findConnectorProfile(connectorProfiles, activeProfileId)
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
   const activePreparedPairingRequests = useMemo(
@@ -203,6 +227,13 @@ export function App() {
       JSON.stringify(buildConnectorProfileStorageSnapshot(connectorProfiles, activeProfileId)),
     )
   }, [connectorProfiles, activeProfileId])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      PREPARED_PAIRING_STORAGE_KEY,
+      JSON.stringify(buildPreparedPairingStorageSnapshot(preparedPairingRequests, connectorProfiles)),
+    )
+  }, [preparedPairingRequests, connectorProfiles])
 
   function sectionTarget(label: string) {
     if (label === "Sync") {
