@@ -6,6 +6,12 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Staging offline connector pairing now includes `npm run
+  staging:configure-offline-pairing`, a stdin-fed WP-CLI helper that stores
+  short-lived hashed pairing policy, can enable only the device-pairing route
+  by default, reports redacted status, and keeps pull/push/conflict sync routes,
+  device-token issuance, WordPress data writes, and network sync execution
+  disabled unless later staging gates explicitly allow them.
 - Staging ScryDex setup now includes `npm run staging:configure-scrydex`, a
   WP-CLI/SFTP helper that reads keys from environment variables, streams them
   to a temporary non-secret runner over stdin, saves server-side WordPress

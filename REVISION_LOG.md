@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging Offline Pairing Configuration Helper
+
+### What Changed
+
+- Added `scripts/staging-configure-offline-pairing.mjs` and `npm run
+  staging:configure-offline-pairing`.
+- The helper supports a dry run, redacted `--status` check, and confirmed
+  staging configuration mode.
+- Offline connector pairing codes are read from environment variables, streamed
+  over stdin to a temporary non-secret WP-CLI runner, hashed on the staging
+  server, stored in WordPress settings, and reported only as redacted policy
+  counts/status.
+- The helper can enable the device-pairing route gate while leaving pull,
+  push, and conflict routes disabled by default.
+- The helper removes the temporary runner after execution and reports that it
+  does not issue device tokens, run sync network requests, write WordPress
+  business data, or sync credentials to the offline app.
+
+### Why
+
+The standalone offline app needs a safe, repeatable staging path for pairing
+future company/site connectors, but pairing readiness must stay separate from
+live pull/push execution and from any raw credential exposure. This helper
+lets staging prepare short-lived pairing policy without opening data-moving
+routes by accident.
+
+### Files Affected
+
+- `scripts/staging-configure-offline-pairing.mjs`
+- `scripts/tests/staging-offline-pairing-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+- `scripts/README.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for the staging offline pairing npm script,
+  required environment gates, stdin-based WP-CLI handoff, redacted policy
+  output, temporary runner removal, default-closed sync route gates, and no
+  device-token issuance or data writes.
+
+### Rollback Notes
+
+- Revert this revision to remove the helper and contract.
+- If staging pairing settings need to be cleared, remove the configured pairing
+  hashes and disable the offline route runtime gates through WordPress
+  settings or a staging-only WP-CLI settings reset. No production, Square,
+  payment, POS, ScryDex, offline SQLite, or inventory data rollback is
+  required.
+
 ## 2026-06-08 - Staging ScryDex Configuration Helper
 
 ### What Changed

@@ -119,6 +119,48 @@ workers, expose credentials to the offline app, or run production side effects.
 Use `npm run staging:configure-scrydex -- --status` for a redacted status check
 without changing settings.
 
+## Offline Pairing Staging Configuration
+
+Prepare staging for a standalone desktop connector only after the public route
+check passes and the plugin health reports `environment = staging`:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+TCG_OFFLINE_PAIRING_CODE=one-time-code \
+PUG_STAGING_CONFIRM_OFFLINE_PAIRING=configure-staging-offline-pairing \
+npm run staging:configure-offline-pairing
+```
+
+The helper writes a temporary non-secret PHP runner under staging uploads,
+streams the pairing payload to `wp eval-file` over stdin, stores only hashed
+pairing-code policy in WordPress settings, enables the device-pairing route
+gate by default, prints only redacted counts/status, and removes the runner.
+It does not issue device tokens, run pull/push/conflict sync, write inventory,
+customer credit, event, POS, payment, Square, ScryDex, or production data, or
+sync credentials to the offline app.
+
+Optional environment variables:
+
+- `TCG_OFFLINE_PAIRING_MODE`: `kiosk`, `staff`, or `admin`; defaults to
+  `staff`.
+- `TCG_OFFLINE_PAIRING_MANAGER_IDS`: comma-separated manager/admin user IDs.
+  When omitted, the staging runner falls back to the first administrator.
+- `TCG_OFFLINE_PAIRING_LOCATION_IDS`: comma-separated location IDs; defaults
+  to `1`.
+- `TCG_OFFLINE_PAIRING_SCOPES`: comma-separated scopes from `offline_pull`,
+  `offline_push`, `inventory`, `kiosk`, `customer_credit`, `events`,
+  `buylist`, and `conflicts`.
+- `TCG_OFFLINE_PAIRING_EXPIRES_HOURS` or
+  `TCG_OFFLINE_PAIRING_EXPIRES_AT_UTC`: defaults to 24 hours.
+- `TCG_OFFLINE_ENABLE_PULL_ROUTE`, `TCG_OFFLINE_ENABLE_PUSH_ROUTE`, and
+  `TCG_OFFLINE_ENABLE_CONFLICT_ROUTES`: remain false by default and should
+  only be enabled for explicit staging route tests.
+
+Use `npm run staging:configure-offline-pairing -- --status` for a redacted
+status check without changing settings.
+
 ## Gated Inventory Smoke Runner
 
 Run the staged inventory route smoke test through WP-CLI after staging has the

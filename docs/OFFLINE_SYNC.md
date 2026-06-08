@@ -484,6 +484,12 @@ The desktop app can also read pending local queue rows back from SQLite on
 startup, validate each operation envelope, and merge those operations into the
 visible queue. This restore path is bounded, local-only, and still does not
 perform website writes or direct MySQL access.
+Staging offline pairing setup now has a repeatable WP-CLI helper that stores
+only hashed, short-lived pairing-code policy in WordPress settings and can
+enable the pairing route gate separately from pull, push, and conflict route
+gates. This prepares multi-company connector pairing without issuing device
+tokens, exposing raw pairing codes, writing canonical website data, or running
+sync network requests by default.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

@@ -37,6 +37,12 @@
   readiness output, temporary runner cleanup, and no provider network/data
   writes. The command is intentionally separate from `npm run
   scrydex:live-smoke` and from future database-writing sync workers.
+- `npm run staging:configure-offline-pairing` now has packaging contract
+  coverage for dry run/status modes, stdin-based WP-CLI handoff, hashed
+  pairing-code storage, redacted policy output, temporary runner cleanup,
+  device-pairing route gating, and no device-token issuance, sync network
+  requests, pull/push/conflict route enablement by default, or WordPress data
+  writes.
 - Offline app contract coverage now verifies queue refresh and selective
   voiding controls: `Refresh Desktop Queue` calls the Tauri list command when
   available, and `Void Selected Operation` removes one selected operation while

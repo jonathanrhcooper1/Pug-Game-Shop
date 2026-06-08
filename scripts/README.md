@@ -12,3 +12,7 @@ fixture-generation scripts.
 - `npm run staging:configure-scrydex` stores staging ScryDex credentials in
   WordPress settings through a temporary stdin-fed WP-CLI runner and prints only
   redacted readiness output.
+- `npm run staging:configure-offline-pairing` stores staging offline connector
+  pairing policy through a temporary stdin-fed WP-CLI runner, prints only
+  redacted policy/route status, and keeps pull/push/conflict sync routes closed
+  by default.
