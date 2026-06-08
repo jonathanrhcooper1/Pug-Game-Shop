@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Server-compatible offline `inventory_update` push envelopes with row-version
+  conflict planning, desktop command validation for supported offline operation
+  types, and offline app REST batch preview for reconnect sync.
 - Refined offline app command workspace visuals with grouped sync controls,
   manual sync affordance, scanner beam, richer selected-card frame, detail
   action cluster, empty-search state, responsive mobile title behavior, and

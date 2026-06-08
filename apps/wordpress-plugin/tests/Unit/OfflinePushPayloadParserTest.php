@@ -18,23 +18,23 @@ final class OfflinePushPayloadParserTest extends TestCase {
 				'device_id'  => 'device-main-01',
 				'operations' => array(
 					array(
-						'client_operation_id'  => 'op-00001',
-						'device_id'            => 'device-main-01',
-						'location_id'          => '3',
-						'actor_id'             => 22,
-						'operation_type'       => 'inventory_reservation',
-						'entity_type'          => 'inventory',
-						'entity_id'            => '1001',
-						'base_row_version'     => '4',
-						'occurred_at_local'    => '2026-06-06T10:15:00-04:00',
-						'queued_at_utc'        => '2026-06-06T14:15:05Z',
-						'payload'              => array(
+						'client_operation_id'   => 'op-00001',
+						'device_id'             => 'device-main-01',
+						'location_id'           => '3',
+						'actor_id'              => 22,
+						'operation_type'        => 'inventory_reservation',
+						'entity_type'           => 'inventory',
+						'entity_id'             => '1001',
+						'base_row_version'      => '4',
+						'occurred_at_local'     => '2026-06-06T10:15:00-04:00',
+						'queued_at_utc'         => '2026-06-06T14:15:05Z',
+						'payload'               => array(
 							'localStatus' => 'offline_pending_sync',
 						),
 						'authorization_context' => array(
 							'manager_user_id' => 91,
 						),
-						'schema_version'       => 1,
+						'schema_version'        => 1,
 					),
 				),
 			),
@@ -65,15 +65,59 @@ final class OfflinePushPayloadParserTest extends TestCase {
 	}
 
 	public function test_parser_rejects_missing_batch_device_and_operations(): void {
-		$result = ( new OfflinePushPayloadParser() )->parse( array() );
 
+		$result = ( new OfflinePushPayloadParser() )->parse( array() );
 		$this->assert_false( $result->is_valid() );
 		$this->assert_true( in_array( 'batch_id_required', $result->errors(), true ) );
 		$this->assert_true( in_array( 'device_id_required', $result->errors(), true ) );
 		$this->assert_true( in_array( 'operations_required', $result->errors(), true ) );
 	}
 
+	public function test_parser_accepts_inventory_update_operation_type(): void {
+
+		$result = ( new OfflinePushPayloadParser() )->parse(
+			array(
+				'batch_id'   => 'batch-inventory-update-01',
+				'device_id'  => 'device-main-01',
+				'operations' => array(
+					array(
+						'client_operation_id'   => 'op-update-01',
+						'device_id'             => 'device-main-01',
+						'location_id'           => 3,
+						'actor_id'              => 22,
+						'operation_type'        => 'inventory_update',
+						'entity_type'           => 'inventory',
+						'entity_id'             => 'inv-1001',
+						'base_row_version'      => 4,
+						'occurred_at_local'     => '2026-06-06T10:15:00-04:00',
+						'queued_at_utc'         => '2026-06-06T14:15:05Z',
+						'payload'               => array(
+							'barcode'           => 'PKM-BASE-004-HOLO',
+							'status'            => 'available',
+							'location'          => 'Case A3',
+							'price_minor_units' => 12500,
+						),
+						'authorization_context' => array(
+							'source' => 'offline_app',
+						),
+						'schema_version'        => 1,
+					),
+				),
+			)
+		);
+
+		$this->assert_true( $result->is_valid() );
+
+		$payload = $result->payload();
+
+		$this->assert_true( null !== $payload );
+			$this->assert_same( 'inventory_update', $payload->operations()[0]->operation_type() );
+		$this->assert_same( 'inventory', $payload->operations()[0]->entity_type() );
+			$this->assert_same( 12500, $payload->operations()[0]->payload()['price_minor_units'] );
+	}
+
 	public function test_parser_rejects_duplicate_operation_ids_and_device_mismatch(): void {
+
 		$result = ( new OfflinePushPayloadParser() )->parse(
 			array(
 				'batch_id'   => 'batch-duplicate-01',
@@ -97,19 +141,19 @@ final class OfflinePushPayloadParserTest extends TestCase {
 				'device_id'  => 'device-main-01',
 				'operations' => array(
 					array(
-						'client_operation_id'  => 'bad',
-						'device_id'            => 'device-main-01',
-						'location_id'          => 0,
-						'actor_id'             => 'cashier',
-						'operation_type'       => 'price_override',
-						'entity_type'          => 'inventory',
-						'entity_id'            => '',
-						'base_row_version'     => -1,
-						'occurred_at_local'    => '2026-06-06 10:15:00',
-						'queued_at_utc'        => '2026-06-06T14:15:05-04:00',
-						'payload'              => 'not-an-object',
+						'client_operation_id'   => 'bad',
+						'device_id'             => 'device-main-01',
+						'location_id'           => 0,
+						'actor_id'              => 'cashier',
+						'operation_type'        => 'price_override',
+						'entity_type'           => 'inventory',
+						'entity_id'             => '',
+						'base_row_version'      => -1,
+						'occurred_at_local'     => '2026-06-06 10:15:00',
+						'queued_at_utc'         => '2026-06-06T14:15:05-04:00',
+						'payload'               => 'not-an-object',
 						'authorization_context' => 'not-an-object',
-						'schema_version'       => 2,
+						'schema_version'        => 2,
 					),
 				),
 			)
@@ -129,9 +173,9 @@ final class OfflinePushPayloadParserTest extends TestCase {
 		$this->assert_true( in_array( 'operations_0_schema_version_unsupported', $result->errors(), true ) );
 	}
 
-	/**
-	 * @return array<string, mixed>
-	 */
+		/**
+		 * @return array<string, mixed>
+		 */
 	private function operation_payload( string $operation_id, string $device_id ): array {
 		return array(
 			'client_operation_id' => $operation_id,

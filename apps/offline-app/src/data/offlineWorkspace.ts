@@ -64,8 +64,12 @@ export type OfflineOperationEnvelope = {
   device_id: string
   location_id: number
   actor_id: number
-  operation_type: "inventory_update"
-  entity_type: "inventory"
+  operation_type:
+    | "inventory_update"
+    | "inventory_reservation"
+    | "event_reservation"
+    | "credit_redemption"
+  entity_type: "inventory" | "event" | "customer_credit"
   entity_id: string
   base_row_version: number
   occurred_at_local: string
@@ -73,6 +77,20 @@ export type OfflineOperationEnvelope = {
   payload_json: string
   authorization_context_json: string
   schema_version: 1
+}
+
+export type OfflinePushOperationPayload = Omit<
+  OfflineOperationEnvelope,
+  "payload_json" | "authorization_context_json"
+> & {
+  payload: Record<string, unknown>
+  authorization_context: Record<string, unknown>
+}
+
+export type OfflinePushBatchPayload = {
+  batch_id: string
+  device_id: string
+  operations: OfflinePushOperationPayload[]
 }
 
 export type OfflineWorkspaceState = {
@@ -278,6 +296,7 @@ export function buildInventoryUpdateOperation(
       location: item.location,
       price_minor_units: item.priceMinorUnits,
       status: item.status,
+      sync_intent: "staff_inventory_update",
     }),
     authorization_context_json: JSON.stringify({
       manager_override: false,
@@ -285,4 +304,49 @@ export function buildInventoryUpdateOperation(
     }),
     schema_version: 1,
   }
+}
+
+export function buildOfflinePushBatchPayload(
+  operations: OfflineOperationEnvelope[],
+  options: { batchId?: string; deviceId?: string } = {},
+): OfflinePushBatchPayload {
+  const firstOperation = operations[0]
+  const deviceId = options.deviceId ?? firstOperation?.device_id ?? "local-device-preview"
+  const stamp =
+    firstOperation?.queued_at_utc.replace(/[^0-9]/g, "").slice(0, 14) ??
+    new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)
+
+  return {
+    batch_id: options.batchId ?? `offline-batch-${deviceId}-${stamp}`,
+    device_id: deviceId,
+    operations: operations.map((operation) => ({
+      client_operation_id: operation.client_operation_id,
+      device_id: operation.device_id,
+      location_id: operation.location_id,
+      actor_id: operation.actor_id,
+      operation_type: operation.operation_type,
+      entity_type: operation.entity_type,
+      entity_id: operation.entity_id,
+      base_row_version: operation.base_row_version,
+      occurred_at_local: operation.occurred_at_local,
+      queued_at_utc: operation.queued_at_utc,
+      payload: parseJsonObject(operation.payload_json),
+      authorization_context: parseJsonObject(operation.authorization_context_json),
+      schema_version: operation.schema_version,
+    })),
+  }
+}
+
+function parseJsonObject(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    return {}
+  }
+
+  return {}
 }

@@ -25,17 +25,18 @@
   no-production-secret UI markers in place.
 - `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
   app's typed local workspace state includes the planned sync routes,
-  SQLite operation envelope fields, queued inventory operation markers, and no
-  direct external endpoint or database access markers. The offline app package
-  contract also runs `tsc --noEmit`.
+  SQLite operation envelope fields, queued inventory operation markers,
+  REST-ready offline push batch shaping, and no direct external endpoint or
+  database access markers. The offline app package contract also runs
+  `tsc --noEmit`.
 - `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
   queue operations stay behind a Tauri command adapter boundary and do not use
   direct browser storage or network writes.
 - `apps/offline-app/tests/tauri-command-contract.mjs` verifies the desktop
   command scaffold, frontend Tauri adapter detection, Rust serde dependencies,
-  and no direct browser storage/network markers. The offline app Windows
-  workflow also runs `cargo test` for the Tauri command tests when Rust is
-  available in CI.
+  supported offline operation/entity type validation, and no direct browser
+  storage/network markers. The offline app Windows workflow also runs
+  `cargo test` for the Tauri command tests when Rust is available in CI.
 - `.github/workflows/php.yml` runs Composer validation, dependency audit,
   syntax checks, unit tests, bootstrap smoke, and WordPress coding standards
   against PHP 8.1, 8.2, and 8.3.

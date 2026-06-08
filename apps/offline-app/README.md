@@ -14,12 +14,12 @@ future offline sync app.
   desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, and SQLite-compatible staged operation
-  envelopes.
+  envelopes, plus REST-ready push batch previews for reconnect sync.
 - Browser-safe offline queue bridge contract for staging inventory operations
   before the desktop SQLite/Tauri command adapter is connected.
-- Tauri command scaffold for validating staged inventory operation envelopes
-  before future SQLite persistence, with CI-level Rust tests planned in the
-  offline app Windows workflow.
+- Tauri command scaffold for validating staged inventory, reservation, event,
+  and credit operation envelopes before future SQLite persistence, with
+  CI-level Rust tests planned in the offline app Windows workflow.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,

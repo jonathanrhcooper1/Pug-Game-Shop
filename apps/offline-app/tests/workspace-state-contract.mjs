@@ -15,9 +15,11 @@ const manifest = JSON.parse(
 for (const requiredExport of [
   "OfflineWorkspaceState",
   "OfflineOperationEnvelope",
+  "OfflinePushBatchPayload",
   "offlineWorkspaceSeed",
   "operationEnvelopeFields",
   "buildInventoryUpdateOperation",
+  "buildOfflinePushBatchPayload",
   "filterInventoryItems",
   "findInventoryItem",
 ]) {
@@ -40,6 +42,10 @@ for (const marker of [
   "payload_json",
   "authorization_context_json",
   "schema_version: 1",
+  "inventory_update",
+  "sync_intent: \"staff_inventory_update\"",
+  "payload: parseJsonObject(operation.payload_json)",
+  "authorization_context: parseJsonObject(operation.authorization_context_json)",
   "manager_override",
   "source: \"offline_app\"",
 ]) {
@@ -48,7 +54,9 @@ for (const marker of [
 
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem)"))
+assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
 assert.ok(appSource.includes("stagedOperation.client_operation_id"))
+assert.ok(appSource.includes("stagedPushBatch.batch_id"))
 
 for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "http://", "https://"]) {
   assert.equal(workspaceSource.includes(forbidden), false, `Forbidden workspace marker found: ${forbidden}`)

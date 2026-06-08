@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 
 import {
+  buildOfflinePushBatchPayload,
   buildInventoryUpdateOperation,
   filterInventoryItems,
   findInventoryItem,
@@ -9,6 +10,7 @@ import {
   statusLabel,
   type IconName,
   type OfflineOperationEnvelope,
+  type OfflinePushBatchPayload,
 } from "./data/offlineWorkspace"
 import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
@@ -41,6 +43,7 @@ export function App() {
   const [query, setQuery] = useState("PKM-BASE")
   const [selectedId, setSelectedId] = useState(42)
   const [stagedOperation, setStagedOperation] = useState<OfflineOperationEnvelope | null>(null)
+  const [stagedPushBatch, setStagedPushBatch] = useState<OfflinePushBatchPayload | null>(null)
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
   const filteredItems = useMemo(() => {
@@ -50,6 +53,7 @@ export function App() {
   async function handleStageInventoryUpdate() {
     const operation = buildInventoryUpdateOperation(selectedItem)
     setStagedOperation(operation)
+    setStagedPushBatch(buildOfflinePushBatchPayload([operation]))
     setQueueSubmission(await submitOfflineOperation(operation, queueAdapter))
   }
 
@@ -236,7 +240,11 @@ export function App() {
                     {queueSubmission?.status === "queued" ? "Queued envelope" : "Staged envelope"}
                   </span>
                   <strong>{stagedOperation.client_operation_id}</strong>
-                  <small>{queueSubmission?.message ?? "Ready for local queue handoff."}</small>
+                  <small>
+                    {stagedPushBatch
+                      ? `Push batch ${stagedPushBatch.batch_id} ready after reconnect.`
+                      : (queueSubmission?.message ?? "Ready for local queue handoff.")}
+                  </small>
                 </>
               ) : (
                 <>

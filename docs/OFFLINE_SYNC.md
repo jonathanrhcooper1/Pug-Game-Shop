@@ -62,6 +62,9 @@ minimum price, or manager-controlled fields.
 The first shared sync-engine policy module is implemented and tested for:
 
 - Offline inventory reservation acceptance and unavailable-item conflict.
+- Offline inventory update acceptance when row versions match, plus stale
+  server-row conflict planning for manager review while canonical writes remain
+  deferred.
 - Offline event reservation acceptance, waitlist, and capacity conflict.
 - Offline credit redemption acceptance, cached-limit rejection, and server
   overspend conflict.

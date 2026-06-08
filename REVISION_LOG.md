@@ -3,6 +3,90 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline Inventory Update Push Planning
+
+### What Changed
+
+- Added `inventory_update` to the WordPress offline push payload parser's
+  supported operation/entity map.
+- Added optimistic row-version resolution for offline inventory updates:
+  matching row versions are accepted into the planned result payload while
+  stale server versions create durable manager-review conflicts.
+- Added offline operation readiness metadata for `inventory_update` route
+  option summaries.
+- Expanded the Tauri queue command scaffold to validate the supported
+  offline operation/entity pairs: inventory update, inventory reservation,
+  event reservation, and credit redemption.
+- Added an offline app push-batch builder that converts local
+  SQLite-compatible envelopes into the REST payload shape expected by the
+  WordPress push parser.
+- Surfaced the reconnect-ready push batch ID in the offline app staged
+  operation preview.
+
+### Why
+
+The standalone app needs a safe bridge between local queued work and the
+website's offline push endpoint. This revision makes a scanned inventory
+update server-compatible without enabling live canonical writes, preserving the
+existing deferred execution gates and conflict-review path.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayloadParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushOperationResolver.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteOperationOptionsProvider.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPayloadParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushOperationResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteOperationOptionsProviderTest.php`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline push parser coverage for `inventory_update` payload acceptance.
+- Offline push resolver coverage for accepted inventory updates and stale
+  row-version conflicts.
+- Offline route operation-options coverage for `inventory_update` readiness.
+- Offline app workspace contract coverage for REST-ready push batch shaping.
+- Offline app Tauri command contract coverage for supported operation/entity
+  validation markers.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Offline\OfflinePushPayloadParser.php src\Offline\OfflinePushOperationResolver.php src\Api\V1\OfflinePushRouteOperationOptionsProvider.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php --filter OfflinePushOperationResolverTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full
+  794-test suite.
+- `npm.cmd run test:offline-app` from repository root: passed.
+- `npm.cmd --prefix apps\offline-app run typecheck` from repository root:
+  passed.
+- Local `cargo test` was not run because Rust/Cargo is not installed on this
+  machine; the Windows CI workflow remains responsible for Rust command tests.
+- Direct PHPCS against existing PHPUnit test filenames still reports the
+  repository's WordPress filename-rule mismatch, so source PHPCS is used for
+  the focused standards gate and PHP behavior is covered by the local runner.
+
+### Rollback Notes
+
+- Revert this revision to remove `inventory_update` from offline push parsing,
+  resolver planning, desktop validation, and the offline app reconnect batch
+  preview.
+- No schema rollback is required because no migrations or live canonical writes
+  were added.
+
 ## 2026-06-07 - Offline App Command Workspace Visual Refinement
 
 ### What Changed

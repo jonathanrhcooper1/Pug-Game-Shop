@@ -12,10 +12,10 @@ final class OfflinePushPayloadParser {
 	private const SUPPORTED_SCHEMA_VERSION = 1;
 	private const OPERATION_ENTITY_MAP     = array(
 		'inventory_reservation' => 'inventory',
+		'inventory_update'      => 'inventory',
 		'event_reservation'     => 'event',
 		'credit_redemption'     => 'customer_credit',
 	);
-
 	/**
 	 * @param array<string, mixed> $payload Request body.
 	 */

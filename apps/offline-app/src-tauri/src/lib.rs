@@ -56,7 +56,14 @@ fn validate_operation(operation: &OfflineOperationEnvelope) -> Result<(), String
         return Err("missing_actor_or_location".to_string());
     }
 
-    if operation.operation_type != "inventory_update" || operation.entity_type != "inventory" {
+    let expected_entity_type = match operation.operation_type.as_str() {
+        "inventory_update" | "inventory_reservation" => "inventory",
+        "event_reservation" => "event",
+        "credit_redemption" => "customer_credit",
+        _ => return Err("unsupported_operation".to_string()),
+    };
+
+    if operation.entity_type != expected_entity_type {
         return Err("unsupported_operation".to_string());
     }
 
@@ -144,5 +151,24 @@ mod tests {
             queue_offline_operation(operation).expect_err("operation type should fail"),
             "unsupported_operation"
         );
+    }
+
+    #[test]
+    fn queue_command_accepts_server_supported_offline_operation_types() {
+        for (operation_type, entity_type) in [
+            ("inventory_update", "inventory"),
+            ("inventory_reservation", "inventory"),
+            ("event_reservation", "event"),
+            ("credit_redemption", "customer_credit"),
+        ] {
+            let mut operation = valid_operation();
+            operation.operation_type = operation_type.to_string();
+            operation.entity_type = entity_type.to_string();
+
+            let result =
+                queue_offline_operation(operation).expect("operation type should validate");
+
+            assert_eq!(result.status, "accepted_for_local_queue");
+        }
     }
 }
