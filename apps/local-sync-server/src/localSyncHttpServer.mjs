@@ -48,6 +48,16 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.searchInventory({ query: url.searchParams.get("q") ?? "" }))
       }
 
+      if (request.method === "GET" && url.pathname === "/scrydex/cards/search") {
+        return sendStoreResult(
+          response,
+          store.searchScryDexCards(token, {
+            query: url.searchParams.get("q") ?? "",
+            game: url.searchParams.get("game") ?? "pokemon",
+          }),
+        )
+      }
+
       if (request.method === "POST" && url.pathname === "/inventory/intake") {
         return sendStoreResult(response, store.createInventoryIntake(token, await readJson(request)))
       }

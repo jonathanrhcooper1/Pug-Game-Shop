@@ -16,6 +16,8 @@ for (const requiredExport of [
   "LocalSyncAccessPolicyResult",
   "LocalSyncInventorySearchResult",
   "LocalSyncInventoryIntakeResult",
+  "LocalSyncScryDexCard",
+  "LocalSyncScryDexSearchResult",
   "LocalSyncReservationResult",
   "LocalSyncKioskOrderResult",
   "LocalSyncCustomerSearchResult",
@@ -28,6 +30,7 @@ for (const requiredExport of [
   "normalizeLocalSyncServerUrl",
   "updateUserAccess",
   "createCreditRedemption",
+  "searchScryDexCards",
 ]) {
   assert.ok(clientSource.includes(requiredExport), `Missing local sync client export: ${requiredExport}`)
 }
@@ -38,6 +41,7 @@ for (const route of [
   "/users",
   "/users/${encodeURIComponent(userId)}/access",
   "/inventory/search?q=",
+  "/scrydex/cards/search?q=",
   "/inventory/intake",
   "/inventory/reservations",
   "/kiosk/orders",
@@ -71,6 +75,11 @@ for (const marker of [
   "inventory_public_id",
   "price_minor_units",
   "label_print_deferred: true",
+  "wordpress_proxy_required: true",
+  "credential_storage: \"wordpress_server_settings\"",
+  "credentials_synced_to_client: false",
+  "provider_card_id",
+  "market_price_minor_units",
   "customer_public_id",
   "amount_minor_units",
   "sale_total_minor_units",

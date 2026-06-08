@@ -228,6 +228,47 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function searchScryDexCards(token, { query = "", game = "pokemon" } = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const needle = cleanScryDexQuery(query)
+    const normalizedGame = cleanGame(game)
+
+    if (!needle) {
+      return blocked("scrydex_query_required", "Enter a card name, set, or number before searching ScryDex.")
+    }
+
+    const cards = seedScryDexReferenceCards()
+      .filter((card) => card.game === normalizedGame)
+      .filter((card) =>
+        [
+          card.provider_card_id,
+          card.card_name,
+          card.set_name,
+          card.set_code,
+          card.card_number,
+          card.printed_number,
+        ].some((value) => String(value).toLowerCase().includes(needle)),
+      )
+      .slice(0, 8)
+
+    return {
+      status: "ok",
+      cards,
+      query: needle,
+      game: normalizedGame,
+      source: "local_reference_cache",
+      wordpress_proxy_required: true,
+      credential_storage: "wordpress_server_settings",
+      credentials_synced_to_client: false,
+      live_provider_request_performed: false,
+    }
+  }
+
   function reserveInventory(token, input = {}) {
     const session = requireSession(token)
 
@@ -630,6 +671,7 @@ export function createLocalSyncStore(options = {}) {
     reserveInventory,
     searchCustomers,
     searchInventory,
+    searchScryDexCards,
     syncStatus,
     updateUserAccess,
   }
@@ -1381,6 +1423,86 @@ function cleanCondition(value) {
 
 function cleanBarcode(value) {
   return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 64)
+}
+
+function cleanScryDexQuery(value) {
+  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 80)
+}
+
+function cleanGame(value) {
+  const game = String(value ?? "").trim().toLowerCase()
+
+  return ["pokemon", "magic", "lorcana", "one-piece"].includes(game) ? game : "pokemon"
+}
+
+function seedScryDexReferenceCards() {
+  return [
+    {
+      provider_card_id: "scrydex-pokemon-base-004",
+      game: "pokemon",
+      card_name: "Charizard",
+      set_name: "Base Set",
+      set_code: "BASE",
+      card_number: "4",
+      printed_number: "4/102",
+      suggested_barcode: "PKM-BASE-004-HOLO",
+      market_price_minor_units: 12500,
+      currency: "USD",
+      image_url: "",
+    },
+    {
+      provider_card_id: "scrydex-pokemon-jungle-060",
+      game: "pokemon",
+      card_name: "Pikachu",
+      set_name: "Jungle",
+      set_code: "JGL",
+      card_number: "60",
+      printed_number: "60/64",
+      suggested_barcode: "PKM-JGL-060-YLW",
+      market_price_minor_units: 1800,
+      currency: "USD",
+      image_url: "",
+    },
+    {
+      provider_card_id: "scrydex-pokemon-evs-094",
+      game: "pokemon",
+      card_name: "Umbreon V",
+      set_name: "Evolving Skies",
+      set_code: "EVS",
+      card_number: "94",
+      printed_number: "094/203",
+      suggested_barcode: "PKM-EVS-094-V",
+      market_price_minor_units: 7400,
+      currency: "USD",
+      image_url: "",
+    },
+    {
+      provider_card_id: "scrydex-pokemon-sv2-203",
+      game: "pokemon",
+      card_name: "Iono",
+      set_name: "Paldea Evolved",
+      set_code: "PAL",
+      card_number: "203",
+      printed_number: "203/193",
+      suggested_barcode: "PKM-PAL-203-IONO",
+      market_price_minor_units: 3200,
+      currency: "USD",
+      image_url: "",
+    },
+    {
+      provider_card_id: "scrydex-magic-dom-224",
+      game: "magic",
+      card_name: "Mox Amber",
+      set_name: "Dominaria",
+      set_code: "DOM",
+      card_number: "224",
+      printed_number: "224/269",
+      suggested_barcode: "MTG-DOM-224-MOX",
+      market_price_minor_units: 3200,
+      currency: "USD",
+      image_url: "",
+    },
+  ]
 }
 
 function minorUnits(value) {

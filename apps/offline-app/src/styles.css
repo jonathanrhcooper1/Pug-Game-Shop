@@ -1868,8 +1868,8 @@ h2 {
   margin-bottom: 10px;
 }
 
-.inventory-intake-control label,
-.inventory-intake-control div {
+.inventory-intake-control > label,
+.inventory-intake-control > div {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -1879,16 +1879,30 @@ h2 {
   border-radius: 8px;
 }
 
-.inventory-intake-control label:nth-child(1),
-.inventory-intake-control label:nth-child(2) {
+.inventory-intake-control > label:nth-of-type(1),
+.inventory-intake-control > label:nth-of-type(2) {
   grid-column: span 2;
 }
 
-.inventory-intake-control div {
+.inventory-intake-control > div {
   grid-column: span 2;
 }
 
-.inventory-intake-control input {
+.inventory-intake-control > .scrydex-lookup-control {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.35fr) minmax(150px, 0.45fr);
+  align-items: start;
+}
+
+.scrydex-lookup-control label,
+.scrydex-lookup-control > div:not(.scrydex-result-list) {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inventory-intake-control input,
+.inventory-intake-control select {
   width: 100%;
   min-width: 0;
   padding: 10px 11px;
@@ -1898,6 +1912,35 @@ h2 {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(35, 100, 70, 0.22);
   border-radius: 8px;
+}
+
+.scrydex-result-list {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+}
+
+.scrydex-result-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: rgba(20, 23, 19, 0.04);
+  border: 1px solid rgba(20, 23, 19, 0.08);
+  border-radius: 8px;
+}
+
+.scrydex-result-list article > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.scrydex-result-list span {
+  color: #249344;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .inventory-intake-control button {
@@ -3405,6 +3448,8 @@ dd {
   .manager-session-panel,
   .detail-actions,
   .inventory-intake-control,
+  .scrydex-lookup-control,
+  .scrydex-result-list article,
   .inventory-adjustment-controls,
   .event-row,
   .event-detail-card,

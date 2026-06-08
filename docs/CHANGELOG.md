@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app Inventory intake now includes a ScryDex card lookup panel backed
+  by the LAN sync server, allowing staff to fill intake fields from secret-free
+  reference-card results while ScryDex credentials remain in WordPress/server
+  settings and no live provider request is made by the local client.
 - Local sync server inventory intake now supports LAN-side card creation with
   duplicate-barcode protection, `pending_intake` status, durable SQLite
   persistence, queued WordPress acceptance operations, and an offline app

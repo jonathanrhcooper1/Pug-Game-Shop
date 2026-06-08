@@ -101,6 +101,31 @@ export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
   label_print_deferred: true
 }>
 
+export type LocalSyncScryDexCard = {
+  provider_card_id: string
+  game: "pokemon" | "magic" | "lorcana" | "one-piece"
+  card_name: string
+  set_name: string
+  set_code: string
+  card_number: string
+  printed_number: string
+  suggested_barcode: string
+  market_price_minor_units: number
+  currency: "USD"
+  image_url: string
+}
+
+export type LocalSyncScryDexSearchResult = LocalSyncResult<{
+  cards: LocalSyncScryDexCard[]
+  query: string
+  game: LocalSyncScryDexCard["game"]
+  source: "local_reference_cache" | "wordpress_proxy"
+  wordpress_proxy_required: true
+  credential_storage: "wordpress_server_settings"
+  credentials_synced_to_client: false
+  live_provider_request_performed: boolean
+}>
+
 export type LocalSyncKioskOrderResult = LocalSyncResult<{
   order: {
     order_id: string
@@ -243,6 +268,11 @@ export type LocalSyncServerClient = {
       location: string
     },
   ) => Promise<LocalSyncInventoryIntakeResult>
+  searchScryDexCards: (
+    sessionToken: string,
+    query: string,
+    game?: LocalSyncScryDexCard["game"],
+  ) => Promise<LocalSyncScryDexSearchResult>
   createKioskOrder: (
     input: { firstName: string; lastName: string; inventoryPublicIds: string[] },
   ) => Promise<LocalSyncKioskOrderResult>
@@ -330,6 +360,13 @@ export function createLocalSyncServerClient(
           location: input.location,
         },
       }) as Promise<LocalSyncInventoryIntakeResult>,
+    searchScryDexCards: (sessionToken, query, game = "pokemon") =>
+      requestLocalSync(
+        fetcher,
+        baseUrl,
+        `/scrydex/cards/search?q=${encodeURIComponent(query)}&game=${encodeURIComponent(game)}`,
+        { sessionToken },
+      ) as Promise<LocalSyncScryDexSearchResult>,
     createKioskOrder: (input) =>
       requestLocalSync(fetcher, baseUrl, "/kiosk/orders", {
         method: "POST",

@@ -7,6 +7,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/users", purpose: "Manager-created local staff PIN user queue" },
   { method: "PATCH", path: "/users/:user_id/access", purpose: "Manager role/access policy update queue" },
   { method: "GET", path: "/inventory/search", purpose: "Shared local inventory cache search" },
+  { method: "GET", path: "/scrydex/cards/search", purpose: "Server-side ScryDex reference lookup for inventory intake" },
   { method: "POST", path: "/inventory/intake", purpose: "Employee inventory intake queue" },
   { method: "POST", path: "/inventory/reservations", purpose: "Local reservation lock request" },
   { method: "POST", path: "/kiosk/orders", purpose: "Customer pickup order from kiosk clients" },
@@ -47,6 +48,7 @@ export function buildLocalSyncServerContract(options = {}) {
     clients: LOCAL_CLIENT_MODES.map((mode) => planLocalClientConnection({ mode, serverUrl, websiteUrl })),
     responsibilities: [
       "serve_shared_inventory_customer_credit_event_and_conflict_cache",
+      "serve_scrydex_reference_lookup_without_client_credentials",
       "serve_cached_staff_pin_and_access_policy",
       "store_pin_credentials_as_hashes_not_cleartext",
       "coordinate_local_reservation_locks_before_website_sync",
@@ -69,6 +71,7 @@ export function buildLocalSyncServerContract(options = {}) {
       square_payment_handoff_only: true,
       production_api_keys_allowed_in_local_server: false,
       scrydex_credentials_synced_to_clients: false,
+      scrydex_lookup_uses_server_side_credentials_only: true,
     },
   }
 }

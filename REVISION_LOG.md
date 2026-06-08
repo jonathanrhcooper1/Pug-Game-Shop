@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex-Assisted Local Intake Lookup
+
+### What Changed
+
+- Added a LAN sync server `GET /scrydex/cards/search` route for inventory
+  reference lookup from employee app clients.
+- Added a secret-free local ScryDex reference cache for development/offline
+  lookup results.
+- Enforced Inventory workspace access on ScryDex lookup requests.
+- Returned explicit safety metadata showing credentials stay in
+  WordPress/server settings, credentials are not synced to clients, and the
+  local scaffold did not perform a live provider request.
+- Added a typed offline app local sync client method for ScryDex card search.
+- Added an Inventory-page ScryDex lookup panel with game selection, result
+  rows, and a Use Card action that fills local intake fields.
+- Kept final inventory creation as a separate Add Inventory action so staff
+  review the ScryDex-assisted values before queueing a local intake operation.
+
+### Why
+
+Staff need ScryDex-assisted card metadata while adding inventory in the local
+employee app, but ScryDex credentials must never be stored in the app or
+browser preview. This revision gives the app a server-mediated lookup surface
+that can later be backed by the WordPress ScryDex proxy while preserving the
+current credential boundary.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No new SQLite migration was added; the lookup uses static local reference
+  fixtures in the LAN sync server scaffold.
+
+### Tests Added
+
+- Local sync server contract coverage for the ScryDex lookup route and
+  server-side credential boundary.
+- Local sync server runtime coverage for successful lookup, Inventory session
+  enforcement, no live provider request, and no API-key-shaped fields in the
+  response.
+- Offline app client contract coverage for the ScryDex search route, response
+  type, and credential-boundary markers.
+- Offline app UI shell coverage for ScryDex lookup controls and Use Card
+  intake handoff.
+
+### Verification
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- Browser smoke: PIN `1420` login, Inventory page, ScryDex lookup for Iono,
+  Use Card populating intake fields, Add Inventory queueing a pending-intake
+  card through the LAN server, queue-depth increase, and zero new browser
+  console errors after reload.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex-assisted lookup from the local app
+  while keeping manual local inventory intake intact.
+- No local queued inventory rows need rollback unless staff used the Add
+  Inventory action after selecting a lookup result.
+- No WordPress database, Square, payment, POS, customer, event, production, or
+  ScryDex credential rollback is required because this revision does not store
+  provider credentials in the app and does not perform live ScryDex requests.
+
 ## 2026-06-08 - LAN Inventory Intake Runtime
 
 ### What Changed

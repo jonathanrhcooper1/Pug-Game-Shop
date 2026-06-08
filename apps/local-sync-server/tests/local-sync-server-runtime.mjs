@@ -66,6 +66,25 @@ try {
   assert.equal(cashierAuth.user.name, "Test Cashier")
   assert.deepEqual(cashierAuth.user.access, ["Inventory", "Kiosk", "Queue"])
 
+  const scrydexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=charizard`, {
+    token: cashierAuth.session.token,
+  })
+
+  assert.equal(scrydexSearch.status, "ok")
+  assert.equal(scrydexSearch.cards.length, 1)
+  assert.equal(scrydexSearch.cards[0].card_name, "Charizard")
+  assert.equal(scrydexSearch.cards[0].suggested_barcode, "PKM-BASE-004-HOLO")
+  assert.equal(scrydexSearch.credential_storage, "wordpress_server_settings")
+  assert.equal(scrydexSearch.credentials_synced_to_client, false)
+  assert.equal(scrydexSearch.live_provider_request_performed, false)
+  assertNoSecrets(scrydexSearch)
+
+  const missingScryDexSession = await fetchJson(`${baseUrl}/scrydex/cards/search?q=charizard`, {
+    expectedStatus: 409,
+  })
+  assert.equal(missingScryDexSession.status, "blocked")
+  assert.equal(missingScryDexSession.code, "session_required")
+
   const intake = await fetchJson(`${baseUrl}/inventory/intake`, {
     method: "POST",
     token: cashierAuth.session.token,
@@ -268,4 +287,7 @@ function assertNoSecrets(value) {
   assert.equal(serialized.includes("1234"), false)
   assert.equal(serialized.includes("9999"), false)
   assert.equal(serialized.includes("2468"), false)
+  assert.equal(serialized.includes("api_key"), false)
+  assert.equal(serialized.includes("X-Api-Key"), false)
+  assert.equal(serialized.includes("private_key"), false)
 }

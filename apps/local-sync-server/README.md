@@ -31,9 +31,10 @@ Current runtime:
 - `POST /auth/pin` verifies cached 4-digit PIN users.
 - `GET /users/access-policy`, `POST /users`, and
   `PATCH /users/{id}/access` are manager-session protected.
-- `GET /inventory/search`, `POST /inventory/intake`,
-  `POST /inventory/reservations`, and `POST /kiosk/orders` provide the first
-  shared LAN inventory/order surface, including locally queued card intake
+- `GET /inventory/search`, `GET /scrydex/cards/search`,
+  `POST /inventory/intake`, `POST /inventory/reservations`, and
+  `POST /kiosk/orders` provide the first shared LAN inventory/order surface,
+  including secret-free ScryDex reference lookup and locally queued card intake
   rows that remain pending until WordPress accepts them.
 - `GET /customers/search`, `POST /customers`, `POST /credit/adjustments`,
   and `POST /credit/redemptions` provide the first shared LAN customer-credit
@@ -45,5 +46,6 @@ Current runtime:
   restarts.
 
 The current SQLite schema is a development runtime for the LAN middleman. Live
-WordPress pull/push workers, richer event cache tables, conflict tables, and
-full installer packaging are still upcoming layers.
+WordPress pull/push workers, WordPress-backed ScryDex proxy calls, richer event
+cache tables, conflict tables, and full installer packaging are still upcoming
+layers.

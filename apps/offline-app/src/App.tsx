@@ -110,6 +110,7 @@ import {
   type LocalSyncCreditLedgerEntry,
   type LocalSyncCustomer,
   type LocalSyncInventoryItem,
+  type LocalSyncScryDexCard,
   type LocalSyncStatusResult,
 } from "./data/localSyncServerClient"
 import {
@@ -590,6 +591,13 @@ export function App() {
   const [intakeBarcode, setIntakeBarcode] = useState("")
   const [intakePriceInput, setIntakePriceInput] = useState("0.00")
   const [intakeLocation, setIntakeLocation] = useState("Intake Queue")
+  const [scryDexQuery, setScryDexQuery] = useState("")
+  const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
+  const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
+  const [scryDexLookupStatus, setScryDexLookupStatus] = useState<
+    "idle" | "searching" | "ready" | "blocked"
+  >("idle")
+  const [scryDexLookupDetail, setScryDexLookupDetail] = useState("Ready")
   const [selectedId, setSelectedId] = useState(42)
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
   const [eventAttendeeLabel, setEventAttendeeLabel] = useState("Offline walk-in")
@@ -1977,6 +1985,57 @@ export function App() {
       detail:
         `${nextItem.cardName} (${nextItem.barcode}) was added to ${localSyncClient.serverUrl}; ` +
         "WordPress acceptance and label printing remain pending sync.",
+    })
+  }
+
+  async function handleScryDexLookup() {
+    const normalizedQuery = scryDexQuery.trim()
+
+    if (!normalizedQuery) {
+      setScryDexLookupStatus("blocked")
+      setScryDexLookupDetail("Enter a card, set, or number.")
+      setScryDexCards([])
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setScryDexLookupStatus("blocked")
+      setScryDexLookupDetail("Staff PIN session required.")
+      setScryDexCards([])
+      return
+    }
+
+    setScryDexLookupStatus("searching")
+    setScryDexLookupDetail("Searching")
+
+    const result = await localSyncClient.searchScryDexCards(
+      localSyncSessionToken,
+      normalizedQuery,
+      scryDexGame,
+    )
+
+    if (result.status !== "ok") {
+      setScryDexLookupStatus("blocked")
+      setScryDexLookupDetail(result.message)
+      setScryDexCards([])
+      return
+    }
+
+    setScryDexCards(result.cards)
+    setScryDexLookupStatus("ready")
+    setScryDexLookupDetail(
+      `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} from ${result.source}.`,
+    )
+  }
+
+  function handleUseScryDexCard(card: LocalSyncScryDexCard) {
+    setIntakeCardName(card.card_name)
+    setIntakeSetName(card.set_name)
+    setIntakeBarcode(card.suggested_barcode)
+    setIntakePriceInput(creditRedemptionInputFromMinorUnits(card.market_price_minor_units))
+    setActivityMessage({
+      title: "ScryDex reference selected",
+      detail: `${card.card_name} ${card.printed_number} is ready for local intake review.`,
     })
   }
 
@@ -3951,6 +4010,72 @@ export function App() {
               ) : null}
 
               <div className="inventory-intake-control" aria-label="Local inventory intake">
+                <div className="scrydex-lookup-control" aria-label="ScryDex card lookup">
+                  <label htmlFor="scrydex-card-query">
+                    <span className="micro-label">ScryDex lookup</span>
+                    <input
+                      id="scrydex-card-query"
+                      value={scryDexQuery}
+                      onChange={(event) => setScryDexQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault()
+                          void handleScryDexLookup()
+                        }
+                      }}
+                      placeholder="Charizard"
+                    />
+                  </label>
+                  <label htmlFor="scrydex-game">
+                    <span className="micro-label">Game</span>
+                    <select
+                      id="scrydex-game"
+                      value={scryDexGame}
+                      onChange={(event) => setScryDexGame(event.target.value as LocalSyncScryDexCard["game"])}
+                    >
+                      <option value="pokemon">Pokemon</option>
+                      <option value="magic">Magic</option>
+                      <option value="lorcana">Lorcana</option>
+                      <option value="one-piece">One Piece</option>
+                    </select>
+                  </label>
+                  <div>
+                    <span className="micro-label">Reference</span>
+                    <strong>
+                      {scryDexLookupStatus === "searching"
+                        ? "Searching"
+                        : scryDexLookupStatus === "ready"
+                          ? "Ready"
+                          : scryDexLookupStatus === "blocked"
+                            ? "Blocked"
+                            : "Idle"}
+                    </strong>
+                    <small>{scryDexLookupDetail}</small>
+                    <button type="button" onClick={() => void handleScryDexLookup()}>
+                      <Icon name="search" />
+                      <span>Search ScryDex</span>
+                    </button>
+                  </div>
+                  {scryDexCards.length > 0 ? (
+                    <div className="scrydex-result-list" aria-label="ScryDex card results">
+                      {scryDexCards.map((card) => (
+                        <article key={card.provider_card_id}>
+                          <div>
+                            <strong>{card.card_name}</strong>
+                            <small>
+                              {card.set_name} - {card.printed_number}
+                            </small>
+                            <span>{formatMoney(card.market_price_minor_units, card.currency)}</span>
+                          </div>
+                          <button type="button" onClick={() => handleUseScryDexCard(card)}>
+                            <Icon name="check" />
+                            <span>Use Card</span>
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <label htmlFor="intake-card-name">
                   <span className="micro-label">Card name</span>
                   <input
