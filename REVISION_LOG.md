@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Square Inventory Batch Sync Readiness Diagnostics
+
+### What Changed
+
+- Added `SquareInventoryBatchSyncReadinessPlanner` to run a sandbox-only
+  multi-row inventory sync probe through the existing Square batch planner.
+- Exposed `square_inventory_batch_sync` in authenticated health output with
+  row counts, Square request/operation counts, idempotency key counts,
+  aggregate SKUs, configuration issues, row results, and explicit provider
+  write/payment deferrals.
+- Added an admin System Status row for Square inventory batch sync readiness.
+- Extended WordPress integration smoke coverage to assert the health diagnostic
+  reports staged sandbox planning while keeping Square network writes and
+  payment capture deferred.
+
+### Why
+
+Square POS inventory pull/sync needs a batch-level readiness signal before any
+live provider transport is enabled. This checkpoint makes the staging/admin
+diagnostic visible so staff and release checks can confirm the plugin can
+prepare multiple serialized cards for Square Catalog/Inventory updates without
+calling Square, mutating provider inventory, or touching payment capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryBatchSyncReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryBatchSyncReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory batch sync readiness unit tests for default sandbox probe
+  rows, production-context blocking, supplied inventory rows, admin summaries,
+  aggregate operation counts, retained provider-write deferrals, and payment
+  delegation to the official WooCommerce Square extension.
+- WordPress integration smoke assertions for authenticated health batch sync
+  readiness output.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 858 tests and 0
+  failures.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventoryBatchSyncReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\HealthController.php apps\wordpress-plugin\src\Admin\AdminMenu.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 563 PHP files checked
+  and 0 failures.
+- `npm.cmd run test`: passed, including local PHP tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the batch readiness health/admin diagnostic
+  while leaving the underlying Square batch planner available.
+- No migrations, Square API calls, provider inventory writes, production
+  requests, payment capture, custom gateway behavior, or WordPress inventory
+  mutations are introduced.
+- Existing single-row Square inventory sync readiness diagnostics remain
+  available if only the batch readiness surface is rolled back.
+
 ## 2026-06-07 - Offline App Visual Command Center Refresh
 
 ### What Changed

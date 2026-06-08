@@ -35,6 +35,7 @@ use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\ScryDexUsageBudgetSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
+use TCGStorePlatform\Square\SquareInventoryBatchSyncReadinessPlanner;
 use TCGStorePlatform\Square\SquareInventorySyncReadinessPlanner;
 use TCGStorePlatform\Square\WooCommerceSquareExtensionStatus;
 use TCGStorePlatform\Version;
@@ -227,6 +228,7 @@ final class AdminMenu {
 		) )->admin_summary();
 		$woocommerce_square         = ( new WooCommerceSquareExtensionStatus() )->admin_summary();
 		$square_inventory_sync      = ( new SquareInventorySyncReadinessPlanner() )->admin_summary();
+		$square_inventory_batch     = ( new SquareInventoryBatchSyncReadinessPlanner() )->admin_summary();
 		$inventory_factory          = InventoryRouteDependencyFactory::from_settings( Settings::all() );
 		$inventory_bootstrap        = $inventory_factory->bootstrap_status_presenter()->admin_summary(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
@@ -275,6 +277,11 @@ final class AdminMenu {
 			__( 'Square inventory sync', 'tcg-store-platform' ),
 			$square_inventory_sync['value'],
 			$square_inventory_sync['status']
+		);
+		$this->render_status_row(
+			__( 'Square inventory batch sync', 'tcg-store-platform' ),
+			$square_inventory_batch['value'],
+			$square_inventory_batch['status']
 		);
 		$this->render_status_row(
 			__( 'Branding profile', 'tcg-store-platform' ),

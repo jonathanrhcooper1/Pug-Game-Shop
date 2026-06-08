@@ -160,6 +160,13 @@ contexts block the batch before any provider request is exposed. The batch
 planner does not call Square, does not mutate WordPress inventory, and keeps
 payment capture delegated to the official WooCommerce Square extension.
 
+Authenticated health output and admin System Status expose a batch sync
+readiness probe through `square_inventory_batch_sync`. The diagnostic runs a
+sandbox-only multi-row planning rehearsal, reports row/request/operation
+counts, aggregate SKUs, configuration issues, and deferral flags, and keeps
+Square network calls, provider inventory writes, production requests, custom
+gateway behavior, and payment capture disabled.
+
 ## Transaction Ingestion Contract
 
 The shared validation package now includes a sandbox-safe POS transaction

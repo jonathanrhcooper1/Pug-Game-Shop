@@ -11,6 +11,11 @@ All notable changes follow Semantic Versioning.
   default cached inventory state, tighter selected-card inspection actions,
   and desktop/mobile screenshot QA proving no horizontal overflow while local
   queue staging remains deferred.
+- Square inventory batch sync readiness diagnostics exposed through
+  authenticated health output and admin System Status, reporting sandbox probe
+  row counts, Square operation-plan counts, aggregate SKUs/idempotency keys,
+  configuration issues, and explicit Square/payment deferrals without running
+  provider writes.
 - Square inventory batch sync planning that accepts multiple staged inventory
   rows, aggregates sandbox Catalog/Inventory request plans, idempotency keys,
   Square object IDs, SKUs, ready/skipped/blocked counts, and deferral metadata

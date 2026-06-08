@@ -330,6 +330,12 @@ $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_wri
 $assert( 'blocked' === ( $data['woocommerce_square_extension']['status'] ?? null ), 'WooCommerce Square extension should report blocked when the official extension is not active.' );
 $assert( false === ( $data['woocommerce_square_extension']['extension_active'] ?? null ), 'WooCommerce Square extension should report inactive by default.' );
 $assert( true === ( $data['woocommerce_square_extension']['square_network_writes_deferred'] ?? null ), 'WooCommerce Square extension status should not enable Square network writes.' );
+$assert( 'ready' === ( $data['square_inventory_batch_sync']['status'] ?? null ), 'Square inventory batch sync should report ready sandbox planning.' );
+$assert( true === ( $data['square_inventory_batch_sync']['batch_sync_planning_ready'] ?? null ), 'Square inventory batch sync readiness should report staged planning ready.' );
+$assert( 2 === (int) ( $data['square_inventory_batch_sync']['ready_count'] ?? 0 ), 'Square inventory batch sync should report two ready probe rows.' );
+$assert( 4 === (int) ( $data['square_inventory_batch_sync']['operation_count'] ?? 0 ), 'Square inventory batch sync should report catalog and inventory operation plans.' );
+$assert( true === ( $data['square_inventory_batch_sync']['network_request_deferred'] ?? null ), 'Square inventory batch sync should defer Square network writes.' );
+$assert( true === ( $data['square_inventory_batch_sync']['payment_capture_deferred'] ?? null ), 'Square inventory batch sync should defer payment capture.' );
 $assert( 'blocked' === ( $data['inventory_route_bootstrap']['status'] ?? null ), 'Inventory route bootstrap should remain blocked.' );
 $assert( false === ( $data['inventory_route_bootstrap']['feature_enabled'] ?? null ), 'Inventory route bootstrap feature should remain disabled.' );
 $assert( 16 === (int) ( $data['inventory_route_bootstrap']['planned_route_count'] ?? 0 ), 'Inventory route bootstrap should report planned routes.' );

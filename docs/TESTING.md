@@ -63,6 +63,10 @@
   multiple staged inventory rows, hidden/unmapped skip handling, invalid row
   rejection, production-context blocking, aggregate idempotency keys/SKUs, and
   retained Square network/write/payment deferrals.
+- Local unit and WordPress smoke coverage now include Square inventory batch
+  sync readiness diagnostics for default sandbox probe rows, supplied row
+  probes, production-context blocking, admin summaries, health output, Square
+  operation counts, and retained provider-write/payment deferrals.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment

@@ -21,6 +21,7 @@ use TCGStorePlatform\ScryDex\ScryDexSyncCheckpointRepositoryPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncDryRunPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncExecutionGate;
 use TCGStorePlatform\ScryDex\ScryDexUsageBudgetPlanner;
+use TCGStorePlatform\Square\SquareInventoryBatchSyncReadinessPlanner;
 use TCGStorePlatform\Square\SquareInventorySyncReadinessPlanner;
 use TCGStorePlatform\Square\WooCommerceSquareExtensionStatus;
 use TCGStorePlatform\Version;
@@ -125,6 +126,7 @@ final class HealthController {
 		) )->health_payload();
 		$woocommerce_square             = ( new WooCommerceSquareExtensionStatus() )->readiness_summary();
 		$square_inventory_sync          = ( new SquareInventorySyncReadinessPlanner() )->plan();
+		$square_inventory_batch_sync    = ( new SquareInventoryBatchSyncReadinessPlanner() )->plan();
 		$inventory_factory              = InventoryRouteDependencyFactory::from_settings( Settings::all() );
 		$inventory_bootstrap            = $inventory_factory->bootstrap_status_presenter()->health_payload(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
@@ -202,6 +204,7 @@ final class HealthController {
 				'pos_payment_route_dependencies'          => $pos_payment_dependencies,
 				'woocommerce_square_extension'            => $woocommerce_square,
 				'square_inventory_sync'                   => $square_inventory_sync,
+				'square_inventory_batch_sync'             => $square_inventory_batch_sync,
 				'inventory_route_bootstrap'               => $inventory_bootstrap,
 				'inventory_route_dependencies'            => $inventory_dependencies,
 				'scrydex_provider'                        => $scrydex,

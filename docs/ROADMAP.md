@@ -179,6 +179,7 @@ extension
 plus official WooCommerce Square extension status diagnostics
 plus Square inventory sync readiness diagnostics
 plus Square inventory batch sync planning
+plus Square inventory batch sync readiness health/admin diagnostics
 implemented
 
 Deliver WooCommerce/Square payment observation, transaction ingestion, barcode
