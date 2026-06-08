@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract and browser coverage now verifies scanner/search
+  targeting for exact barcodes and public inventory IDs: pressing Enter stages
+  the matched cached card, and unmatched scans display the "Scan needs one
+  match" guard without staging the previous selection.
 - Local verification now includes `cargo test` for the Tauri Rust command
   SQLite queue persistence path on Windows when Rust/Cargo and the MSVC linker
   are installed.

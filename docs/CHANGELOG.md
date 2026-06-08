@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app scanner/search staging now resolves exact barcodes and public
+  inventory IDs before queuing `Add Scan`, supports Enter-to-stage from the
+  scanner field, and blocks unmatched scans with staff-facing guidance instead
+  of staging the previously selected card.
 - Staging SSH/SFTP scripts now share a GoDaddy-compatible SSH algorithm
   configuration for upload-only package transfer, inventory smoke,
   migration rehearsal, and search benchmark runners.

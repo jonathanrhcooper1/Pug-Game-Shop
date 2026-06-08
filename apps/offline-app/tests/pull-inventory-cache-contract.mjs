@@ -33,6 +33,7 @@ try {
     buildEventRegistrationOperation,
     buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
+    findInventoryItemByScan,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
@@ -346,6 +347,10 @@ try {
   assert.equal(insertedConflict.operationType, "event_reservation")
   assert.equal(insertedConflict.managerOverride, true)
   assert.equal(insertedConflict.resolutionAction, "accept_device")
+
+  assert.equal(findInventoryItemByScan(result.items, "PKM-JGL-060-YLW").publicId, "inv-2002")
+  assert.equal(findInventoryItemByScan(result.items, " inv-1001 ").barcode, "PKM-BASE-004-HOLO")
+  assert.equal(findInventoryItemByScan(result.items, "charizard"), null)
 
   const conflictResolutionBody = buildOfflineConflictResolutionRequestBody(
     updatedConflict,

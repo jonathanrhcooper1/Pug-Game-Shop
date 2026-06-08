@@ -104,6 +104,7 @@ for (const requiredExport of [
   "connectorHealthSummary",
   "upsertConnectorProfile",
   "filterInventoryItems",
+  "findInventoryItemByScan",
   "findInventoryItem",
   "eventRegistrationStatusLabel",
 ]) {
@@ -275,7 +276,7 @@ for (const marker of [
 
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
-assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
+assert.ok(appSource.includes("buildInventoryUpdateOperation(targetItem, operationOptions)"))
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
 assert.ok(appSource.includes("buildEventCheckinOperation(event"))
 assert.ok(appSource.includes("buildEventRegistrationOperation(event"))

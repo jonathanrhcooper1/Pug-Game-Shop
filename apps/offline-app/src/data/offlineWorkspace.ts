@@ -1860,8 +1860,28 @@ export function filterInventoryItems(
     })
 }
 
+export function findInventoryItemByScan(items: InventoryItem[], scanValue: string) {
+  const normalized = normalizeScanValue(scanValue)
+
+  if (!normalized) {
+    return null
+  }
+
+  return (
+    items.find(
+      (item) =>
+        normalizeScanValue(item.barcode) === normalized ||
+        normalizeScanValue(item.publicId) === normalized,
+    ) ?? null
+  )
+}
+
 export function findInventoryItem(items: InventoryItem[], selectedId: number) {
   return items.find((item) => item.id === selectedId) ?? items[0]
+}
+
+function normalizeScanValue(value: string) {
+  return value.trim().toLowerCase()
 }
 
 function connectorProfileFromManifest(

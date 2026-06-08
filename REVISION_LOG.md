@@ -3,6 +3,61 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Scan Target Workflow
+
+### What Changed
+
+- Added an exact scanner lookup helper for cached inventory barcodes and public
+  inventory IDs.
+- Updated `Add Scan` and Enter key handling so the scanner/search value
+  determines the staged card when it exactly matches a cached barcode/public ID
+  or narrows search to one cached item.
+- Added a no-match guard that tells staff to enter an exact barcode/public ID or
+  narrow the search instead of staging the previously selected card.
+
+### Why
+
+The offline app search box filtered visible cards, but scan staging still used
+the previously selected card. Staff scanning a different card could therefore
+queue the wrong inventory item. The workflow now makes scan input the source of
+truth for `Add Scan`.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for exact barcode/public-ID scan lookup.
+- UI shell contract markers for scan-target resolution, Enter-to-stage, and the
+  unmatched-scan guard.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for exact barcode
+  Enter-to-stage, queue badge increment, matched-card detail selection, no-match
+  guard display, and no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to restore the prior selected-card-based `Add Scan`
+  behavior.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Staging SSH Compatibility Helper
 
 ### What Changed

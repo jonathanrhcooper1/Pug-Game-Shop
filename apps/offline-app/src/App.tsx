@@ -38,6 +38,7 @@ import {
   buildOfflineConnectorSyncSessionPlan,
   connectorOfflineConflictResolutionUrl,
   filterInventoryItems,
+  findInventoryItemByScan,
   findConnectorProfile,
   findInventoryItem,
   findPairedDeviceRecord,
@@ -418,6 +419,14 @@ export function App() {
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
   }, [query, statusFilter, inventoryItems])
+  const scannedInventoryItem = useMemo(
+    () => findInventoryItemByScan(inventoryItems, query),
+    [inventoryItems, query],
+  )
+  const addScanTarget =
+    query.trim() === ""
+      ? selectedItem
+      : scannedInventoryItem ?? (filteredItems.length === 1 ? filteredItems[0] : null)
   const queueBadgeCount =
     workspace.queueItems.reduce((total, item) => total + item.count, 0) + queuedOperations.length
   const conflictBadgeCount = openConflicts.length
@@ -435,13 +444,18 @@ export function App() {
   )
 
   useEffect(() => {
+    if (scannedInventoryItem && scannedInventoryItem.id !== selectedId) {
+      setSelectedId(scannedInventoryItem.id)
+      return
+    }
+
     if (
       filteredItems.length > 0 &&
       filteredItems.every((item) => item.id !== selectedId)
     ) {
       setSelectedId(filteredItems[0].id)
     }
-  }, [filteredItems, selectedId])
+  }, [filteredItems, scannedInventoryItem, selectedId])
 
   useEffect(() => {
     setConnectorValidation((currentValidation) =>
@@ -809,16 +823,17 @@ export function App() {
     actionTitle = "Inventory update staged",
     operationOptions: InventoryUpdateOptions = {},
     detailOverride?: string,
+    targetItem = selectedItem,
   ) {
     await stageOfflineOperation(
-      buildInventoryUpdateOperation(selectedItem, operationOptions),
+      buildInventoryUpdateOperation(targetItem, operationOptions),
       actionTitle,
       detailOverride ??
-        `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+        `${targetItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
     )
     setInventoryItems((items) =>
       items.map((item) =>
-        item.id === selectedItem.id
+        item.id === targetItem.id
           ? {
               ...item,
               source: "queued",
@@ -1872,7 +1887,17 @@ export function App() {
   }
 
   function handleAddScan() {
-    setQuery(selectedItem.barcode)
+    if (!addScanTarget) {
+      setActivityMessage({
+        title: "Scan needs one match",
+        detail:
+          "Enter an exact barcode or public inventory ID, or narrow search to one cached card before adding a scan.",
+      })
+      return
+    }
+
+    setSelectedId(addScanTarget.id)
+    setQuery(addScanTarget.barcode)
     void handleStageInventoryUpdate(
       "Scan staged",
       {
@@ -1880,7 +1905,8 @@ export function App() {
         syncIntent: "staff_barcode_scan",
         adjustmentReason: "scan-to-queue shortcut",
       },
-      `${selectedItem.barcode} scanned into the local queue for ${activeProfile.companyName}; website push remains deferred until device pairing approval.`,
+      `${addScanTarget.barcode} scanned into the local queue for ${activeProfile.companyName}; website push remains deferred until device pairing approval.`,
+      addScanTarget,
     )
   }
 
@@ -2298,6 +2324,12 @@ export function App() {
                     id="offline-search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        handleAddScan()
+                      }
+                    }}
                     placeholder="Barcode, card, set, or location"
                   />
                   <span className="scan-beam" aria-hidden="true" />
