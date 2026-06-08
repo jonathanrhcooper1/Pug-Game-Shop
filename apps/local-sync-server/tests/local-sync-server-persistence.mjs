@@ -75,6 +75,7 @@ try {
   const firstStatus = firstStore.syncStatus()
   assert.equal(firstStatus.persistence_mode, "sqlite")
   assert.equal(firstStatus.queue_depth, 7)
+  assert.ok(firstStatus.reference_card_count >= 5)
   firstStore.close()
 
   const restartedStore = createLocalSyncStore({ databasePath })
@@ -109,6 +110,7 @@ try {
 
   const restartedStatus = restartedStore.syncStatus()
   assert.equal(restartedStatus.queue_depth, 7)
+  assert.ok(restartedStatus.reference_card_count >= 5)
   assert.ok(restartedStatus.customer_count >= 4)
   assert.ok(restartedStatus.credit_ledger_entry_count >= 5)
   assert.ok(restartedStatus.event_count >= 2)

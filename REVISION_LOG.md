@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Local-First ScryDex Lookup Cache
+
+### What Changed
+
+- Updated the LAN sync server ScryDex lookup route to search persisted local
+  reference cards before using a website catalog/ScryDex proxy fallback.
+- Added a local `reference_cards` SQLite cache with normalized card identity,
+  set, price, image, barcode, and catalog timestamp fields.
+- Persisted fallback proxy results into the local cache so repeated employee
+  app lookups are served locally.
+- Added lookup-order, cache-hit, proxy-performed, proxy-required, and reference
+  card count status metadata.
+- Seeded preview PIN `1420` as a manager user in the local sync server and
+  offline app fallback profile.
+
+### Why
+
+The employee app and kiosk must mirror the website catalog instead of calling
+ScryDex directly from every client. This revision makes lookup behavior match
+the requested rule: local/web catalog first, ScryDex fallback only through the
+server path when the card is missing, then cache the result.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added local SQLite `reference_cards` table for the LAN sync server.
+- No WordPress/MySQL production migration was added in this revision.
+
+### Tests Added
+
+- Runtime coverage for cache-hit ScryDex lookup, cache-miss website proxy
+  fallback, fallback card normalization, persistence into local reference
+  cache, and second-search local cache reuse.
+- Contract coverage for local-first ScryDex lookup responsibilities and
+  app-side lookup/status metadata.
+- Persistence coverage for reference-card cache presence after restart.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+
+### Rollback Notes
+
+- Revert this revision to remove the local `reference_cards` cache and
+  website-proxy fallback behavior from the LAN sync server.
+- Local preview databases created during this revision may contain
+  `reference_cards`; deleting the local `store-sync.sqlite` file resets the
+  development cache.
+- No production rollback is required because this revision does not add or
+  execute WordPress production database writes.
+
 ## 2026-06-08 - ScryDex Scheduled Refresh Controls
 
 ### What Changed

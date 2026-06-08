@@ -140,7 +140,10 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   query: string
   game: LocalSyncScryDexCard["game"]
   source: "wordpress_catalog_cache" | "local_reference_cache" | "wordpress_proxy"
-  wordpress_proxy_required: true
+  lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
+  local_reference_cache_hit: boolean
+  wordpress_proxy_performed: boolean
+  wordpress_proxy_required: boolean
   credential_storage: "wordpress_server_settings"
   credentials_synced_to_client: false
   live_provider_request_performed: boolean
@@ -291,11 +294,14 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   queue_depth: number
   kiosk_order_count: number
   inventory_count: number
+  reference_card_count: number
   customer_count: number
   credit_ledger_entry_count: number
   event_count: number
   active_session_count: number
   wordpress_push_connected: boolean
+  scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
+  scrydex_fallback_connected: boolean
   local_operations_preserved: true
 }>
 

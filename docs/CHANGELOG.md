@@ -6,6 +6,14 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server ScryDex lookup now searches the persisted local reference
+  card cache first, falls back to an injected WordPress catalog/ScryDex proxy
+  only when the card is missing, persists proxy results into `reference_cards`,
+  returns secret-free lookup-order/status metadata, and exposes reference-card
+  counts on `/sync/status`.
+- Local preview PIN `1420` is seeded as a manager user in the LAN sync server
+  and offline app fallback profile for easier review during active
+  development.
 - ScryDex daily refresh now has explicit local/development/staging-only
   schedule settings, health/status visibility, and a daily runner that remains
   blocked in production and requires separate network, database-write, and

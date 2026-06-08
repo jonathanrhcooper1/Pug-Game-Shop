@@ -24,6 +24,7 @@ export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
 
 export function createLocalSyncStore(options = {}) {
   const now = options.now ?? (() => new Date())
+  const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
@@ -36,6 +37,7 @@ export function createLocalSyncStore(options = {}) {
   const customers = loadCustomers(database)
   const creditLedgerEntries = loadCreditLedgerEntries(database)
   const eventSnapshots = loadEventSnapshots(database)
+  const referenceCards = loadReferenceCards(database)
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -230,7 +232,7 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
-  function searchScryDexCards(token, { query = "", game = "pokemon" } = {}) {
+  async function searchScryDexCards(token, { query = "", game = "pokemon" } = {}) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
     if (session.status !== "ok") {
@@ -244,31 +246,50 @@ export function createLocalSyncStore(options = {}) {
       return blocked("scrydex_query_required", "Enter a card name, set, or number before searching ScryDex.")
     }
 
-    const cards = seedScryDexReferenceCards()
-      .filter((card) => card.game === normalizedGame)
-      .filter((card) =>
-        [
-          card.provider_card_id,
-          card.card_name,
-          card.set_name,
-          card.set_code,
-          card.card_number,
-          card.printed_number,
-        ].some((value) => String(value).toLowerCase().includes(needle)),
-      )
-      .map((card) => enrichScryDexCard(card, inventoryItems))
-      .slice(0, 8)
+    const cachedCards = searchReferenceCards(referenceCards, needle, normalizedGame)
+
+    if (cachedCards.length > 0) {
+      return {
+        status: "ok",
+        cards: cachedCards.map((card) => enrichScryDexCard(card, inventoryItems)),
+        query: needle,
+        game: normalizedGame,
+        source: "wordpress_catalog_cache",
+        lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+        local_reference_cache_hit: true,
+        wordpress_proxy_performed: false,
+        wordpress_proxy_required: false,
+        credential_storage: "wordpress_server_settings",
+        credentials_synced_to_client: false,
+        live_provider_request_performed: false,
+      }
+    }
+
+    const fallbackResult = websiteCatalogFallback
+      ? await websiteCatalogFallback({ query: needle, game: normalizedGame, limit: 8 })
+      : null
+    const fallbackCards = normalizeReferenceCardsFromFallback(fallbackResult, normalizedGame, now)
+
+    for (const card of fallbackCards) {
+      upsertReferenceCard(referenceCards, card)
+      saveReferenceCard(database, card, now)
+    }
+
+    const cards = fallbackCards.map((card) => enrichScryDexCard(card, inventoryItems))
 
     return {
       status: "ok",
       cards,
       query: needle,
       game: normalizedGame,
-      source: "wordpress_catalog_cache",
-      wordpress_proxy_required: true,
+      source: fallbackCards.length > 0 ? "wordpress_proxy" : "local_reference_cache",
+      lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+      local_reference_cache_hit: false,
+      wordpress_proxy_performed: Boolean(websiteCatalogFallback),
+      wordpress_proxy_required: fallbackCards.length === 0,
       credential_storage: "wordpress_server_settings",
       credentials_synced_to_client: false,
-      live_provider_request_performed: false,
+      live_provider_request_performed: Boolean(fallbackResult?.live_provider_request_performed),
     }
   }
 
@@ -792,11 +813,14 @@ export function createLocalSyncStore(options = {}) {
       queue_depth: queue.length,
       kiosk_order_count: kioskOrders.length,
       inventory_count: inventoryItems.length,
+      reference_card_count: referenceCards.length,
       customer_count: customers.length,
       credit_ledger_entry_count: creditLedgerEntries.length,
       event_count: eventSnapshots.length,
       active_session_count: sessions.size,
       wordpress_push_connected: false,
+      scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+      scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       local_operations_preserved: true,
     }
   }
@@ -935,6 +959,24 @@ function migrateLocalSyncDatabase(database) {
       source TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS reference_cards (
+      provider_card_id TEXT PRIMARY KEY,
+      game TEXT NOT NULL,
+      card_name TEXT NOT NULL,
+      set_name TEXT NOT NULL,
+      set_code TEXT NOT NULL,
+      card_number TEXT NOT NULL,
+      printed_number TEXT NOT NULL,
+      suggested_barcode TEXT NOT NULL,
+      market_price_minor_units INTEGER NOT NULL,
+      currency TEXT NOT NULL,
+      image_url TEXT NOT NULL DEFAULT '',
+      price_observed_at_utc TEXT NULL,
+      catalog_synced_at_utc TEXT NOT NULL,
+      catalog_source TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
+    );
   `)
 
   ensureLocalSyncColumn(database, "inventory_items", "provider_card_id", "TEXT NOT NULL DEFAULT ''")
@@ -943,6 +985,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "card_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "printed_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "image_url", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
 }
 
 function seedLocalSyncDatabase(database, now) {
@@ -950,6 +993,7 @@ function seedLocalSyncDatabase(database, now) {
   const inventoryCount = database.prepare("SELECT COUNT(*) AS count FROM inventory_items").get().count
   const customerCount = database.prepare("SELECT COUNT(*) AS count FROM customers").get().count
   const eventCount = database.prepare("SELECT COUNT(*) AS count FROM event_snapshots").get().count
+  const referenceCardCount = database.prepare("SELECT COUNT(*) AS count FROM reference_cards").get().count
 
   if (Number(userCount) === 0) {
     for (const user of seedUsers()) {
@@ -976,6 +1020,12 @@ function seedLocalSyncDatabase(database, now) {
   if (Number(eventCount) === 0) {
     for (const event of seedEventSnapshots()) {
       saveEventSnapshot(database, event, now)
+    }
+  }
+
+  if (Number(referenceCardCount) === 0) {
+    for (const card of seedScryDexReferenceCards()) {
+      saveReferenceCard(database, normalizeReferenceCard(card, card.game, now), now)
     }
   }
 }
@@ -1032,6 +1082,19 @@ function loadInventoryItems(database) {
       image_url: row.image_url ?? "",
       source: row.source,
     }))
+}
+
+function loadReferenceCards(database) {
+  return database
+    .prepare(`
+      SELECT provider_card_id, game, card_name, set_name, set_code, card_number,
+        printed_number, suggested_barcode, market_price_minor_units, currency,
+        image_url, price_observed_at_utc, catalog_synced_at_utc, catalog_source
+      FROM reference_cards
+      ORDER BY card_name, set_name, provider_card_id
+    `)
+    .all()
+    .map((row) => normalizeReferenceCard(row, row.game))
 }
 
 function loadQueue(database) {
@@ -1220,6 +1283,51 @@ function saveInventoryItem(database, item, now) {
     )
 }
 
+function saveReferenceCard(database, card, now) {
+  database
+    .prepare(`
+      INSERT INTO reference_cards (
+        provider_card_id, game, card_name, set_name, set_code, card_number,
+        printed_number, suggested_barcode, market_price_minor_units, currency,
+        image_url, price_observed_at_utc, catalog_synced_at_utc, catalog_source,
+        updated_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(provider_card_id) DO UPDATE SET
+        game = excluded.game,
+        card_name = excluded.card_name,
+        set_name = excluded.set_name,
+        set_code = excluded.set_code,
+        card_number = excluded.card_number,
+        printed_number = excluded.printed_number,
+        suggested_barcode = excluded.suggested_barcode,
+        market_price_minor_units = excluded.market_price_minor_units,
+        currency = excluded.currency,
+        image_url = excluded.image_url,
+        price_observed_at_utc = excluded.price_observed_at_utc,
+        catalog_synced_at_utc = excluded.catalog_synced_at_utc,
+        catalog_source = excluded.catalog_source,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run(
+      card.provider_card_id,
+      cleanGame(card.game),
+      card.card_name,
+      card.set_name,
+      card.set_code,
+      card.card_number,
+      card.printed_number,
+      card.suggested_barcode,
+      card.market_price_minor_units,
+      card.currency,
+      card.image_url,
+      card.price_observed_at_utc,
+      card.catalog_synced_at_utc,
+      card.catalog_source,
+      now().toISOString(),
+    )
+}
+
 function saveKioskOrder(database, order) {
   database
     .prepare(`
@@ -1376,6 +1484,14 @@ function seedUsers() {
       role: "staff",
       access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
       salt: "seed-staff-front-counter",
+    }),
+    buildSeedUser({
+      id: "preview-manager",
+      name: "Preview Manager",
+      pin: "1420",
+      role: "manager",
+      access: [...ACCESS_SECTIONS],
+      salt: "seed-preview-manager",
     }),
     buildSeedUser({
       id: "manager-default",
@@ -1810,6 +1926,110 @@ function cleanGame(value) {
   return ["pokemon", "magic", "lorcana", "one-piece"].includes(game) ? game : "pokemon"
 }
 
+function searchReferenceCards(referenceCards, needle, game) {
+  return referenceCards
+    .filter((card) => card.game === game)
+    .filter((card) =>
+      [
+        card.provider_card_id,
+        card.card_name,
+        card.set_name,
+        card.set_code,
+        card.card_number,
+        card.printed_number,
+        card.suggested_barcode,
+      ].some((value) => String(value).toLowerCase().includes(needle)),
+    )
+    .slice(0, 8)
+}
+
+function normalizeReferenceCardsFromFallback(result, game, now) {
+  if (!result || typeof result !== "object") {
+    return []
+  }
+
+  const candidateCards = Array.isArray(result.cards)
+    ? result.cards
+    : Array.isArray(result.items)
+      ? result.items
+      : Array.isArray(result.data?.cards)
+        ? result.data.cards
+        : Array.isArray(result.data?.items)
+          ? result.data.items
+          : []
+
+  return candidateCards
+    .map((card) => normalizeReferenceCard(card, game, now, "wordpress_catalog_cache"))
+    .filter((card) => card.provider_card_id && card.card_name)
+    .slice(0, 8)
+}
+
+function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new Date(), catalogSource = "wordpress_catalog_cache") {
+  const currentTimestamp = typeof now === "function" ? now().toISOString() : new Date().toISOString()
+  const providerCardId = cleanPublicId(card.provider_card_id ?? card.id ?? card.public_id)
+  const set = card.set && typeof card.set === "object" ? card.set : {}
+  const marketPrice = card.market_price && typeof card.market_price === "object" ? card.market_price : {}
+  const images = card.images && typeof card.images === "object" ? card.images : {}
+  const priceMinorUnits =
+    card.market_price_minor_units !== undefined
+      ? minorUnits(card.market_price_minor_units)
+      : decimalMoneyToMinorUnits(marketPrice.amount ?? card.market_price ?? card.price)
+
+  return {
+    provider_card_id: providerCardId,
+    game: cleanGame(card.game ?? fallbackGame),
+    card_name: cleanName(card.card_name ?? card.name),
+    set_name: cleanName(card.set_name ?? set.name),
+    set_code: cleanName(card.set_code ?? set.code).toUpperCase(),
+    card_number: cleanName(card.card_number ?? card.number),
+    printed_number: cleanName(card.printed_number ?? card.printedNumber),
+    suggested_barcode: cleanBarcode(card.suggested_barcode ?? card.sku ?? providerCardId),
+    market_price_minor_units: Math.max(0, priceMinorUnits),
+    currency: cleanCurrency(card.currency ?? marketPrice.currency),
+    image_url: cleanHttpUrl(card.image_url ?? card.front_image_url ?? images.front ?? images.small ?? images.large),
+    price_observed_at_utc: cleanIsoTimestamp(card.price_observed_at_utc ?? card.observed_at ?? card.updated_at),
+    catalog_synced_at_utc: cleanIsoTimestamp(card.catalog_synced_at_utc ?? card.synced_at_utc) || currentTimestamp,
+    catalog_source: cleanCatalogSource(card.catalog_source ?? catalogSource),
+  }
+}
+
+function upsertReferenceCard(referenceCards, card) {
+  const existingIndex = referenceCards.findIndex((candidate) => candidate.provider_card_id === card.provider_card_id)
+
+  if (existingIndex >= 0) {
+    referenceCards[existingIndex] = card
+    return
+  }
+
+  referenceCards.push(card)
+}
+
+function decimalMoneyToMinorUnits(value) {
+  const amount = Number(String(value ?? "0").replace(/[^0-9.-]+/g, ""))
+
+  return Number.isFinite(amount) ? Math.trunc(amount * 100) : 0
+}
+
+function cleanCurrency(value) {
+  const currency = String(value ?? "USD").trim().toUpperCase()
+
+  return /^[A-Z]{3}$/.test(currency) ? currency : "USD"
+}
+
+function cleanIsoTimestamp(value) {
+  const text = String(value ?? "").trim()
+
+  if (!text || Number.isNaN(Date.parse(text))) {
+    return ""
+  }
+
+  return new Date(text).toISOString()
+}
+
+function cleanCatalogSource(value) {
+  return value === "local_reference_cache" ? "local_reference_cache" : "wordpress_catalog_cache"
+}
+
 function seedScryDexReferenceCards() {
   return [
     {
@@ -1904,7 +2124,7 @@ function enrichScryDexCard(card, inventoryItems) {
 
   return {
     ...card,
-    catalog_source: "wordpress_catalog_cache",
+    catalog_source: cleanCatalogSource(card.catalog_source),
     stock_available_count: matchingItems.filter((item) => item.status === "available").length,
     stock_total_count: matchingItems.length,
     stock_by_condition: Array.from(stockByCondition.entries()).map(([condition, quantity]) => ({

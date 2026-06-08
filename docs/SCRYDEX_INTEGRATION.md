@@ -58,10 +58,12 @@ columns so the website catalog, local sync server, offline employee app, kiosk,
 and storefront can show the actual card art from the mirrored catalog.
 
 The local sync server ScryDex lookup surface now models the final architecture:
-clients receive a secret-free `wordpress_catalog_cache` result that includes
-card identity, image URL, current market price, catalog sync timestamp, and
-local stock counts. The development server still seeds this cache locally until
-the WordPress daily paginated worker is enabled, but the offline app no longer
+clients first query the persisted local `reference_cards` cache and receive a
+secret-free result that includes card identity, image URL, current market
+price, catalog sync timestamp, and local stock counts. If a card is missing,
+the local server can call an injected WordPress catalog/ScryDex proxy, persist
+the normalized card into `reference_cards`, and serve later searches from the
+local cache without repeating the provider fallback. The offline app no longer
 treats ScryDex as a one-off text fill. Staff can select a card, review image,
 price, local stock, condition, and quantity, then add one provisional inventory
 row per physical copy.

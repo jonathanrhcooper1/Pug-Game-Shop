@@ -34,8 +34,9 @@ Current runtime:
 - `GET /inventory/search`, `GET /scrydex/cards/search`,
   `POST /inventory/intake`, `POST /inventory/reservations`, and
   `POST /kiosk/orders` provide the first shared LAN inventory/order surface,
-  including secret-free ScryDex reference lookup and locally queued card intake
-  rows that remain pending until WordPress accepts them.
+  including local-reference-first ScryDex lookup, WordPress catalog/ScryDex
+  proxy fallback on cache miss, and locally queued card intake rows that
+  remain pending until WordPress accepts them.
 - `GET /customers/search`, `POST /customers`, `POST /credit/adjustments`,
   and `POST /credit/redemptions` provide the first shared LAN customer-credit
   surface with manager approval for credit adds and Square POS handoff metadata
@@ -49,6 +50,5 @@ Current runtime:
   across server restarts.
 
 The current SQLite schema is a development runtime for the LAN middleman. Live
-WordPress pull/push workers, WordPress-backed ScryDex proxy calls, richer event
-registration tables, conflict tables, and full installer packaging are still
-upcoming layers.
+WordPress pull/push workers, richer event registration tables, conflict tables,
+and full installer packaging are still upcoming layers.

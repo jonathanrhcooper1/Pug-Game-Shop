@@ -51,7 +51,7 @@ export function createLocalSyncHttpServer(options = {}) {
       if (request.method === "GET" && url.pathname === "/scrydex/cards/search") {
         return sendStoreResult(
           response,
-          store.searchScryDexCards(token, {
+          await store.searchScryDexCards(token, {
             query: url.searchParams.get("q") ?? "",
             game: url.searchParams.get("game") ?? "pokemon",
           }),

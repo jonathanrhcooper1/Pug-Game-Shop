@@ -652,6 +652,13 @@ export function App() {
       role: "manager",
       access: [...ACCESS_SECTIONS],
     },
+    {
+      id: "preview-manager",
+      name: "Preview Manager",
+      pin: "1420",
+      role: "manager",
+      access: [...ACCESS_SECTIONS],
+    },
   ])
   const [newUserName, setNewUserName] = useState("")
   const [newUserPin, setNewUserPin] = useState("")

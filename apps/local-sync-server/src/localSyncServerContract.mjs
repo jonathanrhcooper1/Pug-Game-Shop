@@ -51,6 +51,7 @@ export function buildLocalSyncServerContract(options = {}) {
     responsibilities: [
       "serve_shared_inventory_customer_credit_event_and_conflict_cache",
       "serve_scrydex_reference_lookup_without_client_credentials",
+      "serve_scrydex_lookup_from_local_cache_before_wordpress_proxy",
       "serve_cached_staff_pin_and_access_policy",
       "store_pin_credentials_as_hashes_not_cleartext",
       "coordinate_local_reservation_locks_before_website_sync",

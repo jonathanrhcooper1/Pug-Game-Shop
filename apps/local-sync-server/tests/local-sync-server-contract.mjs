@@ -32,6 +32,7 @@ assert.ok(contract.responsibilities.includes("prevent_local_double_sell_between_
 assert.ok(contract.responsibilities.includes("queue_kiosk_pickup_orders_with_first_and_last_name"))
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
+assert.ok(contract.responsibilities.includes("serve_scrydex_lookup_from_local_cache_before_wordpress_proxy"))
 assert.ok(contract.responsibilities.includes("serve_cached_staff_pin_and_access_policy"))
 assert.ok(contract.responsibilities.includes("store_pin_credentials_as_hashes_not_cleartext"))
 assert.ok(contract.responsibilities.includes("enforce_manager_required_user_access_changes"))

@@ -2,7 +2,48 @@ import assert from "node:assert/strict"
 
 import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
-const server = createLocalSyncHttpServer({ storeOptions: { databasePath: ":memory:" } })
+let websiteCatalogFallbackCalls = 0
+
+const server = createLocalSyncHttpServer({
+  storeOptions: {
+    databasePath: ":memory:",
+    websiteCatalogFallback: async ({ query, game, limit }) => {
+      websiteCatalogFallbackCalls += 1
+
+      assert.equal(query, "moonbreon")
+      assert.equal(game, "pokemon")
+      assert.equal(limit, 8)
+
+      return {
+        status: "ok",
+        live_provider_request_performed: true,
+        cards: [
+          {
+            id: "scrydex-pokemon-evs-215",
+            game: "pokemon",
+            name: "Umbreon VMAX",
+            set: {
+              name: "Evolving Skies",
+              code: "EVS",
+            },
+            number: "215",
+            printedNumber: "215/203",
+            sku: "PKM-EVS-215-MOONBREON",
+            market_price: {
+              amount: "1120.45",
+              currency: "USD",
+            },
+            images: {
+              small: "https://images.pokemontcg.io/swsh7/215.png",
+              large: "https://images.pokemontcg.io/swsh7/215_hires.png",
+            },
+            observed_at: "2026-06-08T16:00:00.000Z",
+          },
+        ],
+      }
+    },
+  },
+})
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
 
 try {
@@ -80,10 +121,47 @@ try {
   assert.equal(scrydexSearch.cards[0].stock_total_count, 1)
   assert.equal(scrydexSearch.cards[0].stock_by_condition[0].condition, "LP")
   assert.equal(scrydexSearch.source, "wordpress_catalog_cache")
+  assert.deepEqual(scrydexSearch.lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
+  assert.equal(scrydexSearch.local_reference_cache_hit, true)
+  assert.equal(scrydexSearch.wordpress_proxy_performed, false)
+  assert.equal(scrydexSearch.wordpress_proxy_required, false)
   assert.equal(scrydexSearch.credential_storage, "wordpress_server_settings")
   assert.equal(scrydexSearch.credentials_synced_to_client, false)
   assert.equal(scrydexSearch.live_provider_request_performed, false)
   assertNoSecrets(scrydexSearch)
+
+  const fallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon`, {
+    token: cashierAuth.session.token,
+  })
+
+  assert.equal(fallbackScryDexSearch.status, "ok")
+  assert.equal(fallbackScryDexSearch.cards.length, 1)
+  assert.equal(fallbackScryDexSearch.cards[0].provider_card_id, "scrydex-pokemon-evs-215")
+  assert.equal(fallbackScryDexSearch.cards[0].card_name, "Umbreon VMAX")
+  assert.equal(fallbackScryDexSearch.cards[0].set_name, "Evolving Skies")
+  assert.equal(fallbackScryDexSearch.cards[0].suggested_barcode, "PKM-EVS-215-MOONBREON")
+  assert.equal(fallbackScryDexSearch.cards[0].market_price_minor_units, 112045)
+  assert.equal(fallbackScryDexSearch.cards[0].image_url, "https://images.pokemontcg.io/swsh7/215.png")
+  assert.equal(fallbackScryDexSearch.source, "wordpress_proxy")
+  assert.equal(fallbackScryDexSearch.local_reference_cache_hit, false)
+  assert.equal(fallbackScryDexSearch.wordpress_proxy_performed, true)
+  assert.equal(fallbackScryDexSearch.wordpress_proxy_required, false)
+  assert.equal(fallbackScryDexSearch.live_provider_request_performed, true)
+  assert.equal(websiteCatalogFallbackCalls, 1)
+  assertNoSecrets(fallbackScryDexSearch)
+
+  const cachedFallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon`, {
+    token: cashierAuth.session.token,
+  })
+
+  assert.equal(cachedFallbackScryDexSearch.status, "ok")
+  assert.equal(cachedFallbackScryDexSearch.source, "wordpress_catalog_cache")
+  assert.equal(cachedFallbackScryDexSearch.local_reference_cache_hit, true)
+  assert.equal(cachedFallbackScryDexSearch.wordpress_proxy_performed, false)
+  assert.equal(cachedFallbackScryDexSearch.live_provider_request_performed, false)
+  assert.equal(cachedFallbackScryDexSearch.cards[0].provider_card_id, "scrydex-pokemon-evs-215")
+  assert.equal(websiteCatalogFallbackCalls, 1)
+  assertNoSecrets(cachedFallbackScryDexSearch)
 
   const missingScryDexSession = await fetchJson(`${baseUrl}/scrydex/cards/search?q=charizard`, {
     expectedStatus: 409,
@@ -320,9 +398,12 @@ try {
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
   assert.ok(syncStatus.queue_depth >= 10)
+  assert.ok(syncStatus.reference_card_count >= 6)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
   assert.ok(syncStatus.event_count >= 2)
+  assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
+  assert.equal(syncStatus.scrydex_fallback_connected, true)
 
   console.log("PASS local sync server runtime")
 } finally {
@@ -358,6 +439,7 @@ function assertNoSecrets(value) {
   assert.equal(serialized.includes("pinSalt"), false)
   assert.equal(serialized.includes("1234"), false)
   assert.equal(serialized.includes("9999"), false)
+  assert.equal(serialized.includes("1420"), false)
   assert.equal(serialized.includes("2468"), false)
   assert.equal(serialized.includes("api_key"), false)
   assert.equal(serialized.includes("X-Api-Key"), false)
