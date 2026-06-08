@@ -10,6 +10,7 @@ namespace TCGStorePlatform\Tests\Unit;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 use TCGStorePlatform\ScryDex\ScryDexSyncDryRunPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncExecutionGate;
+use TCGStorePlatform\ScryDex\ScryDexUsageBudgetPlanner;
 use TCGStorePlatform\Tests\TestCase;
 
 final class ScryDexSyncExecutionGateTest extends TestCase {
@@ -30,6 +31,7 @@ final class ScryDexSyncExecutionGateTest extends TestCase {
 		$this->assert_true( in_array( 'scrydex_provider_not_configured', $gate['block_reasons'], true ) );
 		$this->assert_true( in_array( 'scrydex_network_requests_disabled', $gate['block_reasons'], true ) );
 		$this->assert_true( in_array( 'scrydex_usage_budget_not_configured', $gate['block_reasons'], true ) );
+		$this->assert_false( $gate['usage_budget_plan']['budget_configured'] );
 		$this->assert_same( 'search_cards', $gate['provider_method'] );
 		$this->assert_same( '/cards/search', $gate['provider_endpoint'] );
 		$this->assert_same( 'pokemon', $gate['request']['resource_key'] );
@@ -53,6 +55,7 @@ final class ScryDexSyncExecutionGateTest extends TestCase {
 		$this->assert_same( 50, $gate['request']['page_size'] );
 		$this->assert_true( $gate['page_processor_ready'] );
 		$this->assert_true( $gate['persistence_planner_ready'] );
+		$this->assert_false( $gate['usage_budget_plan']['budget_configured'] );
 		$this->assert_true( in_array( 'scrydex_checkpoint_repository_not_configured', $gate['block_reasons'], true ) );
 		$this->assert_true( in_array( 'scrydex_persistence_repository_not_configured', $gate['block_reasons'], true ) );
 		$this->assert_not_contains( 'staging-team-id', false === $json ? '' : $json );
@@ -61,7 +64,8 @@ final class ScryDexSyncExecutionGateTest extends TestCase {
 
 	public function test_gate_can_report_future_ready_state_without_running_network_or_writes(): void {
 		$gate = ( new ScryDexSyncExecutionGate(
-			$this->configured_dry_run_planner()
+			$this->configured_dry_run_planner(),
+			$this->configured_budget_planner()
 		) )->plan_cards_worker(
 			array(),
 			array(
@@ -78,6 +82,7 @@ final class ScryDexSyncExecutionGateTest extends TestCase {
 		$this->assert_false( $gate['worker_execution_deferred'] );
 		$this->assert_false( $gate['network_requests_deferred'] );
 		$this->assert_false( $gate['database_writes_deferred'] );
+		$this->assert_true( $gate['usage_budget_plan']['budget_configured'] );
 		$this->assert_true( $gate['image_downloads_deferred'] );
 		$this->assert_true( $gate['webhook_registration_deferred'] );
 		$this->assert_same( array(), $gate['block_reasons'] );
@@ -94,6 +99,19 @@ final class ScryDexSyncExecutionGateTest extends TestCase {
 						'primary_api_key' => 'staging-primary-key',
 					),
 				)
+			)
+		);
+	}
+
+	private function configured_budget_planner(): ScryDexUsageBudgetPlanner {
+		return new ScryDexUsageBudgetPlanner(
+			array(
+				'scrydex_usage_budget' => array(
+					'enabled'                        => true,
+					'daily_credit_budget'            => 1000,
+					'minimum_remaining_credits'      => 100,
+					'per_cards_page_credit_estimate' => 5,
+				),
 			)
 		);
 	}

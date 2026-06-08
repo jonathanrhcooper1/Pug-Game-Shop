@@ -32,6 +32,10 @@
   default blocked state, configured-provider gated state, secret-free health
   output, and future-ready dependency reporting without live network calls or
   database writes.
+- Local unit coverage now includes ScryDex usage-budget settings and
+  cards-page budget planning for disabled defaults, sanitized configured
+  budgets, invalid reserve limits, deferred usage-provider requests, and
+  already-fetched usage snapshots that block over-budget sync attempts.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment

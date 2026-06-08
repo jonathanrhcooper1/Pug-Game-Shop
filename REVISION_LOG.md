@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Usage Budget Planning
+
+### What Changed
+
+- Added `ScryDexUsageBudgetSettings` for administrator-controlled ScryDex daily
+  credit budget, remaining-credit reserve, estimated cards-page cost, and usage
+  snapshot age settings.
+- Added `ScryDexUsageBudgetPlanner` to plan the `/account/v1/usage` preflight,
+  evaluate already-fetched usage snapshots, and block over-budget cards-page
+  sync attempts without making provider requests.
+- Exposed usage-budget status in WordPress settings, System Status, health
+  output, and the ScryDex sync execution gate.
+- Added unit coverage for disabled defaults, configured budgets, invalid
+  reserve limits, deferred usage checks, snapshot-based budget blocking, and
+  execution-gate budget integration.
+
+### Why
+
+ScryDex sync should never start making provider calls without a store-defined
+budget guard. This revision adds the local budget policy and health visibility
+needed before staging can safely enable real `/account/v1/usage` checks or
+cards-page worker execution.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/ScryDexUsageBudgetSettings.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex usage budget settings tests for disabled defaults, ready configured
+  state, invalid remaining-credit reserve, and platform defaults.
+- ScryDex usage budget planner tests for default blocked plans, deferred usage
+  request planning, request clamping, and already-fetched usage snapshots that
+  block daily-budget and remaining-credit violations.
+- ScryDex execution gate assertions for usage-budget plan visibility.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 828 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Settings\ScryDexUsageBudgetSettings.php apps\wordpress-plugin\src\ScryDex\ScryDexUsageBudgetPlanner.php apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Settings\Settings.php apps\wordpress-plugin\src\Settings\SettingsPage.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 542 PHP files.
+- `npm.cmd run test`: passed, including 828 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex usage-budget settings, budget planning,
+  health/admin visibility, and associated tests.
+- No schema rollback, provider cleanup, usage-log cleanup, checkpoint cleanup,
+  or worker cleanup is required because this revision does not call ScryDex,
+  write database rows, enqueue workers, or persist usage snapshots.
+
 ## 2026-06-07 - ScryDex Sync Execution Gate
 
 ### What Changed

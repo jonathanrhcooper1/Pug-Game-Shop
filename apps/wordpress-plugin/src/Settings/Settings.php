@@ -27,6 +27,7 @@ final class Settings {
 			'offline_pairing_authorization' => OfflinePairingAuthorizationSettings::defaults(),
 			'inventory_route_runtime'       => InventoryRouteRuntimeSettings::defaults(),
 			'scrydex_provider'              => ScryDexProviderSettings::defaults(),
+			'scrydex_usage_budget'          => ScryDexUsageBudgetSettings::defaults(),
 		);
 	}
 	/**
@@ -51,6 +52,10 @@ final class Settings {
 		$settings['scrydex_provider']              = ScryDexProviderSettings::sanitize(
 			$settings['scrydex_provider'] ?? array(),
 			is_array( $settings['scrydex_provider'] ?? null ) ? $settings['scrydex_provider'] : array()
+		);
+		$settings['scrydex_usage_budget']          = ScryDexUsageBudgetSettings::sanitize(
+			$settings['scrydex_usage_budget'] ?? array(),
+			is_array( $settings['scrydex_usage_budget'] ?? null ) ? $settings['scrydex_usage_budget'] : array()
 		);
 
 		return $settings;
@@ -94,6 +99,12 @@ final class Settings {
 				? $existing['scrydex_provider']
 				: ScryDexProviderSettings::defaults()
 		);
+		$scrydex_usage_budget          = ScryDexUsageBudgetSettings::sanitize(
+			$value['scrydex_usage_budget'] ?? ( $existing['scrydex_usage_budget'] ?? array() ),
+			is_array( $existing['scrydex_usage_budget'] ?? null )
+				? $existing['scrydex_usage_budget']
+				: ScryDexUsageBudgetSettings::defaults()
+		);
 
 		if ( ! in_array( $level, $allowed_levels, true ) ) {
 			$level = 'warning';
@@ -108,6 +119,7 @@ final class Settings {
 			'offline_pairing_authorization' => $offline_pairing_authorization,
 			'inventory_route_runtime'       => $inventory_route_runtime,
 			'scrydex_provider'              => $scrydex_provider,
+			'scrydex_usage_budget'          => $scrydex_usage_budget,
 		);
 	}
 	/**

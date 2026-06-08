@@ -27,9 +27,11 @@ final class ScryDexSyncExecutionGate {
 	);
 
 	public function __construct(
-		private ?ScryDexSyncDryRunPlanner $dry_run_planner = null
+		private ?ScryDexSyncDryRunPlanner $dry_run_planner = null,
+		private ?ScryDexUsageBudgetPlanner $usage_budget_planner = null
 	) {
-		$this->dry_run_planner = $this->dry_run_planner ?? new ScryDexSyncDryRunPlanner();
+		$this->dry_run_planner      = $this->dry_run_planner ?? new ScryDexSyncDryRunPlanner();
+		$this->usage_budget_planner = $this->usage_budget_planner ?? new ScryDexUsageBudgetPlanner( array() );
 	}
 
 	/**
@@ -39,8 +41,9 @@ final class ScryDexSyncExecutionGate {
 	 */
 	public function plan_cards_worker( array $request = array(), array $gate_overrides = array() ): array {
 		$dry_run = $this->dry_run_planner->plan_cards_sync( $request );
-		$gates   = $this->gates( $gate_overrides );
-		$reasons = $this->block_reasons( $dry_run, $gates );
+		$budget  = $this->usage_budget_planner->plan_cards_page( $dry_run['request'] );
+		$gates   = $this->gates( $gate_overrides, $budget );
+		$reasons = $this->block_reasons( $dry_run, $gates, $budget );
 		$ready   = array() === $reasons;
 
 		return array(
@@ -55,6 +58,7 @@ final class ScryDexSyncExecutionGate {
 			'provider_ready'                    => true === $dry_run['provider_ready'],
 			'provider_status'                   => $dry_run['provider_status'],
 			'credential_values_redacted'        => true,
+			'usage_budget_plan'                 => $budget,
 			'page_processor_ready'              => method_exists( ScryDexSyncPageProcessor::class, 'process_cards_page' ),
 			'persistence_planner_ready'         => method_exists( ScryDexPersistencePlanner::class, 'plan_page' ),
 			'network_requests_enabled'          => $gates['network_requests_enabled'],
@@ -75,10 +79,12 @@ final class ScryDexSyncExecutionGate {
 
 	/**
 	 * @param array<string, mixed> $gate_overrides Gate overrides.
+	 * @param array<string, mixed> $budget Usage budget plan.
 	 * @return array<string, bool>
 	 */
-	private function gates( array $gate_overrides ): array {
-		$gates = self::DEFAULT_GATES;
+	private function gates( array $gate_overrides, array $budget ): array {
+		$gates                            = self::DEFAULT_GATES;
+		$gates['usage_budget_configured'] = true === ( $budget['budget_configured'] ?? false );
 
 		foreach ( $gate_overrides as $key => $value ) {
 			if ( array_key_exists( $key, $gates ) ) {
@@ -92,9 +98,10 @@ final class ScryDexSyncExecutionGate {
 	/**
 	 * @param array<string, mixed> $dry_run Dry-run plan.
 	 * @param array<string, bool>  $gates Gate state.
+	 * @param array<string, mixed> $budget Usage budget plan.
 	 * @return list<string>
 	 */
-	private function block_reasons( array $dry_run, array $gates ): array {
+	private function block_reasons( array $dry_run, array $gates, array $budget ): array {
 		$reasons = array();
 
 		if ( true !== ( $dry_run['provider_ready'] ?? false ) ) {
@@ -104,6 +111,22 @@ final class ScryDexSyncExecutionGate {
 		foreach ( $gates as $gate => $enabled ) {
 			if ( ! $enabled ) {
 				$reasons[] = self::GATE_BLOCK_REASONS[ $gate ] ?? 'scrydex_' . $gate . '_blocked';
+			}
+		}
+
+		$budget_reasons = $budget['block_reasons'] ?? array();
+
+		if ( is_array( $budget_reasons ) ) {
+			foreach ( $budget_reasons as $reason ) {
+				if ( is_scalar( $reason ) && '' !== trim( (string) $reason ) ) {
+					$reason = trim( (string) $reason );
+
+					if ( 'scrydex_usage_budget_not_configured' === $reason && true === $gates['usage_budget_configured'] ) {
+						continue;
+					}
+
+					$reasons[] = $reason;
+				}
 			}
 		}
 

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex usage-budget settings and cards-page budget planning, exposing
+  daily credit limits, remaining-credit reserve, estimated page cost, and
+  deferred `/account/v1/usage` checks through health/admin diagnostics before
+  any provider request or sync worker can run.
 - ScryDex sync execution gate health diagnostics that report whether cards
   worker execution is blocked, gated, or future-ready across provider,
   network, usage-budget, checkpoint, persistence, database-write, and scheduler

@@ -71,6 +71,14 @@ when the provider is not configured, `gated` when the provider is configured
 but execution dependencies are still missing, and `ready` only when all
 required execution gates are explicitly enabled.
 
+The health endpoint also includes `scrydex_usage_budget`. This budget plan
+reports the configured daily credit budget, remaining-credit reserve, estimated
+cards-page cost, planned `/account/v1/usage` provider method, and whether a
+fresh usage snapshot is required before the worker runs. The usage provider
+request remains deferred by default; the plan can evaluate an already-fetched
+usage snapshot in tests or future worker code without making the request
+itself.
+
 Default blockers are:
 
 - `scrydex_network_requests_disabled`
@@ -83,6 +91,12 @@ Default blockers are:
 The gate embeds the dry-run request/checkpoint plan and readiness metadata, but
 it does not call ScryDex, write checkpoints, persist normalized rows, download
 images, register webhooks, or enqueue a scheduled worker by itself.
+
+Budget-specific blockers are:
+
+- `scrydex_usage_budget_not_configured`
+- `scrydex_daily_credit_budget_exceeded`
+- `scrydex_remaining_credit_floor_reached`
 
 ## Role
 

@@ -180,6 +180,14 @@ final class SettingsPage {
 			'tcg-store-platform',
 			'tcg_store_platform_scrydex'
 		);
+
+		add_settings_field(
+			'scrydex_usage_budget',
+			__( 'Usage budget', 'tcg-store-platform' ),
+			array( $this, 'render_scrydex_usage_budget' ),
+			'tcg-store-platform',
+			'tcg_store_platform_scrydex'
+		);
 	}
 
 	public function render_general_description(): void {
@@ -468,6 +476,54 @@ final class SettingsPage {
 		echo '</fieldset>';
 	}
 
+	public function render_scrydex_usage_budget(): void {
+		$settings = ScryDexUsageBudgetSettings::from_settings( Settings::all() );
+		$status   = ScryDexUsageBudgetSettings::public_status( $settings );
+
+		echo '<fieldset>';
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexUsageBudgetSettings::KEY )
+			. '][enabled]" value="1" '
+			. checked( ! empty( $settings['enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Enable staged usage-budget gate.', 'tcg-store-platform' );
+		echo '</label><br />';
+
+		$this->render_scrydex_budget_number_input(
+			'daily_credit_budget',
+			__( 'Daily credit budget', 'tcg-store-platform' ),
+			(int) $settings['daily_credit_budget']
+		);
+		$this->render_scrydex_budget_number_input(
+			'minimum_remaining_credits',
+			__( 'Minimum remaining credits', 'tcg-store-platform' ),
+			(int) $settings['minimum_remaining_credits']
+		);
+		$this->render_scrydex_budget_number_input(
+			'per_cards_page_credit_estimate',
+			__( 'Estimated credits per cards page', 'tcg-store-platform' ),
+			(int) $settings['per_cards_page_credit_estimate']
+		);
+		$this->render_scrydex_budget_number_input(
+			'usage_snapshot_max_age_minutes',
+			__( 'Usage snapshot max age minutes', 'tcg-store-platform' ),
+			(int) $settings['usage_snapshot_max_age_minutes']
+		);
+
+		echo '<p class="description">';
+		echo esc_html(
+			sprintf(
+				/* translators: 1: status. */
+				__( 'Status: %1$s. Usage endpoint requests remain deferred until the ScryDex worker is accepted in staging.', 'tcg-store-platform' ),
+				(string) $status['status']
+			)
+		);
+		echo '</p>';
+		echo '</fieldset>';
+	}
+
 	/**
 	 * @param mixed  $old_value Previous settings.
 	 * @param mixed  $new_value New settings.
@@ -513,6 +569,18 @@ final class SettingsPage {
 			. '[' . esc_attr( ScryDexProviderSettings::KEY )
 			. '][' . esc_attr( $key ) . ']" value="'
 			. esc_attr( $value )
+			. '" class="regular-text" /></p>';
+	}
+
+	private function render_scrydex_budget_number_input( string $key, string $label, int $value ): void {
+		echo '<p><label for="tcg-store-scrydex-budget-' . esc_attr( $key ) . '">';
+		echo esc_html( $label );
+		echo '</label> ';
+		echo '<input type="number" min="0" id="tcg-store-scrydex-budget-' . esc_attr( $key ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexUsageBudgetSettings::KEY )
+			. '][' . esc_attr( $key ) . ']" value="'
+			. esc_attr( (string) $value )
 			. '" class="regular-text" /></p>';
 	}
 
