@@ -3,7 +3,7 @@ import {
   normalizeWordPressCatalogBaseUrl,
 } from "./wordpressCatalogFallback.mjs"
 
-export function createWordPressCreditPush(options = {}) {
+export function createWordPressCustomerUpsertPush(options = {}) {
   const endpointBase = normalizeWordPressCatalogBaseUrl(options.websiteUrl, options.restBasePath)
   const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
   const timeoutMs = boundedTimeout(options.timeoutMs)
@@ -13,38 +13,21 @@ export function createWordPressCreditPush(options = {}) {
     return null
   }
 
-  return async function wordpressCreditPush({ operation } = {}) {
-    const body = creditPostingBody(operation)
-    const customerId = positiveInt(
-      operation?.payload?.customer?.wordpress_customer_id ??
-        operation?.payload?.customer?.customer_id ??
-        operation?.payload?.customer?.id,
-    )
-    const action = operation?.operation_type === "credit_redemption" ? "redeem" : "adjust"
+  return async function wordpressCustomerUpsertPush({ operation } = {}) {
+    const body = customerUpsertBody(operation)
 
-    if (!customerId) {
+    if (!body.customer_public_id || (!body.display_name && !body.email)) {
       return {
         status: "blocked",
-        code: "wordpress_customer_id_required",
-        message: "Queued credit operations require an existing WordPress customer ID.",
-        errors: ["wordpress_customer_id_required"],
+        code: "wordpress_customer_payload_invalid",
+        message: "Queued customer upsert is missing a local customer ID plus name or email.",
+        errors: ["customer_identity_required"],
         credentials_synced_to_client: false,
         authorization_header_printed: false,
       }
     }
 
-    if (!body.amount || !body.reason) {
-      return {
-        status: "blocked",
-        code: "wordpress_credit_payload_invalid",
-        message: "Queued credit operation is missing an amount or reason.",
-        errors: ["amount_or_reason_required"],
-        credentials_synced_to_client: false,
-        authorization_header_printed: false,
-      }
-    }
-
-    const endpoint = new URL(`${endpointBase}/customers/${customerId}/credit/${action}`)
+    const endpoint = new URL(`${endpointBase}/customers`)
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
@@ -55,21 +38,22 @@ export function createWordPressCreditPush(options = {}) {
           accept: "application/json",
           authorization: authorizationHeader,
           "content-type": "application/json",
-          "idempotency-key": String(operation?.operation_id ?? body.offline_operation_id),
+          "idempotency-key": String(operation?.operation_id ?? body.customer_public_id),
         },
         body: JSON.stringify(body),
         signal: controller?.signal,
       })
       const responseBody = await safeJson(response)
       const data = responseBody?.data && typeof responseBody.data === "object" ? responseBody.data : {}
+      const customer = data.customer && typeof data.customer === "object" ? data.customer : {}
 
-      if (!response?.ok || data.accepted !== true) {
+      if (!response?.ok || data.accepted !== true || !positiveInt(customer.customer_id)) {
         return {
           status: "blocked",
-          code: "wordpress_credit_push_rejected",
+          code: "wordpress_customer_push_rejected",
           http_status: Number(response?.status ?? 0),
           wordpress_code: String(data?.code ?? responseBody?.error?.code ?? ""),
-          message: "WordPress customer credit endpoint rejected this queued operation.",
+          message: "WordPress customer endpoint rejected this queued customer upsert.",
           errors: Array.isArray(responseBody?.error?.details?.errors) ? responseBody.error.details.errors : [],
           credentials_synced_to_client: false,
           authorization_header_printed: false,
@@ -79,16 +63,10 @@ export function createWordPressCreditPush(options = {}) {
 
       return {
         status: "ok",
-        code: "wordpress_credit_posted",
+        code: "wordpress_customer_upserted",
         http_status: Number(response.status ?? 201),
-        wordpress_code: String(data.code ?? "posted"),
-        credit: {
-          accepted: true,
-          idempotent: Boolean(data.idempotent),
-          customer_id: positiveInt(data.customer_id) ?? customerId,
-          ledger_entry_id: positiveInt(data.ledger_entry_id) ?? 0,
-          balance_after: data.balance_after ?? null,
-        },
+        wordpress_code: String(data.code ?? "customer_upserted"),
+        customer: customerResponseData(customer, data),
         credentials_synced_to_client: false,
         authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
@@ -96,8 +74,8 @@ export function createWordPressCreditPush(options = {}) {
     } catch (error) {
       return {
         status: "blocked",
-        code: "wordpress_credit_push_unavailable",
-        message: error instanceof Error ? error.message : "WordPress customer credit push unavailable.",
+        code: "wordpress_customer_push_unavailable",
+        message: error instanceof Error ? error.message : "WordPress customer push unavailable.",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
@@ -110,39 +88,40 @@ export function createWordPressCreditPush(options = {}) {
   }
 }
 
-export function creditPostingBody(operation = {}) {
+export function customerUpsertBody(operation = {}) {
   const payload = operation?.payload && typeof operation.payload === "object" ? operation.payload : {}
-  const ledger = payload.ledger_entry && typeof payload.ledger_entry === "object" ? payload.ledger_entry : {}
   const customer = payload.customer && typeof payload.customer === "object" ? payload.customer : {}
-  const amountMinorUnits = Number.parseInt(String(ledger.amount_minor_units ?? "0"), 10)
+  const credit = customer.credit && typeof customer.credit === "object" ? customer.credit : {}
 
   return {
-    amount: moneyFromMinorUnits(amountMinorUnits),
-    currency: cleanCurrency(ledger.currency ?? customer.credit?.currency),
-    reason: cleanText(ledger.reason ?? ""),
-    offline_operation_id: cleanId(operation.operation_id ?? ledger.entry_id),
-    metadata: {
-      source: "offline_lan_sync",
-      local_entry_id: cleanId(ledger.entry_id),
-      customer_public_id: cleanId(customer.customer_public_id),
-      local_entry_type: cleanText(ledger.entry_type ?? ""),
-      square_handoff_mode: cleanText(payload.square_handoff?.square_handoff_mode ?? ""),
-      sync_intent: cleanText(payload.sync_intent ?? ""),
-    },
+    customer_public_id: cleanId(customer.customer_public_id ?? operation.entity_id),
+    display_name: cleanText(customer.display_name),
+    first_name: cleanText(customer.first_name),
+    last_name: cleanText(customer.last_name),
+    email: cleanEmail(customer.email ?? customer.customer_lookup),
+    credit_currency: cleanCurrency(credit.currency),
+    status: cleanStatus(customer.status),
+    source: "offline_lan_sync",
   }
 }
 
-function moneyFromMinorUnits(minorUnits) {
-  if (!Number.isFinite(minorUnits) || minorUnits === 0) {
-    return ""
+function customerResponseData(customer, data) {
+  return {
+    customer_id: positiveInt(customer.customer_id) ?? 0,
+    public_id: cleanId(customer.public_id),
+    display_name: cleanText(customer.display_name),
+    first_name: cleanText(customer.first_name),
+    last_name: cleanText(customer.last_name),
+    email: cleanEmail(customer.email),
+    status: cleanStatus(customer.status),
+    row_version: positiveInt(customer.row_version) ?? 1,
+    credit: {
+      balance_minor_units: moneyToMinorUnits(customer.credit_balance),
+      currency: cleanCurrency(customer.credit_currency),
+    },
+    accepted: true,
+    idempotent: Boolean(data.idempotent),
   }
-
-  const negative = minorUnits < 0
-  const absolute = Math.abs(minorUnits)
-  const whole = Math.trunc(absolute / 100)
-  const cents = String(absolute % 100).padStart(2, "0")
-
-  return `${negative ? "-" : ""}${whole}.${cents}`
 }
 
 async function safeJson(response) {
@@ -162,10 +141,32 @@ function secretSafeEndpoint(endpoint) {
   return safe.toString()
 }
 
+function moneyToMinorUnits(value) {
+  const normalized = String(value ?? "0").trim()
+
+  if (!/^-?\d+(\.\d{1,4})?$/.test(normalized)) {
+    return 0
+  }
+
+  const negative = normalized.startsWith("-")
+  const unsigned = normalized.replace(/^-/, "")
+  const [whole, decimal = ""] = unsigned.split(".")
+  const cents = Number.parseInt(decimal.padEnd(2, "0").slice(0, 2), 10) || 0
+  const minorUnits = Number.parseInt(whole, 10) * 100 + cents
+
+  return negative ? -minorUnits : minorUnits
+}
+
 function positiveInt(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10)
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function cleanStatus(value) {
+  const status = String(value ?? "active").trim().toLowerCase()
+
+  return ["active", "inactive"].includes(status) ? status : "active"
 }
 
 function cleanCurrency(value) {
@@ -174,8 +175,14 @@ function cleanCurrency(value) {
   return /^[A-Z]{3}$/.test(currency) ? currency : "USD"
 }
 
+function cleanEmail(value) {
+  const email = String(value ?? "").trim().toLowerCase().slice(0, 191)
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ""
+}
+
 function cleanText(value) {
-  return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 255)
+  return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 191)
 }
 
 function cleanId(value) {

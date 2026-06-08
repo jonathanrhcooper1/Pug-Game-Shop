@@ -119,7 +119,7 @@ export type CustomerCreditLedgerEntry = {
   amountMinorUnits: number
   balanceAfterMinorUnits: number
   currency: "USD"
-  status: "cached" | "pending_sync"
+  status: "cached" | "pending_sync" | "accepted"
   sourceLabel: string
   operationId?: string
 }

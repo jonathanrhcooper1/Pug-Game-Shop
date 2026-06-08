@@ -30,6 +30,8 @@ export function createLocalSyncStore(options = {}) {
   const wordpressEventRegistrationPush =
     typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
   const wordpressCreditPush = typeof options.wordpressCreditPush === "function" ? options.wordpressCreditPush : null
+  const wordpressCustomerUpsertPush =
+    typeof options.wordpressCustomerUpsertPush === "function" ? options.wordpressCustomerUpsertPush : null
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
@@ -824,10 +826,13 @@ export function createLocalSyncStore(options = {}) {
       event_count: eventSnapshots.length,
       active_session_count: sessions.size,
       wordpress_pull_connected: Boolean(wordpressInventoryPull),
-      wordpress_push_connected: Boolean(wordpressInventoryPush || wordpressEventRegistrationPush),
+      wordpress_push_connected: Boolean(
+        wordpressInventoryPush || wordpressEventRegistrationPush || wordpressCreditPush || wordpressCustomerUpsertPush,
+      ),
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
+      wordpress_customer_push_connected: Boolean(wordpressCustomerUpsertPush),
       scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       local_operations_preserved: true,
@@ -923,7 +928,7 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
-    if (!wordpressInventoryPush && !wordpressEventRegistrationPush && !wordpressCreditPush) {
+    if (!wordpressInventoryPush && !wordpressEventRegistrationPush && !wordpressCreditPush && !wordpressCustomerUpsertPush) {
       return blocked("wordpress_push_unavailable", "WordPress push is not configured on this LAN server.")
     }
 
@@ -932,6 +937,7 @@ export function createLocalSyncStore(options = {}) {
     const eventRegistrationOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "event_registration",
     )
+    const customerOperations = pendingOperations.filter((operation) => operation.operation_type === "customer_upsert")
     const creditOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "credit_adjustment" || operation.operation_type === "credit_redemption",
     )
@@ -1052,32 +1058,42 @@ export function createLocalSyncStore(options = {}) {
       })
     }
 
-    for (const operation of creditOperations) {
-      if (!wordpressCreditPush) {
+    for (const operation of customerOperations) {
+      if (!wordpressCustomerUpsertPush) {
         results.push({
           operation_id: operation.operation_id,
           operation_type: operation.operation_type,
           entity_id: operation.entity_id,
           status: "retry",
-          code: "wordpress_credit_push_unavailable",
-          message: "WordPress customer credit push is not configured on this LAN server.",
+          code: "wordpress_customer_push_unavailable",
+          message: "WordPress customer push is not configured on this LAN server.",
         })
         continue
       }
 
-      if (!positiveInt(operation.payload?.customer?.wordpress_customer_id)) {
+      const customer =
+        customers.find((candidate) => candidate.customer_public_id === operation.entity_id) ?? operation.payload?.customer
+
+      if (!customer) {
         results.push({
           operation_id: operation.operation_id,
           operation_type: operation.operation_type,
           entity_id: operation.entity_id,
-          status: "retry",
-          code: "wordpress_customer_id_required",
-          message: "Credit operation stays queued until the customer exists in WordPress.",
+          status: "rejected",
+          code: "local_customer_missing",
         })
         continue
       }
 
-      const pushResult = await wordpressCreditPush({ operation })
+      const pushResult = await wordpressCustomerUpsertPush({
+        operation: {
+          ...operation,
+          payload: {
+            ...operation.payload,
+            customer: publicCustomer(customer),
+          },
+        },
+      })
 
       if (pushResult.status !== "ok") {
         results.push({
@@ -1094,12 +1110,109 @@ export function createLocalSyncStore(options = {}) {
         continue
       }
 
+      const localCustomer = customers.find((candidate) => candidate.customer_public_id === customer.customer_public_id)
+
+      if (localCustomer) {
+        localCustomer.wordpress_customer_id = positiveInt(pushResult.customer?.customer_id)
+        localCustomer.row_version = positiveInt(pushResult.customer?.row_version) ?? localCustomer.row_version + 1
+        localCustomer.display_name = cleanName(pushResult.customer?.display_name) || localCustomer.display_name
+        localCustomer.first_name = cleanName(pushResult.customer?.first_name) || localCustomer.first_name
+        localCustomer.last_name = cleanName(pushResult.customer?.last_name) || localCustomer.last_name
+        localCustomer.email = cleanEmail(pushResult.customer?.email) || localCustomer.email
+        localCustomer.lookup = localCustomer.email || localCustomer.lookup
+        localCustomer.status = cleanCustomerStatus(pushResult.customer?.status)
+        localCustomer.credit_balance_minor_units =
+          typeof pushResult.customer?.credit?.balance_minor_units === "number"
+            ? pushResult.customer.credit.balance_minor_units
+            : localCustomer.credit_balance_minor_units
+        localCustomer.credit_currency = cleanCurrency(pushResult.customer?.credit?.currency ?? localCustomer.credit_currency)
+        localCustomer.source = "accepted"
+        saveCustomer(database, localCustomer, now)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_customer: pushResult.customer,
+      })
+    }
+
+    for (const operation of creditOperations) {
+      if (!wordpressCreditPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_credit_push_unavailable",
+          message: "WordPress customer credit push is not configured on this LAN server.",
+        })
+        continue
+      }
+
       const ledgerEntry = creditLedgerEntries.find((entry) => entry.entry_id === operation.entity_id)
+      const operationCustomerPublicId = cleanPublicId(
+        ledgerEntry?.customer_public_id ?? operation.payload?.customer?.customer_public_id,
+      )
+      const latestCustomer = customers.find((candidate) => candidate.customer_public_id === operationCustomerPublicId)
+      const wordpressCustomerId = positiveInt(
+        latestCustomer?.wordpress_customer_id ?? operation.payload?.customer?.wordpress_customer_id,
+      )
+
+      if (!wordpressCustomerId) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_customer_id_required",
+          message: "Credit operation stays queued until the customer exists in WordPress.",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressCreditPush({
+        operation: {
+          ...operation,
+          payload: {
+            ...operation.payload,
+            customer: latestCustomer ? publicCustomer(latestCustomer) : operation.payload?.customer,
+          },
+        },
+      })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
 
       if (ledgerEntry) {
         ledgerEntry.status = "accepted"
         ledgerEntry.source = "wordpress_credit_ledger"
         saveCreditLedgerEntry(database, ledgerEntry)
+      }
+
+      if (latestCustomer && pushResult.credit?.balance_after?.amount !== undefined) {
+        latestCustomer.credit_balance_minor_units = minorUnitsFromDecimal(pushResult.credit.balance_after.amount)
+        latestCustomer.credit_currency = cleanCurrency(pushResult.credit.balance_after.currency ?? latestCustomer.credit_currency)
+        latestCustomer.row_version += 1
+        latestCustomer.source = "accepted"
+        saveCustomer(database, latestCustomer, now)
       }
 
       deleteQueueOperation(database, queue, operation.operation_id)
@@ -1117,7 +1230,8 @@ export function createLocalSyncStore(options = {}) {
     const acceptedCount = results.filter((result) => result.status === "accepted").length
     const retryCount = results.filter((result) => result.status === "retry").length
     const rejectedCount = results.filter((result) => result.status === "rejected").length
-    const supportedOperationCount = inventoryOperations.length + eventRegistrationOperations.length + creditOperations.length
+    const supportedOperationCount =
+      inventoryOperations.length + eventRegistrationOperations.length + customerOperations.length + creditOperations.length
 
     return {
       status: "ok",
@@ -1131,6 +1245,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
+      wordpress_customer_push_connected: Boolean(wordpressCustomerUpsertPush),
       credentials_synced_to_client: false,
       local_queue_depth: pendingQueueOperations(queue).length,
     }
@@ -2088,6 +2203,7 @@ function publicCustomer(customer) {
   return {
     customer_public_id: customer.customer_public_id,
     customer_id: customer.wordpress_customer_id,
+    wordpress_customer_id: customer.wordpress_customer_id,
     row_version: customer.row_version,
     display_name: customer.display_name,
     first_name: customer.first_name,
@@ -2289,6 +2405,10 @@ function cleanEventPaymentStatus(value) {
 
 function cleanEventRegistrationStatus(value) {
   return ["open", "waitlist", "full", "closed"].includes(value) ? value : "closed"
+}
+
+function cleanCustomerStatus(value) {
+  return ["active", "inactive"].includes(value) ? value : "active"
 }
 
 function cleanScryDexQuery(value) {
@@ -2633,6 +2753,12 @@ function boundedInt(value, min, max, fallback) {
   }
 
   return Math.min(max, Math.max(min, parsed))
+}
+
+function positiveInt(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function blocked(code, message, extra = {}) {

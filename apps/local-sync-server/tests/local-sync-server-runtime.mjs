@@ -6,6 +6,8 @@ let websiteCatalogFallbackCalls = 0
 let wordpressInventoryPullCalls = 0
 let wordpressInventoryPushCalls = 0
 let wordpressEventRegistrationPushCalls = 0
+let wordpressCustomerUpsertPushCalls = 0
+let wordpressCreditPushCalls = 0
 let wordpressInventoryPullRows = []
 
 const server = createLocalSyncHttpServer({
@@ -110,6 +112,61 @@ const server = createLocalSyncHttpServer({
           payment_status: "not_required",
           email: `${operation.entity_id}@offline-registration.example.invalid`,
           created_at: "2026-06-08 21:50:00",
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressCustomerUpsertPush: async ({ operation }) => {
+      wordpressCustomerUpsertPushCalls += 1
+
+      assert.equal(operation.operation_type, "customer_upsert")
+      assert.equal(operation.payload.customer.display_name, "Local Customer")
+      assert.equal(operation.payload.customer.email, "local.customer@example.test")
+
+      return {
+        status: "ok",
+        code: "wordpress_customer_upserted",
+        http_status: 201,
+        wordpress_code: "customer_created",
+        customer: {
+          customer_id: 501,
+          public_id: "9f21ecbd-7d84-46a7-b947-12bd65a6a0b0",
+          display_name: "Local Customer",
+          first_name: "Local",
+          last_name: "Customer",
+          email: "local.customer@example.test",
+          status: "active",
+          row_version: 1,
+          credit: {
+            balance_minor_units: 0,
+            currency: "USD",
+          },
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressCreditPush: async ({ operation }) => {
+      wordpressCreditPushCalls += 1
+
+      assert.ok(["credit_adjustment", "credit_redemption"].includes(operation.operation_type))
+      assert.equal(operation.payload.customer.wordpress_customer_id, 501)
+
+      return {
+        status: "ok",
+        code: "wordpress_credit_posted",
+        http_status: 201,
+        wordpress_code: "posted",
+        credit: {
+          accepted: true,
+          idempotent: false,
+          customer_id: 501,
+          ledger_entry_id: 700 + wordpressCreditPushCalls,
+          balance_after: {
+            amount: operation.operation_type === "credit_adjustment" ? "30.0000" : "20.0000",
+            currency: "USD",
+          },
         },
         credentials_synced_to_client: false,
         authorization_header_printed: false,
@@ -600,6 +657,44 @@ try {
   assert.equal(creditRedemption.square_handoff.square_payment_method_label, "Pug Store Credit")
   assert.equal(creditRedemption.square_handoff.square_amount_due_minor_units, 3500)
 
+  const pushedCustomerAndCredit = await fetchJson(`${baseUrl}/sync/push`, {
+    method: "POST",
+    token: managerToken,
+  })
+  assert.equal(pushedCustomerAndCredit.status, "ok")
+  assert.equal(pushedCustomerAndCredit.operation_count, 3)
+  assert.equal(pushedCustomerAndCredit.accepted_count, 3)
+  assert.equal(pushedCustomerAndCredit.retry_count, 0)
+  assert.equal(pushedCustomerAndCredit.wordpress_customer_push_connected, true)
+  assert.equal(pushedCustomerAndCredit.wordpress_credit_push_connected, true)
+  assert.equal(wordpressCustomerUpsertPushCalls, 1)
+  assert.equal(wordpressCreditPushCalls, 2)
+  assert.ok(
+    pushedCustomerAndCredit.results.some(
+      (result) => result.operation_type === "customer_upsert" && result.status === "accepted",
+    ),
+  )
+  assert.ok(
+    pushedCustomerAndCredit.results.filter(
+      (result) =>
+        ["credit_adjustment", "credit_redemption"].includes(result.operation_type) && result.status === "accepted",
+    ).length === 2,
+  )
+
+  const acceptedCustomerSearch = await fetchJson(`${baseUrl}/customers/search?q=local.customer`)
+  const acceptedCustomer = acceptedCustomerSearch.customers.find(
+    (customer) => customer.customer_public_id === createdCustomer.customer.customer_public_id,
+  )
+  assert.equal(acceptedCustomer.customer_id, 501)
+  assert.equal(acceptedCustomer.source, "accepted")
+  assert.equal(acceptedCustomer.credit.balance_minor_units, 2000)
+  assert.equal(
+    acceptedCustomerSearch.credit_ledger_entries.filter(
+      (entry) => entry.customer_public_id === createdCustomer.customer.customer_public_id && entry.status === "accepted",
+    ).length,
+    2,
+  )
+
   const overspendRedemption = await fetchJson(`${baseUrl}/credit/redemptions`, {
     method: "POST",
     token: staffAuth.session.token,
@@ -618,7 +713,7 @@ try {
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 8)
+  assert.ok(syncStatus.queue_depth >= 5)
   assert.ok(syncStatus.reference_card_count >= 6)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
@@ -629,6 +724,8 @@ try {
   assert.equal(syncStatus.wordpress_push_connected, true)
   assert.equal(syncStatus.wordpress_inventory_push_connected, true)
   assert.equal(syncStatus.wordpress_event_registration_push_connected, true)
+  assert.equal(syncStatus.wordpress_customer_push_connected, true)
+  assert.equal(syncStatus.wordpress_credit_push_connected, true)
 
   console.log("PASS local sync server runtime")
 } finally {

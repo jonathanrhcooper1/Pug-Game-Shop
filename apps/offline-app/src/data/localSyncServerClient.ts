@@ -176,13 +176,14 @@ export type LocalSyncKioskOrderResult = LocalSyncResult<{
 export type LocalSyncCustomer = {
   customer_public_id: string
   customer_id: number | null
+  wordpress_customer_id?: number | null
   row_version: number
   display_name: string
   first_name: string
   last_name: string
   customer_lookup: string
   email: string
-  status: "active"
+  status: "active" | "inactive"
   credit: {
     balance_minor_units: number
     currency: "USD"
@@ -197,7 +198,7 @@ export type LocalSyncCreditLedgerEntry = {
   amount_minor_units: number
   balance_after_minor_units: number
   currency: "USD"
-  status: "cached" | "pending_sync"
+  status: "cached" | "pending_sync" | "accepted"
   reason: string
   source: string
   created_at_utc: string
@@ -315,6 +316,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   wordpress_inventory_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
   wordpress_credit_push_connected?: boolean
+  wordpress_customer_push_connected?: boolean
   wordpress_pull_connected: boolean
   scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   scrydex_fallback_connected: boolean
@@ -359,6 +361,7 @@ export type LocalSyncPushResult = LocalSyncResult<{
   wordpress_inventory_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
   wordpress_credit_push_connected?: boolean
+  wordpress_customer_push_connected?: boolean
   credentials_synced_to_client: false
   local_queue_depth: number
 }>

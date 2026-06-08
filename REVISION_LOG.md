@@ -3,6 +3,92 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Customer Upsert Before Credit Sync
+
+### What Changed
+
+- Added a staff-only WordPress `POST /tcg-store/v1/customers` route that
+  creates or updates rows in `tcg_customers`.
+- Added `manage_customers` to the platform capability registry and bumped the
+  role installer version from 2 to 3 so staff, managers, administrators, and
+  shop managers can receive the new customer identity capability.
+- Added a LAN sync server WordPress customer upsert adapter and wired
+  `/sync/push` to process `customer_upsert` operations before credit
+  adjustments/redemptions.
+- Updated local customer snapshots to include `wordpress_customer_id`, refresh
+  accepted credit balances from WordPress credit posting responses, and report
+  `wordpress_customer_push_connected` in sync status.
+- Updated the offline app sync visibility panel and TypeScript models for
+  customer upsert connectivity and accepted credit ledger rows.
+
+### Why
+
+Credit sync was only complete for customers that already existed on the
+website. New in-store customers could be created locally, but their credit
+operations stayed queued because there was no WordPress customer ID. This
+revision creates the smallest useful customer identity write path so local
+customer creation can unlock credit sync without expanding into deletes,
+merges, portal account linking, or payment capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/CustomerController.php`
+- `apps/wordpress-plugin/src/Auth/CapabilityRegistry.php`
+- `apps/wordpress-plugin/src/Auth/RoleManager.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/CapabilityRegistryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/local-sync-server/src/wordpressCustomerUpsertPush.mjs`
+- `apps/local-sync-server/src/wordpressCreditPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-customer-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The customer upsert route writes to the existing `tcg_customers`
+  schema. The role installer version was bumped to refresh capabilities.
+
+### Tests Added
+
+- WordPress customer route contract coverage for the staff-only upsert surface.
+- Capability registry coverage proving staff can manage customer identity
+  while still lacking credit adjustment permission.
+- LAN customer push adapter coverage for request mapping, idempotency header
+  handling, response parsing, blocked invalid payloads, and secret-safe output.
+- LAN runtime coverage proving customer upsert runs before credit adjustment
+  and redemption in the same push attempt.
+- Offline UI shell coverage for the new customer-upsert sync visibility text.
+
+### Verification
+
+- `php -l src/Api/V1/CustomerController.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the customer upsert route, `manage_customers`
+  capability, LAN customer push adapter, and customer-upsert sync visibility.
+- If the role installer already ran on staging, rerun role installation after
+  rollback or remove `manage_customers` from staging roles manually.
+- Customers created on staging through this route can remain harmless test
+  rows, be merged later, or be removed from `tcg_customers` after confirming no
+  related credit ledger rows are needed.
+- Credit postings accepted after customer upsert should be reviewed before
+  rollback because they represent real staging ledger history.
+
 ## 2026-06-08 - LAN Event and Credit Push Visibility
 
 ### What Changed

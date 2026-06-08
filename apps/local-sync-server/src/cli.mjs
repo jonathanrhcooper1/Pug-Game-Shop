@@ -1,6 +1,7 @@
 import { listenLocalSyncHttpServer } from "./localSyncHttpServer.mjs"
 import { createWordPressCatalogFallback } from "./wordpressCatalogFallback.mjs"
 import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
+import { createWordPressCustomerUpsertPush } from "./wordpressCustomerUpsertPush.mjs"
 import { createWordPressEventRegistrationPush } from "./wordpressEventRegistrationPush.mjs"
 import { createWordPressInventoryPull } from "./wordpressInventoryPull.mjs"
 import { createWordPressInventoryPush } from "./wordpressInventoryPush.mjs"
@@ -52,6 +53,15 @@ const wordpressCreditPush = createWordPressCreditPush({
   applicationPassword:
     process.env.PUG_WORDPRESS_CREDIT_APPLICATION_PASSWORD ?? process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
 })
+const wordpressCustomerUpsertPush = createWordPressCustomerUpsertPush({
+  websiteUrl: process.env.PUG_WORDPRESS_URL,
+  restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
+  authHeader: process.env.PUG_WORDPRESS_CUSTOMERS_AUTH_HEADER ?? process.env.PUG_WORDPRESS_CATALOG_AUTH_HEADER,
+  username: process.env.PUG_WORDPRESS_CUSTOMERS_USERNAME ?? process.env.PUG_WORDPRESS_CATALOG_USERNAME,
+  applicationPassword:
+    process.env.PUG_WORDPRESS_CUSTOMERS_APPLICATION_PASSWORD ??
+    process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
+})
 const server = await listenLocalSyncHttpServer({
   host,
   port,
@@ -62,6 +72,7 @@ const server = await listenLocalSyncHttpServer({
     wordpressInventoryPush,
     wordpressEventRegistrationPush,
     wordpressCreditPush,
+    wordpressCustomerUpsertPush,
   },
 })
 const address = server.address()

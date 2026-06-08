@@ -528,6 +528,7 @@ function buildOperationSyncVisibilityRows(options: {
   const eventPushConnected =
     localStatus?.wordpress_event_registration_push_connected ?? localStatus?.wordpress_push_connected ?? false
   const creditPushConnected = localStatus?.wordpress_credit_push_connected ?? false
+  const customerPushConnected = localStatus?.wordpress_customer_push_connected ?? false
   const inventoryPushStatus = inventoryPushConnected
     ? "Push-capable through LAN sync"
     : "Push waits for LAN/WordPress connection"
@@ -537,6 +538,9 @@ function buildOperationSyncVisibilityRows(options: {
   const creditPushStatus = creditPushConnected
     ? "Push-capable through LAN sync for existing WordPress customers"
     : "Push waits for LAN/WordPress credit connection"
+  const customerPushStatus = customerPushConnected
+    ? "Push-capable through LAN sync"
+    : "Push waits for LAN/WordPress customer connection"
   const localOnlyStatus = "Still queued locally; current LAN push leaves this type unsupported"
   const lanQueueStatus = localStatus
     ? countLabel(localStatus.queue_depth, "LAN queued op")
@@ -620,11 +624,11 @@ function buildOperationSyncVisibilityRows(options: {
         localStatus?.customer_count ?? options.customerCreditDirectory.length,
         "local customer",
       ),
-      wordpressStatus: `${localOnlyStatus}: customer_upsert`,
+      wordpressStatus: `${customerPushStatus}: customer_upsert`,
       localStatus: `LAN customer queue/cache; ${lanQueueStatus}`,
       detail:
-        "Created customer records stay local in store-sync.sqlite for later replay or staff review.",
-      tone: "local",
+        "Created customer records can sync first so later credit ledger posts have a WordPress customer ID.",
+      tone: customerPushConnected ? "wordpress" : "local",
     },
     {
       id: "credit-adjustment-redemption",
@@ -639,7 +643,9 @@ function buildOperationSyncVisibilityRows(options: {
       localStatus:
         `LAN ledger queue; Square payment capture still stays in Square POS; ${lanQueueStatus}`,
       detail:
-        "Existing WordPress customers can sync ledger posts; new local customers stay queued until customer upsert is live.",
+        customerPushConnected
+          ? "New local customers sync before credit posts in the same LAN push attempt."
+          : "Existing WordPress customers can sync ledger posts; new local customers stay queued until customer upsert is live.",
       tone: creditPushConnected ? "wordpress" : "local",
     },
     {

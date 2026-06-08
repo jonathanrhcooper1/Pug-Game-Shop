@@ -34,4 +34,11 @@ final class CapabilityRegistryTest extends TestCase {
 		$this->assert_true( in_array( 'manage_pos', CapabilityRegistry::manager(), true ) );
 		$this->assert_false( in_array( 'manage_pos', CapabilityRegistry::staff(), true ) );
 	}
+
+	public function test_staff_can_manage_customer_identity_without_credit_adjustment(): void {
+		$this->assert_true( in_array( 'manage_customers', CapabilityRegistry::all(), true ) );
+		$this->assert_true( in_array( 'manage_customers', CapabilityRegistry::staff(), true ) );
+		$this->assert_true( in_array( 'manage_customers', CapabilityRegistry::manager(), true ) );
+		$this->assert_false( in_array( 'adjust_credit', CapabilityRegistry::staff(), true ) );
+	}
 }

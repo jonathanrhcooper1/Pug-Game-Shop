@@ -6,6 +6,16 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress now exposes a staff-only customer upsert route for syncing locally
+  created customers into `tcg_customers`, with a dedicated `manage_customers`
+  capability and role installer version bump.
+- LAN sync server can now push queued `customer_upsert` operations before
+  queued credit ledger posts, allowing new in-store customers to receive a
+  WordPress customer ID and then sync credit adjustments/redemptions in the
+  same push attempt.
+- Offline app sync visibility now marks customer upsert as a WordPress-capable
+  push path when the LAN server is configured, and accepted credit ledger rows
+  are represented in the local app model.
 - LAN sync server can now push queued local event registrations and customer
   credit ledger posts to WordPress using server-held credentials; credit writes
   are limited to existing WordPress customers until customer upsert is live.
