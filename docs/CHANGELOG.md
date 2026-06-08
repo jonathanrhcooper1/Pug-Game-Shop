@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WooCommerce product write request planner that converts serialized-card
+  product projection operations into non-production create/update/stockout
+  request envelopes while keeping product writes and payment capture deferred.
 - Server-compatible offline `inventory_update` push envelopes with row-version
   conflict planning, desktop command validation for supported offline operation
   types, and offline app REST batch preview for reconnect sync.

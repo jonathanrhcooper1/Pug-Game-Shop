@@ -119,6 +119,10 @@
 - Local unit coverage now includes Staff Inventory workspace projection
   planning readiness, proving WooCommerce/Square contracts can be marked ready
   while external writes remain deferred.
+- Local unit coverage now includes WooCommerce product write request planning
+  for serialized-card create/update/stockout envelopes, non-production
+  environment gating, idempotency keys, product IDs/SKUs, and continued
+  product-write/payment/Square deferrals.
 - Local unit coverage now includes inventory route runtime settings,
   staging-only staff search/create route contract configuration, and dependency
   factory proof that staff inventory search and create routes register only

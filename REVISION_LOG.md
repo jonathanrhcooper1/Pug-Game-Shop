@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - WooCommerce Product Write Request Planning
+
+### What Changed
+
+- Added `InventoryProductWriteRequestPlanner` and
+  `InventoryProductWriteRequestPlan`.
+- Converted existing WooCommerce product projection operations into
+  non-production create, update, and stockout request envelopes.
+- Added idempotency key, product ID, SKU, request-plan, and audit metadata for
+  review without executing WooCommerce product writes.
+- Added production-environment rejection, failed-projection rejection,
+  unsupported-operation rejection, and missing product/payload validation.
+- Added unit coverage for create, update, stockout, skipped, and rejected
+  request-planning paths.
+- Updated changelog, testing, and inventory/pricing documentation.
+
+### Why
+
+The plugin already knows how to project a serialized card into a WooCommerce
+product payload. This revision adds the next planning layer so staging can
+review exactly which WooCommerce create/update/stockout action would be taken
+before any product write gate is opened.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductWriteRequestPlan.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductWriteRequestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductWriteRequestPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- WooCommerce product write request planner coverage for non-production create
+  requests.
+- WooCommerce product write request planner coverage for existing-product
+  update and stockout requests.
+- Skipped projection coverage proving no product-write requests are emitted.
+- Rejection coverage for production environment and failed product projection.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductWriteRequestPlan.php src\WooCommerce\InventoryProductWriteRequestPlanner.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php --filter InventoryProductWriteRequestPlannerTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full
+  798-test suite.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the WooCommerce product write request
+  planning layer and its tests/docs.
+- No schema rollback, product cleanup, provider cleanup, or payment cleanup is
+  required because no WooCommerce writes, network calls, migrations, or payment
+  actions were added.
+
 ## 2026-06-07 - Offline Inventory Update Push Planning
 
 ### What Changed

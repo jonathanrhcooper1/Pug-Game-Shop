@@ -123,6 +123,10 @@ staging database acceptance remains pending.
   including available/visible simple-product create and update payloads,
   unavailable mapped-card stockout payloads, serialized inventory metadata,
   store-currency and single-quantity validation, and deferred write metadata.
+- WooCommerce product write request planning for those projection operations,
+  including non-production create/update/stockout request envelopes,
+  idempotency keys, product IDs/SKUs for review, and continued product-write,
+  Square, and payment-capture deferrals.
 - Guarded WooCommerce product projection execution for staging-only adapter
   handoff, including default lockout, explicit execution requirements,
   skipped/failed projection handling, writer failure rejection, audit-safe
