@@ -2,6 +2,7 @@ use keyring::{Entry, Error as KeyringError};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tauri::Manager;
 
 const OFFLINE_DATABASE_FILE: &str = "offline.sqlite";
@@ -136,6 +137,65 @@ struct DeviceTokenStatusResponse {
     credentials_synced_to_app: bool,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct PairOfflineDeviceBody {
+    pairing_code: String,
+    installation_id: String,
+    device_label: String,
+    device_mode: String,
+    location_id: u64,
+    manager_id: u64,
+    app_version: String,
+    platform: String,
+    capabilities: serde_json::Value,
+    requested_scopes: Vec<String>,
+    schema_version: u8,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct PairOfflineDeviceRequest {
+    endpoint: String,
+    profile_id: String,
+    body: PairOfflineDeviceBody,
+}
+
+#[derive(Debug, Deserialize)]
+struct WordPressDeviceRegistrationData {
+    device_id: Option<String>,
+    device_token: Option<String>,
+    token_expires_at_utc: Option<String>,
+    scopes: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WordPressDeviceRegistrationResponse {
+    status: Option<String>,
+    status_code: Option<u16>,
+    code: Option<String>,
+    data: Option<WordPressDeviceRegistrationData>,
+    errors: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize)]
+struct PairOfflineDeviceResponse {
+    status: &'static str,
+    endpoint: String,
+    profile_id: String,
+    device_public_id: String,
+    persistence_mode: &'static str,
+    keyring_service: &'static str,
+    keyring_account: String,
+    token_persisted: bool,
+    token_length: usize,
+    scope_count: usize,
+    expires_at_utc: Option<String>,
+    wordpress_status: String,
+    wordpress_status_code: u16,
+    wordpress_code: String,
+    raw_token_returned: bool,
+    credentials_synced_to_app: bool,
+}
+
 #[tauri::command]
 fn queue_offline_operation(
     app: tauri::AppHandle,
@@ -183,6 +243,38 @@ fn delete_device_token(
     let store = KeyringDeviceTokenStore;
 
     delete_device_token_with_store(request, &store)
+}
+
+#[tauri::command]
+async fn pair_offline_device(
+    request: PairOfflineDeviceRequest,
+) -> Result<PairOfflineDeviceResponse, String> {
+    validate_pair_offline_device_request(&request)?;
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(12))
+        .build()
+        .map_err(|_| "offline_device_pairing_client_failed".to_string())?;
+    let response = client
+        .post(request.endpoint.trim())
+        .header("Accept", "application/json")
+        .json(&request.body)
+        .send()
+        .await
+        .map_err(|_| "offline_device_pairing_request_failed".to_string())?;
+    let status_code = response.status().as_u16();
+    let registration_response = response
+        .json::<WordPressDeviceRegistrationResponse>()
+        .await
+        .map_err(|_| "offline_device_pairing_response_invalid".to_string())?;
+    let store = KeyringDeviceTokenStore;
+
+    pair_offline_device_from_registration_response(
+        request,
+        registration_response,
+        status_code,
+        &store,
+    )
 }
 
 trait DeviceTokenStore {
@@ -351,6 +443,128 @@ fn delete_device_token_with_store(
         raw_token_returned: false,
         credentials_synced_to_app: false,
     })
+}
+
+fn pair_offline_device_from_registration_response(
+    request: PairOfflineDeviceRequest,
+    registration_response: WordPressDeviceRegistrationResponse,
+    http_status_code: u16,
+    store: &impl DeviceTokenStore,
+) -> Result<PairOfflineDeviceResponse, String> {
+    validate_pair_offline_device_request(&request)?;
+
+    let wordpress_status = normalized_optional_text(registration_response.status.as_deref())
+        .unwrap_or_else(|| "unknown".to_string());
+    let wordpress_code = normalized_optional_text(registration_response.code.as_deref())
+        .unwrap_or_else(|| "unknown".to_string());
+    let wordpress_status_code = registration_response
+        .status_code
+        .unwrap_or(http_status_code);
+
+    if !(200..300).contains(&http_status_code)
+        || wordpress_status != "registered"
+        || wordpress_code != "offline_device_registered"
+    {
+        let first_error = registration_response
+            .errors
+            .unwrap_or_default()
+            .into_iter()
+            .find(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "offline_device_pairing_rejected".to_string());
+
+        return Err(first_error);
+    }
+
+    let data = registration_response
+        .data
+        .ok_or_else(|| "offline_device_pairing_data_missing".to_string())?;
+    let device_public_id = normalized_optional_text(data.device_id.as_deref())
+        .ok_or_else(|| "offline_device_pairing_device_id_missing".to_string())?;
+    let device_token = normalized_optional_text(data.device_token.as_deref())
+        .ok_or_else(|| "offline_device_pairing_token_missing".to_string())?;
+    let scopes = normalized_token_scopes(&data.scopes.unwrap_or_default());
+    let store_response = store_device_token_with_store(
+        StoreDeviceTokenRequest {
+            profile_id: request.profile_id.clone(),
+            device_public_id,
+            device_token,
+            expires_at_utc: data.token_expires_at_utc.clone(),
+            scopes,
+        },
+        store,
+    )?;
+
+    Ok(PairOfflineDeviceResponse {
+        status: "paired_and_stored_in_desktop_secure_store",
+        endpoint: request.endpoint.trim().to_string(),
+        profile_id: store_response.profile_id,
+        device_public_id: store_response.device_public_id,
+        persistence_mode: store_response.persistence_mode,
+        keyring_service: store_response.keyring_service,
+        keyring_account: store_response.keyring_account,
+        token_persisted: store_response.token_persisted,
+        token_length: store_response.token_length,
+        scope_count: store_response.scope_count,
+        expires_at_utc: store_response.expires_at_utc,
+        wordpress_status,
+        wordpress_status_code,
+        wordpress_code,
+        raw_token_returned: false,
+        credentials_synced_to_app: false,
+    })
+}
+
+fn validate_pair_offline_device_request(request: &PairOfflineDeviceRequest) -> Result<(), String> {
+    let endpoint = request.endpoint.trim();
+
+    if request.profile_id.trim().is_empty() {
+        return Err("offline_device_pairing_profile_id_required".to_string());
+    }
+
+    if endpoint.is_empty() {
+        return Err("offline_device_pairing_endpoint_required".to_string());
+    }
+
+    if !endpoint.starts_with("https://")
+        && !endpoint.starts_with("http://localhost")
+        && !endpoint.starts_with("http://127.0.0.1")
+    {
+        return Err("offline_device_pairing_endpoint_https_required".to_string());
+    }
+
+    if !endpoint.ends_with("/wp-json/tcg-store/v1/offline/devices/register") {
+        return Err("offline_device_pairing_endpoint_invalid".to_string());
+    }
+
+    if request.body.pairing_code.trim().is_empty() {
+        return Err("offline_device_pairing_code_required".to_string());
+    }
+
+    if request.body.installation_id.trim().is_empty()
+        || request.body.device_label.trim().is_empty()
+        || request.body.app_version.trim().is_empty()
+        || request.body.platform.trim().is_empty()
+    {
+        return Err("offline_device_pairing_body_incomplete".to_string());
+    }
+
+    if request.body.location_id == 0 || request.body.manager_id == 0 {
+        return Err("offline_device_pairing_actor_context_required".to_string());
+    }
+
+    if request.body.schema_version != 1 {
+        return Err("offline_device_pairing_schema_version_unsupported".to_string());
+    }
+
+    let scopes = normalized_token_scopes(&request.body.requested_scopes);
+
+    if !scopes.contains(&"offline_pull".to_string())
+        || !scopes.contains(&"offline_push".to_string())
+    {
+        return Err("offline_device_pairing_scopes_incomplete".to_string());
+    }
+
+    Ok(())
 }
 
 fn validate_store_device_token_request(request: &StoreDeviceTokenRequest) -> Result<(), String> {
@@ -657,7 +871,8 @@ pub fn run() {
             list_offline_operations,
             store_device_token,
             get_device_token_status,
-            delete_device_token
+            delete_device_token,
+            pair_offline_device
         ])
         .run(tauri::generate_context!())
         .expect("error while running TCG Store Offline");
@@ -736,6 +951,57 @@ mod tests {
                 "conflicts".to_string(),
                 "offline_pull".to_string(),
             ],
+        }
+    }
+
+    fn valid_pair_offline_device_request() -> PairOfflineDeviceRequest {
+        PairOfflineDeviceRequest {
+            endpoint:
+                "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/devices/register"
+                    .to_string(),
+            profile_id: "pug-game-shop-staging".to_string(),
+            body: PairOfflineDeviceBody {
+                pairing_code: "PAIR-2026-REGISTER-DEVICE".to_string(),
+                installation_id: "front-counter-install".to_string(),
+                device_label: "Front Counter".to_string(),
+                device_mode: "staff".to_string(),
+                location_id: 2,
+                manager_id: 42,
+                app_version: "0.156.0".to_string(),
+                platform: "windows".to_string(),
+                capabilities: serde_json::json!({
+                    "barcode_scanner": true,
+                    "label_printer": false,
+                    "touchscreen": true
+                }),
+                requested_scopes: vec![
+                    "offline_pull".to_string(),
+                    "offline_push".to_string(),
+                    "conflicts".to_string(),
+                ],
+                schema_version: 1,
+            },
+        }
+    }
+
+    fn registered_wordpress_pairing_response() -> WordPressDeviceRegistrationResponse {
+        WordPressDeviceRegistrationResponse {
+            status: Some("registered".to_string()),
+            status_code: Some(201),
+            code: Some("offline_device_registered".to_string()),
+            data: Some(WordPressDeviceRegistrationData {
+                device_id: Some("00010203-0405-4607-8809-0a0b0c0d0e0f".to_string()),
+                device_token: Some(
+                    "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f".to_string(),
+                ),
+                token_expires_at_utc: Some("2026-06-08T12:00:00Z".to_string()),
+                scopes: Some(vec![
+                    "offline_pull".to_string(),
+                    "offline_push".to_string(),
+                    "conflicts".to_string(),
+                ]),
+            }),
+            errors: None,
         }
     }
 
@@ -832,6 +1098,66 @@ mod tests {
             store_device_token_with_store(missing_device, &store)
                 .expect_err("missing device fails"),
             "device_token_device_id_required"
+        );
+    }
+
+    #[test]
+    fn pairing_command_response_stores_device_token_without_returning_secret() {
+        let store = MemoryDeviceTokenStore::default();
+        let request = valid_pair_offline_device_request();
+
+        let result = pair_offline_device_from_registration_response(
+            request.clone(),
+            registered_wordpress_pairing_response(),
+            201,
+            &store,
+        )
+        .expect("pairing response should store token");
+
+        assert_eq!(result.status, "paired_and_stored_in_desktop_secure_store");
+        assert_eq!(result.profile_id, "pug-game-shop-staging");
+        assert_eq!(
+            result.device_public_id,
+            "00010203-0405-4607-8809-0a0b0c0d0e0f"
+        );
+        assert!(result.token_persisted);
+        assert!(!result.raw_token_returned);
+        assert!(!result.credentials_synced_to_app);
+        assert_eq!(result.scope_count, 3);
+        assert_eq!(result.wordpress_status_code, 201);
+
+        let status = device_token_status_with_store(
+            DeviceTokenStatusRequest {
+                profile_id: request.profile_id,
+                device_public_id: result.device_public_id,
+            },
+            &store,
+        )
+        .expect("stored token should be discoverable");
+
+        assert!(status.token_present);
+        assert!(!status.raw_token_returned);
+    }
+
+    #[test]
+    fn pairing_command_response_rejects_wordpress_errors_without_storing_token() {
+        let store = MemoryDeviceTokenStore::default();
+        let mut response = registered_wordpress_pairing_response();
+        response.status = Some("rejected".to_string());
+        response.status_code = Some(403);
+        response.code = Some("offline_device_pairing_authorization_denied".to_string());
+        response.data = None;
+        response.errors = Some(vec!["manager_not_allowed".to_string()]);
+
+        assert_eq!(
+            pair_offline_device_from_registration_response(
+                valid_pair_offline_device_request(),
+                response,
+                403,
+                &store,
+            )
+            .expect_err("rejected pairing should fail"),
+            "manager_not_allowed"
         );
     }
 

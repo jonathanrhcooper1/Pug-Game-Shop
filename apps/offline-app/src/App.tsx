@@ -64,6 +64,7 @@ import {
   submitOfflineOperation,
   type OfflineQueueSubmissionResult,
 } from "./data/offlineQueueBridge"
+import { createTauriDevicePairingAdapter } from "./data/tauriDevicePairingAdapter"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import { createTauriSecureStoreAdapter } from "./data/tauriSecureStoreAdapter"
 import pugGameShopCrest from "./assets/pug-game-shop-crest.png"
@@ -103,6 +104,16 @@ type PairingRouteCheckState = {
   method: "GET"
   detail: string
   rawPairingCodeTransmitted: false
+  credentialsSyncedToApp: false
+}
+
+type PairingTokenRequestState = {
+  status: "idle" | "loading" | "stored" | "blocked"
+  endpoint: string
+  method: "POST"
+  detail: string
+  rawPairingCodeTransmitted: boolean
+  rawTokenReturned: false
   credentialsSyncedToApp: false
 }
 
@@ -176,6 +187,7 @@ function Icon({ name }: { name: AppIconName }) {
 export function App() {
   const workspace = offlineWorkspaceSeed
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
+  const devicePairingAdapter = useMemo(() => createTauriDevicePairingAdapter(), [])
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
@@ -259,6 +271,15 @@ export function App() {
     rawPairingCodeTransmitted: false,
     credentialsSyncedToApp: false,
   })
+  const [pairingTokenRequest, setPairingTokenRequest] = useState<PairingTokenRequestState>({
+    status: "idle",
+    endpoint: "",
+    method: "POST",
+    detail: "Live desktop pairing has not been requested.",
+    rawPairingCodeTransmitted: false,
+    rawTokenReturned: false,
+    credentialsSyncedToApp: false,
+  })
   const [preparedPairingRequests, setPreparedPairingRequests] = useState<PreparedDevicePairingRequest[]>(
     preparedPairingStorage.requests,
   )
@@ -317,6 +338,15 @@ export function App() {
       method: "GET",
       detail: "Pairing route has not been checked for this connector.",
       rawPairingCodeTransmitted: false,
+      credentialsSyncedToApp: false,
+    })
+    setPairingTokenRequest({
+      status: "idle",
+      endpoint: `${connectorDisplayUrl(activeProfile)}/wp-json/tcg-store/v1/offline/devices/register`,
+      method: "POST",
+      detail: "Live desktop pairing has not been requested.",
+      rawPairingCodeTransmitted: false,
+      rawTokenReturned: false,
       credentialsSyncedToApp: false,
     })
     setConnectorDraft(connectorProfileDraftFromProfile(activeProfile))
@@ -962,14 +992,14 @@ export function App() {
         endpoint,
         method: "GET",
         detail:
-          "Pairing route is present in the WordPress REST index. Raw manager code was not transmitted; token request still waits for desktop secure-store support.",
+          "Pairing route is present in the WordPress REST index. Raw manager code was not transmitted; Pair Device can request and store the token in the desktop shell.",
         rawPairingCodeTransmitted: false,
         credentialsSyncedToApp: false,
       })
       setActivityMessage({
         title: "Pairing route reachable",
         detail:
-          "The website pairing route is present in the credential-free REST index. Live token issuance remains gated until secure storage is connected.",
+          "The website pairing route is present in the credential-free REST index. Use Pair Device from the desktop shell to request the scoped token.",
       })
     } catch (error) {
       const detail = pairingRouteCheckErrorMessage(error)
@@ -1001,6 +1031,149 @@ export function App() {
     }
 
     return "Pairing route check failed before a public route response was received."
+  }
+
+  async function handlePairDevice() {
+    const plan = buildDevicePairingRequestPlan(activeProfile, workspace.device, pairingCode)
+    const requestBody = buildDevicePairingRequestBody(plan, pairingCode)
+    const endpoint = `${plan.siteUrl}${plan.path}`
+
+    setPairingPlan(plan)
+
+    if (!requestBody) {
+      setPairingTokenRequest({
+        status: "blocked",
+        endpoint,
+        method: "POST",
+        detail: "Enter the manager-issued pairing code before requesting a desktop device token.",
+        rawPairingCodeTransmitted: false,
+        rawTokenReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Pairing code required",
+        detail: "No pairing request was sent and no credentials were stored.",
+      })
+      return
+    }
+
+    if (!devicePairingAdapter) {
+      setPairingTokenRequest({
+        status: "blocked",
+        endpoint,
+        method: "POST",
+        detail:
+          "Desktop pairing requires the Tauri Windows shell so the one-time token never returns to the browser UI.",
+        rawPairingCodeTransmitted: false,
+        rawTokenReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Desktop secure store unavailable",
+        detail:
+          "Open the Windows desktop shell to pair this connector. Browser preview cannot request or store device tokens.",
+      })
+      return
+    }
+
+    if (activeProfile.environment === "production") {
+      setPairingTokenRequest({
+        status: "blocked",
+        endpoint,
+        method: "POST",
+        detail:
+          "Production device pairing is manually gated; use staging until the production deployment checklist is approved.",
+        rawPairingCodeTransmitted: false,
+        rawTokenReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Production pairing blocked",
+        detail: "No production token request was sent.",
+      })
+      return
+    }
+
+    setPairingTokenRequest({
+      status: "loading",
+      endpoint,
+      method: "POST",
+      detail: "Sending the one-time pairing request through the Tauri desktop command.",
+      rawPairingCodeTransmitted: true,
+      rawTokenReturned: false,
+      credentialsSyncedToApp: false,
+    })
+
+    try {
+      const result = await devicePairingAdapter.pairOfflineDevice({
+        endpoint,
+        profile_id: activeProfile.id,
+        body: requestBody,
+      })
+      const preparedRequest = buildPreparedDevicePairingRequest(plan)
+      const pairedProfile = {
+        ...activeProfile,
+        status: "ready" as const,
+      }
+
+      if (preparedRequest) {
+        setPreparedPairingRequests((requests) => [
+          preparedRequest,
+          ...requests.filter((request) => request.profileId !== preparedRequest.profileId),
+        ].slice(0, 6))
+      }
+
+      setConnectorProfiles((profiles) => upsertConnectorProfile(profiles, pairedProfile))
+      setConnectorTestReport(
+        buildConnectorTestReport(
+          pairedProfile,
+          validateConnectorManifest(manifestPreview),
+          preparedRequest,
+        ),
+      )
+      setPairingCode("")
+      setPairingTokenRequest({
+        status: "stored",
+        endpoint,
+        method: "POST",
+        detail: `Device ${result.device_public_id} paired; token length ${result.token_length} stored in ${result.persistence_mode}.`,
+        rawPairingCodeTransmitted: true,
+        rawTokenReturned: result.raw_token_returned,
+        credentialsSyncedToApp: result.credentials_synced_to_app,
+      })
+      setActivityMessage({
+        title: "Device paired",
+        detail: `${activeProfile.companyName} returned a one-time device token that was stored by the desktop secure-store command; raw token returned to UI: no.`,
+      })
+    } catch (error) {
+      const detail = pairingTokenRequestErrorMessage(error)
+
+      setPairingTokenRequest({
+        status: "blocked",
+        endpoint,
+        method: "POST",
+        detail,
+        rawPairingCodeTransmitted: true,
+        rawTokenReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Device pairing blocked",
+        detail: `${detail} The pairing code was not stored and no token was persisted.`,
+      })
+    }
+  }
+
+  function pairingTokenRequestErrorMessage(error: unknown) {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.slice(0, 220)
+    }
+
+    if (typeof error === "string" && error.trim()) {
+      return error.slice(0, 220)
+    }
+
+    return "Desktop pairing failed before a secret-free status response was returned."
   }
 
   function handleAddScan() {
@@ -1811,6 +1984,16 @@ export function App() {
                       : "Check Pairing Route"}
                   </span>
                 </button>
+                <button
+                  type="button"
+                  disabled={pairingTokenRequest.status === "loading"}
+                  onClick={() => void handlePairDevice()}
+                >
+                  <Icon name="link" />
+                  <span>
+                    {pairingTokenRequest.status === "loading" ? "Pairing Device" : "Pair Device"}
+                  </span>
+                </button>
                 <small>
                   {pairingPlan
                     ? `${pairingPlan.pairingCodeProvided ? "Code present" : "Code missing"}; ${pairingPlan.requestedScopes.length} scopes; token storage ${pairingPlan.tokenStorage}; code fingerprint ${pairingPlan.pairingCodeFingerprint}.`
@@ -1823,6 +2006,11 @@ export function App() {
                   Pairing route check: {pairingRouteCheck.status}; {pairingRouteCheck.detail}
                   {pairingRouteCheck.endpoint ? ` ${pairingRouteCheck.method} ${pairingRouteCheck.endpoint}` : ""}
                   ; raw code sent: no; credentials synced to app: no.
+                </small>
+                <small>
+                  Device pairing request: {pairingTokenRequest.status}; {pairingTokenRequest.detail}
+                  {pairingTokenRequest.endpoint ? ` ${pairingTokenRequest.method} ${pairingTokenRequest.endpoint}` : ""}
+                  ; raw token returned to UI: no; credentials synced to app: no.
                 </small>
                 {activePreparedPairingRequests.length > 0 ? (
                   <div className="prepared-pairing-list" aria-label="Prepared pairing requests">

@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app desktop pairing now has a Tauri-only
+  `pair_offline_device` command that POSTs the manager pairing request to the
+  WordPress device registration route, stores the one-time device token in the
+  Windows-native secure store, returns only secret-free metadata, and keeps
+  browser preview pairing blocked.
 - Offline app Tauri commands can now store, check, and delete offline device
   tokens through the desktop secure store using the Windows-native `keyring`
   backend, returning only secret-free metadata to the UI and contract-tested

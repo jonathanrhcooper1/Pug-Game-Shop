@@ -42,6 +42,10 @@ future offline sync app.
 - Tauri desktop secure-store commands for offline device tokens, backed by the
   Windows-native `keyring` credential store in production and memory-backed
   Rust tests. The UI reports availability without returning raw tokens.
+- Tauri desktop pairing command for the WordPress
+  `/offline/devices/register` route. The desktop command sends the one-time
+  manager pairing request, stores the returned device token in Windows secure
+  storage, and returns only secret-free device/token metadata to React.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,
@@ -51,15 +55,16 @@ future offline sync app.
   and secret safety. The root offline-app test script runs TypeScript
   typechecking before these contracts.
 
-The app does not yet implement live pairing, live push/pull sync execution,
+The app does not yet implement live push/pull sync execution,
 printer/scanner adapters, kiosk lockdown, or signed updater behavior. Browser
 mode still previews queue persistence, while the desktop Tauri command now
 writes accepted operations to local SQLite. Connector profiles, draft editing,
 and manifest handling remain secret-free. The app can now fetch the public
-WordPress connector manifest when the plugin endpoint is installed, but live
-pairing POST, device-token persistence, and push/pull sync execution remain
-disabled until the live pairing POST adapter is connected. Pairing route checks
-use the public WordPress REST index and never transmit raw manager codes.
+WordPress connector manifest when the plugin endpoint is installed, and the
+desktop shell can request pairing tokens only through the Tauri secure-store
+command when the staging plugin route is installed, active, and configured.
+Pairing route checks use the public WordPress REST index and never transmit raw
+manager codes.
 Guarded inventory holds are
 staged locally and remain deferred unless a selected non-production connector
 explicitly enables canonical inventory writes; real device tokens must be

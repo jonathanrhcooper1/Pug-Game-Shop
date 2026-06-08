@@ -118,9 +118,13 @@
   contract markers for hydrating the visible queue in the desktop app.
 - Tauri Rust command coverage now verifies desktop secure-store device-token
   commands for storing, checking, deleting, scope validation, short-token
-  rejection, keyring account normalization, and no raw token return. Contract
-  tests verify the TypeScript adapter uses Tauri commands instead of browser
-  storage or network fallback.
+  rejection, missing device ID rejection, keyring account normalization, and
+  no raw token return. Contract tests verify the TypeScript adapters use Tauri
+  commands instead of browser storage.
+- Tauri Rust command coverage now verifies the desktop pairing response path
+  for WordPress device registration: successful one-time token responses are
+  stored in the secure store without returning raw tokens, while rejected
+  WordPress responses fail without persisting credentials.
 - Windows packaging verification now has a PATH-aware helper for
   `x86_64-pc-windows-msvc` NSIS builds; the latest local package build produced
   an unsigned installer successfully after Cargo was prepended to PATH.

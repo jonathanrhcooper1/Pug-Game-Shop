@@ -13,9 +13,14 @@ const secureStoreAdapterSource = await readFile(
   path.join(appRoot, "src/data/tauriSecureStoreAdapter.ts"),
   "utf8",
 )
+const devicePairingAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriDevicePairingAdapter.ts"),
+  "utf8",
+)
 
 for (const dependency of [
   "keyring = { version = \"3\", features = [\"windows-native\"] }",
+  "reqwest = { version = \"0.12\", default-features = false, features = [\"json\", \"rustls-tls\"] }",
   "rusqlite = { version = \"0.32\", features = [\"bundled\"] }",
   "serde = { version = \"1\", features = [\"derive\"] }",
   "serde_json = \"1\"",
@@ -56,6 +61,12 @@ for (const marker of [
   "store_device_token",
   "get_device_token_status",
   "delete_device_token",
+  "pair_offline_device",
+  "paired_and_stored_in_desktop_secure_store",
+  "offline_device_pairing_endpoint_https_required",
+  "offline_device_pairing_request_failed",
+  "offline_device_pairing_response_invalid",
+  "offline_device_registered",
   "DEVICE_TOKEN_KEYRING_SERVICE",
   "desktop_secure_store",
   "stored_in_desktop_secure_store",
@@ -95,9 +106,21 @@ for (const marker of [
   assert.ok(secureStoreAdapterSource.includes(marker), `Missing secure-store adapter marker: ${marker}`)
 }
 
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriDevicePairingAdapter",
+  "pair_offline_device",
+  "paired_and_stored_in_desktop_secure_store",
+  "raw_token_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(devicePairingAdapterSource.includes(marker), `Missing device pairing adapter marker: ${marker}`)
+}
+
 for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
   assert.equal(adapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(secureStoreAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(devicePairingAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(libSource.includes(forbidden), false, `Forbidden command marker: ${forbidden}`)
 }
 

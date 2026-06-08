@@ -118,6 +118,8 @@ plus pull cursor advancement planning
 plus pull cursor advance SQL planning
 plus pull cursor advance repository adaptation
 plus route-aware pull cursor advance provider
+plus desktop-secure-store device token commands
+plus Tauri-only WordPress pairing POST and secure token storage
 plus desktop local SQLite operation-queue persistence
 plus desktop local SQLite queue restore
 plus premium offline app command-center UI refresh with project-local crest,

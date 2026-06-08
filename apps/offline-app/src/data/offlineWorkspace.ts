@@ -75,6 +75,14 @@ export type OfflineDeviceProfile = {
   storeLabel: string
   modeLabel: string
   lastSyncLabel: string
+  installationId: string
+  locationId: number
+  managerId: number
+  capabilities: {
+    barcode_scanner: boolean
+    label_printer: boolean
+    touchscreen: boolean
+  }
 }
 
 export type StoreConnectorProfile = {
@@ -420,6 +428,10 @@ export type DevicePairingRequestPlan = {
     mode: "staff"
     platform: "windows"
     app_version: string
+    location_id: number
+    manager_id: number
+    capabilities: OfflineDeviceProfile["capabilities"]
+    schema_version: 1
   }
   tokenStorage: "desktop_secure_store"
   networkRequestDeferred: true
@@ -432,9 +444,13 @@ export type DevicePairingRequestBody = {
   installation_id: string
   device_label: string
   device_mode: "staff"
+  location_id: number
+  manager_id: number
   app_version: string
   platform: "windows"
+  capabilities: OfflineDeviceProfile["capabilities"]
   requested_scopes: DevicePairingRequestPlan["requestedScopes"]
+  schema_version: 1
 }
 
 export type PreparedDevicePairingRequest = {
@@ -561,6 +577,14 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     storeLabel: "Front Counter",
     modeLabel: "Offline Mode",
     lastSyncLabel: "Today 10:42 AM",
+    installationId: "front-counter-install",
+    locationId: 2,
+    managerId: 42,
+    capabilities: {
+      barcode_scanner: true,
+      label_printer: false,
+      touchscreen: true,
+    },
   },
   syncSummary: [
     { label: "Queued writes", value: "27" },
@@ -1363,12 +1387,16 @@ export function buildDevicePairingRequestPlan(
     requestedScopes: ["offline_pull", "offline_push", "conflicts"],
     bodyPreview: {
       pairing_code_redacted: true,
-      installation_id: "local-installation-preview",
+      installation_id: device.installationId,
       device_label: device.storeLabel,
       device_mode: "staff",
       mode: "staff",
       platform: "windows",
       app_version: "0.156.0",
+      location_id: device.locationId,
+      manager_id: device.managerId,
+      capabilities: device.capabilities,
+      schema_version: 1,
     },
     tokenStorage: "desktop_secure_store",
     networkRequestDeferred: true,
@@ -1392,9 +1420,13 @@ export function buildDevicePairingRequestBody(
     installation_id: plan.bodyPreview.installation_id,
     device_label: plan.bodyPreview.device_label,
     device_mode: plan.bodyPreview.device_mode,
+    location_id: plan.bodyPreview.location_id,
+    manager_id: plan.bodyPreview.manager_id,
     app_version: plan.bodyPreview.app_version,
     platform: plan.bodyPreview.platform,
+    capabilities: plan.bodyPreview.capabilities,
     requested_scopes: plan.requestedScopes,
+    schema_version: plan.bodyPreview.schema_version,
   }
 }
 

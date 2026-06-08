@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Desktop Pairing Command
+
+### What Changed
+
+- Added a Tauri-only `pair_offline_device` command that POSTs the WordPress
+  device registration request from the desktop backend.
+- Added HTTPS/localhost endpoint validation for
+  `/wp-json/tcg-store/v1/offline/devices/register`.
+- Added the missing server-required pairing fields to the offline app request
+  body: `location_id`, `manager_id`, `capabilities`, and `schema_version`.
+- Added a TypeScript Tauri device-pairing adapter and `Pair Device` UI control.
+- Kept browser preview pairing blocked so one-time device tokens are not
+  requested or stored outside the desktop secure-store path.
+
+### Why
+
+The app needed the live bridge from manager pairing code to secure device-token
+storage before pull/push sync can be safely connected.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriDevicePairingAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for successful WordPress registration responses storing
+  the token without returning it, and rejected WordPress responses failing
+  without credential persistence.
+- TypeScript/contract coverage for the Tauri-only pairing adapter, required
+  request body fields, UI button/state markers, and continued browser-storage
+  avoidance.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 12 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove desktop pairing POST support and the `Pair
+  Device` UI action.
+- If any staging desktop device successfully paired during manual testing,
+  delete its stored token from Windows Credential Manager under the `Pug Game
+  Shop Offline Device Tokens` service.
+- No WordPress database rollback is required for this local app change; server
+  pairing route rows, if created during manual staging tests, should be revoked
+  through the offline device management workflow once that UI is available.
+
 ## 2026-06-08 - Offline App Device Token Secure Store
 
 ### What Changed
