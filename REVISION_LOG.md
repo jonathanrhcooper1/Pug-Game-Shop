@@ -48,9 +48,14 @@ and web views can stay visually consistent.
 - `npm.cmd --prefix apps/local-sync-server run test`
 - `npm.cmd --prefix apps/offline-app run typecheck`
 - `php apps/wordpress-plugin/tests/run.php --filter 'InventoryIntakeParserTest|InventoryIntakePersistencePlannerTest|InventoryIntakeRouteHandlerFactoryTest'`
-- Live staging smoke is being rerun after this checkpoint because WordPress
-  package creation uses `git archive HEAD`, so the parser change must be
-  committed before the staging zip can include it.
+- Rebuilt and installed `tcg-store-platform-0.156.0.zip` on GoDaddy staging;
+  direct remote file check confirmed deployed `InventoryIntakeParser.php`
+  contains the ScryDex provider/image fields.
+- Live local sync smoke created disposable barcode `PUG-CE34879C`, pushed it
+  from the LAN server to staging, and confirmed the WordPress database row is
+  `available`, has a location ID, preserves `provider_name=scrydex`,
+  preserves `provider_card_id=scrydex-stage-charizard-004`, and preserves the
+  card front image URL.
 
 ### Rollback Notes
 
