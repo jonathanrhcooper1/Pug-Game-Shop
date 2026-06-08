@@ -86,6 +86,31 @@ non-secret metadata and WP-CLI output tails. It does not activate the plugin,
 overwrite active plugin files, run production deployment, or perform external
 WooCommerce, Square, ScryDex, POS, email, or payment side effects.
 
+## Gated Migration Rehearsal
+
+Run the migration rollback/restore rehearsal only after creating a staging
+database backup or staging clone:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_BACKUP_CONFIRMED=backup-complete \
+PUG_STAGING_BACKUP_REFERENCE=godaddy-backup-or-clone-id \
+PUG_STAGING_CONFIRM_MIGRATION_REHEARSAL=run-staging-migration-rehearsal \
+npm run staging:migration-rehearsal
+```
+
+The rehearsal runner uploads a temporary
+`wordpress-migration-rehearsal-*.php` file under `/html/wp-content/uploads`,
+runs WP-CLI `eval-file` with
+`TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL=1`, and removes only that temporary
+file through SFTP. The PHP rehearsal refuses production and rolls the staging
+database from the current schema target back to version `1`, then migrates
+back to the current target and verifies the inventory/pricing and provider
+price observation tables. It does not activate the plugin, overwrite active
+plugin files, deploy production, or print credentials.
+
 ## Staging Smoke Checks
 
 - Plugin activates cleanly.

@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Backup-Gated Staging Migration Rehearsal Runner
+
+### What Changed
+
+- Added `npm run staging:migration-rehearsal` backed by
+  `scripts/staging-run-migration-rehearsal.mjs`.
+- The runner uploads the existing WordPress migration rollback/restore
+  rehearsal PHP script to staging uploads, runs it through WP-CLI `eval-file`
+  with `TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL=1`, then removes only that
+  temporary rehearsal file through SFTP.
+- Required a staging backup confirmation and backup reference before a real
+  run can connect.
+- Added `scripts/tests/staging-migration-rehearsal-contract.mjs` and wired it
+  into `npm run test:packaging`.
+- Updated staging documentation and detailed changelog notes.
+
+### Why
+
+Inventory/card-management route acceptance depends on proving staged database
+migrations can roll back and restore safely on the target staging environment.
+This makes that proof repeatable while preserving the project rule that major
+database migration checks require a verified backup or staging clone first.
+
+### Files Affected
+
+- `package.json`
+- `scripts/staging-run-migration-rehearsal.mjs`
+- `scripts/tests/staging-migration-rehearsal-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging migration rehearsal contract coverage for required SSH/WP-CLI
+  environment gates, explicit destructive rehearsal confirmation, required
+  backup confirmation/reference, temporary SFTP upload, WP-CLI `eval-file`,
+  scoped temporary-file cleanup, output tailing, no plugin activation, no
+  active plugin overwrite, no production deployment, and no credential
+  printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:migration-rehearsal -- --dry-run` with placeholder
+  staging env values, backup confirmation, backup reference, and migration
+  confirmation: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging migration rehearsal runner,
+  contract test, npm script, and documentation.
+- No staging cleanup is required for dry-run verification.
+- A real rehearsal run removes its own temporary PHP file. If a network
+  interruption prevents cleanup, delete the timestamped
+  `wordpress-migration-rehearsal-*.php` file from staging uploads.
+- If a real rehearsal fails after rollback and before restore, restore staging
+  from the backup reference recorded in `PUG_STAGING_BACKUP_REFERENCE`.
+
 ## 2026-06-08 - Offline Button Intents And Sync Attempt History
 
 ### What Changed

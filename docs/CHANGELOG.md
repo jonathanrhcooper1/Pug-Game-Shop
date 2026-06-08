@@ -15,6 +15,9 @@ All notable changes follow Semantic Versioning.
   coverage, removes only that temporary file, and contract-tests that it does
   not activate plugins, overwrite active plugin files, deploy production, or
   print credentials.
+- Gated staging migration rehearsal runner for the WordPress rollback/restore
+  script, requiring explicit staging confirmation plus a backup confirmation
+  and backup reference before WP-CLI can run the destructive rehearsal.
 - Offline app local button behavior now distinguishes `Add Scan`, generic
   inventory updates, and quantity adjustments with separate queue operation
   IDs and payload intents, while `Sync Now` records a visible deferred sync
