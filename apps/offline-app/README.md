@@ -24,7 +24,7 @@ future offline sync app.
   reports, visible local queue rows,
   desktop SQLite queue restore, secret-free paired-device metadata restore,
   desktop secure-store token status reporting, guarded desktop pull/push sync
-  execution summaries, conflict-review history, print-label job
+  execution summaries, accepted push-result queue clearing, conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
@@ -80,8 +80,10 @@ kiosk lockdown, and signed updater behavior still need follow-on passes.
 Browser local session restore is isolated per connector profile, with a legacy
 shared-session migration fallback for existing local data. Browser mode still
 previews queue persistence, while the desktop Tauri command now writes accepted
-operations to local SQLite and can run guarded authenticated
-pull/push requests when a paired device token exists.
+operations to local SQLite, can run guarded authenticated pull/push requests
+when a paired device token exists, and can clear accepted push operations from
+the visible local queue while retaining conflict or rejected operation IDs for
+staff review.
 Connector profiles, draft editing, and manifest handling remain secret-free.
 The app can now fetch the public WordPress connector manifest when the plugin
 endpoint is installed, and the desktop shell can request pairing tokens only

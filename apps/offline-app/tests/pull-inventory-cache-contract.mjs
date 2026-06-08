@@ -28,11 +28,13 @@ try {
     applyOfflinePullCustomerCreditRecordsToCache,
     applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
+    applyOfflinePushResultToQueue,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
     buildOfflineSessionStorageSnapshot,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
+    summarizeOfflinePushResult,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
     {
@@ -457,6 +459,64 @@ try {
   )
   assert.equal(restoredLegacySession.restored, true)
   assert.equal(restoredLegacySession.queuedOperations[0].client_operation_id, eventCheckinOperation.client_operation_id)
+
+  const pushSummary = summarizeOfflinePushResult({
+    data: {
+      batch_id: "offline-batch-device-public-123-20260608121500",
+      server_time_utc: "2026-06-08T12:16:00Z",
+      operation_count: 3,
+      counts: {
+        accepted: 2,
+        conflict: 1,
+        rejected: 1,
+      },
+      results: [
+        {
+          client_operation_id: eventCheckinOperation.client_operation_id,
+          status: "accepted",
+        },
+        {
+          client_operation_id: "already-cleared-on-device",
+          status: "accepted",
+        },
+        {
+          client_operation_id: eventRegistrationOperation.client_operation_id,
+          status: "conflict",
+        },
+        {
+          client_operation_id: "remote-rejected-operation",
+          status: "rejected",
+        },
+      ],
+    },
+    meta: {
+      push_queue_replay_deferred: true,
+      push_canonical_mutations_deferred: true,
+      canonical_inventory_execution_enabled: false,
+      canonical_inventory_writes_deferred: true,
+    },
+  })
+  const queueApplyResult = applyOfflinePushResultToQueue(
+    [eventRegistrationOperation, eventCheckinOperation],
+    pushSummary,
+  )
+
+  assert.equal(queueApplyResult.queueReplayApplied, true)
+  assert.deepEqual(queueApplyResult.removedOperationIds, [
+    eventCheckinOperation.client_operation_id,
+  ])
+  assert.deepEqual(queueApplyResult.ignoredAcceptedOperationIds, [
+    "already-cleared-on-device",
+  ])
+  assert.deepEqual(queueApplyResult.retainedConflictOperationIds, [
+    eventRegistrationOperation.client_operation_id,
+  ])
+  assert.deepEqual(queueApplyResult.retainedRejectedOperationIds, [])
+  assert.equal(queueApplyResult.remainingOperations.length, 1)
+  assert.equal(
+    queueApplyResult.remainingOperations[0].client_operation_id,
+    eventRegistrationOperation.client_operation_id,
+  )
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }

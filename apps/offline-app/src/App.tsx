@@ -15,6 +15,7 @@ import {
   buildEventRegistrationOperation,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
+  applyOfflinePushResultToQueue,
   applyOfflinePullConflictRecordsToCache,
   applyOfflinePullCustomerCreditRecordsToCache,
   applyOfflinePullEventRecordsToCache,
@@ -1299,6 +1300,47 @@ export function App() {
         openConflicts,
         completed ? pull.pull_conflict_records : [],
       )
+      const pushSummaryResult = push
+        ? summarizeOfflinePushResult({
+            data: {
+              batch_id: push.batch_id ?? plan.push.batch_id,
+              server_time_utc: new Date().toISOString(),
+              operation_count: push.operation_count,
+              counts: {
+                accepted: push.accepted_count,
+                conflict: push.conflict_count,
+                rejected: push.rejected_count,
+              },
+              results: [
+                ...(push.accepted_operation_ids ?? []).map((clientOperationId) => ({
+                  client_operation_id: clientOperationId,
+                  status: "accepted",
+                })),
+                ...(push.conflict_operation_ids ?? []).map((clientOperationId) => ({
+                  client_operation_id: clientOperationId,
+                  status: "conflict",
+                })),
+                ...(push.rejected_operation_ids ?? []).map((clientOperationId) => ({
+                  client_operation_id: clientOperationId,
+                  status: "rejected",
+                })),
+              ],
+            },
+            meta: {
+              push_queue_replay_deferred: true,
+              push_canonical_mutations_deferred:
+                plan.push.canonical_inventory_writes_deferred,
+              canonical_inventory_execution_enabled:
+                plan.push.canonical_inventory_execution_enabled,
+              canonical_inventory_writes_deferred:
+                plan.push.canonical_inventory_writes_deferred,
+            },
+          })
+        : null
+      const queueApplyResult =
+        pushSummaryResult && completed
+          ? applyOfflinePushResultToQueue(queuedOperations, pushSummaryResult)
+          : null
 
       if (cacheApplyResult.appliedCount > 0) {
         setInventoryItems(cacheApplyResult.items)
@@ -1315,11 +1357,17 @@ export function App() {
       if (conflictCacheApplyResult.appliedCount > 0) {
         setOpenConflicts(conflictCacheApplyResult.conflicts)
       }
+      if (pushSummaryResult) {
+        setPushSummary(pushSummaryResult)
+      }
+      if (queueApplyResult?.queueReplayApplied) {
+        setQueuedOperations(queueApplyResult.remainingOperations)
+      }
 
       setDesktopSyncExecution({
         status: completed ? "synced" : "blocked",
         detail: completed
-          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), ${eventCacheApplyResult.appliedCount} event(s), and ${conflictCacheApplyResult.appliedCount} conflict(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), ${eventCacheApplyResult.appliedCount} event(s), and ${conflictCacheApplyResult.appliedCount} conflict(s) applied, ${push ? `${push.accepted_count} accepted push op(s); ${queueApplyResult?.removedOperationIds.length ?? 0} cleared from local queue; ${(queueApplyResult?.retainedConflictOperationIds.length ?? 0) + (queueApplyResult?.retainedRejectedOperationIds.length ?? 0)} kept for staff review` : "no push batch"}.`
           : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
         pull,
         push,

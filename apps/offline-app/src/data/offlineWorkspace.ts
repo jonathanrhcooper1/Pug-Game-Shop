@@ -568,6 +568,18 @@ export type OfflinePushResultSummary = {
   canonical_inventory_writes_deferred: boolean
 }
 
+export type OfflinePushQueueApplyResult = {
+  remainingOperations: OfflineOperationEnvelope[]
+  removedOperationIds: string[]
+  retainedConflictOperationIds: string[]
+  retainedRejectedOperationIds: string[]
+  ignoredAcceptedOperationIds: string[]
+  acceptedCount: number
+  conflictCount: number
+  rejectedCount: number
+  queueReplayApplied: boolean
+}
+
 export type DevicePairingRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/devices/register"
@@ -3113,6 +3125,46 @@ export function summarizeOfflinePushResult(response: Record<string, unknown>): O
   }
 }
 
+export function applyOfflinePushResultToQueue(
+  queuedOperations: OfflineOperationEnvelope[],
+  summary: OfflinePushResultSummary,
+): OfflinePushQueueApplyResult {
+  const acceptedIds = uniqueStringList(summary.accepted_operation_ids)
+  const conflictIds = uniqueStringList(summary.conflict_operation_ids)
+  const rejectedIds = uniqueStringList(summary.rejected_operation_ids)
+  const acceptedIdSet = new Set(acceptedIds)
+  const queuedOperationIds = new Set(
+    queuedOperations.map((operation) => operation.client_operation_id),
+  )
+  const removedOperationIds: string[] = []
+  const remainingOperations = queuedOperations.filter((operation) => {
+    if (!acceptedIdSet.has(operation.client_operation_id)) {
+      return true
+    }
+
+    removedOperationIds.push(operation.client_operation_id)
+    return false
+  })
+
+  return {
+    remainingOperations,
+    removedOperationIds,
+    retainedConflictOperationIds: conflictIds.filter((operationId) =>
+      queuedOperationIds.has(operationId),
+    ),
+    retainedRejectedOperationIds: rejectedIds.filter((operationId) =>
+      queuedOperationIds.has(operationId),
+    ),
+    ignoredAcceptedOperationIds: acceptedIds.filter((operationId) =>
+      !queuedOperationIds.has(operationId),
+    ),
+    acceptedCount: acceptedIds.length,
+    conflictCount: conflictIds.length,
+    rejectedCount: rejectedIds.length,
+    queueReplayApplied: removedOperationIds.length > 0,
+  }
+}
+
 function parseJsonObject(value: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(value) as unknown
@@ -3128,12 +3180,29 @@ function parseJsonObject(value: string): Record<string, unknown> {
 }
 
 function operationIdsByStatus(values: unknown[], status: string): string[] {
-  return values
-    .map((value) => objectValue(value))
-    .filter((value): value is Record<string, unknown> => value !== null)
-    .filter((value) => stringValue(value.status) === status)
-    .map((value) => stringValue(value.client_operation_id))
-    .filter((value) => value !== "")
+  return uniqueStringList(
+    values
+      .map((value) => objectValue(value))
+      .filter((value): value is Record<string, unknown> => value !== null)
+      .filter((value) => stringValue(value.status) === status)
+      .map((value) => stringValue(value.client_operation_id)),
+  )
+}
+
+function uniqueStringList(values: string[]): string[] {
+  const uniqueValues: string[] = []
+
+  for (const value of values) {
+    const cleanValue = value.trim()
+
+    if (!cleanValue || uniqueValues.includes(cleanValue)) {
+      continue
+    }
+
+    uniqueValues.push(cleanValue)
+  }
+
+  return uniqueValues.slice(0, 100)
 }
 
 function objectValue(value: unknown): Record<string, unknown> | null {

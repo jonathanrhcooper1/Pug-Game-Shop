@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Push Queue Replay Application
+
+### What Changed
+
+- Added sanitized accepted, conflict, and rejected operation ID arrays to the
+  Tauri offline sync push response summary.
+- Added an offline workspace queue replay helper that removes accepted
+  operations from the local queue while keeping conflict/rejected operations
+  visible for staff review.
+- Updated the Sync Now desktop success path to update the visible local queue
+  and push summary when the website returns per-operation push outcomes.
+- Extended contract and Rust tests for sanitized push outcome IDs and local
+  queue replay behavior.
+
+### Why
+
+The offline app could send queued work and display push counts, but accepted
+operations still stayed in the visible local queue. Staff need accepted website
+pushes to disappear from the local pending list while unresolved conflicts and
+rejections remain actionable.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This changes sanitized response metadata and local React queue state
+  handling only.
+
+### Tests Added
+
+- Rust coverage for accepted/conflict/rejected operation IDs in sanitized
+  Tauri push summaries.
+- Offline app behavior coverage for clearing accepted queue entries, retaining
+  conflict entries, and ignoring accepted IDs already absent from the local
+  queue.
+- Contract markers for the new sanitized operation ID arrays and queue replay
+  helper.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 16
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Sync Now
+  plan preparation, sync surface visibility, queue replay text readiness, and
+  no page-level horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to stop clearing accepted operations after desktop push
+  summaries.
+- No WordPress database, SQLite schema, or production data rollback is
+  required.
+- If accepted operations were cleared locally before rollback, staff should
+  rely on the website/offline push operation log as the source of truth rather
+  than re-adding those local operations manually.
+
 ## 2026-06-08 - Profile-Scoped Offline Sessions
 
 ### What Changed

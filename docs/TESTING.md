@@ -26,6 +26,9 @@
   summary extraction, and no raw-token/raw-response return guarantees. Browser
   sanity verification also covers the `Sync Now` desktop sync execution panel
   in preview mode with no console warnings/errors or horizontal overflow.
+- Offline app contract and Rust coverage now verifies sanitized push outcome
+  operation IDs and local queue replay application: accepted IDs are removed
+  from the local queue while conflicts/rejections remain visible.
 - Offline app contract coverage now verifies secret-free paired-device metadata
   storage, local restore, desktop secure-store token status checks, Sync Now
   paired-token readiness fields, and UI markers proving raw tokens are not

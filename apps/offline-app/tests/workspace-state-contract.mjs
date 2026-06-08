@@ -30,6 +30,7 @@ for (const requiredExport of [
   "OfflinePullConflictCacheApplyResult",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
+  "OfflinePushQueueApplyResult",
   "OfflinePullRefreshPreview",
   "OfflineConnectorTestReport",
   "StoreConnectorProfile",
@@ -72,6 +73,7 @@ for (const requiredExport of [
   "buildOfflinePullRefreshPreview",
   "buildConnectorTestReport",
   "summarizeOfflinePushResult",
+  "applyOfflinePushResultToQueue",
   "buildConnectorManifestPreview",
   "validateConnectorManifest",
   "connectorManifestUrl",
@@ -188,6 +190,10 @@ for (const marker of [
   "device_pairing_required",
   "push_queue_replay_deferred",
   "push_canonical_mutations_deferred",
+  "accepted_operation_ids",
+  "conflict_operation_ids",
+  "rejected_operation_ids",
+  "queueReplayApplied",
   "operationIdsByStatus",
   "manager_override",
   "source: \"offline_app\"",
@@ -281,6 +287,7 @@ assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))
 assert.ok(appSource.includes("setPullRefreshPreview"))
 assert.ok(appSource.includes("buildConnectorTestReport("))
 assert.ok(appSource.includes("summarizeOfflinePushResult({"))
+assert.ok(appSource.includes("applyOfflinePushResultToQueue(queuedOperations, pushSummaryResult)"))
 assert.ok(appSource.includes("stagedOperation.client_operation_id"))
 assert.ok(appSource.includes("stagedPushBatch.batch_id"))
 assert.ok(appSource.includes("stagedPushRequest.method"))

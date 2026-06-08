@@ -37,6 +37,9 @@ export type OfflineSyncCommandResponse = {
   accepted_count: number
   conflict_count: number
   rejected_count: number
+  accepted_operation_ids: string[]
+  conflict_operation_ids: string[]
+  rejected_operation_ids: string[]
   pull_domain_count: number
   pull_record_count: number
   pull_tombstone_count: number

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app desktop push summaries now carry sanitized accepted/conflict/
+  rejected operation IDs, and successful sync applies them locally by clearing
+  accepted operations from the visible queue while retaining conflict/rejected
+  items for staff review.
 - Offline app queue/session persistence is now scoped by connector profile, so
   multiple company websites can share the same desktop app without mixing
   locally queued operations or sync attempts. Legacy shared session storage is

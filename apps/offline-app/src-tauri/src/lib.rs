@@ -221,6 +221,9 @@ struct OfflineSyncRequestResponse {
     accepted_count: usize,
     conflict_count: usize,
     rejected_count: usize,
+    accepted_operation_ids: Vec<String>,
+    conflict_operation_ids: Vec<String>,
+    rejected_operation_ids: Vec<String>,
     pull_domain_count: usize,
     pull_record_count: usize,
     pull_tombstone_count: usize,
@@ -834,6 +837,9 @@ fn summarize_offline_sync_response(
         accepted_count,
         conflict_count,
         rejected_count,
+        accepted_operation_ids,
+        conflict_operation_ids,
+        rejected_operation_ids,
         pull_domain_count,
         pull_record_count,
         pull_tombstone_count,
@@ -878,6 +884,9 @@ fn summarize_offline_sync_response(
         accepted_count,
         conflict_count,
         rejected_count,
+        accepted_operation_ids,
+        conflict_operation_ids,
+        rejected_operation_ids,
         pull_domain_count,
         pull_record_count,
         pull_tombstone_count,
@@ -904,6 +913,9 @@ fn summarize_push_sync_data(
     usize,
     usize,
     usize,
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
     usize,
     usize,
     usize,
@@ -926,6 +938,9 @@ fn summarize_push_sync_data(
         .iter()
         .filter(|result| json_path_string(result, &["status"]).as_deref() == Some("rejected"))
         .count();
+    let accepted_operation_ids = operation_ids_by_status(&results, "accepted");
+    let conflict_operation_ids = operation_ids_by_status(&results, "conflict");
+    let rejected_operation_ids = operation_ids_by_status(&results, "rejected");
 
     (
         json_path_string(data, &["batch_id"]),
@@ -933,11 +948,37 @@ fn summarize_push_sync_data(
         json_path_usize(data, &["counts", "accepted"]).unwrap_or(accepted_count),
         json_path_usize(data, &["counts", "conflict"]).unwrap_or(conflict_count),
         json_path_usize(data, &["counts", "rejected"]).unwrap_or(rejected_count),
+        accepted_operation_ids,
+        conflict_operation_ids,
+        rejected_operation_ids,
         0,
         0,
         0,
         0,
     )
+}
+
+fn operation_ids_by_status(results: &[serde_json::Value], status: &str) -> Vec<String> {
+    let mut ids = Vec::new();
+
+    for result in results {
+        if json_path_string(result, &["status"]).as_deref() != Some(status) {
+            continue;
+        }
+
+        let Some(operation_id) = json_path_string(result, &["client_operation_id"]) else {
+            continue;
+        };
+        let clean_operation_id = operation_id.trim();
+
+        if clean_operation_id.is_empty() || ids.iter().any(|value| value == clean_operation_id) {
+            continue;
+        }
+
+        ids.push(clean_operation_id.to_string());
+    }
+
+    ids.into_iter().take(100).collect()
 }
 
 fn sanitized_pull_inventory_records(data: &serde_json::Value) -> Vec<OfflineSyncInventoryRecord> {
@@ -1312,13 +1353,16 @@ fn summarize_pull_sync_data(
     usize,
     usize,
     usize,
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
     usize,
     usize,
     usize,
     usize,
 ) {
     let Some(domains) = data.get("domains").and_then(serde_json::Value::as_object) else {
-        return (None, 0, 0, 0, 0, 0, 0, 0, 0);
+        return (None, 0, 0, 0, 0, Vec::new(), Vec::new(), Vec::new(), 0, 0, 0, 0);
     };
 
     let mut record_count = 0;
@@ -1346,6 +1390,9 @@ fn summarize_pull_sync_data(
         0,
         0,
         0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
         domains.len(),
         record_count,
         tombstone_count,
@@ -2261,6 +2308,9 @@ mod tests {
         assert_eq!(summary.accepted_count, 1);
         assert_eq!(summary.conflict_count, 1);
         assert_eq!(summary.rejected_count, 1);
+        assert_eq!(summary.accepted_operation_ids, vec!["op-accepted".to_string()]);
+        assert_eq!(summary.conflict_operation_ids, vec!["op-conflict".to_string()]);
+        assert_eq!(summary.rejected_operation_ids, vec!["op-rejected".to_string()]);
         assert_eq!(summary.pull_record_count, 0);
         assert!(summary.network_request_completed);
         assert!(summary.authorization_header_attached);
