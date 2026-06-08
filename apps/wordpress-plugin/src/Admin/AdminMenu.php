@@ -32,6 +32,7 @@ use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\BrandingSettings;
+use TCGStorePlatform\Settings\ScryDexProviderSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
@@ -228,6 +229,7 @@ final class AdminMenu {
 		$inventory_dependencies     = ( new InventoryRouteDependencyStatusPresenter(
 			$inventory_factory
 		) )->admin_summary();
+		$scrydex                    = ScryDexProviderSettings::admin_summary( Settings::all() );
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
 		echo '</h1><table class="widefat striped"><tbody>';
@@ -262,6 +264,11 @@ final class AdminMenu {
 			__( 'Branding profile', 'tcg-store-platform' ),
 			(string) $branding['company']['name'],
 			'configured'
+		);
+		$this->render_status_row(
+			__( 'ScryDex provider', 'tcg-store-platform' ),
+			$scrydex['value'],
+			$scrydex['status']
 		);
 		$this->render_status_row(
 			__( 'Offline route bootstrap', 'tcg-store-platform' ),

@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Local unit coverage now includes ScryDex provider settings sanitization,
+  blank-field secret preservation, explicit clear flags, server-only provider
+  context, and public readiness output that redacts saved Team ID and key
+  values.
 - `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
   inventory workspace keeps its scanner/search, sync queue, conflict center,
   customer credit, grouped sync controls, selected-card visual frame, detail

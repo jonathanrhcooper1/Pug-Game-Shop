@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\OfflinePairingAuthorizationSettings;
+use TCGStorePlatform\Settings\ScryDexProviderSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Tests\TestCase;
 
@@ -38,8 +39,10 @@ final class SettingsTest extends TestCase {
 		$this->assert_true( isset( $defaults['branding'] ) );
 		$this->assert_true( isset( $defaults['offline_pairing_authorization'] ) );
 		$this->assert_true( isset( $defaults['inventory_route_runtime'] ) );
+		$this->assert_true( isset( $defaults['scrydex_provider'] ) );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_create_route_enabled'] );
+		$this->assert_same( ScryDexProviderSettings::defaults(), $defaults['scrydex_provider'] );
 	}
 
 	public function test_inventory_route_runtime_settings_are_sanitized(): void {

@@ -165,6 +165,21 @@ final class SettingsPage {
 			'tcg-store-platform',
 			'tcg_store_platform_inventory_routes'
 		);
+
+		add_settings_section(
+			'tcg_store_platform_scrydex',
+			__( 'ScryDex', 'tcg-store-platform' ),
+			array( $this, 'render_scrydex_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'scrydex_provider',
+			__( 'Provider access', 'tcg-store-platform' ),
+			array( $this, 'render_scrydex_provider' ),
+			'tcg-store-platform',
+			'tcg_store_platform_scrydex'
+		);
 	}
 
 	public function render_general_description(): void {
@@ -372,6 +387,87 @@ final class SettingsPage {
 		echo '</fieldset>';
 	}
 
+	public function render_scrydex_description(): void {
+		echo '<p>';
+		echo esc_html__( 'Configure ScryDex for staging reference-card sync. Values are saved in WordPress settings, redacted from status output, and never used by local tests.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_scrydex_provider(): void {
+		$settings = ScryDexProviderSettings::from_settings( Settings::all() );
+		$status   = ScryDexProviderSettings::public_status( $settings );
+
+		echo '<fieldset>';
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexProviderSettings::KEY )
+			. '][enabled]" value="1" '
+			. checked( ! empty( $settings['enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Enable staged ScryDex sync planning.', 'tcg-store-platform' );
+		echo '</label><br />';
+
+		echo '<label for="tcg-store-scrydex-environment">';
+		echo esc_html__( 'Environment', 'tcg-store-platform' );
+		echo '</label> ';
+		echo '<select id="tcg-store-scrydex-environment" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexProviderSettings::KEY )
+			. '][environment]">';
+		foreach ( array( 'disabled', 'sandbox', 'staging' ) as $environment ) {
+			echo '<option value="' . esc_attr( $environment ) . '" '
+				. selected( (string) $settings['environment'], $environment, false )
+				. '>';
+			echo esc_html( ucwords( str_replace( '_', ' ', $environment ) ) );
+			echo '</option>';
+		}
+		echo '</select><br />';
+
+		$this->render_scrydex_text_input(
+			'base_url',
+			__( 'Base URL', 'tcg-store-platform' ),
+			(string) $settings['base_url'],
+			'url'
+		);
+		$this->render_scrydex_secret_input(
+			'team_id',
+			__( 'Team ID', 'tcg-store-platform' ),
+			true === $status['team_id_configured'],
+			'clear_team_id'
+		);
+		$this->render_scrydex_secret_input(
+			'primary_api_key',
+			__( 'Primary key', 'tcg-store-platform' ),
+			true === $status['primary_key_configured'],
+			'clear_primary_api_key'
+		);
+		$this->render_scrydex_secret_input(
+			'secondary_api_key',
+			__( 'Secondary key', 'tcg-store-platform' ),
+			true === $status['secondary_key_configured'],
+			'clear_secondary_api_key'
+		);
+		$this->render_scrydex_text_input(
+			'request_timeout_seconds',
+			__( 'Timeout seconds', 'tcg-store-platform' ),
+			(string) $settings['request_timeout_seconds'],
+			'number'
+		);
+
+		echo '<p class="description">';
+		echo esc_html(
+			sprintf(
+				/* translators: 1: status, 2: active key slot. */
+				__( 'Status: %1$s. Active key slot: %2$s. Network requests and webhook registration remain deferred until staging acceptance.', 'tcg-store-platform' ),
+				(string) $status['status'],
+				(string) $status['active_key_slot']
+			)
+		);
+		echo '</p>';
+		echo '</fieldset>';
+	}
+
 	/**
 	 * @param mixed  $old_value Previous settings.
 	 * @param mixed  $new_value New settings.
@@ -406,5 +502,45 @@ final class SettingsPage {
 			. '[branding][' . esc_attr( $key ) . ']" value="'
 			. esc_attr( (string) $branding[ $key ] )
 			. '" class="regular-text" />';
+	}
+
+	private function render_scrydex_text_input( string $key, string $label, string $value, string $type ): void {
+		echo '<p><label for="tcg-store-scrydex-' . esc_attr( $key ) . '">';
+		echo esc_html( $label );
+		echo '</label> ';
+		echo '<input type="' . esc_attr( $type ) . '" id="tcg-store-scrydex-' . esc_attr( $key ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexProviderSettings::KEY )
+			. '][' . esc_attr( $key ) . ']" value="'
+			. esc_attr( $value )
+			. '" class="regular-text" /></p>';
+	}
+
+	private function render_scrydex_secret_input(
+		string $key,
+		string $label,
+		bool $configured,
+		string $clear_key
+	): void {
+		$placeholder = $configured
+			? __( 'Configured - leave blank to keep', 'tcg-store-platform' )
+			: __( 'Not configured', 'tcg-store-platform' );
+
+		echo '<p><label for="tcg-store-scrydex-' . esc_attr( $key ) . '">';
+		echo esc_html( $label );
+		echo '</label> ';
+		echo '<input type="password" autocomplete="off" id="tcg-store-scrydex-' . esc_attr( $key ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexProviderSettings::KEY )
+			. '][' . esc_attr( $key ) . ']" value="" placeholder="'
+			. esc_attr( $placeholder )
+			. '" class="regular-text" /> ';
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexProviderSettings::KEY )
+			. '][' . esc_attr( $clear_key ) . ']" value="1" /> ';
+		echo esc_html__( 'Clear saved value', 'tcg-store-platform' );
+		echo '</label></p>';
 	}
 }

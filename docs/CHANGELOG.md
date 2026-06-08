@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Secret-preserving ScryDex WordPress settings for staged provider access,
+  including blank secret fields, configured/missing readiness, health/system
+  status output, and tests proving public status never exposes saved provider
+  values.
 - Offline app reconnect push request planning and response summarization for
   queued operation batches, keeping network execution, direct MySQL access,
   production API keys, queue replay, and canonical mutations deferred.

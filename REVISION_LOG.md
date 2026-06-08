@@ -3,6 +3,84 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Credential Settings Readiness
+
+### What Changed
+
+- Added `ScryDexProviderSettings` for staged ScryDex provider configuration.
+- Added secret-preserving sanitization so blank admin password fields keep
+  previously saved Team ID, primary key, and secondary key values.
+- Added explicit clear flags for saved ScryDex secret values.
+- Added redacted ScryDex readiness payloads for health/status surfaces.
+- Added ScryDex settings fields to the WordPress settings page without echoing
+  saved secrets into HTML.
+- Added System Status and health endpoint visibility for non-secret ScryDex
+  readiness.
+- Added unit coverage for defaults, preservation, clear flags, public redaction,
+  provider context, and platform defaults.
+
+### Why
+
+The staging site needs a safe place to receive ScryDex credentials without
+putting them into GitHub, screenshots, logs, or public status JSON. This
+revision creates the secure settings/readiness plumbing while keeping provider
+network requests, webhook registration, database writes, and scheduled sync
+workers disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/ScryDexProviderSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexProviderSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex provider settings coverage for disabled defaults and secret-free
+  public status.
+- ScryDex provider settings coverage for preserving saved secret values when
+  admin password fields are blank.
+- ScryDex provider settings coverage for explicit secret clearing.
+- ScryDex provider settings coverage for configured readiness without leaking
+  Team ID or key values in public JSON.
+- ScryDex provider settings coverage for server-only provider context.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php --filter ScryDexProviderSettingsTest`:
+  passed. The local runner does not consume the filter flag and ran all 805
+  unit tests.
+- `php apps\wordpress-plugin\tests\lint.php`: passed.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Settings\ScryDexProviderSettings.php apps\wordpress-plugin\src\Settings\Settings.php apps\wordpress-plugin\src\Settings\SettingsPage.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+Repo-wide source PHPCS was also attempted directly through local `vendor/bin`.
+It remains blocked by pre-existing CRLF line-ending findings across many
+untouched source files, so the standards gate for this revision was run against
+the changed source files.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex settings surface, redacted
+  readiness output, and unit tests.
+- No schema rollback, provider cleanup, or external service rollback is
+  required because no ScryDex network calls, webhook registration, database
+  writes, or scheduled workers were added.
+
 ## 2026-06-07 - Offline Reconnect Push Request Planning
 
 ### What Changed

@@ -10,9 +10,11 @@ card-search/rate-limit tests. Card and current market price normalization is
 implemented against sanitized fixtures. Persistence planning now prepares
 deterministic reference-card inserts, changed-row updates, unchanged row
 detection, and current price observations from normalized page plans. Scheduled
-ScryDex workers, live provider credential configuration, database write
-workers, image workers, usage-budget enforcement, and webhook route handling
-remain disabled until staging acceptance.
+ScryDex workers, database write workers, image workers, usage-budget
+enforcement, and webhook route handling remain disabled until staging
+acceptance. WordPress administrator settings now provide secret-preserving
+staging credential storage and redacted readiness output, but those settings do
+not execute provider network requests by themselves.
 
 The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
@@ -24,10 +26,16 @@ yet.
 
 ScryDex credentials may be provided for staging configuration, but they must
 never be committed to GitHub, test fixtures, screenshots, logs, or revision
-notes. Store them only in environment variables, deployment secrets, or
-WordPress administrator settings once the live provider configuration surface is
-enabled. Local and CI tests continue to use sanitized mock responses and
-fixture-backed transports.
+notes. Store them only in environment variables, deployment secrets, or the
+WordPress administrator ScryDex settings. Local and CI tests continue to use
+sanitized mock responses and fixture-backed transports.
+
+The WordPress settings surface stores Team ID, primary key, and secondary key
+values as administrator-controlled settings. Saved values are never echoed back
+into password fields; blank submissions preserve existing values, and explicit
+clear checkboxes remove them. Health and System Status output only expose
+configured/missing booleans, the selected environment, active key slot, and a
+short key fingerprint.
 
 Expected non-production configuration keys:
 

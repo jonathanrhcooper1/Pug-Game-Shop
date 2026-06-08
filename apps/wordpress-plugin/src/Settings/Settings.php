@@ -26,6 +26,7 @@ final class Settings {
 			'branding'                      => BrandingSettings::defaults(),
 			'offline_pairing_authorization' => OfflinePairingAuthorizationSettings::defaults(),
 			'inventory_route_runtime'       => InventoryRouteRuntimeSettings::defaults(),
+			'scrydex_provider'              => ScryDexProviderSettings::defaults(),
 		);
 	}
 	/**
@@ -46,6 +47,10 @@ final class Settings {
 		);
 		$settings['inventory_route_runtime']       = InventoryRouteRuntimeSettings::sanitize(
 			$settings['inventory_route_runtime'] ?? array()
+		);
+		$settings['scrydex_provider']              = ScryDexProviderSettings::sanitize(
+			$settings['scrydex_provider'] ?? array(),
+			is_array( $settings['scrydex_provider'] ?? null ) ? $settings['scrydex_provider'] : array()
 		);
 
 		return $settings;
@@ -83,6 +88,12 @@ final class Settings {
 		$inventory_route_runtime       = InventoryRouteRuntimeSettings::sanitize(
 			$value['inventory_route_runtime'] ?? array()
 		);
+		$scrydex_provider              = ScryDexProviderSettings::sanitize(
+			$value['scrydex_provider'] ?? ( $existing['scrydex_provider'] ?? array() ),
+			is_array( $existing['scrydex_provider'] ?? null )
+				? $existing['scrydex_provider']
+				: ScryDexProviderSettings::defaults()
+		);
 
 		if ( ! in_array( $level, $allowed_levels, true ) ) {
 			$level = 'warning';
@@ -96,6 +107,7 @@ final class Settings {
 			'branding'                      => $branding,
 			'offline_pairing_authorization' => $offline_pairing_authorization,
 			'inventory_route_runtime'       => $inventory_route_runtime,
+			'scrydex_provider'              => $scrydex_provider,
 		);
 	}
 	/**
