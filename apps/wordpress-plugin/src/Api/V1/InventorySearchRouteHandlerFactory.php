@@ -45,18 +45,36 @@ final class InventorySearchRouteHandlerFactory {
 		);
 	}
 
+	public function reference_handler(): ?ReferenceCardSearchRouteHandler {
+		if ( ! $this->route_dependencies_ready() ) {
+			return null;
+		}
+
+		$database = $this->database();
+		if ( null === $database || ! $this->table_prefix_ready( (string) $database->prefix ) ) {
+			return null;
+		}
+
+		return new ReferenceCardSearchRouteHandler(
+			$database,
+			(string) $database->prefix
+		);
+	}
+
 	/**
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
 	public function handlers(): array {
-		$handler = $this->handler();
+		$handler           = $this->handler();
+		$reference_handler = $this->reference_handler();
 
-		if ( null === $handler ) {
+		if ( null === $handler || null === $reference_handler ) {
 			return array();
 		}
 
 		return array(
-			'search_inventory_items' => fn ( OfflineRestRequestData $data ): array => $handler->search_inventory_items( $data ),
+			'search_inventory_items'  => fn ( OfflineRestRequestData $data ): array => $handler->search_inventory_items( $data ),
+			'search_reference_cards'  => fn ( OfflineRestRequestData $data ): array => $reference_handler->search_reference_cards( $data ),
 		);
 	}
 
@@ -92,6 +110,7 @@ final class InventorySearchRouteHandlerFactory {
 			'request_parser_ready'                => method_exists( InventorySearchRequestParser::class, 'parse' ),
 			'query_planner_ready'                 => method_exists( InventorySearchQueryPlanner::class, 'plan' ),
 			'repository_adapter_ready'            => method_exists( InventorySearchRepository::class, 'fetch' ),
+			'reference_search_handler_ready'      => $handler_ready,
 			'route_connected_reads_enabled'       => $this->route_connected_reads_enabled,
 			'database_configured'                 => $database_ready,
 			'table_prefix_ready'                  => $prefix_ready,

@@ -148,6 +148,7 @@ namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\InventorySearchRouteHandler;
 	use TCGStorePlatform\Api\V1\InventorySearchRouteHandlerFactory;
 	use TCGStorePlatform\Api\V1\OfflineRestRequestData;
+	use TCGStorePlatform\Api\V1\ReferenceCardSearchRouteHandler;
 	use TCGStorePlatform\Inventory\InventorySearchRepository;
 	use TCGStorePlatform\Tests\TestCase;
 
@@ -240,6 +241,49 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'rejected', $response['meta']['repository']['status'] );
 		}
 
+		public function test_reference_handler_returns_catalog_cards_with_images_and_price(): void {
+			$database = new \InventorySearchRouteHandlerWpdb( array( $this->reference_card_row() ), '1' );
+			$handler  = new ReferenceCardSearchRouteHandler( $database, 'wp_' );
+
+			$response = $handler->search_reference_cards(
+				$this->request(
+					array(
+						'q'     => 'moonbreon',
+						'game'  => 'pokemon',
+						'limit' => '8',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 200, $response['status_code'] );
+			$this->assert_same( 'reference_search_read_ready', $response['code'] );
+			$this->assert_same( 1, $database->get_results_count );
+			$this->assert_same( 1, $database->get_var_count );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $response['data']['meta']['total'] );
+			$this->assert_same( 'wordpress_catalog_cache', $response['data']['source'] );
+			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
+			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
+			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );
+			$this->assert_same( 112045, $response['data']['cards'][0]['market_price_minor_units'] );
+			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
+			$this->assert_false( $response['data']['meta']['live_provider_request'] );
+		}
+
+		public function test_reference_handler_rejects_empty_query_before_repository_reads(): void {
+			$database = new \InventorySearchRouteHandlerWpdb( array( $this->reference_card_row() ), '1' );
+			$handler  = new ReferenceCardSearchRouteHandler( $database, 'wp_' );
+
+			$response = $handler->search_reference_cards( $this->request( array( 'q' => '' ) ) );
+
+			$this->assert_same( 'invalid', $response['status'] );
+			$this->assert_same( 'reference_search_request_invalid', $response['code'] );
+			$this->assert_true( in_array( 'reference_search_query_required', $response['errors'], true ) );
+			$this->assert_same( 0, $database->prepare_count );
+			$this->assert_true( $response['meta']['reference_repository_deferred'] );
+		}
+
 		public function test_factory_defers_default_route_connected_reads(): void {
 			$database = new \InventorySearchRouteHandlerWpdb( array( $this->inventory_row() ), '1' );
 			$factory  = new InventorySearchRouteHandlerFactory(
@@ -270,8 +314,10 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['route_connected_reads_enabled'] );
 			$this->assert_true( $summary['repository_configured'] );
 			$this->assert_true( $summary['route_connected_handler_ready'] );
+			$this->assert_true( $summary['reference_search_handler_ready'] );
 			$this->assert_false( $summary['route_connected_reads_deferred'] );
 			$this->assert_true( is_callable( $handlers['search_inventory_items'] ?? null ) );
+			$this->assert_true( is_callable( $handlers['search_reference_cards'] ?? null ) );
 
 			$response = $handlers['search_inventory_items'](
 				$this->request(
@@ -285,6 +331,18 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'ready', $response['status'] );
 			$this->assert_false( $response['data']['meta']['public_redaction'] );
 			$this->assert_same( 'PKM-BASE-004-HOLO', $response['data']['items'][0]['barcode'] );
+
+			$reference_response = $handlers['search_reference_cards'](
+				$this->request(
+					array(
+						'q'    => 'Charizard',
+						'game' => 'pokemon',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $reference_response['status'] );
+			$this->assert_same( 'Charizard', $reference_response['data']['cards'][0]['card_name'] );
 		}
 
 		public function test_factory_reports_provider_and_prefix_issues(): void {
@@ -325,7 +383,10 @@ namespace TCGStorePlatform\Tests\Unit {
 			return array(
 				'inventory_id'            => '42',
 				'public_id'               => 'card-public-42',
+				'provider_name'           => 'scrydex',
+				'provider_card_id'        => 'scrydex-pokemon-base-004',
 				'game'                    => 'pokemon',
+				'name'                    => 'Charizard',
 				'card_name'               => 'Charizard',
 				'set_name'                => 'Base Set',
 				'set_code'                => 'BASE',
@@ -362,10 +423,39 @@ namespace TCGStorePlatform\Tests\Unit {
 				'status'                  => 'available',
 				'front_image_remote_url'  => 'https://example.test/front.jpg',
 				'back_image_remote_url'   => '',
+				'front_image_url'         => 'https://example.test/front.jpg',
+				'back_image_url'          => '',
+				'provider_updated_at'     => '2026-06-07 11:00:00.000000',
+				'price_observed_at'       => '2026-06-07 11:30:00.000000',
 				'notes'                   => '',
 				'staff_notes'             => 'Case A',
 				'updated_at'              => '2026-06-07 12:00:00.000000',
 				'row_version'             => '7',
+			);
+		}
+
+		/**
+		 * @return array<string, mixed>
+		 */
+		private function reference_card_row(): array {
+			return array(
+				'public_id'             => 'reference-public-215',
+				'provider_name'         => 'scrydex',
+				'provider_card_id'      => 'scrydex-pokemon-evs-215',
+				'game'                  => 'pokemon',
+				'name'                  => 'Umbreon VMAX',
+				'set_name'              => 'Evolving Skies',
+				'set_code'              => 'EVS',
+				'card_number'           => '215',
+				'printed_number'        => '215/203',
+				'front_image_url'       => 'https://images.pokemontcg.io/swsh7/215_hires.png',
+				'back_image_url'        => '',
+				'provider_updated_at'   => '2026-06-08 12:00:00',
+				'updated_at'            => '2026-06-08 12:30:00',
+				'row_version'           => '3',
+				'market_price'          => '1120.4500',
+				'market_price_currency' => 'USD',
+				'price_observed_at'     => '2026-06-08 12:10:00',
 			);
 		}
 	}

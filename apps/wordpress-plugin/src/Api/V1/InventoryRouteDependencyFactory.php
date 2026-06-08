@@ -12,6 +12,7 @@ use TCGStorePlatform\Settings\InventoryRouteRuntimeSettings;
 final class InventoryRouteDependencyFactory {
 	private const HANDLER_CALLBACKS = array(
 		'search_inventory_items',
+		'search_reference_cards',
 		'create_inventory_item',
 	);
 

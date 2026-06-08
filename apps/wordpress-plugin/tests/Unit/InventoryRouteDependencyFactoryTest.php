@@ -24,7 +24,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_false( $summary['configured'] );
 		$this->assert_true( $summary['route_dependency_factory_ready'] );
 		$this->assert_same( 16, $summary['route_contract_count'] );
-		$this->assert_same( 2, $summary['staged_handler_route_count'] );
+		$this->assert_same( 3, $summary['staged_handler_route_count'] );
 		$this->assert_same( 0, $summary['controller_handler_count'] );
 		$this->assert_false( $summary['controller_handlers_configured'] );
 		$this->assert_same( 0, $summary['permission_callback_count'] );
@@ -79,7 +79,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 
 		$this->assert_true( $factory->is_configured() );
 		$this->assert_true( $summary['configured'] );
-		$this->assert_same( 2, $summary['controller_handler_count'] );
+		$this->assert_same( 3, $summary['controller_handler_count'] );
 		$this->assert_true( $summary['controller_handlers_configured'] );
 		$this->assert_same( 13, $summary['permission_callback_count'] );
 		$this->assert_true( $summary['capability_permission_callbacks_configured'] );
@@ -89,6 +89,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $summary['route_registration_deferred'] );
 		$this->assert_same( array(), $summary['configuration_issues'] );
 		$this->assert_true( $factory->controller()->has_handler( 'search_inventory_items' ) );
+		$this->assert_true( $factory->controller()->has_handler( 'search_reference_cards' ) );
 		$this->assert_true( $factory->controller()->has_handler( 'create_inventory_item' ) );
 		$this->assert_false( $factory->controller()->has_handler( 'reserve_inventory_item' ) );
 		$this->assert_same( 0, $factory->registrar()->register_enabled_routes() );
@@ -116,9 +117,18 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 			)
 		);
 		$locked = $controller->reserve_inventory_item( array() );
+		$reference = $controller->search_reference_cards(
+			array(
+				'query' => array(
+					'q' => 'charizard',
+				),
+			)
+		);
 
 		$this->assert_same( 'ready', $search['status'] );
 		$this->assert_same( 'pikachu', $search['query'] );
+		$this->assert_same( 'ready', $reference['status'] );
+		$this->assert_same( 'charizard', $reference['query'] );
 		$this->assert_same( 'ready', $create['status'] );
 		$this->assert_same( 'route-dependency-test', $create['idempotency_key'] );
 		$this->assert_same( 'disabled', $locked['status'] );
@@ -140,6 +150,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 
 		$this->assert_true( $callbacks['POST /inventory'] instanceof InventoryCapabilityPermissionCallbackAdapter );
 		$this->assert_true( $callbacks['GET /inventory/search'] instanceof InventoryPublicReadPermissionCallbackAdapter );
+		$this->assert_true( $callbacks['GET /reference/search'] instanceof InventoryPublicReadPermissionCallbackAdapter );
 	}
 
 	public function test_public_read_routes_enabled_without_limiter_reports_blocked_state(): void {
@@ -215,14 +226,15 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$summary         = $factory->readiness_summary();
 		$bootstrap       = $factory->bootstrapper()->bootstrap( true );
 
-		$this->assert_same( 1, $summary['registerable_route_count'] );
-		$this->assert_same( array( 'GET /inventory/search' ), $summary['registerable_route_keys'] );
+		$this->assert_same( 2, $summary['registerable_route_count'] );
+		$this->assert_same( array( 'GET /reference/search', 'GET /inventory/search' ), $summary['registerable_route_keys'] );
 		$this->assert_same( 'ready', $bootstrap['status'] );
-		$this->assert_same( 1, $bootstrap['registered_route_count'] );
-		$this->assert_same( array( 'GET /inventory/search' ), $bootstrap['registered_route_keys'] );
-		$this->assert_same( 1, count( $calls ) );
-		$this->assert_same( '/inventory/search', $calls[0]['route'] );
+		$this->assert_same( 2, $bootstrap['registered_route_count'] );
+		$this->assert_same( array( 'GET /reference/search', 'GET /inventory/search' ), $bootstrap['registered_route_keys'] );
+		$this->assert_same( 2, count( $calls ) );
+		$this->assert_same( '/reference/search', $calls[0]['route'] );
 		$this->assert_same( 'GET', $calls[0]['args']['methods'] );
+		$this->assert_same( '/inventory/search', $calls[1]['route'] );
 	}
 
 	public function test_runtime_enabled_staff_create_contract_registers_when_dependencies_are_ready(): void {
@@ -286,7 +298,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $blocked['square_inventory_sync_request_planner_ready'] );
 		$this->assert_true( $blocked['external_projection_planning_deferred'] );
 		$this->assert_same( 'ready', $ready['status'] );
-		$this->assert_contains( 'handlers 2 / 2', $ready['value'] );
+		$this->assert_contains( 'handlers 3 / 3', $ready['value'] );
 		$this->assert_contains( 'public reads enabled', $ready['value'] );
 		$this->assert_contains( 'projection planning deferred', $ready['value'] );
 		$this->assert_contains( 'WooCommerce write request ready', $ready['value'] );
@@ -299,6 +311,12 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 	private function handlers_for_staged_routes(): array {
 		return array(
 			'search_inventory_items' => static function ( OfflineRestRequestData $data ): array {
+				return array(
+					'status' => 'ready',
+					'query'  => (string) ( $data->query_params()['q'] ?? '' ),
+				);
+			},
+			'search_reference_cards' => static function ( OfflineRestRequestData $data ): array {
 				return array(
 					'status' => 'ready',
 					'query'  => (string) ( $data->query_params()['q'] ?? '' ),

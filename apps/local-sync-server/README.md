@@ -28,14 +28,18 @@ Current runtime:
 - Set `PUG_LOCAL_SYNC_DB=C:\path\to\store-sync.sqlite` to choose the durable
   SQLite database location. If omitted, the server writes
   `apps/local-sync-server/store-sync.sqlite`.
+- Set `PUG_WORDPRESS_URL=https://your-staging-site.example` to enable the
+  website catalog fallback for missing ScryDex/reference card lookups. The
+  server calls `/wp-json/tcg-store/v1/reference/search`; clients still receive
+  only secret-free card data.
 - `POST /auth/pin` verifies cached 4-digit PIN users.
 - `GET /users/access-policy`, `POST /users`, and
   `PATCH /users/{id}/access` are manager-session protected.
 - `GET /inventory/search`, `GET /scrydex/cards/search`,
   `POST /inventory/intake`, `POST /inventory/reservations`, and
   `POST /kiosk/orders` provide the first shared LAN inventory/order surface,
-  including local-reference-first ScryDex lookup, WordPress catalog/ScryDex
-  proxy fallback on cache miss, and locally queued card intake rows that
+  including local-reference-first ScryDex lookup, `PUG_WORDPRESS_URL` catalog
+  fallback on cache miss, and locally queued card intake rows that
   remain pending until WordPress accepts them.
 - `GET /customers/search`, `POST /customers`, `POST /credit/adjustments`,
   and `POST /credit/redemptions` provide the first shared LAN customer-credit

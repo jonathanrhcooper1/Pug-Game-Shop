@@ -6,9 +6,10 @@
   "type": "module",
   "scripts": {
     "start": "node src/cli.mjs",
-    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence",
+    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:wordpress-catalog",
     "test:contract": "node tests/local-sync-server-contract.mjs",
     "test:persistence": "node tests/local-sync-server-persistence.mjs",
-    "test:runtime": "node tests/local-sync-server-runtime.mjs"
+    "test:runtime": "node tests/local-sync-server-runtime.mjs",
+    "test:wordpress-catalog": "node tests/wordpress-catalog-fallback.mjs"
   }
 }

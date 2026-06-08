@@ -6,6 +6,14 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress inventory routes now include a connected `/reference/search`
+  handler under the staff-search read gate, returning catalog-safe ScryDex
+  reference card identity, images, latest provider price observation, and
+  secret-free metadata for local sync server fallback lookups.
+- Local sync server runtime can now create its missing-card WordPress catalog
+  fallback from `PUG_WORDPRESS_URL`, calling
+  `/wp-json/tcg-store/v1/reference/search` with bounded limits and secret-safe
+  error/status metadata.
 - Local sync server ScryDex lookup now searches the persisted local reference
   card cache first, falls back to an injected WordPress catalog/ScryDex proxy
   only when the card is missing, persists proxy results into `reference_cards`,

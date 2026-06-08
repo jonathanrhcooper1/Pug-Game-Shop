@@ -68,6 +68,19 @@ treats ScryDex as a one-off text fill. Staff can select a card, review image,
 price, local stock, condition, and quantity, then add one provisional inventory
 row per physical copy.
 
+The WordPress plugin exposes the catalog-safe fallback surface through
+`/wp-json/tcg-store/v1/reference/search` when connected inventory reads are
+enabled. The response includes ScryDex reference identity, card art URLs, latest
+provider price observation when present, catalog timestamps, and explicit
+secret-free metadata. It does not return ScryDex credentials or issue live
+provider requests by itself.
+
+The LAN sync server can be pointed at that website surface with
+`PUG_WORDPRESS_URL`. When configured, missing-card local lookup calls the
+WordPress reference-search route with a bounded result limit, then saves the
+returned catalog row into its local `reference_cards` cache. Local clients still
+receive only normalized card data and never receive ScryDex API keys.
+
 The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
 provider page response. The persistence planner turns those page plans into

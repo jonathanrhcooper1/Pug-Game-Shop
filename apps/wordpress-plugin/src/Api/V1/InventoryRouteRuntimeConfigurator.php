@@ -11,6 +11,7 @@ use TCGStorePlatform\Settings\InventoryRouteRuntimeSettings;
 
 final class InventoryRouteRuntimeConfigurator {
 	private const STAFF_SEARCH_ROUTE_KEY = 'GET /inventory/search';
+	private const REFERENCE_SEARCH_ROUTE_KEY = 'GET /reference/search';
 	private const STAFF_CREATE_ROUTE_KEY = 'POST /inventory';
 
 	/**
@@ -25,7 +26,11 @@ final class InventoryRouteRuntimeConfigurator {
 
 		foreach ( $route_contracts as $route_contract ) {
 			if (
-				self::STAFF_SEARCH_ROUTE_KEY === InventoryRoutePermissionCallbackFactory::route_key( $route_contract )
+				in_array(
+					InventoryRoutePermissionCallbackFactory::route_key( $route_contract ),
+					array( self::STAFF_SEARCH_ROUTE_KEY, self::REFERENCE_SEARCH_ROUTE_KEY ),
+					true
+				)
 				&& true === $settings['staff_search_route_enabled']
 			) {
 				$route_contract['live_enabled_by_default']              = true;

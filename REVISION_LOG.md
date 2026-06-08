@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress Reference Search Route
+
+### What Changed
+
+- Added a connected WordPress `/tcg-store/v1/reference/search` handler under
+  the existing inventory staff-search read gate.
+- Returned catalog-safe reference-card data for local fallback lookups:
+  provider card id, game, set/version fields, image URLs, latest provider price
+  observation, catalog timestamps, and secret-free metadata.
+- Added a local sync server WordPress catalog fallback client configured by
+  `PUG_WORDPRESS_URL`, with bounded result limits and secret-safe unavailable
+  responses.
+- Updated inventory route runtime configuration so reference search registers
+  alongside staff inventory search when connected reads are enabled.
+- Updated route dependency and route handler factory tests for the third staged
+  read handler.
+
+### Why
+
+The LAN sync server needs a website-owned catalog fallback before it can keep
+employee app and kiosk lookups local-first. This route provides the website
+surface that serves mirrored ScryDex catalog rows without exposing provider
+credentials to local clients.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `apps/local-sync-server/README.md`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL migration was added.
+- No local SQLite migration was added.
+
+### Tests Added
+
+- Reference search handler coverage for catalog card identity, image URL,
+  provider price conversion, count query, and credential-free response flags.
+- Reference search request validation coverage for empty query rejection.
+- Factory/route dependency coverage for connected reference search registration.
+- Local sync server WordPress catalog fallback coverage for URL normalization,
+  response parsing, unavailable HTTP responses, and secret-safe status output.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `npm.cmd --prefix apps/local-sync-server run test`
+
+### Rollback Notes
+
+- Revert this revision to remove the connected reference-search handler and
+  return `/reference/search` to a disabled/staged contract only, and to remove
+  `PUG_WORDPRESS_URL` fallback wiring from the LAN sync server.
+- No data rollback is required because this revision only reads existing
+  reference-card and provider-price tables.
+
 ## 2026-06-08 - Local-First ScryDex Lookup Cache
 
 ### What Changed
