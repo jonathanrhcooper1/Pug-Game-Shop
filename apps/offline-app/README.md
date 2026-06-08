@@ -18,6 +18,9 @@ future offline sync app.
   reconnect sync.
 - Browser-safe offline queue bridge contract for staging inventory operations
   before the desktop SQLite/Tauri command adapter is connected.
+- Local SQLite `operation_queue` insert planning for staged operations, with
+  browser bridge and Tauri command response metadata proving the exact table,
+  columns, parameter count, and deferrals before persistence is enabled.
 - Tauri command scaffold for validating staged inventory, reservation, event,
   and credit operation envelopes before future SQLite persistence, with
   CI-level Rust tests planned in the offline app Windows workflow.
@@ -29,7 +32,7 @@ future offline sync app.
   schema shape, local workspace state, queue bridge safety, UI shell markers,
   and secret safety.
 
-The app does not yet implement live pairing, SQLite persistence, live push/pull
+The app does not yet implement live pairing, live SQLite writes, live push/pull
 sync execution, printer/scanner adapters, kiosk lockdown, or signed updater
 behavior.
 

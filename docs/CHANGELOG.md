@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app local SQLite queue insert planning for staged operations, with
+  bridge/app visibility, Tauri command response metadata, and contract tests
+  proving queue replay, canonical mutations, network writes, and direct MySQL
+  access remain deferred.
 - ScryDex sync dry-run planning that exposes the next cards-page request,
   checkpoint row, provider readiness, and explicit deferrals through health
   output without provider network calls, worker execution, image downloads, or

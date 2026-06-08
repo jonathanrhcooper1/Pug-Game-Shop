@@ -1,4 +1,8 @@
 import type { OfflineOperationEnvelope } from "./offlineWorkspace"
+import {
+  buildOfflineQueueInsertPlan,
+  type OfflineSqliteQueueInsertPlan,
+} from "./offlineLocalQueue"
 
 export const offlineQueueCommandName = "queue_offline_operation"
 
@@ -18,6 +22,7 @@ export type OfflineQueueSubmissionResult = {
   persistenceMode: OfflineQueuePersistenceMode
   status: OfflineQueueStatus
   message: string
+  sqlitePlan: OfflineSqliteQueueInsertPlan
   audit: {
     directMysqlAccess: false
     networkWrite: false
@@ -28,12 +33,15 @@ export type OfflineQueueSubmissionResult = {
 export function previewOfflineOperation(
   operation: OfflineOperationEnvelope,
 ): OfflineQueueSubmissionResult {
+  const sqlitePlan = buildOfflineQueueInsertPlan(operation)
+
   return {
     commandName: offlineQueueCommandName,
     operation,
     persistenceMode: "preview_only",
     status: "previewed",
     message: "Ready for desktop queue handoff.",
+    sqlitePlan,
     audit: {
       directMysqlAccess: false,
       networkWrite: false,
@@ -59,6 +67,7 @@ export async function submitOfflineOperation(
       persistenceMode: "tauri_command",
       status: "queued",
       message: "Saved to the desktop queue.",
+      sqlitePlan: buildOfflineQueueInsertPlan(operation),
       audit: {
         directMysqlAccess: false,
         networkWrite: false,
@@ -72,6 +81,7 @@ export async function submitOfflineOperation(
       persistenceMode: "preview_only",
       status: "deferred",
       message: "Queue handoff is deferred.",
+      sqlitePlan: buildOfflineQueueInsertPlan(operation),
       audit: {
         directMysqlAccess: false,
         networkWrite: false,

@@ -15,6 +15,8 @@ for (const marker of [
   "tauri_command",
   "submitOfflineOperation",
   "previewOfflineOperation",
+  "buildOfflineQueueInsertPlan",
+  "sqlitePlan",
   "OfflineQueueCommandAdapter",
   "directMysqlAccess: false",
   "networkWrite: false",

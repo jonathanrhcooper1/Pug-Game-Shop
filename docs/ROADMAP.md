@@ -139,6 +139,7 @@ plus push canonical mutation transaction preflight
 plus polished offline inventory command workspace UI and shell contract
 plus typed local workspace state and staged operation envelope preview
 plus browser-safe offline queue bridge contract
+plus local SQLite queue insert planning
 plus Tauri queue command scaffold and adapter detection
 implemented
 

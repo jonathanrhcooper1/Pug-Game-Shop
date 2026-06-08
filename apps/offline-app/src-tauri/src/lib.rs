@@ -1,5 +1,15 @@
 use serde::{Deserialize, Serialize};
 
+const SQLITE_QUEUE_TABLE: &str = "operation_queue";
+const SQLITE_QUEUE_INSERT_SQL: &str = concat!(
+    "INSERT OR IGNORE INTO operation_queue (",
+    "client_operation_id, device_id, location_id, actor_id, operation_type, ",
+    "entity_type, entity_id, base_row_version, occurred_at_local, queued_at_utc, ",
+    "payload_json, authorization_context_json, schema_version, status, retry_count",
+    ") VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)"
+);
+const SQLITE_QUEUE_PARAMETER_COUNT: u8 = 15;
+
 #[derive(Debug, Deserialize)]
 struct OfflineOperationEnvelope {
     client_operation_id: String,
@@ -22,6 +32,12 @@ struct QueueOfflineOperationResponse {
     status: &'static str,
     persistence_mode: &'static str,
     client_operation_id: String,
+    sqlite_table: &'static str,
+    sqlite_statement: &'static str,
+    sqlite_parameter_count: u8,
+    sqlite_persistence_deferred: bool,
+    queue_replay_deferred: bool,
+    canonical_mutations_deferred: bool,
     direct_mysql_access: bool,
     network_write: bool,
     schema_version: u8,
@@ -37,6 +53,12 @@ fn queue_offline_operation(
         status: "accepted_for_local_queue",
         persistence_mode: "command_scaffold",
         client_operation_id: operation.client_operation_id,
+        sqlite_table: SQLITE_QUEUE_TABLE,
+        sqlite_statement: SQLITE_QUEUE_INSERT_SQL,
+        sqlite_parameter_count: SQLITE_QUEUE_PARAMETER_COUNT,
+        sqlite_persistence_deferred: true,
+        queue_replay_deferred: true,
+        canonical_mutations_deferred: true,
         direct_mysql_access: false,
         network_write: false,
         schema_version: 1,
@@ -127,6 +149,12 @@ mod tests {
 
         assert_eq!(result.status, "accepted_for_local_queue");
         assert_eq!(result.persistence_mode, "command_scaffold");
+        assert_eq!(result.sqlite_table, "operation_queue");
+        assert_eq!(result.sqlite_parameter_count, 15);
+        assert!(result.sqlite_statement.starts_with("INSERT OR IGNORE INTO operation_queue"));
+        assert!(result.sqlite_persistence_deferred);
+        assert!(result.queue_replay_deferred);
+        assert!(result.canonical_mutations_deferred);
         assert!(!result.direct_mysql_access);
         assert!(!result.network_write);
     }

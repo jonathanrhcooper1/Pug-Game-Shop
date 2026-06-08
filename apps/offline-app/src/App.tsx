@@ -52,6 +52,7 @@ export function App() {
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
+  const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
     return filterInventoryItems(workspace.inventoryItems, query)
   }, [query, workspace.inventoryItems])
@@ -276,7 +277,7 @@ export function App() {
                   <strong>{stagedOperation.client_operation_id}</strong>
                   <small>
                     {stagedPushRequest && pushSummary
-                      ? `${stagedPushRequest.method} ${stagedPushRequest.path.replace("/wp-json/tcg-store/v1", "")} deferred; ${pushSummary.status} preview.`
+                      ? `${queueTarget} insert planned; ${stagedPushRequest.method} ${stagedPushRequest.path.replace("/wp-json/tcg-store/v1", "")} deferred; ${pushSummary.status} preview.`
                       : stagedPushBatch
                         ? `Push batch ${stagedPushBatch.batch_id} ready after reconnect.`
                       : (queueSubmission?.message ?? "Ready for local queue handoff.")}

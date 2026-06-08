@@ -42,6 +42,11 @@
 - `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
   queue operations stay behind a Tauri command adapter boundary and do not use
   direct browser storage or network writes.
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs` verifies the
+  offline app produces the SQLite `operation_queue` insert plan, keeps it
+  visible in the bridge/UI/Tauri command boundary, and leaves local
+  persistence, queue replay, canonical website mutations, network writes, and
+  direct MySQL access deferred.
 - `apps/offline-app/tests/tauri-command-contract.mjs` verifies the desktop
   command scaffold, frontend Tauri adapter detection, Rust serde dependencies,
   supported offline operation/entity type validation, and no direct browser

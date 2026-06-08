@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline Local Queue Insert Planning
+
+### What Changed
+
+- Added `offlineLocalQueue` planning for SQLite `operation_queue` insert
+  statements from staged offline operation envelopes.
+- Added SQLite queue plan visibility to offline queue bridge submission
+  results and the offline inventory command workspace.
+- Added Tauri command response metadata for the planned local queue table,
+  statement, parameter count, and deferred execution gates.
+- Added contract coverage for the local queue persistence plan and tightened
+  queue bridge/Tauri command contracts around the new metadata.
+
+### Why
+
+The standalone offline app needs a concrete local queue handoff before live
+SQLite persistence is enabled. This revision proves the table, columns,
+parameter count, idempotent insert policy, and safety gates without writing
+SQLite rows, replaying the queue, mutating the website, calling the network, or
+touching MySQL directly.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineLocalQueue.ts`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/package.json`
+- `package.json`
+- `apps/offline-app/README.md`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app local queue persistence contract coverage for SQLite insert
+  planning, bridge/UI/Tauri metadata, and deferred persistence/network/website
+  mutation gates.
+
+### Tests Run
+
+- `npm.cmd --prefix apps\offline-app run test:package-contract`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+- `npm.cmd run test`: passed, including 814 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+
+### Rollback Notes
+
+- Revert this revision to remove the local queue insert planner, bridge/UI
+  queue plan visibility, Tauri queue metadata, and related contract test.
+- No schema rollback, SQLite cleanup, WordPress cleanup, or external service
+  rollback is required because live SQLite writes, queue replay, canonical
+  website mutations, network writes, and direct MySQL access were not enabled.
+
 ## 2026-06-07 - ScryDex Sync Dry-Run Planning
 
 ### What Changed
