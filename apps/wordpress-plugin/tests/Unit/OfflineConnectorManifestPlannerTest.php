@@ -28,6 +28,18 @@ final class OfflineConnectorManifestPlannerTest extends TestCase {
 		$this->assert_true( $plan['profile_manifest_ready'] );
 		$this->assert_same( 'pug-staging-pug-example-test', $plan['profile_id'] );
 		$this->assert_same( 'staging', $plan['environment'] );
+		$this->assert_same( 'pug-staging-pug-example-test', $plan['connector_identity']['profile_id'] );
+		$this->assert_same( 'pug', $plan['connector_identity']['company_key'] );
+		$this->assert_same( 'Pug Game Shop', $plan['connector_identity']['company_name'] );
+		$this->assert_same( 'pug.example.test', $plan['connector_identity']['site_host'] );
+		$this->assert_same( 'staging', $plan['connector_identity']['environment'] );
+		$this->assert_same(
+			substr( hash( 'sha256', 'staging|https://pug.example.test' ), 0, 16 ),
+			$plan['connector_identity']['site_fingerprint']
+		);
+		$this->assert_same( 'https://pug.example.test/wp-json/tcg-store/v1', $plan['connector_identity']['rest_base_url'] );
+		$this->assert_same( 'https://pug.example.test/wp-json/tcg-store/v1/offline/connector-manifest', $plan['connector_identity']['connector_manifest_url'] );
+		$this->assert_same( 'public_safe_no_secrets', $plan['connector_identity']['credential_boundary'] );
 		$this->assert_same( 'Pug Game Shop', $plan['company']['name'] );
 		$this->assert_same( 'Pug', $plan['company']['short_name'] );
 		$this->assert_same( 'https://pug.example.test', $plan['wordpress']['site_url'] );

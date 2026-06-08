@@ -28,17 +28,33 @@ final class OfflineConnectorManifestPlanner {
 		$environment   = $this->environment( $context );
 		$site_is_https = str_starts_with( $site_url, 'https://' );
 		$route_plans   = $this->offline_routes();
+		$profile_id    = $this->profile_id(
+			(string) ( $branding['company']['short_name'] ?? $branding['company']['name'] ?? 'tcg-store' ),
+			$environment,
+			$site_url
+		);
+		$rest_base_url = $this->join_url( $site_url, self::REST_BASE_PATH );
+		$manifest_url  = $this->join_url( $site_url, self::REST_BASE_PATH . '/offline/connector-manifest' );
 
 		return array(
 			'status'                          => $this->status( $environment, $site_is_https ),
 			'action'                          => 'offline_connector_manifest',
 			'profile_manifest_ready'          => true,
-			'profile_id'                      => $this->profile_id(
-				(string) ( $branding['company']['short_name'] ?? $branding['company']['name'] ?? 'tcg-store' ),
-				$environment,
-				$site_url
-			),
+			'profile_id'                      => $profile_id,
 			'environment'                     => $environment,
+			'connector_identity'              => array(
+				'profile_id'             => $profile_id,
+				'company_key'            => $this->slug(
+					(string) ( $branding['company']['short_name'] ?? $branding['company']['name'] ?? 'tcg-store' )
+				),
+				'company_name'           => (string) ( $branding['company']['name'] ?? 'TCG Store Platform' ),
+				'site_host'              => $this->site_host( $site_url ),
+				'environment'            => $environment,
+				'site_fingerprint'       => $this->site_fingerprint( $site_url, $environment ),
+				'rest_base_url'          => $rest_base_url,
+				'connector_manifest_url' => $manifest_url,
+				'credential_boundary'    => 'public_safe_no_secrets',
+			),
 			'company'                         => $branding['company'],
 			'theme'                           => $branding['theme'],
 			'wordpress'                       => array(
@@ -46,8 +62,8 @@ final class OfflineConnectorManifestPlanner {
 				'site_url_secure'                   => $site_is_https,
 				'rest_namespace'                    => self::REST_NAMESPACE,
 				'rest_base_path'                    => self::REST_BASE_PATH,
-				'rest_base_url'                     => $this->join_url( $site_url, self::REST_BASE_PATH ),
-				'connector_manifest_url'            => $this->join_url( $site_url, self::REST_BASE_PATH . '/offline/connector-manifest' ),
+				'rest_base_url'                     => $rest_base_url,
+				'connector_manifest_url'            => $manifest_url,
 				'auth_mode'                         => 'offline_device_token',
 				'device_pairing_required'           => true,
 				'credential_storage'                => 'desktop_secure_store',
@@ -172,6 +188,16 @@ final class OfflineConnectorManifestPlanner {
 
 	private function join_url( string $site_url, string $path ): string {
 		return rtrim( $site_url, '/' ) . '/' . ltrim( $path, '/' );
+	}
+
+	private function site_host( string $site_url ): string {
+		$parsed_host = parse_url( $site_url, PHP_URL_HOST );
+
+		return '' === (string) $parsed_host ? 'offline.local' : strtolower( (string) $parsed_host );
+	}
+
+	private function site_fingerprint( string $site_url, string $environment ): string {
+		return substr( hash( 'sha256', strtolower( $environment . '|' . $site_url ) ), 0, 16 );
 	}
 
 	private function clean_site_url( mixed $value ): string {

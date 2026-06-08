@@ -30,6 +30,7 @@ try {
     applyOfflinePullInventoryRecordsToCache,
     applyOfflinePushResultToQueue,
     buildCustomerCreditRedemptionOperation,
+    buildConnectorManifestPreview,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
     buildOfflineEventQueuePreviewEntries,
@@ -56,6 +57,7 @@ try {
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
     upsertCustomerCreditSnapshot,
+    validateConnectorManifest,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
     {
@@ -421,6 +423,22 @@ try {
       "endpoint responded",
     ),
   )
+  const manifestPreview = buildConnectorManifestPreview(offlineWorkspaceSeed.connectorProfiles[0])
+  assert.equal(manifestPreview.connector_identity.profile_id, manifestPreview.profile_id)
+  assert.equal(manifestPreview.connector_identity.company_name, manifestPreview.company.name)
+  assert.equal(
+    manifestPreview.connector_identity.site_host,
+    offlineWorkspaceSeed.connectorProfiles[0].wordpress.host,
+  )
+  assert.equal(manifestPreview.connector_identity.credential_boundary, "public_safe_no_secrets")
+  assert.equal(manifestPreview.connector_identity.rest_base_url, manifestPreview.wordpress.rest_base_url)
+  assert.equal(
+    manifestPreview.connector_identity.connector_manifest_url,
+    manifestPreview.wordpress.connector_manifest_url,
+  )
+  const manifestValidation = validateConnectorManifest(manifestPreview)
+  assert.notEqual(manifestValidation.status, "rejected")
+  assert.equal(manifestValidation.profile.id, manifestPreview.connector_identity.profile_id)
 
   const quantityAdjustmentOperation = buildInventoryUpdateOperation(existingItems[0], {
     operationKind: "quantity",

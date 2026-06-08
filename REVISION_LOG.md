@@ -3,6 +3,57 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Public Connector Identity
+
+### What Changed
+
+- Added a public-safe `connector_identity` block to the WordPress offline
+  connector manifest.
+- Added stable connector identity fields for profile ID, company key, company
+  name, site host, environment, site fingerprint, REST base URL, manifest URL,
+  and credential boundary.
+- Updated the offline app connector manifest type, local preview builder,
+  validation rules, and profile import path to understand the identity block
+  while remaining backward compatible with older manifests.
+
+### Why
+
+The same desktop/offline app may be used for multiple company websites. The
+connector manifest needs enough public identity to distinguish the correct
+website and company without syncing WordPress, ScryDex, Square, SSH, payment,
+or device credentials into the app.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestPlannerTest.php`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- PHP unit coverage for the manifest `connector_identity` fields and
+  no-secret credential boundary.
+- Offline app contract coverage proving manifest previews include connector
+  identity and validation/import keeps using the correct profile ID.
+
+### Rollback Notes
+
+- Revert this revision to remove the optional identity block from manifests and
+  return profile import to top-level manifest fields only.
+- No WordPress database, SQLite schema, staging data, or production rollback is
+  required.
+
 ## 2026-06-08 - Offline App Event Queue Review
 
 ### What Changed

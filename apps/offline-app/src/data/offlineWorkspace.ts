@@ -323,6 +323,17 @@ export type OfflineConnectorManifest = {
   profile_manifest_ready: boolean
   profile_id: string
   environment: ConnectorEnvironment
+  connector_identity?: {
+    profile_id: string
+    company_key: string
+    company_name: string
+    site_host: string
+    environment: ConnectorEnvironment
+    site_fingerprint: string
+    rest_base_url: string
+    connector_manifest_url: string
+    credential_boundary: "public_safe_no_secrets"
+  }
   company: {
     name: string
     short_name?: string
@@ -2058,6 +2069,17 @@ export function buildConnectorManifestPreview(
     profile_manifest_ready: true,
     profile_id: profile.id,
     environment: profile.environment,
+    connector_identity: {
+      profile_id: profile.id,
+      company_key: safeRecordIdPart(profile.companyShortName, profile.companyName),
+      company_name: profile.companyName,
+      site_host: profile.wordpress.host,
+      environment: profile.environment,
+      site_fingerprint: connectorSiteFingerprint(siteUrl, profile.environment),
+      rest_base_url: `${siteUrl}${profile.wordpress.restBasePath}`,
+      connector_manifest_url: connectorManifestUrl(profile),
+      credential_boundary: "public_safe_no_secrets",
+    },
     company: {
       name: profile.companyName,
       short_name: profile.companyShortName,
@@ -2131,6 +2153,20 @@ export function validateConnectorManifest(
     issues.push("Manifest must not sync WordPress, ScryDex, Square, or SSH credentials to the app.")
   }
 
+  if (manifest.connector_identity) {
+    if (manifest.connector_identity.profile_id !== manifest.profile_id) {
+      issues.push("Connector identity profile ID must match the manifest profile ID.")
+    }
+
+    if (manifest.connector_identity.environment !== manifest.environment) {
+      issues.push("Connector identity environment must match the manifest environment.")
+    }
+
+    if (manifest.connector_identity.credential_boundary !== "public_safe_no_secrets") {
+      issues.push("Connector identity must declare the public-safe no-secrets credential boundary.")
+    }
+  }
+
   if (manifest.scrydex.credentials_synced_to_app !== false) {
     issues.push("ScryDex credentials must remain in WordPress server settings.")
   }
@@ -2189,6 +2225,28 @@ export function validateConnectorManifest(
       `${site.scheme}://${site.host}${manifest.wordpress.rest_base_path}/offline/connector-manifest`
   ) {
     issues.push("Connector manifest URL must match the WordPress REST base.")
+  }
+
+  if (
+    site &&
+    manifest.connector_identity &&
+    manifest.connector_identity.site_host !== site.host
+  ) {
+    issues.push("Connector identity host must match the WordPress site host.")
+  }
+
+  if (
+    manifest.connector_identity &&
+    manifest.connector_identity.rest_base_url !== manifest.wordpress.rest_base_url
+  ) {
+    issues.push("Connector identity REST base URL must match the WordPress REST base.")
+  }
+
+  if (
+    manifest.connector_identity &&
+    manifest.connector_identity.connector_manifest_url !== manifest.wordpress.connector_manifest_url
+  ) {
+    issues.push("Connector identity manifest URL must match the WordPress manifest URL.")
   }
 
   const rejected =
@@ -2451,9 +2509,10 @@ function connectorProfileFromManifest(
 ): StoreConnectorProfile {
   const environment = cleanConnectorEnvironment(manifest.environment)
   const safeSite = site ?? { scheme: "https" as const, host: "offline.local" }
+  const manifestProfileId = manifest.connector_identity?.profile_id || manifest.profile_id
 
   return {
-    id: safeConnectorId(manifest.profile_id, manifest.company.name, environment, safeSite.host),
+    id: safeConnectorId(manifestProfileId, manifest.company.name, environment, safeSite.host),
     companyName: manifest.company.name || "TCG Store",
     companyShortName: manifest.company.short_name || manifest.company.name || "TCG",
     environment,
@@ -2788,6 +2847,18 @@ function safeRecordIdPart(value: unknown, fallback: string): string {
     .replace(/^-+|-+$/g, "")
 
   return safeValue || fallback
+}
+
+function connectorSiteFingerprint(siteUrl: string, environment: ConnectorEnvironment): string {
+  const input = `${environment}|${siteUrl}`.toLowerCase()
+  let hash = 2166136261
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return Math.abs(hash).toString(16).padStart(8, "0").slice(0, 16)
 }
 
 function normalizeUtcDateString(value: unknown, fallback: string): string {

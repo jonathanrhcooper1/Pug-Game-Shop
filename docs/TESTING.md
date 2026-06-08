@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- PHP and offline app contract coverage now verifies public-safe connector
+  identity: the WordPress manifest exposes stable company/site/environment
+  identity fields, and the desktop app validates/imports that identity without
+  syncing WordPress, ScryDex, Square, SSH, or payment credentials.
 - Offline app contract and browser coverage now verifies event queue review:
   queued registrations and check-ins render as readable staff rows with event,
   attendee, payment/check-in, local queue source, timestamp, and payload

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Public offline connector manifests now include a secret-free
+  `connector_identity` block with stable profile, company, site host,
+  environment, fingerprint, REST base, and manifest URL fields so the desktop
+  app can distinguish multiple company websites safely.
 - Offline app event queue review now renders queued registrations and check-ins
   as staff-readable rows with event title, attendee, payment/check-in detail,
   local queue source, timestamp, and payload summary instead of raw operation
