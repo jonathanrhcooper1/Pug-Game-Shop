@@ -11,6 +11,7 @@ use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\OfflinePairingAuthorizationSettings;
 use TCGStorePlatform\Settings\OfflineRouteRuntimeSettings;
 use TCGStorePlatform\Settings\ScryDexProviderSettings;
+use TCGStorePlatform\Settings\ScryDexScheduleSettings;
 use TCGStorePlatform\Settings\ScryDexUsageBudgetSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Tests\TestCase;
@@ -44,11 +45,38 @@ final class SettingsTest extends TestCase {
 		$this->assert_true( isset( $defaults['inventory_route_runtime'] ) );
 		$this->assert_true( isset( $defaults['scrydex_provider'] ) );
 		$this->assert_true( isset( $defaults['scrydex_usage_budget'] ) );
+		$this->assert_true( isset( $defaults['scrydex_schedule'] ) );
 		$this->assert_same( OfflineRouteRuntimeSettings::defaults(), $defaults['offline_route_runtime'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_same( ScryDexProviderSettings::defaults(), $defaults['scrydex_provider'] );
 		$this->assert_same( ScryDexUsageBudgetSettings::defaults(), $defaults['scrydex_usage_budget'] );
+		$this->assert_same( ScryDexScheduleSettings::defaults(), $defaults['scrydex_schedule'] );
+	}
+
+	public function test_scrydex_schedule_settings_are_sanitized(): void {
+		$result = Settings::sanitize(
+			array(
+				'scrydex_schedule' => array(
+					'enabled'                  => true,
+					'game_keys'                => 'Pokemon, magic-the-gathering, Pokemon, lorcana!',
+					'cards_page_size'          => 999,
+					'max_pages_per_game_run'   => 999,
+					'network_requests_enabled' => true,
+					'database_writes_enabled'  => true,
+					'execute_database_writes'  => true,
+				),
+			)
+		);
+		$schedule = $result['scrydex_schedule'];
+
+		$this->assert_true( $schedule['enabled'] );
+		$this->assert_same( array( 'pokemon', 'magic-the-gathering', 'lorcana' ), $schedule['game_keys'] );
+		$this->assert_same( 250, $schedule['cards_page_size'] );
+		$this->assert_same( 25, $schedule['max_pages_per_game_run'] );
+		$this->assert_true( $schedule['network_requests_enabled'] );
+		$this->assert_true( $schedule['database_writes_enabled'] );
+		$this->assert_true( $schedule['execute_database_writes'] );
 	}
 
 	public function test_inventory_route_runtime_settings_are_sanitized(): void {

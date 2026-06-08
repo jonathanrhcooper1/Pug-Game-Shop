@@ -218,6 +218,14 @@ final class SettingsPage {
 			'tcg-store-platform',
 			'tcg_store_platform_scrydex'
 		);
+
+		add_settings_field(
+			'scrydex_schedule',
+			__( 'Daily refresh', 'tcg-store-platform' ),
+			array( $this, 'render_scrydex_schedule' ),
+			'tcg-store-platform',
+			'tcg_store_platform_scrydex'
+		);
 	}
 
 	public function render_general_description(): void {
@@ -652,6 +660,59 @@ final class SettingsPage {
 		echo '</fieldset>';
 	}
 
+	public function render_scrydex_schedule(): void {
+		$settings = ScryDexScheduleSettings::from_settings( Settings::all() );
+		$status   = ScryDexScheduleSettings::public_status( $settings );
+
+		echo '<fieldset>';
+		$this->render_scrydex_schedule_checkbox(
+			'enabled',
+			__( 'Enable daily ScryDex cards refresh from the 9:00 AM platform schedule.', 'tcg-store-platform' ),
+			! empty( $settings['enabled'] )
+		);
+		$this->render_scrydex_schedule_checkbox(
+			'network_requests_enabled',
+			__( 'Allow scheduled ScryDex network requests.', 'tcg-store-platform' ),
+			! empty( $settings['network_requests_enabled'] )
+		);
+		$this->render_scrydex_schedule_checkbox(
+			'database_writes_enabled',
+			__( 'Allow scheduled reference-card database writes.', 'tcg-store-platform' ),
+			! empty( $settings['database_writes_enabled'] )
+		);
+		$this->render_scrydex_schedule_checkbox(
+			'execute_database_writes',
+			__( 'Confirm scheduled execution of ScryDex persistence writes.', 'tcg-store-platform' ),
+			! empty( $settings['execute_database_writes'] )
+		);
+		$this->render_scrydex_schedule_text_input(
+			'game_keys',
+			__( 'Game keys', 'tcg-store-platform' ),
+			implode( ', ', $settings['game_keys'] )
+		);
+		$this->render_scrydex_schedule_number_input(
+			'cards_page_size',
+			__( 'Cards page size', 'tcg-store-platform' ),
+			(int) $settings['cards_page_size']
+		);
+		$this->render_scrydex_schedule_number_input(
+			'max_pages_per_game_run',
+			__( 'Max pages per game per run', 'tcg-store-platform' ),
+			(int) $settings['max_pages_per_game_run']
+		);
+
+		echo '<p class="description">';
+		echo esc_html(
+			sprintf(
+				/* translators: 1: status. */
+				__( 'Status: %1$s. Production remains unavailable through feature flags even if these gates are enabled.', 'tcg-store-platform' ),
+				(string) $status['status']
+			)
+		);
+		echo '</p>';
+		echo '</fieldset>';
+	}
+
 	/**
 	 * @param mixed  $old_value Previous settings.
 	 * @param mixed  $new_value New settings.
@@ -707,6 +768,43 @@ final class SettingsPage {
 		echo '<input type="number" min="0" id="tcg-store-scrydex-budget-' . esc_attr( $key ) . '" name="'
 			. esc_attr( Settings::OPTION_NAME )
 			. '[' . esc_attr( ScryDexUsageBudgetSettings::KEY )
+			. '][' . esc_attr( $key ) . ']" value="'
+			. esc_attr( (string) $value )
+			. '" class="regular-text" /></p>';
+	}
+
+	private function render_scrydex_schedule_checkbox( string $key, string $label, bool $checked ): void {
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexScheduleSettings::KEY )
+			. '][' . esc_attr( $key )
+			. ']" value="1" '
+			. checked( $checked, true, false )
+			. ' /> ';
+		echo esc_html( $label );
+		echo '</label><br />';
+	}
+
+	private function render_scrydex_schedule_text_input( string $key, string $label, string $value ): void {
+		echo '<p><label for="tcg-store-scrydex-schedule-' . esc_attr( $key ) . '">';
+		echo esc_html( $label );
+		echo '</label> ';
+		echo '<input type="text" id="tcg-store-scrydex-schedule-' . esc_attr( $key ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexScheduleSettings::KEY )
+			. '][' . esc_attr( $key ) . ']" value="'
+			. esc_attr( $value )
+			. '" class="regular-text" /></p>';
+	}
+
+	private function render_scrydex_schedule_number_input( string $key, string $label, int $value ): void {
+		echo '<p><label for="tcg-store-scrydex-schedule-' . esc_attr( $key ) . '">';
+		echo esc_html( $label );
+		echo '</label> ';
+		echo '<input type="number" min="1" id="tcg-store-scrydex-schedule-' . esc_attr( $key ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexScheduleSettings::KEY )
 			. '][' . esc_attr( $key ) . ']" value="'
 			. esc_attr( (string) $value )
 			. '" class="regular-text" /></p>';

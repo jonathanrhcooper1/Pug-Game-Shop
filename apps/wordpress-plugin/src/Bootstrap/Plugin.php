@@ -25,6 +25,7 @@ use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
 use TCGStorePlatform\Staging\StagingSafety;
+use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshRunner;
 
 final class Plugin {
 	private static ?self $instance = null;
@@ -59,6 +60,7 @@ final class Plugin {
 		$audit_logger     = new AuditLogger();
 		$migration_runner = new MigrationRunner( $logger );
 		$scheduler        = new DailyScheduler( $logger );
+		$scrydex_runner   = new ScryDexScheduledRefreshRunner( $logger );
 
 		add_action( 'admin_init', array( $migration_runner, 'maybe_migrate' ), 5 );
 		add_action( 'admin_init', array( RoleManager::class, 'maybe_install' ), 6 );
@@ -76,6 +78,7 @@ final class Plugin {
 		InventoryRouteDependencyFactory::from_settings( Settings::all() )->bootstrapper()->register();
 		( new EventsController() )->register();
 		( new EventShortcodes() )->register();
+		$scrydex_runner->register();
 		$scheduler->register();
 
 		add_action(

@@ -34,8 +34,13 @@ The worker shell can call the persistence execution method only when explicitly
 requested through `execute_database_writes`; staged/deferred mode remains the
 default. The `scrydex_sync` feature flag is available only in local,
 development, and staging environments and remains unavailable in production.
-Durable scheduled cron routing, image workers, and webhook route handling remain
-disabled until staging acceptance. WordPress
+Daily scheduled refresh controls now exist in WordPress settings and health
+output. They require game keys, page limits, network-request enablement,
+database-write enablement, and explicit persistence execution confirmation
+before the existing daily platform schedule can run ScryDex cards pages. The
+scheduled refresh planner still blocks production even when settings are
+enabled. Image workers and webhook route handling remain disabled until staging
+acceptance. WordPress
 administrator settings provide secret-preserving staging credential storage and
 redacted readiness output, but those settings do not execute provider network
 requests by themselves.

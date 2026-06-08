@@ -3,6 +3,75 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Scheduled Refresh Controls
+
+### What Changed
+
+- Added ScryDex daily refresh settings for game keys, cards page size, max
+  pages per game, network-request enablement, database-write enablement, and
+  explicit persistence execution confirmation.
+- Added a ScryDex scheduled refresh planner that blocks production, checks the
+  `scrydex_sync` feature flag, validates the active database prefix, and emits
+  secret-free status output.
+- Added a daily refresh runner subscribed to the existing platform daily
+  dispatch hook.
+- Exposed ScryDex schedule/readiness details in health and System Status
+  output.
+- Added unit coverage for schedule sanitization, default deferrals, staging
+  readiness, and production blocking.
+
+### Why
+
+The website must become the authoritative ScryDex catalog mirror, but scheduled
+provider pulls need visible controls and strict non-production gates before
+they can run. This revision gives staging/local a resumable daily entry point
+without allowing production ScryDex execution.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Settings/ScryDexScheduleSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexScheduledRefreshPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexScheduledRefreshRunner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexScheduleSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexScheduledRefreshPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex schedule settings tests for default deferrals and configured
+  secret-free readiness.
+- ScryDex scheduled refresh planner tests for default blocking, ready staging
+  gates, and production blocking.
+- Settings sanitizer coverage for schedule game keys and execution gates.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the scheduled ScryDex daily dispatch runner
+  and schedule settings.
+- If staging executed ScryDex database writes before rollback, restore the
+  staging database backup or remove staged ScryDex reference-card,
+  price-observation, and checkpoint rows written by that run.
+- No production rollback is required because production still cannot enable
+  `scrydex_sync` or scheduled refresh execution.
+
 ## 2026-06-08 - ScryDex Worker Execution Mode
 
 ### What Changed

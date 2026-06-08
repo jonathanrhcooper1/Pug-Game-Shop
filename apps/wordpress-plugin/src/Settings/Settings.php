@@ -29,6 +29,7 @@ final class Settings {
 			'inventory_route_runtime'       => InventoryRouteRuntimeSettings::defaults(),
 			'scrydex_provider'              => ScryDexProviderSettings::defaults(),
 			'scrydex_usage_budget'          => ScryDexUsageBudgetSettings::defaults(),
+			'scrydex_schedule'              => ScryDexScheduleSettings::defaults(),
 		);
 	}
 	/**
@@ -60,6 +61,10 @@ final class Settings {
 		$settings['scrydex_usage_budget']          = ScryDexUsageBudgetSettings::sanitize(
 			$settings['scrydex_usage_budget'] ?? array(),
 			is_array( $settings['scrydex_usage_budget'] ?? null ) ? $settings['scrydex_usage_budget'] : array()
+		);
+		$settings['scrydex_schedule']              = ScryDexScheduleSettings::sanitize(
+			$settings['scrydex_schedule'] ?? array(),
+			is_array( $settings['scrydex_schedule'] ?? null ) ? $settings['scrydex_schedule'] : array()
 		);
 
 		return $settings;
@@ -118,6 +123,12 @@ final class Settings {
 				? $existing['scrydex_usage_budget']
 				: ScryDexUsageBudgetSettings::defaults()
 		);
+		$scrydex_schedule              = ScryDexScheduleSettings::sanitize(
+			$value['scrydex_schedule'] ?? ( $existing['scrydex_schedule'] ?? array() ),
+			is_array( $existing['scrydex_schedule'] ?? null )
+				? $existing['scrydex_schedule']
+				: ScryDexScheduleSettings::defaults()
+		);
 
 		if ( ! in_array( $level, $allowed_levels, true ) ) {
 			$level = 'warning';
@@ -134,6 +145,7 @@ final class Settings {
 			'inventory_route_runtime'       => $inventory_route_runtime,
 			'scrydex_provider'              => $scrydex_provider,
 			'scrydex_usage_budget'          => $scrydex_usage_budget,
+			'scrydex_schedule'              => $scrydex_schedule,
 		);
 	}
 	/**

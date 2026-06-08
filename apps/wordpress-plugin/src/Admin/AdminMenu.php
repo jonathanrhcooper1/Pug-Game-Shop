@@ -33,9 +33,11 @@ use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\BrandingSettings;
+use TCGStorePlatform\Settings\ScryDexScheduleSettings;
 use TCGStorePlatform\Settings\ScryDexUsageBudgetSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
+use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshPlanner;
 use TCGStorePlatform\Square\SquareInventoryBatchSyncReadinessPlanner;
 use TCGStorePlatform\Square\SquareInventorySyncReadinessPlanner;
 use TCGStorePlatform\Square\WooCommerceSquareExtensionStatus;
@@ -248,6 +250,13 @@ final class AdminMenu {
 		) )->admin_summary();
 		$scrydex                    = ( new ScryDexProviderFactory( Settings::all() ) )->admin_summary();
 		$scrydex_budget             = ScryDexUsageBudgetSettings::admin_summary( Settings::all() );
+		$scrydex_schedule           = ScryDexScheduleSettings::admin_summary( Settings::all() );
+		$scrydex_scheduled_refresh  = ( new ScryDexScheduledRefreshPlanner() )->admin_summary(
+			Settings::all(),
+			FeatureFlags::is_enabled( 'scrydex_sync' ),
+			$this->environment_type(),
+			$this->database_prefix()
+		);
 		echo '<div class="wrap"><h1>';
 		echo esc_html(
 			sprintf(
@@ -313,6 +322,16 @@ final class AdminMenu {
 			__( 'ScryDex usage budget', 'tcg-store-platform' ),
 			$scrydex_budget['value'],
 			$scrydex_budget['status']
+		);
+		$this->render_status_row(
+			__( 'ScryDex daily refresh settings', 'tcg-store-platform' ),
+			$scrydex_schedule['value'],
+			$scrydex_schedule['status']
+		);
+		$this->render_status_row(
+			__( 'ScryDex daily refresh plan', 'tcg-store-platform' ),
+			$scrydex_scheduled_refresh['value'],
+			$scrydex_scheduled_refresh['status']
 		);
 		$this->render_status_row(
 			__( 'Offline route bootstrap', 'tcg-store-platform' ),
@@ -612,6 +631,28 @@ final class AdminMenu {
 			echo '</option>';
 		}
 		echo '</select></td></tr>';
+	}
+
+	private function database_prefix(): string {
+		global $wpdb;
+
+		if ( is_object( $wpdb ) && isset( $wpdb->prefix ) ) {
+			return (string) $wpdb->prefix;
+		}
+
+		return '';
+	}
+
+	private function environment_type(): string {
+		if ( function_exists( 'wp_get_environment_type' ) ) {
+			return (string) wp_get_environment_type();
+		}
+
+		$environment_type = getenv( 'WP_ENVIRONMENT_TYPE' );
+
+		return is_string( $environment_type ) && '' !== trim( $environment_type )
+			? $environment_type
+			: 'production';
 	}
 
 	private function render_inventory_search_script(): void {

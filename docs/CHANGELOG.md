@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex daily refresh now has explicit local/development/staging-only
+  schedule settings, health/status visibility, and a daily runner that remains
+  blocked in production and requires separate network, database-write, and
+  execution confirmation gates before it can persist provider pages.
 - ScryDex sync is now feature-flag available in local/development/staging
   environments while remaining unavailable in production, and the paginated
   worker/page planner can explicitly request database execution through the

@@ -15,9 +15,11 @@ use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\OfflineRouteRuntimeSettings;
+use TCGStorePlatform\Settings\ScryDexScheduleSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 use TCGStorePlatform\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner;
+use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncCheckpointRepositoryPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncDryRunPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncExecutionGate;
@@ -180,6 +182,13 @@ final class HealthController {
 		$scrydex_persistence_repository = $scrydex_persistence_planner->plan(
 			$scrydex_sync_dry_run['checkpoint_row']
 		);
+		$scrydex_schedule               = ScryDexScheduleSettings::public_status( $settings );
+		$scrydex_scheduled_refresh      = ( new ScryDexScheduledRefreshPlanner() )->plan(
+			$settings,
+			FeatureFlags::is_enabled( 'scrydex_sync' ),
+			$this->environment_type(),
+			$this->database_prefix()
+		);
 		$scrydex_sync_execution         = ( new ScryDexSyncExecutionGate(
 			$scrydex_dry_run_planner,
 			$scrydex_usage_budget_planner,
@@ -238,6 +247,8 @@ final class HealthController {
 				'scrydex_provider'                        => $scrydex,
 				'scrydex_sync_dry_run'                    => $scrydex_sync_dry_run,
 				'scrydex_usage_budget'                    => $scrydex_usage_budget,
+				'scrydex_schedule'                        => $scrydex_schedule,
+				'scrydex_scheduled_refresh'               => $scrydex_scheduled_refresh,
 				'scrydex_checkpoint_repository'           => $scrydex_checkpoint_repository,
 				'scrydex_persistence_repository'          => $scrydex_persistence_repository,
 				'scrydex_sync_execution_gate'             => $scrydex_sync_execution,
@@ -263,5 +274,17 @@ final class HealthController {
 		}
 
 		return '';
+	}
+
+	private function environment_type(): string {
+		if ( function_exists( 'wp_get_environment_type' ) ) {
+			return (string) wp_get_environment_type();
+		}
+
+		$environment_type = getenv( 'WP_ENVIRONMENT_TYPE' );
+
+		return is_string( $environment_type ) && '' !== trim( $environment_type )
+			? $environment_type
+			: 'production';
 	}
 }
