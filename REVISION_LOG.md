@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress Offline Connector Manifest Diagnostics
+
+### What Changed
+
+- Added `OfflineConnectorManifestPlanner` to build an authenticated,
+  secret-free connector manifest for offline app company/site pairing.
+- Exposed `offline_connector_manifest` in authenticated health output with
+  company branding, WordPress site/rest-base identity, offline route map,
+  device-token auth mode, desktop secure-storage requirement, Square
+  inventory/payment authority split, and ScryDex redaction status.
+- Added an admin System Status row for the offline connector manifest.
+- Extended WordPress integration smoke assertions for manifest readiness,
+  route count, credential storage boundaries, official WooCommerce Square
+  payment delegation, and no credential sync to the app.
+- Updated deployment, testing, roadmap, and changelog documentation for the
+  reusable multi-company connector boundary.
+
+### Why
+
+The offline app needs a reliable source of truth for the correct website and
+company profile, especially if this platform is reused across multiple stores.
+This checkpoint lets WordPress describe the safe pairing profile without
+embedding ScryDex keys, WordPress passwords, SSH credentials, Square tokens,
+or other production secrets in the app or repository.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline connector manifest unit tests for staging HTTPS readiness,
+  development HTTP handling, production HTTP degradation, route counts,
+  Square authority boundaries, ScryDex credential redaction, and admin summary
+  output.
+- WordPress integration smoke assertions for health-output manifest readiness,
+  route count, offline device-token auth mode, desktop secure credential
+  storage, official WooCommerce Square payment authority, and no credential
+  sync to the offline app.
+
+### Tests Run
+
+- `npm.cmd run test`: passed, including 862 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the connector manifest from health/admin
+  diagnostics and return to app-local connector profiles only.
+- No database migrations, live offline route registration, token issuance,
+  ScryDex credential sync, Square provider writes, payment capture, production
+  network calls, or canonical inventory/customer mutations are introduced.
+- Existing offline route, device pairing, and local connector profile planning
+  checkpoints remain available if only this WordPress-side manifest is rolled
+  back.
+
 ## 2026-06-08 - Offline App Functional Controls And Connector Profiles
 
 ### What Changed

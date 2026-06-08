@@ -147,6 +147,9 @@ plus polished offline inventory command workspace UI and shell contract
 plus functional offline app controls for sidebar navigation, filters, grid/list
 views, scan/quantity staging, print-label preview, conflict review/history,
 sync preview, and reusable company/site connector profiles
+plus WordPress offline connector manifest health/admin diagnostics for
+company/site pairing, route maps, secure storage boundaries, Square authority
+split, and ScryDex redaction status
 plus typed local workspace state and staged operation envelope preview
 plus browser-safe offline queue bridge contract
 plus local SQLite queue insert planning

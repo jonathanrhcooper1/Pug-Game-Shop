@@ -65,6 +65,14 @@ extension. ScryDex credentials remain WordPress/server-side only, device
 tokens remain reserved for desktop secure storage, and all network execution
 remains deferred until pairing and staging acceptance.
 
+The WordPress plugin now mirrors that app-side profile with an authenticated,
+secret-free offline connector manifest in health output and System Status. The
+manifest includes company branding, site/rest-base identity, planned offline
+route map, device-token and desktop secure-storage requirements, Square
+inventory/payment authority boundaries, ScryDex redaction status, and HTTPS
+readiness flags. It does not issue tokens, expose ScryDex keys, call providers,
+or register live offline routes.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

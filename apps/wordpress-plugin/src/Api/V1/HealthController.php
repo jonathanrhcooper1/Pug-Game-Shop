@@ -98,6 +98,7 @@ final class HealthController {
 		) )->health_payload(
 			$offline_feature_enabled
 		);
+		$offline_connector_manifest     = ( new OfflineConnectorManifestPlanner() )->plan( Settings::all() );
 		$device_permissions             = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
 			$device_permission_factory
 		) )->health_payload();
@@ -196,6 +197,7 @@ final class HealthController {
 				'hpos'                                    => Compatibility::hpos_status(),
 				'features'                                => $features,
 				'offline_route_bootstrap'                 => $offline,
+				'offline_connector_manifest'              => $offline_connector_manifest,
 				'offline_registered_device_permissions'   => $device_permissions,
 				'offline_registered_device_sync_handlers' => $sync_handlers,
 				'offline_device_pairing_route_readiness'  => $pairing,

@@ -19,6 +19,7 @@ use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyStatusPresenter;
+use TCGStorePlatform\Api\V1\OfflineConnectorManifestPlanner;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyStatusPresenter;
 use TCGStorePlatform\Api\V1\PosPaymentRouteBootstrapStatusPresenter;
@@ -206,6 +207,7 @@ final class AdminMenu {
 		$sync_handlers              = ( new OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter(
 			$sync_handler_factory
 		) )->admin_summary();
+		$offline_connector          = ( new OfflineConnectorManifestPlanner() )->admin_summary( Settings::all() );
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory();
 		$pairing                    = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
@@ -302,6 +304,11 @@ final class AdminMenu {
 			__( 'Offline route bootstrap', 'tcg-store-platform' ),
 			$offline['value'],
 			$offline['status']
+		);
+		$this->render_status_row(
+			__( 'Offline connector manifest', 'tcg-store-platform' ),
+			$offline_connector['value'],
+			$offline_connector['status']
 		);
 		$this->render_status_row(
 			__( 'Offline device permissions', 'tcg-store-platform' ),

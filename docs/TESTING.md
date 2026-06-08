@@ -89,6 +89,12 @@
   deferred push request planning, response summarization, and no direct
   external endpoint or database access markers. The offline app package
   contract also runs `tsc --noEmit`.
+- Local unit and WordPress smoke coverage now include the WordPress offline
+  connector manifest diagnostics, proving authenticated health exposes the
+  company/site profile, route count, offline device-token auth mode, desktop
+  secure credential storage boundary, official WooCommerce Square payment
+  authority, ScryDex server-side credential storage, and no credential sync to
+  the offline app.
 - `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
   queue operations stay behind a Tauri command adapter boundary and do not use
   direct browser storage or network writes.

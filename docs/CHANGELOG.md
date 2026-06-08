@@ -11,6 +11,11 @@ All notable changes follow Semantic Versioning.
   print-label preview, conflict review/history selection, and reusable
   company/site connector profiles that keep credentials outside source while
   showing the active WordPress, Square, and ScryDex boundaries.
+- WordPress offline connector manifest diagnostics that expose the active
+  company/site profile, offline REST route map, device-token storage boundary,
+  Square inventory/payment authority split, ScryDex redaction status, and
+  staging/development HTTPS readiness through authenticated health and admin
+  System Status without syncing credentials to the offline app.
 - Offline app visual command-center refresh with a project-local Pug Game Shop
   crest asset, desktop app-window chrome, queue/conflict nav badges, fuller
   default cached inventory state, tighter selected-card inspection actions,

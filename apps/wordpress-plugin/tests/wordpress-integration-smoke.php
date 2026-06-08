@@ -181,6 +181,12 @@ $assert( true === ( $route_summary['POST /offline/pull']['controller_callback_re
 $assert( true === ( $route_summary['POST /offline/push']['controller_callback_ready'] ?? null ), 'Offline push controller callback should be staged ready.' );
 $assert( false === ( $route_summary['POST /offline/pull']['should_register'] ?? null ), 'Offline pull route should remain unregistered.' );
 $assert( false === ( $route_summary['POST /offline/push']['should_register'] ?? null ), 'Offline push route should remain unregistered.' );
+$assert( true === ( $data['offline_connector_manifest']['profile_manifest_ready'] ?? null ), 'Offline connector manifest should be staged ready.' );
+$assert( 5 === (int) ( $data['offline_connector_manifest']['offline_route_count'] ?? 0 ), 'Offline connector manifest should report every offline route.' );
+$assert( false === ( $data['offline_connector_manifest']['credentials_synced_to_app'] ?? null ), 'Offline connector manifest should not sync credentials to the app.' );
+$assert( 'offline_device_token' === ( $data['offline_connector_manifest']['wordpress']['auth_mode'] ?? null ), 'Offline connector manifest should require offline device-token auth.' );
+$assert( 'desktop_secure_store' === ( $data['offline_connector_manifest']['wordpress']['credential_storage'] ?? null ), 'Offline connector manifest should keep device credentials in desktop secure storage.' );
+$assert( 'official_woocommerce_square_extension' === ( $data['offline_connector_manifest']['square']['payment_authority'] ?? null ), 'Offline connector manifest should delegate Square payments to the official extension.' );
 $assert( 'ready' === ( $data['offline_registered_device_permissions']['status'] ?? null ), 'Offline registered-device permissions should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_permissions']['database_configured'] ?? null ), 'Offline registered-device permissions should report database readiness.' );
 $assert( 2 === (int) ( $data['offline_registered_device_permissions']['registered_device_route_count'] ?? 0 ), 'Offline registered-device permissions should report pull/push scope count.' );
