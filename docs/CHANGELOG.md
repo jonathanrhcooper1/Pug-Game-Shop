@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app desktop pull responses now expose bounded sanitized customer
+  credit account records and apply newer active-customer balances into the
+  local credit snapshot with visible updated/stale counts in Sync Now.
 - Offline app desktop pull responses now expose bounded sanitized inventory
   records from the Tauri command and apply newer server rows into the local
   inventory cache, with visible inserted/updated/stale counts in Sync Now.

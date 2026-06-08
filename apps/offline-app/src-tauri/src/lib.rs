@@ -225,6 +225,7 @@ struct OfflineSyncRequestResponse {
     pull_record_count: usize,
     pull_tombstone_count: usize,
     pull_inventory_records: Vec<OfflineSyncInventoryRecord>,
+    pull_customer_credit_records: Vec<OfflineSyncCustomerCreditRecord>,
     cursor_count: usize,
     network_request_completed: bool,
     authorization_header_attached: bool,
@@ -248,6 +249,17 @@ struct OfflineSyncInventoryRecord {
     sale_currency: String,
     location_label: String,
     status: String,
+    updated_at_utc: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OfflineSyncCustomerCreditRecord {
+    customer_id: u64,
+    row_version: u64,
+    label: String,
+    available_minor_units: u64,
+    currency: String,
+    note: String,
     updated_at_utc: String,
 }
 
@@ -804,6 +816,11 @@ fn summarize_offline_sync_response(
     } else {
         Vec::new()
     };
+    let pull_customer_credit_records = if route == "pull" {
+        sanitized_pull_customer_credit_records(data)
+    } else {
+        Vec::new()
+    };
 
     OfflineSyncRequestResponse {
         status,
@@ -823,6 +840,7 @@ fn summarize_offline_sync_response(
         pull_record_count,
         pull_tombstone_count,
         pull_inventory_records,
+        pull_customer_credit_records,
         cursor_count,
         network_request_completed: true,
         authorization_header_attached: true,
@@ -930,6 +948,76 @@ fn sanitized_pull_inventory_record(record: &serde_json::Value) -> Option<Offline
     })
 }
 
+fn sanitized_pull_customer_credit_records(
+    data: &serde_json::Value,
+) -> Vec<OfflineSyncCustomerCreditRecord> {
+    let records = data
+        .get("domains")
+        .and_then(|domains| domains.get("customer_credit"))
+        .and_then(|credit| credit.get("data"))
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    records
+        .iter()
+        .filter_map(sanitized_pull_customer_credit_record)
+        .take(25)
+        .collect()
+}
+
+fn sanitized_pull_customer_credit_record(
+    record: &serde_json::Value,
+) -> Option<OfflineSyncCustomerCreditRecord> {
+    if json_path_string(record, &["entity_type"]).as_deref() != Some("customer_credit_account") {
+        return None;
+    }
+
+    let payload = record.get("payload")?.as_object()?;
+    let entity_id = json_path_string(record, &["entity_id"])?;
+    let customer_id = payload
+        .get("customer_id")
+        .and_then(serde_json::Value::as_u64)
+        .or_else(|| numeric_suffix(&entity_id))?;
+    let row_version = record.get("row_version")?.as_u64()?;
+    let updated_at_utc = json_path_string(record, &["updated_at_utc"])?;
+    let label = first_non_empty_json_string(
+        payload,
+        &[
+            "customer_label",
+            "label",
+            "display_name",
+            "customer_name",
+            "name",
+        ],
+    )
+    .unwrap_or_else(|| format!("Customer {}", customer_id));
+    let available_minor_units = json_object_money_minor_units_for(
+        payload,
+        &[
+            "available_minor_units",
+            "credit_balance_minor_units",
+            "balance_minor_units",
+        ],
+        &["available_credit", "credit_balance", "balance"],
+    );
+
+    Some(OfflineSyncCustomerCreditRecord {
+        customer_id,
+        row_version,
+        label,
+        available_minor_units,
+        currency: first_non_empty_json_string(payload, &["credit_currency", "currency"])
+            .unwrap_or_else(|| "USD".to_string())
+            .to_ascii_uppercase(),
+        note: first_non_empty_json_string(payload, &["note", "summary"])
+            .unwrap_or_else(|| {
+                "Website credit balance refreshed from offline pull.".to_string()
+            }),
+        updated_at_utc,
+    })
+}
+
 fn normalized_inventory_status(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "available" => "available".to_string(),
@@ -968,18 +1056,28 @@ fn normalized_json_string(value: Option<&serde_json::Value>) -> Option<String> {
 }
 
 fn json_object_money_minor_units(object: &serde_json::Map<String, serde_json::Value>) -> u64 {
-    if let Some(value) = object
-        .get("sale_price_minor_units")
-        .or_else(|| object.get("price_minor_units"))
-        .and_then(serde_json::Value::as_u64)
+    json_object_money_minor_units_for(
+        object,
+        &["sale_price_minor_units", "price_minor_units"],
+        &["sale_price", "price"],
+    )
+}
+
+fn json_object_money_minor_units_for(
+    object: &serde_json::Map<String, serde_json::Value>,
+    minor_keys: &[&str],
+    amount_keys: &[&str],
+) -> u64 {
+    if let Some(value) = minor_keys
+        .iter()
+        .find_map(|key| object.get(*key).and_then(serde_json::Value::as_u64))
     {
         return value;
     }
 
-    object
-        .get("sale_price")
-        .or_else(|| object.get("price"))
-        .and_then(money_value_to_minor_units)
+    amount_keys
+        .iter()
+        .find_map(|key| object.get(*key).and_then(money_value_to_minor_units))
         .unwrap_or(0)
 }
 
@@ -996,6 +1094,14 @@ fn money_value_to_minor_units(value: &serde_json::Value) -> Option<u64> {
     let parsed = text.parse::<f64>().ok()?;
 
     u64::try_from((parsed * 100.0).round() as i128).ok()
+}
+
+fn numeric_suffix(value: &str) -> Option<u64> {
+    let suffix = value
+        .rsplit(|character: char| !character.is_ascii_digit())
+        .find(|part| !part.is_empty())?;
+
+    suffix.parse::<u64>().ok()
 }
 
 fn summarize_pull_sync_data(
@@ -1797,6 +1903,26 @@ mod tests {
                         ],
                         "tombstones": []
                     },
+                    "customer_credit": {
+                        "cursor": "credit-cursor-01",
+                        "has_more": false,
+                        "data": [
+                            {
+                                "entity_type": "customer_credit_account",
+                                "entity_id": "customer-91",
+                                "row_version": 7,
+                                "updated_at_utc": "2026-06-07T17:00:00Z",
+                                "payload": {
+                                    "customer_id": 91,
+                                    "customer_label": "Customer credit",
+                                    "credit_balance": "246.50",
+                                    "credit_currency": "USD",
+                                    "note": "Website credit balance refreshed."
+                                }
+                            }
+                        ],
+                        "tombstones": []
+                    },
                     "events": {
                         "cursor": "evt-cursor-01",
                         "has_more": false,
@@ -1820,8 +1946,8 @@ mod tests {
         assert_eq!(summary.route, "pull");
         assert_eq!(summary.wordpress_status, "ready");
         assert_eq!(summary.wordpress_code, "offline_pull_response_ready");
-        assert_eq!(summary.pull_domain_count, 2);
-        assert_eq!(summary.pull_record_count, 1);
+        assert_eq!(summary.pull_domain_count, 3);
+        assert_eq!(summary.pull_record_count, 2);
         assert_eq!(summary.pull_tombstone_count, 1);
         assert_eq!(summary.pull_inventory_records.len(), 1);
         assert_eq!(summary.pull_inventory_records[0].public_id, "inv-1001");
@@ -1829,7 +1955,15 @@ mod tests {
         assert_eq!(summary.pull_inventory_records[0].sale_price_minor_units, 12500);
         assert_eq!(summary.pull_inventory_records[0].location_label, "Location 2");
         assert_eq!(summary.pull_inventory_records[0].status, "available");
-        assert_eq!(summary.cursor_count, 2);
+        assert_eq!(summary.pull_customer_credit_records.len(), 1);
+        assert_eq!(summary.pull_customer_credit_records[0].customer_id, 91);
+        assert_eq!(summary.pull_customer_credit_records[0].row_version, 7);
+        assert_eq!(
+            summary.pull_customer_credit_records[0].available_minor_units,
+            24650
+        );
+        assert_eq!(summary.pull_customer_credit_records[0].currency, "USD");
+        assert_eq!(summary.cursor_count, 3);
         assert!(summary.authorization_header_attached);
         assert!(!summary.raw_token_returned);
         assert!(!summary.raw_response_returned);

@@ -13,6 +13,7 @@ import {
   buildDevicePairingRequestBody,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
+  applyOfflinePullCustomerCreditRecordsToCache,
   applyOfflinePullInventoryRecordsToCache,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
@@ -139,6 +140,9 @@ type DesktopSyncExecutionState = {
   cacheInsertedCount: number
   cacheUpdatedCount: number
   cacheIgnoredCount: number
+  creditCacheAppliedCount: number
+  creditCacheUpdatedCount: number
+  creditCacheIgnoredCount: number
   rawTokenReturned: false
   rawResponseReturned: false
   credentialsSyncedToApp: false
@@ -257,6 +261,7 @@ export function App() {
   }
   const offlineSessionStorage = offlineSessionStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
+  const [customerCredit, setCustomerCredit] = useState(workspace.customerCredit)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
   const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>([])
@@ -294,6 +299,9 @@ export function App() {
     cacheInsertedCount: 0,
     cacheUpdatedCount: 0,
     cacheIgnoredCount: 0,
+    creditCacheAppliedCount: 0,
+    creditCacheUpdatedCount: 0,
+    creditCacheIgnoredCount: 0,
     rawTokenReturned: false,
     rawResponseReturned: false,
     credentialsSyncedToApp: false,
@@ -367,7 +375,7 @@ export function App() {
   const conflictBadgeCount = openConflicts.length
   const displayedCreditMinorUnits = Math.max(
     0,
-    workspace.customerCredit.availableMinorUnits - pendingCreditMinorUnits,
+    customerCredit.availableMinorUnits - pendingCreditMinorUnits,
   )
 
   useEffect(() => {
@@ -420,6 +428,9 @@ export function App() {
       cacheInsertedCount: 0,
       cacheUpdatedCount: 0,
       cacheIgnoredCount: 0,
+      creditCacheAppliedCount: 0,
+      creditCacheUpdatedCount: 0,
+      creditCacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -750,19 +761,19 @@ export function App() {
 
   async function handleCreditRedemption() {
     const amount = formatMoney(
-      workspace.customerCredit.redemptionPreviewMinorUnits,
-      workspace.customerCredit.currency,
+      customerCredit.redemptionPreviewMinorUnits,
+      customerCredit.currency,
     )
 
     await stageOfflineOperation(
-      buildCustomerCreditRedemptionOperation(workspace.customerCredit),
+      buildCustomerCreditRedemptionOperation(customerCredit),
       "Credit redemption staged",
       `${amount} customer credit redemption prepared from cached balance; ledger replay remains deferred until website sync acceptance.`,
     )
     setPendingCreditMinorUnits((current) =>
       Math.min(
-        workspace.customerCredit.availableMinorUnits,
-        current + workspace.customerCredit.redemptionPreviewMinorUnits,
+        customerCredit.availableMinorUnits,
+        current + customerCredit.redemptionPreviewMinorUnits,
       ),
     )
     setShowCreditLedger(true)
@@ -892,7 +903,7 @@ export function App() {
     const nextPullRefreshPreview = buildOfflinePullRefreshPreview(
       activeProfile,
       inventoryItems,
-      workspace.customerCredit,
+      customerCredit,
       openConflicts,
       operationsForSync,
     )
@@ -931,6 +942,9 @@ export function App() {
         cacheInsertedCount: 0,
         cacheUpdatedCount: 0,
         cacheIgnoredCount: 0,
+        creditCacheAppliedCount: 0,
+        creditCacheUpdatedCount: 0,
+        creditCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -946,6 +960,9 @@ export function App() {
         cacheInsertedCount: 0,
         cacheUpdatedCount: 0,
         cacheIgnoredCount: 0,
+        creditCacheAppliedCount: 0,
+        creditCacheUpdatedCount: 0,
+        creditCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -961,6 +978,9 @@ export function App() {
         cacheInsertedCount: 0,
         cacheUpdatedCount: 0,
         cacheIgnoredCount: 0,
+        creditCacheAppliedCount: 0,
+        creditCacheUpdatedCount: 0,
+        creditCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -976,6 +996,9 @@ export function App() {
         cacheInsertedCount: 0,
         cacheUpdatedCount: 0,
         cacheIgnoredCount: 0,
+        creditCacheAppliedCount: 0,
+        creditCacheUpdatedCount: 0,
+        creditCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -990,6 +1013,9 @@ export function App() {
       cacheInsertedCount: 0,
       cacheUpdatedCount: 0,
       cacheIgnoredCount: 0,
+      creditCacheAppliedCount: 0,
+      creditCacheUpdatedCount: 0,
+      creditCacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -1020,15 +1046,25 @@ export function App() {
         inventoryItems,
         completed ? pull.pull_inventory_records : [],
       )
+      const creditCacheApplyResult = applyOfflinePullCustomerCreditRecordsToCache(
+        customerCredit,
+        completed ? pull.pull_customer_credit_records : [],
+      )
 
       if (cacheApplyResult.appliedCount > 0) {
         setInventoryItems(cacheApplyResult.items)
+      }
+      if (creditCacheApplyResult.appliedCount > 0) {
+        setCustomerCredit(creditCacheApplyResult.customerCredit)
+        setPendingCreditMinorUnits((current) =>
+          Math.min(creditCacheApplyResult.customerCredit.availableMinorUnits, current),
+        )
       }
 
       setDesktopSyncExecution({
         status: completed ? "synced" : "blocked",
         detail: completed
-          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} cache row(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s) applied, ${creditCacheApplyResult.appliedCount} credit account(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
           : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
         pull,
         push,
@@ -1036,6 +1072,9 @@ export function App() {
         cacheInsertedCount: cacheApplyResult.insertedCount,
         cacheUpdatedCount: cacheApplyResult.updatedCount,
         cacheIgnoredCount: cacheApplyResult.ignoredCount,
+        creditCacheAppliedCount: creditCacheApplyResult.appliedCount,
+        creditCacheUpdatedCount: creditCacheApplyResult.updatedCount,
+        creditCacheIgnoredCount: creditCacheApplyResult.ignoredCount,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1048,6 +1087,9 @@ export function App() {
         cacheInsertedCount: 0,
         cacheUpdatedCount: 0,
         cacheIgnoredCount: 0,
+        creditCacheAppliedCount: 0,
+        creditCacheUpdatedCount: 0,
+        creditCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1741,11 +1783,18 @@ export function App() {
               </div>
               <div>
                 <span className="micro-label">Cache apply</span>
-                <strong>{desktopSyncExecution.cacheAppliedCount} row(s)</strong>
+                <strong>
+                  {desktopSyncExecution.cacheAppliedCount} inventory;
+                  {desktopSyncExecution.creditCacheAppliedCount} credit
+                </strong>
                 <small>
                   {desktopSyncExecution.cacheInsertedCount} inserted;
                   {desktopSyncExecution.cacheUpdatedCount} updated;
                   {desktopSyncExecution.cacheIgnoredCount} ignored as stale.
+                </small>
+                <small>
+                  Credit: {desktopSyncExecution.creditCacheUpdatedCount} updated;
+                  {desktopSyncExecution.creditCacheIgnoredCount} ignored as stale/unmatched.
                 </small>
               </div>
               <div>
@@ -2476,15 +2525,15 @@ export function App() {
 
             <section className="credit-panel" aria-label="Customer credit snapshot" ref={creditPanelRef}>
               <div>
-                <span className="micro-label">{workspace.customerCredit.label}</span>
+                <span className="micro-label">{customerCredit.label}</span>
                 <h2>
                   {formatMoney(
                     displayedCreditMinorUnits,
-                    workspace.customerCredit.currency,
+                    customerCredit.currency,
                   )}
                 </h2>
               </div>
-              <p>{workspace.customerCredit.note}</p>
+              <p>{customerCredit.note}</p>
               {showCreditLedger ? (
                 <div className="ledger-preview" aria-label="Offline credit ledger preview">
                   <div>
@@ -2492,7 +2541,7 @@ export function App() {
                     <strong>
                       {formatMoney(
                         pendingCreditMinorUnits,
-                        workspace.customerCredit.currency,
+                        customerCredit.currency,
                       )}
                     </strong>
                   </div>
@@ -2501,7 +2550,7 @@ export function App() {
                     <strong>
                       {formatMoney(
                         displayedCreditMinorUnits,
-                        workspace.customerCredit.currency,
+                        customerCredit.currency,
                       )}
                     </strong>
                   </div>

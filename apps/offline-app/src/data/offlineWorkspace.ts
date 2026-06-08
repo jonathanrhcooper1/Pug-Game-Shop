@@ -395,6 +395,23 @@ export type OfflinePullInventoryCacheApplyResult = {
   changedPublicIds: string[]
 }
 
+export type OfflinePullCustomerCreditCacheRecord = {
+  customer_id: number
+  row_version: number
+  label: string
+  available_minor_units: number
+  currency: "USD"
+  note: string
+  updated_at_utc: string
+}
+
+export type OfflinePullCustomerCreditCacheApplyResult = {
+  customerCredit: CustomerCreditSnapshot
+  appliedCount: number
+  updatedCount: number
+  ignoredCount: number
+}
+
 export type OfflinePushRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/push"
@@ -1850,6 +1867,44 @@ function sanitizeOfflinePullInventoryCacheRecords(
     .slice(0, 50)
 }
 
+function sanitizeOfflinePullCustomerCreditCacheRecords(
+  records: OfflinePullCustomerCreditCacheRecord[],
+): OfflinePullCustomerCreditCacheRecord[] {
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  return records
+    .filter((record) =>
+      record &&
+      typeof record.customer_id === "number" &&
+      Number.isInteger(record.customer_id) &&
+      record.customer_id > 0 &&
+      typeof record.row_version === "number" &&
+      Number.isFinite(record.row_version) &&
+      record.row_version > 0 &&
+      typeof record.label === "string" &&
+      record.label.trim() !== "" &&
+      typeof record.available_minor_units === "number" &&
+      Number.isFinite(record.available_minor_units) &&
+      record.available_minor_units >= 0 &&
+      record.currency === "USD" &&
+      typeof record.note === "string" &&
+      typeof record.updated_at_utc === "string" &&
+      record.updated_at_utc.trim() !== "",
+    )
+    .map((record): OfflinePullCustomerCreditCacheRecord => ({
+      customer_id: record.customer_id,
+      row_version: Math.floor(record.row_version),
+      label: record.label.trim(),
+      available_minor_units: Math.floor(record.available_minor_units),
+      currency: "USD",
+      note: record.note.trim() || "Website credit balance refreshed from offline pull.",
+      updated_at_utc: record.updated_at_utc.trim(),
+    }))
+    .slice(0, 25)
+}
+
 function safeRecordIdPart(value: unknown, fallback: string): string {
   const candidate = stringValue(value) || fallback
   const safeValue = candidate
@@ -2432,6 +2487,44 @@ export function applyOfflinePullInventoryRecordsToCache(
     updatedCount,
     ignoredCount,
     changedPublicIds,
+  }
+}
+
+export function applyOfflinePullCustomerCreditRecordsToCache(
+  customerCredit: CustomerCreditSnapshot,
+  records: OfflinePullCustomerCreditCacheRecord[],
+): OfflinePullCustomerCreditCacheApplyResult {
+  let nextCustomerCredit = customerCredit
+  let updatedCount = 0
+  let ignoredCount = 0
+
+  for (const record of sanitizeOfflinePullCustomerCreditCacheRecords(records)) {
+    if (record.customer_id !== customerCredit.customerId || record.row_version <= nextCustomerCredit.rowVersion) {
+      ignoredCount += 1
+      continue
+    }
+
+    nextCustomerCredit = {
+      ...nextCustomerCredit,
+      customerId: record.customer_id,
+      rowVersion: record.row_version,
+      label: record.label,
+      availableMinorUnits: record.available_minor_units,
+      redemptionPreviewMinorUnits: Math.min(
+        nextCustomerCredit.redemptionPreviewMinorUnits,
+        record.available_minor_units,
+      ),
+      currency: record.currency,
+      note: record.note,
+    }
+    updatedCount += 1
+  }
+
+  return {
+    customerCredit: nextCustomerCredit,
+    appliedCount: updatedCount,
+    updatedCount,
+    ignoredCount,
   }
 }
 

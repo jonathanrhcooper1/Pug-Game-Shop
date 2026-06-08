@@ -23,7 +23,10 @@ try {
   const modulePath = path.join(tempDir, "offlineWorkspace.mjs")
   await writeFile(modulePath, compiledWorkspace.outputText, "utf8")
 
-  const { applyOfflinePullInventoryRecordsToCache } = await import(pathToFileURL(modulePath))
+  const {
+    applyOfflinePullCustomerCreditRecordsToCache,
+    applyOfflinePullInventoryRecordsToCache,
+  } = await import(pathToFileURL(modulePath))
   const existingItems = [
     {
       id: 7,
@@ -121,8 +124,57 @@ try {
   assert.equal(insertedItem.cardName, "Pikachu")
   assert.equal(insertedItem.priceMinorUnits, 1800)
   assert.equal(insertedItem.source, "accepted")
+
+  const creditResult = applyOfflinePullCustomerCreditRecordsToCache(
+    {
+      customerId: 91,
+      rowVersion: 6,
+      label: "Customer credit",
+      availableMinorUnits: 24600,
+      redemptionPreviewMinorUnits: 2800,
+      currency: "USD",
+      note: "Cached balance available for offline redemption.",
+    },
+    [
+      {
+        customer_id: 91,
+        row_version: 5,
+        label: "Stale credit",
+        available_minor_units: 1,
+        currency: "USD",
+        note: "Ignored stale credit row.",
+        updated_at_utc: "2026-06-08T12:00:00Z",
+      },
+      {
+        customer_id: 92,
+        row_version: 8,
+        label: "Other customer",
+        available_minor_units: 99900,
+        currency: "USD",
+        note: "Ignored unmatched customer row.",
+        updated_at_utc: "2026-06-08T12:05:00Z",
+      },
+      {
+        customer_id: 91,
+        row_version: 7,
+        label: "Customer credit",
+        available_minor_units: 2100,
+        currency: "USD",
+        note: "Website credit balance refreshed.",
+        updated_at_utc: "2026-06-08T12:10:00Z",
+      },
+    ],
+  )
+
+  assert.equal(creditResult.appliedCount, 1)
+  assert.equal(creditResult.updatedCount, 1)
+  assert.equal(creditResult.ignoredCount, 2)
+  assert.equal(creditResult.customerCredit.rowVersion, 7)
+  assert.equal(creditResult.customerCredit.availableMinorUnits, 2100)
+  assert.equal(creditResult.customerCredit.redemptionPreviewMinorUnits, 2100)
+  assert.equal(creditResult.customerCredit.note, "Website credit balance refreshed.")
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }
 
-console.log("PASS offline app pull inventory cache contract")
+console.log("PASS offline app pull cache contract")

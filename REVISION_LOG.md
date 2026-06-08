@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pull Customer Credit Cache Apply
+
+### What Changed
+
+- Added bounded sanitized customer credit account extraction to the Tauri
+  desktop `run_offline_sync_request` pull response.
+- Added TypeScript cache application for newer active-customer credit rows,
+  including updated and ignored-as-stale/unmatched counts.
+- Moved the displayed customer credit snapshot into React state so successful
+  desktop pulls can refresh the visible balance and ledger note.
+- Updated `Sync Now` to show separate inventory and credit cache-apply counts.
+
+### Why
+
+Inventory pull rows could now update the offline cache, but customer credit was
+still locked to the initial seed snapshot. This revision makes the active
+customer credit account refreshable from website pull responses while keeping a
+bounded, sanitized response shape and avoiding raw WordPress payload exposure.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull customer credit account extraction and
+  decimal balance conversion.
+- Offline app behavior contract coverage for active-customer credit updates,
+  stale row rejection, unmatched-customer rejection, and redemption preview
+  capping when the refreshed website balance is lower than the local preview.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to stop applying pulled customer credit rows into the
+  local credit snapshot while keeping inventory cache application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
 ## 2026-06-08 - Offline App Pull Inventory Cache Apply
 
 ### What Changed

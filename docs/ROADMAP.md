@@ -180,6 +180,8 @@ plus guarded Tauri authenticated offline pull/push request command and desktop
 Sync Now execution panel with sanitized WordPress response summaries
 plus sanitized desktop pull inventory record extraction and local cache apply
 counts for newer server rows
+plus sanitized desktop pull active customer credit extraction and local balance
+cache apply counts for newer server rows
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview
