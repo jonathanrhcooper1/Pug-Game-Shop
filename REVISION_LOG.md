@@ -3,6 +3,49 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Local Rust Test Runner
+
+### What Changed
+
+- Added `scripts/run-offline-app-rust-tests.mjs`, a PATH-aware Cargo runner for
+  the offline app Tauri command tests.
+- Added `npm run test:offline-app:rust`.
+- Extended root `npm run test:offline-app` so it now runs TypeScript checks,
+  offline app contracts, and the Tauri Rust command tests.
+
+### Why
+
+Rustup was installed on the machine but the active shell did not inherit the
+user Cargo path. This runner makes the local test path repeatable on Windows
+and keeps the Tauri command tests in the normal offline-app verification loop.
+
+### Files Affected
+
+- `package.json`
+- `scripts/run-offline-app-rust-tests.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Root script coverage for `cargo test` in `apps/offline-app/src-tauri`.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 4 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove Cargo from the root offline-app test command.
+- No schema rollback is required.
+
 ## 2026-06-08 - Offline App Pull Refresh Preview
 
 ### What Changed

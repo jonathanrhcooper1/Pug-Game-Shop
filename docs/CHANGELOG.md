@@ -44,6 +44,9 @@ All notable changes follow Semantic Versioning.
   refreshed inventory, customer-credit, event, and conflict rows while
   preserving queued offline operations, and the root offline-app test script now
   runs TypeScript typechecking before contract tests.
+- Root offline-app tests now run the Tauri Rust command tests through a
+  PATH-aware Cargo helper, allowing local Windows shells to use the installed
+  user Rustup toolchain.
 - Gated live ScryDex smoke helper for read-only card-search verification,
   requiring explicit environment confirmation and reporting only sanitized
   status/count/first-card metadata without writing WordPress data or printing

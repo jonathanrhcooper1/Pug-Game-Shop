@@ -62,11 +62,17 @@ npm run dev
 npm run build
 npm run typecheck
 npm run test:package-contract
+npm --prefix ../.. run test:offline-app:rust
 npm audit
 npm run build:windows
 ```
 
-Run the desktop command tests with:
+The root `npm run test:offline-app` command runs TypeScript checks, app
+contracts, and the Tauri Rust command tests. The Rust helper also prepends the
+user Cargo bin path so Windows shells that have Rustup installed but not loaded
+in the current PATH can still run the command tests.
+
+Run the desktop command tests directly with:
 
 ```sh
 cd src-tauri

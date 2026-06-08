@@ -105,6 +105,9 @@
 - Root offline app test coverage now runs TypeScript typechecking before the
   contract suite and verifies the local pull-refresh preview created by
   `Sync Now`, including refreshed row counts and queued-operation preservation.
+- Root offline app test coverage now also runs the Tauri Rust command tests
+  through `scripts/run-offline-app-rust-tests.mjs`, which resolves the user
+  Cargo path on Windows before invoking `cargo test`.
 - Offline app browser verification now covers the functional local-session
   controls at desktop width: stage inventory update, prepare print label,
   review/approve all conflicts into history, stage customer-credit use into a
