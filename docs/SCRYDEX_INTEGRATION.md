@@ -79,6 +79,12 @@ request remains deferred by default; the plan can evaluate an already-fetched
 usage snapshot in tests or future worker code without making the request
 itself.
 
+The health endpoint also includes `scrydex_checkpoint_repository`. This plan
+builds the read and upsert SQL templates for `tcg_sync_checkpoints`, validates
+the active WordPress table prefix and checkpoint identity, and reports whether
+the repository boundary is configured. It does not execute the checkpoint read
+or upsert; database writes remain behind the separate execution gate.
+
 Default blockers are:
 
 - `scrydex_network_requests_disabled`
@@ -97,6 +103,15 @@ Budget-specific blockers are:
 - `scrydex_usage_budget_not_configured`
 - `scrydex_daily_credit_budget_exceeded`
 - `scrydex_remaining_credit_floor_reached`
+
+Checkpoint-specific blockers are:
+
+- `scrydex_checkpoint_repository_not_configured`
+- `scrydex_checkpoint_table_prefix_invalid`
+- `scrydex_checkpoint_table_name_invalid`
+- `scrydex_checkpoint_resource_type_invalid`
+- `scrydex_checkpoint_resource_key_invalid`
+- `scrydex_checkpoint_payload_hash_invalid`
 
 ## Role
 

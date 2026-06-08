@@ -3,6 +3,70 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Checkpoint Repository Planning
+
+### What Changed
+
+- Added `ScryDexSyncCheckpointRepositoryPlanner` to build deferred read and
+  upsert SQL templates for `tcg_sync_checkpoints`.
+- Exposed checkpoint repository readiness through authenticated health output
+  and the ScryDex sync execution gate.
+- Added unit coverage for read/upsert template generation, nullable resume
+  fields, invalid table prefixes, invalid checkpoint identities, and execution
+  gate checkpoint-plan visibility.
+
+### Why
+
+ScryDex full pulls must resume safely before real worker execution can be
+enabled. This revision adds the checkpoint repository boundary and table-prefix
+validation needed for staging diagnostics while keeping checkpoint reads and
+writes deferred.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncCheckpointRepositoryPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncCheckpointRepositoryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added. This revision plans reads/writes against
+  the existing `0006_sync` checkpoint table.
+
+### Tests Added
+
+- ScryDex checkpoint repository planner tests for valid read/upsert templates,
+  nullable resume fields, invalid table prefixes, and invalid checkpoint
+  identities.
+- ScryDex execution gate assertions for checkpoint repository plan visibility.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 832 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexSyncCheckpointRepositoryPlanner.php apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 544 PHP files.
+- `npm.cmd run test`: passed, including 832 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex checkpoint repository planning,
+  health/execution-gate visibility, and associated tests.
+- No schema rollback, checkpoint data cleanup, provider cleanup, or worker
+  cleanup is required because this revision does not execute checkpoint reads,
+  checkpoint upserts, ScryDex network calls, or scheduled workers.
+
 ## 2026-06-07 - ScryDex Usage Budget Planning
 
 ### What Changed

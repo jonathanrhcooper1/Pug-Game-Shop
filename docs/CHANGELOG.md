@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex checkpoint repository planning that builds deferred read/upsert SQL
+  templates for `tcg_sync_checkpoints`, exposes checkpoint repository readiness
+  in health/execution-gate diagnostics, and keeps checkpoint reads/writes
+  disabled until worker staging acceptance.
 - ScryDex usage-budget settings and cards-page budget planning, exposing
   daily credit limits, remaining-credit reserve, estimated page cost, and
   deferred `/account/v1/usage` checks through health/admin diagnostics before
