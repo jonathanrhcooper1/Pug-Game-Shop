@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Staging ScryDex setup now includes `npm run staging:configure-scrydex`, a
+  WP-CLI/SFTP helper that reads keys from environment variables, streams them
+  to a temporary non-secret runner over stdin, saves server-side WordPress
+  settings, verifies redacted health/status output, and removes the runner.
 - Staging route checks now include a credential-free `npm run
   staging:route-check` probe for the WordPress REST root, `tcg-store/v1`
   namespace, authenticated health route registration, public offline connector

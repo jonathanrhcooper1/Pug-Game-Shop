@@ -32,6 +32,11 @@
   environment `staging`, emails disabled, public indexing blocked, payment
   capture deferred, provider inventory deferred, staff banner enabled, and a
   secret-safe staging connector manifest.
+- `npm run staging:configure-scrydex` now has packaging contract coverage for
+  its dry run, status mode, stdin-based WP-CLI credential handoff, redacted
+  readiness output, temporary runner cleanup, and no provider network/data
+  writes. The command is intentionally separate from `npm run
+  scrydex:live-smoke` and from future database-writing sync workers.
 - Offline app contract coverage now verifies queue refresh and selective
   voiding controls: `Refresh Desktop Queue` calls the Tauri list command when
   available, and `Void Selected Operation` removes one selected operation while

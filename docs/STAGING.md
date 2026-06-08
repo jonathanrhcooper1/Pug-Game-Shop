@@ -95,6 +95,30 @@ for `/wp-json/tcg-store/v1/health` or
 Platform** package is not installed/active on that staging site, or the active
 package is not registering this repo's routes.
 
+## ScryDex Staging Configuration
+
+Configure ScryDex only after the staging route check passes and the plugin
+health reports `environment = staging`:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+SCRYDEX_TEAM_ID=team-id \
+SCRYDEX_API_KEY=primary-key \
+SCRYDEX_SECONDARY_API_KEY=secondary-key \
+PUG_STAGING_CONFIRM_SCRYDEX_CONFIG=configure-staging-scrydex \
+npm run staging:configure-scrydex
+```
+
+The helper writes a temporary non-secret PHP runner under staging uploads,
+streams the credential payload to `wp eval-file` over stdin, saves the values
+inside WordPress settings, prints only redacted readiness fields, and removes
+the runner. It does not call ScryDex, write reference-card tables, enqueue
+workers, expose credentials to the offline app, or run production side effects.
+Use `npm run staging:configure-scrydex -- --status` for a redacted status check
+without changing settings.
+
 ## Gated Inventory Smoke Runner
 
 Run the staged inventory route smoke test through WP-CLI after staging has the

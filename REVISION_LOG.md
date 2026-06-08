@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging ScryDex Configuration Helper
+
+### What Changed
+
+- Added `scripts/staging-configure-scrydex.mjs` and `npm run
+  staging:configure-scrydex`.
+- The helper supports a dry run, redacted `--status` check, and confirmed
+  staging configuration mode.
+- ScryDex credentials are read from environment variables, streamed over stdin
+  to a temporary non-secret WP-CLI runner, stored in WordPress settings, and
+  reported only as configured/missing booleans plus the existing short
+  fingerprint.
+- The helper removes the temporary runner after execution and reports that it
+  does not run provider network requests, write reference-card data, enqueue
+  workers, or sync credentials to the offline app.
+
+### Why
+
+Staging needs ScryDex server-side configuration before live provider smoke
+testing and future reference-card sync acceptance, but those keys must not be
+committed, echoed in logs, sent to the offline app, or mixed with database
+write workers. This gives the project a repeatable, secret-redacted staging
+setup path.
+
+### Files Affected
+
+- `scripts/staging-configure-scrydex.mjs`
+- `scripts/tests/staging-scrydex-config-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for the staging ScryDex npm script, required
+  environment gates, stdin-based WP-CLI handoff, redacted status output,
+  temporary runner removal, and no provider network/data writes.
+
+### Rollback Notes
+
+- Revert this revision to remove the helper and contract.
+- If staging ScryDex settings need to be cleared, use the WordPress settings
+  screen clear controls or update the `scrydex_provider` settings back to the
+  defaults. No production, Square, payment, POS, offline SQLite, or reference
+  card data rollback is required.
+
 ## 2026-06-08 - Queue Refresh And Staging Route Check
 
 ### What Changed

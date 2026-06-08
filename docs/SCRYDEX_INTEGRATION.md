@@ -79,6 +79,20 @@ SCRYDEX_BASE_URL
 Production credentials must not be used in local development or automated pull
 request checks.
 
+For staging, use the server-side configuration helper after the staging route
+check passes:
+
+```text
+PUG_STAGING_CONFIRM_SCRYDEX_CONFIG=configure-staging-scrydex
+npm run staging:configure-scrydex
+```
+
+The helper reads ScryDex keys from environment variables, streams them to a
+temporary WP-CLI runner over stdin, stores them in WordPress settings, reports
+only configured/missing booleans plus the active key fingerprint, and deletes
+the runner. It does not call ScryDex, sync card tables, print raw responses,
+send credentials to the offline app, or run scheduled workers.
+
 ## Live Smoke Verification
 
 Use the live smoke only for a manual, read-only credential check. It is not
