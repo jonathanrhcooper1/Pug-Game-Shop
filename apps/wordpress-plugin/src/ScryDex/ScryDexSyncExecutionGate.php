@@ -29,11 +29,13 @@ final class ScryDexSyncExecutionGate {
 	public function __construct(
 		private ?ScryDexSyncDryRunPlanner $dry_run_planner = null,
 		private ?ScryDexUsageBudgetPlanner $usage_budget_planner = null,
-		private ?ScryDexSyncCheckpointRepositoryPlanner $checkpoint_repository_planner = null
+		private ?ScryDexSyncCheckpointRepositoryPlanner $checkpoint_repository_planner = null,
+		private ?ScryDexPersistenceRepositoryReadinessPlanner $persistence_repository_planner = null
 	) {
-		$this->dry_run_planner               = $this->dry_run_planner ?? new ScryDexSyncDryRunPlanner();
-		$this->usage_budget_planner          = $this->usage_budget_planner ?? new ScryDexUsageBudgetPlanner( array() );
-		$this->checkpoint_repository_planner = $this->checkpoint_repository_planner ?? new ScryDexSyncCheckpointRepositoryPlanner();
+		$this->dry_run_planner                = $this->dry_run_planner ?? new ScryDexSyncDryRunPlanner();
+		$this->usage_budget_planner           = $this->usage_budget_planner ?? new ScryDexUsageBudgetPlanner( array() );
+		$this->checkpoint_repository_planner  = $this->checkpoint_repository_planner ?? new ScryDexSyncCheckpointRepositoryPlanner();
+		$this->persistence_repository_planner = $this->persistence_repository_planner ?? new ScryDexPersistenceRepositoryReadinessPlanner();
 	}
 
 	/**
@@ -42,12 +44,13 @@ final class ScryDexSyncExecutionGate {
 	 * @return array<string, mixed>
 	 */
 	public function plan_cards_worker( array $request = array(), array $gate_overrides = array() ): array {
-		$dry_run               = $this->dry_run_planner->plan_cards_sync( $request );
-		$budget                = $this->usage_budget_planner->plan_cards_page( $dry_run['request'] );
-		$checkpoint_repository = $this->checkpoint_repository_planner->plan( $dry_run['checkpoint_row'] );
-		$gates                 = $this->gates( $gate_overrides, $budget, $checkpoint_repository );
-		$reasons               = $this->block_reasons( $dry_run, $gates, $budget, $checkpoint_repository );
-		$ready                 = array() === $reasons;
+		$dry_run                = $this->dry_run_planner->plan_cards_sync( $request );
+		$budget                 = $this->usage_budget_planner->plan_cards_page( $dry_run['request'] );
+		$checkpoint_repository  = $this->checkpoint_repository_planner->plan( $dry_run['checkpoint_row'] );
+		$persistence_repository = $this->persistence_repository_planner->plan( $dry_run['checkpoint_row'] );
+		$gates                  = $this->gates( $gate_overrides, $budget, $checkpoint_repository, $persistence_repository );
+		$reasons                = $this->block_reasons( $dry_run, $gates, $budget, $checkpoint_repository, $persistence_repository );
+		$ready                  = array() === $reasons;
 
 		return array(
 			'status'                            => $ready ? 'ready' : ( true === $dry_run['provider_ready'] ? 'gated' : 'blocked' ),
@@ -63,8 +66,11 @@ final class ScryDexSyncExecutionGate {
 			'credential_values_redacted'        => true,
 			'usage_budget_plan'                 => $budget,
 			'checkpoint_repository_plan'        => $checkpoint_repository,
+			'persistence_repository_plan'       => $persistence_repository,
 			'page_processor_ready'              => method_exists( ScryDexSyncPageProcessor::class, 'process_cards_page' ),
 			'persistence_planner_ready'         => method_exists( ScryDexPersistencePlanner::class, 'plan_page' ),
+			'persistence_query_builder_ready'   => true === ( $persistence_repository['persistence_query_builder_ready'] ?? false ),
+			'persistence_repository_ready'      => true === ( $persistence_repository['persistence_repository_ready'] ?? false ),
 			'network_requests_enabled'          => $gates['network_requests_enabled'],
 			'usage_budget_configured'           => $gates['usage_budget_configured'],
 			'checkpoint_repository_configured'  => $gates['checkpoint_repository_configured'],
@@ -85,12 +91,14 @@ final class ScryDexSyncExecutionGate {
 	 * @param array<string, mixed> $gate_overrides Gate overrides.
 	 * @param array<string, mixed> $budget Usage budget plan.
 	 * @param array<string, mixed> $checkpoint_repository Checkpoint repository plan.
+	 * @param array<string, mixed> $persistence_repository Persistence repository plan.
 	 * @return array<string, bool>
 	 */
-	private function gates( array $gate_overrides, array $budget, array $checkpoint_repository ): array {
-		$gates                                     = self::DEFAULT_GATES;
-		$gates['usage_budget_configured']          = true === ( $budget['budget_configured'] ?? false );
-		$gates['checkpoint_repository_configured'] = true === ( $checkpoint_repository['repository_configured'] ?? false );
+	private function gates( array $gate_overrides, array $budget, array $checkpoint_repository, array $persistence_repository ): array {
+		$gates                                      = self::DEFAULT_GATES;
+		$gates['usage_budget_configured']           = true === ( $budget['budget_configured'] ?? false );
+		$gates['checkpoint_repository_configured']  = true === ( $checkpoint_repository['repository_configured'] ?? false );
+		$gates['persistence_repository_configured'] = true === ( $persistence_repository['repository_configured'] ?? false );
 
 		foreach ( $gate_overrides as $key => $value ) {
 			if ( array_key_exists( $key, $gates ) ) {
@@ -106,9 +114,10 @@ final class ScryDexSyncExecutionGate {
 	 * @param array<string, bool>  $gates Gate state.
 	 * @param array<string, mixed> $budget Usage budget plan.
 	 * @param array<string, mixed> $checkpoint_repository Checkpoint repository plan.
+	 * @param array<string, mixed> $persistence_repository Persistence repository plan.
 	 * @return list<string>
 	 */
-	private function block_reasons( array $dry_run, array $gates, array $budget, array $checkpoint_repository ): array {
+	private function block_reasons( array $dry_run, array $gates, array $budget, array $checkpoint_repository, array $persistence_repository ): array {
 		$reasons = array();
 
 		if ( true !== ( $dry_run['provider_ready'] ?? false ) ) {
@@ -121,8 +130,9 @@ final class ScryDexSyncExecutionGate {
 			}
 		}
 
-		$budget_reasons     = $budget['block_reasons'] ?? array();
-		$checkpoint_reasons = $checkpoint_repository['block_reasons'] ?? array();
+		$budget_reasons      = $budget['block_reasons'] ?? array();
+		$checkpoint_reasons  = $checkpoint_repository['block_reasons'] ?? array();
+		$persistence_reasons = $persistence_repository['block_reasons'] ?? array();
 
 		if ( is_array( $budget_reasons ) ) {
 			foreach ( $budget_reasons as $reason ) {
@@ -147,6 +157,22 @@ final class ScryDexSyncExecutionGate {
 				$reason = trim( (string) $reason );
 
 				if ( 'scrydex_checkpoint_repository_not_configured' === $reason && true === $gates['checkpoint_repository_configured'] ) {
+					continue;
+				}
+
+				$reasons[] = $reason;
+			}
+		}
+
+		if ( is_array( $persistence_reasons ) ) {
+			foreach ( $persistence_reasons as $reason ) {
+				if ( ! is_scalar( $reason ) || '' === trim( (string) $reason ) ) {
+					continue;
+				}
+
+				$reason = trim( (string) $reason );
+
+				if ( 'scrydex_persistence_repository_not_configured' === $reason && true === $gates['persistence_repository_configured'] ) {
 					continue;
 				}
 

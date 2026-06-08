@@ -47,6 +47,9 @@
   reference-card inserts, changed-row updates, provider price observation
   inserts, checkpoint upsert plans, invalid source plans, table-prefix guards,
   and repository deferred audit results.
+- Local unit coverage now includes ScryDex persistence repository readiness
+  diagnostics and execution-gate wiring, proving valid table prefixes produce
+  staged repository readiness and invalid prefixes keep the worker blocked.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment
@@ -719,6 +722,9 @@
 - Local unit coverage now includes ScryDex persistence query building and
   repository staging for SQL templates, prepare-argument counts, checkpoint
   upserts, deferred execution audit rows, and invalid-plan rejection.
+- Local unit coverage now includes ScryDex persistence readiness health/gate
+  wiring for empty-page repository probes, derived gate state, and retained
+  database-write deferrals.
 - Local unit coverage now includes inventory search SQL-template planning for
   public/staff/hidden card listings, prepared `SELECT` and `COUNT` templates,
   scan-column filters, pagination arguments, and tamper rejection.

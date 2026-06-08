@@ -16,6 +16,7 @@ use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
+use TCGStorePlatform\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncCheckpointRepositoryPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncDryRunPlanner;
 use TCGStorePlatform\ScryDex\ScryDexSyncExecutionGate;
@@ -75,15 +76,15 @@ final class HealthController {
 	public function get_health( \WP_REST_Request $request ): \WP_REST_Response {
 		unset( $request );
 
-		$runner                        = new MigrationRunner();
-		$dependencies                  = DependencyChecker::status();
-		$features                      = array();
-		$overall                       = 'ok';
-		$offline_feature_enabled       = FeatureFlags::is_enabled( 'offline_sync' );
-		$pos_payments_enabled          = FeatureFlags::is_enabled( 'pos_payments' );
-		$device_permission_factory     = new OfflineRegisteredDevicePermissionResolverFactory();
-		$sync_handler_factory          = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
-		$offline                       = ( new OfflineRouteBootstrapStatusPresenter(
+		$runner                         = new MigrationRunner();
+		$dependencies                   = DependencyChecker::status();
+		$features                       = array();
+		$overall                        = 'ok';
+		$offline_feature_enabled        = FeatureFlags::is_enabled( 'offline_sync' );
+		$pos_payments_enabled           = FeatureFlags::is_enabled( 'pos_payments' );
+		$device_permission_factory      = new OfflineRegisteredDevicePermissionResolverFactory();
+		$sync_handler_factory           = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
+		$offline                        = ( new OfflineRouteBootstrapStatusPresenter(
 			new OfflineRouteBootstrapPlanner(
 				new OfflineRouteRegistrationPlanner(
 					new OfflineRoutePermissionCallbackFactory(
@@ -95,14 +96,14 @@ final class HealthController {
 		) )->health_payload(
 			$offline_feature_enabled
 		);
-		$device_permissions            = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
+		$device_permissions             = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
 			$device_permission_factory
 		) )->health_payload();
-		$sync_handlers                 = ( new OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter(
+		$sync_handlers                  = ( new OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter(
 			$sync_handler_factory
 		) )->health_payload();
-		$pairing_authorizer_factory    = new OfflineDevicePairingAuthorizerFactory();
-		$pairing                       = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
+		$pairing_authorizer_factory     = new OfflineDevicePairingAuthorizerFactory();
+		$pairing                        = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
 				null,
 				null,
@@ -112,41 +113,48 @@ final class HealthController {
 		) )->health_payload(
 			$offline_feature_enabled
 		);
-		$pos_payment_routes            = ( new PosPaymentRouteReadinessStatusPresenter() )->health_payload(
+		$pos_payment_routes             = ( new PosPaymentRouteReadinessStatusPresenter() )->health_payload(
 			$pos_payments_enabled
 		);
-		$pos_payment_bootstrap         = ( new PosPaymentRouteBootstrapStatusPresenter() )->health_payload(
+		$pos_payment_bootstrap          = ( new PosPaymentRouteBootstrapStatusPresenter() )->health_payload(
 			$pos_payments_enabled
 		);
-		$pos_payment_dependencies      = ( new PosPaymentRouteDependencyStatusPresenter(
+		$pos_payment_dependencies       = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->health_payload();
-		$woocommerce_square            = ( new WooCommerceSquareExtensionStatus() )->readiness_summary();
-		$inventory_factory             = InventoryRouteDependencyFactory::from_settings( Settings::all() );
-		$inventory_bootstrap           = $inventory_factory->bootstrap_status_presenter()->health_payload(
+		$woocommerce_square             = ( new WooCommerceSquareExtensionStatus() )->readiness_summary();
+		$inventory_factory              = InventoryRouteDependencyFactory::from_settings( Settings::all() );
+		$inventory_bootstrap            = $inventory_factory->bootstrap_status_presenter()->health_payload(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
 		);
-		$inventory_dependencies        = ( new InventoryRouteDependencyStatusPresenter(
+		$inventory_dependencies         = ( new InventoryRouteDependencyStatusPresenter(
 			$inventory_factory
 		) )->health_payload();
-		$scrydex_factory               = new ScryDexProviderFactory( Settings::all() );
-		$scrydex                       = $scrydex_factory->readiness_summary();
-		$scrydex_dry_run_planner       = new ScryDexSyncDryRunPlanner( $scrydex_factory );
-		$scrydex_sync_dry_run          = $scrydex_dry_run_planner->plan_cards_sync();
-		$scrydex_usage_budget_planner  = new ScryDexUsageBudgetPlanner( Settings::all() );
-		$scrydex_usage_budget          = $scrydex_usage_budget_planner->plan_cards_page(
+		$scrydex_factory                = new ScryDexProviderFactory( Settings::all() );
+		$scrydex                        = $scrydex_factory->readiness_summary();
+		$scrydex_dry_run_planner        = new ScryDexSyncDryRunPlanner( $scrydex_factory );
+		$scrydex_sync_dry_run           = $scrydex_dry_run_planner->plan_cards_sync();
+		$scrydex_usage_budget_planner   = new ScryDexUsageBudgetPlanner( Settings::all() );
+		$scrydex_usage_budget           = $scrydex_usage_budget_planner->plan_cards_page(
 			$scrydex_sync_dry_run['request']
 		);
-		$scrydex_checkpoint_planner    = new ScryDexSyncCheckpointRepositoryPlanner(
+		$scrydex_checkpoint_planner     = new ScryDexSyncCheckpointRepositoryPlanner(
 			$this->database_prefix()
 		);
-		$scrydex_checkpoint_repository = $scrydex_checkpoint_planner->plan(
+		$scrydex_checkpoint_repository  = $scrydex_checkpoint_planner->plan(
 			$scrydex_sync_dry_run['checkpoint_row']
 		);
-		$scrydex_sync_execution        = ( new ScryDexSyncExecutionGate(
+		$scrydex_persistence_planner    = new ScryDexPersistenceRepositoryReadinessPlanner(
+			$this->database_prefix()
+		);
+		$scrydex_persistence_repository = $scrydex_persistence_planner->plan(
+			$scrydex_sync_dry_run['checkpoint_row']
+		);
+		$scrydex_sync_execution         = ( new ScryDexSyncExecutionGate(
 			$scrydex_dry_run_planner,
 			$scrydex_usage_budget_planner,
-			$scrydex_checkpoint_planner
+			$scrydex_checkpoint_planner,
+			$scrydex_persistence_planner
 		) )->plan_cards_worker();
 		foreach ( $dependencies as $dependency ) {
 			if ( 'blocked' === $dependency['status'] ) {
@@ -197,6 +205,7 @@ final class HealthController {
 				'scrydex_sync_dry_run'                    => $scrydex_sync_dry_run,
 				'scrydex_usage_budget'                    => $scrydex_usage_budget,
 				'scrydex_checkpoint_repository'           => $scrydex_checkpoint_repository,
+				'scrydex_persistence_repository'          => $scrydex_persistence_repository,
 				'scrydex_sync_execution_gate'             => $scrydex_sync_execution,
 				'timestamp'                               => gmdate( 'c' ),
 			),

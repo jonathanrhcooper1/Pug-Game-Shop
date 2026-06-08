@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Persistence Readiness Wiring
+
+### What Changed
+
+- Added `ScryDexPersistenceRepositoryReadinessPlanner` to run an empty-page
+  readiness probe through the persistence planner, query builder, and deferred
+  repository boundary.
+- Exposed `scrydex_persistence_repository` in authenticated health output.
+- Updated `ScryDexSyncExecutionGate` so persistence repository readiness is
+  derived from the staged readiness payload instead of a manual-only override.
+- Added tests for valid/invalid persistence repository readiness and execution
+  gate derived readiness.
+
+### Why
+
+Staging needs to see whether the new ScryDex persistence boundary is configured
+before live worker/database writes are enabled. This wiring makes the health
+payload and execution gate explain table-prefix, query-builder, repository, and
+deferred-write state without making provider calls or database writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryReadinessPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- ScryDex persistence repository readiness tests for valid prefixes, table
+  names, query counts, deferred write flags, and invalid prefix blocking.
+- ScryDex execution gate assertions that expose persistence repository
+  readiness and derive the configured gate from the readiness planner.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 843 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner.php apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 555 PHP files.
+- `npm.cmd run test`: passed, including 843 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the health payload and execution-gate
+  persistence readiness wiring.
+- No migrations, provider calls, scheduled workers, checkpoint execution, or
+  database writes are introduced.
+- The previous execution gate can still be controlled through manual gate
+  overrides in tests/staging after rollback.
+
 ## 2026-06-07 - ScryDex Persistence SQL Staging
 
 ### What Changed

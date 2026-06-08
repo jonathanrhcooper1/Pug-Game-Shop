@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex persistence repository readiness diagnostics in health and execution
+  gate output, deriving the persistence repository gate from staged query and
+  repository audit plans instead of manual overrides.
 - ScryDex persistence SQL staging that builds deferred reference-card
   insert/update templates, provider price observation inserts, checkpoint
   upserts, and repository audit results without executing `wpdb` writes.

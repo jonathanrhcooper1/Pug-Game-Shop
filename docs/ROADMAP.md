@@ -44,7 +44,7 @@ provider factory readiness, dry-run request/checkpoint planning, execution-gate
 readiness diagnostics, usage-budget settings/planning, checkpoint repository
 planning, provider price observation schema migration, card/price normalization,
 sync page processing plus persistence planning, and persistence SQL/repository
-staging implemented
+staging plus health/execution-gate readiness wiring implemented
 
 Deliver adapter, capability discovery, card/expansion/price/image sync,
 checkpoints, resume, usage tracking, webhook verification, live logs, and daily

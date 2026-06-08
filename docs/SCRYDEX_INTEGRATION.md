@@ -19,9 +19,11 @@ inserts, changed-row updates, unchanged row detection, and current price
 observations from normalized page plans. Persistence SQL staging now converts
 those plans into deferred reference-card insert/update templates, provider
 price observation inserts, and checkpoint upsert plans with repository audit
-metadata, but still performs no `wpdb` writes. Scheduled ScryDex workers,
-database write workers, image workers, usage-budget enforcement, and webhook
-route handling remain disabled until staging acceptance. WordPress
+metadata, but still performs no `wpdb` writes. Health output now includes a
+`scrydex_persistence_repository` readiness payload, and the execution gate uses
+that payload to derive the persistence repository gate. Scheduled ScryDex
+workers, database write workers, image workers, usage-budget enforcement, and
+webhook route handling remain disabled until staging acceptance. WordPress
 administrator settings now provide secret-preserving staging credential storage
 and redacted readiness output, but those settings do not execute provider
 network requests by themselves.
@@ -98,9 +100,10 @@ or upsert; database writes remain behind the separate execution gate.
 
 The ScryDex persistence query builder stages reference-card writes,
 provider-price observation writes, and checkpoint upserts. The repository layer
-currently returns deferred execution audit rows only. This keeps SQL shape,
-table-prefix validation, prepare-argument counts, and worker diagnostics
-testable before the project enables live database writes.
+currently returns deferred execution audit rows only. The persistence repository
+readiness planner runs an empty-page probe through that boundary to expose
+table names, query counts, prepare-argument counts, and block reasons in health
+diagnostics before the project enables live database writes.
 
 Default blockers are:
 
