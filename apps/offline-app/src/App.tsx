@@ -8,6 +8,7 @@ import {
   buildConnectorProfileFromDraft,
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
+  buildPreparedDevicePairingRequest,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorProfileDraftFromProfile,
@@ -33,6 +34,7 @@ import {
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
   type OfflinePushResultSummary,
+  type PreparedDevicePairingRequest,
 } from "./data/offlineWorkspace"
 import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
@@ -137,8 +139,13 @@ export function App() {
   const [connectorDraftIssues, setConnectorDraftIssues] = useState<string[]>([])
   const [pairingCode, setPairingCode] = useState("")
   const [pairingPlan, setPairingPlan] = useState<DevicePairingRequestPlan | null>(null)
+  const [preparedPairingRequests, setPreparedPairingRequests] = useState<PreparedDevicePairingRequest[]>([])
   const activeProfile = findConnectorProfile(connectorProfiles, activeProfileId)
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
+  const activePreparedPairingRequests = useMemo(
+    () => preparedPairingRequests.filter((request) => request.profileId === activeProfile.id),
+    [preparedPairingRequests, activeProfile.id],
+  )
   const connectorHealth = connectorHealthSummary(connectorValidation?.profile ?? activeProfile)
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
@@ -413,13 +420,25 @@ export function App() {
 
   function handlePairingPreview() {
     const plan = buildDevicePairingRequestPlan(activeProfile, workspace.device, pairingCode)
+    const preparedRequest = buildPreparedDevicePairingRequest(plan)
 
     setPairingPlan(plan)
+    if (preparedRequest) {
+      setPreparedPairingRequests((requests) => [
+        preparedRequest,
+        ...requests.filter(
+          (request) =>
+            request.profileId !== preparedRequest.profileId ||
+            request.pairingCodeFingerprint !== preparedRequest.pairingCodeFingerprint,
+        ),
+      ].slice(0, 6))
+      setPairingCode("")
+    }
     setActiveSection("Settings")
     setActivityMessage({
       title: plan.pairingCodeProvided ? "Pairing request prepared" : "Pairing code required",
       detail: plan.pairingCodeProvided
-        ? `${plan.companyName} device registration is shaped for ${plan.path}; network token issuance remains deferred and future tokens stay in ${plan.tokenStorage}.`
+        ? `${plan.companyName} device registration is shaped for ${plan.path}; the raw manager code was cleared and future tokens stay in ${plan.tokenStorage}.`
         : "Enter the manager-issued pairing code from WordPress before this device can request a scoped offline token.",
     })
   }
@@ -1029,6 +1048,22 @@ export function App() {
                     ? `${pairingPlan.pairingCodeProvided ? "Code present" : "Code missing"}; ${pairingPlan.requestedScopes.length} scopes; token storage ${pairingPlan.tokenStorage}; code fingerprint ${pairingPlan.pairingCodeFingerprint}.`
                     : "No token request is sent until live pairing is enabled."}
                 </small>
+                {activePreparedPairingRequests.length > 0 ? (
+                  <div className="prepared-pairing-list" aria-label="Prepared pairing requests">
+                    {activePreparedPairingRequests.map((request) => (
+                      <div key={request.id}>
+                        <strong>{request.companyName}</strong>
+                        <span>
+                          {request.method} {request.path}
+                        </span>
+                        <small>
+                          {request.requestedScopes.join(", ")}; token storage {request.tokenStorage};
+                          fingerprint {request.pairingCodeFingerprint}; raw code not stored.
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="connector-actions">
                 <button type="button" onClick={handleNewConnectorDraft}>

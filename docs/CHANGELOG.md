@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app prepared pairing request history for multi-company connector
+  setup. Preparing a device pairing now records the selected company, endpoint,
+  requested offline scopes, desktop secure-token storage, and a redacted
+  pairing-code fingerprint while clearing the raw manager code from the UI.
 - Root `CHANGELOG.md` pointer to the detailed docs changelog so repository
   metadata satisfies the project operating rule while detailed release notes
   remain in `docs/CHANGELOG.md`.

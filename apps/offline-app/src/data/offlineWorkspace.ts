@@ -270,6 +270,24 @@ export type DevicePairingRequestPlan = {
   credentialsSyncedToApp: false
 }
 
+export type PreparedDevicePairingRequest = {
+  id: string
+  method: "POST"
+  path: "/wp-json/tcg-store/v1/offline/devices/register"
+  profileId: string
+  companyName: string
+  siteUrl: string
+  requestedScopes: DevicePairingRequestPlan["requestedScopes"]
+  pairingCodeFingerprint: string
+  tokenStorage: "desktop_secure_store"
+  status: "prepared_local"
+  mode: "staff"
+  platform: "windows"
+  createdAtUtc: string
+  networkRequestDeferred: true
+  rawPairingCodeStored: false
+}
+
 export type OfflineWorkspaceState = {
   navItems: NavItem[]
   syncRoutes: string[]
@@ -839,6 +857,36 @@ export function buildDevicePairingRequestPlan(
     networkRequestDeferred: true,
     productionTokenIssuanceDeferred: true,
     credentialsSyncedToApp: false,
+  }
+}
+
+export function buildPreparedDevicePairingRequest(
+  plan: DevicePairingRequestPlan,
+  options: { createdAtUtc?: string } = {},
+): PreparedDevicePairingRequest | null {
+  if (!plan.pairingCodeProvided) {
+    return null
+  }
+
+  const createdAtUtc = options.createdAtUtc ?? new Date().toISOString()
+  const requestStamp = createdAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+
+  return {
+    id: `prepared-pairing-${plan.profileId}-${plan.pairingCodeFingerprint}-${requestStamp}`,
+    method: plan.method,
+    path: plan.path,
+    profileId: plan.profileId,
+    companyName: plan.companyName,
+    siteUrl: plan.siteUrl,
+    requestedScopes: plan.requestedScopes,
+    pairingCodeFingerprint: plan.pairingCodeFingerprint,
+    tokenStorage: plan.tokenStorage,
+    status: "prepared_local",
+    mode: plan.bodyPreview.mode,
+    platform: plan.bodyPreview.platform,
+    createdAtUtc,
+    networkRequestDeferred: true,
+    rawPairingCodeStored: false,
   }
 }
 

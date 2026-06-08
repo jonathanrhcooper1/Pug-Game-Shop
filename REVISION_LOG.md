@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Connector Pairing Request History
+
+### What Changed
+
+- Added a `PreparedDevicePairingRequest` model and builder for local,
+  redacted device pairing requests.
+- Updated the offline app Settings panel so `Prepare Pairing` creates a
+  visible prepared-request record for the selected website connector, clears
+  the raw pairing code from the input, and keeps the live token request
+  deferred.
+- Added compact prepared-pairing request styling and contract checks for the
+  new UI state and workspace helper.
+
+### Why
+
+The offline app needs to support multiple companies and websites without
+storing real secrets locally. This gives staff a concrete pairing workflow and
+audit trail while live WordPress token issuance remains gated behind staging
+settings.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for `PreparedDevicePairingRequest`,
+  `buildPreparedDevicePairingRequest`, redacted request IDs, and raw-code
+  storage prevention.
+- Offline app UI contract checks for prepared pairing request copy, CSS, and
+  state mutations.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: passed for Settings pairing
+  flow; keypress entry was used because the in-app browser text-entry helper
+  reported a virtual clipboard limitation.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove prepared pairing request state and UI.
+- No database migration or remote staging cleanup is required.
+- Existing connector profiles remain unchanged because the new pairing history
+  is local React session state only.
+
 ## 2026-06-08 - WordPress Plugin Package Smoke Path
 
 ### What Changed

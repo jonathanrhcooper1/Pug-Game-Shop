@@ -1523,6 +1523,42 @@ dd {
   line-height: 1.35;
 }
 
+.prepared-pairing-list {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 7px;
+  min-width: 0;
+}
+
+.prepared-pairing-list div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: rgba(45, 111, 87, 0.08);
+  border: 1px solid rgba(45, 111, 87, 0.14);
+  border-radius: 8px;
+}
+
+.prepared-pairing-list strong,
+.prepared-pairing-list span,
+.prepared-pairing-list small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.prepared-pairing-list strong {
+  color: #173327;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.prepared-pairing-list span {
+  color: #2c4337;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .connector-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
