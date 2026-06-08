@@ -12,6 +12,7 @@ use TCGStorePlatform\Api\V1\CustomerController;
 use TCGStorePlatform\Api\V1\CustomerCreditController;
 use TCGStorePlatform\Api\V1\EventsController;
 use TCGStorePlatform\Api\V1\HealthController;
+use TCGStorePlatform\Api\V1\KioskOrderController;
 use TCGStorePlatform\Api\V1\OfflineConnectorManifestController;
 use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
@@ -81,6 +82,7 @@ final class Plugin {
 		( new CustomerController() )->register();
 		( new CustomerCreditController() )->register();
 		( new EventsController() )->register();
+		( new KioskOrderController() )->register();
 		( new EventShortcodes() )->register();
 		$scrydex_runner->register();
 		$scheduler->register();

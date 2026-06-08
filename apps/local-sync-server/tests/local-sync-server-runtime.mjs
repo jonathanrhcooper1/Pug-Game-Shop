@@ -8,6 +8,7 @@ let wordpressInventoryPushCalls = 0
 let wordpressEventRegistrationPushCalls = 0
 let wordpressCustomerUpsertPushCalls = 0
 let wordpressCreditPushCalls = 0
+let wordpressKioskOrderPushCalls = 0
 let wordpressInventoryPullRows = []
 
 const server = createLocalSyncHttpServer({
@@ -168,6 +169,38 @@ const server = createLocalSyncHttpServer({
             currency: "USD",
           },
         },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressKioskOrderPush: async ({ operation, inventoryPublicIds }) => {
+      wordpressKioskOrderPushCalls += 1
+
+      assert.equal(operation.operation_type, "kiosk_order")
+      assert.equal(operation.payload.first_name, "Ada")
+      assert.equal(operation.payload.last_name, "Lovelace")
+      assert.equal(inventoryPublicIds.length, 1)
+
+      return {
+        status: "ok",
+        code: "wordpress_kiosk_order_reserved",
+        http_status: 201,
+        wordpress_code: "kiosk_order_reserved",
+        order: {
+          order_id: operation.entity_id,
+          first_name: "Ada",
+          last_name: "Lovelace",
+          status: "reserved_for_pickup",
+          reservation_count: 1,
+        },
+        reservations: [
+          {
+            reservation_id: 901,
+            inventory_public_id: inventoryPublicIds[0],
+            status: "active",
+            expires_at: "2026-06-08 23:00:00",
+          },
+        ],
         credentials_synced_to_client: false,
         authorization_header_printed: false,
       }
@@ -572,14 +605,16 @@ try {
     token: managerToken,
   })
   assert.equal(pushedEventRegistration.status, "ok")
-  assert.equal(pushedEventRegistration.operation_count, 2)
-  assert.equal(pushedEventRegistration.accepted_count, 2)
+  assert.equal(pushedEventRegistration.operation_count, 4)
+  assert.equal(pushedEventRegistration.accepted_count, 3)
   assert.equal(pushedEventRegistration.retry_count, 0)
-  assert.equal(pushedEventRegistration.unsupported_operation_count, 5)
+  assert.equal(pushedEventRegistration.unsupported_operation_count, 3)
   assert.equal(pushedEventRegistration.wordpress_inventory_push_connected, true)
   assert.equal(pushedEventRegistration.wordpress_event_registration_push_connected, true)
+  assert.equal(pushedEventRegistration.wordpress_kiosk_order_push_connected, true)
   assert.equal(wordpressEventRegistrationPushCalls, 1)
   assert.equal(wordpressInventoryPushCalls, 3)
+  assert.equal(wordpressKioskOrderPushCalls, 1)
   assert.ok(
     pushedEventRegistration.results.some(
       (result) => result.operation_type === "event_registration" && result.status === "accepted",
@@ -588,6 +623,11 @@ try {
   assert.ok(
     pushedEventRegistration.results.some(
       (result) => result.operation_type === "inventory_intake" && result.status === "accepted",
+    ),
+  )
+  assert.ok(
+    pushedEventRegistration.results.some(
+      (result) => result.operation_type === "kiosk_order" && result.status === "accepted",
     ),
   )
 
@@ -713,7 +753,7 @@ try {
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 5)
+  assert.ok(syncStatus.queue_depth >= 3)
   assert.ok(syncStatus.reference_card_count >= 6)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
@@ -726,6 +766,7 @@ try {
   assert.equal(syncStatus.wordpress_event_registration_push_connected, true)
   assert.equal(syncStatus.wordpress_customer_push_connected, true)
   assert.equal(syncStatus.wordpress_credit_push_connected, true)
+  assert.equal(syncStatus.wordpress_kiosk_order_push_connected, true)
 
   console.log("PASS local sync server runtime")
 } finally {

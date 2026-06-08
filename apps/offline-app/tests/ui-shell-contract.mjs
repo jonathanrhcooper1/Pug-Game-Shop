@@ -82,6 +82,7 @@ for (const requiredText of [
   "event_registration",
   "event_checkin",
   "kiosk_order",
+  "kiosk connection",
   "customer_upsert",
   "customer connection",
   "credit_adjustment",

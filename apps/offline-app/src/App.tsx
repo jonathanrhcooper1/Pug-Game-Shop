@@ -529,6 +529,7 @@ function buildOperationSyncVisibilityRows(options: {
     localStatus?.wordpress_event_registration_push_connected ?? localStatus?.wordpress_push_connected ?? false
   const creditPushConnected = localStatus?.wordpress_credit_push_connected ?? false
   const customerPushConnected = localStatus?.wordpress_customer_push_connected ?? false
+  const kioskPushConnected = localStatus?.wordpress_kiosk_order_push_connected ?? false
   const inventoryPushStatus = inventoryPushConnected
     ? "Push-capable through LAN sync"
     : "Push waits for LAN/WordPress connection"
@@ -541,6 +542,9 @@ function buildOperationSyncVisibilityRows(options: {
   const customerPushStatus = customerPushConnected
     ? "Push-capable through LAN sync"
     : "Push waits for LAN/WordPress customer connection"
+  const kioskPushStatus = kioskPushConnected
+    ? "Push-capable through LAN sync"
+    : "Push waits for LAN/WordPress kiosk connection"
   const localOnlyStatus = "Still queued locally; current LAN push leaves this type unsupported"
   const lanQueueStatus = localStatus
     ? countLabel(localStatus.queue_depth, "LAN queued op")
@@ -610,12 +614,12 @@ function buildOperationSyncVisibilityRows(options: {
       countLabel: localStatus
         ? countLabel(localStatus.kiosk_order_count, "local order")
         : countLabel(kioskHoldCount, "visible hold"),
-      wordpressStatus: `${localOnlyStatus}: kiosk_order`,
+      wordpressStatus: `${kioskPushStatus}: kiosk_order`,
       localStatus:
         `Pickup order stays in the LAN kiosk queue; ${countLabel(kioskHoldCount, "app hold")}`,
       detail:
-        "The kiosk order shell stays local for staff pickup; app review rows still show related holds.",
-      tone: "local",
+        "Pickup orders can sync to WordPress as exact inventory reservations for staff picking.",
+      tone: kioskPushConnected ? "wordpress" : "local",
     },
     {
       id: "customer-upsert",

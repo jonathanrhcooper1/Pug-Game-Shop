@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Kiosk Pickup Order Reservation Push
+
+### What Changed
+
+- Added a WordPress `POST /tcg-store/v1/kiosk/orders` route for kiosk pickup
+  orders that reserves exact inventory rows in the existing reservation table.
+- Added a LAN sync server WordPress kiosk order push adapter.
+- Updated `/sync/status` and `/sync/push` to report
+  `wordpress_kiosk_order_push_connected`, push queued `kiosk_order`
+  operations, and clear matching local kiosk inventory reservation rows when
+  WordPress accepts the pickup order.
+- Updated the offline app sync visibility panel and local sync types to show
+  kiosk order push capability when configured.
+
+### Why
+
+The in-store kiosk needs to let customers choose available cards and submit a
+pickup request using only first and last name. The website remains the source
+of truth for inventory, so accepted kiosk orders must become exact inventory
+reservations on WordPress rather than staying only in the local LAN queue.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/KioskOrderController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/KioskOrderRouteContractTest.php`
+- `apps/local-sync-server/src/wordpressKioskOrderPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-kiosk-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The route uses the existing `tcg_inventory_items` and
+  `tcg_reservations` tables.
+
+### Tests Added
+
+- WordPress route contract coverage proving the kiosk route reserves exact
+  inventory and does not expose payment capture or checkout creation methods.
+- LAN kiosk push adapter coverage for request mapping, idempotency headers,
+  response parsing, invalid payload blocking, and secret-safe output.
+- LAN runtime coverage proving kiosk orders are accepted and matching local
+  inventory reservation rows are cleared during `/sync/push`.
+- Offline UI shell coverage for kiosk push visibility text.
+
+### Verification
+
+- `php -l src/Api/V1/KioskOrderController.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the kiosk pickup route and LAN kiosk push
+  adapter; local kiosk orders will remain queued only.
+- Kiosk reservations already created on staging should be released or allowed
+  to expire before rollback if they are blocking inventory from testing.
+- This route does not capture payment, create WooCommerce orders, or modify
+  Square payments; Square/POS completion remains a separate staff action.
+
 ## 2026-06-08 - Customer Upsert Before Credit Sync
 
 ### What Changed

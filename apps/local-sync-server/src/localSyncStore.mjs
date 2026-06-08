@@ -32,6 +32,8 @@ export function createLocalSyncStore(options = {}) {
   const wordpressCreditPush = typeof options.wordpressCreditPush === "function" ? options.wordpressCreditPush : null
   const wordpressCustomerUpsertPush =
     typeof options.wordpressCustomerUpsertPush === "function" ? options.wordpressCustomerUpsertPush : null
+  const wordpressKioskOrderPush =
+    typeof options.wordpressKioskOrderPush === "function" ? options.wordpressKioskOrderPush : null
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
@@ -827,12 +829,17 @@ export function createLocalSyncStore(options = {}) {
       active_session_count: sessions.size,
       wordpress_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_push_connected: Boolean(
-        wordpressInventoryPush || wordpressEventRegistrationPush || wordpressCreditPush || wordpressCustomerUpsertPush,
+        wordpressInventoryPush ||
+          wordpressEventRegistrationPush ||
+          wordpressCreditPush ||
+          wordpressCustomerUpsertPush ||
+          wordpressKioskOrderPush,
       ),
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
       wordpress_customer_push_connected: Boolean(wordpressCustomerUpsertPush),
+      wordpress_kiosk_order_push_connected: Boolean(wordpressKioskOrderPush),
       scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       local_operations_preserved: true,
@@ -928,7 +935,13 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
-    if (!wordpressInventoryPush && !wordpressEventRegistrationPush && !wordpressCreditPush && !wordpressCustomerUpsertPush) {
+    if (
+      !wordpressInventoryPush &&
+      !wordpressEventRegistrationPush &&
+      !wordpressCreditPush &&
+      !wordpressCustomerUpsertPush &&
+      !wordpressKioskOrderPush
+    ) {
       return blocked("wordpress_push_unavailable", "WordPress push is not configured on this LAN server.")
     }
 
@@ -938,10 +951,15 @@ export function createLocalSyncStore(options = {}) {
       (operation) => operation.operation_type === "event_registration",
     )
     const customerOperations = pendingOperations.filter((operation) => operation.operation_type === "customer_upsert")
+    const kioskOperations = pendingOperations.filter((operation) => operation.operation_type === "kiosk_order")
+    const reservationOperations = pendingOperations.filter(
+      (operation) => operation.operation_type === "inventory_reservation",
+    )
     const creditOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "credit_adjustment" || operation.operation_type === "credit_redemption",
     )
     const results = []
+    const coveredKioskReservationOperationIds = new Set()
 
     for (const operation of inventoryOperations) {
       if (!wordpressInventoryPush) {
@@ -1055,6 +1073,92 @@ export function createLocalSyncStore(options = {}) {
         code: pushResult.code,
         wordpress_code: pushResult.wordpress_code,
         wordpress_registration: pushResult.registration,
+      })
+    }
+
+    for (const operation of kioskOperations) {
+      if (!wordpressKioskOrderPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_kiosk_order_push_unavailable",
+          message: "WordPress kiosk order push is not configured on this LAN server.",
+        })
+        continue
+      }
+
+      const reservationIds = Array.isArray(operation.payload?.reservation_ids) ? operation.payload.reservation_ids : []
+      const matchingReservationOperations = reservationOperations.filter((reservationOperation) =>
+        reservationIds.includes(reservationOperation.entity_id),
+      )
+      const inventoryPublicIds = matchingReservationOperations
+        .map((reservationOperation) => cleanPublicId(reservationOperation.payload?.inventory_public_id))
+        .filter(Boolean)
+
+      if (inventoryPublicIds.length === 0) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "kiosk_order_inventory_required",
+          message: "Kiosk order stays queued until it has matching inventory reservation rows.",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressKioskOrderPush({ operation, inventoryPublicIds })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
+
+      const order = kioskOrders.find((candidate) => candidate.order_id === operation.entity_id)
+
+      if (order) {
+        order.status = "accepted"
+        saveKioskOrder(database, order)
+      }
+
+      for (const reservationOperation of matchingReservationOperations) {
+        coveredKioskReservationOperationIds.add(reservationOperation.operation_id)
+        deleteQueueOperation(database, queue, reservationOperation.operation_id)
+
+        const item = inventoryItems.find(
+          (candidate) => candidate.public_id === cleanPublicId(reservationOperation.payload?.inventory_public_id),
+        )
+
+        if (item) {
+          item.status = "reserved"
+          item.source = "accepted"
+          item.row_version += 1
+          saveInventoryItem(database, item, now)
+        }
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_kiosk_order: pushResult.order,
+        wordpress_reservations: pushResult.reservations,
       })
     }
 
@@ -1231,7 +1335,12 @@ export function createLocalSyncStore(options = {}) {
     const retryCount = results.filter((result) => result.status === "retry").length
     const rejectedCount = results.filter((result) => result.status === "rejected").length
     const supportedOperationCount =
-      inventoryOperations.length + eventRegistrationOperations.length + customerOperations.length + creditOperations.length
+      inventoryOperations.length +
+      eventRegistrationOperations.length +
+      kioskOperations.length +
+      coveredKioskReservationOperationIds.size +
+      customerOperations.length +
+      creditOperations.length
 
     return {
       status: "ok",
@@ -1246,6 +1355,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
       wordpress_customer_push_connected: Boolean(wordpressCustomerUpsertPush),
+      wordpress_kiosk_order_push_connected: Boolean(wordpressKioskOrderPush),
       credentials_synced_to_client: false,
       local_queue_depth: pendingQueueOperations(queue).length,
     }

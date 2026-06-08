@@ -6,6 +6,13 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress now exposes a staff/system kiosk pickup route that reserves exact
+  inventory items for pickup without payment capture or WooCommerce order
+  creation.
+- LAN sync server can now push queued kiosk pickup orders to WordPress and
+  clear the matching local kiosk reservation queue rows when accepted.
+- Offline app sync visibility now marks kiosk pickup orders as WordPress-
+  capable when the LAN server has the kiosk push channel configured.
 - WordPress now exposes a staff-only customer upsert route for syncing locally
   created customers into `tcg_customers`, with a dedicated `manage_customers`
   capability and role installer version bump.

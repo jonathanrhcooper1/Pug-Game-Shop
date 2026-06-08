@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/cli.mjs",
-    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:wordpress-catalog && npm run test:wordpress-inventory-pull && npm run test:wordpress-inventory-push && npm run test:wordpress-events-push && npm run test:wordpress-credit-push && npm run test:wordpress-customer-push",
+    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:wordpress-catalog && npm run test:wordpress-inventory-pull && npm run test:wordpress-inventory-push && npm run test:wordpress-events-push && npm run test:wordpress-credit-push && npm run test:wordpress-customer-push && npm run test:wordpress-kiosk-push",
     "test:contract": "node tests/local-sync-server-contract.mjs",
     "test:persistence": "node tests/local-sync-server-persistence.mjs",
     "test:runtime": "node tests/local-sync-server-runtime.mjs",
@@ -15,6 +15,7 @@
     "test:wordpress-inventory-push": "node tests/wordpress-inventory-push.mjs",
     "test:wordpress-events-push": "node tests/wordpress-event-registration-push.mjs",
     "test:wordpress-credit-push": "node tests/wordpress-credit-push.mjs",
-    "test:wordpress-customer-push": "node tests/wordpress-customer-push.mjs"
+    "test:wordpress-customer-push": "node tests/wordpress-customer-push.mjs",
+    "test:wordpress-kiosk-push": "node tests/wordpress-kiosk-push.mjs"
   }
 }
