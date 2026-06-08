@@ -150,7 +150,24 @@ final class OfflineRouteBootstrapper {
 			$pairing_authorizer_factory
 		);
 		$pairing_handler            = $pairing_handler_factory->handler();
-		$sync_handler_factory       = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
+		$runtime_database           = $this->runtime_database();
+		$pull_handler_factory       = new OfflinePullRouteHandlerFactory(
+			route_connected_execution_enabled: true === $runtime_settings['pull_route_enabled']
+		);
+		$push_handler_factory       = new OfflinePushRouteHandlerFactory(
+			server_snapshots_provider: true === $runtime_settings['push_route_enabled'] && null !== $runtime_database
+				? new OfflinePushRouteServerSnapshotProvider( $runtime_database )
+				: null,
+			operation_options_provider: true === $runtime_settings['push_route_enabled']
+				? new OfflinePushRouteOperationOptionsProvider()
+				: null,
+			route_connected_execution_enabled: true === $runtime_settings['push_route_enabled'],
+			route_connected_canonical_mutation_execution_enabled: false
+		);
+		$sync_handler_factory       = new OfflineRegisteredDeviceSyncRouteHandlerFactory(
+			pull_handler_factory: $pull_handler_factory,
+			push_handler_factory: $push_handler_factory
+		);
 		$pairing_permission         = $pairing_authorizer_factory->is_policy_configured()
 			? $pairing_authorizer_factory->permission_callback()
 			: null;
@@ -177,6 +194,16 @@ final class OfflineRouteBootstrapper {
 			),
 			new OfflineController( null, $handlers )
 		);
+	}
+
+	private function runtime_database(): ?\wpdb {
+		global $wpdb;
+
+		if ( ! class_exists( 'wpdb' ) || ! $wpdb instanceof \wpdb ) {
+			return null;
+		}
+
+		return $wpdb;
 	}
 
 	/**

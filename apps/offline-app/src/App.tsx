@@ -46,6 +46,7 @@ import {
   customerCreditPendingMinorUnitsFromOperations,
   createEmptyConnectorProfileDraft,
   buildPendingCustomerCreditLedgerEntries,
+  buildCustomerCreditSquarePosHandoffPlan,
   buildInventoryUpdateOperation,
   buildInventoryReservationOperation,
   buildOfflineConnectorSyncSessionPlan,
@@ -486,7 +487,7 @@ export function App() {
     title: offlineSessionStorage.restored ? "Local queue restored" : "Local workspace ready",
     detail: offlineSessionStorage.restored
       ? `${offlineSessionStorage.queuedOperations.length} queued operation(s) and ${offlineSessionStorage.syncAttempts.length} sync attempt(s) restored from this device.`
-      : "Choose a connector profile, scan inventory, or stage a queue update.",
+      : "Run website setup, scan inventory, or stage a queue update.",
   })
   const [selectedConflictTitle, setSelectedConflictTitle] = useState("")
   const [showConflictHistory, setShowConflictHistory] = useState(false)
@@ -662,6 +663,16 @@ export function App() {
   const creditRedemptionAmountLabel = formatMoney(
     creditRedemptionMinorUnits ?? 0,
     customerCredit.currency,
+  )
+  const squareCreditHandoffPlan = useMemo(
+    () =>
+      buildCustomerCreditSquarePosHandoffPlan(
+        customerCredit,
+        creditRedemptionMinorUnits ?? 0,
+        selectedItem.priceMinorUnits,
+        { mode: "custom_payment_method", offlineAllowed: true },
+      ),
+    [customerCredit, creditRedemptionMinorUnits, selectedItem.priceMinorUnits],
   )
   const quantityDelta = inventoryQuantityDeltaFromInput(quantityDeltaInput)
   const quantityAdjustmentIssue =
@@ -1560,6 +1571,14 @@ export function App() {
     })
   }
 
+  function handleOpenWebsiteSetup() {
+    setActiveSection("Settings")
+    setActivityMessage({
+      title: "Website setup opened",
+      detail: `${activeProfile.companyName} is connected to ${connectorDisplayUrl(activeProfile)}. Settings and pairing controls stay manager-gated for the installed website.`,
+    })
+  }
+
   function handleNewConnectorDraft() {
     setConnectorDraft(createEmptyConnectorProfileDraft())
     setConnectorDraftIssues([])
@@ -1568,9 +1587,9 @@ export function App() {
     setPairingPlan(null)
     setActiveSection("Settings")
     setActivityMessage({
-      title: "New connector draft opened",
+      title: "Website setup reset",
       detail:
-        "Add a company name and WordPress website host. Secret values stay out of this app profile.",
+        "Add the WordPress website host for this installation. Secret values stay out of this app profile.",
     })
   }
 
@@ -1599,7 +1618,7 @@ export function App() {
     setPairingPlan(null)
     setActiveSection("Settings")
     setActivityMessage({
-      title: validation.status === "rejected" ? "Connector saved with issues" : "Connector profile saved",
+      title: validation.status === "rejected" ? "Website saved with issues" : "Website connection saved",
       detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} and is saved locally for this device. Guarded inventory holds are ${profile.wordpress.canonicalInventoryWritesEnabled ? "enabled" : "deferred"}; credentials are still server-side or desktop secure-store only.`,
     })
   }
@@ -2649,19 +2668,11 @@ export function App() {
               <h1>Offline Inventory Command</h1>
             </div>
             <div className="top-actions" aria-label="Offline sync status">
-              <label className="profile-select">
-                <span>Company</span>
-                <select
-                  value={activeProfile.id}
-                  onChange={(event) => handleConnectorProfileChange(event.target.value)}
-                >
-                  {connectorProfiles.map((profile) => (
-                    <option value={profile.id} key={profile.id}>
-                      {profile.companyName} / {profile.environment}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <button className="site-setup-card" type="button" onClick={handleOpenWebsiteSetup}>
+                <span>Website</span>
+                <strong>{activeProfile.companyName}</strong>
+                <small>{connectorDisplayUrl(activeProfile)}</small>
+              </button>
               <div className="connection-pill" aria-label="Offline mode active">
                 <Icon name="wifi" />
                 <span>{workspace.device.modeLabel}</span>
@@ -3526,9 +3537,9 @@ export function App() {
               </button>
             </section>
 
-            <section className="connector-panel" aria-label="Connector profile setup" ref={connectorPanelRef}>
+            <section className="connector-panel" aria-label="Website setup" ref={connectorPanelRef}>
               <div className="section-heading">
-                <h2>Connector profile</h2>
+                <h2>Website setup</h2>
                 <span>{connectorStatusLabel(activeProfile.status)}</span>
               </div>
               <div className="connector-grid">
@@ -3540,7 +3551,7 @@ export function App() {
                 <div>
                   <span className="micro-label">Website</span>
                   <strong>{connectorHealth.website}</strong>
-                  <small>{connectorHealth.restBasePath}; profiles saved locally</small>
+                  <small>{connectorHealth.restBasePath}; setup saved locally for this device</small>
                 </div>
                 <div>
                   <span className="micro-label">Device token</span>
@@ -3828,7 +3839,7 @@ export function App() {
               <div className="connector-actions">
                 <button type="button" onClick={handleNewConnectorDraft}>
                   <Icon name="plus" />
-                  <span>New Connector</span>
+                  <span>Reset Website Setup</span>
                 </button>
                 <button
                   type="button"
@@ -3848,7 +3859,7 @@ export function App() {
                 </button>
                 <button type="button" onClick={handleSaveConnectorDraft}>
                   <Icon name="check" />
-                  <span>Save Profile Draft</span>
+                  <span>Save Website Connection</span>
                 </button>
               </div>
             </section>
@@ -3928,6 +3939,24 @@ export function App() {
                     Available after local holds: {formatMoney(displayedCreditMinorUnits, customerCredit.currency)}
                   </small>
                   {creditRedemptionIssue ? <small>{creditRedemptionIssue}</small> : null}
+                </div>
+              </div>
+              <div className="square-credit-handoff" aria-label="Square POS credit handoff">
+                <div>
+                  <span className="micro-label">Square POS handoff</span>
+                  <strong>
+                    {formatMoney(squareCreditHandoffPlan.squareAmountDueMinorUnits, squareCreditHandoffPlan.currency)}
+                    {" "}due in Square
+                  </strong>
+                  <small>{squareCreditHandoffPlan.squareInstruction}</small>
+                </div>
+                <div>
+                  <span className="micro-label">Credit authority</span>
+                  <strong>{squareCreditHandoffPlan.squarePaymentMethodLabel}</strong>
+                  <small>
+                    Pug ledger authority: yes; Square credit-balance authority: no;
+                    sync required for ledger posting: yes.
+                  </small>
                 </div>
               </div>
               {showCreditLedger ? (

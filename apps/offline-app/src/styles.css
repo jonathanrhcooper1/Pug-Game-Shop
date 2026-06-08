@@ -393,17 +393,56 @@ h2 {
   gap: 10px;
 }
 
-.profile-select {
+.profile-select,
+.site-setup-card {
   display: grid;
   gap: 4px;
   min-width: 214px;
 }
 
-.profile-select span {
+.profile-select span,
+.site-setup-card span {
   color: #9fb29e;
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.site-setup-card {
+  min-height: 44px;
+  color: #fffaf0;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(245, 242, 233, 0.12);
+  border-radius: 8px;
+  outline: none;
+  padding: 7px 11px;
+}
+
+.site-setup-card strong,
+.site-setup-card small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-setup-card strong {
+  color: #fffaf0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.site-setup-card small {
+  color: #c7d2bf;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.site-setup-card:hover,
+.site-setup-card:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(246, 199, 96, 0.15);
 }
 
 .profile-select select {
@@ -982,6 +1021,35 @@ h2 {
   background: rgba(255, 255, 255, 0.62);
   border: 1px solid rgba(35, 100, 70, 0.16);
   border-radius: 8px;
+}
+
+.square-credit-handoff {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 9px;
+  padding: 11px;
+  color: #1f2f25;
+  background: rgba(246, 199, 96, 0.13);
+  border: 1px solid rgba(183, 137, 42, 0.24);
+  border-radius: 8px;
+}
+
+.square-credit-handoff div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.square-credit-handoff strong {
+  color: #172016;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.square-credit-handoff small {
+  color: #5f563e;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .credit-redemption-control input {

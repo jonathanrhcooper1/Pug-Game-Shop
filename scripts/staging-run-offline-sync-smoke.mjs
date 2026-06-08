@@ -12,12 +12,13 @@ const siteUrl = normalizeSiteUrl(process.env.PUG_STAGING_SITE_URL || firstNonFla
 const remoteUploadDir = normalizeRemoteDir(
   process.env.PUG_STAGING_REMOTE_UPLOAD_DIR ?? "/html/wp-content/uploads",
 )
-const smokeId = `offline-pairing-${timestampForRemoteName(new Date()).toLowerCase()}-${randomToken(6)}`
+const smokeId = `offline-sync-${timestampForRemoteName(new Date()).toLowerCase()}-${randomToken(6)}`
 const pairingCode = `PAIR-${randomToken(16)}`
-const installationId = `staging-smoke-${smokeId}`
-const remoteRunnerPath = `${remoteUploadDir}/offline-pairing-smoke-${timestampForRemoteName(
-  new Date(),
-)}.php`
+const installationId = `staging-sync-smoke-${smokeId}`
+const batchId = `batch-${smokeId}`
+const clientOperationId = `op-${smokeId}`
+const smokeEntityId = `sync-smoke-inventory-${randomToken(8).toLowerCase()}`
+const remoteRunnerPath = `${remoteUploadDir}/offline-sync-smoke-${timestampForRemoteName(new Date())}.php`
 
 const requiredEnv = {
   PUG_STAGING_SSH_HOST: process.env.PUG_STAGING_SSH_HOST,
@@ -46,7 +47,7 @@ if (dryRun) {
   console.log(
     JSON.stringify(
       {
-        action: "staging_offline_pairing_smoke_dry_run",
+        action: "staging_offline_sync_smoke_dry_run",
         siteUrl: siteUrl || null,
         remoteRunnerPath,
         requiresEnv: [
@@ -54,22 +55,29 @@ if (dryRun) {
           "PUG_STAGING_SSH_HOST",
           "PUG_STAGING_SSH_USER",
           "PUG_STAGING_SSH_PASSWORD",
-          "PUG_STAGING_CONFIRM_OFFLINE_PAIRING_SMOKE",
+          "PUG_STAGING_CONFIRM_OFFLINE_SYNC_SMOKE",
         ],
         temporarilyEnablesFeatureFlag: "offline_sync",
-        temporarilyEnablesRoutes: ["POST /offline/devices/register"],
-        keepsRoutesDisabled: [
+        temporarilyEnablesRoutes: [
+          "POST /offline/devices/register",
           "POST /offline/pull",
           "POST /offline/push",
+        ],
+        keepsRoutesDisabled: [
           "GET /offline/conflicts",
           "POST /offline/conflicts/{conflict_id}/resolve",
         ],
         restoresPreviousRouteAndFeatureSettings: true,
+        writesTemporarySyncQueueRows: true,
+        removesSmokeQueueRows: true,
+        removesSmokeConflictRows: true,
         removesSmokeDeviceRow: true,
+        canonicalInventoryWrites: false,
+        squareWrites: false,
+        paymentCapture: false,
         pairingCodePrinted: false,
         deviceTokenPrinted: false,
         credentialsPrinted: false,
-        writesBusinessData: false,
         productionAllowed: false,
       },
       null,
@@ -80,16 +88,21 @@ if (dryRun) {
 }
 
 if (missingEnv.length > 0) {
-  throw new Error(`Missing staging offline pairing smoke environment variables: ${missingEnv.join(", ")}`)
+  throw new Error(`Missing staging offline sync smoke environment variables: ${missingEnv.join(", ")}`)
 }
 
-if (process.env.PUG_STAGING_CONFIRM_OFFLINE_PAIRING_SMOKE !== "run-staging-offline-pairing-smoke") {
+if (process.env.PUG_STAGING_CONFIRM_OFFLINE_SYNC_SMOKE !== "run-staging-offline-sync-smoke") {
   throw new Error(
-    "Set PUG_STAGING_CONFIRM_OFFLINE_PAIRING_SMOKE=run-staging-offline-pairing-smoke to run the staging pairing smoke test.",
+    "Set PUG_STAGING_CONFIRM_OFFLINE_SYNC_SMOKE=run-staging-offline-sync-smoke to run the staging offline sync smoke test.",
   )
 }
 
-const pairingUrl = new URL("/wp-json/tcg-store/v1/offline/devices/register", siteUrl).toString()
+const endpoints = {
+  pairing: new URL("/wp-json/tcg-store/v1/offline/devices/register", siteUrl).toString(),
+  pull: new URL("/wp-json/tcg-store/v1/offline/pull", siteUrl).toString(),
+  push: new URL("/wp-json/tcg-store/v1/offline/push", siteUrl).toString(),
+}
+
 const runnerSource = `<?php
 $payload = json_decode(stream_get_contents(STDIN), true);
 if (!is_array($payload)) {
@@ -113,7 +126,7 @@ if ('' === $smoke_id) {
 	echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_id_required'));
 	exit(1);
 }
-$backup_option = 'tcg_store_platform_pairing_smoke_backup_' . $smoke_id;
+$backup_option = 'tcg_store_platform_offline_sync_smoke_backup_' . $smoke_id;
 
 if ('setup' === $action) {
 	$settings = TCGStorePlatform\\Settings\\Settings::all();
@@ -143,15 +156,15 @@ if ('setup' === $action) {
 		'location_ids' => array(1),
 		'allowed_scopes_by_mode' => array(
 			'kiosk' => array(),
-			'staff' => tcg_staging_pairing_smoke_scopes($payload['requested_scopes'] ?? array()),
+			'staff' => tcg_staging_offline_sync_smoke_scopes($payload['requested_scopes'] ?? array()),
 			'admin' => array(),
 		),
 		'expires_at_utc' => $expires_at_utc,
 	);
 	$settings['offline_route_runtime'] = array(
 		'device_pairing_route_enabled' => true,
-		'pull_route_enabled' => false,
-		'push_route_enabled' => false,
+		'pull_route_enabled' => true,
+		'push_route_enabled' => true,
 		'conflict_routes_enabled' => false,
 	);
 	update_option(TCGStorePlatform\\Settings\\Settings::OPTION_NAME, TCGStorePlatform\\Settings\\Settings::sanitize($settings), false);
@@ -164,7 +177,7 @@ if ('setup' === $action) {
 	);
 
 	echo wp_json_encode(array(
-		'action' => 'staging_offline_pairing_smoke_setup',
+		'action' => 'staging_offline_sync_smoke_setup',
 		'status' => 'ok',
 		'backup_option' => $backup_option,
 		'manager_id' => $manager_id,
@@ -172,9 +185,10 @@ if ('setup' === $action) {
 		'expires_at_utc' => $expires_at_utc,
 		'pairing_code_redacted' => true,
 		'device_token_printed' => false,
-		'pull_route_enabled' => false,
-		'push_route_enabled' => false,
+		'pull_route_enabled' => true,
+		'push_route_enabled' => true,
 		'conflict_routes_enabled' => false,
+		'canonical_inventory_writes_enabled' => false,
 	));
 	exit;
 }
@@ -203,19 +217,43 @@ if ('cleanup' === $action) {
 	delete_option($backup_option);
 
 	global $wpdb;
-	$public_id = trim((string) ($payload['device_id'] ?? ''));
-	$deleted = 0;
-	if ($wpdb instanceof wpdb && '' !== $public_id) {
-		$table = $wpdb->prefix . 'tcg_offline_devices';
-		$deleted = (int) $wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE public_id = %s", array($public_id)));
+	$device_id = trim((string) ($payload['device_id'] ?? ''));
+	$batch_id = trim((string) ($payload['batch_id'] ?? ''));
+	$client_operation_id = trim((string) ($payload['client_operation_id'] ?? ''));
+	$device_rows_deleted = 0;
+	$queue_rows_deleted = 0;
+	$conflict_rows_deleted = 0;
+	if ($wpdb instanceof wpdb) {
+		if ('' !== $client_operation_id || '' !== $batch_id || '' !== $device_id) {
+			$conflict_table = $wpdb->prefix . 'tcg_sync_conflicts';
+			$queue_table = $wpdb->prefix . 'tcg_offline_sync_queue';
+			$conflict_rows_deleted = (int) $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$conflict_table} WHERE client_operation_id = %s OR batch_id = %s OR device_public_id = %s",
+					array($client_operation_id, $batch_id, $device_id)
+				)
+			);
+			$queue_rows_deleted = (int) $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$queue_table} WHERE client_operation_id = %s OR batch_id = %s OR device_public_id = %s",
+					array($client_operation_id, $batch_id, $device_id)
+				)
+			);
+		}
+		if ('' !== $device_id) {
+			$device_table = $wpdb->prefix . 'tcg_offline_devices';
+			$device_rows_deleted = (int) $wpdb->query($wpdb->prepare("DELETE FROM {$device_table} WHERE public_id = %s", array($device_id)));
+		}
 	}
 
 	echo wp_json_encode(array(
-		'action' => 'staging_offline_pairing_smoke_cleanup',
+		'action' => 'staging_offline_sync_smoke_cleanup',
 		'status' => 'ok',
 		'backup_found' => is_array($backup),
 		'backup_removed' => true,
-		'smoke_device_rows_deleted' => $deleted,
+		'device_rows_deleted' => $device_rows_deleted,
+		'queue_rows_deleted' => $queue_rows_deleted,
+		'conflict_rows_deleted' => $conflict_rows_deleted,
 		'pairing_code_printed' => false,
 		'device_token_printed' => false,
 	));
@@ -225,7 +263,7 @@ if ('cleanup' === $action) {
 echo wp_json_encode(array('status' => 'error', 'message' => 'unsupported_action'));
 exit(1);
 
-function tcg_staging_pairing_smoke_scopes($value) {
+function tcg_staging_offline_sync_smoke_scopes($value) {
 	$allowed = array('offline_pull', 'offline_push', 'inventory', 'customer_credit', 'events', 'conflicts');
 	$items = is_array($value) ? $value : array();
 	$scopes = array();
@@ -241,6 +279,8 @@ function tcg_staging_pairing_smoke_scopes($value) {
 
 let setup = null
 let pairingResponse = null
+let pullResponse = null
+let pushResponse = null
 let cleanup = null
 let remoteRunnerWritten = false
 
@@ -257,13 +297,13 @@ try {
   })
 
   if (setup.exitCode !== 0 || setup.parsed?.status !== "ok") {
-    throw new Error(`Staging pairing smoke setup failed: ${setup.stderrTail || setup.stdoutTail}`)
+    throw new Error(`Staging offline sync smoke setup failed: ${setup.stderrTail || setup.stdoutTail}`)
   }
 
-  const pairBody = {
+  pairingResponse = await postJson(endpoints.pairing, {
     pairing_code: pairingCode,
     installation_id: installationId,
-    device_label: "Staging Smoke Offline App",
+    device_label: "Staging Smoke Offline Sync App",
     device_mode: "staff",
     location_id: setup.parsed.location_id,
     manager_id: setup.parsed.manager_id,
@@ -278,26 +318,80 @@ try {
     },
     requested_scopes: requestedScopes,
     schema_version: 1,
-  }
+  })
 
-  pairingResponse = await postPairingRequest(pairingUrl, pairBody)
+  const deviceId = pairingResponse?.json?.data?.device_id ?? ""
+  const token = String(pairingResponse?.json?.data?.device_token ?? "")
+
+  pullResponse = await postJson(
+    endpoints.pull,
+    {
+      device_id: deviceId,
+      domains: ["branding", "inventory", "customer_credit", "events", "conflicts"],
+      cursors: {},
+      page_size: 5,
+      include_tombstones: true,
+      schema_version: 1,
+    },
+    token,
+  )
+
+  pushResponse = await postJson(
+    endpoints.push,
+    {
+      batch_id: batchId,
+      device_id: deviceId,
+      operations: [
+        {
+          client_operation_id: clientOperationId,
+          device_id: deviceId,
+          location_id: setup.parsed.location_id,
+          actor_id: setup.parsed.manager_id,
+          operation_type: "inventory_reservation",
+          entity_type: "inventory",
+          entity_id: smokeEntityId,
+          base_row_version: 1,
+          occurred_at_local: utcNow(),
+          queued_at_utc: utcNow(),
+          payload: {
+            localStatus: "offline_pending_sync",
+            holdReason: "staging offline sync smoke",
+          },
+          authorization_context: {
+            manager_user_id: setup.parsed.manager_id,
+            source: "staging_offline_sync_smoke",
+          },
+          schema_version: 1,
+        },
+      ],
+    },
+    token,
+    {
+      "Idempotency-Key": batchId,
+    },
+  )
 } finally {
-  cleanup = await cleanupSmokeDevice(pairingResponse?.json?.data?.device_id ?? "")
+  cleanup = await cleanupSmokeRows(pairingResponse?.json?.data?.device_id ?? "")
 }
 
 const token = String(pairingResponse?.json?.data?.device_token ?? "")
 const report = {
-  action: "staging_offline_pairing_smoke",
+  action: "staging_offline_sync_smoke",
   siteUrl,
-  pairingUrl,
+  endpoints,
   passed:
     setup?.parsed?.status === "ok" &&
     pairingResponse?.json?.status === "registered" &&
-    pairingResponse?.json?.status_code === 201 &&
     pairingResponse?.json?.code === "offline_device_registered" &&
     isDeviceToken(token) &&
+    pullResponse?.json?.code === "offline_pull_response_ready" &&
+    pushResponse?.json?.code === "offline_push_response_ready" &&
+    pushResponse?.json?.meta?.persistence_status === "persisted" &&
+    pushResponse?.json?.meta?.push_queue_persistence_deferred === false &&
+    pushResponse?.json?.meta?.push_canonical_mutations_deferred === true &&
     cleanup?.parsed?.status === "ok" &&
-    Number.parseInt(String(cleanup?.parsed?.smoke_device_rows_deleted ?? "0"), 10) >= 1,
+    Number.parseInt(String(cleanup?.parsed?.device_rows_deleted ?? "0"), 10) >= 1 &&
+    Number.parseInt(String(cleanup?.parsed?.queue_rows_deleted ?? "0"), 10) >= 1,
   setup: redactSetup(setup?.parsed),
   pairing: {
     httpStatus: pairingResponse?.status ?? null,
@@ -309,15 +403,40 @@ const report = {
     tokenLength: token.length || 0,
     tokenPrinted: false,
     pairingCodePrinted: false,
-    syncRoutes: pairingResponse?.json?.data?.sync_routes ?? null,
-    firstSyncRequired: pairingResponse?.json?.data?.first_sync_required ?? null,
-    brandingSyncRequired: pairingResponse?.json?.data?.branding_sync_required ?? null,
+  },
+  pull: {
+    httpStatus: pullResponse?.status ?? null,
+    status: pullResponse?.json?.status ?? null,
+    code: pullResponse?.json?.code ?? null,
+    domainCount: Array.isArray(pullResponse?.json?.data?.domains)
+      ? pullResponse.json.data.domains.length
+      : null,
+    changeCount: pullResponse?.json?.data?.change_count ?? null,
+    cursorAdvanceAttempted: pullResponse?.json?.meta?.cursor_advance_attempted ?? null,
+    rawResponsePrinted: false,
+  },
+  push: {
+    httpStatus: pushResponse?.status ?? null,
+    status: pushResponse?.json?.status ?? null,
+    code: pushResponse?.json?.code ?? null,
+    persistenceStatus: pushResponse?.json?.meta?.persistence_status ?? null,
+    operationRowsAffected: pushResponse?.json?.meta?.operation_rows_affected ?? null,
+    conflictRowsAffected: pushResponse?.json?.meta?.conflict_rows_affected ?? null,
+    queuePersistenceDeferred: pushResponse?.json?.meta?.push_queue_persistence_deferred ?? null,
+    canonicalMutationsDeferred: pushResponse?.json?.meta?.push_canonical_mutations_deferred ?? null,
+    canonicalTransactionExecutionDeferred:
+      pushResponse?.json?.meta?.push_canonical_mutation_transaction_execution_deferred ?? null,
+    rawResponsePrinted: false,
   },
   cleanup: cleanup?.parsed ?? null,
   remoteRunner: basename(remoteRunnerPath),
   remoteRunnerRemoved: cleanup?.runnerRemoved ?? false,
+  writesTemporarySyncQueueRows: true,
+  canonicalInventoryWrites: false,
+  squareWrites: false,
+  paymentCapture: false,
   credentialsPrinted: false,
-  writesBusinessData: false,
+  deviceTokenPrinted: false,
   productionAllowed: false,
 }
 
@@ -327,7 +446,7 @@ if (!report.passed) {
   process.exitCode = 1
 }
 
-async function cleanupSmokeDevice(deviceId) {
+async function cleanupSmokeRows(deviceId) {
   try {
     return await withStagingConnection(async (connection) => {
       if (!remoteRunnerWritten) {
@@ -341,6 +460,8 @@ async function cleanupSmokeDevice(deviceId) {
         return await runRemotePayload(connection, "cleanup", {
           smoke_id: smokeId,
           device_id: deviceId,
+          batch_id: batchId,
+          client_operation_id: clientOperationId,
         })
       } finally {
         await execWithStdin(connection, `rm -f ${shellQuote(remoteRunnerPath)}`, "")
@@ -373,14 +494,21 @@ async function runRemotePayload(connection, action, payload) {
   }
 }
 
-async function postPairingRequest(url, body) {
+async function postJson(url, body, bearerToken = "", extraHeaders = {}) {
+  const headers = {
+    Accept: "application/json",
+    "Cache-Control": "no-cache",
+    "Content-Type": "application/json",
+    ...extraHeaders,
+  }
+
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`
+  }
+
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Cache-Control": "no-cache",
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(body),
   })
   const text = await response.text()
@@ -483,6 +611,7 @@ function redactSetup(parsed) {
     pullRouteEnabled: parsed.pull_route_enabled,
     pushRouteEnabled: parsed.push_route_enabled,
     conflictRoutesEnabled: parsed.conflict_routes_enabled,
+    canonicalInventoryWritesEnabled: parsed.canonical_inventory_writes_enabled,
   }
 }
 
@@ -523,6 +652,10 @@ function parseJson(value) {
 
 function randomToken(bytes) {
   return randomBytes(bytes).toString("base64url").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()
+}
+
+function utcNow() {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z")
 }
 
 function isDeviceToken(value) {

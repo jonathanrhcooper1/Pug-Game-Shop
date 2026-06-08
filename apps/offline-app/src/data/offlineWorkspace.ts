@@ -118,6 +118,28 @@ export type CustomerCreditLedgerEntry = {
   operationId?: string
 }
 
+export type SquarePosCreditHandoffMode =
+  | "custom_payment_method"
+  | "other_tender"
+  | "manual_discount"
+
+export type CustomerCreditSquarePosHandoffPlan = {
+  action: "customer_credit_square_pos_handoff"
+  customerId: number
+  customerName: string
+  saleTotalMinorUnits: number
+  creditRedeemedMinorUnits: number
+  squareAmountDueMinorUnits: number
+  currency: "USD"
+  squarePaymentMethodLabel: "Pug Store Credit"
+  squareHandoffMode: SquarePosCreditHandoffMode
+  squareInstruction: string
+  pugLedgerAuthority: true
+  squareCreditBalanceAuthority: false
+  offlineAllowed: boolean
+  syncRequiredForLedgerPosting: true
+}
+
 export type EventRegistrationStatus = "open" | "waitlist" | "full" | "closed"
 export type EventPaymentStatus = "not_required" | "pay_at_store"
 
@@ -1502,6 +1524,45 @@ export function customerCreditPendingMinorUnitsFromOperations(
         return totalMinorUnits
       }
     }, 0)
+}
+
+export function buildCustomerCreditSquarePosHandoffPlan(
+  credit: CustomerCreditSnapshot,
+  amountMinorUnits: number,
+  saleTotalMinorUnits: number,
+  options: {
+    mode?: SquarePosCreditHandoffMode
+    paymentMethodLabel?: "Pug Store Credit"
+    offlineAllowed?: boolean
+  } = {},
+): CustomerCreditSquarePosHandoffPlan {
+  const saleTotal = Math.max(0, Math.trunc(saleTotalMinorUnits))
+  const requestedCredit = Math.max(0, Math.trunc(amountMinorUnits))
+  const boundedCredit = Math.min(requestedCredit, saleTotal, credit.availableMinorUnits)
+  const mode = options.mode ?? "custom_payment_method"
+  const label = options.paymentMethodLabel ?? "Pug Store Credit"
+  const squareAmountDue = Math.max(0, saleTotal - boundedCredit)
+  const instruction =
+    mode === "manual_discount"
+      ? `Apply ${formatMoney(boundedCredit, credit.currency)} as a manual Square discount named ${label}, then collect ${formatMoney(squareAmountDue, credit.currency)} in Square POS.`
+      : `Record ${formatMoney(boundedCredit, credit.currency)} as ${label} in Square POS, then collect ${formatMoney(squareAmountDue, credit.currency)} with the customer's remaining tender.`
+
+  return {
+    action: "customer_credit_square_pos_handoff",
+    customerId: credit.customerId,
+    customerName: customerCreditDisplayName(credit),
+    saleTotalMinorUnits: saleTotal,
+    creditRedeemedMinorUnits: boundedCredit,
+    squareAmountDueMinorUnits: squareAmountDue,
+    currency: credit.currency,
+    squarePaymentMethodLabel: label,
+    squareHandoffMode: mode,
+    squareInstruction: instruction,
+    pugLedgerAuthority: true,
+    squareCreditBalanceAuthority: false,
+    offlineAllowed: options.offlineAllowed ?? true,
+    syncRequiredForLedgerPosting: true,
+  }
 }
 
 export function connectorDisplayUrl(profile: StoreConnectorProfile) {

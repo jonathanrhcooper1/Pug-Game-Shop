@@ -3,6 +3,144 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Single-Site Setup And Square Credit Handoff
+
+### What Changed
+
+- Added offline app product requirements covering single-website setup,
+  online/offline behavior, page-based navigation, login/session manager locks,
+  ScryDex app lookup through WordPress, customer creation/credit-add needs, and
+  Square POS store-credit handoff.
+- Replaced the user-facing top-bar company dropdown with a website setup
+  control that opens the Settings/setup workspace for the installed website.
+- Updated setup copy and actions from connector/profile language toward website
+  setup and website connection language while preserving the underlying
+  connector profile model for staging/support.
+- Added a customer-credit Square POS handoff planner and visible credit panel
+  guidance showing the remaining amount due in Square, the `Pug Store Credit`
+  recording label, and the boundary that Pug is authoritative for credit
+  balances while Square records/tenders the in-store payment.
+
+### Why
+
+The offline app should behave like a single-site business tool, not a developer
+profile switcher. Store credit also needs a precise cashier flow: redeem or
+hold credit in Pug, collect the remainder in Square POS, and reconcile the Pug
+ledger after sync acceptance without pretending Square owns the Pug credit
+balance.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/OFFLINE_APP_PRODUCT_REQUIREMENTS.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for the single-site website setup entry point
+  replacing the dropdown.
+- Offline app workspace/UI contract coverage for the Square POS store-credit
+  handoff planner and visible credit authority boundaries.
+
+### Verification
+
+- `npm run test:offline-app`
+- `npm run test:packaging`
+
+### Rollback Notes
+
+- Revert this revision to restore the previous visible connector/profile
+  dropdown and remove the Square POS handoff panel/planner.
+- No WordPress database, Square, ScryDex, POS, payment, or production rollback
+  is required.
+
+## 2026-06-08 - Route-Connected Offline Sync And Staging Install Helper
+
+### What Changed
+
+- Wired runtime-enabled offline pull/push route registration to repository-aware
+  route handlers instead of validation-only defaults.
+- Added a regression test proving staging-enabled offline push routes persist
+  queue rows while canonical inventory mutation execution remains deferred.
+- Added `npm run staging:offline-sync-smoke` for a redacted staging proof that
+  temporarily opens pairing, pull, and push route gates, exercises public REST
+  sync routes, cleans smoke sync rows, and restores previous settings.
+- Added `npm run staging:install-package` for the confirmed WP-CLI
+  install/activate path, separate from the existing upload-only ZIP transfer
+  helper.
+- Fixed staging pairing/sync smoke dry-run URL parsing so `--dry-run` is not
+  treated as a site URL.
+
+### Why
+
+The standalone app needs the website connector to support real staging pull
+and push route execution before the broader offline workflow can be trusted.
+The staging deployment tooling also needed to distinguish a ZIP uploaded to
+`wp-content/uploads` from a package actually installed and active in WP Admin.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapper.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteBootstrapperRuntimeWiringTest.php`
+- `scripts/staging-run-offline-sync-smoke.mjs`
+- `scripts/staging-install-wordpress-package.mjs`
+- `scripts/staging-run-offline-pairing-smoke.mjs`
+- `scripts/tests/staging-offline-sync-smoke-contract.mjs`
+- `scripts/tests/staging-install-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `scripts/README.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- PHP unit regression coverage for runtime offline route wiring and deferred
+  canonical mutation execution.
+- Packaging contract coverage for the staging install helper and the staging
+  offline sync smoke runner.
+
+### Verification
+
+- `node --check scripts/staging-install-wordpress-package.mjs`
+- `node --check scripts/staging-run-offline-sync-smoke.mjs`
+- `node --check scripts/staging-run-offline-pairing-smoke.mjs`
+- `node scripts/tests/staging-install-contract.mjs`
+- `node scripts/tests/staging-offline-sync-smoke-contract.mjs`
+- `node scripts/tests/staging-offline-pairing-smoke-contract.mjs`
+- `npm run staging:install-package -- --dry-run`
+- `npm run staging:offline-sync-smoke -- --dry-run`
+- `npm run test:packaging`
+- `cd apps/wordpress-plugin && php tests/run.php` (`902 tests, 0 failures`)
+
+### Rollback Notes
+
+- Revert this revision to return offline pull/push runtime registration to the
+  previous validation-only handler wiring and remove the new staging helpers.
+- If a staging offline sync smoke run is interrupted, rerun the smoke cleanup
+  or delete rows matching the generated `offline-sync-*` device, batch, and
+  client operation IDs from `tcg_offline_devices`, `tcg_offline_sync_queue`,
+  and `tcg_sync_conflicts`, then restore the backed-up
+  `offline_pairing_authorization`, `offline_route_runtime`, and `offline_sync`
+  feature flag settings from the temporary backup option.
+- No database migration rollback is required. Canonical inventory writes,
+  Square writes, payment capture, POS writes, ScryDex sync writes, and
+  production deployment remain deferred by default.
+
 ## 2026-06-08 - Staging ScryDex Configuration Verification
 
 ### What Changed

@@ -76,6 +76,28 @@ Staging SSH/SFTP scripts use a shared OpenSSH-compatible algorithm set for
 GoDaddy Managed WordPress hosts that negotiate `ssh-ed25519` host keys and
 modern curve/AES ciphers.
 
+## Install And Activate Staging Package
+
+After the package is ready to replace the active staging plugin, install it
+through WP-CLI:
+
+```bash
+npm run package:wordpress
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_INSTALL=install-to-staging \
+npm run staging:install-package
+```
+
+The install script uploads the same timestamped zip under
+`/html/wp-content/uploads`, runs `wp plugin install <zip> --force --activate`,
+then verifies `tcg-store-platform` is active with `wp plugin is-active` and a
+plugin-list readback. This is the command that makes **Pug Game Shop Card
+Manager** visible as an active plugin in WP Admin. The upload-only helper above
+will not create a waiting-for-activation plugin entry because it only transfers
+the zip file and never installs it.
+
 ## Public Route Check
 
 After staging is created and the plugin package is expected to be active, run
@@ -183,6 +205,30 @@ previous pairing/route/feature settings, removes the temporary runner, and
 prints only redacted status. It keeps pull, push, and conflict routes disabled
 by default and does not write inventory, customer credit, event, POS, payment,
 Square, ScryDex, or production data.
+
+## Offline Sync Smoke Runner
+
+After the staging plugin is active and a package with route-connected offline
+sync wiring has been installed, run the temporary sync proof:
+
+```bash
+PUG_STAGING_SITE_URL=https://example-staging.test \
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_OFFLINE_SYNC_SMOKE=run-staging-offline-sync-smoke \
+npm run staging:offline-sync-smoke
+```
+
+The smoke runner generates a one-time pairing code in memory, temporarily
+enables `offline_sync` plus the device-pairing, pull, and push route gates,
+registers a smoke device through the public REST route, posts a bounded pull
+request, posts one synthetic inventory-reservation push operation, verifies
+queue persistence while canonical inventory writes remain deferred, deletes
+the smoke device/queue/conflict rows, restores previous staging gates, removes
+the temporary runner, and prints only redacted status. It does not perform
+Square writes, payment capture, POS inventory changes, ScryDex sync writes, or
+production deployment.
 
 ## Gated Inventory Smoke Runner
 

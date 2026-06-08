@@ -6,6 +6,29 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Staging deployment tooling now includes `npm run staging:install-package`,
+  a confirmed SSH/WP-CLI helper that uploads the runtime plugin ZIP, runs
+  `wp plugin install --force --activate`, verifies the active
+  `tcg-store-platform` plugin status, and keeps the existing upload-only
+  helper separate so staff can tell whether a package was merely transferred
+  or actually installed.
+- Staging offline sync now has `npm run staging:offline-sync-smoke`, a
+  redacted end-to-end proof that temporarily opens pairing, pull, and push
+  route gates, registers a smoke device, exercises public pull/push REST
+  routes, persists only temporary sync queue/conflict rows, cleans those rows
+  up, restores previous staging gates, and keeps canonical inventory, Square,
+  payment, POS, ScryDex, and production writes deferred.
+- Offline app product requirements now define the single-website setup model,
+  online/offline operating behavior, login/session/manager-lock expectations,
+  ScryDex-through-WordPress lookup, customer creation and credit-add needs,
+  page-based navigation goals, and the Square POS handoff model for store
+  credit.
+- Offline app website connection UI now presents the active website setup as
+  the user-facing connection control instead of a company/store dropdown.
+- Offline app customer credit now calculates a Square POS handoff plan showing
+  the Pug credit amount, remaining amount due in Square, `Pug Store Credit`
+  custom-payment/other-tender instruction, and the boundary that Pug remains
+  authoritative for the credit ledger.
 - WordPress admin visibility now defaults the plugin list name to **Pug Game
   Shop Card Manager** and the admin sidebar/settings/status labels to the
   configured company branding, defaulting to **Pug Cards**.
