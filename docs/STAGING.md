@@ -65,6 +65,27 @@ The upload script writes a timestamped `tcg-store-platform` zip under
 prints only non-secret metadata. It does not activate the plugin, overwrite
 active plugin files, run migrations, delete remote files, or deploy production.
 
+## Gated Inventory Smoke Runner
+
+Run the staged inventory route smoke test through WP-CLI after staging has the
+plugin installed and the required staging gates are intentionally enabled:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_SMOKE=run-staging-inventory-smoke \
+npm run staging:inventory-smoke
+```
+
+The smoke runner uploads a temporary
+`wordpress-staging-inventory-smoke-*.php` file under
+`/html/wp-content/uploads`, runs `wp eval-file` against `/html` by default,
+then removes only that temporary smoke file through SFTP. It prints only
+non-secret metadata and WP-CLI output tails. It does not activate the plugin,
+overwrite active plugin files, run production deployment, or perform external
+WooCommerce, Square, ScryDex, POS, email, or payment side effects.
+
 ## Staging Smoke Checks
 
 - Plugin activates cleanly.

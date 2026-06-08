@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Gated Staging Inventory Smoke Runner
+
+### What Changed
+
+- Added `npm run staging:inventory-smoke` backed by
+  `scripts/staging-run-inventory-smoke.mjs`.
+- The runner uploads the existing WordPress staging inventory smoke PHP script
+  to staging uploads, runs it through WP-CLI `eval-file`, then removes only
+  that temporary smoke file through SFTP.
+- Added `scripts/tests/staging-inventory-smoke-contract.mjs` and wired it into
+  `npm run test:packaging`.
+- Updated staging documentation and detailed changelog notes.
+
+### Why
+
+The staging upload path and live ScryDex pull were proven manually. This makes
+the next staging acceptance check repeatable while keeping it gated, explicit,
+and separate from deployment, plugin activation, active plugin overwrite,
+production changes, and external provider side effects.
+
+### Files Affected
+
+- `package.json`
+- `scripts/staging-run-inventory-smoke.mjs`
+- `scripts/tests/staging-inventory-smoke-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging inventory smoke contract coverage for required SSH/WP-CLI
+  environment gates, explicit smoke confirmation, temporary SFTP upload,
+  WP-CLI `eval-file`, scoped temporary-file cleanup, output tailing, no plugin
+  activation, no active plugin overwrite, no production deployment, and no
+  credential printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:inventory-smoke -- --dry-run` with placeholder staging
+  env values and smoke confirmation: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging inventory smoke runner, contract
+  test, npm script, and documentation.
+- No staging cleanup is required for dry-run verification.
+- A real smoke run removes its own temporary PHP file. If a network
+  interruption prevents cleanup, delete the timestamped
+  `wordpress-staging-inventory-smoke-*.php` file from staging uploads.
+
 ## 2026-06-08 - Upload-Only Staging Package Transfer Script
 
 ### What Changed
