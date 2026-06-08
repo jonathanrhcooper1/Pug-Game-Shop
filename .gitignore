@@ -4,6 +4,7 @@ node_modules/
 vendor/
 .wp-env/
 .codex-tmp/
+dist/
 wp-content/
 playwright-report/
 test-results/

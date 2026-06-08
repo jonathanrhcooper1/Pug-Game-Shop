@@ -26,6 +26,9 @@
 - Local ScryDex provider coverage now targets the documented
   `/pokemon/v1/cards` endpoint shape, including live response `data` rows,
   `page_size`/`total_count` pagination fields, and game-context normalization.
+- Local packaging coverage now builds the WordPress plugin zip and verifies
+  the archive root, runtime entry points, runtime route-gate files, and absence
+  of tests/vendor/dev config.
 - Local unit coverage now includes ScryDex provider settings sanitization,
   blank-field secret preservation, explicit clear flags, server-only provider
   context, and public readiness output that redacts saved Team ID and key

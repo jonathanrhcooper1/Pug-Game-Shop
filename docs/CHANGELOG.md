@@ -26,6 +26,10 @@ All notable changes follow Semantic Versioning.
   and contract coverage for the Windows package metadata.
 - Root `npm run build` delegation to the offline app Vite build and generated
   artifact exclusions for the production-secret scanner.
+- WordPress plugin packaging automation that creates a lean
+  `tcg-store-platform` zip from runtime files only, plus a package contract
+  test that rejects tests, vendor files, Composer dev config, and malformed
+  archive roots.
 - Offline app multi-company connector draft editing, allowing staff to add or
   update company/site profiles by company name, website host/URL, environment,
   and ScryDex display label while keeping credentials out of source and out of

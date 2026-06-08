@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress Plugin Package Smoke Path
+
+### What Changed
+
+- Added `npm run package:wordpress` to create a staging-ready
+  `tcg-store-platform` plugin zip under `dist/`.
+- Added `scripts/package-wordpress-plugin.mjs`, which uses `git archive` from
+  the committed WordPress plugin tree and includes only runtime plugin files.
+- Added `scripts/tests/wordpress-package-contract.mjs` and wired it into
+  `npm run test`.
+- Updated `.gitignore`, testing docs, and changelog for generated package
+  output and packaging coverage.
+- Verified a package-sized SFTP upload to staging by uploading the generated
+  zip to `/html/wp-content/uploads`, checking the remote byte size, and
+  removing the file.
+
+### Why
+
+Staging deployments need a repeatable package artifact before any plugin file
+upload or activation happens. The packaging smoke proves the zip can be built
+and transferred to the staging WordPress filesystem without changing active
+plugin code.
+
+### Files Affected
+
+- `.gitignore`
+- `package.json`
+- `scripts/package-wordpress-plugin.mjs`
+- `scripts/tests/wordpress-package-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- WordPress plugin package contract coverage for archive root, plugin entry
+  files, runtime route-gate files, and absence of tests/vendor/dev config.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- Staging SFTP package upload smoke to `/html/wp-content/uploads`: passed,
+  remote size matched, zip removed.
+
+### Rollback Notes
+
+- Revert this revision to remove the package script and package contract test.
+- Delete any local `dist/tcg-store-platform-*.zip` files if desired; `dist/`
+  is ignored.
+- No staging cleanup is required because the uploaded smoke zip was removed,
+  and no plugin activation or file replacement occurred.
+
 ## 2026-06-08 - Staging Offline Route Gates And Live ScryDex Endpoint Verification
 
 ### What Changed
