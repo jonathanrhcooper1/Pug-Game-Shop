@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Local Sync Server Runtime Scaffold
+
+### What Changed
+
+- Added a runnable Node HTTP local sync server scaffold with `npm start`.
+- Implemented local PIN session verification, manager-only user/access policy
+  reads and mutations, inventory search, employee reservation locks, kiosk
+  pickup orders, and sync status endpoints.
+- Added an in-process store behind the local sync server API boundary so the
+  future `store-sync.sqlite` adapter can replace storage without changing
+  client route contracts.
+- Added runtime tests that exercise manager PIN auth, user creation, new-user
+  login, inventory double-sell prevention, kiosk order locking, and sync status.
+
+### Why
+
+The offline app now expects all in-store employee and kiosk clients to share a
+single LAN middleman. A runnable local server gives the clients a real target
+for PIN policy, reservation locks, kiosk pickup orders, and future shared cache
+sync instead of leaving those behaviors as UI-only scaffolding.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/README.md`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Local sync server runtime test covering auth, user policy, inventory
+  reservation collision, kiosk order, and sync-status behavior.
+
+### Verification
+
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `npm --prefix apps/local-sync-server run test`
+- `npm run test:sync-engine`
+
+### Rollback Notes
+
+- Revert this revision to return the local sync server to a contract-only
+  scaffold and remove the runtime HTTP handlers.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because the runtime server does not connect
+  to live external systems.
+
 ## 2026-06-08 - Offline PIN Login And LAN Access Policy
 
 ### What Changed

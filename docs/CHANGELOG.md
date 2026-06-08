@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server now has a runnable Node HTTP scaffold with PIN session
+  verification, manager-only user/access policy endpoints, inventory search,
+  reservation locking, kiosk pickup orders, sync status, and runtime tests.
 - Offline app login now uses manager-issued 4-digit staff/manager PINs, with a
   PIN keypad, session lock control, section-level access gating, and a
   manager-only Users & Access panel for adding PIN users and assigning app

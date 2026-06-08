@@ -20,5 +20,15 @@ Primary responsibilities:
 - Keep ScryDex credentials on WordPress/server settings, not in clients.
 - Never capture Square payments; only support Square POS handoff metadata.
 
-The current code is a contract scaffold. Runtime HTTP handlers and SQLite
-persistence will be added behind this contract.
+Current runtime:
+
+- `npm start` starts the local HTTP server on `127.0.0.1:8787` by default.
+- `POST /auth/pin` verifies cached 4-digit PIN users.
+- `GET /users/access-policy`, `POST /users`, and
+  `PATCH /users/{id}/access` are manager-session protected.
+- `GET /inventory/search`, `POST /inventory/reservations`, and
+  `POST /kiosk/orders` provide the first shared LAN inventory/order surface.
+
+The runtime currently uses an in-process store with the same API boundary the
+SQLite adapter will implement. Durable `store-sync.sqlite` persistence remains
+the next storage layer behind this contract.

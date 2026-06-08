@@ -5,6 +5,9 @@
   "description": "LAN middleman sync server contract for Pug Game Shop clients.",
   "type": "module",
   "scripts": {
-    "test:contract": "node tests/local-sync-server-contract.mjs"
+    "start": "node src/cli.mjs",
+    "test": "npm run test:contract && npm run test:runtime",
+    "test:contract": "node tests/local-sync-server-contract.mjs",
+    "test:runtime": "node tests/local-sync-server-runtime.mjs"
   }
 }
