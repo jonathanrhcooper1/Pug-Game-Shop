@@ -6,6 +6,7 @@ import {
   buildConnectorManifestPreview,
   buildConflictReviewOperation,
   buildCustomerCreditRedemptionOperation,
+  buildDevicePairingRequestPlan,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorStatusLabel,
@@ -20,6 +21,7 @@ import {
   validateConnectorManifest,
   type ConflictItem,
   type ConnectorManifestValidation,
+  type DevicePairingRequestPlan,
   type IconName,
   type InventoryStatus,
   type OfflineOperationEnvelope,
@@ -114,6 +116,8 @@ export function App() {
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
+  const [pairingCode, setPairingCode] = useState("")
+  const [pairingPlan, setPairingPlan] = useState<DevicePairingRequestPlan | null>(null)
   const activeProfile = findConnectorProfile(workspace.connectorProfiles, activeProfileId)
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
   const connectorHealth = connectorHealthSummary(connectorValidation?.profile ?? activeProfile)
@@ -137,6 +141,7 @@ export function App() {
 
   useEffect(() => {
     setConnectorValidation(null)
+    setPairingPlan(null)
   }, [activeProfile.id])
 
   function sectionTarget(label: string) {
@@ -270,6 +275,19 @@ export function App() {
             ? "Connector manifest needs pairing review"
             : "Connector manifest rejected",
       detail: `${validation.profile.companyName} ${validation.profile.environment} exposes ${validation.routeCount} offline routes. ${issueText}`,
+    })
+  }
+
+  function handlePairingPreview() {
+    const plan = buildDevicePairingRequestPlan(activeProfile, workspace.device, pairingCode)
+
+    setPairingPlan(plan)
+    setActiveSection("Settings")
+    setActivityMessage({
+      title: plan.pairingCodeProvided ? "Pairing request prepared" : "Pairing code required",
+      detail: plan.pairingCodeProvided
+        ? `${plan.companyName} device registration is shaped for ${plan.path}; network token issuance remains deferred and future tokens stay in ${plan.tokenStorage}.`
+        : "Enter the manager-issued pairing code from WordPress before this device can request a scoped offline token.",
     })
   }
 
@@ -744,6 +762,28 @@ export function App() {
                     ))}
                   </ul>
                 ) : null}
+              </div>
+              <div className="pairing-panel" aria-live="polite">
+                <label htmlFor="pairing-code">
+                  <span className="micro-label">Pairing code</span>
+                  <input
+                    id="pairing-code"
+                    type="password"
+                    autoComplete="off"
+                    value={pairingCode}
+                    onChange={(event) => setPairingCode(event.target.value)}
+                    placeholder="Manager code"
+                  />
+                </label>
+                <button type="button" onClick={handlePairingPreview}>
+                  <Icon name="check" />
+                  <span>Prepare Pairing</span>
+                </button>
+                <small>
+                  {pairingPlan
+                    ? `${pairingPlan.pairingCodeProvided ? "Code present" : "Code missing"}; ${pairingPlan.requestedScopes.length} scopes; token storage ${pairingPlan.tokenStorage}; code fingerprint ${pairingPlan.pairingCodeFingerprint}.`
+                    : "No token request is sent until live pairing is enabled."}
+                </small>
               </div>
               <div className="connector-actions">
                 <button type="button" onClick={handleTestWebsiteConnector}>

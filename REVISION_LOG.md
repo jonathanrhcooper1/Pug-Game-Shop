@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pairing Request Preview
+
+### What Changed
+
+- Added `OfflineDeviceProfile` and `DevicePairingRequestPlan` types.
+- Added `buildDevicePairingRequestPlan` to shape a deferred
+  `POST /offline/devices/register` request for the selected connector profile.
+- Added a pairing-code field and `Prepare Pairing` button to the Settings
+  connector panel.
+- Added redacted pairing-code fingerprinting so entered manager codes are not
+  echoed back in visible UI.
+- Updated contract tests and documentation for the pairing request preview.
+
+### Why
+
+The multi-company connector flow needs a staff-facing next step after manifest
+validation: preparing a device registration request for the correct website.
+This checkpoint provides that local workflow while keeping live token issuance,
+network submission, and credential storage disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for pairing request planning,
+  redacted pairing-code markers, scoped offline permissions, and production
+  token issuance deferral.
+- Extended UI shell contracts for `Pairing code`, `Prepare Pairing`,
+  `handlePairingPreview`, and pairing state updates.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- In-app browser DOM/interaction QA against `http://127.0.0.1:1420/`: passed
+  for empty-code required messaging, filled-code pairing preview,
+  `/offline/devices/register` request shaping, hidden raw pairing code, no
+  console warnings/errors, and no horizontal overflow.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline app pairing-code form and local
+  pairing request preview.
+- No database migrations, live route registration, live token issuance,
+  credential persistence, website network calls, ScryDex/Square provider
+  calls, or production mutations are introduced.
+- Existing connector manifest validation, inventory queue staging, and
+  credit/conflict operation previews remain available if only this pairing
+  preview layer is rolled back.
+
 ## 2026-06-08 - Offline App Credit And Conflict Staged Actions
 
 ### What Changed

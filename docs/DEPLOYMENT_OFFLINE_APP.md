@@ -88,6 +88,13 @@ queue insert plans, but ledger replay, manager approval writes, website sync,
 canonical inventory/customer mutations, and network execution remain deferred
 until device pairing and staging acceptance.
 
+The Settings connector panel can also prepare a redacted device-pairing
+request for the selected company/site. Empty pairing codes show a required
+message; entered codes are represented by a local fingerprint and never echoed
+back in visible UI. The preview shapes `POST /offline/devices/register`, the
+requested offline scopes, and desktop secure token storage while keeping live
+token issuance and network submission disabled.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

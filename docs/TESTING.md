@@ -87,10 +87,10 @@
   reusable company/site connector profiles, SQLite operation envelope fields,
   WordPress connector manifest ingestion/validation helpers, queued inventory
   operation markers, customer-credit redemption envelopes, conflict-review
-  envelopes, REST-ready offline push batch shaping, deferred push request
-  planning, response summarization, and no direct external endpoint or
-  database access markers. The offline app package contract also runs
-  `tsc --noEmit`.
+  envelopes, redacted device-pairing request planning, REST-ready offline push
+  batch shaping, deferred push request planning, response summarization, and
+  no direct external endpoint or database access markers. The offline app
+  package contract also runs `tsc --noEmit`.
 - Local unit and WordPress smoke coverage now include the WordPress offline
   connector manifest diagnostics, proving authenticated health exposes the
   company/site profile, route count, offline device-token auth mode, desktop

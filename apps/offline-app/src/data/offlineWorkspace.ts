@@ -70,6 +70,12 @@ export type CustomerCreditSnapshot = {
   note: string
 }
 
+export type OfflineDeviceProfile = {
+  storeLabel: string
+  modeLabel: string
+  lastSyncLabel: string
+}
+
 export type StoreConnectorProfile = {
   id: string
   companyName: string
@@ -227,15 +233,34 @@ export type OfflinePushResultSummary = {
   push_canonical_mutations_deferred: boolean
 }
 
+export type DevicePairingRequestPlan = {
+  method: "POST"
+  path: "/wp-json/tcg-store/v1/offline/devices/register"
+  profileId: string
+  companyName: string
+  siteUrl: string
+  pairingCodeProvided: boolean
+  pairingCodeFingerprint: string
+  requestedScopes: ["offline_pull", "offline_push", "offline_conflict_review"]
+  bodyPreview: {
+    pairing_code_redacted: boolean
+    installation_id: string
+    device_label: string
+    mode: "staff"
+    platform: "windows"
+    app_version: string
+  }
+  tokenStorage: "desktop_secure_store"
+  networkRequestDeferred: true
+  productionTokenIssuanceDeferred: true
+  credentialsSyncedToApp: false
+}
+
 export type OfflineWorkspaceState = {
   navItems: NavItem[]
   syncRoutes: string[]
   connectorProfiles: StoreConnectorProfile[]
-  device: {
-    storeLabel: string
-    modeLabel: string
-    lastSyncLabel: string
-  }
+  device: OfflineDeviceProfile
   syncSummary: SyncSummaryItem[]
   inventoryItems: InventoryItem[]
   queueItems: QueueItem[]
@@ -675,6 +700,37 @@ export function validateConnectorManifest(
   }
 }
 
+export function buildDevicePairingRequestPlan(
+  profile: StoreConnectorProfile,
+  device: OfflineDeviceProfile,
+  pairingCode: string,
+): DevicePairingRequestPlan {
+  const normalizedPairingCode = pairingCode.trim()
+
+  return {
+    method: "POST",
+    path: "/wp-json/tcg-store/v1/offline/devices/register",
+    profileId: profile.id,
+    companyName: profile.companyName,
+    siteUrl: connectorDisplayUrl(profile),
+    pairingCodeProvided: normalizedPairingCode.length > 0,
+    pairingCodeFingerprint: pairingCodeFingerprint(normalizedPairingCode),
+    requestedScopes: ["offline_pull", "offline_push", "offline_conflict_review"],
+    bodyPreview: {
+      pairing_code_redacted: true,
+      installation_id: "local-installation-preview",
+      device_label: device.storeLabel,
+      mode: "staff",
+      platform: "windows",
+      app_version: "0.156.0",
+    },
+    tokenStorage: "desktop_secure_store",
+    networkRequestDeferred: true,
+    productionTokenIssuanceDeferred: true,
+    credentialsSyncedToApp: false,
+  }
+}
+
 export function filterInventoryItems(
   items: InventoryItem[],
   query: string,
@@ -780,6 +836,18 @@ function safeConnectorId(
     .replace(/^-+|-+$/g, "")
 
   return slug || "tcg-store-development-offline-local"
+}
+
+function pairingCodeFingerprint(pairingCode: string) {
+  if (!pairingCode) {
+    return "missing"
+  }
+
+  const checksum = pairingCode
+    .split("")
+    .reduce((total, character) => total + character.charCodeAt(0), 0)
+
+  return `pairing-${pairingCode.length}-${checksum.toString(16)}`
 }
 
 export function buildInventoryUpdateOperation(

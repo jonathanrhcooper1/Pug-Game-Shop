@@ -154,6 +154,8 @@ plus offline app manifest ingestion and validation for reusable multi-company
 website connector profiles without syncing credentials
 plus offline app customer-credit and conflict-review controls that stage local
 queue operation envelopes
+plus offline app redacted pairing-code request preview for selected website
+connector profiles
 plus typed local workspace state and staged operation envelope preview
 plus browser-safe offline queue bridge contract
 plus local SQLite queue insert planning

@@ -743,6 +743,7 @@ h2 {
 .detail-actions button,
 .conflict-row button,
 .credit-actions button,
+.pairing-panel button,
 .connector-actions button,
 .secondary-command {
   display: inline-flex;
@@ -763,6 +764,7 @@ h2 {
 .scanner-row button .icon,
 .wide-action .icon,
 .credit-actions button .icon,
+.pairing-panel button .icon,
 .secondary-command .icon {
   width: 17px;
   height: 17px;
@@ -1380,6 +1382,53 @@ dd {
   padding-left: 18px;
 }
 
+.pairing-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(20, 23, 19, 0.045);
+  border: 1px solid rgba(20, 23, 19, 0.1);
+  border-radius: 8px;
+}
+
+.pairing-panel label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pairing-panel input {
+  min-height: 40px;
+  min-width: 0;
+  color: #172016;
+  background: #fff;
+  border: 1px solid rgba(20, 23, 19, 0.14);
+  border-radius: 8px;
+  outline: none;
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pairing-panel input:focus {
+  border-color: var(--gold-strong);
+  box-shadow: 0 0 0 3px rgba(246, 199, 96, 0.18);
+}
+
+.pairing-panel button {
+  align-self: end;
+  color: #fffaf0;
+  background: #202927;
+}
+
+.pairing-panel small {
+  grid-column: 1 / -1;
+  color: #607061;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .connector-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1504,6 +1553,7 @@ dd {
   .connector-grid,
   .connector-actions,
   .credit-actions,
+  .pairing-panel,
   .credit-panel {
     grid-template-columns: 1fr;
   }

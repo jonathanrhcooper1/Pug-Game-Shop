@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app pairing-code request preview for selected website connector
+  profiles, including deferred `/offline/devices/register` planning, redacted
+  pairing-code fingerprinting, scoped offline permissions, and desktop secure
+  token storage boundaries without live token issuance.
 - Offline app customer-credit and conflict-review actions that stage
   `credit_redemption` and conflict-review operation envelopes through the
   local queue preview, keeping ledger replay, manager approval, website sync,
