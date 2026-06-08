@@ -44,9 +44,23 @@ still preserving the white-label company/profile model for future stores.
 - None. Existing PHP and packaging checks cover settings/admin syntax and the
   package output.
 
+### Staging Verification
+
+- Uploaded corrected package:
+  `/html/wp-content/uploads/tcg-store-platform-0.156.0-20260608T155816Z.zip`.
+- Saved pre-update staging plugin backup:
+  `/html/wp-content/uploads/tcg-store-platform-before-pug-branding-20260608T155834Z.tgz`.
+- WP-CLI reports `tcg-store-platform` active at version `0.156.0` with title
+  `Pug Game Shop Card Manager`.
+- Updated staging branding settings to `Pug Game Shop` / `Pug Cards`.
+- Re-ran `npm run staging:route-check`; REST namespace, health route signal,
+  public connector manifest, and staging noindex controls passed.
+
 ### Rollback Notes
 
 - Revert this revision to restore the old visible plugin/admin labels.
+- Reinstall the pre-update staging backup above if the staging package update
+  needs to be reversed before the next package deployment.
 - No database, inventory, Square, payment, ScryDex, offline SQLite, or staging
   route rollback is required.
 
