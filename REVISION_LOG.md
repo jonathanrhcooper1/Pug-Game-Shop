@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Provider Factory Readiness
+
+### What Changed
+
+- Added `ScryDexProviderFactory` to consume staged ScryDex settings.
+- Added secret-free provider readiness output for health/admin status,
+  including provider class, configured state, environment, active key slot,
+  key fingerprint, and explicit deferrals.
+- Updated the platform health endpoint to report factory-level ScryDex
+  readiness.
+- Updated System Status to use the factory admin summary instead of direct
+  settings status.
+- Added unit coverage for default blocked readiness, configured secret-free
+  readiness, injected-transport provider construction, missing-configuration
+  behavior, and admin summary redaction.
+
+### Why
+
+The staging path needs a safe boundary between saved provider credentials and
+future ScryDex sync workers. This revision proves the provider can be
+constructed from settings through injectable transport in tests while keeping
+real network requests, scheduled workers, webhook registration, and database
+writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexProviderFactory.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexProviderFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex provider factory default blocked/deferred readiness coverage.
+- ScryDex provider factory configured secret-free readiness coverage.
+- ScryDex provider factory injected transport coverage for server-side provider
+  construction without live network calls.
+- ScryDex provider factory missing-settings behavior coverage.
+- ScryDex provider factory admin summary redaction coverage.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 810 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexProviderFactory.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex provider factory, health/admin
+  factory readiness output, and factory tests.
+- No schema rollback, ScryDex cleanup, or external service rollback is required
+  because no live provider requests, scheduled workers, webhook registration,
+  or database writes were enabled.
+
 ## 2026-06-07 - ScryDex Credential Settings Readiness
 
 ### What Changed

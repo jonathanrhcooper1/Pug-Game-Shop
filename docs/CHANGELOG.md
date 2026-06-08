@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex provider factory readiness that consumes staged WordPress settings,
+  builds the HTTP provider through an injectable transport for tests, and
+  exposes secret-free health/admin status while keeping provider requests,
+  workers, webhooks, and database writes deferred.
 - Secret-preserving ScryDex WordPress settings for staged provider access,
   including blank secret fields, configured/missing readiness, health/system
   status output, and tests proving public status never exposes saved provider
