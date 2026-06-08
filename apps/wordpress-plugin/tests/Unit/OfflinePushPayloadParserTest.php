@@ -113,7 +113,45 @@ final class OfflinePushPayloadParserTest extends TestCase {
 		$this->assert_true( null !== $payload );
 			$this->assert_same( 'inventory_update', $payload->operations()[0]->operation_type() );
 		$this->assert_same( 'inventory', $payload->operations()[0]->entity_type() );
-			$this->assert_same( 12500, $payload->operations()[0]->payload()['price_minor_units'] );
+		$this->assert_same( 12500, $payload->operations()[0]->payload()['price_minor_units'] );
+	}
+
+	public function test_parser_accepts_event_checkin_operation_type(): void {
+
+		$result = ( new OfflinePushPayloadParser() )->parse(
+			array(
+				'batch_id'   => 'batch-event-checkin-01',
+				'device_id'  => 'device-main-01',
+				'operations' => array(
+					array(
+						'client_operation_id' => 'op-checkin-01',
+						'device_id'           => 'device-main-01',
+						'location_id'         => 3,
+						'actor_id'            => 22,
+						'operation_type'      => 'event_checkin',
+						'entity_type'         => 'event',
+						'entity_id'           => 'event-100',
+						'base_row_version'    => 9,
+						'occurred_at_local'   => '2026-06-06T10:15:00-04:00',
+						'queued_at_utc'       => '2026-06-06T14:15:05Z',
+						'payload'             => array(
+							'registration_public_id' => 'registration-event-100-walkin',
+							'checkin_method'         => 'manual_lookup',
+						),
+						'schema_version'      => 1,
+					),
+				),
+			)
+		);
+
+		$this->assert_true( $result->is_valid() );
+
+		$payload = $result->payload();
+
+		$this->assert_true( null !== $payload );
+		$this->assert_same( 'event_checkin', $payload->operations()[0]->operation_type() );
+		$this->assert_same( 'event', $payload->operations()[0]->entity_type() );
+		$this->assert_same( 'manual_lookup', $payload->operations()[0]->payload()['checkin_method'] );
 	}
 
 	public function test_parser_rejects_duplicate_operation_ids_and_device_mismatch(): void {

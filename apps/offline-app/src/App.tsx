@@ -11,6 +11,7 @@ import {
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
   buildDevicePairingRequestBody,
+  buildEventCheckinOperation,
   buildEventRegistrationOperation,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
@@ -286,6 +287,7 @@ export function App() {
   )
   const [pendingCreditMinorUnits, setPendingCreditMinorUnits] = useState(0)
   const [pendingEventRegistrationIds, setPendingEventRegistrationIds] = useState<string[]>([])
+  const [pendingEventCheckinIds, setPendingEventCheckinIds] = useState<string[]>([])
   const [showCreditLedger, setShowCreditLedger] = useState(false)
   const [showEventQueue, setShowEventQueue] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<string[]>([])
@@ -402,10 +404,13 @@ export function App() {
     workspace.queueItems.reduce((total, item) => total + item.count, 0) + queuedOperations.length
   const conflictBadgeCount = openConflicts.length
   const queuedEventOperations = queuedOperations.filter(
-    (operation) => operation.operation_type === "event_reservation",
+    (operation) =>
+      operation.operation_type === "event_reservation" || operation.operation_type === "event_checkin",
   )
-  const eventBadgeCount = eventSnapshots.length + pendingEventRegistrationIds.length
+  const eventBadgeCount =
+    eventSnapshots.length + pendingEventRegistrationIds.length + pendingEventCheckinIds.length
   const pendingEventRegistrationCount = pendingEventRegistrationIds.length
+  const pendingEventCheckinCount = pendingEventCheckinIds.length
   const displayedCreditMinorUnits = Math.max(
     0,
     customerCredit.availableMinorUnits - pendingCreditMinorUnits,
@@ -864,6 +869,49 @@ export function App() {
             : "Offline walk-in registration queued locally; website capacity guard pending sync.",
         }
       }),
+    )
+  }
+
+  async function handleEventCheckin(event: EventSnapshot | undefined = selectedEvent) {
+    if (!event) {
+      setActivityMessage({
+        title: "No event selected",
+        detail: "Pull event snapshots or select an event before staging an offline check-in.",
+      })
+      return
+    }
+
+    if (event.registrationStatus === "closed") {
+      setActivityMessage({
+        title: "Event check-in blocked",
+        detail: `${event.title} is closed in the local cache; sync latest event data before accepting offline check-ins.`,
+      })
+      return
+    }
+
+    await stageOfflineOperation(
+      buildEventCheckinOperation(event, {
+        checkinMethod: "manual_lookup",
+      }),
+      "Event check-in staged",
+      `${event.title} attendee check-in is queued for ${activeProfile.companyName}; website registration matching remains authoritative after sync acceptance.`,
+    )
+
+    setPendingEventCheckinIds((eventIds) => [
+      event.eventId,
+      ...eventIds.filter((eventId) => eventId !== event.eventId),
+    ].slice(0, 8))
+    setShowEventQueue(true)
+    setActiveSection("Events")
+    setEventSnapshots((events) =>
+      events.map((item) =>
+        item.eventId === event.eventId
+          ? {
+              ...item,
+              note: "Offline attendee check-in queued locally; website registration match pending sync.",
+            }
+          : item,
+      ),
     )
   }
 
@@ -2336,12 +2384,15 @@ export function App() {
             <section className="event-panel" aria-label="Offline events" ref={eventPanelRef}>
               <div className="section-heading">
                 <h2>Events</h2>
-                <span>{pendingEventRegistrationCount} queued</span>
+                <span>
+                  {pendingEventRegistrationCount} registration; {pendingEventCheckinCount} check-in
+                </span>
               </div>
               <div className="event-list" aria-label="Cached event snapshots">
                 {eventSnapshots.map((event) => {
                   const isSelected = selectedEvent?.eventId === event.eventId
                   const isPending = pendingEventRegistrationIds.includes(event.eventId)
+                  const isCheckinPending = pendingEventCheckinIds.includes(event.eventId)
                   const registrationBlocked =
                     event.registrationStatus === "closed" || event.registrationStatus === "full"
 
@@ -2365,6 +2416,7 @@ export function App() {
                         <small>
                           {event.registeredCount}/{event.capacity} registered
                           {isPending ? "; local registration queued" : ""}
+                          {isCheckinPending ? "; local check-in queued" : ""}
                         </small>
                       </button>
                       <button
@@ -2410,6 +2462,14 @@ export function App() {
                         ? "Stage Waitlist"
                         : "Register Walk-In"}
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selectedEvent.registrationStatus === "closed"}
+                    onClick={() => void handleEventCheckin(selectedEvent)}
+                  >
+                    <Icon name="check" />
+                    <span>Check In</span>
                   </button>
                   <button
                     type="button"

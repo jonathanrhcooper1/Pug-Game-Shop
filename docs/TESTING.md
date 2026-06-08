@@ -34,6 +34,10 @@
   waitlist UI markers plus `event_reservation` operation envelopes for offline
   walk-in registration, including payload sync intent, payment status, seat
   snapshot, and secret-free authorization context.
+- Local WordPress and offline app coverage now verifies `event_checkin`
+  offline push parsing, stale event conflict handling, queue persistence,
+  deferred canonical mutation planning/query templates, Tauri queue acceptance,
+  and offline app Check In UI/envelope markers.
 - Local unit coverage now includes offline route runtime settings, contract
   mutation, staging-only feature availability, runtime-aware bootstrap/health
   planning, and pairing-route registration readiness.

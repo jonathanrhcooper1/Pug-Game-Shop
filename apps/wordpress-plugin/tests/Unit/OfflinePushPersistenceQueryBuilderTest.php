@@ -26,7 +26,7 @@ final class OfflinePushPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_true( $build->is_valid() );
 		$this->assert_same( 'wp_tcg_offline_sync_queue', $build->queue_table_name() );
 		$this->assert_same( 'wp_tcg_sync_conflicts', $build->conflict_table_name() );
-		$this->assert_same( 3, count( $operations ) );
+		$this->assert_same( 4, count( $operations ) );
 		$this->assert_same( 1, count( $conflicts ) );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_offline_sync_queue`', $operations[0]['sql_template'] );
 		$this->assert_contains( '`client_operation_id`', $operations[0]['sql_template'] );
@@ -35,19 +35,22 @@ final class OfflinePushPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_same( 'op-inventory-0001', $operations[0]['client_operation_id'] );
 		$this->assert_same( 'accepted', $operations[0]['status'] );
 		$this->assert_false( $operations[0]['has_conflict_id'] );
-		$this->assert_same( 'op-credit-redemption-01', $operations[2]['client_operation_id'] );
-		$this->assert_true( $operations[2]['has_conflict_id'] );
+		$this->assert_same( 'op-event-checkin-01', $operations[2]['client_operation_id'] );
+		$this->assert_false( $operations[2]['has_conflict_id'] );
+		$this->assert_same( 'op-credit-redemption-01', $operations[3]['client_operation_id'] );
+		$this->assert_true( $operations[3]['has_conflict_id'] );
 		$this->assert_same( 18, count( $operations[0]['prepare_args'] ) );
 		$this->assert_same( 18, count( $operations[1]['prepare_args'] ) );
-		$this->assert_same( 19, count( $operations[2]['prepare_args'] ) );
+		$this->assert_same( 18, count( $operations[2]['prepare_args'] ) );
+		$this->assert_same( 19, count( $operations[3]['prepare_args'] ) );
 		$this->assert_same( '2026-06-06 20:00:02.000000', $operations[0]['prepare_args'][15] );
 		$this->assert_same( '2026-06-06 20:00:00.000000', $operations[0]['prepare_args'][16] );
 		$this->assert_same( 19, count( $conflicts[0]['prepare_args'] ) );
 		$this->assert_same( 'open', $conflicts[0]['status'] );
 		$this->assert_same( 'offline_push_persistence_sql_planned', $audit['action'] );
-		$this->assert_same( 3, $audit['operation_query_count'] );
+		$this->assert_same( 4, $audit['operation_query_count'] );
 		$this->assert_same( 1, $audit['conflict_query_count'] );
-		$this->assert_same( 74, $audit['prepare_arg_count'] );
+		$this->assert_same( 92, $audit['prepare_arg_count'] );
 		$this->assert_true( $audit['push_repository_deferred'] );
 		$this->assert_true( $audit['route_connected_writes_deferred'] );
 	}
@@ -215,9 +218,10 @@ final class OfflinePushPersistenceQueryBuilderTest extends TestCase {
 				'batch_id'   => 'body-batch-ignored',
 				'device_id'  => 'device-main-01',
 				'operations' => $operations ?? array(
-					$this->inventory_operation_payload(),
-					$this->event_operation_payload(),
-					$this->credit_operation_payload(),
+				$this->inventory_operation_payload(),
+				$this->event_operation_payload(),
+				$this->event_checkin_operation_payload(),
+				$this->credit_operation_payload(),
 				),
 			),
 			'batch-main-01'
@@ -267,6 +271,29 @@ final class OfflinePushPersistenceQueryBuilderTest extends TestCase {
 			'occurred_at_local'   => '2026-06-06T11:15:00-04:00',
 			'queued_at_utc'       => '2026-06-06T15:15:05Z',
 			'payload'             => array(),
+			'schema_version'      => 1,
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function event_checkin_operation_payload(): array {
+		return array(
+			'client_operation_id' => 'op-event-checkin-01',
+			'device_id'           => 'device-main-01',
+			'location_id'         => 3,
+			'actor_id'            => 22,
+			'operation_type'      => 'event_checkin',
+			'entity_type'         => 'event',
+			'entity_id'           => 'event-100',
+			'base_row_version'    => 9,
+			'occurred_at_local'   => '2026-06-06T11:45:00-04:00',
+			'queued_at_utc'       => '2026-06-06T15:45:05Z',
+			'payload'             => array(
+				'registration_public_id' => 'registration-event-100-walkin',
+				'checkin_method'         => 'manual_lookup',
+			),
 			'schema_version'      => 1,
 		);
 	}

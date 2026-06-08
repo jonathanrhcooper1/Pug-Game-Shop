@@ -60,7 +60,7 @@ export type ConflictItem = {
   entityType: "inventory" | "customer_credit" | "event"
   entityId: string
   baseRowVersion: number
-  operationType: "inventory_update" | "credit_redemption" | "event_reservation"
+  operationType: "inventory_update" | "credit_redemption" | "event_reservation" | "event_checkin"
   managerOverride: boolean
 }
 
@@ -355,6 +355,7 @@ export type OfflineOperationEnvelope = {
     | "inventory_update"
     | "inventory_reservation"
     | "event_reservation"
+    | "event_checkin"
     | "credit_redemption"
   entity_type: "inventory" | "event" | "customer_credit"
   entity_id: string
@@ -2088,7 +2089,8 @@ function sanitizeOfflinePullConflictCacheRecords(
       record.base_row_version > 0 &&
       (record.operation_type === "inventory_update" ||
         record.operation_type === "credit_redemption" ||
-        record.operation_type === "event_reservation") &&
+        record.operation_type === "event_reservation" ||
+        record.operation_type === "event_checkin") &&
       typeof record.manager_override === "boolean" &&
       typeof record.updated_at_utc === "string" &&
       record.updated_at_utc.trim() !== "",
@@ -2321,7 +2323,7 @@ function sanitizeOfflineOperationEnvelopes(operations: unknown): OfflineOperatio
         actorId === null ||
         baseRowVersion === null ||
         operation.schema_version !== 1 ||
-        !["inventory_update", "inventory_reservation", "event_reservation", "credit_redemption"].includes(operationType) ||
+        !["inventory_update", "inventory_reservation", "event_reservation", "event_checkin", "credit_redemption"].includes(operationType) ||
         !["inventory", "event", "customer_credit"].includes(entityType) ||
         !isJsonObjectString(payloadJson) ||
         !isJsonObjectString(authorizationJson) ||
@@ -2546,6 +2548,54 @@ export function buildEventRegistrationOperation(
     }),
     authorization_context_json: JSON.stringify({
       manager_override: event.registrationStatus === "full",
+      source: "offline_app",
+    }),
+    schema_version: 1,
+  }
+}
+
+export function buildEventCheckinOperation(
+  event: EventSnapshot,
+  options: {
+    actorId?: number
+    deviceId?: string
+    locationId?: number
+    occurredAtLocal?: string
+    queuedAtUtc?: string
+    registrationPublicId?: string
+    checkinMethod?: "qr_scan" | "manual_lookup" | "offline_app"
+    attendeeLabel?: string
+  } = {},
+): OfflineOperationEnvelope {
+  const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
+  const queuedAtUtc = options.queuedAtUtc ?? occurredAtLocal
+  const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+  const registrationPublicId =
+    options.registrationPublicId ?? `registration-${event.eventId}-walkin`
+
+  return {
+    client_operation_id: `offline-event-checkin-${event.eventId}-${operationStamp}`,
+    device_id: options.deviceId ?? "local-device-preview",
+    location_id: options.locationId ?? 1,
+    actor_id: options.actorId ?? 1,
+    operation_type: "event_checkin",
+    entity_type: "event",
+    entity_id: event.eventId,
+    base_row_version: event.rowVersion,
+    occurred_at_local: occurredAtLocal,
+    queued_at_utc: queuedAtUtc,
+    payload_json: JSON.stringify({
+      event_id: event.eventId,
+      event_title: event.title,
+      registration_public_id: registrationPublicId,
+      attendee_label: options.attendeeLabel ?? "Offline attendee",
+      checkin_method: options.checkinMethod ?? "offline_app",
+      checkin_status: "checked_in",
+      registration_status_snapshot: event.registrationStatus,
+      sync_intent: "offline_event_checkin",
+    }),
+    authorization_context_json: JSON.stringify({
+      manager_override: false,
       source: "offline_app",
     }),
     schema_version: 1,

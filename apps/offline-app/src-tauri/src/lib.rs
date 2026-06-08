@@ -1211,6 +1211,7 @@ fn normalized_conflict_entity_type(value: &str) -> String {
 fn normalized_conflict_operation_type(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "credit_redemption" | "customer_credit_update" => "credit_redemption".to_string(),
+        "event_checkin" | "event_check_in" => "event_checkin".to_string(),
         "event_reservation" | "event_registration" => "event_reservation".to_string(),
         _ => "inventory_update".to_string(),
     }
@@ -1628,7 +1629,7 @@ fn validate_operation(operation: &OfflineOperationEnvelope) -> Result<(), String
 
     let expected_entity_type = match operation.operation_type.as_str() {
         "inventory_update" | "inventory_reservation" => "inventory",
-        "event_reservation" => "event",
+        "event_reservation" | "event_checkin" => "event",
         "credit_redemption" => "customer_credit",
         _ => return Err("unsupported_operation".to_string()),
     };
@@ -2333,6 +2334,7 @@ mod tests {
             ("inventory_update", "inventory"),
             ("inventory_reservation", "inventory"),
             ("event_reservation", "event"),
+            ("event_checkin", "event"),
             ("credit_redemption", "customer_credit"),
         ] {
             let mut operation = valid_operation();

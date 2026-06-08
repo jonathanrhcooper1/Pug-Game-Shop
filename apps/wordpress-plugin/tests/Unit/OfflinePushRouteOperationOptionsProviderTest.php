@@ -37,6 +37,7 @@ final class OfflinePushRouteOperationOptionsProviderTest extends TestCase {
 		$this->assert_same( 'offline_push_route_operation_options_provider_ready', $summary['action'] );
 		$this->assert_true( $summary['provider_ready'] );
 		$this->assert_true( in_array( 'inventory_update', $summary['supported_operation_types'], true ) );
+		$this->assert_true( in_array( 'event_checkin', $summary['supported_operation_types'], true ) );
 		$this->assert_true( $summary['explicit_execution_required'] );
 		$this->assert_true( $summary['route_connected_reads_deferred'] );
 		$this->assert_same( 'pay_at_store', $options['op-event-0001']['paymentStatus'] );

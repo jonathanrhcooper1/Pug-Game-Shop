@@ -22,7 +22,7 @@ final class OfflinePushCanonicalMutationQueryBuilderTest extends TestCase {
 		$queries = $build->mutation_queries();
 
 		$this->assert_true( $build->is_valid() );
-		$this->assert_same( 3, count( $queries ) );
+		$this->assert_same( 4, count( $queries ) );
 		$this->assert_same( 'wp_tcg_inventory_items', $build->table_names()['inventory_items'] );
 		$this->assert_contains( 'UPDATE `wp_tcg_inventory_items`', $queries[0]['sql_template'] );
 		$this->assert_contains( '`row_version` = %d AND `status` = %s', $queries[0]['sql_template'] );
@@ -43,14 +43,20 @@ final class OfflinePushCanonicalMutationQueryBuilderTest extends TestCase {
 		$this->assert_same( 'wp_tcg_event_registrations', $queries[1]['registration_table_name'] );
 		$this->assert_same( array( 'event-100', 9 ), $queries[1]['prepare_args'] );
 		$this->assert_true( $queries[1]['event_registration_write_deferred'] );
-		$this->assert_contains( 'FROM `wp_tcg_customers`', $queries[2]['sql_template'] );
-		$this->assert_same( 'wp_tcg_customer_credit_ledger', $queries[2]['ledger_table_name'] );
-		$this->assert_same( array( 'customer-100', 6 ), $queries[2]['prepare_args'] );
-		$this->assert_same( 4500, $queries[2]['amount_minor_units'] );
-		$this->assert_true( $queries[2]['customer_credit_ledger_write_deferred'] );
+		$this->assert_contains( 'FROM `wp_tcg_events`', $queries[2]['sql_template'] );
+		$this->assert_same( 'wp_tcg_event_registrations', $queries[2]['registration_table_name'] );
+		$this->assert_same( 'wp_tcg_event_checkins', $queries[2]['checkin_table_name'] );
+		$this->assert_same( array( 'event-100', 9 ), $queries[2]['prepare_args'] );
+		$this->assert_same( 'registration-event-100-walkin', $queries[2]['registration_public_id'] );
+		$this->assert_true( $queries[2]['event_checkin_write_deferred'] );
+		$this->assert_contains( 'FROM `wp_tcg_customers`', $queries[3]['sql_template'] );
+		$this->assert_same( 'wp_tcg_customer_credit_ledger', $queries[3]['ledger_table_name'] );
+		$this->assert_same( array( 'customer-100', 6 ), $queries[3]['prepare_args'] );
+		$this->assert_same( 4500, $queries[3]['amount_minor_units'] );
+		$this->assert_true( $queries[3]['customer_credit_ledger_write_deferred'] );
 		$this->assert_same( 'offline_push_canonical_mutation_sql_planned', $audit['action'] );
-		$this->assert_same( 3, $audit['mutation_query_count'] );
-		$this->assert_same( 10, $audit['prepare_arg_count'] );
+		$this->assert_same( 4, $audit['mutation_query_count'] );
+		$this->assert_same( 12, $audit['prepare_arg_count'] );
 		$this->assert_true( $audit['canonical_mutation_repository_deferred'] );
 		$this->assert_true( $audit['route_connected_writes_deferred'] );
 	}
@@ -127,6 +133,12 @@ final class OfflinePushCanonicalMutationQueryBuilderTest extends TestCase {
 						'rowVersion'     => 9,
 					),
 				),
+				'op-event-checkin-01'     => array(
+					'event' => array(
+						'registrationStatus' => 'open',
+						'rowVersion'         => 9,
+					),
+				),
 				'op-credit-redemption-01' => array(
 					'customer' => array(
 						'creditBalanceMinorUnits' => 5000,
@@ -169,6 +181,7 @@ final class OfflinePushCanonicalMutationQueryBuilderTest extends TestCase {
 				'operations' => $operations ?? array(
 					$this->inventory_operation_payload(),
 					$this->event_operation_payload(),
+					$this->event_checkin_operation_payload(),
 					$this->credit_operation_payload(),
 				),
 			),
@@ -219,6 +232,29 @@ final class OfflinePushCanonicalMutationQueryBuilderTest extends TestCase {
 			'occurred_at_local'   => '2026-06-06T11:15:00-04:00',
 			'queued_at_utc'       => '2026-06-06T15:15:05Z',
 			'payload'             => array(),
+			'schema_version'      => 1,
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function event_checkin_operation_payload(): array {
+		return array(
+			'client_operation_id' => 'op-event-checkin-01',
+			'device_id'           => 'device-main-01',
+			'location_id'         => 3,
+			'actor_id'            => 22,
+			'operation_type'      => 'event_checkin',
+			'entity_type'         => 'event',
+			'entity_id'           => 'event-100',
+			'base_row_version'    => 9,
+			'occurred_at_local'   => '2026-06-06T11:45:00-04:00',
+			'queued_at_utc'       => '2026-06-06T15:45:05Z',
+			'payload'             => array(
+				'registration_public_id' => 'registration-event-100-walkin',
+				'checkin_method'         => 'manual_lookup',
+			),
 			'schema_version'      => 1,
 		);
 	}

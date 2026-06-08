@@ -3,6 +3,100 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Event Check-In Staging
+
+### What Changed
+
+- Added `event_checkin` as a supported offline push operation type.
+- Extended WordPress offline push parsing, server snapshot planning, operation
+  resolution, queue persistence validation, route readiness reporting, and
+  deferred canonical mutation planning/query templates for event check-ins.
+- Added stale event conflict handling for check-ins when the event row version
+  changed before reconnect sync.
+- Added a typed offline app check-in operation builder with registration public
+  ID, check-in method, checked-in status, and `offline_event_checkin` sync
+  intent payload fields.
+- Added a visible Check In action to the offline app Events panel and event
+  queue preview support for queued check-ins.
+- Extended Tauri queue validation to accept `event_checkin` with `event`
+  entity type.
+
+### Why
+
+Staff could stage event registrations, but offline attendee check-ins still had
+no accepted push contract. This revision makes check-ins a real queued
+operation while preserving the existing safety model: server writes remain
+planned/deferred until route-connected write execution is explicitly enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayloadParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushOperationResolver.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotQueryPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationQueryBuilder.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteOperationOptionsProvider.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPayloadParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushOperationResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteOperationOptionsProviderTest.php`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The existing event registration/check-in schema already includes
+  `tcg_event_registrations` and `tcg_event_checkins`.
+
+### Tests Added
+
+- WordPress unit coverage for event check-in payload parsing, accepted
+  resolution, missing registration identity rejection, stale event conflict
+  handling, queue persistence SQL validation, server snapshot query planning,
+  canonical mutation planning, and deferred query-template generation.
+- Offline app contract coverage for check-in UI markers, typed check-in
+  envelope payloads, browser queue support, and Rust/Tauri queue acceptance.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 16
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Events ->
+  Check In staging, queued operation visibility, no page-level horizontal
+  overflow, and no browser console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to remove `event_checkin` push support and the offline
+  app Check In action while keeping event registration staging intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+- If a queued check-in operation exists locally after rollback, leave it in the
+  offline queue and remove it manually only after staff confirm it was not
+  already handled through another check-in path.
+
 ## 2026-06-08 - Offline App Event Registration Staging
 
 ### What Changed

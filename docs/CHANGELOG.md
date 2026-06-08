@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline event check-ins are now a first-class offline push operation:
+  WordPress parses, resolves, persists, and plans deferred canonical
+  `event_checkin` mutations, while the offline app can stage Check In actions
+  from cached events and queue them through the desktop/browser queue path.
 - Offline app now exposes cached event snapshots in an Events panel with
   functional offline walk-in registration/waitlist staging, event queue
   preview, local capacity updates, and `event_reservation` operation envelopes

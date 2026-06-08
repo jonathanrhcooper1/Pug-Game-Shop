@@ -34,6 +34,12 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 						'rowVersion'     => 9,
 					),
 				),
+				'op-event-checkin-01'     => array(
+					'event' => array(
+						'registrationStatus' => 'open',
+						'rowVersion'         => 9,
+					),
+				),
 				'op-credit-redemption-01' => array(
 					'customer' => array(
 						'creditBalanceMinorUnits' => 5000,
@@ -51,9 +57,9 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 		$this->assert_same( 'batch-main-01', $plan->batch_id() );
 		$this->assert_same( 'device-main-01', $plan->device_id() );
 		$this->assert_same( '2026-06-06T20:00:00Z', $plan->server_time_utc() );
-		$this->assert_same( 3, $plan->mutation_count() );
+		$this->assert_same( 4, $plan->mutation_count() );
 		$this->assert_same(
-			array( 'op-inventory-0001', 'op-event-0001', 'op-credit-redemption-01' ),
+			array( 'op-inventory-0001', 'op-event-0001', 'op-event-checkin-01', 'op-credit-redemption-01' ),
 			$plan->mutation_operation_ids()
 		);
 		$this->assert_same( array(), $plan->skipped_operation_ids() );
@@ -70,15 +76,21 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 		$this->assert_same( 10, $mutations[1]['target_row_version'] );
 		$this->assert_false( array_key_exists( 'queue_topdeck', $mutations[1] ) );
 		$this->assert_false( array_key_exists( 'topdeck_worker_deferred', $mutations[1] ) );
-		$this->assert_same( 'customer_credit_redemption', $mutations[2]['mutation_type'] );
-		$this->assert_same( 'tcg_customer_credit_ledger', $mutations[2]['table_contract'] );
-		$this->assert_same( 4500, $mutations[2]['amount_minor_units'] );
-		$this->assert_same( 500, $mutations[2]['balance_after_minor_units'] );
-		$this->assert_same( 7, $mutations[2]['target_row_version'] );
-		$this->assert_true( $mutations[2]['ledger_write_deferred'] );
+		$this->assert_same( 'event_checkin', $mutations[2]['mutation_type'] );
+		$this->assert_same( 'tcg_event_checkins', $mutations[2]['table_contract'] );
+		$this->assert_same( 'tcg_event_registrations', $mutations[2]['registration_table_contract'] );
+		$this->assert_same( 'registration-event-100-walkin', $mutations[2]['registration_public_id'] );
+		$this->assert_same( 'checked_in', $mutations[2]['checkin_status'] );
+		$this->assert_true( $mutations[2]['event_checkin_write_deferred'] );
+		$this->assert_same( 'customer_credit_redemption', $mutations[3]['mutation_type'] );
+		$this->assert_same( 'tcg_customer_credit_ledger', $mutations[3]['table_contract'] );
+		$this->assert_same( 4500, $mutations[3]['amount_minor_units'] );
+		$this->assert_same( 500, $mutations[3]['balance_after_minor_units'] );
+		$this->assert_same( 7, $mutations[3]['target_row_version'] );
+		$this->assert_true( $mutations[3]['ledger_write_deferred'] );
 		$this->assert_same( 'offline_push_canonical_mutations_planned', $audit['action'] );
-		$this->assert_same( 3, $audit['operation_count'] );
-		$this->assert_same( 3, $audit['mutation_count'] );
+		$this->assert_same( 4, $audit['operation_count'] );
+		$this->assert_same( 4, $audit['mutation_count'] );
 		$this->assert_true( $audit['canonical_mutations_deferred'] );
 		$this->assert_true( $audit['route_connected_writes_deferred'] );
 		$this->assert_true( $audit['queue_replay_deferred'] );
@@ -244,6 +256,7 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 				'operations' => $operations ?? array(
 					$this->inventory_operation_payload(),
 					$this->event_operation_payload(),
+					$this->event_checkin_operation_payload(),
 					$this->credit_operation_payload(),
 				),
 			),
@@ -294,6 +307,29 @@ final class OfflinePushCanonicalMutationPlannerTest extends TestCase {
 			'occurred_at_local'   => '2026-06-06T11:15:00-04:00',
 			'queued_at_utc'       => '2026-06-06T15:15:05Z',
 			'payload'             => array(),
+			'schema_version'      => 1,
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function event_checkin_operation_payload(): array {
+		return array(
+			'client_operation_id' => 'op-event-checkin-01',
+			'device_id'           => 'device-main-01',
+			'location_id'         => 3,
+			'actor_id'            => 22,
+			'operation_type'      => 'event_checkin',
+			'entity_type'         => 'event',
+			'entity_id'           => 'event-100',
+			'base_row_version'    => 9,
+			'occurred_at_local'   => '2026-06-06T11:45:00-04:00',
+			'queued_at_utc'       => '2026-06-06T15:45:05Z',
+			'payload'             => array(
+				'registration_public_id' => 'registration-event-100-walkin',
+				'checkin_method'         => 'manual_lookup',
+			),
 			'schema_version'      => 1,
 		);
 	}

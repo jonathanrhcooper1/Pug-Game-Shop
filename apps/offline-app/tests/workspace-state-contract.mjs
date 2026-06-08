@@ -57,6 +57,7 @@ for (const requiredExport of [
   "buildConnectorProfileFromDraft",
   "buildInventoryUpdateOperation",
   "buildInventoryReservationOperation",
+  "buildEventCheckinOperation",
   "buildEventRegistrationOperation",
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
@@ -132,7 +133,11 @@ for (const marker of [
   "inventory_reservation",
   "offline_inventory_reservation",
   "offline_event_registration",
+  "offline_event_checkin",
   "event_title",
+  "registration_public_id",
+  "checkin_method",
+  "checkin_status",
   "registration_source",
   "seats_remaining_snapshot",
   "payment_status",
@@ -254,6 +259,7 @@ assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
+assert.ok(appSource.includes("buildEventCheckinOperation(event"))
 assert.ok(appSource.includes("buildEventRegistrationOperation(event"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload("))
 assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.devicePublicId)"))
@@ -279,6 +285,7 @@ assert.ok(appSource.includes("pushSummary.canonical_inventory_writes_deferred"))
 assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
 assert.ok(appSource.includes("syncSessionPlan.push.canonical_inventory_writes_deferred"))
 assert.ok(appSource.includes("handleInventoryReservation"))
+assert.ok(appSource.includes("handleEventCheckin"))
 assert.ok(appSource.includes("handleEventRegistration"))
 assert.ok(appSource.includes("eventRegistrationStatusLabel("))
 assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))

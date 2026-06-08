@@ -21,6 +21,7 @@ final class OfflinePushServerSnapshotQueryPlannerTest extends TestCase {
 		);
 		$inventory = $plan->operation_query( 'op-inventory-0001' );
 		$event     = $plan->operation_query( 'op-event-0001' );
+		$checkin   = $plan->operation_query( 'op-event-checkin-01' );
 		$credit    = $plan->operation_query( 'op-credit-redemption-01' );
 		$audit     = $plan->audit_payload();
 
@@ -28,7 +29,7 @@ final class OfflinePushServerSnapshotQueryPlannerTest extends TestCase {
 		$this->assert_same( 'batch-main-01', $plan->batch_id() );
 		$this->assert_same( 'device-main-01', $plan->device_id() );
 		$this->assert_same( 42, $plan->offline_device_id() );
-		$this->assert_same( 3, count( $plan->operation_queries() ) );
+		$this->assert_same( 4, count( $plan->operation_queries() ) );
 		$this->assert_same( 'wp_tcg_inventory_items', $inventory['table_name'] );
 		$this->assert_same( 'inventory', $inventory['snapshot_section'] );
 		$this->assert_same( array( 'public_id' => 'inv-1001' ), $inventory['where'] );
@@ -38,11 +39,15 @@ final class OfflinePushServerSnapshotQueryPlannerTest extends TestCase {
 		$this->assert_same( 'wp_tcg_events', $event['table_name'] );
 		$this->assert_same( 'event', $event['snapshot_section'] );
 		$this->assert_same( array( 'seatsRemaining' => 'player_cap_minus_registered_count' ), $event['derived_fields'] );
+		$this->assert_same( 'wp_tcg_events', $checkin['table_name'] );
+		$this->assert_same( 'event', $checkin['snapshot_section'] );
+		$this->assert_same( array( 'op-event-checkin-01', 'event:event-100' ), $checkin['result_keys'] );
+		$this->assert_same( array(), $checkin['derived_fields'] );
 		$this->assert_same( 'wp_tcg_customers', $credit['table_name'] );
 		$this->assert_same( 'customer', $credit['snapshot_section'] );
 		$this->assert_same( array( 'creditBalanceMinorUnits' => 'credit_balance_decimal_to_minor_units' ), $credit['derived_fields'] );
 		$this->assert_same( 'offline_push_server_snapshot_queries_planned', $audit['action'] );
-		$this->assert_same( 3, $audit['operation_count'] );
+		$this->assert_same( 4, $audit['operation_count'] );
 		$this->assert_same( array( 'inventory', 'event', 'customer_credit' ), $audit['domains'] );
 		$this->assert_true( $audit['snapshot_query_ready'] );
 		$this->assert_true( $audit['execution_deferred'] );
@@ -102,6 +107,7 @@ final class OfflinePushServerSnapshotQueryPlannerTest extends TestCase {
 			array(
 				$this->operation( 'op-inventory-0001', 'inventory_reservation', 'inventory', 'inv-1001', 4 ),
 				$this->operation( 'op-event-0001', 'event_reservation', 'event', 'event-100', 9 ),
+				$this->operation( 'op-event-checkin-01', 'event_checkin', 'event', 'event-100', 9 ),
 				$this->operation( 'op-credit-redemption-01', 'credit_redemption', 'customer_credit', 'customer-100', 6 ),
 			)
 		);

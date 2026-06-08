@@ -19,6 +19,7 @@ final class OfflinePushServerSnapshotQueryBuilderTest extends TestCase {
 		$build     = ( new OfflinePushServerSnapshotQueryBuilder() )->build( $this->query_plan() );
 		$inventory = $build->operation_query( 'op-inventory-0001' );
 		$event     = $build->operation_query( 'op-event-0001' );
+		$checkin   = $build->operation_query( 'op-event-checkin-01' );
 		$credit    = $build->operation_query( 'op-credit-redemption-01' );
 		$audit     = $build->audit_payload();
 
@@ -36,12 +37,16 @@ final class OfflinePushServerSnapshotQueryBuilderTest extends TestCase {
 		$this->assert_contains( 'FROM `wp_tcg_events`', $event['sql_template'] );
 		$this->assert_same( array( 'event-100' ), $event['prepare_args'] );
 		$this->assert_same( array( 'seatsRemaining' => 'player_cap_minus_registered_count' ), $event['derived_fields'] );
+		$this->assert_contains( 'SELECT `public_id`, `registration_status`, `row_version`, `updated_at`', $checkin['sql_template'] );
+		$this->assert_contains( 'FROM `wp_tcg_events`', $checkin['sql_template'] );
+		$this->assert_same( array( 'event-100' ), $checkin['prepare_args'] );
+		$this->assert_same( array(), $checkin['derived_fields'] );
 		$this->assert_contains( 'FROM `wp_tcg_customers`', $credit['sql_template'] );
 		$this->assert_same( array( 'customer-100' ), $credit['prepare_args'] );
 		$this->assert_same( array( 'creditBalanceMinorUnits' => 'credit_balance_decimal_to_minor_units' ), $credit['derived_fields'] );
 		$this->assert_same( 'offline_push_server_snapshot_query_sql_planned', $audit['action'] );
-		$this->assert_same( 3, $audit['operation_count'] );
-		$this->assert_same( 3, $audit['prepare_arg_count'] );
+		$this->assert_same( 4, $audit['operation_count'] );
+		$this->assert_same( 4, $audit['prepare_arg_count'] );
 		$this->assert_true( $audit['sql_query_ready'] );
 		$this->assert_true( $audit['route_connected_reads_deferred'] );
 	}
@@ -104,6 +109,7 @@ final class OfflinePushServerSnapshotQueryBuilderTest extends TestCase {
 			array(
 				$this->operation( 'op-inventory-0001', 'inventory_reservation', 'inventory', 'inv-1001', 4 ),
 				$this->operation( 'op-event-0001', 'event_reservation', 'event', 'event-100', 9 ),
+				$this->operation( 'op-event-checkin-01', 'event_checkin', 'event', 'event-100', 9 ),
 				$this->operation( 'op-credit-redemption-01', 'credit_redemption', 'customer_credit', 'customer-100', 6 ),
 			)
 		);

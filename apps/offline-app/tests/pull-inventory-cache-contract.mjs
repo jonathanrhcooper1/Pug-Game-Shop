@@ -28,6 +28,7 @@ try {
     applyOfflinePullCustomerCreditRecordsToCache,
     applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
+    buildEventCheckinOperation,
     buildEventRegistrationOperation,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
@@ -369,6 +370,40 @@ try {
   assert.equal(eventRegistrationPayload.sync_intent, "offline_event_registration")
   assert.equal(eventRegistrationAuthorization.manager_override, false)
   assert.equal(eventRegistrationAuthorization.source, "offline_app")
+
+  const eventCheckinOperation = buildEventCheckinOperation(
+    {
+      eventId: "event-200",
+      rowVersion: 4,
+      title: "Commander Night",
+      startsAtUtc: "2026-06-12T23:00:00Z",
+      startsAtLabel: "Fri Jun 12, 7:00 PM",
+      registrationStatus: "open",
+      capacity: 24,
+      registeredCount: 23,
+      locationLabel: "Event Room",
+      note: "Cached event ready for offline check-in.",
+    },
+    {
+      registrationPublicId: "registration-event-200-walkin",
+      checkinMethod: "manual_lookup",
+      occurredAtLocal: "2026-06-08T08:15:00Z",
+      queuedAtUtc: "2026-06-08T12:15:00Z",
+    },
+  )
+  const eventCheckinPayload = JSON.parse(eventCheckinOperation.payload_json)
+  const eventCheckinAuthorization = JSON.parse(eventCheckinOperation.authorization_context_json)
+
+  assert.equal(eventCheckinOperation.client_operation_id, "offline-event-checkin-event-200-20260608121500")
+  assert.equal(eventCheckinOperation.operation_type, "event_checkin")
+  assert.equal(eventCheckinOperation.entity_type, "event")
+  assert.equal(eventCheckinOperation.entity_id, "event-200")
+  assert.equal(eventCheckinPayload.registration_public_id, "registration-event-200-walkin")
+  assert.equal(eventCheckinPayload.checkin_method, "manual_lookup")
+  assert.equal(eventCheckinPayload.checkin_status, "checked_in")
+  assert.equal(eventCheckinPayload.sync_intent, "offline_event_checkin")
+  assert.equal(eventCheckinAuthorization.manager_override, false)
+  assert.equal(eventCheckinAuthorization.source, "offline_app")
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }

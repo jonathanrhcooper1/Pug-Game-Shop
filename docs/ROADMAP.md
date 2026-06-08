@@ -188,6 +188,8 @@ plus sanitized desktop pull conflict snapshot extraction and local conflict
 panel cache apply counts for newer server rows
 plus offline app event panel with cached event registration and waitlist
 operation staging
+plus WordPress/offline app event check-in operation parsing, deferred mutation
+planning, local queue staging, and UI check-in action
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview

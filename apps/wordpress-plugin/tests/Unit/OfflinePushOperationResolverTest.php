@@ -177,6 +177,80 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		$this->assert_false( array_key_exists( 'queueTopDeck', $plan->details() ) );
 	}
 
+	public function test_event_checkin_accepts_current_event_with_registration_identity(): void {
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation(
+				'event_checkin',
+				'event',
+				'event-100',
+				array(
+					'registration_public_id' => 'registration-event-100-walkin',
+					'checkin_method'         => 'manual_lookup',
+				),
+				9
+			),
+			array(
+				'event' => array(
+					'registrationStatus' => 'open',
+					'rowVersion'         => 9,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$this->assert_same( 'accepted', $plan->status() );
+		$this->assert_same( 'event_checked_in', $plan->code() );
+		$this->assert_same( 'checked_in', $plan->details()['checkinStatus'] );
+		$this->assert_same( 'registration-event-100-walkin', $plan->details()['registrationPublicId'] );
+		$this->assert_same( 10, $plan->details()['rowVersion'] );
+		$this->assert_same( null, $plan->conflict_row() );
+	}
+
+	public function test_event_checkin_rejects_missing_registration_identity(): void {
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation( 'event_checkin', 'event', 'event-100', array(), 9 ),
+			array(
+				'event' => array(
+					'rowVersion' => 9,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$this->assert_same( 'rejected', $plan->status() );
+		$this->assert_same( 'event_checkin_registration_missing', $plan->code() );
+		$this->assert_same( false, $plan->details()['retryable'] );
+	}
+
+	public function test_event_checkin_conflicts_when_event_snapshot_changed(): void {
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation(
+				'event_checkin',
+				'event',
+				'event-100',
+				array( 'registration_public_id' => 'registration-event-100-walkin' ),
+				9
+			),
+			array(
+				'event' => array(
+					'registrationStatus' => 'closed',
+					'rowVersion'         => 11,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$conflict = $plan->conflict_row();
+
+		$this->assert_true( null !== $conflict );
+		$this->assert_same( 'conflict', $plan->status() );
+		$this->assert_same( 'event_checkin_stale', $plan->code() );
+		$this->assert_same( 'closed', $plan->details()['serverStatus'] );
+		$this->assert_same( 11, $conflict['server_row_version'] );
+		$this->assert_same( 9, $conflict['device_row_version'] );
+		$this->assert_same( array( 'accept_server', 'manager_adjust', 'dismiss' ), $conflict['resolution_options'] );
+	}
+
 	public function test_credit_redemption_accepts_within_cached_and_server_balance(): void {
 		$plan = ( new OfflinePushOperationResolver() )->resolve(
 			$this->operation(

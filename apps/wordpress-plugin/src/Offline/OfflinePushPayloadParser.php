@@ -13,6 +13,7 @@ final class OfflinePushPayloadParser {
 	private const OPERATION_ENTITY_MAP     = array(
 		'inventory_reservation' => 'inventory',
 		'inventory_update'      => 'inventory',
+		'event_checkin'         => 'event',
 		'event_reservation'     => 'event',
 		'credit_redemption'     => 'customer_credit',
 	);

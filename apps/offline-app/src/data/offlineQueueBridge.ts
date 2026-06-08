@@ -182,7 +182,7 @@ function sanitizeRestoredOperations(response: unknown): OfflineOperationEnvelope
         actorId === null ||
         baseRowVersion === null ||
         operation.schema_version !== 1 ||
-        !["inventory_update", "inventory_reservation", "event_reservation", "credit_redemption"].includes(operationType) ||
+        !["inventory_update", "inventory_reservation", "event_reservation", "event_checkin", "credit_redemption"].includes(operationType) ||
         !["inventory", "event", "customer_credit"].includes(entityType) ||
         !isJsonObjectString(payloadJson) ||
         !isJsonObjectString(authorizationJson) ||

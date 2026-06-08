@@ -55,6 +55,7 @@ for (const marker of [
   "inventory_update",
   "inventory_reservation",
   "event_reservation",
+  "event_checkin",
   "credit_redemption",
   "direct_mysql_access: false",
   "network_write: false",

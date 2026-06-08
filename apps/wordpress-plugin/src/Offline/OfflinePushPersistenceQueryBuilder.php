@@ -67,7 +67,7 @@ final class OfflinePushPersistenceQueryBuilder {
 	private const CONFLICT_STATUSES    = array( 'open', 'resolved', 'dismissed', 'retry_requested' );
 	private const CONFLICT_SEVERITIES  = array( 'blocking', 'warning', 'info' );
 	private const SUPPORTED_DOMAINS    = array( 'inventory', 'event', 'customer_credit' );
-	private const SUPPORTED_OPERATIONS = array( 'inventory_reservation', 'event_reservation', 'credit_redemption' );
+	private const SUPPORTED_OPERATIONS = array( 'inventory_reservation', 'event_reservation', 'event_checkin', 'credit_redemption' );
 
 	public function build(
 		OfflinePushPersistencePlan $persistence_plan,
