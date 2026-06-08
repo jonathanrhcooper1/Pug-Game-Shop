@@ -47,6 +47,7 @@ final class OfflineConnectorManifestPlanner {
 				'rest_namespace'                    => self::REST_NAMESPACE,
 				'rest_base_path'                    => self::REST_BASE_PATH,
 				'rest_base_url'                     => $this->join_url( $site_url, self::REST_BASE_PATH ),
+				'connector_manifest_url'            => $this->join_url( $site_url, self::REST_BASE_PATH . '/offline/connector-manifest' ),
 				'auth_mode'                         => 'offline_device_token',
 				'device_pairing_required'           => true,
 				'credential_storage'                => 'desktop_secure_store',

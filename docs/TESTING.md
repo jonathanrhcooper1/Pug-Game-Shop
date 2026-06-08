@@ -132,6 +132,10 @@
   secure credential storage boundary, official WooCommerce Square payment
   authority, ScryDex server-side credential storage, and no credential sync to
   the offline app.
+- Local unit coverage now includes the public-safe offline connector manifest
+  route contract at `/offline/connector-manifest`, proving it is read-only,
+  exposes the expected manifest URL, and does not register device pairing,
+  pull, push, or conflict routes.
 - Local unit and WordPress smoke coverage now include the app pairing contract
   inside offline pairing readiness, proving `/offline/devices/register`,
   requested offline scopes, redacted pairing-code handling, desktop secure

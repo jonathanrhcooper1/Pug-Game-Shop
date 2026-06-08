@@ -16,13 +16,17 @@
 ## Route Map
 
 Current implementation status: dependency-free route contract tests cover the
-health endpoint plus public Events list/detail/registration routes. WordPress
-integration smoke tests verify those routes register in a real WordPress
-process. Planned customer credit route contracts and posting payload validation
-and planned buylist route contracts plus intake payload validation are
-implemented but not registered live. Planned offline device pairing, push,
-pull, conflict list, and conflict resolution route contracts are implemented
-but not registered live. Offline push payload validation is implemented for
+health endpoint, the public-safe offline connector manifest endpoint, and
+public Events list/detail/registration routes. WordPress integration smoke
+tests verify those routes register in a real WordPress process. The connector
+manifest is available at `/offline/connector-manifest` and returns only the
+secret-free company/site route map used by the desktop app; it does not issue
+device tokens or register sync write routes. Planned customer credit route
+contracts and posting payload validation and planned buylist route contracts
+plus intake payload validation are implemented but not registered live. Planned
+offline device pairing, push, pull, conflict list, and conflict resolution
+route contracts are implemented but not registered live. Offline push payload
+validation is implemented for
 operation envelope shape, duplicate operation IDs, device matching, supported
 operation/entity pairs, timestamps, and schema version gating. Full permission,
 nonce, request/response, and write-flow REST tests remain staging-gated as each

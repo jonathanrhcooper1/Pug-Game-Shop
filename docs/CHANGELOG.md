@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Public-safe WordPress offline connector manifest route at
+  `/wp-json/tcg-store/v1/offline/connector-manifest`, exposing the existing
+  secret-free company/site route map for desktop connector validation without
+  registering device pairing, pull, push, or conflict routes.
 - Offline app Tauri command persistence now writes accepted offline operation
   envelopes into the local `offline.sqlite` `operation_queue` table with an
   idempotent `client_operation_id` primary key, while browser mode, queue

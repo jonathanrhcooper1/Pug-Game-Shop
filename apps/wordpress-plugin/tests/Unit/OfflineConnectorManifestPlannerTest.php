@@ -34,6 +34,7 @@ final class OfflineConnectorManifestPlannerTest extends TestCase {
 		$this->assert_true( $plan['wordpress']['site_url_secure'] );
 		$this->assert_same( '/wp-json/tcg-store/v1', $plan['wordpress']['rest_base_path'] );
 		$this->assert_same( 'https://pug.example.test/wp-json/tcg-store/v1', $plan['wordpress']['rest_base_url'] );
+		$this->assert_same( 'https://pug.example.test/wp-json/tcg-store/v1/offline/connector-manifest', $plan['wordpress']['connector_manifest_url'] );
 		$this->assert_same( 'offline_device_token', $plan['wordpress']['auth_mode'] );
 		$this->assert_same( 'desktop_secure_store', $plan['wordpress']['credential_storage'] );
 		$this->assert_true( $plan['wordpress']['device_pairing_required'] );
@@ -72,6 +73,7 @@ final class OfflineConnectorManifestPlannerTest extends TestCase {
 		$this->assert_false( $plan['wordpress']['site_url_secure'] );
 		$this->assert_true( $plan['wordpress']['https_required_for_remote_pairing'] );
 		$this->assert_same( 'http://localhost:8888/wp-json/tcg-store/v1', $plan['wordpress']['rest_base_url'] );
+		$this->assert_same( 'http://localhost:8888/wp-json/tcg-store/v1/offline/connector-manifest', $plan['wordpress']['connector_manifest_url'] );
 	}
 
 	public function test_production_http_site_is_degraded_and_keeps_writes_deferred(): void {

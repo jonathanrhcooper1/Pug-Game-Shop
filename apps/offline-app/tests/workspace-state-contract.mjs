@@ -137,6 +137,8 @@ for (const marker of [
   "source: \"offline_app\"",
   "connectorProfiles",
   "offline_connector_manifest",
+  "connector_manifest_url",
+  "Connector manifest URL must match the WordPress REST base.",
   "offline_connector_profiles_local_storage",
   "tcg-store-offline-connector-profiles-v1",
   "tcg-store-offline-prepared-pairings-v1",

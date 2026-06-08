@@ -157,6 +157,8 @@ sync preview, and reusable company/site connector profiles
 plus WordPress offline connector manifest health/admin diagnostics for
 company/site pairing, route maps, secure storage boundaries, Square authority
 split, and ScryDex redaction status
+plus public-safe WordPress offline connector manifest route for app website
+validation without credential sync
 plus offline app manifest ingestion and validation for reusable multi-company
 website connector profiles without syncing credentials
 plus offline app customer-credit and conflict-review controls that stage local

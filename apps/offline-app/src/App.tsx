@@ -1349,6 +1349,7 @@ export function App() {
                       ? `${connectorValidation.endpointCount} endpoints / ${connectorValidation.routeCount} routes; credentials synced to app: no`
                       : `${manifestPreview.offline_route_count} planned routes; import validates before pairing`}
                   </small>
+                  <small>{manifestPreview.wordpress.connector_manifest_url}</small>
                 </div>
                 {connectorValidation?.issues.length ? (
                   <ul>

@@ -26,6 +26,7 @@ for (const requiredText of [
   "Local sync attempts",
   "Queue and sync attempts are saved locally on this device.",
   "Website connector",
+  "connector-manifest",
   "Pull route",
   "Push route",
   "Inventory writes",

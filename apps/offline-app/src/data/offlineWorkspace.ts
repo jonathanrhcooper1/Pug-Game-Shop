@@ -209,6 +209,7 @@ export type OfflineConnectorManifest = {
     rest_namespace: "tcg-store/v1"
     rest_base_path: "/wp-json/tcg-store/v1"
     rest_base_url: string
+    connector_manifest_url: string
     auth_mode: "offline_device_token"
     device_pairing_required: boolean
     credential_storage: "desktop_secure_store"
@@ -1088,6 +1089,7 @@ export function buildConnectorManifestPreview(
       rest_namespace: "tcg-store/v1",
       rest_base_path: profile.wordpress.restBasePath,
       rest_base_url: `${siteUrl}${profile.wordpress.restBasePath}`,
+      connector_manifest_url: `${siteUrl}${profile.wordpress.restBasePath}/offline/connector-manifest`,
       auth_mode: profile.wordpress.authMode,
       device_pairing_required: profile.wordpress.devicePairingRequired,
       credential_storage: profile.wordpress.credentialStorage,
@@ -1200,6 +1202,14 @@ export function validateConnectorManifest(
     manifest.wordpress.https_required_for_remote_pairing
   ) {
     issues.push("Production connector pairing requires HTTPS.")
+  }
+
+  if (
+    site &&
+    manifest.wordpress.connector_manifest_url !==
+      `${site.scheme}://${site.host}${manifest.wordpress.rest_base_path}/offline/connector-manifest`
+  ) {
+    issues.push("Connector manifest URL must match the WordPress REST base.")
   }
 
   const rejected =

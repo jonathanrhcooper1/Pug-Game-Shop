@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Public Offline Connector Manifest Route
+
+### What Changed
+
+- Added `OfflineConnectorManifestController`.
+- Registered `GET /wp-json/tcg-store/v1/offline/connector-manifest` as a
+  public-safe, read-only manifest endpoint.
+- Extended the connector manifest payload with `connector_manifest_url`.
+- Updated the offline app connector manifest model, validation, and settings
+  panel to surface and verify the exact manifest URL.
+- Kept device pairing, pull, push, conflict list, and conflict resolution
+  routes gated and unregistered by default.
+
+### Why
+
+The offline app needs a real per-company website endpoint it can validate
+before live pairing. This route exposes only the existing secret-free connector
+manifest so staff can point the app at the correct WordPress site without
+syncing ScryDex, Square, SSH, payment, or device credentials into the app.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestController.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestPlanner.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/ApiRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestPlannerTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/API.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Route contract coverage for the public-safe manifest endpoint.
+- Controller coverage proving the route does not register device pairing,
+  pull, push, or conflict routes.
+- Manifest planner coverage for `connector_manifest_url`.
+- Offline app contract coverage for manifest URL modeling and validation.
+
+### Tests Run
+
+- `cd apps/wordpress-plugin && php tests/run.php`: passed, 878 tests.
+- `npm run test:offline-app`: passed, including TypeScript checks, offline
+  app contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the public-safe manifest endpoint and the
+  offline app manifest URL validation.
+- No database rollback is required.
+
 ## 2026-06-08 - Offline App Windows Build Helper
 
 ### What Changed
