@@ -175,6 +175,7 @@ plus explicit Square payment delegation to the official WooCommerce Square
 extension
 plus official WooCommerce Square extension status diagnostics
 plus Square inventory sync readiness diagnostics
+plus Square inventory batch sync planning
 implemented
 
 Deliver WooCommerce/Square payment observation, transaction ingestion, barcode

@@ -148,9 +148,17 @@ request envelopes, idempotency keys, external IDs, and errors in their audit
 payloads. If request planning rejects a projection because the context is
 production or production-declared, the executor rejects the operation before
 any catalog or inventory writer callback can run. Inventory dependency health,
-admin summaries, and the Inventory workspace expose whether the Square sync
-request planner is staged while route-connected writes and Square network calls
-remain disabled.
+admin summaries, and the Inventory workspace expose whether the sync request
+planner is staged.
+
+The WordPress plugin also includes a batch sync planner for staging multiple
+inventory rows at once. It aggregates per-row projection/request plans,
+ready/skipped/blocked counts, idempotency keys, Square object IDs, SKUs,
+catalog request counts, and inventory request counts. Hidden/unmapped rows can
+be skipped without blocking the batch, while invalid rows or production
+contexts block the batch before any provider request is exposed. The batch
+planner does not call Square, does not mutate WordPress inventory, and keeps
+payment capture delegated to the official WooCommerce Square extension.
 
 ## Transaction Ingestion Contract
 

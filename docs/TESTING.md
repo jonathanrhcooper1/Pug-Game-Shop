@@ -59,6 +59,10 @@
   inventory rows, admin System Status summaries, deferred catalog/inventory
   writers, and continued payment authority delegation to the official
   WooCommerce Square extension.
+- Local unit coverage now includes Square inventory batch sync planning for
+  multiple staged inventory rows, hidden/unmapped skip handling, invalid row
+  rejection, production-context blocking, aggregate idempotency keys/SKUs, and
+  retained Square network/write/payment deferrals.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment

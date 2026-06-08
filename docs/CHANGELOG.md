@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Square inventory batch sync planning that accepts multiple staged inventory
+  rows, aggregates sandbox Catalog/Inventory request plans, idempotency keys,
+  Square object IDs, SKUs, ready/skipped/blocked counts, and deferral metadata
+  without executing Square network or provider inventory writes.
 - Square inventory sync readiness diagnostics that run a sandbox probe through
   projection planning, Square Catalog/Inventory request planning, and guarded
   execution audit output, with authenticated health and admin System Status

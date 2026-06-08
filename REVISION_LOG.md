@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Inventory Batch Sync Planning
+
+### What Changed
+
+- Added `SquareInventoryBatchSyncPlanner` to stage multiple inventory rows
+  through Square projection planning and sandbox request planning.
+- The batch planner aggregates ready/skipped/blocked row counts, request
+  counts, operation counts, idempotency keys, Square object IDs, SKUs, per-row
+  results, and deferral metadata.
+- Added unit coverage for multi-row ready batches, hidden/unmapped skipped
+  rows, invalid rows, production-context blocking, and retained payment
+  delegation.
+
+### Why
+
+Square POS inventory sync needs a batch-level planning boundary before any
+writer or provider transport is enabled. This checkpoint proves the platform can
+rehearse many serialized cards as Square Catalog/Inventory plans while keeping
+network calls, provider inventory writes, production requests, and payment
+capture disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryBatchSyncPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryBatchSyncPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory batch sync planner tests for multi-row ready batches,
+  hidden/unmapped skipped rows, production-context blocking, invalid row
+  rejection, aggregate IDs/SKUs, and deferred Square/payment writes.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 854 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventoryBatchSyncPlanner.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 561 PHP files.
+- `npm.cmd run test`: passed, including 854 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove batch-level Square inventory sync planning and
+  its tests.
+- No migrations, Square network calls, Square inventory writes, production
+  requests, payment capture, refunds, or custom gateway behavior are
+  introduced.
+- Single-row Square projection/readiness/request planning remains available
+  after rollback.
+
 ## 2026-06-07 - Square Inventory Sync System Status Summary
 
 ### What Changed
