@@ -25,8 +25,14 @@ review, staging approval, deployment approval, and rollback planning.
   `wp-content/plugins`.
 - Uploaded the current package and installed it into the staging plugins
   directory without activation. WP-CLI now reports `tcg-store-platform` as
-  inactive version `0.156.0`; route checks remain blocked until backup-approved
-  activation runs the plugin activation hook.
+  active version `0.156.0`.
+- Added staging constants to `wp-config.php` after saving a timestamped config
+  backup at `/html/wp-config.php.codex-staging-backup-20260608T153554Z`.
+- Re-ran staging route and health checks. Route check now passes, authenticated
+  health reports database version `10`, role version `2`, environment
+  `staging`, customer emails disabled, public indexing blocked, payment capture
+  deferred, provider inventory deferred, staff banner enabled, and a
+  secret-safe staging connector manifest.
 
 ### Why
 
@@ -70,6 +76,10 @@ pairing.
 - No WordPress database, staging data, Square, ScryDex, payment, POS, or
   production rollback is required because the route check is read-only and the
   UI changes operate on local queue state.
+- To roll back the staging config constants, restore the backed-up
+  `/html/wp-config.php.codex-staging-backup-20260608T153554Z` file or remove
+  the staging constants with WP-CLI. Deactivate **TCG Store Platform** on
+  staging if route registration must be disabled during troubleshooting.
 
 ## 2026-06-08 - Offline Desktop Queue Void Command
 

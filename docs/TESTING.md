@@ -25,8 +25,13 @@
   noindex checks but failed namespace, health, and connector-manifest checks
   with `404 rest_no_route`. A follow-up read-only SSH/WP-CLI inspection showed
   the package zips were in uploads but the plugin was not installed; the
-  current package was then installed into `wp-content/plugins` as inactive
-  version `0.156.0`, pending backup confirmation before activation/migrations.
+  current package was then installed into `wp-content/plugins`, and a later
+  check confirmed `tcg-store-platform` active at version `0.156.0`. After
+  staging constants were added to `wp-config.php`, route check passed and
+  authenticated health reported database version `10`, role version `2`,
+  environment `staging`, emails disabled, public indexing blocked, payment
+  capture deferred, provider inventory deferred, staff banner enabled, and a
+  secret-safe staging connector manifest.
 - Offline app contract coverage now verifies queue refresh and selective
   voiding controls: `Refresh Desktop Queue` calls the Tauri list command when
   available, and `Void Selected Operation` removes one selected operation while
