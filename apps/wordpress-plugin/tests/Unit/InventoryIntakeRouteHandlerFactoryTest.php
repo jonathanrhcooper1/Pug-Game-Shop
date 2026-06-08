@@ -8,21 +8,21 @@
 namespace {
 	if ( ! class_exists( 'wpdb' ) ) {
 		class wpdb {
-			public string $prefix = 'wp_';
-			public int $insert_id = 77;
-			public int $prepare_count = 0;
-			public int $get_row_count = 0;
-			public int $get_results_count = 0;
-			public int $get_var_count = 0;
-			public int $query_count = 0;
+			public string $prefix             = 'wp_';
+			public int $insert_id             = 77;
+			public int $prepare_count         = 0;
+			public int $get_row_count         = 0;
+			public int $get_results_count     = 0;
+			public int $get_var_count         = 0;
+			public int $query_count           = 0;
 			public string $last_prepare_query = '';
-			public string $last_query = '';
-			public string $last_output_type = '';
-			private ?array $row = null;
-			private int|false $query_result = 1;
-			private array $query_results = array();
-			private array|false $result_set = array();
-			private mixed $var_result = 0;
+			public string $last_query         = '';
+			public string $last_output_type   = '';
+			private ?array $row               = null;
+			private int|false $query_result   = 1;
+			private array $query_results      = array();
+			private array|false $result_set   = array();
+			private mixed $var_result         = 0;
 
 			/**
 			 * @var list<mixed>
@@ -38,14 +38,14 @@ namespace {
 				array|false $result_set = array(),
 				mixed $var_result = 0
 			) {
-				$this->row          = $row;
+				$this->row = $row;
 				if ( is_array( $query_result ) ) {
 					$this->query_results = array_values( $query_result );
 				} else {
 					$this->query_result = $query_result;
 				}
-				$this->result_set   = $result_set;
-				$this->var_result   = $var_result;
+				$this->result_set = $result_set;
+				$this->var_result = $var_result;
 			}
 
 			/**
@@ -103,19 +103,19 @@ namespace {
 
 	if ( ! class_exists( 'InventoryIntakeRouteHandlerWpdb' ) ) {
 		class InventoryIntakeRouteHandlerWpdb extends \wpdb {
-			public string $prefix = 'wp_';
-			public int $insert_id = 909;
-			public int $prepare_count = 0;
-			public int $get_row_count = 0;
-			public int $query_count = 0;
+			public string $prefix             = 'wp_';
+			public int $insert_id             = 909;
+			public int $prepare_count         = 0;
+			public int $get_row_count         = 0;
+			public int $query_count           = 0;
 			public string $last_prepare_query = '';
-			public string $last_query = '';
-			public string $last_output_type = '';
-			public array $prepare_queries = array();
-			public array $queries = array();
-			private int|false $query_result = 1;
-			private array $query_results = array();
-			private ?array $row = null;
+			public string $last_query         = '';
+			public string $last_output_type   = '';
+			public array $prepare_queries     = array();
+			public array $queries             = array();
+			private int|false $query_result   = 1;
+			private array $query_results      = array();
+			private ?array $row               = null;
 
 			/**
 			 * @var list<mixed>
@@ -223,6 +223,18 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( true, $response['meta']['projections']['woocommerce_product_projection']['woocommerce_write_deferred'] );
 			$this->assert_same( 'create_product', $response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['operation'] );
 			$this->assert_same( 'PCS-PIKA-000001', $response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['product']['sku'] );
+			$this->assert_true( $response['meta']['projections']['woocommerce_product_write_request_deferred'] );
+			$this->assert_same( 'woocommerce_product_write_request_plan', $response['meta']['projections']['woocommerce_product_write_request']['action'] );
+			$this->assert_same( 'ready', $response['meta']['projections']['woocommerce_product_write_request']['status'] );
+			$this->assert_same(
+				'/wp-json/wc/v3/products',
+				$response['meta']['projections']['woocommerce_product_write_request']['request_plan']['requests'][0]['path']
+			);
+			$this->assert_same(
+				'PCS-PIKA-000001',
+				$response['meta']['projections']['woocommerce_product_write_request']['request_plan']['requests'][0]['body']['sku']
+			);
+			$this->assert_true( $response['meta']['projections']['woocommerce_product_write_request']['woocommerce_write_deferred'] );
 			$this->assert_same( 'square', $response['meta']['projections']['square_inventory_projection']['provider'] );
 			$this->assert_same( true, $response['meta']['projections']['square_inventory_projection']['network_request_deferred'] );
 			$this->assert_true( in_array( 'square_location_id_required', $response['meta']['projections']['square_inventory_projection']['errors'], true ) );
@@ -293,6 +305,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $summary['repository_configured'] );
 			$this->assert_true( $summary['route_connected_writes_deferred'] );
 			$this->assert_true( $summary['woocommerce_projection_planner_ready'] );
+			$this->assert_true( $summary['woocommerce_product_write_request_planner_ready'] );
+			$this->assert_true( $summary['woocommerce_product_write_request_deferred'] );
 			$this->assert_true( $summary['square_inventory_projection_planner_ready'] );
 			$this->assert_true( $summary['external_projection_planning_deferred'] );
 			$this->assert_same( array(), $summary['configuration_issues'] );
@@ -314,6 +328,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['route_connected_handler_ready'] );
 			$this->assert_false( $summary['route_connected_writes_deferred'] );
 			$this->assert_false( $summary['external_projection_planning_deferred'] );
+			$this->assert_true( $summary['woocommerce_product_write_request_planner_ready'] );
+			$this->assert_true( $summary['woocommerce_product_write_request_deferred'] );
 			$this->assert_true( is_callable( $handlers['create_inventory_item'] ?? null ) );
 
 			$response = $handlers['create_inventory_item'](

@@ -13,6 +13,7 @@ use TCGStorePlatform\Inventory\InventoryIntakeRepository;
 use TCGStorePlatform\Square\SquareInventoryProjectionPlanner;
 use TCGStorePlatform\Square\SquareInventorySyncRequestPlanner;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
+use TCGStorePlatform\WooCommerce\InventoryProductWriteRequestPlanner;
 use Throwable;
 
 final class InventoryIntakeRouteHandlerFactory {
@@ -96,6 +97,7 @@ final class InventoryIntakeRouteHandlerFactory {
 			'persistence_planner_ready'                   => method_exists( InventoryIntakePersistencePlanner::class, 'plan' ),
 			'repository_adapter_ready'                    => method_exists( InventoryIntakeRepository::class, 'create' ),
 			'woocommerce_projection_planner_ready'        => method_exists( InventoryProductProjectionPlanner::class, 'plan_row' ),
+			'woocommerce_product_write_request_planner_ready' => method_exists( InventoryProductWriteRequestPlanner::class, 'plan' ),
 			'square_inventory_projection_planner_ready'   => method_exists( SquareInventoryProjectionPlanner::class, 'plan_row' ),
 			'square_inventory_sync_request_planner_ready' => method_exists( SquareInventorySyncRequestPlanner::class, 'plan' ),
 			'route_connected_writes_enabled'              => $this->route_connected_writes_enabled,
@@ -106,6 +108,7 @@ final class InventoryIntakeRouteHandlerFactory {
 			'route_connected_handler_deferred'            => ! $handler_ready,
 			'route_connected_writes_deferred'             => ! $handler_ready,
 			'woocommerce_projection_deferred'             => true,
+			'woocommerce_product_write_request_deferred'  => true,
 			'square_inventory_projection_deferred'        => true,
 			'external_projection_planning_deferred'       => ! $handler_ready,
 			'label_print_deferred'                        => true,

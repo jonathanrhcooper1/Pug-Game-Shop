@@ -17,24 +17,42 @@ final class InventoryProductProjectionExecutor {
 
 	public function __construct(
 		private bool $execution_enabled = false,
-		?callable $product_writer = null
+		?callable $product_writer = null,
+		private ?InventoryProductWriteRequestPlanner $request_planner = null,
+		private array $request_context = array()
 	) {
 		$this->product_writer = $product_writer;
 	}
 
 	public function execute( InventoryProductProjectionPlan $plan ): InventoryProductProjectionExecutionResult {
+		$write_request_plan = $this->request_planner()->plan( $plan, $this->request_context );
+
 		if ( InventoryProductProjectionPlan::FAILED === $plan->status() ) {
 			return InventoryProductProjectionExecutionResult::rejected(
 				$plan,
 				array_merge(
 					array( 'woocommerce_product_projection_plan_failed' ),
 					$plan->errors()
-				)
+				),
+				array(),
+				$write_request_plan
 			);
 		}
 
 		if ( InventoryProductProjectionPlan::SKIPPED === $plan->status() ) {
-			return InventoryProductProjectionExecutionResult::skipped( $plan );
+			return InventoryProductProjectionExecutionResult::skipped( $plan, $write_request_plan );
+		}
+
+		if ( $write_request_plan->is_rejected() ) {
+			return InventoryProductProjectionExecutionResult::rejected(
+				$plan,
+				array_merge(
+					array( 'woocommerce_product_write_request_rejected' ),
+					$write_request_plan->errors()
+				),
+				array(),
+				$write_request_plan
+			);
 		}
 
 		$block_reasons = array();
@@ -53,7 +71,7 @@ final class InventoryProductProjectionExecutor {
 		}
 
 		if ( array() !== $block_reasons ) {
-			return InventoryProductProjectionExecutionResult::blocked( $plan, $block_reasons );
+			return InventoryProductProjectionExecutionResult::blocked( $plan, $block_reasons, $write_request_plan );
 		}
 
 		$results = array();
@@ -75,10 +93,10 @@ final class InventoryProductProjectionExecutor {
 		}
 
 		if ( array() !== $errors ) {
-			return InventoryProductProjectionExecutionResult::rejected( $plan, $errors, $results );
+			return InventoryProductProjectionExecutionResult::rejected( $plan, $errors, $results, $write_request_plan );
 		}
 
-		return InventoryProductProjectionExecutionResult::executed( $plan, $results );
+		return InventoryProductProjectionExecutionResult::executed( $plan, $results, $write_request_plan );
 	}
 
 	public function execution_enabled(): bool {
@@ -87,6 +105,14 @@ final class InventoryProductProjectionExecutor {
 
 	public function product_writer_configured(): bool {
 		return is_callable( $this->product_writer );
+	}
+
+	private function request_planner(): InventoryProductWriteRequestPlanner {
+		if ( null === $this->request_planner ) {
+			$this->request_planner = new InventoryProductWriteRequestPlanner();
+		}
+
+		return $this->request_planner;
 	}
 
 	/**

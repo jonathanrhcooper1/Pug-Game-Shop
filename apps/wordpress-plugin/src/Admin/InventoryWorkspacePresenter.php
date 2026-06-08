@@ -85,7 +85,7 @@ final class InventoryWorkspacePresenter {
 				'WooCommerce projection',
 				true === ( $dependency_payload['woocommerce_projection_deferred'] ?? true ) ? 'Deferred' : 'Ready',
 				true === ( $dependency_payload['woocommerce_projection_deferred'] ?? true ) ? 'deferred' : 'ready',
-				'serialized inventory hooks stay guarded'
+				$this->woocommerce_projection_notes( $dependency_payload )
 			),
 			$this->row(
 				'Square projection',
@@ -260,9 +260,10 @@ final class InventoryWorkspacePresenter {
 	 * @return array{label:string,value:string,status:string,notes:string}
 	 */
 	private function projection_planning_row( array $dependency_payload ): array {
-		$woocommerce_ready = true === ( $dependency_payload['woocommerce_projection_planner_ready'] ?? false );
-		$square_ready      = true === ( $dependency_payload['square_inventory_projection_planner_ready'] ?? false );
-		$planning_deferred = true === ( $dependency_payload['external_projection_planning_deferred'] ?? true );
+		$woocommerce_ready         = true === ( $dependency_payload['woocommerce_projection_planner_ready'] ?? false );
+		$woocommerce_request_ready = true === ( $dependency_payload['woocommerce_product_write_request_planner_ready'] ?? false );
+		$square_ready              = true === ( $dependency_payload['square_inventory_projection_planner_ready'] ?? false );
+		$planning_deferred         = true === ( $dependency_payload['external_projection_planning_deferred'] ?? true );
 
 		if ( $planning_deferred ) {
 			return $this->row(
@@ -272,30 +273,46 @@ final class InventoryWorkspacePresenter {
 				$this->projection_planning_notes(
 					$planning_deferred,
 					$woocommerce_ready,
+					$woocommerce_request_ready,
 					$square_ready
 				)
 			);
 		}
 
-		if ( $woocommerce_ready && $square_ready ) {
+		if ( $woocommerce_ready && $woocommerce_request_ready && $square_ready ) {
 			return $this->row(
 				'Projection planning',
 				'Ready',
 				'ready',
-				'WooCommerce and Square contracts planned; external writes stay deferred'
+				'WooCommerce requests and Square contracts planned; external writes stay deferred'
 			);
 		}
 
 		return $this->row(
 			'Projection planning',
-			sprintf( '%d / 2 planners ready', (int) $woocommerce_ready + (int) $square_ready ),
+			sprintf(
+				'%d / 3 planners ready',
+				(int) $woocommerce_ready + (int) $woocommerce_request_ready + (int) $square_ready
+			),
 			'blocked',
 			$this->projection_planning_notes(
 				$planning_deferred,
 				$woocommerce_ready,
+				$woocommerce_request_ready,
 				$square_ready
 			)
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 */
+	private function woocommerce_projection_notes( array $dependency_payload ): string {
+		$request_status = true === ( $dependency_payload['woocommerce_product_write_request_planner_ready'] ?? false )
+			? 'write request planner staged'
+			: 'write request planner pending';
+
+		return 'serialized inventory hooks stay guarded; ' . $request_status;
 	}
 
 	/**
@@ -309,7 +326,12 @@ final class InventoryWorkspacePresenter {
 		return 'inventory projection only; ' . $sync_status . '; Square payments handled by WooCommerce Square';
 	}
 
-	private function projection_planning_notes( bool $planning_deferred, bool $woocommerce_ready, bool $square_ready ): string {
+	private function projection_planning_notes(
+		bool $planning_deferred,
+		bool $woocommerce_ready,
+		bool $woocommerce_request_ready,
+		bool $square_ready
+	): string {
 		$notes = array();
 
 		if ( $planning_deferred ) {
@@ -320,12 +342,16 @@ final class InventoryWorkspacePresenter {
 			$notes[] = 'WooCommerce planner missing';
 		}
 
+		if ( ! $woocommerce_request_ready ) {
+			$notes[] = 'WooCommerce write request planner missing';
+		}
+
 		if ( ! $square_ready ) {
 			$notes[] = 'Square planner missing';
 		}
 
 		return array() === $notes
-			? 'WooCommerce and Square contracts planned; external writes stay deferred'
+			? 'WooCommerce requests and Square contracts planned; external writes stay deferred'
 			: implode( '; ', $notes );
 	}
 

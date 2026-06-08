@@ -12,6 +12,7 @@ use TCGStorePlatform\WooCommerce\InventoryProductProjectionExecutionResult;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionExecutor;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlan;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
+use TCGStorePlatform\WooCommerce\InventoryProductWriteRequestPlanner;
 
 final class InventoryProductProjectionExecutorTest extends TestCase {
 	public function test_executor_blocks_ready_projection_by_default(): void {
@@ -30,6 +31,13 @@ final class InventoryProductProjectionExecutorTest extends TestCase {
 		$this->assert_true( $audit['woocommerce_write_deferred'] );
 		$this->assert_true( $audit['production_woocommerce_write_deferred'] );
 		$this->assert_true( $audit['payment_capture_deferred'] );
+		$this->assert_same( 'ready', $audit['woocommerce_write_request_status'] );
+		$this->assert_true( $audit['woocommerce_write_request_ready'] );
+		$this->assert_same(
+			array( 'woocommerce:product-projection:card-public-42:v7:woocommerce:0' ),
+			$audit['woocommerce_write_request_idempotency_keys']
+		);
+		$this->assert_same( '/wp-json/wc/v3/products', $audit['woocommerce_write_request_plan']['requests'][0]['path'] );
 		$this->assert_same( 'tcg_store_platform', $audit['source_of_truth'] );
 	}
 
@@ -44,17 +52,20 @@ final class InventoryProductProjectionExecutorTest extends TestCase {
 		$this->assert_true( $result->is_skipped() );
 		$this->assert_same( 0, $result->operation_count() );
 		$this->assert_same( array(), $result->block_reasons() );
-		$this->assert_true( $result->audit_payload()['woocommerce_write_deferred'] );
+		$audit = $result->audit_payload();
+
+		$this->assert_true( $audit['woocommerce_write_deferred'] );
+		$this->assert_same( 'skipped', $audit['woocommerce_write_request_status'] );
 	}
 
 	public function test_executor_rejects_failed_projection_before_writer(): void {
-		$called                         = false;
-		$row                            = $this->available_row();
-		$row['sku']                     = '';
-		$row['barcode']                 = '';
-		$row['sale_price_minor_units']  = null;
-		$plan                           = ( new InventoryProductProjectionPlanner() )->plan_row( $row );
-		$result                         = ( new InventoryProductProjectionExecutor(
+		$called                        = false;
+		$row                           = $this->available_row();
+		$row['sku']                    = '';
+		$row['barcode']                = '';
+		$row['sale_price_minor_units'] = null;
+		$plan                          = ( new InventoryProductProjectionPlanner() )->plan_row( $row );
+		$result                        = ( new InventoryProductProjectionExecutor(
 			true,
 			function () use ( &$called ): array {
 				$called = true;
@@ -69,6 +80,31 @@ final class InventoryProductProjectionExecutorTest extends TestCase {
 		$this->assert_false( $called );
 		$this->assert_true( in_array( 'woocommerce_product_projection_plan_failed', $result->errors(), true ) );
 		$this->assert_true( in_array( 'barcode_or_sku_required', $result->errors(), true ) );
+		$this->assert_same( 'rejected', $result->audit_payload()['woocommerce_write_request_status'] );
+	}
+
+	public function test_executor_rejects_production_request_context_before_writer(): void {
+		$called = false;
+		$plan   = ( new InventoryProductProjectionPlanner() )->plan_row( $this->available_row() );
+		$result = ( new InventoryProductProjectionExecutor(
+			true,
+			function () use ( &$called ): array {
+				$called = true;
+
+				return array( 'status' => 'written' );
+			},
+			new InventoryProductWriteRequestPlanner(),
+			array( 'environment' => 'production' )
+		) )->execute( $plan );
+		$audit  = $result->audit_payload();
+
+		$this->assert_same( InventoryProductProjectionExecutionResult::STATUS_REJECTED, $result->status() );
+		$this->assert_false( $called );
+		$this->assert_true( in_array( 'woocommerce_product_write_request_rejected', $result->errors(), true ) );
+		$this->assert_true( in_array( 'woocommerce_product_write_non_production_environment_required', $result->errors(), true ) );
+		$this->assert_same( 'rejected', $audit['woocommerce_write_request_status'] );
+		$this->assert_same( array(), $audit['woocommerce_write_request_plan'] );
+		$this->assert_true( $audit['woocommerce_write_deferred'] );
 	}
 
 	public function test_executor_runs_enabled_projection_with_configured_writer(): void {
@@ -97,6 +133,8 @@ final class InventoryProductProjectionExecutorTest extends TestCase {
 		$this->assert_false( $audit['woocommerce_write_deferred'] );
 		$this->assert_true( $audit['production_woocommerce_write_deferred'] );
 		$this->assert_true( $audit['external_network_request_deferred'] );
+		$this->assert_same( 'ready', $audit['woocommerce_write_request_status'] );
+		$this->assert_same( '/wp-json/wc/v3/products', $audit['woocommerce_write_request_plan']['requests'][0]['path'] );
 		$this->assert_same( 'create_product', $audit['operation_results'][0]['operation'] );
 	}
 
@@ -115,6 +153,7 @@ final class InventoryProductProjectionExecutorTest extends TestCase {
 		$this->assert_true( in_array( 'woocommerce_product_writer_failed', $result->errors(), true ) );
 		$this->assert_same( array(), $result->product_ids() );
 		$this->assert_true( $audit['woocommerce_write_deferred'] );
+		$this->assert_same( 'ready', $audit['woocommerce_write_request_status'] );
 		$this->assert_same( 'failed', $audit['operation_results'][0]['status'] );
 	}
 
@@ -123,24 +162,24 @@ final class InventoryProductProjectionExecutorTest extends TestCase {
 	 */
 	private function available_row(): array {
 		return array(
-			'inventory_id'             => 42,
-			'public_id'                => 'card-public-42',
-			'game'                     => 'pokemon',
-			'card_name'                => 'Charizard',
-			'set_name'                 => 'Base Set',
-			'set_code'                 => 'BASE',
-			'card_number'              => '4',
-			'rarity'                   => 'Rare Holo',
-			'finish'                   => 'Holo',
-			'condition_code'           => 'NM',
-			'raw_or_graded'            => 'raw',
-			'barcode'                  => 'PKM-BASE-004-HOLO',
-			'sku'                      => 'PKM-BASE-004-HOLO',
-			'sale_price_minor_units'   => 12500,
-			'sale_currency'            => 'USD',
-			'status'                   => 'available',
-			'online_visibility'        => 'visible',
-			'row_version'              => 7,
+			'inventory_id'           => 42,
+			'public_id'              => 'card-public-42',
+			'game'                   => 'pokemon',
+			'card_name'              => 'Charizard',
+			'set_name'               => 'Base Set',
+			'set_code'               => 'BASE',
+			'card_number'            => '4',
+			'rarity'                 => 'Rare Holo',
+			'finish'                 => 'Holo',
+			'condition_code'         => 'NM',
+			'raw_or_graded'          => 'raw',
+			'barcode'                => 'PKM-BASE-004-HOLO',
+			'sku'                    => 'PKM-BASE-004-HOLO',
+			'sale_price_minor_units' => 12500,
+			'sale_currency'          => 'USD',
+			'status'                 => 'available',
+			'online_visibility'      => 'visible',
+			'row_version'            => 7,
 		);
 	}
 }

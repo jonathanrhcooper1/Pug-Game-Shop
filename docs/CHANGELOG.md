@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WooCommerce product write request readiness wiring across guarded projection
+  execution, staged inventory create metadata, dependency health/admin
+  summaries, and Staff Inventory workspace rows, including production-context
+  rejection before writer callbacks.
 - WooCommerce product write request planner that converts serialized-card
   product projection operations into non-production create/update/stockout
   request envelopes while keeping product writes and payment capture deferred.

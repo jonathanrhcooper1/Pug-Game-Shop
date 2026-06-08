@@ -127,6 +127,10 @@ staging database acceptance remains pending.
   including non-production create/update/stockout request envelopes,
   idempotency keys, product IDs/SKUs for review, and continued product-write,
   Square, and payment-capture deferrals.
+- WooCommerce product write request readiness wiring across guarded projection
+  execution, staged inventory create response metadata, dependency
+  health/admin summaries, and the Staff Inventory workspace, with production
+  request-context rejection before any product writer callback can run.
 - Guarded WooCommerce product projection execution for staging-only adapter
   handoff, including default lockout, explicit execution requirements,
   skipped/failed projection handling, writer failure rejection, audit-safe

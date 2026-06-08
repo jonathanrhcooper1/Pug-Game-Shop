@@ -3,6 +3,82 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - WooCommerce Write Request Readiness Wiring
+
+### What Changed
+
+- Wired WooCommerce product write request planning into guarded product
+  projection execution.
+- Added production request-context rejection before any WooCommerce product
+  writer callback can run.
+- Added write-request status, environment, request envelopes, idempotency keys,
+  product IDs/SKUs, and errors to WooCommerce projection execution audits.
+- Added WooCommerce write request metadata to staged inventory create
+  responses after local database insert.
+- Surfaced WooCommerce write request planner readiness in inventory dependency
+  health/admin summaries and the Staff Inventory workspace.
+- Added unit coverage for executor request-plan audits, production-context
+  rejection, intake response metadata, dependency readiness, and admin rows.
+
+### Why
+
+WooCommerce product payloads and request envelopes should now be visible in
+the card-management workflow, but real product creation/update must remain
+gated until staging review is complete. This revision makes the next
+WooCommerce action auditable without opening production writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutor.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- WooCommerce projection executor coverage for write request audit metadata.
+- Production request-context rejection coverage proving writer callbacks are
+  not called.
+- Staged inventory create response coverage for WooCommerce write request
+  envelopes.
+- Inventory dependency and admin workspace coverage for write request planner
+  readiness.
+
+### Tests Run
+
+- `php tests\run.php --filter InventoryProductProjectionExecutorTest --filter InventoryIntakeRouteHandlerFactoryTest --filter InventoryRouteDependencyFactoryTest --filter InventoryWorkspacePresenterTest`
+  from `apps/wordpress-plugin`: passed; the local runner executed the full
+  799-test suite.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductProjectionExecutor.php src\WooCommerce\InventoryProductProjectionExecutionResult.php src\Api\V1\InventoryIntakeRouteHandler.php src\Api\V1\InventoryIntakeRouteHandlerFactory.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php src\Admin\InventoryWorkspacePresenter.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove WooCommerce write request readiness wiring
+  from execution audits, inventory create metadata, and admin/dependency
+  summaries.
+- No schema rollback, WooCommerce product cleanup, Square cleanup, or payment
+  cleanup is required because no live product writes, provider writes, network
+  requests, migrations, or payment actions were enabled.
+
 ## 2026-06-07 - WooCommerce Product Write Request Planning
 
 ### What Changed

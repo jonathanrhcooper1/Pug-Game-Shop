@@ -123,6 +123,10 @@
   for serialized-card create/update/stockout envelopes, non-production
   environment gating, idempotency keys, product IDs/SKUs, and continued
   product-write/payment/Square deferrals.
+- Local unit coverage now includes WooCommerce write request readiness wiring
+  through guarded projection execution, staged inventory create metadata,
+  dependency health/admin summaries, Staff Inventory workspace rows, and
+  production request-context rejection before writer callbacks.
 - Local unit coverage now includes inventory route runtime settings,
   staging-only staff search/create route contract configuration, and dependency
   factory proof that staff inventory search and create routes register only

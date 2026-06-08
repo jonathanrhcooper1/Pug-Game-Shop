@@ -38,6 +38,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 'deferred', $index['Projection planning']['status'] );
 		$this->assert_contains( 'waiting for staged inventory create handler', $index['Projection planning']['notes'] );
 		$this->assert_same( 'Deferred', $index['WooCommerce projection']['value'] );
+		$this->assert_contains( 'write request planner staged', $index['WooCommerce projection']['notes'] );
 		$this->assert_same( 'Deferred', $index['Square projection']['value'] );
 		$this->assert_contains( 'sync request planner staged', $index['Square projection']['notes'] );
 		$this->assert_same( 'Delegated to WooCommerce Square', $index['Square payments']['value'] );
@@ -56,21 +57,22 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 			),
 			array(
 				'inventory_search_route_handler_factory_ready' => true,
-				'inventory_search_route_handler_ready'         => true,
-				'inventory_search_route_reads_deferred'        => false,
+				'inventory_search_route_handler_ready'   => true,
+				'inventory_search_route_reads_deferred'  => false,
 				'inventory_intake_route_handler_factory_ready' => true,
-				'inventory_intake_route_handler_ready'         => true,
-				'inventory_intake_route_writes_deferred'       => false,
-				'woocommerce_projection_planner_ready'         => true,
-				'square_inventory_projection_planner_ready'    => true,
-				'square_inventory_sync_request_planner_ready'  => true,
-				'external_projection_planning_deferred'        => false,
-				'public_read_routes_enabled'                   => false,
-				'public_read_permission_callbacks_configured'  => false,
-				'capability_permission_callbacks_configured'   => true,
-				'woocommerce_projection_deferred'              => true,
-				'square_inventory_projection_deferred'         => true,
-				'label_print_deferred'                         => true,
+				'inventory_intake_route_handler_ready'   => true,
+				'inventory_intake_route_writes_deferred' => false,
+				'woocommerce_projection_planner_ready'   => true,
+				'woocommerce_product_write_request_planner_ready' => true,
+				'square_inventory_projection_planner_ready' => true,
+				'square_inventory_sync_request_planner_ready' => true,
+				'external_projection_planning_deferred'  => false,
+				'public_read_routes_enabled'             => false,
+				'public_read_permission_callbacks_configured' => false,
+				'capability_permission_callbacks_configured' => true,
+				'woocommerce_projection_deferred'        => true,
+				'square_inventory_projection_deferred'   => true,
+				'label_print_deferred'                   => true,
 			)
 		);
 		$index     = $this->rows_by_label( $rows );
@@ -79,6 +81,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 'ready', $index['Projection planning']['status'] );
 		$this->assert_contains( 'contracts planned', $index['Projection planning']['notes'] );
 		$this->assert_same( 'Deferred', $index['WooCommerce projection']['value'] );
+		$this->assert_contains( 'write request planner staged', $index['WooCommerce projection']['notes'] );
 		$this->assert_same( 'Deferred', $index['Square projection']['value'] );
 		$this->assert_contains( 'sync request planner staged', $index['Square projection']['notes'] );
 		$this->assert_same( 'Delegated to WooCommerce Square', $index['Square payments']['value'] );
@@ -237,22 +240,22 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 				'feature_enabled'            => true,
 				'route_registration_summary' => array(
 					'POST /inventory' => array(
-						'should_register'                    => true,
-						'route_connected_writes_deferred'    => false,
-						'woocommerce_projection_deferred'    => true,
+						'should_register'                 => true,
+						'route_connected_writes_deferred' => false,
+						'woocommerce_projection_deferred' => true,
 						'square_inventory_projection_deferred' => true,
-						'label_print_deferred'               => true,
-						'registration_block_reasons'         => array(),
+						'label_print_deferred'            => true,
+						'registration_block_reasons'      => array(),
 					),
 				),
 			),
 			array(
-				'inventory_intake_route_handler_ready'      => true,
-				'inventory_intake_route_writes_deferred'    => false,
-				'inventory_intake_route_dependency_issues'  => array(),
-				'square_inventory_projection_deferred'      => true,
-				'woocommerce_projection_deferred'           => true,
-				'label_print_deferred'                      => true,
+				'inventory_intake_route_handler_ready'     => true,
+				'inventory_intake_route_writes_deferred'   => false,
+				'inventory_intake_route_dependency_issues' => array(),
+				'square_inventory_projection_deferred'     => true,
+				'woocommerce_projection_deferred'          => true,
+				'label_print_deferred'                     => true,
 			),
 			array(
 				'game'                           => 'pokemon',
