@@ -28,6 +28,7 @@ try {
     applyOfflinePullCustomerCreditRecordsToCache,
     applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
+    buildEventRegistrationOperation,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
     {
@@ -329,6 +330,45 @@ try {
   assert.equal(insertedConflict.entityType, "event")
   assert.equal(insertedConflict.operationType, "event_reservation")
   assert.equal(insertedConflict.managerOverride, true)
+
+  const eventRegistrationOperation = buildEventRegistrationOperation(
+    {
+      eventId: "event-200",
+      rowVersion: 4,
+      title: "Commander Night",
+      startsAtUtc: "2026-06-12T23:00:00Z",
+      startsAtLabel: "Fri Jun 12, 7:00 PM",
+      registrationStatus: "open",
+      capacity: 24,
+      registeredCount: 23,
+      locationLabel: "Event Room",
+      note: "Cached event ready for offline registration.",
+    },
+    {
+      attendeeLabel: "Offline walk-in",
+      occurredAtLocal: "2026-06-08T08:00:00Z",
+      queuedAtUtc: "2026-06-08T12:00:00Z",
+      paymentStatus: "pay_at_store",
+    },
+  )
+  const eventRegistrationPayload = JSON.parse(eventRegistrationOperation.payload_json)
+  const eventRegistrationAuthorization = JSON.parse(
+    eventRegistrationOperation.authorization_context_json,
+  )
+
+  assert.equal(eventRegistrationOperation.client_operation_id, "offline-event-reservation-event-200-20260608120000")
+  assert.equal(eventRegistrationOperation.operation_type, "event_reservation")
+  assert.equal(eventRegistrationOperation.entity_type, "event")
+  assert.equal(eventRegistrationOperation.entity_id, "event-200")
+  assert.equal(eventRegistrationOperation.base_row_version, 4)
+  assert.equal(eventRegistrationPayload.event_id, "event-200")
+  assert.equal(eventRegistrationPayload.event_title, "Commander Night")
+  assert.equal(eventRegistrationPayload.registration_source, "walk_in")
+  assert.equal(eventRegistrationPayload.seats_remaining_snapshot, 1)
+  assert.equal(eventRegistrationPayload.payment_status, "pay_at_store")
+  assert.equal(eventRegistrationPayload.sync_intent, "offline_event_registration")
+  assert.equal(eventRegistrationAuthorization.manager_override, false)
+  assert.equal(eventRegistrationAuthorization.source, "offline_app")
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }

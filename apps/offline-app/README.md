@@ -18,7 +18,9 @@ future offline sync app.
   validation, live public manifest fetching/import for reusable company
   website profiles, local preview validation, pairing-code request preview,
   credential-free pairing route preflight, connector-aware guarded inventory
-  hold staging, per-company connector test reports, visible local queue rows,
+  hold staging, offline event registration/waitlist staging from cached event
+  snapshots, event queue preview, per-company connector test reports, visible
+  local queue rows,
   desktop SQLite queue restore, secret-free paired-device metadata restore,
   desktop secure-store token status reporting, guarded desktop pull/push sync
   execution summaries, conflict-review history, print-label job
@@ -27,7 +29,8 @@ future offline sync app.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
   WordPress connector manifests, plus SQLite-compatible staged operation
-  envelopes for inventory, customer credit, and conflict review workflows,
+  envelopes for inventory, event registration, customer credit, and conflict
+  review workflows,
   deferred pairing/push request plans, per-company route/canonical inventory
   write readiness, connector test reports, local pull-refresh previews, and
   response summaries for reconnect sync.
@@ -68,10 +71,11 @@ future offline sync app.
 
 The app now applies sanitized inventory rows, the active customer credit
 account, event snapshots, and conflict snapshots from successful live desktop
-pull responses into the local cache, but full customer-directory cache
-mutation, full event registration/check-in UI, conflict resolution replay/write
-back, printer/scanner adapters, kiosk lockdown, and signed updater behavior
-still need follow-on passes.
+pull responses into the local cache. Event walk-in registration and waitlist
+requests can be queued locally from cached event snapshots, but full
+customer-directory cache mutation, event check-in writeback, conflict
+resolution replay/writeback, printer/scanner adapters, kiosk lockdown, and
+signed updater behavior still need follow-on passes.
 Browser mode still previews queue persistence, while the desktop Tauri command
 now writes accepted operations to local SQLite and can run guarded authenticated
 pull/push requests when a paired device token exists.

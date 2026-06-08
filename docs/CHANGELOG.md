@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app now exposes cached event snapshots in an Events panel with
+  functional offline walk-in registration/waitlist staging, event queue
+  preview, local capacity updates, and `event_reservation` operation envelopes
+  aligned with the WordPress offline push contract.
 - Offline app desktop pull responses now expose bounded sanitized conflict
   snapshots and apply newer conflict rows into the local conflict panel with
   visible inserted/updated/stale counts in Sync Now.

@@ -4,6 +4,7 @@ export type IconName =
   | "queue"
   | "alert"
   | "customer"
+  | "event"
   | "settings"
   | "scan"
   | "wifi"
@@ -658,6 +659,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     { label: "Inventory", icon: "box", active: true },
     { label: "Sync", icon: "sync" },
     { label: "Queue", icon: "queue" },
+    { label: "Events", icon: "event" },
     { label: "Conflicts", icon: "alert" },
     { label: "Customers", icon: "customer" },
     { label: "Settings", icon: "settings" },
@@ -882,6 +884,10 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
 
 export function statusLabel(status: InventoryStatus) {
   return status === "available" ? "Available" : status === "reserved" ? "Reserved" : "Conflict"
+}
+
+export function eventRegistrationStatusLabel(status: EventRegistrationStatus) {
+  return status === "open" ? "Open" : status === "waitlist" ? "Waitlist" : status === "full" ? "Full" : "Closed"
 }
 
 export function formatMoney(minorUnits: number, currency: "USD") {
@@ -2492,6 +2498,54 @@ export function buildInventoryReservationOperation(
     }),
     authorization_context_json: JSON.stringify({
       manager_override: false,
+      source: "offline_app",
+    }),
+    schema_version: 1,
+  }
+}
+
+export function buildEventRegistrationOperation(
+  event: EventSnapshot,
+  options: {
+    actorId?: number
+    deviceId?: string
+    locationId?: number
+    occurredAtLocal?: string
+    queuedAtUtc?: string
+    attendeeLabel?: string
+    registrationSource?: "walk_in" | "phone" | "staff"
+    paymentStatus?: "not_required" | "pay_at_store"
+  } = {},
+): OfflineOperationEnvelope {
+  const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
+  const queuedAtUtc = options.queuedAtUtc ?? occurredAtLocal
+  const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+  const seatsRemaining = Math.max(0, event.capacity - event.registeredCount)
+
+  return {
+    client_operation_id: `offline-event-reservation-${event.eventId}-${operationStamp}`,
+    device_id: options.deviceId ?? "local-device-preview",
+    location_id: options.locationId ?? 1,
+    actor_id: options.actorId ?? 1,
+    operation_type: "event_reservation",
+    entity_type: "event",
+    entity_id: event.eventId,
+    base_row_version: event.rowVersion,
+    occurred_at_local: occurredAtLocal,
+    queued_at_utc: queuedAtUtc,
+    payload_json: JSON.stringify({
+      event_id: event.eventId,
+      event_title: event.title,
+      starts_at_utc: event.startsAtUtc,
+      attendee_label: options.attendeeLabel ?? "Offline walk-in",
+      registration_source: options.registrationSource ?? "walk_in",
+      registration_status_snapshot: event.registrationStatus,
+      seats_remaining_snapshot: seatsRemaining,
+      payment_status: options.paymentStatus ?? "not_required",
+      sync_intent: "offline_event_registration",
+    }),
+    authorization_context_json: JSON.stringify({
+      manager_override: event.registrationStatus === "full",
       source: "offline_app",
     }),
     schema_version: 1,

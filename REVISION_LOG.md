@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Event Registration Staging
+
+### What Changed
+
+- Added an Events section to the offline app navigation and workspace layout.
+- Added cached event rows with open/waitlist/full/closed status badges,
+  selected-event details, local capacity display, and event queue preview.
+- Added functional offline walk-in registration and waitlist staging actions.
+- Added a typed `event_reservation` operation builder for cached events with
+  event title, start time, registration source, seat snapshot, payment status,
+  and sync intent payload fields.
+- Updated local event snapshots optimistically after a staged registration so
+  staff can see pending local event work before reconnect sync.
+
+### Why
+
+Event snapshots could be pulled into the local app, but staff still had no
+functional event workflow button. This revision turns cached event data into a
+real local queue workflow while keeping WordPress capacity and registration
+acceptance authoritative at sync time.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for event registration UI markers.
+- Offline app behavior coverage for building `event_reservation` envelopes
+  from cached events with expected payload and authorization context fields.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the Events panel and event registration queue
+  action while keeping pulled event snapshot cache application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
 ## 2026-06-08 - Offline App Pull Conflict Cache Apply
 
 ### What Changed

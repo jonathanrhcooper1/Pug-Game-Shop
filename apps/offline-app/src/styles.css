@@ -497,6 +497,7 @@ h2 {
 .inventory-panel,
 .detail-panel,
 .queue-panel,
+.event-panel,
 .conflict-panel,
 .connector-panel,
 .credit-panel {
@@ -810,7 +811,8 @@ h2 {
   grid-template-areas:
     "inventory detail"
     "queue conflicts"
-    "connector conflicts"
+    "events conflicts"
+    "connector connector"
     "credit credit";
   align-items: start;
   gap: 14px;
@@ -838,6 +840,7 @@ h2 {
 }
 
 .queue-panel,
+.event-panel,
 .conflict-panel,
 .connector-panel,
 .credit-panel {
@@ -850,6 +853,15 @@ h2 {
   gap: 9px;
   padding: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), #f8f9f4);
+}
+
+.event-panel {
+  grid-area: events;
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 14px;
+  background: linear-gradient(180deg, #fffefe, #f6f8f5);
 }
 
 .conflict-panel {
@@ -973,6 +985,8 @@ h2 {
 .scanner-row button,
 .wide-action,
 .detail-actions button,
+.event-row-action,
+.event-detail-card button,
 .conflict-row button,
 .credit-actions button,
 .pairing-panel button,
@@ -995,6 +1009,7 @@ h2 {
 
 .scanner-row button .icon,
 .wide-action .icon,
+.event-detail-card button .icon,
 .credit-actions button .icon,
 .pairing-panel button .icon,
 .secondary-command .icon {
@@ -1502,6 +1517,153 @@ dd {
   font-size: 12px;
 }
 
+.event-list {
+  display: grid;
+  gap: 8px;
+}
+
+.event-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, auto);
+  gap: 8px;
+  align-items: stretch;
+  min-width: 0;
+  padding: 8px;
+  background: rgba(20, 23, 19, 0.055);
+  border: 1px solid rgba(20, 23, 19, 0.1);
+  border-radius: 8px;
+}
+
+.event-row.is-selected {
+  border-color: rgba(121, 215, 143, 0.42);
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.event-row-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 2px;
+  color: #172016;
+  text-align: left;
+  background: transparent;
+}
+
+.event-row-main strong,
+.event-row-main small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-row-main strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.event-row-main small {
+  color: #536253;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.event-status {
+  width: max-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  color: #172016;
+  background: rgba(121, 215, 143, 0.2);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.event-status.waitlist {
+  background: rgba(246, 199, 96, 0.24);
+}
+
+.event-status.full,
+.event-status.closed {
+  color: #7b332b;
+  background: rgba(240, 126, 103, 0.14);
+}
+
+.event-row-action {
+  min-width: 132px;
+}
+
+.event-row-action:disabled,
+.event-detail-card button:disabled {
+  color: rgba(20, 23, 19, 0.42);
+  background: rgba(20, 23, 19, 0.08);
+  border-color: rgba(20, 23, 19, 0.1);
+  cursor: not-allowed;
+}
+
+.event-detail-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto) auto auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  background:
+    linear-gradient(90deg, rgba(121, 215, 143, 0.12), rgba(119, 183, 255, 0.08)),
+    #fbfdf8;
+  border: 1px solid rgba(121, 215, 143, 0.2);
+  border-radius: 8px;
+}
+
+.event-detail-card div,
+.event-detail-card strong,
+.event-detail-card small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-detail-card strong {
+  color: #172016;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.event-detail-card small {
+  display: block;
+  margin-top: 3px;
+  color: #536253;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.event-queue-preview {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  background: rgba(119, 183, 255, 0.1);
+  border: 1px solid rgba(119, 183, 255, 0.22);
+  border-radius: 8px;
+}
+
+.event-queue-preview div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.event-queue-preview span {
+  color: #2e5576;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.event-queue-preview strong {
+  overflow-wrap: anywhere;
+  color: #172016;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
 .panel-empty {
   padding: 10px 0;
   color: #667466;
@@ -1934,6 +2096,7 @@ dd {
       "inventory"
       "detail"
       "queue"
+      "events"
       "conflicts"
       "connector"
       "credit";
@@ -2011,6 +2174,8 @@ dd {
   .desktop-sync-panel,
   .detail-panel,
   .detail-actions,
+  .event-row,
+  .event-detail-card,
   .connector-grid,
   .connector-editor,
   .connector-actions,

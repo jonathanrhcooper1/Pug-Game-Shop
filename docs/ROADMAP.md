@@ -186,6 +186,8 @@ plus sanitized desktop pull event snapshot extraction and local cache apply
 counts for newer server rows
 plus sanitized desktop pull conflict snapshot extraction and local conflict
 panel cache apply counts for newer server rows
+plus offline app event panel with cached event registration and waitlist
+operation staging
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview

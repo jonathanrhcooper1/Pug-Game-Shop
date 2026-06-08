@@ -30,6 +30,10 @@
   storage, local restore, desktop secure-store token status checks, Sync Now
   paired-token readiness fields, and UI markers proving raw tokens are not
   stored in browser storage or returned to React.
+- Offline app contract coverage now verifies cached event registration and
+  waitlist UI markers plus `event_reservation` operation envelopes for offline
+  walk-in registration, including payload sync intent, payment status, seat
+  snapshot, and secret-free authorization context.
 - Local unit coverage now includes offline route runtime settings, contract
   mutation, staging-only feature availability, runtime-aware bootstrap/health
   planning, and pairing-route registration readiness.

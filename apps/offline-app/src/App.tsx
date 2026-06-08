@@ -11,6 +11,7 @@ import {
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
   buildDevicePairingRequestBody,
+  buildEventRegistrationOperation,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
   applyOfflinePullConflictRecordsToCache,
@@ -45,6 +46,7 @@ import {
   restorePairedDeviceStorageSnapshot,
   restorePreparedPairingStorageSnapshot,
   restoreConnectorProfileStorageSnapshot,
+  eventRegistrationStatusLabel,
   statusLabel,
   summarizeOfflinePushResult,
   upsertConnectorProfile,
@@ -54,6 +56,7 @@ import {
   type ConnectorProfileDraft,
   type ConnectorProfileStorageRestoreResult,
   type DevicePairingRequestPlan,
+  type EventSnapshot,
   type IconName,
   type InventoryStatus,
   type OfflineOperationEnvelope,
@@ -214,6 +217,7 @@ function Icon({ name }: { name: AppIconName }) {
     queue: "M5 7h14M5 12h14M5 17h10",
     alert: "M12 4 3 20h18L12 4Zm0 5v5m0 3h.01",
     customer: "M16 19a4 4 0 0 0-8 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+    event: "M7 3v4M17 3v4M4 8h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm3 7h3m3 0h.01M9 16h.01M13 16h.01",
     settings:
       "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M4.2 6.2l2.1 2.1m11.4 7.4 2.1 2.1M3 12h3m12 0h3M4.2 17.8l2.1-2.1m11.4-7.4 2.1-2.1",
     scan: "M5 7V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4M8 12h8",
@@ -247,6 +251,7 @@ export function App() {
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
   const queuePanelRef = useRef<HTMLElement>(null)
+  const eventPanelRef = useRef<HTMLElement>(null)
   const conflictPanelRef = useRef<HTMLElement>(null)
   const creditPanelRef = useRef<HTMLElement>(null)
   const connectorPanelRef = useRef<HTMLElement>(null)
@@ -280,10 +285,13 @@ export function App() {
     offlineSessionStorage.queuedOperations,
   )
   const [pendingCreditMinorUnits, setPendingCreditMinorUnits] = useState(0)
+  const [pendingEventRegistrationIds, setPendingEventRegistrationIds] = useState<string[]>([])
   const [showCreditLedger, setShowCreditLedger] = useState(false)
+  const [showEventQueue, setShowEventQueue] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<string[]>([])
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(42)
+  const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
   const [activeSection, setActiveSection] = useState("Inventory")
   const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
@@ -385,6 +393,7 @@ export function App() {
     ? "available; device tokens can be persisted through the Tauri desktop secure-store commands"
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
+  const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
@@ -392,6 +401,11 @@ export function App() {
   const queueBadgeCount =
     workspace.queueItems.reduce((total, item) => total + item.count, 0) + queuedOperations.length
   const conflictBadgeCount = openConflicts.length
+  const queuedEventOperations = queuedOperations.filter(
+    (operation) => operation.operation_type === "event_reservation",
+  )
+  const eventBadgeCount = eventSnapshots.length + pendingEventRegistrationIds.length
+  const pendingEventRegistrationCount = pendingEventRegistrationIds.length
   const displayedCreditMinorUnits = Math.max(
     0,
     customerCredit.availableMinorUnits - pendingCreditMinorUnits,
@@ -612,6 +626,10 @@ export function App() {
       return queuePanelRef
     }
 
+    if (label === "Events") {
+      return eventPanelRef
+    }
+
     if (label === "Conflicts") {
       return conflictPanelRef
     }
@@ -783,6 +801,69 @@ export function App() {
             }
           : item,
       ),
+    )
+  }
+
+  async function handleEventRegistration(event: EventSnapshot | undefined = selectedEvent) {
+    if (!event) {
+      setActivityMessage({
+        title: "No event selected",
+        detail: "Pull event snapshots or select an event before staging an offline registration.",
+      })
+      return
+    }
+
+    if (event.registrationStatus === "closed" || event.registrationStatus === "full") {
+      setActivityMessage({
+        title: "Event registration blocked",
+        detail: `${event.title} is ${eventRegistrationStatusLabel(event.registrationStatus).toLowerCase()} in the local cache; sync latest event data before accepting another offline registration.`,
+      })
+      return
+    }
+
+    const waitlistIntent = event.registrationStatus === "waitlist"
+
+    await stageOfflineOperation(
+      buildEventRegistrationOperation(event, {
+        paymentStatus: "not_required",
+        registrationSource: "walk_in",
+      }),
+      waitlistIntent ? "Event waitlist staged" : "Event registration staged",
+      waitlistIntent
+        ? `${event.title} waitlist request is queued for ${activeProfile.companyName}; website capacity remains authoritative after sync acceptance.`
+        : `${event.title} walk-in registration is queued for ${activeProfile.companyName}; website capacity guard runs when the paired sync accepts the push.`,
+    )
+
+    setPendingEventRegistrationIds((eventIds) => [
+      event.eventId,
+      ...eventIds.filter((eventId) => eventId !== event.eventId),
+    ].slice(0, 8))
+    setShowEventQueue(true)
+    setActiveSection("Events")
+    setEventSnapshots((events) =>
+      events.map((item) => {
+        if (item.eventId !== event.eventId) {
+          return item
+        }
+
+        const nextRegisteredCount =
+          item.registrationStatus === "open"
+            ? Math.min(item.capacity, item.registeredCount + 1)
+            : item.registeredCount
+        const nextStatus =
+          item.registrationStatus === "open" && nextRegisteredCount >= item.capacity
+            ? "full"
+            : item.registrationStatus
+
+        return {
+          ...item,
+          registeredCount: nextRegisteredCount,
+          registrationStatus: nextStatus,
+          note: waitlistIntent
+            ? "Waitlist request queued locally; website capacity remains authoritative."
+            : "Offline walk-in registration queued locally; website capacity guard pending sync.",
+        }
+      }),
     )
   }
 
@@ -1712,6 +1793,7 @@ export function App() {
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
                 {item.label === "Queue" ? <strong>{queueBadgeCount}</strong> : null}
+                {item.label === "Events" ? <strong>{eventBadgeCount}</strong> : null}
                 {item.label === "Conflicts" ? <strong>{conflictBadgeCount}</strong> : null}
               </button>
             ))}
@@ -2249,6 +2331,112 @@ export function App() {
                 <Icon name="plus" />
                 <span>Stage New Update</span>
               </button>
+            </section>
+
+            <section className="event-panel" aria-label="Offline events" ref={eventPanelRef}>
+              <div className="section-heading">
+                <h2>Events</h2>
+                <span>{pendingEventRegistrationCount} queued</span>
+              </div>
+              <div className="event-list" aria-label="Cached event snapshots">
+                {eventSnapshots.map((event) => {
+                  const isSelected = selectedEvent?.eventId === event.eventId
+                  const isPending = pendingEventRegistrationIds.includes(event.eventId)
+                  const registrationBlocked =
+                    event.registrationStatus === "closed" || event.registrationStatus === "full"
+
+                  return (
+                    <article className={isSelected ? "event-row is-selected" : "event-row"} key={event.eventId}>
+                      <button
+                        className="event-row-main"
+                        type="button"
+                        onClick={() => {
+                          setSelectedEventId(event.eventId)
+                          setActiveSection("Events")
+                        }}
+                      >
+                        <span className={`event-status ${event.registrationStatus}`}>
+                          {eventRegistrationStatusLabel(event.registrationStatus)}
+                        </span>
+                        <strong>{event.title}</strong>
+                        <small>
+                          {event.startsAtLabel}; {event.locationLabel}
+                        </small>
+                        <small>
+                          {event.registeredCount}/{event.capacity} registered
+                          {isPending ? "; local registration queued" : ""}
+                        </small>
+                      </button>
+                      <button
+                        className="event-row-action"
+                        type="button"
+                        disabled={registrationBlocked}
+                        onClick={() => void handleEventRegistration(event)}
+                      >
+                        {event.registrationStatus === "waitlist" ? "Stage Waitlist" : "Register Offline"}
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+              {selectedEvent ? (
+                <div className="event-detail-card" aria-label="Selected event workflow">
+                  <div>
+                    <span className="micro-label">Selected event</span>
+                    <strong>{selectedEvent.title}</strong>
+                    <small>{selectedEvent.note}</small>
+                  </div>
+                  <div>
+                    <span className="micro-label">Capacity</span>
+                    <strong>
+                      {Math.max(0, selectedEvent.capacity - selectedEvent.registeredCount)} seat(s)
+                    </strong>
+                    <small>
+                      {eventRegistrationStatusLabel(selectedEvent.registrationStatus)}; website row
+                      version {selectedEvent.rowVersion}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={
+                      selectedEvent.registrationStatus === "closed" ||
+                      selectedEvent.registrationStatus === "full"
+                    }
+                    onClick={() => void handleEventRegistration(selectedEvent)}
+                  >
+                    <Icon name="event" />
+                    <span>
+                      {selectedEvent.registrationStatus === "waitlist"
+                        ? "Stage Waitlist"
+                        : "Register Walk-In"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEventQueue((shown) => !shown)
+                      setActiveSection("Events")
+                    }}
+                  >
+                    <Icon name="queue" />
+                    <span>Review Event Queue</span>
+                  </button>
+                </div>
+              ) : null}
+              {showEventQueue ? (
+                <div className="event-queue-preview" aria-label="Queued event operations">
+                  {queuedEventOperations.length > 0 ? (
+                    queuedEventOperations.slice(0, 4).map((operation) => (
+                      <div key={operation.client_operation_id}>
+                        <span>{operation.entity_id}</span>
+                        <strong>{operation.client_operation_id}</strong>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="panel-empty">No event registrations staged this session.</p>
+                  )}
+                </div>
+              ) : null}
             </section>
 
             <section className="conflict-panel" aria-label="Conflict review" ref={conflictPanelRef}>

@@ -57,6 +57,7 @@ for (const requiredExport of [
   "buildConnectorProfileFromDraft",
   "buildInventoryUpdateOperation",
   "buildInventoryReservationOperation",
+  "buildEventRegistrationOperation",
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
   "buildOfflinePushBatchPayload",
@@ -96,6 +97,7 @@ for (const requiredExport of [
   "upsertConnectorProfile",
   "filterInventoryItems",
   "findInventoryItem",
+  "eventRegistrationStatusLabel",
 ]) {
   assert.ok(workspaceSource.includes(requiredExport), `Missing workspace export: ${requiredExport}`)
 }
@@ -129,6 +131,11 @@ for (const marker of [
   "publicId",
   "inventory_reservation",
   "offline_inventory_reservation",
+  "offline_event_registration",
+  "event_title",
+  "registration_source",
+  "seats_remaining_snapshot",
+  "payment_status",
   "routeConnectedPushReady",
   "canonicalInventoryWritesEnabled",
   "canonical_inventory_execution_enabled",
@@ -247,6 +254,7 @@ assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
+assert.ok(appSource.includes("buildEventRegistrationOperation(event"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload("))
 assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.devicePublicId)"))
 assert.ok(appSource.includes("applyOfflinePullInventoryRecordsToCache("))
@@ -271,6 +279,8 @@ assert.ok(appSource.includes("pushSummary.canonical_inventory_writes_deferred"))
 assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
 assert.ok(appSource.includes("syncSessionPlan.push.canonical_inventory_writes_deferred"))
 assert.ok(appSource.includes("handleInventoryReservation"))
+assert.ok(appSource.includes("handleEventRegistration"))
+assert.ok(appSource.includes("eventRegistrationStatusLabel("))
 assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
 assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)"))
 assert.ok(appSource.includes("buildPairedDeviceStorageSnapshot(pairedDevices, connectorProfiles)"))
