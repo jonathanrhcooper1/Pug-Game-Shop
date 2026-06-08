@@ -19,7 +19,8 @@
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
 - Local verification now includes `cargo test` for the Tauri Rust command
-  scaffold on Windows when Rust/Cargo and the MSVC linker are installed.
+  SQLite queue persistence path on Windows when Rust/Cargo and the MSVC linker
+  are installed.
 - Local unit coverage now includes offline route runtime settings, contract
   mutation, staging-only feature availability, runtime-aware bootstrap/health
   planning, and pairing-route registration readiness.
@@ -108,6 +109,10 @@
 - Root offline app test coverage now also runs the Tauri Rust command tests
   through `scripts/run-offline-app-rust-tests.mjs`, which resolves the user
   Cargo path on Windows before invoking `cargo test`.
+- Tauri Rust command coverage now verifies local SQLite `operation_queue`
+  creation, accepted operation inserts, duplicate `client_operation_id`
+  idempotency, invalid payload rejection, unsupported operation rejection, and
+  no direct MySQL or network write behavior.
 - Offline app browser verification now covers the functional local-session
   controls at desktop width: stage inventory update, prepare print label,
   review/approve all conflicts into history, stage customer-credit use into a

@@ -475,6 +475,11 @@ and deferred network reachability before live pairing or push execution.
 refreshed inventory, customer-credit, event, and conflict row counts, records a
 future pull cursor, preserves queued operations for push acceptance, and keeps
 network execution plus device authorization headers deferred.
+The Tauri desktop command now persists accepted offline operation envelopes to
+the local `offline.sqlite` `operation_queue` table using an idempotent
+`client_operation_id` primary key. Browser mode remains preview-only, and queue
+replay, push execution, canonical WordPress mutations, and device-token network
+writes remain deferred until the paired-device route gates are enabled.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

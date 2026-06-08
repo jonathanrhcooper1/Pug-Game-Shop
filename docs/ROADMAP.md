@@ -118,6 +118,7 @@ plus pull cursor advancement planning
 plus pull cursor advance SQL planning
 plus pull cursor advance repository adaptation
 plus route-aware pull cursor advance provider
+plus desktop local SQLite operation-queue persistence
 plus premium offline app command-center UI refresh with project-local crest,
 desktop app chrome, no-horizontal-overflow screenshot QA, and local queue
 staging interaction verification

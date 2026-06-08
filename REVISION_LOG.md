@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App SQLite Queue Persistence
+
+### What Changed
+
+- Added `rusqlite` with bundled SQLite support to the Tauri app.
+- Changed the `queue_offline_operation` command from validation-only scaffold
+  to local SQLite persistence for accepted offline operation envelopes.
+- Added local `operation_queue` table creation and idempotent
+  `INSERT OR IGNORE` writes keyed by `client_operation_id`.
+- Extended the Tauri command response with database file and rows-affected
+  metadata while keeping queue replay, network push, and canonical WordPress
+  mutations deferred.
+
+### Why
+
+The offline app buttons need a real desktop queue boundary before reconnect
+sync can execute safely. This revision gives the desktop shell durable local
+operation persistence without enabling live website writes or direct MySQL
+access.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for WordPress.
+- The desktop command creates the local SQLite `operation_queue` table when
+  needed.
+
+### Tests Added
+
+- Rust command coverage now verifies accepted operation persistence, supported
+  operation types, duplicate `client_operation_id` idempotency, invalid payload
+  rejection, and unsupported operation rejection.
+- Offline app contract coverage now checks the SQLite dependency, table
+  creation SQL, database-file metadata, and rows-affected command metadata.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 5 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to return the desktop command to validation-only queue
+  planning.
+- Remove `rusqlite` from `Cargo.toml` and regenerate `Cargo.lock` if rolling
+  back.
+- Delete the local desktop `offline.sqlite` file only after exporting or
+  confirming no unresolved offline operations need recovery.
+
 ## 2026-06-08 - Offline App Local Rust Test Runner
 
 ### What Changed

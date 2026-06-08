@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app Tauri command persistence now writes accepted offline operation
+  envelopes into the local `offline.sqlite` `operation_queue` table with an
+  idempotent `client_operation_id` primary key, while browser mode, queue
+  replay, network push, and canonical WordPress mutations remain guarded.
 - Upload-only staging package transfer script for the WordPress plugin zip,
   gated by explicit staging SSH environment variables and confirmation, with a
   contract test and dry-run mode that verifies no plugin activation, active
