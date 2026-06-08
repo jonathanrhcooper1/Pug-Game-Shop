@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging Offline Pairing Smoke Runner
+
+### What Changed
+
+- Added `scripts/staging-run-offline-pairing-smoke.mjs` and `npm run
+  staging:offline-pairing-smoke`.
+- The smoke runner generates a one-time pairing code in memory, temporarily
+  enables the `offline_sync` feature flag and only the device-pairing route
+  gate, posts to `/wp-json/tcg-store/v1/offline/devices/register`, verifies a
+  one-time device token was returned, removes the smoke device row, restores
+  the previous pairing/route/feature settings, and removes the temporary
+  WP-CLI runner.
+- Output redacts pairing codes and device tokens, and explicitly reports that
+  pull, push, conflict routes, business-data writes, and production behavior
+  remain closed.
+
+### Why
+
+The project needed evidence that the standalone app can pair against staging
+through the actual public WordPress REST route, not only local unit tests and
+settings readiness. This adds an end-to-end proof while keeping the staging
+route gates temporary and reversible.
+
+### Files Affected
+
+- `scripts/staging-run-offline-pairing-smoke.mjs`
+- `scripts/tests/staging-offline-pairing-smoke-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `scripts/README.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for the staging pairing smoke npm script, dry
+  run metadata, environment gates, temporary pairing-only route enablement,
+  redacted one-time-token handling, smoke-device cleanup, gate restoration, and
+  no production/business-data writes.
+
+### Staging Verification
+
+- Ran `npm run staging:offline-pairing-smoke` against the GoDaddy staging URL.
+- The smoke temporarily enabled `offline_sync` and only
+  `POST /offline/devices/register`.
+- The public REST pairing request returned `offline_device_registered` with
+  response status `registered`, internal status code `201`, a 64-character
+  one-time token present, `first_sync_required = true`, and
+  `branding_sync_required = true`.
+- The smoke output redacted the generated pairing code and token.
+- Cleanup restored the previous gates, removed the temporary runner, and
+  deleted one smoke device row.
+- A post-cleanup public probe to `/offline/devices/register` returned
+  `404 rest_no_route`, confirming the pairing route closed again.
+- `npm run staging:route-check` still passed after the smoke.
+
+### Rollback Notes
+
+- Revert this revision to remove the smoke runner and contract.
+- If a smoke run is interrupted, run the script again or restore the
+  `offline_pairing_authorization`, `offline_route_runtime`, and
+  `offline_sync` feature flag settings from the temporary backup option named
+  in the failed run. Smoke device rows are keyed by `staging-smoke-*`
+  installation IDs and can be deleted from `tcg_offline_devices`.
+- No inventory, Square, payment, POS, ScryDex, customer credit, event, or
+  production rollback is required.
+
 ## 2026-06-08 - WordPress Admin Branding Visibility
 
 ### What Changed

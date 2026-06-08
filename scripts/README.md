@@ -16,3 +16,7 @@ fixture-generation scripts.
   pairing policy through a temporary stdin-fed WP-CLI runner, prints only
   redacted policy/route status, and keeps pull/push/conflict sync routes closed
   by default.
+- `npm run staging:offline-pairing-smoke` temporarily enables only the staging
+  pairing gate, posts a generated pairing request to the public REST route,
+  verifies one-time credential issuance without printing tokens, removes the
+  smoke device row, and restores the previous staging gates.

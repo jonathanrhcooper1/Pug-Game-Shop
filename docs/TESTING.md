@@ -43,6 +43,11 @@
   device-pairing route gating, and no device-token issuance, sync network
   requests, pull/push/conflict route enablement by default, or WordPress data
   writes.
+- `npm run staging:offline-pairing-smoke` now has packaging contract coverage
+  for a generated one-time pairing code, temporary `offline_sync` and
+  device-pairing route gates, public REST pairing request, redacted
+  one-time-token reporting, smoke-device cleanup, previous gate restoration,
+  and continued default closure of pull, push, and conflict routes.
 - Offline app contract coverage now verifies queue refresh and selective
   voiding controls: `Refresh Desktop Queue` calls the Tauri list command when
   available, and `Void Selected Operation` removes one selected operation while

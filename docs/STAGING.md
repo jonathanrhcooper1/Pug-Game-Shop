@@ -161,6 +161,29 @@ Optional environment variables:
 Use `npm run staging:configure-offline-pairing -- --status` for a redacted
 status check without changing settings.
 
+## Offline Pairing Smoke Runner
+
+After the staging plugin is active, run a temporary pairing proof before
+asking staff to pair the standalone app:
+
+```bash
+PUG_STAGING_SITE_URL=https://example-staging.test \
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_OFFLINE_PAIRING_SMOKE=run-staging-offline-pairing-smoke \
+npm run staging:offline-pairing-smoke
+```
+
+The smoke runner generates a one-time pairing code in memory, temporarily
+enables the `offline_sync` feature flag and only the device-pairing route gate,
+posts to `/wp-json/tcg-store/v1/offline/devices/register`, verifies a
+one-time device token was returned, deletes the smoke device row, restores the
+previous pairing/route/feature settings, removes the temporary runner, and
+prints only redacted status. It keeps pull, push, and conflict routes disabled
+by default and does not write inventory, customer credit, event, POS, payment,
+Square, ScryDex, or production data.
+
 ## Gated Inventory Smoke Runner
 
 Run the staged inventory route smoke test through WP-CLI after staging has the
