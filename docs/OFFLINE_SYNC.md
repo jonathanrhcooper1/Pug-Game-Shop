@@ -462,6 +462,11 @@ produce inspection-only guard templates. Inventory receives a guarded status
 update template, while event and customer-credit mutations receive lookup guard
 templates and keep registration, ledger, and repository execution
 deferred.
+The offline app now stages `inventory_reservation` hold operations with cached
+WordPress public inventory IDs and per-connector route/canonical write
+readiness. The staging connector keeps canonical inventory writes deferred by
+default, while non-production connectors can explicitly mark guarded holds as
+ready for future paired-device push execution.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

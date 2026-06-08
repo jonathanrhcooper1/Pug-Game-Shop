@@ -19,6 +19,7 @@ import {
   connectorStatusLabel,
   createEmptyConnectorProfileDraft,
   buildInventoryUpdateOperation,
+  buildInventoryReservationOperation,
   buildOfflineConnectorSyncSessionPlan,
   filterInventoryItems,
   findConnectorProfile,
@@ -314,6 +315,10 @@ export function App() {
   ) {
     const batch = buildOfflinePushBatchPayload([operation])
     const requestPlan = buildOfflinePushRequestPlan(batch)
+    const canonicalInventoryWritesReady =
+      activeProfile.wordpress.routeConnectedPushReady &&
+      activeProfile.wordpress.canonicalInventoryWritesEnabled &&
+      operation.operation_type === "inventory_reservation"
 
     setStagedOperation(operation)
     setStagedPushBatch(batch)
@@ -345,7 +350,10 @@ export function App() {
         },
         meta: {
           push_queue_replay_deferred: true,
-          push_canonical_mutations_deferred: true,
+          push_canonical_mutations_deferred: !canonicalInventoryWritesReady,
+          canonical_inventory_execution_enabled:
+            activeProfile.wordpress.canonicalInventoryWritesEnabled,
+          canonical_inventory_writes_deferred: !canonicalInventoryWritesReady,
         },
       }),
     )
@@ -405,6 +413,35 @@ export function App() {
         item.id === selectedItem.id
           ? {
               ...item,
+              source: "queued",
+            }
+          : item,
+      ),
+    )
+  }
+
+  async function handleInventoryReservation() {
+    if (selectedItem.status !== "available") {
+      setActivityMessage({
+        title: "Hold unavailable",
+        detail: `${selectedItem.cardName} is ${statusLabel(selectedItem.status).toLowerCase()} locally; choose an available item before staging a guarded hold.`,
+      })
+      return
+    }
+
+    await stageOfflineOperation(
+      buildInventoryReservationOperation(selectedItem),
+      "Inventory hold staged",
+      activeProfile.wordpress.canonicalInventoryWritesEnabled
+        ? `${selectedItem.cardName} hold is queued for ${activeProfile.companyName}; guarded website inventory execution is enabled for this connector after pairing.`
+        : `${selectedItem.cardName} hold is queued for ${activeProfile.companyName}; canonical inventory execution remains deferred for this connector.`,
+    )
+    setInventoryItems((items) =>
+      items.map((item) =>
+        item.id === selectedItem.id
+          ? {
+              ...item,
+              status: "reserved",
               source: "queued",
             }
           : item,
@@ -481,7 +518,7 @@ export function App() {
     setActiveSection("Settings")
     setActivityMessage({
       title: validation.status === "rejected" ? "Connector saved with issues" : "Connector profile saved",
-      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} and is saved locally for this device. Credentials are still server-side or desktop secure-store only.`,
+      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} and is saved locally for this device. Guarded inventory holds are ${profile.wordpress.canonicalInventoryWritesEnabled ? "enabled" : "deferred"}; credentials are still server-side or desktop secure-store only.`,
     })
   }
 
@@ -495,6 +532,13 @@ export function App() {
 
     if (operationsForSync.length > 0) {
       const batch = buildOfflinePushBatchPayload(operationsForSync)
+      const canonicalInventoryOperationCount = batch.operations.filter(
+        (operation) => operation.operation_type === "inventory_reservation",
+      ).length
+      const canonicalInventoryWritesReady =
+        activeProfile.wordpress.routeConnectedPushReady &&
+        activeProfile.wordpress.canonicalInventoryWritesEnabled &&
+        canonicalInventoryOperationCount > 0
 
       setStagedPushBatch(batch)
       setStagedPushRequest(buildOfflinePushRequestPlan(batch))
@@ -519,7 +563,10 @@ export function App() {
           },
           meta: {
             push_queue_replay_deferred: true,
-            push_canonical_mutations_deferred: true,
+            push_canonical_mutations_deferred: !canonicalInventoryWritesReady,
+            canonical_inventory_execution_enabled:
+              activeProfile.wordpress.canonicalInventoryWritesEnabled,
+            canonical_inventory_writes_deferred: !canonicalInventoryWritesReady,
           },
         }),
       )
@@ -538,7 +585,7 @@ export function App() {
       title: "Sync plan prepared",
       detail:
         operationsForSync.length > 0
-          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; pull/push network execution waits for device pairing approval.`
+          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"} and network execution waits for device pairing approval.`
           : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; network execution waits for pairing approval.`,
     })
   }
@@ -749,6 +796,19 @@ export function App() {
                 <small>{syncSessionPlan.push.url}</small>
               </div>
               <div>
+                <span className="micro-label">Inventory writes</span>
+                <strong>
+                  {syncSessionPlan.push.canonical_inventory_writes_deferred
+                    ? "Deferred"
+                    : "Guarded holds ready"}
+                </strong>
+                <small>
+                  {syncSessionPlan.push.canonical_inventory_operation_count} hold op(s);
+                  route {syncSessionPlan.push.route_connected_push_ready ? "ready" : "gated"};
+                  execution {syncSessionPlan.push.canonical_inventory_execution_enabled ? "enabled" : "off"}
+                </small>
+              </div>
+              <div>
                 <span className="micro-label">Pairing</span>
                 <strong>
                   {syncSessionPlan.prepared_pairing_available ? "Prepared locally" : "Required"}
@@ -939,6 +999,10 @@ export function App() {
               </div>
               <dl className="detail-list">
                 <div>
+                  <dt>Website ID</dt>
+                  <dd>{selectedItem.publicId}</dd>
+                </div>
+                <div>
                   <dt>Barcode</dt>
                   <dd>{selectedItem.barcode}</dd>
                 </div>
@@ -963,6 +1027,13 @@ export function App() {
                 >
                   <Icon name="upload" />
                   <span>Stage Inventory Update</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedItem.status !== "available"}
+                  onClick={() => void handleInventoryReservation()}
+                >
+                  Hold Item
                 </button>
                 <button
                   type="button"
@@ -994,7 +1065,7 @@ export function App() {
                     <strong>{stagedOperation.client_operation_id}</strong>
                     <small>
                       {stagedPushRequest && pushSummary
-                        ? `${queueTarget} insert planned; ${stagedPushRequest.method} ${stagedPushRequest.path.replace("/wp-json/tcg-store/v1", "")} deferred; ${pushSummary.status} preview.`
+                        ? `${queueTarget} insert planned; ${stagedPushRequest.method} ${stagedPushRequest.path.replace("/wp-json/tcg-store/v1", "")} deferred; ${pushSummary.status} preview; canonical inventory ${pushSummary.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
                         : stagedPushBatch
                           ? `Push batch ${stagedPushBatch.batch_id} ready after reconnect.`
                         : (queueSubmission?.message ?? "Ready for local queue handoff.")}
@@ -1126,6 +1197,18 @@ export function App() {
                   <small>{connectorHealth.restBasePath}; profiles saved locally</small>
                 </div>
                 <div>
+                  <span className="micro-label">Offline push</span>
+                  <strong>
+                    {connectorHealth.canonicalInventoryWritesEnabled
+                      ? "Guarded holds enabled"
+                      : "Canonical holds deferred"}
+                  </strong>
+                  <small>
+                    Route {connectorHealth.routeConnectedPushReady ? "ready" : "gated"};
+                    writes {connectorHealth.canonicalInventoryWritesDeferred ? "deferred" : "enabled"}
+                  </small>
+                </div>
+                <div>
                   <span className="micro-label">Square</span>
                   <strong>Inventory pulls from plugin</strong>
                   <small>Payments stay in WooCommerce Square</small>
@@ -1233,6 +1316,22 @@ export function App() {
                     }
                     placeholder="Configured in WordPress"
                   />
+                </label>
+                <label className="toggle-field">
+                  <input
+                    type="checkbox"
+                    checked={connectorDraft.canonicalInventoryWritesEnabled}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        canonicalInventoryWritesEnabled: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    <strong>Guarded inventory holds</strong>
+                    <small>Staging route-connected canonical execution</small>
+                  </span>
                 </label>
               </div>
               {connectorDraftIssues.length > 0 ? (

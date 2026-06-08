@@ -33,6 +33,10 @@ All notable changes follow Semantic Versioning.
   mutation execution gates are explicitly enabled, exposing execution status,
   rows affected, operation IDs, and deferral state in responses, meta, and
   audit payloads.
+- Offline app connector profiles now expose route-connected guarded inventory
+  hold readiness per company/site, and `Hold Item` stages a WordPress public-ID
+  `inventory_reservation` operation while staging keeps canonical writes
+  deferred unless the selected non-production connector enables them.
 - Gated live ScryDex smoke helper for read-only card-search verification,
   requiring explicit environment confirmation and reporting only sanitized
   status/count/first-card metadata without writing WordPress data or printing

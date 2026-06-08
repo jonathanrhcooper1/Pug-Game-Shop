@@ -39,6 +39,7 @@ for (const requiredExport of [
   "connectorProfileDraftFromProfile",
   "buildConnectorProfileFromDraft",
   "buildInventoryUpdateOperation",
+  "buildInventoryReservationOperation",
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
   "buildOfflinePushBatchPayload",
@@ -94,6 +95,16 @@ for (const marker of [
   "operationKind?: \"scan\" | \"quantity\" | \"update\"",
   "quantity_delta",
   "adjustment_reason",
+  "publicId",
+  "inventory_reservation",
+  "offline_inventory_reservation",
+  "routeConnectedPushReady",
+  "canonicalInventoryWritesEnabled",
+  "canonical_inventory_execution_enabled",
+  "canonical_inventory_operation_count",
+  "canonical_inventory_writes_deferred",
+  "Production connectors cannot enable canonical inventory writes from the local profile.",
+  "Canonical inventory writes require the route-connected push handler.",
   "payload: parseJsonObject(operation.payload_json)",
   "authorization_context: parseJsonObject(operation.authorization_context_json)",
   "network_request_deferred: true",
@@ -160,6 +171,7 @@ for (const marker of [
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
+assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
@@ -168,7 +180,10 @@ assert.ok(appSource.includes("stagedOperation.client_operation_id"))
 assert.ok(appSource.includes("stagedPushBatch.batch_id"))
 assert.ok(appSource.includes("stagedPushRequest.method"))
 assert.ok(appSource.includes("pushSummary.status"))
+assert.ok(appSource.includes("pushSummary.canonical_inventory_writes_deferred"))
 assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
+assert.ok(appSource.includes("syncSessionPlan.push.canonical_inventory_writes_deferred"))
+assert.ok(appSource.includes("handleInventoryReservation"))
 assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
 assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)"))
 assert.ok(appSource.includes("restoreOfflineSessionStorageSnapshot("))

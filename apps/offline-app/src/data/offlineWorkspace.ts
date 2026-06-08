@@ -24,6 +24,7 @@ export type NavItem = {
 
 export type InventoryItem = {
   id: number
+  publicId: string
   rowVersion: number
   cardName: string
   setName: string
@@ -90,6 +91,8 @@ export type StoreConnectorProfile = {
     credentialStorage: "desktop_secure_store"
     devicePairingRequired: boolean
     networkRequestsDeferred: true
+    routeConnectedPushReady: boolean
+    canonicalInventoryWritesEnabled: boolean
   }
   square: {
     inventoryAuthority: "tcg_store_platform"
@@ -111,6 +114,7 @@ export type ConnectorProfileDraft = {
   siteUrl: string
   environment: ConnectorEnvironment
   scrydexTeamLabel: string
+  canonicalInventoryWritesEnabled: boolean
 }
 
 export type ConnectorProfileDraftResult = {
@@ -210,6 +214,10 @@ export type OfflineConnectorManifest = {
     credential_storage: "desktop_secure_store"
     network_requests_deferred: boolean
     route_registration_deferred: boolean
+    route_connected_push_ready: boolean
+    canonical_inventory_operation_count: number
+    canonical_inventory_execution_enabled: boolean
+    canonical_inventory_writes_deferred: boolean
     https_required_for_remote_pairing: boolean
   }
   offline_routes: OfflineConnectorRouteManifest[]
@@ -311,6 +319,9 @@ export type OfflineConnectorSyncSessionPlan = {
     url: string
     network_request_deferred: true
     device_authorization_header_deferred: true
+    route_connected_push_ready: boolean
+    canonical_inventory_execution_enabled: boolean
+    canonical_inventory_writes_deferred: boolean
   }
   push: {
     method: "POST"
@@ -341,6 +352,8 @@ export type OfflinePushResultSummary = {
   server_time_utc: string
   push_queue_replay_deferred: boolean
   push_canonical_mutations_deferred: boolean
+  canonical_inventory_execution_enabled: boolean
+  canonical_inventory_writes_deferred: boolean
 }
 
 export type DevicePairingRequestPlan = {
@@ -441,6 +454,8 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
         credentialStorage: "desktop_secure_store",
         devicePairingRequired: true,
         networkRequestsDeferred: true,
+        routeConnectedPushReady: true,
+        canonicalInventoryWritesEnabled: false,
       },
       square: {
         inventoryAuthority: "tcg_store_platform",
@@ -468,6 +483,8 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
         credentialStorage: "desktop_secure_store",
         devicePairingRequired: true,
         networkRequestsDeferred: true,
+        routeConnectedPushReady: true,
+        canonicalInventoryWritesEnabled: true,
       },
       square: {
         inventoryAuthority: "tcg_store_platform",
@@ -496,6 +513,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   inventoryItems: [
     {
       id: 42,
+      publicId: "inv-1001",
       rowVersion: 12,
       cardName: "Charizard",
       setName: "Base Set",
@@ -511,6 +529,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     },
     {
       id: 87,
+      publicId: "inv-1002",
       rowVersion: 8,
       cardName: "Pikachu",
       setName: "Jungle",
@@ -526,6 +545,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     },
     {
       id: 118,
+      publicId: "inv-1003",
       rowVersion: 17,
       cardName: "Umbreon V",
       setName: "Evolving Skies",
@@ -541,6 +561,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     },
     {
       id: 151,
+      publicId: "inv-1004",
       rowVersion: 4,
       cardName: "Mox Amber",
       setName: "Dominaria",
@@ -566,7 +587,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       detail: "Local scan says MTG Tray; website snapshot says Sold.",
       action: "Review",
       entityType: "inventory",
-      entityId: "151",
+      entityId: "inv-1004",
       baseRowVersion: 17,
       operationType: "inventory_update",
       managerOverride: false,
@@ -636,6 +657,7 @@ export function createEmptyConnectorProfileDraft(): ConnectorProfileDraft {
     siteUrl: "",
     environment: "staging",
     scrydexTeamLabel: "Configured in WordPress",
+    canonicalInventoryWritesEnabled: false,
   }
 }
 
@@ -649,6 +671,7 @@ export function connectorProfileDraftFromProfile(
     siteUrl: connectorDisplayUrl(profile),
     environment: profile.environment,
     scrydexTeamLabel: profile.scrydex.teamLabel,
+    canonicalInventoryWritesEnabled: profile.wordpress.canonicalInventoryWritesEnabled,
   }
 }
 
@@ -660,6 +683,8 @@ export function buildConnectorProfileFromDraft(
   const companyShortName = draft.companyShortName.trim() || companyName
   const scrydexTeamLabel = draft.scrydexTeamLabel.trim() || "Configured in WordPress"
   const environment = cleanConnectorEnvironment(draft.environment)
+  const canonicalInventoryWritesEnabled =
+    environment !== "production" && draft.canonicalInventoryWritesEnabled
   const site = parseConnectorSiteInput(draft.siteUrl)
 
   if (!companyName) {
@@ -681,6 +706,10 @@ export function buildConnectorProfileFromDraft(
     issues.push("Production connectors require HTTPS before pairing.")
   }
 
+  if (environment === "production" && draft.canonicalInventoryWritesEnabled) {
+    issues.push("Production connectors cannot enable canonical inventory writes from the local profile.")
+  }
+
   return {
     profile: {
       id: safeConnectorId(draft.id ?? "", companyName, environment, site.host),
@@ -696,6 +725,8 @@ export function buildConnectorProfileFromDraft(
         credentialStorage: "desktop_secure_store",
         devicePairingRequired: true,
         networkRequestsDeferred: true,
+        routeConnectedPushReady: true,
+        canonicalInventoryWritesEnabled,
       },
       square: {
         inventoryAuthority: "tcg_store_platform",
@@ -942,6 +973,9 @@ export function connectorHealthSummary(profile: StoreConnectorProfile) {
     paymentAuthority: profile.square.paymentAuthority,
     squareInventoryAuthority: profile.square.inventoryAuthority,
     networkRequestsDeferred: profile.wordpress.networkRequestsDeferred,
+    routeConnectedPushReady: profile.wordpress.routeConnectedPushReady,
+    canonicalInventoryWritesEnabled: profile.wordpress.canonicalInventoryWritesEnabled,
+    canonicalInventoryWritesDeferred: !profile.wordpress.canonicalInventoryWritesEnabled,
     providerWritesDeferred: profile.square.providerWritesDeferred,
     scrydexCredentialStorage: profile.scrydex.credentialStorage,
     secretsSyncedToApp: profile.scrydex.credentialsSyncedToApp,
@@ -1013,6 +1047,9 @@ export function buildConnectorManifestPreview(
       credential_storage: profile.wordpress.credentialStorage,
       network_requests_deferred: profile.wordpress.networkRequestsDeferred,
       route_registration_deferred: true,
+      route_connected_push_ready: profile.wordpress.routeConnectedPushReady,
+      canonical_inventory_execution_enabled: profile.wordpress.canonicalInventoryWritesEnabled,
+      canonical_inventory_writes_deferred: !profile.wordpress.canonicalInventoryWritesEnabled,
       https_required_for_remote_pairing: true,
     },
     offline_routes: routes,
@@ -1082,6 +1119,20 @@ export function validateConnectorManifest(
     issues.push("Device credentials must be stored in the desktop secure store.")
   }
 
+  if (
+    manifest.wordpress.canonical_inventory_execution_enabled &&
+    !manifest.wordpress.route_connected_push_ready
+  ) {
+    issues.push("Canonical inventory writes require the route-connected push handler.")
+  }
+
+  if (
+    manifest.environment === "production" &&
+    manifest.wordpress.canonical_inventory_execution_enabled
+  ) {
+    issues.push("Production connectors cannot enable canonical inventory writes from the local profile.")
+  }
+
   if (manifest.square.payment_authority !== "official_woocommerce_square_extension") {
     issues.push("Square payment authority must stay with the official WooCommerce Square extension.")
   }
@@ -1112,6 +1163,14 @@ export function validateConnectorManifest(
     manifest.scrydex.credentials_synced_to_app !== false ||
     manifest.wordpress.auth_mode !== "offline_device_token" ||
     manifest.wordpress.credential_storage !== "desktop_secure_store" ||
+    (
+      manifest.wordpress.canonical_inventory_execution_enabled &&
+      !manifest.wordpress.route_connected_push_ready
+    ) ||
+    (
+      manifest.environment === "production" &&
+      manifest.wordpress.canonical_inventory_execution_enabled
+    ) ||
     manifest.square.payment_authority !== "official_woocommerce_square_extension"
   const status = rejected ? "rejected" : issues.length > 0 || manifest.status === "degraded" ? "warning" : "accepted"
   const profile = connectorProfileFromManifest(manifest, site)
@@ -1202,7 +1261,7 @@ export function filterInventoryItems(
         return true
       }
 
-      return [item.cardName, item.setName, item.barcode, item.location]
+      return [item.cardName, item.setName, item.barcode, item.publicId, item.location]
         .join(" ")
         .toLowerCase()
         .includes(normalized)
@@ -1239,6 +1298,11 @@ function connectorProfileFromManifest(
       credentialStorage: "desktop_secure_store",
       devicePairingRequired: manifest.wordpress.device_pairing_required,
       networkRequestsDeferred: true,
+      routeConnectedPushReady: manifest.wordpress.route_connected_push_ready !== false,
+      canonicalInventoryWritesEnabled:
+        environment !== "production" &&
+        manifest.wordpress.route_connected_push_ready !== false &&
+        manifest.wordpress.canonical_inventory_execution_enabled,
     },
     square: {
       inventoryAuthority: "tcg_store_platform",
@@ -1345,6 +1409,11 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
 
     const scheme = profile.wordpress.scheme === "http" ? "http" : "https"
     const environment = cleanConnectorEnvironment(profile.environment)
+    const routeConnectedPushReady = true
+    const canonicalInventoryWritesEnabled =
+      environment !== "production" &&
+      routeConnectedPushReady &&
+      profile.wordpress.canonicalInventoryWritesEnabled === true
 
     safeProfiles.push({
       ...profile,
@@ -1359,6 +1428,8 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
         credentialStorage: "desktop_secure_store",
         devicePairingRequired: true,
         networkRequestsDeferred: true,
+        routeConnectedPushReady,
+        canonicalInventoryWritesEnabled,
       },
       square: {
         ...profile.square,
@@ -1549,7 +1620,7 @@ export function buildInventoryUpdateOperation(
     actor_id: options.actorId ?? 1,
     operation_type: "inventory_update",
     entity_type: "inventory",
-    entity_id: String(item.id),
+    entity_id: item.publicId,
     base_row_version: item.rowVersion,
     occurred_at_local: occurredAtLocal,
     queued_at_utc: queuedAtUtc,
@@ -1561,6 +1632,46 @@ export function buildInventoryUpdateOperation(
       sync_intent: options.syncIntent ?? "staff_inventory_update",
       ...(typeof options.quantityDelta === "number" ? { quantity_delta: options.quantityDelta } : {}),
       ...(options.adjustmentReason ? { adjustment_reason: options.adjustmentReason } : {}),
+    }),
+    authorization_context_json: JSON.stringify({
+      manager_override: false,
+      source: "offline_app",
+    }),
+    schema_version: 1,
+  }
+}
+
+export function buildInventoryReservationOperation(
+  item: InventoryItem,
+  options: {
+    actorId?: number
+    deviceId?: string
+    locationId?: number
+    occurredAtLocal?: string
+    queuedAtUtc?: string
+    holdReason?: string
+  } = {},
+): OfflineOperationEnvelope {
+  const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
+  const queuedAtUtc = options.queuedAtUtc ?? occurredAtLocal
+  const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+
+  return {
+    client_operation_id: `offline-inventory-reservation-${item.publicId}-${operationStamp}`,
+    device_id: options.deviceId ?? "local-device-preview",
+    location_id: options.locationId ?? 1,
+    actor_id: options.actorId ?? 1,
+    operation_type: "inventory_reservation",
+    entity_type: "inventory",
+    entity_id: item.publicId,
+    base_row_version: item.rowVersion,
+    occurred_at_local: occurredAtLocal,
+    queued_at_utc: queuedAtUtc,
+    payload_json: JSON.stringify({
+      barcode: item.barcode,
+      localStatus: "offline_pending_sync",
+      sync_intent: "offline_inventory_reservation",
+      hold_reason: options.holdReason ?? "staff offline hold",
     }),
     authorization_context_json: JSON.stringify({
       manager_override: false,
@@ -1707,6 +1818,12 @@ export function buildOfflineConnectorSyncSessionPlan(
 ): OfflineConnectorSyncSessionPlan {
   const pushBatchId = batch?.batch_id ?? "no-local-operations"
   const operationCount = batch?.operations.length ?? 0
+  const canonicalInventoryOperationCount =
+    batch?.operations.filter((operation) => operation.operation_type === "inventory_reservation").length ?? 0
+  const canonicalInventoryWritesReady =
+    profile.wordpress.routeConnectedPushReady &&
+    profile.wordpress.canonicalInventoryWritesEnabled &&
+    canonicalInventoryOperationCount > 0
 
   return {
     action: "offline_connector_sync_session_plan",
@@ -1730,6 +1847,10 @@ export function buildOfflineConnectorSyncSessionPlan(
       operation_count: operationCount,
       network_request_deferred: true,
       device_authorization_header_deferred: true,
+      route_connected_push_ready: profile.wordpress.routeConnectedPushReady,
+      canonical_inventory_operation_count: canonicalInventoryOperationCount,
+      canonical_inventory_execution_enabled: profile.wordpress.canonicalInventoryWritesEnabled,
+      canonical_inventory_writes_deferred: !canonicalInventoryWritesReady,
     },
     prepared_pairing_available: preparedPairingRequest?.profileId === profile.id,
     pairing_code_fingerprint:
@@ -1773,6 +1894,14 @@ export function summarizeOfflinePushResult(response: Record<string, unknown>): O
     server_time_utc: stringValue(data.server_time_utc),
     push_queue_replay_deferred: booleanValue(meta.push_queue_replay_deferred, true),
     push_canonical_mutations_deferred: booleanValue(meta.push_canonical_mutations_deferred, true),
+    canonical_inventory_execution_enabled: booleanValue(
+      meta.canonical_inventory_execution_enabled,
+      !booleanValue(meta.push_canonical_mutations_deferred, true),
+    ),
+    canonical_inventory_writes_deferred: booleanValue(
+      meta.canonical_inventory_writes_deferred,
+      booleanValue(meta.push_canonical_mutations_deferred, true),
+    ),
   }
 }
 

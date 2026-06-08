@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Connector Inventory Holds
+
+### What Changed
+
+- Added WordPress public inventory IDs to the offline app cached inventory
+  model so reconnect operations can target website-side inventory rows.
+- Added a `Hold Item` action that stages an `inventory_reservation` operation
+  with an offline hold intent, guarded write metadata, and local reserved
+  status.
+- Extended multi-company connector profiles, manifest previews, sync sessions,
+  and push summaries with route-connected push readiness and canonical
+  inventory write/deferred status.
+- Updated the connector editor and sync panel to show whether guarded
+  inventory holds are enabled or deferred for the selected company/site.
+
+### Why
+
+The standalone app needs reusable company/site connectors while keeping staging
+and production-safe write gates clear. This revision lets staff stage a real
+offline inventory hold envelope that maps to the WordPress canonical inventory
+executor path, but still defers website writes until device pairing and the
+selected non-production connector explicitly allow them.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace-state contract coverage for public inventory IDs,
+  `inventory_reservation` hold operation envelopes, route-connected push
+  readiness, canonical inventory write gates, and production rejection.
+- Offline app UI shell contract coverage for `Hold Item`, website IDs,
+  guarded inventory hold controls, and inventory-write sync status.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed.
+- `npm run build`: passed.
+- Browser verification at `http://127.0.0.1:1420/`: passed for the hold action,
+  queued reservation preview, and deferred staging sync status.
+
+### Rollback Notes
+
+- Revert this revision to remove offline app inventory hold staging and return
+  connector sync previews to generic deferred push status.
+- No schema rollback is required.
+
 ## 2026-06-08 - Route-Connected Offline Inventory Canonical Execution
 
 ### What Changed
