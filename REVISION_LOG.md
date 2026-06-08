@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Connector Profile Local Persistence
+
+### What Changed
+
+- Added a versioned `tcg-store-offline-connector-profiles-v1` local-storage
+  envelope for offline app connector profiles.
+- Added restore/snapshot helpers that reject malformed storage and any payload
+  that does not explicitly keep credentials out of the app.
+- Updated the offline app startup path to restore saved company/site profiles
+  and the active connector, then persist profile changes automatically.
+- Updated Settings copy and contract tests for saved-local connector profiles.
+
+### Why
+
+Multi-company connector setup needs to survive app reloads. This makes the
+offline app usable for repeated staff workflows without syncing API keys,
+WordPress passwords, ScryDex credentials, or Square secrets into browser/app
+profile state.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for the storage key, versioned action,
+  restore/snapshot helpers, invalid-storage fallback markers, and ScryDex
+  credential redaction enforcement.
+- Offline app UI contract checks for local-storage use and saved-local
+  connector copy.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: reload passed, connector
+  panel rendered saved-local copy, and no console warnings/errors appeared.
+  The Browser plugin read-only page scope did not expose `localStorage`, so
+  storage value inspection was verified by TypeScript/contracts instead.
+
+### Rollback Notes
+
+- Revert this revision to return connector profiles to session-only React
+  state.
+- Users can clear the browser/app local-storage key
+  `tcg-store-offline-connector-profiles-v1` if they need to discard saved
+  profile drafts.
+- No database migration or staging cleanup is required.
+
 ## 2026-06-08 - Offline Connector Pairing Request History
 
 ### What Changed

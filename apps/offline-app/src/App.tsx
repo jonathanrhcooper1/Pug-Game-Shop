@@ -6,9 +6,11 @@ import {
   buildConnectorManifestPreview,
   buildConflictReviewOperation,
   buildConnectorProfileFromDraft,
+  buildConnectorProfileStorageSnapshot,
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
   buildPreparedDevicePairingRequest,
+  CONNECTOR_PROFILE_STORAGE_KEY,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorProfileDraftFromProfile,
@@ -20,6 +22,7 @@ import {
   findInventoryItem,
   formatMoney,
   offlineWorkspaceSeed,
+  restoreConnectorProfileStorageSnapshot,
   statusLabel,
   summarizeOfflinePushResult,
   upsertConnectorProfile,
@@ -27,6 +30,7 @@ import {
   type ConflictItem,
   type ConnectorManifestValidation,
   type ConnectorProfileDraft,
+  type ConnectorProfileStorageRestoreResult,
   type DevicePairingRequestPlan,
   type IconName,
   type InventoryStatus,
@@ -59,6 +63,17 @@ type ViewMode = "list" | "grid"
 type ActivityMessage = {
   title: string
   detail: string
+}
+
+function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
+  if (typeof window === "undefined") {
+    return restoreConnectorProfileStorageSnapshot(null, offlineWorkspaceSeed.connectorProfiles)
+  }
+
+  return restoreConnectorProfileStorageSnapshot(
+    window.localStorage.getItem(CONNECTOR_PROFILE_STORAGE_KEY),
+    offlineWorkspaceSeed.connectorProfiles,
+  )
 }
 
 function Icon({ name }: { name: AppIconName }) {
@@ -101,8 +116,13 @@ export function App() {
   const conflictPanelRef = useRef<HTMLElement>(null)
   const creditPanelRef = useRef<HTMLElement>(null)
   const connectorPanelRef = useRef<HTMLElement>(null)
+  const connectorProfileStorageRef = useRef<ConnectorProfileStorageRestoreResult | null>(null)
+  if (connectorProfileStorageRef.current === null) {
+    connectorProfileStorageRef.current = loadConnectorProfileStorage()
+  }
+  const connectorProfileStorage = connectorProfileStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
-  const [connectorProfiles, setConnectorProfiles] = useState(workspace.connectorProfiles)
+  const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
   const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>([])
   const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>([])
@@ -112,9 +132,7 @@ export function App() {
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(42)
   const [activeSection, setActiveSection] = useState("Inventory")
-  const [activeProfileId, setActiveProfileId] = useState(
-    workspace.connectorProfiles[0]?.id ?? "pug-game-shop-staging",
-  )
+  const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
@@ -175,6 +193,13 @@ export function App() {
     setConnectorDraft(connectorProfileDraftFromProfile(activeProfile))
     setConnectorDraftIssues([])
   }, [activeProfile.id])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      CONNECTOR_PROFILE_STORAGE_KEY,
+      JSON.stringify(buildConnectorProfileStorageSnapshot(connectorProfiles, activeProfileId)),
+    )
+  }, [connectorProfiles, activeProfileId])
 
   function sectionTarget(label: string) {
     if (label === "Sync") {
@@ -351,7 +376,7 @@ export function App() {
     setActiveSection("Settings")
     setActivityMessage({
       title: validation.status === "rejected" ? "Connector saved with issues" : "Connector profile saved",
-      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)}. Credentials are still server-side or desktop secure-store only.`,
+      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} and is saved locally for this device. Credentials are still server-side or desktop secure-store only.`,
     })
   }
 
@@ -908,7 +933,7 @@ export function App() {
                 <div>
                   <span className="micro-label">Website</span>
                   <strong>{connectorHealth.website}</strong>
-                  <small>{connectorHealth.restBasePath}</small>
+                  <small>{connectorHealth.restBasePath}; profiles saved locally</small>
                 </div>
                 <div>
                   <span className="micro-label">Square</span>

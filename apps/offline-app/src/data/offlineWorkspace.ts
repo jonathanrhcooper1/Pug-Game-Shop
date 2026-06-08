@@ -118,6 +118,24 @@ export type ConnectorProfileDraftResult = {
   issues: string[]
 }
 
+export const CONNECTOR_PROFILE_STORAGE_KEY = "tcg-store-offline-connector-profiles-v1"
+
+export type ConnectorProfileStorageSnapshot = {
+  action: "offline_connector_profiles_local_storage"
+  schema_version: 1
+  profiles: StoreConnectorProfile[]
+  active_profile_id: string
+  saved_at_utc: string
+  credentialsSyncedToApp: false
+}
+
+export type ConnectorProfileStorageRestoreResult = {
+  profiles: StoreConnectorProfile[]
+  activeProfileId: string
+  restored: boolean
+  issues: string[]
+}
+
 export type OfflineConnectorRouteManifest = {
   path: string
   method: string
@@ -626,6 +644,79 @@ export function upsertConnectorProfile(
   return profiles.map((item, index) => (index === existingIndex ? profile : item))
 }
 
+export function buildConnectorProfileStorageSnapshot(
+  profiles: StoreConnectorProfile[],
+  activeProfileId: string,
+  options: { savedAtUtc?: string } = {},
+): ConnectorProfileStorageSnapshot {
+  const safeProfiles = sanitizeConnectorProfiles(profiles)
+  const activeProfile = findConnectorProfile(safeProfiles, activeProfileId)
+
+  return {
+    action: "offline_connector_profiles_local_storage",
+    schema_version: 1,
+    profiles: safeProfiles,
+    active_profile_id: activeProfile.id,
+    saved_at_utc: options.savedAtUtc ?? new Date().toISOString(),
+    credentialsSyncedToApp: false,
+  }
+}
+
+export function restoreConnectorProfileStorageSnapshot(
+  rawValue: string | null,
+  fallbackProfiles: StoreConnectorProfile[],
+): ConnectorProfileStorageRestoreResult {
+  const fallback = sanitizeConnectorProfiles(fallbackProfiles)
+  const fallbackActiveProfileId = fallback[0]?.id ?? "pug-game-shop-staging"
+
+  if (!rawValue) {
+    return {
+      profiles: fallback,
+      activeProfileId: fallbackActiveProfileId,
+      restored: false,
+      issues: [],
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<ConnectorProfileStorageSnapshot>
+    const profileValues = sanitizeConnectorProfiles(parsed.profiles ?? [])
+
+    if (
+      parsed.action !== "offline_connector_profiles_local_storage" ||
+      parsed.schema_version !== 1 ||
+      parsed.credentialsSyncedToApp !== false ||
+      profileValues.length === 0
+    ) {
+      return {
+        profiles: fallback,
+        activeProfileId: fallbackActiveProfileId,
+        restored: false,
+        issues: ["connector_profile_storage_invalid"],
+      }
+    }
+
+    const activeProfileId = findConnectorProfile(
+      profileValues,
+      typeof parsed.active_profile_id === "string" ? parsed.active_profile_id : "",
+    ).id
+
+    return {
+      profiles: profileValues,
+      activeProfileId,
+      restored: true,
+      issues: [],
+    }
+  } catch {
+    return {
+      profiles: fallback,
+      activeProfileId: fallbackActiveProfileId,
+      restored: false,
+      issues: ["connector_profile_storage_parse_failed"],
+    }
+  }
+}
+
 export function connectorStatusLabel(status: ConnectorStatus) {
   return status === "ready"
     ? "Ready"
@@ -1023,6 +1114,61 @@ function safeConnectorId(
     .replace(/^-+|-+$/g, "")
 
   return slug || "tcg-store-development-offline-local"
+}
+
+function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConnectorProfile[] {
+  const safeProfiles: StoreConnectorProfile[] = []
+
+  for (const profile of profiles) {
+    if (
+      !profile ||
+      typeof profile.id !== "string" ||
+      typeof profile.companyName !== "string" ||
+      typeof profile.companyShortName !== "string" ||
+      typeof profile.wordpress?.host !== "string" ||
+      profile.wordpress.authMode !== "offline_device_token" ||
+      profile.wordpress.credentialStorage !== "desktop_secure_store" ||
+      profile.square.inventoryAuthority !== "tcg_store_platform" ||
+      profile.square.paymentAuthority !== "official_woocommerce_square_extension" ||
+      profile.scrydex.credentialStorage !== "wordpress_server_settings" ||
+      profile.scrydex.credentialsSyncedToApp !== false
+    ) {
+      continue
+    }
+
+    const scheme = profile.wordpress.scheme === "http" ? "http" : "https"
+    const environment = cleanConnectorEnvironment(profile.environment)
+
+    safeProfiles.push({
+      ...profile,
+      id: safeConnectorId(profile.id, profile.companyName, environment, profile.wordpress.host),
+      environment,
+      status: profile.status === "ready" || profile.status === "sandbox_only" ? profile.status : "needs_pairing",
+      wordpress: {
+        ...profile.wordpress,
+        scheme,
+        restBasePath: "/wp-json/tcg-store/v1",
+        authMode: "offline_device_token",
+        credentialStorage: "desktop_secure_store",
+        devicePairingRequired: true,
+        networkRequestsDeferred: true,
+      },
+      square: {
+        ...profile.square,
+        inventoryAuthority: "tcg_store_platform",
+        paymentAuthority: "official_woocommerce_square_extension",
+        providerWritesDeferred: true,
+        sandboxRequired: environment !== "production",
+      },
+      scrydex: {
+        ...profile.scrydex,
+        credentialStorage: "wordpress_server_settings",
+        credentialsSyncedToApp: false,
+      },
+    })
+  }
+
+  return safeProfiles.length > 0 ? safeProfiles : offlineWorkspaceSeed.connectorProfiles
 }
 
 function pairingCodeFingerprint(pairingCode: string) {

@@ -24,6 +24,8 @@ for (const requiredExport of [
   "DevicePairingRequestPlan",
   "PreparedDevicePairingRequest",
   "ConnectorProfileDraft",
+  "ConnectorProfileStorageSnapshot",
+  "ConnectorProfileStorageRestoreResult",
   "offlineWorkspaceSeed",
   "offlineConnectorRoutePreview",
   "operationEnvelopeFields",
@@ -38,6 +40,9 @@ for (const requiredExport of [
   "summarizeOfflinePushResult",
   "buildConnectorManifestPreview",
   "validateConnectorManifest",
+  "CONNECTOR_PROFILE_STORAGE_KEY",
+  "buildConnectorProfileStorageSnapshot",
+  "restoreConnectorProfileStorageSnapshot",
   "buildDevicePairingRequestPlan",
   "buildPreparedDevicePairingRequest",
   "connectorDisplayUrl",
@@ -84,6 +89,10 @@ for (const marker of [
   "source: \"offline_app\"",
   "connectorProfiles",
   "offline_connector_manifest",
+  "offline_connector_profiles_local_storage",
+  "tcg-store-offline-connector-profiles-v1",
+  "connector_profile_storage_invalid",
+  "connector_profile_storage_parse_failed",
   "profile_manifest_ready",
   "manifest_public_safe",
   "buildConnectorManifestPreview",
@@ -107,6 +116,7 @@ for (const marker of [
   "official_woocommerce_square_extension",
   "wordpress_server_settings",
   "credentialsSyncedToApp: false",
+  "scrydex.credentialsSyncedToApp !== false",
 ]) {
   assert.ok(workspaceSource.includes(marker), `Missing queued operation marker: ${marker}`)
 }

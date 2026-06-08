@@ -10,6 +10,9 @@ All notable changes follow Semantic Versioning.
   setup. Preparing a device pairing now records the selected company, endpoint,
   requested offline scopes, desktop secure-token storage, and a redacted
   pairing-code fingerprint while clearing the raw manager code from the UI.
+- Offline app connector profiles now persist in a versioned, credential-free
+  local-storage envelope so saved company/site profiles and the active
+  connector survive desktop app reloads.
 - Root `CHANGELOG.md` pointer to the detailed docs changelog so repository
   metadata satisfies the project operating rule while detailed release notes
   remain in `docs/CHANGELOG.md`.
