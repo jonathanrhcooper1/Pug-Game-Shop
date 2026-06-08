@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Location-Aware LAN Inventory Acceptance
+
+### What Changed
+
+- Added a LAN sync server default WordPress location setting for inventory
+  pushes.
+- Updated queued local inventory intake payloads to send `available` status
+  plus `location_id` when the configured website location is present, while
+  retaining `pending_intake` behavior when no location is configured.
+- Updated WordPress intake parsing to preserve ScryDex provider identity and
+  front/back image URLs from local app inventory pushes.
+
+### Why
+
+The preview flow needs staff-added inventory to become live website inventory
+when a real staging location is configured, and the website row must retain the
+ScryDex reference ID and card art URL used by the local app so local, kiosk,
+and web views can stay visually consistent.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeParser.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeParserTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Local sync server WordPress inventory push assertions for default-location
+  acceptance and fallback pending-intake behavior.
+- WordPress intake parser assertions for ScryDex provider IDs and remote image
+  URL preservation.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `php apps/wordpress-plugin/tests/run.php --filter 'InventoryIntakeParserTest|InventoryIntakePersistencePlannerTest|InventoryIntakeRouteHandlerFactoryTest'`
+- Live staging smoke is being rerun after this checkpoint because WordPress
+  package creation uses `git archive HEAD`, so the parser change must be
+  committed before the staging zip can include it.
+
+### Rollback Notes
+
+- Revert this revision to restore pending-intake-only local inventory pushes
+  and omit provider/image fields from WordPress intake parsing.
+- Any disposable staging inventory rows created during smoke testing can be
+  removed by their generated `PUG-*` barcode.
+- Revoke staging WordPress application passwords created for preview smoke
+  tests after the preview window if they are no longer needed.
+
 ## 2026-06-08 - LAN Inventory Push To WordPress
 
 ### What Changed

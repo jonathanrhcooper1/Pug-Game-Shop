@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- LAN sync server inventory pushes can now target a configured default
+  WordPress location, making accepted local inventory immediately `available`
+  on the website instead of staying in `pending_intake`, while WordPress intake
+  now preserves ScryDex provider IDs and card image URLs from the local app.
 - LAN sync server can now push queued local `inventory_intake` operations to
   the WordPress `/inventory` route using server-held WordPress credentials;
   the offline app Sync Now action calls this route, clears accepted inventory

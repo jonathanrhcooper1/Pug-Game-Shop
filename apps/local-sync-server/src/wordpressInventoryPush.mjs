@@ -8,6 +8,7 @@ export function createWordPressInventoryPush(options = {}) {
   const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
   const timeoutMs = boundedTimeout(options.timeoutMs)
   const authorizationHeader = catalogAuthorizationHeader(options)
+  const defaultLocationId = positiveInt(options.defaultLocationId)
 
   if (!endpointBase || typeof fetcher !== "function" || !authorizationHeader) {
     return null
@@ -15,7 +16,7 @@ export function createWordPressInventoryPush(options = {}) {
 
   return async function wordpressInventoryPush({ operation, item } = {}) {
     const endpoint = new URL(`${endpointBase}/inventory`)
-    const body = inventoryIntakeBody(item)
+    const body = inventoryIntakeBody(item, { defaultLocationId })
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
@@ -74,10 +75,12 @@ export function createWordPressInventoryPush(options = {}) {
   }
 }
 
-export function inventoryIntakeBody(item = {}) {
+export function inventoryIntakeBody(item = {}, options = {}) {
   const priceMinorUnits = boundedMinorUnits(item.price_minor_units)
+  const locationId = positiveInt(item.location_id ?? options.defaultLocationId)
+  const activeLocationConfigured = locationId !== null
 
-  return {
+  const body = {
     source: "offline",
     game: cleanGame(item.game),
     card_name: cleanText(item.card_name),
@@ -87,7 +90,7 @@ export function inventoryIntakeBody(item = {}) {
     printed_number: cleanText(item.printed_number),
     provider_name: item.provider_card_id ? "scrydex" : "",
     provider_card_id: cleanText(item.provider_card_id),
-    status: "pending_intake",
+    status: activeLocationConfigured ? "available" : "pending_intake",
     raw_or_graded: "raw",
     condition_code: cleanText(item.condition || "RAW"),
     barcode: cleanBarcode(item.barcode),
@@ -102,6 +105,12 @@ export function inventoryIntakeBody(item = {}) {
     front_image_remote_url: cleanHttpUrl(item.image_url),
     staff_notes: cleanText(`Queued from LAN sync server location: ${item.location ?? "Intake Queue"}`),
   }
+
+  if (activeLocationConfigured) {
+    body.location_id = locationId
+  }
+
+  return body
 }
 
 function inventoryCreateResponseData(body) {
@@ -137,6 +146,12 @@ function boundedMinorUnits(value) {
   const parsed = Number.parseInt(String(value ?? "0"), 10)
 
   return Number.isFinite(parsed) ? Math.max(0, Math.min(99_999_999, parsed)) : 0
+}
+
+function positiveInt(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function boundedTimeout(value) {

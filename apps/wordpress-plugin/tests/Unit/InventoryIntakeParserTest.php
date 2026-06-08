@@ -22,6 +22,8 @@ final class InventoryIntakeParserTest extends TestCase {
 				'set_name'                       => 'Base Set',
 				'set_code'                       => 'base',
 				'card_number'                    => '58/102',
+				'provider_name'                  => 'ScryDex',
+				'provider_card_id'               => 'scrydex-pokemon-base-058',
 				'status'                         => InventoryStatus::AVAILABLE,
 				'raw_or_graded'                  => 'RAW',
 				'condition_code'                 => 'nm',
@@ -34,6 +36,8 @@ final class InventoryIntakeParserTest extends TestCase {
 				'online_visibility'              => 'visible',
 				'kiosk_visibility'               => 'staff_only',
 				'price_lock'                     => 'yes',
+				'front_image_remote_url'         => 'https://images.example.test/pikachu-front.png',
+				'back_image_remote_url'          => 'https://images.example.test/pikachu-back.png',
 			),
 			'header-inventory-1',
 			22
@@ -56,6 +60,8 @@ final class InventoryIntakeParserTest extends TestCase {
 		$this->assert_same( 'pokemon', $item['game'] );
 		$this->assert_same( 'Pikachu', $item['card_name'] );
 		$this->assert_same( 'BASE', $item['set_code'] );
+		$this->assert_same( 'scrydex', $item['provider_name'] );
+		$this->assert_same( 'scrydex-pokemon-base-058', $item['provider_card_id'] );
 		$this->assert_same( 'NM', $item['condition_code'] );
 		$this->assert_same( 'PCS-000001', $item['barcode'] );
 		$this->assert_same( 3, $item['location_id'] );
@@ -64,6 +70,8 @@ final class InventoryIntakeParserTest extends TestCase {
 		$this->assert_same( 'visible', $item['online_visibility'] );
 		$this->assert_same( 'staff_only', $item['kiosk_visibility'] );
 		$this->assert_true( $item['price_lock'] );
+		$this->assert_same( 'https://images.example.test/pikachu-front.png', $item['front_image_remote_url'] );
+		$this->assert_same( 'https://images.example.test/pikachu-back.png', $item['back_image_remote_url'] );
 		$this->assert_contains( '"card_name":"Pikachu"', $item['manual_reference_payload_json'] );
 	}
 

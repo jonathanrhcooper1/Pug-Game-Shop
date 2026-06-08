@@ -87,6 +87,8 @@ final class InventoryIntakeParser {
 			'set_code'                       => strtoupper( trim( (string) ( $payload['set_code'] ?? '' ) ) ),
 			'card_number'                    => trim( (string) ( $payload['card_number'] ?? '' ) ),
 			'printed_number'                 => trim( (string) ( $payload['printed_number'] ?? '' ) ),
+			'provider_name'                  => strtolower( trim( (string) ( $payload['provider_name'] ?? '' ) ) ),
+			'provider_card_id'               => trim( (string) ( $payload['provider_card_id'] ?? '' ) ),
 			'variant'                        => trim( (string) ( $payload['variant'] ?? '' ) ),
 			'finish'                         => trim( (string) ( $payload['finish'] ?? '' ) ),
 			'parallel_name'                  => trim( (string) ( $payload['parallel_name'] ?? '' ) ),
@@ -114,6 +116,8 @@ final class InventoryIntakeParser {
 			'kiosk_visibility'               => $this->visibility( $payload['kiosk_visibility'] ?? 'hidden', 'kiosk_visibility', $errors ),
 			'pos_visibility'                 => $this->visibility( $payload['pos_visibility'] ?? 'visible', 'pos_visibility', $errors ),
 			'price_lock'                     => $this->truthy( $payload['price_lock'] ?? false ),
+			'front_image_remote_url'         => trim( (string) ( $payload['front_image_remote_url'] ?? '' ) ),
+			'back_image_remote_url'          => trim( (string) ( $payload['back_image_remote_url'] ?? '' ) ),
 		);
 
 		if ( null === $item_fields['sale_price_minor_units'] ) {

@@ -33,12 +33,19 @@ assert.equal(body.sku, "PUG-LOCAL-CHARIZARD")
 assert.equal(body.sale_price_minor_units, 25000)
 assert.equal(body.minimum_sale_price_minor_units, 25000)
 assert.equal(body.front_image_remote_url, "https://images.pokemontcg.io/base1/4_hires.png")
+assert.equal("location_id" in body, false)
+
+const activeBody = inventoryIntakeBody(item, { defaultLocationId: "7" })
+
+assert.equal(activeBody.status, "available")
+assert.equal(activeBody.location_id, 7)
 
 let observedRequest = null
 const push = createWordPressInventoryPush({
   websiteUrl: "https://example.test",
   username: "sync-user",
   applicationPassword: "secret app password",
+  defaultLocationId: 7,
   fetcher: async (url, init) => {
     observedRequest = {
       url: url.toString(),
@@ -79,7 +86,8 @@ assert.equal(observedRequest.url, "https://example.test/wp-json/tcg-store/v1/inv
 assert.equal(observedRequest.headers["idempotency-key"], "op-local-charizard-001")
 assert.ok(observedRequest.headers.authorization.startsWith("Basic "))
 assert.equal(observedRequest.body.card_name, "Charizard")
-assert.equal(observedRequest.body.status, "pending_intake")
+assert.equal(observedRequest.body.status, "available")
+assert.equal(observedRequest.body.location_id, 7)
 
 const rejectedPush = createWordPressInventoryPush({
   websiteUrl: "https://example.test",

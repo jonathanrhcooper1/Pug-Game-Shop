@@ -20,6 +20,7 @@ const wordpressInventoryPush = createWordPressInventoryPush({
   applicationPassword:
     process.env.PUG_WORDPRESS_INVENTORY_APPLICATION_PASSWORD ??
     process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
+  defaultLocationId: process.env.PUG_WORDPRESS_DEFAULT_LOCATION_ID,
 })
 const server = await listenLocalSyncHttpServer({
   host,
