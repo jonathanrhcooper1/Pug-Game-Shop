@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Guarded Staging ScryDex Catalog Import Runner
+
+### What Changed
+
+- Added `npm run staging:run-scrydex-sync`, a staging-only SSH/WP-CLI runner
+  that configures the existing ScryDex scheduled worker for a bounded batch and
+  executes it through WordPress.
+- Added explicit confirmation, game/page-size/max-page environment controls,
+  staging environment enforcement, and redacted result summaries.
+- Added packaging contract coverage for the staging ScryDex sync runner.
+
+### Why
+
+The website needs to build and refresh the ScryDex catalog mirror rather than
+having local apps query ScryDex directly. The existing plugin worker already
+had provider, checkpoint, persistence, and safety gates; this revision gives us
+a repeatable staging operation to run small verified batches and later scale up
+page counts deliberately.
+
+### Files Affected
+
+- `scripts/staging-run-scrydex-sync.mjs`
+- `scripts/tests/staging-scrydex-sync-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for npm script availability, explicit
+  confirmation, staging-only execution, bounded page controls, redaction
+  markers, and absence of credential-printing patterns.
+
+### Verification
+
+- `node scripts/tests/staging-scrydex-sync-contract.mjs`
+- `npm.cmd run staging:run-scrydex-sync -- --dry-run`
+- `npm.cmd run staging:configure-scrydex -- --status` confirmed staging
+  ScryDex provider and usage budget are configured and ready without printing
+  credentials.
+- `npm.cmd run scrydex:live-smoke` confirmed the live ScryDex provider returns
+  Pokémon card data for a tiny read-only Charizard query.
+- Live staging bounded import: `SCRYDEX_SYNC_GAMES=pokemon`,
+  `SCRYDEX_SYNC_PAGE_SIZE=5`, `SCRYDEX_SYNC_MAX_PAGES=1`,
+  `PUG_STAGING_CONFIRM_SCRYDEX_SYNC=run-staging-scrydex-sync`; result wrote 5
+  new reference rows, used 1 provider request, processed 1 page, deferred no
+  database writes, and printed no raw provider body or credential values.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging runner and contract test.
+- The live smoke created staging ScryDex reference/price/checkpoint rows only;
+  remove staging rows from the ScryDex reference, variant, price observation,
+  and checkpoint tables or restore a staging database backup if a clean catalog
+  seed is needed.
+- Do not run the staging sync runner with large page counts until provider
+  budget and desired game list are confirmed.
+
 ## 2026-06-08 - LAN Inventory Pull From WordPress
 
 ### What Changed

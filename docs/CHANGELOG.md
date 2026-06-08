@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Added a guarded `staging:run-scrydex-sync` runner for bounded staging-only
+  ScryDex catalog imports through the existing WordPress worker, with explicit
+  confirmation, page/game limits, redacted output, and live staging verification.
 - LAN sync server `/sync/pull` now pulls available WordPress inventory search
   rows into the shared local SQLite cache using server-held credentials, and
   the offline app Sync Now action displays the latest LAN pull/push result in
