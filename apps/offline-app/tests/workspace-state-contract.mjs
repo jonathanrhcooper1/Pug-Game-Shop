@@ -83,7 +83,11 @@ for (const marker of [
   "customer_credit",
   "offline_credit_redemption",
   "staff_conflict_review",
-  "sync_intent: \"staff_inventory_update\"",
+  "sync_intent: options.syncIntent ?? \"staff_inventory_update\"",
+  "syncIntent?: \"staff_inventory_update\" | \"staff_barcode_scan\" | \"staff_quantity_adjustment\"",
+  "operationKind?: \"scan\" | \"quantity\" | \"update\"",
+  "quantity_delta",
+  "adjustment_reason",
   "payload: parseJsonObject(operation.payload_json)",
   "authorization_context: parseJsonObject(operation.authorization_context_json)",
   "network_request_deferred: true",
@@ -137,7 +141,7 @@ for (const marker of [
 }
 
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
-assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem)"))
+assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
@@ -147,6 +151,11 @@ assert.ok(appSource.includes("stagedPushBatch.batch_id"))
 assert.ok(appSource.includes("stagedPushRequest.method"))
 assert.ok(appSource.includes("pushSummary.status"))
 assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
+assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
+assert.ok(appSource.includes("operationKind: \"scan\""))
+assert.ok(appSource.includes("operationKind: \"quantity\""))
+assert.ok(appSource.includes("syncIntent: \"staff_barcode_scan\""))
+assert.ok(appSource.includes("syncIntent: \"staff_quantity_adjustment\""))
 
 for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "http://", "https://"]) {
   assert.equal(workspaceSource.includes(forbidden), false, `Forbidden workspace marker found: ${forbidden}`)

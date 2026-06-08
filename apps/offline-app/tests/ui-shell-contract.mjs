@@ -20,6 +20,7 @@ for (const requiredText of [
   "Offline Mode",
   "Sync Now",
   "Website sync session plan",
+  "Local sync attempts",
   "Website connector",
   "Pull route",
   "Push route",
@@ -81,6 +82,7 @@ for (const className of [
   "panel-empty",
   "workflow-status",
   "sync-session-panel",
+  "sync-attempt-list",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
 }
@@ -94,6 +96,8 @@ for (const interactionMarker of [
   "handleSaveConnectorDraft",
   "loadConnectorProfileStorage",
   "handleSyncNowPreview",
+  "recordSyncAttempt",
+  "setSyncAttempts",
   "setSyncSessionPlan",
   "handleTestWebsiteConnector",
   "handleCreditRedemption",
@@ -126,6 +130,10 @@ for (const interactionMarker of [
   "setViewMode(\"grid\")",
   "setStatusFilter(status)",
   "handleConflictAction",
+  "operationKind: \"scan\"",
+  "operationKind: \"quantity\"",
+  "staff_barcode_scan",
+  "staff_quantity_adjustment",
 ]) {
   assert.ok(appSource.includes(interactionMarker), `Missing interaction marker: ${interactionMarker}`)
 }

@@ -1325,6 +1325,10 @@ export function buildInventoryUpdateOperation(
     actorId?: number
     deviceId?: string
     locationId?: number
+    operationKind?: "scan" | "quantity" | "update"
+    quantityDelta?: number
+    adjustmentReason?: string
+    syncIntent?: "staff_inventory_update" | "staff_barcode_scan" | "staff_quantity_adjustment"
     occurredAtLocal?: string
     queuedAtUtc?: string
   } = {},
@@ -1332,9 +1336,10 @@ export function buildInventoryUpdateOperation(
   const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
   const queuedAtUtc = options.queuedAtUtc ?? occurredAtLocal
   const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+  const operationKind = options.operationKind ?? "update"
 
   return {
-    client_operation_id: `offline-inventory-${item.id}-${operationStamp}`,
+    client_operation_id: `offline-inventory-${operationKind}-${item.id}-${operationStamp}`,
     device_id: options.deviceId ?? "local-device-preview",
     location_id: options.locationId ?? 1,
     actor_id: options.actorId ?? 1,
@@ -1349,7 +1354,9 @@ export function buildInventoryUpdateOperation(
       location: item.location,
       price_minor_units: item.priceMinorUnits,
       status: item.status,
-      sync_intent: "staff_inventory_update",
+      sync_intent: options.syncIntent ?? "staff_inventory_update",
+      ...(typeof options.quantityDelta === "number" ? { quantity_delta: options.quantityDelta } : {}),
+      ...(options.adjustmentReason ? { adjustment_reason: options.adjustmentReason } : {}),
     }),
     authorization_context_json: JSON.stringify({
       manager_override: false,

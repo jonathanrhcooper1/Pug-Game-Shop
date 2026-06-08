@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Button Intents And Sync Attempt History
+
+### What Changed
+
+- Added distinct local inventory operation intents for scan, quantity
+  adjustment, and generic inventory update actions.
+- Updated `Add Scan` to stage an `offline-inventory-scan-*` queue operation and
+  fill the search field with the selected barcode.
+- Updated `Adjust Qty` to stage an `offline-inventory-quantity-*` queue
+  operation with a quantity delta and adjustment reason in the payload.
+- Updated `Sync Now` to record a visible local sync-attempt history entry for
+  the active company/site connector, operation count, pairing state, and
+  deferred network status.
+- Updated offline app contract coverage and UI styling for the new behavior.
+
+### Why
+
+The offline app buttons were technically wired, but several actions still felt
+identical in the local UI. This gives staff clearer feedback, gives QA concrete
+operation IDs to inspect, and keeps multi-company website connector behavior
+visible while live network sync remains deferred.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract markers for scan/quantity inventory operation
+  kinds, scan/quantity sync intents, quantity delta payloads, and sync-attempt
+  recording.
+- Offline UI shell contract markers for visible local sync attempts and the new
+  scan/quantity button behavior.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser QA at `http://127.0.0.1:1420/`: passed for `Adjust Qty`,
+  `Add Scan`, and `Sync Now`, with no console warnings or errors.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to return `Add Scan`, `Adjust Qty`, and generic
+  inventory updates to the prior shared queue behavior and remove sync-attempt
+  history.
+- No database migration or staging cleanup is required.
+- Any queued local operation envelopes created in the app preview are local
+  test state only and are not sent to WordPress until future paired sync
+  execution is explicitly enabled.
+
 ## 2026-06-08 - Gated Staging Inventory Smoke Runner
 
 ### What Changed

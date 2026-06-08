@@ -15,6 +15,10 @@ All notable changes follow Semantic Versioning.
   coverage, removes only that temporary file, and contract-tests that it does
   not activate plugins, overwrite active plugin files, deploy production, or
   print credentials.
+- Offline app local button behavior now distinguishes `Add Scan`, generic
+  inventory updates, and quantity adjustments with separate queue operation
+  IDs and payload intents, while `Sync Now` records a visible deferred sync
+  attempt for the active company/site connector.
 - Offline app connector-specific sync session planning for `Sync Now`, showing
   the active website connector, pull and push endpoint URLs, queued operation
   count, pairing readiness, desktop secure-token storage, and deferred network

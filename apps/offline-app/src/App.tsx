@@ -71,6 +71,18 @@ type ActivityMessage = {
   detail: string
 }
 
+type SyncAttemptRecord = {
+  id: string
+  companyName: string
+  siteUrl: string
+  operationCount: number
+  pairingStatus: string
+  createdAtLabel: string
+  networkStatus: "Deferred"
+}
+
+type InventoryUpdateOptions = Parameters<typeof buildInventoryUpdateOperation>[1]
+
 function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
   if (typeof window === "undefined") {
     return restoreConnectorProfileStorageSnapshot(null, offlineWorkspaceSeed.connectorProfiles)
@@ -171,6 +183,7 @@ export function App() {
   const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
+  const [syncAttempts, setSyncAttempts] = useState<SyncAttemptRecord[]>([])
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
@@ -330,11 +343,34 @@ export function App() {
     })
   }
 
-  async function handleStageInventoryUpdate(actionTitle = "Inventory update staged") {
+  function recordSyncAttempt(plan: OfflineConnectorSyncSessionPlan) {
+    setSyncAttempts((attempts) => [
+      {
+        id: `${plan.profileId}-${Date.now()}`,
+        companyName: plan.companyName,
+        siteUrl: plan.siteUrl,
+        operationCount: plan.push.operation_count,
+        pairingStatus: plan.prepared_pairing_available ? "Prepared locally" : "Pairing required",
+        createdAtLabel: new Intl.DateTimeFormat("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date()),
+        networkStatus: "Deferred" as const,
+      },
+      ...attempts,
+    ].slice(0, 5))
+  }
+
+  async function handleStageInventoryUpdate(
+    actionTitle = "Inventory update staged",
+    operationOptions: InventoryUpdateOptions = {},
+    detailOverride?: string,
+  ) {
     await stageOfflineOperation(
-      buildInventoryUpdateOperation(selectedItem),
+      buildInventoryUpdateOperation(selectedItem, operationOptions),
       actionTitle,
-      `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+      detailOverride ??
+        `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
     )
     setInventoryItems((items) =>
       items.map((item) =>
@@ -427,19 +463,19 @@ export function App() {
       : stagedOperation
         ? [stagedOperation]
         : []
+    let nextSyncSessionPlan: OfflineConnectorSyncSessionPlan
 
     if (operationsForSync.length > 0) {
       const batch = buildOfflinePushBatchPayload(operationsForSync)
 
       setStagedPushBatch(batch)
       setStagedPushRequest(buildOfflinePushRequestPlan(batch))
-      setSyncSessionPlan(
-        buildOfflineConnectorSyncSessionPlan(
-          activeProfile,
-          batch,
-          activePreparedPairingRequests[0] ?? null,
-        ),
+      nextSyncSessionPlan = buildOfflineConnectorSyncSessionPlan(
+        activeProfile,
+        batch,
+        activePreparedPairingRequests[0] ?? null,
       )
+      setSyncSessionPlan(nextSyncSessionPlan)
       setPushSummary(
         summarizeOfflinePushResult({
           data: {
@@ -460,15 +496,15 @@ export function App() {
         }),
       )
     } else {
-      setSyncSessionPlan(
-        buildOfflineConnectorSyncSessionPlan(
-          activeProfile,
-          null,
-          activePreparedPairingRequests[0] ?? null,
-        ),
+      nextSyncSessionPlan = buildOfflineConnectorSyncSessionPlan(
+        activeProfile,
+        null,
+        activePreparedPairingRequests[0] ?? null,
       )
+      setSyncSessionPlan(nextSyncSessionPlan)
     }
 
+    recordSyncAttempt(nextSyncSessionPlan)
     setActiveSection("Sync")
     setActivityMessage({
       title: "Sync plan prepared",
@@ -526,7 +562,15 @@ export function App() {
 
   function handleAddScan() {
     setQuery(selectedItem.barcode)
-    void handleStageInventoryUpdate("Scan staged")
+    void handleStageInventoryUpdate(
+      "Scan staged",
+      {
+        operationKind: "scan",
+        syncIntent: "staff_barcode_scan",
+        adjustmentReason: "scan-to-queue shortcut",
+      },
+      `${selectedItem.barcode} scanned into the local queue for ${activeProfile.companyName}; website push remains deferred until device pairing approval.`,
+    )
   }
 
   function handlePrintLabel() {
@@ -687,6 +731,22 @@ export function App() {
                     : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
                 </small>
               </div>
+              {syncAttempts.length > 0 ? (
+                <div className="sync-attempt-list" aria-label="Local sync attempts">
+                  <span className="micro-label">Local sync attempts</span>
+                  {syncAttempts.map((attempt) => (
+                    <article key={attempt.id}>
+                      <strong>{attempt.companyName}</strong>
+                      <span>
+                        {attempt.operationCount} op(s) / {attempt.pairingStatus}
+                      </span>
+                      <small>
+                        {attempt.createdAtLabel}; {attempt.networkStatus}; {attempt.siteUrl}
+                      </small>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -877,7 +937,18 @@ export function App() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleStageInventoryUpdate("Quantity adjustment staged")}
+                  onClick={() =>
+                    void handleStageInventoryUpdate(
+                      "Quantity adjustment staged",
+                      {
+                        operationKind: "quantity",
+                        quantityDelta: 1,
+                        syncIntent: "staff_quantity_adjustment",
+                        adjustmentReason: "staff offline quantity correction",
+                      },
+                      `${selectedItem.cardName} quantity correction (+1) is queued locally; exact website inventory remains authoritative after sync acceptance.`,
+                    )
+                  }
                 >
                   Adjust Qty
                 </button>
