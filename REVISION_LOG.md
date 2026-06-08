@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Windows Build Helper
+
+### What Changed
+
+- Added `scripts/run-offline-app-windows-build.mjs`, a PATH-aware Tauri build
+  runner that prepends the user Cargo bin path.
+- Added root `npm run build:offline-app:windows`.
+- Updated the offline app `build:windows` and `package:windows` path to use
+  the helper while preserving the `x86_64-pc-windows-msvc` NSIS target.
+- Updated the Windows package contract to verify the helper, target, bundler,
+  Cargo PATH handling, and local Tauri CLI resolution.
+
+### Why
+
+The actual Windows package build succeeded only after manually adding Cargo to
+PATH. This helper makes the build repeatable from the same PowerShell context
+used by the rest of the project.
+
+### Files Affected
+
+- `package.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `scripts/run-offline-app-windows-build.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Windows package contract coverage for the PATH-aware Tauri build helper.
+
+### Tests Run
+
+- `npm --prefix apps/offline-app run build:windows`: passed and produced the
+  NSIS installer under `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
+
+### Rollback Notes
+
+- Revert this revision to restore the direct `tauri build` package script.
+- No schema or local data rollback is required.
+
 ## 2026-06-08 - Offline App Desktop Queue Restore
 
 ### What Changed

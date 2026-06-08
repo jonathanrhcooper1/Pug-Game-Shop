@@ -12,6 +12,7 @@
     "wp-env:seed": "node scripts/wp-env/seed-dev-data.mjs",
     "wp-env:test": "wp-env run tests-cli phpunit || node scripts/wp-env/report-pending-phpunit.mjs",
     "build": "npm --prefix apps/offline-app run build",
+    "build:offline-app:windows": "node scripts/run-offline-app-windows-build.mjs",
     "package:wordpress": "node scripts/package-wordpress-plugin.mjs",
     "staging:upload-package": "node scripts/staging-upload-wordpress-package.mjs",
     "staging:inventory-smoke": "node scripts/staging-run-inventory-smoke.mjs",

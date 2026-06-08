@@ -13,6 +13,9 @@ All notable changes follow Semantic Versioning.
 - Offline app desktop startup can now restore pending operations from the
   local SQLite queue through a guarded Tauri read command, merging them into
   the visible queue without network writes or credential exposure.
+- Offline app Windows packaging now uses a PATH-aware Tauri build helper so
+  shells with Rustup installed outside the inherited PATH can still produce the
+  NSIS installer.
 - Upload-only staging package transfer script for the WordPress plugin zip,
   gated by explicit staging SSH environment variables and confirmation, with a
   contract test and dry-run mode that verifies no plugin activation, active

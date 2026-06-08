@@ -89,5 +89,9 @@ installer artifact is an unsigned `.exe` under:
 src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/
 ```
 
+The Windows build script uses the repository PATH-aware helper so a user-level
+Rustup install can be discovered even when the current PowerShell session did
+not inherit Cargo on PATH.
+
 Production releases require signing, hardware acceptance, and manual deployment
 approval before distribution.

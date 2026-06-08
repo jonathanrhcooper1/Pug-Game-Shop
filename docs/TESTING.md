@@ -116,6 +116,9 @@
 - Tauri Rust command coverage now also verifies pending-operation read-back
   from local SQLite, bounded restore limits, row validation, and startup bridge
   contract markers for hydrating the visible queue in the desktop app.
+- Windows packaging verification now has a PATH-aware helper for
+  `x86_64-pc-windows-msvc` NSIS builds; the latest local package build produced
+  an unsigned installer successfully after Cargo was prepended to PATH.
 - Offline app browser verification now covers the functional local-session
   controls at desktop width: stage inventory update, prepare print label,
   review/approve all conflicts into history, stage customer-credit use into a

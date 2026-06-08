@@ -15,6 +15,10 @@ async function readJson(relativePath) {
 const rootPackage = JSON.parse(
   await readFile(path.join(repoRoot, "package.json"), "utf8"),
 )
+const windowsBuildHelper = await readFile(
+  path.join(repoRoot, "scripts/run-offline-app-windows-build.mjs"),
+  "utf8",
+)
 const appPackage = await readJson("package.json")
 const tauriConfig = await readJson("src-tauri/tauri.conf.json")
 const manifest = await readJson("config/windows-package.manifest.json")
@@ -29,8 +33,12 @@ assert.equal(manifest.manual_production_release_required, true)
 assert.equal(manifest.code_signing_required_for_production, true)
 assert.deepEqual(manifest.artifact_extensions, [".exe"])
 
-assert.ok(appPackage.scripts["build:windows"].includes("x86_64-pc-windows-msvc"))
-assert.ok(appPackage.scripts["build:windows"].includes("--bundles nsis"))
+assert.ok(rootPackage.scripts["build:offline-app:windows"].includes("run-offline-app-windows-build.mjs"))
+assert.ok(appPackage.scripts["build:windows"].includes("run-offline-app-windows-build.mjs"))
+assert.ok(windowsBuildHelper.includes("x86_64-pc-windows-msvc"))
+assert.ok(windowsBuildHelper.includes("\"--bundles\", \"nsis\""))
+assert.ok(windowsBuildHelper.includes(".cargo"))
+assert.ok(windowsBuildHelper.includes("tauri.cmd"))
 assert.ok(tauriConfig.bundle.active)
 assert.ok(tauriConfig.bundle.targets.includes("nsis"))
 assert.equal(tauriConfig.bundle.windows.nsis.installMode, "perMachine")
