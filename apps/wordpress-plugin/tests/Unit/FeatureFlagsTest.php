@@ -23,12 +23,13 @@ final class FeatureFlagsTest extends TestCase {
 		}
 	}
 
-	public function test_inventory_pricing_is_available_for_staging_only(): void {
-		$this->assert_true( FeatureFlags::is_available( 'inventory_pricing', 'local' ) );
-		$this->assert_true( FeatureFlags::is_available( 'inventory_pricing', 'development' ) );
-		$this->assert_true( FeatureFlags::is_available( 'inventory_pricing', 'staging' ) );
-		$this->assert_false( FeatureFlags::is_available( 'inventory_pricing', 'production' ) );
-		$this->assert_false( FeatureFlags::is_available( 'offline_sync', 'staging' ) );
+	public function test_staged_features_are_available_outside_production_only(): void {
+		foreach ( array( 'inventory_pricing', 'offline_sync' ) as $flag ) {
+			$this->assert_true( FeatureFlags::is_available( $flag, 'local' ) );
+			$this->assert_true( FeatureFlags::is_available( $flag, 'development' ) );
+			$this->assert_true( FeatureFlags::is_available( $flag, 'staging' ) );
+			$this->assert_false( FeatureFlags::is_available( $flag, 'production' ) );
+		}
 	}
 
 	public function test_sanitizer_forces_unavailable_modules_off_in_production(): void {
@@ -47,7 +48,7 @@ final class FeatureFlagsTest extends TestCase {
 
 		$this->assert_true( $result['core'] );
 		$this->assert_true( $result['inventory_pricing'] );
-		$this->assert_false( $result['offline_sync'] );
+		$this->assert_true( $result['offline_sync'] );
 		$this->assert_false( $result['events'] );
 	}
 

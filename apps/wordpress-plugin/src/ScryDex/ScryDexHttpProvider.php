@@ -40,20 +40,30 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		int $page = 1,
 		string $cursor = ''
 	): ScryDexResult {
+		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
+		unset( $filters['game'] );
+
 		$params = array_merge(
 			$filters,
 			array(
-				'query'  => $query,
-				'page'   => (string) max( 1, $page ),
-				'cursor' => trim( $cursor ),
+				'q'        => $query,
+				'page'     => (string) max( 1, $page ),
+				'pageSize' => (string) min( 250, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'cursor'   => trim( $cursor ),
 			)
 		);
+		unset( $params['page_size'] );
+
 		$params = array_filter(
 			$params,
 			static fn ( string $value ): bool => '' !== trim( $value )
 		);
 
-		return $this->request( 'GET', '/cards/search?' . http_build_query( $params ) );
+		return $this->request(
+			'GET',
+			'/' . $game . '/v1/cards?' . http_build_query( $params ),
+			array( 'game' => $game )
+		);
 	}
 
 	/**
@@ -70,7 +80,11 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	}
 
 	public function get_card( string $provider_card_id ): ScryDexResult {
-		return $this->request( 'GET', '/cards/' . rawurlencode( trim( $provider_card_id ) ) );
+		return $this->request(
+			'GET',
+			'/pokemon/v1/cards/' . rawurlencode( trim( $provider_card_id ) ),
+			array( 'game' => 'pokemon' )
+		);
 	}
 
 	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid
@@ -113,7 +127,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		);
 	}
 
-	private function request( string $method, string $path ): ScryDexResult {
+	/**
+	 * @param array<string, mixed> $context Request context for response normalization.
+	 */
+	private function request( string $method, string $path, array $context = array() ): ScryDexResult {
 		if ( '' === $this->api_key || '' === $this->team_id ) {
 			return ScryDexResult::not_configured( 'ScryDex API key and team ID are required.' );
 		}
@@ -130,7 +147,7 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			)
 		);
 
-		return $this->normalize_response( $response );
+		return $this->normalize_response( $response, $context );
 	}
 
 	/**
@@ -183,8 +200,9 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 
 	/**
 	 * @param array{status:int,body:mixed} $response Raw response.
+	 * @param array<string, mixed>         $context Request context for response normalization.
 	 */
-	private function normalize_response( array $response ): ScryDexResult {
+	private function normalize_response( array $response, array $context = array() ): ScryDexResult {
 		$http_status = (int) $response['status'];
 		$body        = is_array( $response['body'] ) ? $response['body'] : array();
 
@@ -209,7 +227,11 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		}
 
 		if ( $http_status >= 200 && $http_status < 300 ) {
-			return new ScryDexResult( ScryDexResult::SUCCESS, $http_status, $body );
+			return new ScryDexResult(
+				ScryDexResult::SUCCESS,
+				$http_status,
+				$this->normalize_success_body( $body, $context )
+			);
 		}
 
 		return new ScryDexResult(
@@ -242,5 +264,46 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		$value = trim( $value, '_' );
 
 		return '' === $value ? 'failed' : $value;
+	}
+
+	/**
+	 * @param array<string, mixed> $body Response body.
+	 * @param array<string, mixed> $context Request context for response normalization.
+	 * @return array<string, mixed>
+	 */
+	private function normalize_success_body( array $body, array $context ): array {
+		$cards = $body['data'] ?? $body['cards'] ?? null;
+		$game  = $this->game_endpoint( $context['game'] ?? '' );
+
+		if ( is_array( $cards ) ) {
+			$cards = array_map(
+				static function ( mixed $card ) use ( $game ): mixed {
+					if ( ! is_array( $card ) || isset( $card['game'] ) ) {
+						return $card;
+					}
+
+					$card['game'] = $game;
+
+					return $card;
+				},
+				$cards
+			);
+
+			if ( isset( $body['data'] ) ) {
+				$body['data'] = $cards;
+			} else {
+				$body['cards'] = $cards;
+			}
+		}
+
+		return $body;
+	}
+
+	private function game_endpoint( mixed $value ): string {
+		$value = strtolower( trim( (string) $value ) );
+		$value = preg_replace( '/[^a-z0-9_-]+/', '-', $value ) ?? $value;
+		$value = trim( $value, '-' );
+
+		return '' === $value ? 'pokemon' : $value;
 	}
 }

@@ -39,7 +39,7 @@ final class ScryDexSyncExecutionGateTest extends TestCase {
 		$this->assert_true( $gate['persistence_query_builder_ready'] );
 		$this->assert_true( $gate['persistence_repository_ready'] );
 		$this->assert_same( 'search_cards', $gate['provider_method'] );
-		$this->assert_same( '/cards/search', $gate['provider_endpoint'] );
+		$this->assert_same( '/pokemon/v1/cards', $gate['provider_endpoint'] );
 		$this->assert_same( 'pokemon', $gate['request']['resource_key'] );
 	}
 

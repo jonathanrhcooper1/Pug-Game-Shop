@@ -11,9 +11,22 @@ const blockedPatterns = [
   /scrydex_live/i
 ];
 
-const ignoredDirs = new Set(['.git', 'node_modules', 'vendor']);
+const ignoredDirs = new Set([
+  '.codex-tmp',
+  '.git',
+  '.wp-env',
+  'dist',
+  'gen',
+  'node_modules',
+  'playwright-report',
+  'target',
+  'test-results',
+  'vendor',
+  'wp-content'
+]);
 const ignoredFiles = new Set(['verify-no-production-secrets.mjs']);
 const failures = [];
+const maxTextFileBytes = 5 * 1024 * 1024;
 
 function walk(dir) {
   for (const entry of readdirSync(dir)) {
@@ -30,6 +43,10 @@ function walk(dir) {
 
     if (stat.isDirectory()) {
       walk(path);
+      continue;
+    }
+
+    if (stat.size > maxTextFileBytes) {
       continue;
     }
 

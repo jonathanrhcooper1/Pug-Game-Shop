@@ -31,8 +31,9 @@ future offline sync app.
   browser bridge and Tauri command response metadata proving the exact table,
   columns, parameter count, and deferrals before persistence is enabled.
 - Tauri command scaffold for validating staged inventory, reservation, event,
-  and credit operation envelopes before future SQLite persistence, with
-  CI-level Rust tests planned in the offline app Windows workflow.
+  and credit operation envelopes before future SQLite persistence, with local
+  and CI Rust tests available through `cargo test` when the Windows MSVC toolchain
+  is installed.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,
@@ -60,7 +61,7 @@ npm audit
 npm run build:windows
 ```
 
-When Rust is installed, run the desktop command tests with:
+Run the desktop command tests with:
 
 ```sh
 cd src-tauri

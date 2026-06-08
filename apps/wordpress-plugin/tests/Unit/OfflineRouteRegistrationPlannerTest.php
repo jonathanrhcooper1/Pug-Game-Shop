@@ -47,6 +47,7 @@ namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineController;
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
+	use TCGStorePlatform\Api\V1\OfflineRouteRuntimeConfigurator;
 	use TCGStorePlatform\Api\V1\OfflineRouteValidationHandlerFactory;
 	use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 	use TCGStorePlatform\Offline\OfflineDeviceSessionUpdateRepository;
@@ -135,6 +136,24 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $plan['should_register'] );
 			$this->assert_false( $plans['POST /offline/pull']['permission_callback_ready'] );
 			$this->assert_false( $plans['POST /offline/push']['permission_callback_ready'] );
+		}
+
+		public function test_runtime_enabled_pairing_route_can_register_when_callbacks_are_ready(): void {
+			$route_contracts = ( new OfflineRouteRuntimeConfigurator() )->route_contracts(
+				array(
+					'device_pairing_route_enabled' => true,
+				)
+			);
+			$plans           = $this->planner_with_pairing_only_callback()->planned_registration_args( $route_contracts );
+			$plan            = $plans['POST /offline/devices/register'];
+
+			$this->assert_true( $plan['live_enabled_by_default'] );
+			$this->assert_true( $plan['permission_callback_ready'] );
+			$this->assert_true( $plan['controller_callback_ready'] );
+			$this->assert_true( $plan['should_register'] );
+			$this->assert_same( array(), $plan['registration_block_reasons'] );
+			$this->assert_false( $plans['POST /offline/pull']['should_register'] );
+			$this->assert_false( $plans['POST /offline/push']['should_register'] );
 		}
 
 		public function test_planner_requires_configured_pairing_authorizer_for_permission_readiness(): void {

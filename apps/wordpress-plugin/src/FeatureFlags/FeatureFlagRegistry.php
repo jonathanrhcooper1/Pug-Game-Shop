@@ -57,10 +57,11 @@ final class FeatureFlagRegistry {
 				'phase'     => 6,
 			),
 			'offline_sync'             => array(
-				'label'     => 'Offline application sync',
-				'default'   => false,
-				'available' => false,
-				'phase'     => 7,
+				'label'                  => 'Offline application sync',
+				'default'                => false,
+				'available'              => true,
+				'phase'                  => 7,
+				'available_environments' => array( 'local', 'development', 'staging' ),
 			),
 			'pos_payments'             => array(
 				'label'     => 'POS and payment adapters',

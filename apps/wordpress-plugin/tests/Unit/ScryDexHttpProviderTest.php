@@ -46,12 +46,52 @@ final class ScryDexHttpProviderTest extends TestCase {
 
 		$this->assert_true( $result->is_success() );
 		$this->assert_same( 'GET', $captured['method'] );
-		$this->assert_contains( '/cards/search?', $captured['url'] );
-		$this->assert_contains( 'game=pokemon', $captured['url'] );
+		$this->assert_contains( '/pokemon/v1/cards?', $captured['url'] );
+		$this->assert_contains( 'q=charizard', $captured['url'] );
+		$this->assert_contains( 'pageSize=100', $captured['url'] );
 		$this->assert_same( 'sandbox-scrydex-key', $captured['headers']['X-Api-Key'] );
 		$this->assert_same( 'sandbox-team-id', $captured['headers']['X-Team-ID'] );
 		$this->assert_same( 'mock-cursor-page-2', $body['next_cursor'] );
 		$this->assert_same( 2, count( $body['cards'] ) );
+	}
+
+	public function test_search_cards_maps_game_filter_to_endpoint_and_injects_game_context(): void {
+		$captured = array();
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static function ( string $method, string $url, array $args ) use ( &$captured ): array {
+				unset( $method, $args );
+
+				$captured['url'] = $url;
+
+				return array(
+					'status' => 200,
+					'body'   => array(
+						'data'        => array(
+							array(
+								'id'     => 'clc-3',
+								'name'   => 'Charizard',
+								'number' => '3',
+							),
+						),
+						'page'        => 1,
+						'page_size'   => 1,
+						'total_count' => 259,
+					),
+				);
+			}
+		);
+
+		$result = $provider->search_cards( 'charizard', array( 'game' => 'pokemon', 'page_size' => '1' ), 1 );
+		$body   = $result->body();
+
+		$this->assert_true( $result->is_success() );
+		$this->assert_contains( '/pokemon/v1/cards?', $captured['url'] );
+		$this->assert_contains( 'pageSize=1', $captured['url'] );
+		$this->assert_same( 'pokemon', $body['data'][0]['game'] );
+		$this->assert_same( 259, $body['total_count'] );
 	}
 
 	public function test_rate_limit_response_maps_to_retryable_status(): void {

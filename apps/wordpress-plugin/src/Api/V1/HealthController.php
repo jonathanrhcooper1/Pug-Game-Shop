@@ -14,6 +14,7 @@ use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
 use TCGStorePlatform\Scheduler\DailyScheduler;
+use TCGStorePlatform\Settings\OfflineRouteRuntimeSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 use TCGStorePlatform\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner;
@@ -78,6 +79,7 @@ final class HealthController {
 	public function get_health( \WP_REST_Request $request ): \WP_REST_Response {
 		unset( $request );
 
+		$settings                       = Settings::all();
 		$runner                         = new MigrationRunner();
 		$dependencies                   = DependencyChecker::status();
 		$features                       = array();
@@ -86,32 +88,53 @@ final class HealthController {
 		$pos_payments_enabled           = FeatureFlags::is_enabled( 'pos_payments' );
 		$device_permission_factory      = new OfflineRegisteredDevicePermissionResolverFactory();
 		$sync_handler_factory           = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
+		$pairing_authorizer_factory     = new OfflineDevicePairingAuthorizerFactory(
+			static fn (): array => $settings
+		);
+		$pairing_handler_factory        = new OfflineDeviceRegistrationRouteHandlerFactory(
+			null,
+			$pairing_authorizer_factory
+		);
+		$pairing_handler                = $pairing_handler_factory->handler();
+		$offline_handlers               = array_merge(
+			$sync_handler_factory->handlers(),
+			null !== $pairing_handler ? $pairing_handler->handlers() : array()
+		);
+		$pairing_permission             = $pairing_authorizer_factory->is_policy_configured()
+			? $pairing_authorizer_factory->permission_callback()
+			: null;
+		$offline_route_contracts        = ( new OfflineRouteRuntimeConfigurator() )->route_contracts(
+			OfflineRouteRuntimeSettings::from_settings( $settings )
+		);
 		$offline                        = ( new OfflineRouteBootstrapStatusPresenter(
 			new OfflineRouteBootstrapPlanner(
 				new OfflineRouteRegistrationPlanner(
 					new OfflineRoutePermissionCallbackFactory(
-						$device_permission_factory->resolver()
+						$device_permission_factory->resolver(),
+						null,
+						$pairing_permission
 					),
-					$sync_handler_factory->controller()
+					new OfflineController( null, $offline_handlers )
 				)
 			)
 		) )->health_payload(
-			$offline_feature_enabled
+			$offline_feature_enabled,
+			$offline_route_contracts
 		);
-		$offline_connector_manifest     = ( new OfflineConnectorManifestPlanner() )->plan( Settings::all() );
+		$offline_connector_manifest     = ( new OfflineConnectorManifestPlanner() )->plan( $settings );
 		$device_permissions             = ( new OfflineRegisteredDevicePermissionReadinessStatusPresenter(
 			$device_permission_factory
 		) )->health_payload();
 		$sync_handlers                  = ( new OfflineRegisteredDeviceSyncRouteReadinessStatusPresenter(
 			$sync_handler_factory
 		) )->health_payload();
-		$pairing_authorizer_factory     = new OfflineDevicePairingAuthorizerFactory();
 		$pairing                        = ( new OfflineDevicePairingRouteReadinessStatusPresenter(
 			new OfflineDevicePairingRouteReadinessPlanner(
 				null,
 				null,
 				$pairing_authorizer_factory,
-				new OfflineDeviceRegistrationRouteHandlerFactory( null, $pairing_authorizer_factory )
+				$pairing_handler_factory,
+				$offline_route_contracts
 			)
 		) )->health_payload(
 			$offline_feature_enabled
@@ -128,18 +151,18 @@ final class HealthController {
 		$woocommerce_square             = ( new WooCommerceSquareExtensionStatus() )->readiness_summary();
 		$square_inventory_sync          = ( new SquareInventorySyncReadinessPlanner() )->plan();
 		$square_inventory_batch_sync    = ( new SquareInventoryBatchSyncReadinessPlanner() )->plan();
-		$inventory_factory              = InventoryRouteDependencyFactory::from_settings( Settings::all() );
+		$inventory_factory              = InventoryRouteDependencyFactory::from_settings( $settings );
 		$inventory_bootstrap            = $inventory_factory->bootstrap_status_presenter()->health_payload(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
 		);
 		$inventory_dependencies         = ( new InventoryRouteDependencyStatusPresenter(
 			$inventory_factory
 		) )->health_payload();
-		$scrydex_factory                = new ScryDexProviderFactory( Settings::all() );
+		$scrydex_factory                = new ScryDexProviderFactory( $settings );
 		$scrydex                        = $scrydex_factory->readiness_summary();
 		$scrydex_dry_run_planner        = new ScryDexSyncDryRunPlanner( $scrydex_factory );
 		$scrydex_sync_dry_run           = $scrydex_dry_run_planner->plan_cards_sync();
-		$scrydex_usage_budget_planner   = new ScryDexUsageBudgetPlanner( Settings::all() );
+		$scrydex_usage_budget_planner   = new ScryDexUsageBudgetPlanner( $settings );
 		$scrydex_usage_budget           = $scrydex_usage_budget_planner->plan_cards_page(
 			$scrydex_sync_dry_run['request']
 		);

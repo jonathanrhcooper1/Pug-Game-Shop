@@ -18,6 +18,14 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Local verification now includes `cargo test` for the Tauri Rust command
+  scaffold on Windows when Rust/Cargo and the MSVC linker are installed.
+- Local unit coverage now includes offline route runtime settings, contract
+  mutation, staging-only feature availability, runtime-aware bootstrap/health
+  planning, and pairing-route registration readiness.
+- Local ScryDex provider coverage now targets the documented
+  `/pokemon/v1/cards` endpoint shape, including live response `data` rows,
+  `page_size`/`total_count` pagination fields, and game-context normalization.
 - Local unit coverage now includes ScryDex provider settings sanitization,
   blank-field secret preservation, explicit clear flags, server-only provider
   context, and public readiness output that redacts saved Team ID and key

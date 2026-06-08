@@ -37,7 +37,7 @@ final class ScryDexSyncDryRunPlanner {
 			'provider_context_ready'        => true === ( $provider_readiness['provider_context_ready'] ?? false ),
 			'credential_values_redacted'    => true,
 			'provider_method'               => 'search_cards',
-			'provider_endpoint'             => '/cards/search',
+			'provider_endpoint'             => '/' . $game . '/v1/cards',
 			'request'                       => $next_request,
 			'checkpoint_row'                => $checkpoint->to_row(),
 			'network_requests_deferred'     => true,

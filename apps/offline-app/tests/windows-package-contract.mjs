@@ -33,7 +33,7 @@ assert.ok(appPackage.scripts["build:windows"].includes("x86_64-pc-windows-msvc")
 assert.ok(appPackage.scripts["build:windows"].includes("--bundles nsis"))
 assert.ok(tauriConfig.bundle.active)
 assert.ok(tauriConfig.bundle.targets.includes("nsis"))
-assert.equal(tauriConfig.bundle.windows.nsis.installerMode, "perMachine")
+assert.equal(tauriConfig.bundle.windows.nsis.installMode, "perMachine")
 
 assert.equal(manifest.sync.rest_namespace, "/wp-json/tcg-store/v1")
 assert.equal(manifest.sync.pairing_route, "/offline/devices/register")

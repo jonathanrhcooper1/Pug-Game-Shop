@@ -21,7 +21,7 @@ final class ScryDexSyncDryRunPlannerTest extends TestCase {
 		$this->assert_true( $plan['dry_run'] );
 		$this->assert_false( $plan['provider_ready'] );
 		$this->assert_same( 'search_cards', $plan['provider_method'] );
-		$this->assert_same( '/cards/search', $plan['provider_endpoint'] );
+		$this->assert_same( '/pokemon/v1/cards', $plan['provider_endpoint'] );
 		$this->assert_same( 'scrydex', $plan['request']['provider'] );
 		$this->assert_same( 'cards', $plan['request']['resource_type'] );
 		$this->assert_same( 'pokemon', $plan['request']['resource_key'] );

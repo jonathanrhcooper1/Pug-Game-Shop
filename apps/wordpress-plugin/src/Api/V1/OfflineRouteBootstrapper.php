@@ -8,6 +8,10 @@
 namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
+use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
+use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
+use TCGStorePlatform\Settings\OfflineRouteRuntimeSettings;
+use TCGStorePlatform\Settings\Settings;
 
 final class OfflineRouteBootstrapper {
 	/**
@@ -42,7 +46,23 @@ final class OfflineRouteBootstrapper {
 	 * @return array<string, mixed>
 	 */
 	public function bootstrap_current_routes(): array {
-		return $this->bootstrap( FeatureFlags::is_enabled( 'offline_sync' ) );
+		$settings        = Settings::all();
+		$route_contracts = ( new OfflineRouteRuntimeConfigurator() )->route_contracts(
+			OfflineRouteRuntimeSettings::from_settings( $settings )
+		);
+		$planner         = $this->runtime_registration_planner( $settings );
+		$presenter       = new OfflineRouteBootstrapStatusPresenter(
+			new OfflineRouteBootstrapPlanner( $planner )
+		);
+
+		return $this->bootstrap_from_payload(
+			$presenter->health_payload(
+				FeatureFlags::is_enabled( 'offline_sync' ),
+				$route_contracts
+			),
+			$route_contracts,
+			$this->registrar_from_route_registrar( new OfflineRouteRegistrar( $planner ) )
+		);
 	}
 
 	/**
@@ -68,15 +88,21 @@ final class OfflineRouteBootstrapper {
 	}
 
 	/**
-	 * @param array<string, mixed>              $payload Health payload.
+	 * @param array<string, mixed>             $payload Health payload.
 	 * @param null|list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @param callable|null                    $registrar Route registrar callback.
 	 * @return array<string, mixed>
 	 */
-	private function bootstrap_from_payload( array $payload, ?array $route_contracts ): array {
+	private function bootstrap_from_payload(
+		array $payload,
+		?array $route_contracts,
+		?callable $registrar = null
+	): array {
+		$registrar         = $registrar ?? $this->registrar;
 		$registered_routes = array();
 
 		if ( true === $payload['should_register_routes'] ) {
-			$registered_routes = ( $this->registrar )( $route_contracts, $payload );
+			$registered_routes = $registrar( $route_contracts, $payload );
 			if ( ! is_array( $registered_routes ) ) {
 				$registered_routes = array();
 			}
@@ -92,6 +118,54 @@ final class OfflineRouteBootstrapper {
 			'registered_route_keys'    => self::list_values( array_keys( $registered_routes ) ),
 			'registration_deferred'    => true !== $payload['should_register_routes'],
 			'bootstrap_block_reasons'  => self::list_values( $payload['bootstrap_block_reasons'] ?? array() ),
+		);
+	}
+
+	/**
+	 * @return callable(null|list<array<string, mixed>>, array<string, mixed>): array<string, mixed>
+	 */
+	private function registrar_from_route_registrar( OfflineRouteRegistrar $registrar ): callable {
+		return static function ( ?array $contracts, array $route_payload ) use ( $registrar ): array {
+			$registered_count = $registrar->register_enabled_routes( $contracts );
+			$route_keys       = array_slice(
+				self::list_values( $route_payload['registerable_route_keys'] ?? array() ),
+				0,
+				$registered_count
+			);
+
+			return array_fill_keys( $route_keys, array( 'registered' => true ) );
+		};
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Platform settings.
+	 */
+	private function runtime_registration_planner( array $settings ): OfflineRouteRegistrationPlanner {
+		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory(
+			static fn (): array => $settings
+		);
+		$pairing_handler_factory    = new OfflineDeviceRegistrationRouteHandlerFactory(
+			null,
+			$pairing_authorizer_factory
+		);
+		$pairing_handler            = $pairing_handler_factory->handler();
+		$sync_handler_factory       = new OfflineRegisteredDeviceSyncRouteHandlerFactory();
+		$pairing_permission         = $pairing_authorizer_factory->is_policy_configured()
+			? $pairing_authorizer_factory->permission_callback()
+			: null;
+		$handlers                   = array_merge(
+			$sync_handler_factory->handlers(),
+			null !== $pairing_handler ? $pairing_handler->handlers() : array()
+		);
+		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
+
+		return new OfflineRouteRegistrationPlanner(
+			new OfflineRoutePermissionCallbackFactory(
+				$device_permission_factory->resolver(),
+				null,
+				$pairing_permission
+			),
+			new OfflineController( null, $handlers )
 		);
 	}
 

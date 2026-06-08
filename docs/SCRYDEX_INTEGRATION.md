@@ -64,7 +64,7 @@ key slot, a short key fingerprint, and explicit deferrals.
 
 The health endpoint includes `scrydex_sync_dry_run` for staging checks. It
 reports the provider method (`search_cards`), provider endpoint
-(`/cards/search`), next request parameters, checkpoint row, configured state,
+(`/pokemon/v1/cards` by default), next request parameters, checkpoint row, configured state,
 and execution deferrals. It does not call ScryDex, normalize card rows, write
 checkpoints, download images, register webhooks, or enqueue workers.
 

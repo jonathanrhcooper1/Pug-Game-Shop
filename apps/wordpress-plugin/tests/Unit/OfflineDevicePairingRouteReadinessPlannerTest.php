@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDeviceRegistrationRouteHandler;
+use TCGStorePlatform\Api\V1\OfflineRouteRuntimeConfigurator;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 use TCGStorePlatform\Offline\OfflineDeviceRegistrationService;
@@ -67,6 +68,32 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_same( 'not_required_for_pairing', $plan['registered_device_dependency'] );
 		$this->assert_true( in_array( 'route_disabled_by_default', $plan['registration_block_reasons'], true ) );
 		$this->assert_same( array( 'no_registerable_offline_routes' ), $plan['bootstrap_block_reasons'] );
+	}
+
+	public function test_readiness_reports_runtime_enabled_pairing_route_ready_to_register(): void {
+		$route_contracts = ( new OfflineRouteRuntimeConfigurator() )->route_contracts(
+			array(
+				'device_pairing_route_enabled' => true,
+			)
+		);
+		$plan            = ( new OfflineDevicePairingRouteReadinessPlanner(
+			new OfflineDeviceRegistrationRouteHandler( new OfflineDeviceRegistrationService() ),
+			new OfflineDevicePairingPermissionCallbackAdapter( null, static fn (): bool => true ),
+			null,
+			null,
+			$route_contracts
+		) )->plan( true );
+
+		$this->assert_same( 'ready', $plan['status'] );
+		$this->assert_true( $plan['feature_enabled'] );
+		$this->assert_false( $plan['registration_deferred'] );
+		$this->assert_true( $plan['live_enabled_by_default'] );
+		$this->assert_true( $plan['should_register'] );
+		$this->assert_same( 1, $plan['registerable_route_count'] );
+		$this->assert_same( array(), $plan['registration_block_reasons'] );
+		$this->assert_same( array(), $plan['bootstrap_block_reasons'] );
+		$this->assert_false( $plan['app_pairing_contract']['network_request_deferred'] );
+		$this->assert_false( $plan['app_pairing_contract']['route_registration_deferred'] );
 	}
 
 	public function test_readiness_can_build_pairing_permission_from_configured_settings_policy(): void {

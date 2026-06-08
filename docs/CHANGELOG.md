@@ -6,6 +6,26 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Root `CHANGELOG.md` pointer to the detailed docs changelog so repository
+  metadata satisfies the project operating rule while detailed release notes
+  remain in `docs/CHANGELOG.md`.
+- Offline route runtime settings and admin controls for staging-gated device
+  pairing, pull, push, and conflict routes. The offline feature flag remains
+  unavailable in production, while local/development/staging can opt in route
+  by route after policy and handler readiness checks pass.
+- Runtime-aware offline route bootstrap and health planning that uses the
+  configured route gates, pairing-code policy readiness, registered-device
+  permissions, and handler availability before registering any offline REST
+  route.
+- ScryDex HTTP provider alignment with the current live Pokémon cards endpoint
+  (`/pokemon/v1/cards`), including `q`/`pageSize` request parameters and game
+  context injection for live responses whose card rows omit an explicit game
+  field.
+- Local Tauri/Rust desktop-shell verification support, including a committed
+  Cargo lockfile, generated Windows icon, schema-compatible NSIS `installMode`,
+  and contract coverage for the Windows package metadata.
+- Root `npm run build` delegation to the offline app Vite build and generated
+  artifact exclusions for the production-secret scanner.
 - Offline app multi-company connector draft editing, allowing staff to add or
   update company/site profiles by company name, website host/URL, environment,
   and ScryDex display label while keeping credentials out of source and out of

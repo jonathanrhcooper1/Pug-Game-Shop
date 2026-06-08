@@ -17,7 +17,8 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 		private ?OfflineDeviceRegistrationRouteHandler $registration_handler = null,
 		private ?OfflineDevicePairingPermissionCallbackAdapter $permission_callback = null,
 		private ?OfflineDevicePairingAuthorizerFactory $authorizer_factory = null,
-		private ?OfflineDeviceRegistrationRouteHandlerFactory $registration_handler_factory = null
+		private ?OfflineDeviceRegistrationRouteHandlerFactory $registration_handler_factory = null,
+		private ?array $route_contracts = null
 	) {
 	}
 
@@ -47,7 +48,7 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 				&& $permission_callback->is_configured(),
 			'policy_configured'            => true === $policy_summary['configured'],
 			'policy_summary'               => $policy_summary,
-			'app_pairing_contract'         => $this->app_pairing_contract(),
+			'app_pairing_contract'         => $this->app_pairing_contract( $route_plan ),
 			'permission_callback_ready'    => true === ( $route_plan['permission_callback_ready'] ?? false ),
 			'controller_callback_ready'    => true === ( $route_plan['controller_callback_ready'] ?? false ),
 			'live_enabled_by_default'      => true === ( $route_plan['live_enabled_by_default'] ?? false ),
@@ -82,7 +83,7 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 	 * @return list<array<string, mixed>>
 	 */
 	private function pairing_route_contracts(): array {
-		foreach ( OfflineRouteContracts::route_contracts() as $route_contract ) {
+		foreach ( $this->route_contracts ?? OfflineRouteContracts::route_contracts() as $route_contract ) {
 			if ( '/offline/devices/register' === ( $route_contract['path'] ?? '' ) ) {
 				return array( $route_contract );
 			}
@@ -172,9 +173,10 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 	}
 
 	/**
-		* @return array<string, mixed>
-		*/
-	private function app_pairing_contract(): array {
+	 * @param array<string, mixed> $route_plan Route registration plan.
+	 * @return array<string, mixed>
+	 */
+	private function app_pairing_contract( array $route_plan ): array {
 
 		return array(
 			'action'                             => 'offline_device_pairing_request',
@@ -192,9 +194,9 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 			'requested_scopes'                   => array( 'offline_pull', 'offline_push', 'conflicts' ),
 			'device_token_storage'               => 'desktop_secure_store',
 			'token_values_redacted'              => true,
-			'network_request_deferred'           => true,
+			'network_request_deferred'           => true !== ( $route_plan['should_register'] ?? false ),
 			'production_token_issuance_deferred' => true,
-			'route_registration_deferred'        => true,
+			'route_registration_deferred'        => true !== ( $route_plan['should_register'] ?? false ),
 			'credential_values_synced_to_app'    => false,
 		);
 	}

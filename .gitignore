@@ -3,9 +3,11 @@ Thumbs.db
 node_modules/
 vendor/
 .wp-env/
+.codex-tmp/
 wp-content/
 playwright-report/
 test-results/
+apps/offline-app/src-tauri/gen/
 *.log
 *.sqlite
 *.sqlite3

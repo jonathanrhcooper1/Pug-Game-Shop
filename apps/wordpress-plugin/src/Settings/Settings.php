@@ -25,6 +25,7 @@ final class Settings {
 			'daily_timezone'                => 'America/New_York',
 			'branding'                      => BrandingSettings::defaults(),
 			'offline_pairing_authorization' => OfflinePairingAuthorizationSettings::defaults(),
+			'offline_route_runtime'         => OfflineRouteRuntimeSettings::defaults(),
 			'inventory_route_runtime'       => InventoryRouteRuntimeSettings::defaults(),
 			'scrydex_provider'              => ScryDexProviderSettings::defaults(),
 			'scrydex_usage_budget'          => ScryDexUsageBudgetSettings::defaults(),
@@ -45,6 +46,9 @@ final class Settings {
 		$settings['offline_pairing_authorization'] = OfflinePairingAuthorizationSettings::sanitize(
 			$settings['offline_pairing_authorization'] ?? array(),
 			OfflinePairingAuthorizationSettings::defaults()
+		);
+		$settings['offline_route_runtime']         = OfflineRouteRuntimeSettings::sanitize(
+			$settings['offline_route_runtime'] ?? array()
 		);
 		$settings['inventory_route_runtime']       = InventoryRouteRuntimeSettings::sanitize(
 			$settings['inventory_route_runtime'] ?? array()
@@ -90,6 +94,9 @@ final class Settings {
 			? $existing['offline_pairing_authorization']
 				: OfflinePairingAuthorizationSettings::defaults()
 		);
+		$offline_route_runtime         = OfflineRouteRuntimeSettings::sanitize(
+			$value['offline_route_runtime'] ?? array()
+		);
 		$inventory_route_runtime       = InventoryRouteRuntimeSettings::sanitize(
 			$value['inventory_route_runtime'] ?? array()
 		);
@@ -117,6 +124,7 @@ final class Settings {
 			'daily_timezone'                => 'America/New_York',
 			'branding'                      => $branding,
 			'offline_pairing_authorization' => $offline_pairing_authorization,
+			'offline_route_runtime'         => $offline_route_runtime,
 			'inventory_route_runtime'       => $inventory_route_runtime,
 			'scrydex_provider'              => $scrydex_provider,
 			'scrydex_usage_budget'          => $scrydex_usage_budget,

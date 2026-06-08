@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\OfflinePairingAuthorizationSettings;
+use TCGStorePlatform\Settings\OfflineRouteRuntimeSettings;
 use TCGStorePlatform\Settings\ScryDexProviderSettings;
 use TCGStorePlatform\Settings\ScryDexUsageBudgetSettings;
 use TCGStorePlatform\Settings\Settings;
@@ -39,9 +40,11 @@ final class SettingsTest extends TestCase {
 		$this->assert_true( isset( $defaults['logging_level'] ) );
 		$this->assert_true( isset( $defaults['branding'] ) );
 		$this->assert_true( isset( $defaults['offline_pairing_authorization'] ) );
+		$this->assert_true( isset( $defaults['offline_route_runtime'] ) );
 		$this->assert_true( isset( $defaults['inventory_route_runtime'] ) );
 		$this->assert_true( isset( $defaults['scrydex_provider'] ) );
 		$this->assert_true( isset( $defaults['scrydex_usage_budget'] ) );
+		$this->assert_same( OfflineRouteRuntimeSettings::defaults(), $defaults['offline_route_runtime'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_same( ScryDexProviderSettings::defaults(), $defaults['scrydex_provider'] );
@@ -75,6 +78,38 @@ final class SettingsTest extends TestCase {
 		$this->assert_false( $result['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_true( $result['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_false( $result['inventory_route_runtime']['public_search_route_enabled'] );
+	}
+
+	public function test_offline_route_runtime_settings_are_sanitized(): void {
+		$result = Settings::sanitize(
+			array(
+				'offline_route_runtime' => array(
+					'device_pairing_route_enabled' => true,
+					'pull_route_enabled'           => true,
+					'push_route_enabled'           => true,
+					'conflict_routes_enabled'      => true,
+				),
+			)
+		);
+
+		$this->assert_true( $result['offline_route_runtime']['device_pairing_route_enabled'] );
+		$this->assert_true( $result['offline_route_runtime']['pull_route_enabled'] );
+		$this->assert_true( $result['offline_route_runtime']['push_route_enabled'] );
+		$this->assert_true( $result['offline_route_runtime']['conflict_routes_enabled'] );
+
+		$result = Settings::sanitize(
+			array(
+				'offline_route_runtime' => array(
+					'pull_route_enabled'      => true,
+					'conflict_routes_enabled' => true,
+				),
+			)
+		);
+
+		$this->assert_false( $result['offline_route_runtime']['device_pairing_route_enabled'] );
+		$this->assert_true( $result['offline_route_runtime']['pull_route_enabled'] );
+		$this->assert_false( $result['offline_route_runtime']['push_route_enabled'] );
+		$this->assert_true( $result['offline_route_runtime']['conflict_routes_enabled'] );
 	}
 
 	public function test_offline_pairing_authorization_defaults_are_secret_free(): void {

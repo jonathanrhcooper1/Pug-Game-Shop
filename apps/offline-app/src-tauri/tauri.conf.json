@@ -34,7 +34,7 @@
     "longDescription": "Offline sync app for inventory, kiosk, customer credit, buylist, event, and staff workflows.",
     "windows": {
       "nsis": {
-        "installerMode": "perMachine",
+        "installMode": "perMachine",
         "displayLanguageSelector": false
       }
     }

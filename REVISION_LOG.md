@@ -3,6 +3,120 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging Offline Route Gates And Live ScryDex Endpoint Verification
+
+### What Changed
+
+- Installed and verified the local Rust/Cargo and MSVC linker toolchain for
+  Tauri command tests.
+- Fixed the Tauri Windows NSIS config key from `installerMode` to `installMode`,
+  added a Windows `.ico`, and committed the generated `Cargo.lock` for
+  reproducible desktop-shell testing.
+- Added offline route runtime settings, admin controls, and a runtime
+  configurator for staging-gated device pairing, pull, push, and conflict
+  routes.
+- Updated offline route bootstrap and health planning to use runtime route
+  contracts, pairing policy readiness, registered-device permissions, and
+  handler availability before any offline REST route can register.
+- Kept `offline_sync` unavailable in production while allowing local,
+  development, and staging environments to opt in behind explicit settings.
+- Updated the ScryDex HTTP provider and dry-run diagnostics to target the
+  current `/pokemon/v1/cards` endpoint and normalize live response rows that
+  omit game context.
+- Added a root `build` script and made the production-secret scanner skip
+  generated/binary artifact directories.
+- Added a root `CHANGELOG.md` pointer to the detailed docs changelog.
+- Verified staging SSH/SFTP upload access by writing and removing a harmless
+  marker under `/html/wp-content/uploads`; no plugin files were activated or
+  overwritten.
+- Verified a live ScryDex pull with sanitized output only: `GET
+  /pokemon/v1/cards` returned HTTP 200, two Charizard rows, and `total_count`
+  metadata.
+
+### Why
+
+The offline app needs a safe, company-configurable staging path before live
+pairing, pull, or push routes are exposed. ScryDex credentials are now
+available for staging checks, so the provider adapter also needed to match the
+current documented endpoint before worker execution is enabled.
+
+### Files Affected
+
+- `CHANGELOG.md`
+- `.gitignore`
+- `package.json`
+- `scripts/wp-env/verify-no-production-secrets.mjs`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `apps/offline-app/README.md`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/icons/icon.ico`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncDryRunPlanner.php`
+- `apps/wordpress-plugin/src/Settings/OfflineRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncDryRunPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline route runtime settings sanitization coverage.
+- Offline route runtime configurator coverage for default-off routes, device
+  pairing enablement, and conflict-route enablement.
+- Offline route registration/readiness coverage proving a runtime-enabled
+  pairing route can register only when permission and handler dependencies are
+  ready.
+- ScryDex provider coverage for the live endpoint shape and game-context
+  normalization.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 869 tests.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 568 PHP files.
+- `npm.cmd run test:offline-app`: passed.
+- `cargo test` in `apps/offline-app/src-tauri`: passed, 4 Rust tests.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- Staging SSH/SFTP upload smoke to `/html/wp-content/uploads`: passed, marker
+  removed.
+- Live ScryDex read smoke to `/pokemon/v1/cards`: passed with sanitized
+  summary output only.
+
+### Rollback Notes
+
+- Revert this revision to return offline routes to static default-off planning
+  and remove the new runtime route settings.
+- Remove `apps/offline-app/src-tauri/Cargo.lock` and
+  `apps/offline-app/src-tauri/icons/icon.ico` only if the Tauri Windows shell
+  is no longer being tested locally.
+- Reverting the ScryDex provider change restores the older mock-only endpoint
+  behavior, but live ScryDex reads will no longer match the documented current
+  `/pokemon/v1/cards` route.
+- No database migration rollback, WordPress plugin deactivation, staging file
+  cleanup, or provider-side cleanup is required. The staging upload smoke file
+  was removed during the test, and no live WordPress route was enabled by
+  default.
+
 ## 2026-06-08 - Offline App Functional Connector And Local Action State
 
 ### What Changed

@@ -167,6 +167,21 @@ final class SettingsPage {
 		);
 
 		add_settings_section(
+			'tcg_store_platform_offline_routes',
+			__( 'Offline route runtime', 'tcg-store-platform' ),
+			array( $this, 'render_offline_route_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'offline_route_runtime',
+			__( 'Staging offline gates', 'tcg-store-platform' ),
+			array( $this, 'render_offline_route_runtime' ),
+			'tcg-store-platform',
+			'tcg_store_platform_offline_routes'
+		);
+
+		add_settings_section(
 			'tcg_store_platform_scrydex',
 			__( 'ScryDex', 'tcg-store-platform' ),
 			array( $this, 'render_scrydex_description' ),
@@ -395,6 +410,42 @@ final class SettingsPage {
 		echo '</fieldset>';
 	}
 
+	public function render_offline_route_description(): void {
+		echo '<p>';
+		echo esc_html__( 'Offline route gates remain separate from feature flags and pairing-code policy. Enable only the device pairing route first, then verify staging before opening pull or push routes.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_offline_route_runtime(): void {
+		$runtime = OfflineRouteRuntimeSettings::from_settings( Settings::all() );
+
+		echo '<fieldset>';
+		$this->render_offline_route_checkbox(
+			'device_pairing_route_enabled',
+			__( 'Enable offline device pairing route in staging.', 'tcg-store-platform' ),
+			! empty( $runtime['device_pairing_route_enabled'] )
+		);
+		$this->render_offline_route_checkbox(
+			'pull_route_enabled',
+			__( 'Enable registered-device pull route after pairing acceptance.', 'tcg-store-platform' ),
+			! empty( $runtime['pull_route_enabled'] )
+		);
+		$this->render_offline_route_checkbox(
+			'push_route_enabled',
+			__( 'Enable registered-device push route after queue persistence acceptance.', 'tcg-store-platform' ),
+			! empty( $runtime['push_route_enabled'] )
+		);
+		$this->render_offline_route_checkbox(
+			'conflict_routes_enabled',
+			__( 'Enable offline conflict review routes after manager workflow acceptance.', 'tcg-store-platform' ),
+			! empty( $runtime['conflict_routes_enabled'] )
+		);
+		echo '<p class="description">';
+		echo esc_html__( 'The offline feature flag must also be enabled and production remains unavailable. Pull, push, and conflict gates should stay off until device pairing, local SQLite persistence, and staging smoke tests pass.', 'tcg-store-platform' );
+		echo '</p>';
+		echo '</fieldset>';
+	}
+
 	public function render_scrydex_description(): void {
 		echo '<p>';
 		echo esc_html__( 'Configure ScryDex for staging reference-card sync. Values are saved in WordPress settings, redacted from status output, and never used by local tests.', 'tcg-store-platform' );
@@ -610,5 +661,18 @@ final class SettingsPage {
 			. '][' . esc_attr( $clear_key ) . ']" value="1" /> ';
 		echo esc_html__( 'Clear saved value', 'tcg-store-platform' );
 		echo '</label></p>';
+	}
+
+	private function render_offline_route_checkbox( string $key, string $label, bool $checked ): void {
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( OfflineRouteRuntimeSettings::KEY )
+			. '][' . esc_attr( $key )
+			. ']" value="1" '
+			. checked( $checked, true, false )
+			. ' /> ';
+		echo esc_html( $label );
+		echo '</label><br />';
 	}
 }
