@@ -147,6 +147,7 @@ plus push canonical inventory mutation transaction execution
 plus route-connected push canonical inventory execution wiring
 plus offline app connector-aware guarded inventory hold staging
 plus offline app per-company connector test reports
+plus offline app typed local pull-refresh preview and typecheck gate
 plus polished offline inventory command workspace UI and shell contract
 plus functional offline app controls for sidebar navigation, filters, grid/list
 views, scan/quantity staging, print-label preview, conflict review/history,

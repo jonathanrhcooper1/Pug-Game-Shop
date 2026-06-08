@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pull Refresh Preview
+
+### What Changed
+
+- Fixed the TypeScript sync-session contract so guarded inventory execution
+  fields live on the push route model instead of the pull route model.
+- Added TypeScript typechecking to the root `npm run test:offline-app` command.
+- Added `OfflinePullRefreshPreview` and `buildOfflinePullRefreshPreview`.
+- `Sync Now` now creates a visible pull-refresh preview with inventory,
+  customer-credit, event, conflict, cursor, and preserved queued-operation
+  counts.
+- Cached-only inventory rows are marked as accepted locally after the pull
+  preview, while queued rows remain preserved for future push acceptance.
+
+### Why
+
+The offline app needs to model reconnect as both pull and push work. This
+revision makes the pull side visible and typed without making live network
+requests, and it strengthens the test gate so type drift is caught before a
+future desktop adapter is connected.
+
+### Files Affected
+
+- `package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace-state contract coverage for
+  `OfflinePullRefreshPreview`, `buildOfflinePullRefreshPreview`, local cache
+  refresh flags, and queued-operation preservation.
+- Offline app UI shell contract coverage for the pull refresh panel.
+
+### Tests Run
+
+- `npm --prefix apps/offline-app run typecheck`: passed.
+- `npm run test:offline-app`: passed.
+- Browser verification at `http://127.0.0.1:1420/`: passed for `Sync Now`
+  pull refresh preview rendering and queued-operation preservation.
+- `npm run test`: passed, including PHP plugin tests, offline app contracts,
+  packaging contracts, and required test matrix.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed with line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove local pull-refresh preview behavior and return
+  `Sync Now` to push/session planning only.
+- No schema rollback is required.
+
 ## 2026-06-08 - Offline App Connector Test Reports
 
 ### What Changed

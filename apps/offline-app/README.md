@@ -24,8 +24,8 @@ future offline sync app.
   WordPress connector manifests, plus SQLite-compatible staged operation
   envelopes for inventory, customer credit, and conflict review workflows,
   deferred pairing/push request plans, per-company route/canonical inventory
-  write readiness, connector test reports, and response summaries for reconnect
-  sync.
+  write readiness, connector test reports, local pull-refresh previews, and
+  response summaries for reconnect sync.
 - Browser-safe offline queue bridge contract for staging inventory, conflict,
   customer-credit, and sync-batch operations before the desktop SQLite/Tauri
   command adapter is connected.
@@ -42,7 +42,8 @@ future offline sync app.
   cached branding/inventory/credit/events, sync logs, and conflicts.
 - Contract tests for package metadata, sync routes, branding tokens, local
   schema shape, local workspace state, queue bridge safety, UI shell markers,
-  and secret safety.
+  and secret safety. The root offline-app test script runs TypeScript
+  typechecking before these contracts.
 
 The app does not yet implement live pairing, live SQLite writes, live push/pull
 sync execution, printer/scanner adapters, kiosk lockdown, or signed updater

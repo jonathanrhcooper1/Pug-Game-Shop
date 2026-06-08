@@ -10,6 +10,7 @@ import {
   buildConnectorProfileStorageSnapshot,
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
+  buildOfflinePullRefreshPreview,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
   buildPreparedPairingStorageSnapshot,
@@ -48,6 +49,7 @@ import {
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
   type OfflinePushResultSummary,
+  type OfflinePullRefreshPreview,
   type OfflineConnectorTestReport,
   type OfflineSessionStorageRestoreResult,
   type OfflineSyncAttemptRecord,
@@ -200,6 +202,7 @@ export function App() {
   const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
+  const [pullRefreshPreview, setPullRefreshPreview] = useState<OfflinePullRefreshPreview | null>(null)
   const [syncAttempts, setSyncAttempts] = useState<OfflineSyncAttemptRecord[]>(
     offlineSessionStorage.syncAttempts,
   )
@@ -587,13 +590,32 @@ export function App() {
     }
 
     recordSyncAttempt(nextSyncSessionPlan)
+    const nextPullRefreshPreview = buildOfflinePullRefreshPreview(
+      activeProfile,
+      inventoryItems,
+      workspace.customerCredit,
+      openConflicts,
+      operationsForSync,
+    )
+    setPullRefreshPreview(nextPullRefreshPreview)
+    setInventoryItems((items) =>
+      items.map((item) =>
+        item.source === "cached"
+          ? {
+              ...item,
+              source: "accepted",
+              rowVersion: item.rowVersion + 1,
+            }
+          : item,
+      ),
+    )
     setActiveSection("Sync")
     setActivityMessage({
       title: "Sync plan prepared",
       detail:
         operationsForSync.length > 0
-          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"} and network execution waits for device pairing approval.`
-          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; network execution waits for pairing approval.`,
+          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
+          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; local cache refresh preview applied without network execution.`,
     })
   }
 
@@ -833,6 +855,37 @@ export function App() {
                   {syncSessionPlan.prepared_pairing_available
                     ? `Fingerprint ${syncSessionPlan.pairing_code_fingerprint}; token storage ${syncSessionPlan.device_token_storage}`
                     : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
+                </small>
+              </div>
+            </section>
+          ) : null}
+
+          {pullRefreshPreview ? (
+            <section className="pull-refresh-panel" aria-label="Pull refresh preview">
+              <div>
+                <span className="micro-label">Pull refresh</span>
+                <strong>{pullRefreshPreview.companyName}</strong>
+                <small>
+                  Cursor {pullRefreshPreview.pullCursor}; network deferred at{" "}
+                  {pullRefreshPreview.generatedAtLabel}
+                </small>
+              </div>
+              <div>
+                <span className="micro-label">Local cache</span>
+                <strong>{pullRefreshPreview.inventoryRowsRefreshed} inventory row(s)</strong>
+                <small>
+                  {pullRefreshPreview.customerCreditRowsRefreshed} credit row;
+                  {pullRefreshPreview.eventRowsRefreshed} event row(s);
+                  {pullRefreshPreview.conflictRowsRefreshed} conflict row(s)
+                </small>
+              </div>
+              <div>
+                <span className="micro-label">Queued ops preserved</span>
+                <strong>{pullRefreshPreview.queuedOperationsPreserved}</strong>
+                <small>
+                  {pullRefreshPreview.changedInventoryPublicIds.length > 0
+                    ? pullRefreshPreview.changedInventoryPublicIds.join(", ")
+                    : "No accepted inventory rows changed."}
                 </small>
               </div>
             </section>

@@ -608,6 +608,42 @@ h2 {
   line-height: 1.35;
 }
 
+.pull-refresh-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #172016;
+}
+
+.pull-refresh-panel div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  background: linear-gradient(180deg, #fffefe, #f6f8f2);
+  border: 1px solid rgba(121, 215, 143, 0.22);
+  border-radius: 8px;
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.pull-refresh-panel strong,
+.pull-refresh-panel small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pull-refresh-panel strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pull-refresh-panel small {
+  color: #52605a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .sync-session-panel .sync-attempt-list {
   grid-column: 1 / -1;
   gap: 7px;

@@ -102,6 +102,9 @@
   batch shaping, deferred push request planning, response summarization, and
   no direct external endpoint or database access markers. The offline app
   package contract also runs `tsc --noEmit`.
+- Root offline app test coverage now runs TypeScript typechecking before the
+  contract suite and verifies the local pull-refresh preview created by
+  `Sync Now`, including refreshed row counts and queued-operation preservation.
 - Offline app browser verification now covers the functional local-session
   controls at desktop width: stage inventory update, prepare print label,
   review/approve all conflicts into history, stage customer-credit use into a

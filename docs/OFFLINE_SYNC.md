@@ -471,6 +471,10 @@ Connector testing in the offline app now produces a local, secret-free report
 for each company/site profile. The report checks manifest shape, offline route
 map, pairing readiness, guarded inventory hold status, credential boundaries,
 and deferred network reachability before live pairing or push execution.
+`Sync Now` now also creates a local pull-refresh preview. The preview reports
+refreshed inventory, customer-credit, event, and conflict row counts, records a
+future pull cursor, preserves queued operations for push acceptance, and keeps
+network execution plus device authorization headers deferred.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

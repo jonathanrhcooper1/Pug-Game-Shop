@@ -344,9 +344,6 @@ export type OfflineConnectorSyncSessionPlan = {
     url: string
     network_request_deferred: true
     device_authorization_header_deferred: true
-    route_connected_push_ready: boolean
-    canonical_inventory_execution_enabled: boolean
-    canonical_inventory_writes_deferred: boolean
   }
   push: {
     method: "POST"
@@ -356,6 +353,10 @@ export type OfflineConnectorSyncSessionPlan = {
     operation_count: number
     network_request_deferred: true
     device_authorization_header_deferred: true
+    route_connected_push_ready: boolean
+    canonical_inventory_operation_count: number
+    canonical_inventory_execution_enabled: boolean
+    canonical_inventory_writes_deferred: boolean
   }
   prepared_pairing_available: boolean
   pairing_code_fingerprint: string
@@ -365,6 +366,26 @@ export type OfflineConnectorSyncSessionPlan = {
   provider_credentials_required: false
   credentialsSyncedToApp: false
   network_request_deferred: true
+}
+
+export type OfflinePullRefreshPreview = {
+  action: "offline_pull_refresh_preview"
+  profileId: string
+  companyName: string
+  siteUrl: string
+  generatedAtLabel: string
+  pullCursor: string
+  inventoryRowsRefreshed: number
+  customerCreditRowsRefreshed: number
+  eventRowsRefreshed: number
+  conflictRowsRefreshed: number
+  queuedOperationsPreserved: number
+  changedInventoryPublicIds: string[]
+  localCacheRefreshApplied: true
+  networkRequestDeferred: true
+  deviceAuthorizationHeaderDeferred: true
+  credentialsSyncedToApp: false
+  directMysqlAccess: false
 }
 
 export type OfflinePushResultSummary = {
@@ -1073,6 +1094,7 @@ export function buildConnectorManifestPreview(
       network_requests_deferred: profile.wordpress.networkRequestsDeferred,
       route_registration_deferred: true,
       route_connected_push_ready: profile.wordpress.routeConnectedPushReady,
+      canonical_inventory_operation_count: 0,
       canonical_inventory_execution_enabled: profile.wordpress.canonicalInventoryWritesEnabled,
       canonical_inventory_writes_deferred: !profile.wordpress.canonicalInventoryWritesEnabled,
       https_required_for_remote_pairing: true,
@@ -1975,6 +1997,44 @@ export function buildOfflineConnectorSyncSessionPlan(
     provider_credentials_required: false,
     credentialsSyncedToApp: false,
     network_request_deferred: true,
+  }
+}
+
+export function buildOfflinePullRefreshPreview(
+  profile: StoreConnectorProfile,
+  inventoryItems: InventoryItem[],
+  customerCredit: CustomerCreditSnapshot,
+  conflicts: ConflictItem[],
+  queuedOperations: OfflineOperationEnvelope[],
+  options: { generatedAt?: Date; eventRowsRefreshed?: number } = {},
+): OfflinePullRefreshPreview {
+  const generatedAt = options.generatedAt ?? new Date()
+  const generatedStamp = generatedAt.toISOString().replace(/[^0-9]/g, "").slice(0, 14)
+  const changedInventoryPublicIds = inventoryItems
+    .filter((item) => item.source !== "queued")
+    .map((item) => item.publicId)
+
+  return {
+    action: "offline_pull_refresh_preview",
+    profileId: profile.id,
+    companyName: profile.companyName,
+    siteUrl: connectorDisplayUrl(profile),
+    generatedAtLabel: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(generatedAt),
+    pullCursor: `${profile.id}-pull-${generatedStamp}`,
+    inventoryRowsRefreshed: changedInventoryPublicIds.length,
+    customerCreditRowsRefreshed: customerCredit.customerId > 0 ? 1 : 0,
+    eventRowsRefreshed: options.eventRowsRefreshed ?? 2,
+    conflictRowsRefreshed: conflicts.length,
+    queuedOperationsPreserved: queuedOperations.length,
+    changedInventoryPublicIds,
+    localCacheRefreshApplied: true,
+    networkRequestDeferred: true,
+    deviceAuthorizationHeaderDeferred: true,
+    credentialsSyncedToApp: false,
+    directMysqlAccess: false,
   }
 }
 

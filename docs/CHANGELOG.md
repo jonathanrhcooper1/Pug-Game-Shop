@@ -40,6 +40,10 @@ All notable changes follow Semantic Versioning.
 - Offline app website connector testing now creates a secret-free per-company
   report covering manifest shape, route map, pairing readiness, guarded
   inventory hold status, credential boundaries, and deferred network status.
+- Offline app `Sync Now` now builds a local pull-refresh preview that reports
+  refreshed inventory, customer-credit, event, and conflict rows while
+  preserving queued offline operations, and the root offline-app test script now
+  runs TypeScript typechecking before contract tests.
 - Gated live ScryDex smoke helper for read-only card-search verification,
   requiring explicit environment confirmation and reporting only sanitized
   status/count/first-card metadata without writing WordPress data or printing
