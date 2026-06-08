@@ -17,6 +17,8 @@ final class SquarePaymentDelegationPolicyTest extends TestCase {
 		$this->assert_same( 'Delegated to WooCommerce Square', SquarePaymentDelegationPolicy::status_label() );
 		$this->assert_same( 'required_for_payments', $payload['official_square_payment_extension'] );
 		$this->assert_true( $payload['official_woocommerce_square_extension_required'] );
+		$this->assert_same( 'blocked', $payload['official_woocommerce_square_extension_status'] );
+		$this->assert_false( $payload['official_woocommerce_square_extension_active'] );
 		$this->assert_same( 'official_woocommerce_square_extension', $payload['payment_capture_authority'] );
 		$this->assert_false( $payload['plugin_square_payment_capture_allowed'] );
 		$this->assert_false( $payload['plugin_square_refund_execution_allowed'] );
@@ -24,6 +26,7 @@ final class SquarePaymentDelegationPolicyTest extends TestCase {
 		$this->assert_same( 'delegated_to_official_extension', $payload['plugin_square_payment_gateway_mode'] );
 		$this->assert_same( 'catalog_inventory_projection_and_reconciliation_only', $payload['square_inventory_sync_scope'] );
 		$this->assert_same( 'disabled', $payload['platform_square_payment_gateway_implementation'] );
+		$this->assert_same( 'blocked', $payload['official_woocommerce_square_extension_readiness']['status'] );
 		$this->assert_contains( 'serialized inventory only', SquarePaymentDelegationPolicy::admin_note() );
 	}
 }

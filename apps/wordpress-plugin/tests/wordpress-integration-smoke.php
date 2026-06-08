@@ -325,6 +325,9 @@ $assert( true === ( $data['pos_payment_route_dependencies']['route_registration_
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_reads_deferred'] ?? null ), 'POS/payment dependency route reads should remain deferred.' );
 $assert( false === ( $data['pos_payment_route_dependencies']['route_connected_reads_ready'] ?? null ), 'POS/payment dependency route reads should not be ready by default.' );
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_writes_deferred'] ?? null ), 'POS/payment dependency route writes should remain deferred.' );
+$assert( 'blocked' === ( $data['woocommerce_square_extension']['status'] ?? null ), 'WooCommerce Square extension should report blocked when the official extension is not active.' );
+$assert( false === ( $data['woocommerce_square_extension']['extension_active'] ?? null ), 'WooCommerce Square extension should report inactive by default.' );
+$assert( true === ( $data['woocommerce_square_extension']['square_network_writes_deferred'] ?? null ), 'WooCommerce Square extension status should not enable Square network writes.' );
 $assert( 'blocked' === ( $data['inventory_route_bootstrap']['status'] ?? null ), 'Inventory route bootstrap should remain blocked.' );
 $assert( false === ( $data['inventory_route_bootstrap']['feature_enabled'] ?? null ), 'Inventory route bootstrap feature should remain disabled.' );
 $assert( 16 === (int) ( $data['inventory_route_bootstrap']['planned_route_count'] ?? 0 ), 'Inventory route bootstrap should report planned routes.' );

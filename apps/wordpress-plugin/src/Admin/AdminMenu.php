@@ -34,6 +34,7 @@ use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
+use TCGStorePlatform\Square\WooCommerceSquareExtensionStatus;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
 
@@ -222,6 +223,7 @@ final class AdminMenu {
 		$pos_payment_dependencies   = ( new PosPaymentRouteDependencyStatusPresenter(
 			new PosPaymentRouteDependencyFactory()
 		) )->admin_summary();
+		$woocommerce_square         = ( new WooCommerceSquareExtensionStatus() )->admin_summary();
 		$inventory_factory          = InventoryRouteDependencyFactory::from_settings( Settings::all() );
 		$inventory_bootstrap        = $inventory_factory->bootstrap_status_presenter()->admin_summary(
 			FeatureFlags::is_enabled( 'inventory_pricing' )
@@ -259,6 +261,11 @@ final class AdminMenu {
 			__( 'WooCommerce HPOS declaration', 'tcg-store-platform' ),
 			Compatibility::hpos_status(),
 			'verified' === Compatibility::hpos_status() ? 'ok' : 'degraded'
+		);
+		$this->render_status_row(
+			__( 'WooCommerce Square extension', 'tcg-store-platform' ),
+			$woocommerce_square['value'],
+			$woocommerce_square['status']
 		);
 		$this->render_status_row(
 			__( 'Branding profile', 'tcg-store-platform' ),

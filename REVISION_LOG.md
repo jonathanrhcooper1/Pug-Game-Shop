@@ -3,6 +3,84 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - WooCommerce Square Extension Status Diagnostics
+
+### What Changed
+
+- Added `WooCommerceSquareExtensionStatus` to report official WooCommerce
+  Square extension install/active signals from plugin file and loaded class
+  checks.
+- Added official extension status fields to Square payment delegation,
+  POS/payment readiness, POS/payment dependency diagnostics, the health
+  endpoint, and System Status.
+- Added smoke coverage for the health payload's default blocked extension
+  state when the official extension is not active.
+- Added unit coverage for inactive, active-plugin, installed-inactive, and
+  class-signal readiness cases.
+
+### Why
+
+Square payments should stay with the official WooCommerce Square extension, but
+staff and staging checks need to see whether that extension is actually active.
+This revision adds that visibility without adding a custom Square payment
+gateway, enabling Square network writes, capturing payments, executing refunds,
+or changing inventory through Square.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/WooCommerceSquareExtensionStatus.php`
+- `apps/wordpress-plugin/src/Square/SquarePaymentDelegationPolicy.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/WooCommerceSquareExtensionStatusTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquarePaymentDelegationPolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Official WooCommerce Square extension status unit tests for default inactive,
+  active plugin file, installed but inactive plugin file, and loaded class
+  signal detection.
+- POS/payment readiness, dependency, admin-summary, and WordPress health smoke
+  assertions for official extension status visibility.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 818 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\WooCommerceSquareExtensionStatus.php apps\wordpress-plugin\src\Square\SquarePaymentDelegationPolicy.php apps\wordpress-plugin\src\Api\V1\HealthController.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteDependencyFactory.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteReadinessStatusPresenter.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteDependencyStatusPresenter.php`:
+  passed.
+- `npm.cmd run test`: passed, including 818 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove official WooCommerce Square extension status
+  diagnostics and related tests.
+- No schema rollback, Square cleanup, WooCommerce gateway cleanup, or payment
+  cleanup is required because no Square network writes, payment capture,
+  refunds, custom gateway behavior, or provider inventory writes were enabled.
+
 ## 2026-06-07 - Offline Local Queue Insert Planning
 
 ### What Changed

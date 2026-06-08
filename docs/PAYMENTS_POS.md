@@ -59,6 +59,12 @@ Inventory admin workspace all report that the official WooCommerce Square
 extension owns payment capture, refunds, and gateway behavior. The platform's
 Square scope is catalog/inventory projection and reconciliation only.
 
+Health and System Status now also report whether the official WooCommerce
+Square extension appears installed/active through the known plugin file or
+loaded class signals. That status is secret-free and does not enable Square
+network writes, provider inventory writes, platform payment capture, refunds,
+or custom gateway behavior.
+
 Square catalog, order, inventory, and webhook data can support reconciliation,
 but it does not prove that a Square POS line item will always carry the store's
 unique serialized barcode in a recoverable field.

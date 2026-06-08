@@ -42,6 +42,8 @@ final class PosPaymentRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $summary['woocommerce_gateway_capture_deferred'] );
 		$this->assert_same( 'official_woocommerce_square_extension', $summary['payment_capture_authority'] );
 		$this->assert_same( 'required_for_payments', $summary['official_square_payment_extension'] );
+		$this->assert_same( 'blocked', $summary['official_woocommerce_square_extension_status'] );
+		$this->assert_false( $summary['official_woocommerce_square_extension_active'] );
 		$this->assert_false( $summary['plugin_square_payment_capture_allowed'] );
 		$this->assert_false( $summary['plugin_square_custom_gateway_allowed'] );
 		$this->assert_same(

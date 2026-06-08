@@ -38,7 +38,7 @@ final class PosPaymentRouteDependencyStatusPresenter {
 
 		return array(
 			'value'  => sprintf(
-				'handlers %d / %d; permissions %d / %d; webhook verifier %s; fee repo %s; fee handler %s; registrar %s; bootstrapper %s; routes %s; reads %s; writes %s; Square payments %s',
+				'handlers %d / %d; permissions %d / %d; webhook verifier %s; fee repo %s; fee handler %s; registrar %s; bootstrapper %s; routes %s; reads %s; writes %s; Square payments %s; Square extension %s',
 				(int) ( $payload['controller_handler_count'] ?? 0 ),
 				(int) ( $payload['route_contract_count'] ?? 0 ),
 				(int) ( $payload['permission_callback_count'] ?? 0 ),
@@ -51,7 +51,8 @@ final class PosPaymentRouteDependencyStatusPresenter {
 				true === ( $payload['route_registration_deferred'] ?? true ) ? 'deferred' : 'ready',
 				true === ( $payload['route_connected_reads_deferred'] ?? true ) ? 'deferred' : 'ready',
 				true === ( $payload['route_connected_writes_deferred'] ?? true ) ? 'deferred' : 'ready',
-				SquarePaymentDelegationPolicy::status_label()
+				SquarePaymentDelegationPolicy::status_label(),
+				(string) ( $payload['official_woocommerce_square_extension_status'] ?? 'blocked' )
 			),
 			'status' => (string) $payload['status'],
 		);

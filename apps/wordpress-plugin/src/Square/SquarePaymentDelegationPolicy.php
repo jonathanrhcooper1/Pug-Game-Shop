@@ -17,18 +17,23 @@ final class SquarePaymentDelegationPolicy {
 	 * @return array<string, mixed>
 	 */
 	public static function audit_payload(): array {
+		$extension_status = ( new WooCommerceSquareExtensionStatus() )->readiness_summary();
+
 		return array(
-			'payment_capture_deferred'               => true,
-			'woocommerce_gateway_capture_deferred'   => true,
-			'official_square_payment_extension'      => self::EXTENSION_STATUS,
+			'payment_capture_deferred'                     => true,
+			'woocommerce_gateway_capture_deferred'         => true,
+			'official_square_payment_extension'            => self::EXTENSION_STATUS,
 			'official_woocommerce_square_extension_required' => true,
-			'payment_capture_authority'              => self::PAYMENT_CAPTURE_AUTHORITY,
-			'plugin_square_payment_capture_allowed'  => false,
-			'plugin_square_refund_execution_allowed' => false,
-			'plugin_square_custom_gateway_allowed'   => false,
-			'plugin_square_payment_gateway_mode'     => self::GATEWAY_MODE,
-			'square_payment_capture_scope'           => self::PAYMENT_CAPTURE_AUTHORITY,
-			'square_inventory_sync_scope'            => self::INVENTORY_SYNC_SCOPE,
+			'official_woocommerce_square_extension_status' => $extension_status['status'],
+			'official_woocommerce_square_extension_active' => $extension_status['extension_active'],
+			'official_woocommerce_square_extension_readiness' => $extension_status,
+			'payment_capture_authority'                    => self::PAYMENT_CAPTURE_AUTHORITY,
+			'plugin_square_payment_capture_allowed'        => false,
+			'plugin_square_refund_execution_allowed'       => false,
+			'plugin_square_custom_gateway_allowed'         => false,
+			'plugin_square_payment_gateway_mode'           => self::GATEWAY_MODE,
+			'square_payment_capture_scope'                 => self::PAYMENT_CAPTURE_AUTHORITY,
+			'square_inventory_sync_scope'                  => self::INVENTORY_SYNC_SCOPE,
 			'platform_square_payment_gateway_implementation' => 'disabled',
 			'platform_square_payment_gateway_configuration_ui' => 'disabled',
 		);

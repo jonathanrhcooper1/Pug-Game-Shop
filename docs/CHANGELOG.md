@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Official WooCommerce Square extension status detection for health/system/POS
+  diagnostics, keeping payment capture delegated to the official extension and
+  Square network writes, platform payment capture, refunds, and custom gateway
+  behavior disabled.
 - Offline app local SQLite queue insert planning for staged operations, with
   bridge/app visibility, Tauri command response metadata, and contract tests
   proving queue replay, canonical mutations, network writes, and direct MySQL

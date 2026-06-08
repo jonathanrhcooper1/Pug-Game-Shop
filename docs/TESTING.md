@@ -28,6 +28,10 @@
 - Local unit coverage now includes ScryDex sync dry-run planning for first-page
   requests, checkpoint resume cursors, configured-state redaction, page-size
   clamping, invalid game fallback, and execution deferrals.
+- Local unit coverage now includes official WooCommerce Square extension
+  status detection for inactive, active-plugin, installed-inactive, and loaded
+  class-signal cases, plus POS/readiness/admin payload assertions that payment
+  capture remains delegated to the official extension.
 - `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
   inventory workspace keeps its scanner/search, sync queue, conflict center,
   customer credit, grouped sync controls, selected-card visual frame, detail
