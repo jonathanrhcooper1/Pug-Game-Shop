@@ -2133,7 +2133,7 @@ dd {
 
 .label-job-list {
   display: grid;
-  gap: 5px;
+  gap: 7px;
   padding: 11px;
   background: rgba(119, 183, 255, 0.09);
   border: 1px solid rgba(119, 183, 255, 0.2);
@@ -2152,6 +2152,33 @@ dd {
   color: #172016;
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
+}
+
+.label-job-list div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label-job-list small {
+  color: #647364;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.label-job-list code {
+  overflow: hidden;
+  padding: 8px;
+  color: #172016;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(35, 100, 70, 0.14);
+  border-radius: 8px;
 }
 
 .ledger-preview {

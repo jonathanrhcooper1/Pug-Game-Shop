@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app label printing now prepares structured offline label jobs with
+  card, barcode, price, location, company, timestamp, and printable payload
+  text for future desktop printer adapter handoff.
 - Offline app inventory adjustments now accept staff-entered quantity deltas
   and adjustment reasons, validate non-zero whole-number changes, and queue the
   exact quantity payload for later website sync acceptance.

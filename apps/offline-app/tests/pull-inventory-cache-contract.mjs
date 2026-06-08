@@ -32,6 +32,7 @@ try {
     buildCustomerCreditRedemptionOperation,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
+    buildOfflineLabelPrintJob,
     buildInventoryUpdateOperation,
     buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
@@ -44,6 +45,7 @@ try {
     customerCreditAvailableAfterPending,
     findInventoryItemByScan,
     inventoryQuantityDeltaFromInput,
+    offlineWorkspaceSeed,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
@@ -368,6 +370,21 @@ try {
   assert.equal(inventoryQuantityDeltaFromInput("100"), null)
   assert.equal(cleanInventoryAdjustmentReason("  cycle   count shelf  "), "cycle count shelf")
   assert.equal(cleanInventoryAdjustmentReason(""), "staff offline quantity correction")
+  const labelJob = buildOfflineLabelPrintJob(
+    existingItems[0],
+    offlineWorkspaceSeed.connectorProfiles[0],
+    {
+      queuedAt: new Date("2026-06-08T12:35:00Z"),
+    },
+  )
+  assert.equal(labelJob.action, "offline_label_print_job")
+  assert.equal(labelJob.jobId, "label-pug-game-shop-staging-inv-1001-20260608123500")
+  assert.equal(labelJob.inventoryPublicId, "inv-1001")
+  assert.equal(labelJob.barcode, "PKM-BASE-004-HOLO")
+  assert.equal(labelJob.format, "barcode-price-location")
+  assert.ok(labelJob.payloadText.includes("Charizard"))
+  assert.ok(labelJob.payloadText.includes("Price $125.00"))
+  assert.ok(labelJob.payloadText.includes("Location Case A3"))
   assert.ok(
     connectorManifestUnavailableGuidance("Manifest endpoint returned HTTP 404.").includes(
       "Install and activate the staging plugin package",

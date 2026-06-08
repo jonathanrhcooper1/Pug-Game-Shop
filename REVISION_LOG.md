@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Structured Label Jobs
+
+### What Changed
+
+- Added a typed offline label print job model with card, barcode, price,
+  location, company profile, timestamp, format, and printable payload text.
+- Updated `Print Label` so it prepares a structured label job instead of only
+  storing a barcode string.
+- Updated the prepared-labels panel to show the current label payload staff can
+  use while the desktop hardware adapter is still deferred.
+
+### Why
+
+Staff need a useful offline label preview when the counter is disconnected or
+before the Windows printer adapter is attached. A structured payload also gives
+the future printer adapter a stable contract to consume.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for label print job payload generation.
+- UI/workspace contract markers proving `Print Label` uses structured label
+  jobs and renders payload text.
+
+### Rollback Notes
+
+- Revert this revision to return `Print Label` to the barcode-only preview
+  list.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Quantity Adjustment Workflow
 
 ### What Changed

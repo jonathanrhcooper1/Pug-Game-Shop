@@ -29,7 +29,7 @@ future offline sync app.
   guards, quantity adjustment delta/reason controls, event
   attendee/payment/check-in inputs, accepted push-result queue clearing,
   route-missing connector guidance for staging plugin activation,
-  conflict-review history, print-label job
+  conflict-review history, structured offline label job payloads, print-label
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
@@ -106,6 +106,9 @@ staged locally and remain deferred unless a selected non-production connector
 explicitly enables canonical inventory writes; real device tokens must be
 stored in the desktop secure store and ScryDex/Square credentials must remain
 in WordPress/server-side settings.
+Label printing now prepares structured local label jobs with printable payload
+text for staff review; direct hardware printing remains deferred until the
+desktop printer adapter is connected.
 
 ## Local Commands
 

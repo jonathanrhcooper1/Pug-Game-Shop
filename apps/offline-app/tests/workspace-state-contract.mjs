@@ -61,6 +61,7 @@ for (const requiredExport of [
   "buildInventoryReservationOperation",
   "buildEventCheckinOperation",
   "buildEventRegistrationOperation",
+  "buildOfflineLabelPrintJob",
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
   "buildOfflineConflictResolutionRequestBody",
@@ -105,6 +106,7 @@ for (const requiredExport of [
   "upsertConnectorProfile",
   "filterInventoryItems",
   "findInventoryItemByScan",
+  "OfflineLabelPrintJob",
   "inventoryQuantityDeltaFromInput",
   "cleanInventoryAdjustmentReason",
   "cleanOfflineEventAttendeeLabel",
@@ -284,6 +286,10 @@ for (const marker of [
 
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
+assert.ok(appSource.includes("buildOfflineLabelPrintJob(selectedItem, activeProfile)"))
+assert.ok(appSource.includes("useState<OfflineLabelPrintJob[]>([])"))
+assert.ok(appSource.includes("job.payloadText"))
+assert.ok(appSource.includes("job.inventoryPublicId !== labelJob.inventoryPublicId"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(targetItem, operationOptions)"))
 assert.ok(appSource.includes("quantityDeltaInput"))
 assert.ok(appSource.includes("quantityAdjustmentReason"))

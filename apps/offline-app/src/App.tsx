@@ -13,6 +13,7 @@ import {
   buildDevicePairingRequestBody,
   buildEventCheckinOperation,
   buildEventRegistrationOperation,
+  buildOfflineLabelPrintJob,
   buildOfflineConflictResolutionRequestBody,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
@@ -74,6 +75,7 @@ import {
   type IconName,
   type InventoryStatus,
   type OfflineOperationEnvelope,
+  type OfflineLabelPrintJob,
   type OfflineConnectorManifest,
   type OfflineConnectorSyncSessionPlan,
   type OfflinePushBatchPayload,
@@ -320,7 +322,7 @@ export function App() {
   const [pendingEventCheckinIds, setPendingEventCheckinIds] = useState<string[]>([])
   const [showCreditLedger, setShowCreditLedger] = useState(false)
   const [showEventQueue, setShowEventQueue] = useState(false)
-  const [labelPrintJobs, setLabelPrintJobs] = useState<string[]>([])
+  const [labelPrintJobs, setLabelPrintJobs] = useState<OfflineLabelPrintJob[]>([])
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(42)
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
@@ -1996,11 +1998,19 @@ export function App() {
   }
 
   function handlePrintLabel() {
-    setLabelPrintJobs((jobs) => [selectedItem.barcode, ...jobs.filter((job) => job !== selectedItem.barcode)].slice(0, 4))
+    const labelJob = buildOfflineLabelPrintJob(selectedItem, activeProfile)
+    const labelDetail =
+      `${labelJob.cardName} label ${labelJob.barcode} is ready for ${activeProfile.companyName}; ` +
+      "payload can be copied now and hardware printing remains deferred until the printer adapter is connected."
+
+    setLabelPrintJobs((jobs) => [
+      labelJob,
+      ...jobs.filter((job) => job.inventoryPublicId !== labelJob.inventoryPublicId),
+    ].slice(0, 4))
     setActiveSection("Inventory")
     setActivityMessage({
       title: "Label preview prepared",
-      detail: `${selectedItem.barcode} is ready for the future printer adapter; physical printing remains deferred until device hardware is connected.`,
+      detail: labelDetail,
     })
   }
 
@@ -2658,8 +2668,15 @@ export function App() {
               {labelPrintJobs.length > 0 ? (
                 <div className="label-job-list" aria-label="Prepared label jobs">
                   <span>Prepared labels</span>
-                  {labelPrintJobs.map((barcode) => (
-                    <strong key={barcode}>{barcode}</strong>
+                  {labelPrintJobs.map((job) => (
+                    <div key={job.jobId}>
+                      <strong>{job.cardName}</strong>
+                      <small>
+                        {job.barcode}; {job.price}; {job.location}; {job.companyShortName};{" "}
+                        {job.queuedAtLabel}
+                      </small>
+                      <code>{job.payloadText}</code>
+                    </div>
                   ))}
                 </div>
               ) : null}

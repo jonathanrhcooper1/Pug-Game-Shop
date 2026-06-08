@@ -40,6 +40,26 @@ export type InventoryItem = {
   source: InventorySource
 }
 
+export type OfflineLabelPrintJob = {
+  action: "offline_label_print_job"
+  jobId: string
+  profileId: string
+  companyName: string
+  companyShortName: string
+  inventoryPublicId: string
+  cardName: string
+  setName: string
+  cardNumber: string
+  condition: string
+  barcode: string
+  price: string
+  location: string
+  format: "barcode-price-location"
+  queuedAtUtc: string
+  queuedAtLabel: string
+  payloadText: string
+}
+
 export type SyncSummaryItem = {
   label: string
   value: string
@@ -962,6 +982,69 @@ export function cleanInventoryAdjustmentReason(
   const cleaned = value.trim().replace(/\s+/g, " ")
 
   return cleaned ? cleaned.slice(0, 120) : fallback
+}
+
+function cleanLabelPrintText(value: string, fallback: string, maxLength = 72): string {
+  const cleaned = value.trim().replace(/\s+/g, " ")
+
+  return (cleaned || fallback).slice(0, maxLength)
+}
+
+export function buildOfflineLabelPrintJob(
+  item: InventoryItem,
+  profile: StoreConnectorProfile,
+  options: {
+    queuedAt?: Date
+  } = {},
+): OfflineLabelPrintJob {
+  const queuedAt = options.queuedAt ?? new Date()
+  const queuedAtUtc = queuedAt.toISOString()
+  const companyShortName = cleanLabelPrintText(
+    profile.companyShortName,
+    profile.companyName,
+    32,
+  )
+  const cardName = cleanLabelPrintText(item.cardName, "Unknown card")
+  const setLine =
+    `${cleanLabelPrintText(item.setName, "Unknown set", 48)} ` +
+    `#${cleanLabelPrintText(item.number, "N/A", 24)}`
+  const condition = cleanLabelPrintText(item.condition, "Condition pending", 28)
+  const price = cleanLabelPrintText(item.price, "$0.00", 24)
+  const barcode = cleanLabelPrintText(item.barcode, item.publicId, 64)
+  const location = cleanLabelPrintText(item.location, "Unassigned", 48)
+  const payloadText = [
+    companyShortName,
+    cardName,
+    `${setLine} ${condition}`,
+    `Price ${price}`,
+    `Barcode ${barcode}`,
+    `Location ${location}`,
+  ].join("\n")
+
+  return {
+    action: "offline_label_print_job",
+    jobId:
+      `label-${profile.id}-${item.publicId}-` +
+      queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14),
+    profileId: profile.id,
+    companyName: profile.companyName,
+    companyShortName,
+    inventoryPublicId: item.publicId,
+    cardName,
+    setName: cleanLabelPrintText(item.setName, "Unknown set", 48),
+    cardNumber: cleanLabelPrintText(item.number, "N/A", 24),
+    condition,
+    barcode,
+    price,
+    location,
+    format: "barcode-price-location",
+    queuedAtUtc,
+    queuedAtLabel: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(queuedAt),
+    payloadText,
+  }
 }
 
 export function eventRegistrationStatusLabel(status: EventRegistrationStatus) {
