@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Inventory Canonical Mutation Transaction Executor
+
+### What Changed
+
+- Added `OfflinePushCanonicalMutationTransactionExecutor` and
+  `OfflinePushCanonicalMutationTransactionExecutionResult`.
+- The executor runs only when the canonical mutation SQL plan is valid and the
+  transaction preflight result is ready.
+- Implemented explicit transaction handling for inventory
+  `inventory_status_guarded_update` queries: begin transaction, execute the
+  prepared guarded update, commit on exactly one affected row, and rollback on
+  zero rows, unexpected row counts, prepare failures, query failures, or commit
+  failure.
+- Added route/readiness metadata so health/admin diagnostics can report that
+  the transaction executor boundary exists while default route wiring remains
+  gated and deferred.
+- Documented the offline-sync and database posture.
+
+### Why
+
+The standalone offline app needs a real, auditable path to update website
+inventory after reconnect. This revision adds the first executable canonical
+write boundary for the safest case: inventory reservations protected by row
+version and `available` status guards, preserving double-sell prevention.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionExecutionResult.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionExecutor.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationTransactionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `OfflinePushCanonicalMutationTransactionExecutorTest`
+
+### Tests Run
+
+- `php tests/run.php`: passed, 873 PHP unit tests with 0 failures.
+- `php tests/lint.php`: passed, 571 PHP files checked with 0 failures.
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit offline inventory canonical
+  mutation transaction executor and readiness metadata.
+- No schema migration, staging data cleanup, or production rollback action is
+  required because default offline route wiring still leaves transaction
+  execution gated unless an explicit future integration enables it.
+
 ## 2026-06-08 - Gated Live ScryDex Smoke Helper
 
 ### What Changed

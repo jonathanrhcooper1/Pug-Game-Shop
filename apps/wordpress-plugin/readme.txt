@@ -290,6 +290,8 @@ routes report blocked/ready/rejected execution status and transaction-adapter
 deferral before any canonical writes can run.
 Phase 7.93 adds canonical mutation transaction preflight metadata to classify
 staged query kinds before any future transaction executor can run.
+Phase 7.94 adds explicit canonical inventory mutation transaction execution for
+preflight-ready guarded updates while default route wiring remains gated.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 8.2 adds POS transaction-ingestion contract tests for sandbox adapter
@@ -684,6 +686,9 @@ Inventory and commerce modules remain disabled until their implementation phases
   registration and customer-credit ledger write plans remain deferred.
 * Added route response, route meta, sync readiness, smoke, and unit coverage
   for preflight status, counts, block reasons, and transaction deferral.
+* Added explicit transaction execution coverage for preflight-ready inventory
+  guarded updates, including commit success and rollback on zero-row
+  double-sell guard failures.
 
 = 0.126.0 =
 

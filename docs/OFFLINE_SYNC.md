@@ -355,6 +355,12 @@ Version `0.127.0` adds transaction preflight after the execution gate. Staged
 push responses now classify canonical query kinds before execution, reporting
 inventory guarded updates as preflight-ready while event registration and
 customer-credit ledger write plans remain deferred.
+Current development adds an explicit canonical mutation transaction executor
+for preflight-ready inventory guarded updates. The executor starts a database
+transaction, runs the prepared inventory status update, commits only when
+exactly one row is affected, and rolls back when the row-version/status guard
+matches no rows. Default offline route wiring still keeps this executor
+deferred until staging enables the remaining route-connected write gates.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

@@ -24,6 +24,10 @@ All notable changes follow Semantic Versioning.
 - Offline app queue and sync-attempt state now persists in a versioned,
   credential-free local session envelope, restoring staged operations and
   deferred sync history after app reloads.
+- Offline push canonical inventory mutation execution now has an explicit
+  transaction executor for preflight-ready guarded inventory updates, with
+  begin/commit/rollback handling and zero-row guard failures for double-sell
+  prevention while default route wiring remains gated.
 - Gated live ScryDex smoke helper for read-only card-search verification,
   requiring explicit environment confirmation and reporting only sanitized
   status/count/first-card metadata without writing WordPress data or printing

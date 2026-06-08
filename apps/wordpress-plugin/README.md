@@ -217,6 +217,9 @@ Version: `0.156.0`
 - Canonical mutation transaction preflight metadata for staged query kinds,
   including ready/blocked counts, operation IDs, deferred event/credit write
   plans, and transaction execution deferral.
+- Explicit canonical inventory mutation transaction execution for
+  preflight-ready guarded updates, including begin/commit/rollback handling and
+  zero-row guard failures while route wiring remains gated by default.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

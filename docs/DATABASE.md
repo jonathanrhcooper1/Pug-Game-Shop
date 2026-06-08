@@ -145,6 +145,10 @@
 - Version `0.127.0` adds canonical mutation transaction preflight metadata. No
   WordPress schema, SQLite schema, migration order, query execution, or
   rollback target changes.
+- Current development adds explicit transaction execution for preflight-ready
+  offline inventory canonical mutations using the existing guarded update SQL.
+  No WordPress schema, SQLite schema, migration order, or rollback target
+  changes.
 - Version `0.128.0` adds POS transaction-ingestion contracts and configurable
   fee-estimate fixtures. No WordPress schema, SQLite schema, migration order,
   or rollback target changes.

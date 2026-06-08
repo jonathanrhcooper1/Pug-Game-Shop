@@ -162,6 +162,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['canonical_mutation_repository_ready'] );
 			$this->assert_true( $summary['canonical_mutation_repository_execution_gate_ready'] );
 			$this->assert_true( $summary['canonical_mutation_transaction_preflight_ready'] );
+			$this->assert_true( $summary['canonical_mutation_transaction_executor_ready'] );
 			$this->assert_false( $summary['route_connected_canonical_mutation_planning_deferred'] );
 			$this->assert_false( $summary['route_connected_canonical_mutation_sql_planning_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_sql_execution_deferred'] );
@@ -170,6 +171,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $summary['route_connected_canonical_mutation_repository_execution_gate_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_repository_transaction_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_transaction_preflight_deferred'] );
+			$this->assert_true( $summary['route_connected_canonical_mutation_transaction_executor_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_mutation_transaction_execution_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_repository_deferred'] );
 			$this->assert_true( $summary['route_connected_canonical_writes_deferred'] );
