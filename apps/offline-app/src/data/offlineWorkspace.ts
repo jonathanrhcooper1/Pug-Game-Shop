@@ -793,6 +793,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   navItems: [
     { label: "Inventory", icon: "box", active: true },
     { label: "Sync", icon: "sync" },
+    { label: "Kiosk", icon: "scan" },
     { label: "Queue", icon: "queue" },
     { label: "Events", icon: "event" },
     { label: "Conflicts", icon: "alert" },

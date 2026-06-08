@@ -133,6 +133,26 @@ type AppIconName =
   | "trash"
 
 type ViewMode = "list" | "grid"
+type AppSessionRole = "locked" | "staff" | "manager"
+const ACCESS_SECTIONS = [
+  "Inventory",
+  "Kiosk",
+  "Queue",
+  "Events",
+  "Customers",
+  "Sync",
+  "Conflicts",
+  "Settings",
+] as const
+type AccessSection = (typeof ACCESS_SECTIONS)[number]
+
+type OfflineAppUser = {
+  id: string
+  name: string
+  pin: string
+  role: Exclude<AppSessionRole, "locked">
+  access: AccessSection[]
+}
 
 type ActivityMessage = {
   title: string
@@ -418,6 +438,7 @@ export function App() {
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
+  const kioskPanelRef = useRef<HTMLElement>(null)
   const queuePanelRef = useRef<HTMLElement>(null)
   const eventPanelRef = useRef<HTMLElement>(null)
   const conflictPanelRef = useRef<HTMLElement>(null)
@@ -475,6 +496,39 @@ export function App() {
     useState<EventPaymentStatus>("not_required")
   const [eventCheckinLookup, setEventCheckinLookup] = useState("")
   const [activeSection, setActiveSection] = useState("Inventory")
+  const [sessionRole, setSessionRole] = useState<AppSessionRole>("locked")
+  const [sessionUserId, setSessionUserId] = useState("")
+  const [loginPin, setLoginPin] = useState("")
+  const [loginIssue, setLoginIssue] = useState("")
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30)
+  const [managerSettingsLocked, setManagerSettingsLocked] = useState(true)
+  const [offlineUsers, setOfflineUsers] = useState<OfflineAppUser[]>([
+    {
+      id: "staff-front-counter",
+      name: "Front Counter Staff",
+      pin: "1234",
+      role: "staff",
+      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync"],
+    },
+    {
+      id: "manager-default",
+      name: "Store Manager",
+      pin: "9999",
+      role: "manager",
+      access: [...ACCESS_SECTIONS],
+    },
+  ])
+  const [newUserName, setNewUserName] = useState("")
+  const [newUserPin, setNewUserPin] = useState("")
+  const [newUserRole, setNewUserRole] = useState<Exclude<AppSessionRole, "locked">>("staff")
+  const [newUserAccess, setNewUserAccess] = useState<AccessSection[]>([
+    "Inventory",
+    "Kiosk",
+    "Queue",
+  ])
+  const [kioskFirstName, setKioskFirstName] = useState("")
+  const [kioskLastName, setKioskLastName] = useState("")
+  const [kioskCartIds, setKioskCartIds] = useState<number[]>([])
   const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
   const activeSessionProfileRef = useRef(connectorProfileStorage.activeProfileId)
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
@@ -626,6 +680,23 @@ export function App() {
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
   }, [query, statusFilter, inventoryItems])
+  const kioskCartItems = useMemo(
+    () =>
+      kioskCartIds
+        .map((itemId) => findInventoryItem(inventoryItems, itemId))
+        .filter((item): item is NonNullable<ReturnType<typeof findInventoryItem>> => Boolean(item)),
+    [inventoryItems, kioskCartIds],
+  )
+  const kioskCustomerName = [kioskFirstName, kioskLastName]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(" ")
+  const sessionIsUnlocked = sessionRole !== "locked"
+  const managerControlsUnlocked = sessionRole === "manager" && !managerSettingsLocked
+  const activeOfflineUser = offlineUsers.find((user) => user.id === sessionUserId) ?? null
+  const effectiveAccess = sessionRole === "manager"
+    ? ACCESS_SECTIONS
+    : activeOfflineUser?.access ?? []
   const scannedInventoryItem = useMemo(
     () => findInventoryItemByScan(inventoryItems, query),
     [inventoryItems, query],
@@ -945,9 +1016,190 @@ export function App() {
     }
   }, [queueAdapter])
 
+  function isAccessSection(label: string): label is AccessSection {
+    return ACCESS_SECTIONS.includes(label as AccessSection)
+  }
+
+  function canAccessSection(label: string) {
+    return isAccessSection(label) && effectiveAccess.includes(label)
+  }
+
+  function handlePinDigit(digit: string) {
+    setLoginIssue("")
+    setLoginPin((pin) => `${pin}${digit}`.slice(0, 4))
+  }
+
+  function handleLockSession() {
+    setSessionRole("locked")
+    setSessionUserId("")
+    setManagerSettingsLocked(true)
+    setLoginPin("")
+    setLoginIssue("")
+  }
+
+  function handlePinLogin() {
+    const user = offlineUsers.find((item) => item.pin === loginPin)
+
+    if (!/^\d{4}$/.test(loginPin) || !user) {
+      setLoginIssue("Enter a valid 4-digit staff or manager PIN.")
+      setLoginPin("")
+      return
+    }
+
+    const firstAllowedSection = user.role === "manager" ? "Settings" : (user.access[0] ?? "Inventory")
+    setSessionRole(user.role)
+    setSessionUserId(user.id)
+    setManagerSettingsLocked(user.role !== "manager")
+    setActiveSection(firstAllowedSection)
+    setLoginPin("")
+    setLoginIssue("")
+    setActivityMessage({
+      title: `${user.name} signed in`,
+      detail:
+        user.role === "manager"
+          ? "Manager session started; website setup and user access can be unlocked."
+          : `${user.access.join(", ")} workspaces are available for this PIN.`,
+    })
+  }
+
+  function handleOfflineUserRoleChange(userId: string, role: Exclude<AppSessionRole, "locked">) {
+    if (!managerControlsUnlocked) {
+      setActivityMessage({
+        title: "Manager unlock required",
+        detail: "Unlock settings before changing offline user roles.",
+      })
+      return
+    }
+
+    const targetUser = offlineUsers.find((user) => user.id === userId)
+    const managerCount = offlineUsers.filter((user) => user.role === "manager").length
+
+    if (targetUser?.role === "manager" && role === "staff" && managerCount <= 1) {
+      setActivityMessage({
+        title: "Manager PIN required",
+        detail: "Keep at least one manager PIN active for settings and access control.",
+      })
+      return
+    }
+
+    setOfflineUsers((users) =>
+      users.map((user) =>
+        user.id === userId
+          ? {
+              ...user,
+              role,
+              access: role === "manager" ? [...ACCESS_SECTIONS] : user.access.filter(isAccessSection),
+            }
+          : user,
+      ),
+    )
+    setActivityMessage({
+      title: "Offline user role updated",
+      detail: `${targetUser?.name ?? "User"} is now ${role}.`,
+    })
+  }
+
+  function handleOfflineUserAccessToggle(userId: string, section: AccessSection) {
+    if (!managerControlsUnlocked) {
+      setActivityMessage({
+        title: "Manager unlock required",
+        detail: "Unlock settings before changing offline user access.",
+      })
+      return
+    }
+
+    const targetUser = offlineUsers.find((user) => user.id === userId)
+
+    if (targetUser?.role === "manager") {
+      setActivityMessage({
+        title: "Manager access retained",
+        detail: "Manager PINs keep access to every workspace.",
+      })
+      return
+    }
+
+    setOfflineUsers((users) =>
+      users.map((user) => {
+        if (user.id !== userId) {
+          return user
+        }
+
+        const nextAccess = user.access.includes(section)
+          ? user.access.filter((item) => item !== section)
+          : [...user.access, section]
+
+        return {
+          ...user,
+          access: nextAccess.length > 0 ? nextAccess : user.access,
+        }
+      }),
+    )
+  }
+
+  function toggleNewUserAccess(section: AccessSection) {
+    setNewUserAccess((sections) => {
+      if (sections.includes(section)) {
+        return sections.filter((item) => item !== section)
+      }
+
+      return [...sections, section]
+    })
+  }
+
+  function handleAddOfflineUser() {
+    const cleanName = newUserName.trim()
+    const cleanPin = newUserPin.trim()
+    const access = newUserRole === "manager" ? [...ACCESS_SECTIONS] : newUserAccess
+
+    if (!managerControlsUnlocked) {
+      setActivityMessage({
+        title: "Manager unlock required",
+        detail: "Unlock settings before adding or changing offline PIN users.",
+      })
+      return
+    }
+
+    if (!cleanName || !/^\d{4}$/.test(cleanPin) || access.length === 0) {
+      setActivityMessage({
+        title: "User setup blocked",
+        detail: "Enter a name, unique 4-digit PIN, and at least one allowed workspace.",
+      })
+      return
+    }
+
+    if (offlineUsers.some((user) => user.pin === cleanPin)) {
+      setActivityMessage({
+        title: "PIN already exists",
+        detail: "Choose a different 4-digit PIN before saving this offline user.",
+      })
+      return
+    }
+
+    const nextUser: OfflineAppUser = {
+      id: `offline-user-${Date.now()}`,
+      name: cleanName,
+      pin: cleanPin,
+      role: newUserRole,
+      access,
+    }
+    setOfflineUsers((users) => [...users, nextUser])
+    setNewUserName("")
+    setNewUserPin("")
+    setNewUserRole("staff")
+    setNewUserAccess(["Inventory", "Kiosk", "Queue"])
+    setActivityMessage({
+      title: "Offline user added",
+      detail: `${nextUser.name} can sign in with a 4-digit PIN and access ${nextUser.access.join(", ")}.`,
+    })
+  }
+
   function sectionTarget(label: string) {
     if (label === "Sync") {
       return workflowPanelRef
+    }
+
+    if (label === "Kiosk") {
+      return kioskPanelRef
     }
 
     if (label === "Queue") {
@@ -974,6 +1226,14 @@ export function App() {
   }
 
   function handleNavSelection(label: string) {
+    if (!canAccessSection(label)) {
+      setActivityMessage({
+        title: "Access restricted",
+        detail: `${activeOfflineUser?.name ?? "This PIN"} does not have access to ${label}. Ask a manager to update Users & Access.`,
+      })
+      return
+    }
+
     setActiveSection(label)
     window.requestAnimationFrame(() => {
       sectionTarget(label).current?.scrollIntoView({ block: "start", behavior: "smooth" })
@@ -1360,9 +1620,87 @@ export function App() {
               status: "reserved",
               source: "queued",
             }
+        : item,
+      ),
+    )
+  }
+
+  function handleKioskAddItem(item = selectedItem) {
+    if (item.status !== "available") {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Kiosk item unavailable",
+        detail: `${item.cardName} is ${statusLabel(item.status).toLowerCase()} in the local cache; the kiosk can only stage available cards for pickup.`,
+      })
+      return
+    }
+
+    setKioskCartIds((ids) => (ids.includes(item.id) ? ids : [...ids, item.id]))
+    setActiveSection("Kiosk")
+    setActivityMessage({
+      title: "Kiosk cart updated",
+      detail: `${item.cardName} is in the local kiosk pickup cart; website inventory remains authoritative when sync accepts the order.`,
+    })
+  }
+
+  function handleKioskRemoveItem(itemId: number) {
+    setKioskCartIds((ids) => ids.filter((id) => id !== itemId))
+  }
+
+  async function handleKioskSubmitOrder() {
+    if (!kioskFirstName.trim() || !kioskLastName.trim()) {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Kiosk order needs name",
+        detail: "Enter the customer's first and last name before staging a pickup order.",
+      })
+      return
+    }
+
+    const availableItems = kioskCartItems.filter((item) => item.status === "available")
+
+    if (availableItems.length === 0) {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Kiosk cart empty",
+        detail: "Select at least one available card before staging a pickup order.",
+      })
+      return
+    }
+
+    for (const item of availableItems) {
+      await stageOfflineOperation(
+        buildInventoryReservationOperation(item, {
+          actorId: workspace.device.managerId,
+          deviceId: activePairedDevice?.devicePublicId,
+          locationId: workspace.device.locationId,
+          holdReason: `kiosk pickup order for ${kioskCustomerName}`,
+        }),
+        "Kiosk pickup hold staged",
+        `${item.cardName} is queued for ${kioskCustomerName}; staff can pull the order after website sync acceptance.`,
+      )
+    }
+
+    const stagedIds = new Set(availableItems.map((item) => item.id))
+    setInventoryItems((items) =>
+      items.map((item) =>
+        stagedIds.has(item.id)
+          ? {
+              ...item,
+              status: "reserved",
+              source: "queued",
+            }
           : item,
       ),
     )
+    setKioskCartIds([])
+    setKioskFirstName("")
+    setKioskLastName("")
+    setActiveSection("Queue")
+    setActivityMessage({
+      title: "Kiosk order queued",
+      detail: `${availableItems.length} card(s) staged for ${kioskCustomerName}; the website remains the final inventory authority after sync acceptance.`,
+    })
   }
 
   async function handleQuantityAdjustment() {
@@ -2606,6 +2944,98 @@ export function App() {
     moveConflictToReviewed(conflict)
   }
 
+  if (!sessionIsUnlocked) {
+    return (
+      <main className="offline-shell login-shell">
+        <div className="app-window-bar" aria-label="Desktop app window">
+          <div className="window-brand">
+            <img src={pugGameShopCrest} alt="" />
+            <span>Pug Game Shop Offline</span>
+          </div>
+          <div className="window-controls" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+        <section className="login-workspace" aria-label="Offline app login">
+          <div className="login-card">
+            <img src={pugGameShopCrest} alt="" />
+            <span className="micro-label">Website-connected local app</span>
+            <h1>Enter PIN</h1>
+            <div className="login-fields">
+              <label>
+                <span className="micro-label">4-digit staff or manager PIN</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={4}
+                  type="password"
+                  value={loginPin}
+                  onChange={(event) => {
+                    setLoginIssue("")
+                    setLoginPin(event.target.value.replace(/\D/g, "").slice(0, 4))
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      handlePinLogin()
+                    }
+                  }}
+                  placeholder="----"
+                  autoFocus
+                />
+              </label>
+              <div>
+                <span className="micro-label">Session timeout</span>
+                <strong>{sessionTimeoutMinutes} minutes</strong>
+                <small>Managers can adjust this in Users & Access.</small>
+              </div>
+            </div>
+            <div className="pin-display" aria-live="polite">
+              <span>{"*".repeat(loginPin.length).padEnd(4, "-")}</span>
+              {loginIssue ? <small>{loginIssue}</small> : <small>Use your manager-issued PIN.</small>}
+            </div>
+            <div className="pin-pad" aria-label="PIN keypad">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
+                <button type="button" key={digit} onClick={() => handlePinDigit(digit)}>
+                  {digit}
+                </button>
+              ))}
+              <button type="button" onClick={() => setLoginPin((pin) => pin.slice(0, -1))}>
+                Del
+              </button>
+              <button type="button" onClick={() => handlePinDigit("0")}>
+                0
+              </button>
+              <button type="button" onClick={handlePinLogin}>
+                Go
+              </button>
+            </div>
+            <div className="login-actions">
+              <button
+                type="button"
+                onClick={handlePinLogin}
+              >
+                <Icon name="check" />
+                <span>Unlock App</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginPin("")
+                  setLoginIssue("")
+                }}
+              >
+                <Icon name="trash" />
+                <span>Clear PIN</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="offline-shell">
       <div className="app-window-bar" aria-label="Desktop app window">
@@ -2632,9 +3062,14 @@ export function App() {
           <nav>
             {workspace.navItems.map((item) => (
               <button
-                className={item.label === activeSection ? "nav-item is-active" : "nav-item"}
+                className={[
+                  "nav-item",
+                  item.label === activeSection ? "is-active" : "",
+                  canAccessSection(item.label) ? "" : "is-locked",
+                ].filter(Boolean).join(" ")}
                 type="button"
                 aria-label={item.label}
+                disabled={!canAccessSection(item.label)}
                 key={item.label}
                 onClick={() => handleNavSelection(item.label)}
               >
@@ -2653,9 +3088,9 @@ export function App() {
           </div>
           <div className="local-db-card">
             <Icon name="database" />
-            <span>Local DB</span>
-            <strong>offline.sqlite</strong>
-            <small>Healthy</small>
+            <span>LAN Sync Server</span>
+            <strong>store-sync.sqlite</strong>
+            <small>Middleman online</small>
           </div>
         </aside>
 
@@ -2684,6 +3119,11 @@ export function App() {
               <button className="sync-now" type="button" onClick={() => void handleSyncNowPreview()}>
                 <Icon name="sync" />
                 <span>Sync Now</span>
+              </button>
+              <button className="session-lock" type="button" onClick={handleLockSession}>
+                <Icon name="history" />
+                <span>{activeOfflineUser?.name ?? "Session"}</span>
+                <small>Lock App</small>
               </button>
             </div>
           </header>
@@ -2887,7 +3327,7 @@ export function App() {
             </section>
           ) : null}
 
-          <section className="content-grid">
+          <section className={`content-grid is-paged page-${activeSection.toLowerCase()}`}>
             <section className="inventory-panel" aria-label="Offline inventory" ref={inventoryPanelRef}>
               <div className="scanner-row">
                 <label htmlFor="offline-search">
@@ -3162,6 +3602,96 @@ export function App() {
                 </div>
               ) : null}
             </aside>
+
+            <section className="kiosk-panel" aria-label="Customer kiosk pickup order" ref={kioskPanelRef}>
+              <div className="section-heading">
+                <h2>Kiosk Pickup</h2>
+                <span>{kioskCartItems.length} selected</span>
+              </div>
+              <div className="kiosk-hero">
+                <div>
+                  <span className="micro-label">Customer kiosk mode</span>
+                  <strong>Browse inventory and request pickup</strong>
+                  <small>
+                    Kiosk orders reserve through the LAN sync server first, then the website
+                    confirms final inventory status after sync acceptance.
+                  </small>
+                </div>
+                <div>
+                  <span className="micro-label">Local authority</span>
+                  <strong>LAN middleman server</strong>
+                  <small>All employee stations and kiosks share the same in-store cache and queue.</small>
+                </div>
+              </div>
+              <div className="kiosk-customer-fields" aria-label="Kiosk customer name">
+                <label htmlFor="kiosk-first-name">
+                  <span className="micro-label">First name</span>
+                  <input
+                    id="kiosk-first-name"
+                    value={kioskFirstName}
+                    onChange={(event) => setKioskFirstName(event.target.value)}
+                    placeholder="First"
+                  />
+                </label>
+                <label htmlFor="kiosk-last-name">
+                  <span className="micro-label">Last name</span>
+                  <input
+                    id="kiosk-last-name"
+                    value={kioskLastName}
+                    onChange={(event) => setKioskLastName(event.target.value)}
+                    placeholder="Last"
+                  />
+                </label>
+                <button type="button" onClick={() => void handleKioskSubmitOrder()}>
+                  <Icon name="check" />
+                  <span>Submit Pickup Order</span>
+                </button>
+              </div>
+              <div className="kiosk-layout">
+                <div className="kiosk-inventory-list" aria-label="Kiosk inventory results">
+                  {filteredItems.slice(0, 12).map((item) => (
+                    <article className="kiosk-card" key={item.id}>
+                      <div>
+                        <span className={`status-dot ${item.status}`}>{statusLabel(item.status)}</span>
+                        <strong>{item.cardName}</strong>
+                        <small>
+                          {item.setName}; {item.condition}; {item.location}
+                        </small>
+                      </div>
+                      <span>{item.price}</span>
+                      <button
+                        type="button"
+                        disabled={item.status !== "available" || kioskCartIds.includes(item.id)}
+                        onClick={() => handleKioskAddItem(item)}
+                      >
+                        {kioskCartIds.includes(item.id) ? "Selected" : "Add"}
+                      </button>
+                    </article>
+                  ))}
+                  {filteredItems.length === 0 ? (
+                    <p className="panel-empty">No kiosk inventory matches this search.</p>
+                  ) : null}
+                </div>
+                <div className="kiosk-cart" aria-label="Kiosk selected cards">
+                  <span className="micro-label">Pickup cart</span>
+                  {kioskCartItems.length > 0 ? (
+                    kioskCartItems.map((item) => (
+                      <div key={item.id}>
+                        <strong>{item.cardName}</strong>
+                        <small>
+                          {item.setName}; {item.price}; {item.location}
+                        </small>
+                        <button type="button" onClick={() => handleKioskRemoveItem(item.id)}>
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p>Select available cards for staff to pull.</p>
+                  )}
+                </div>
+              </div>
+            </section>
 
             <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>
               <div className="section-heading">
@@ -3665,10 +4195,165 @@ export function App() {
                   </small>
                 </div>
               ) : null}
+              <div className="manager-session-panel" aria-label="Manager locked settings">
+                <div>
+                  <span className="micro-label">Settings lock</span>
+                  <strong>{managerControlsUnlocked ? "Manager unlocked" : "Manager locked"}</strong>
+                  <small>
+                    Session role {sessionRole}; timeout is {sessionTimeoutMinutes} minute(s).
+                  </small>
+                </div>
+                <label htmlFor="session-timeout-minutes">
+                  <span className="micro-label">Timeout minutes</span>
+                  <input
+                    id="session-timeout-minutes"
+                    inputMode="numeric"
+                    disabled={sessionRole !== "manager"}
+                    value={sessionTimeoutMinutes}
+                    onChange={(event) => {
+                      const nextValue = Number.parseInt(event.target.value, 10)
+
+                      if (Number.isFinite(nextValue)) {
+                        setSessionTimeoutMinutes(Math.min(240, Math.max(5, nextValue)))
+                      }
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={sessionRole !== "manager"}
+                  onClick={() => setManagerSettingsLocked((locked) => !locked)}
+                >
+                  <Icon name="settings" />
+                  <span>{managerControlsUnlocked ? "Lock Settings" : "Unlock Settings"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLockSession}
+                >
+                  <Icon name="history" />
+                  <span>Lock App</span>
+                </button>
+              </div>
+              <div className="user-access-panel" aria-label="Users & Access">
+                <header>
+                  <div>
+                    <span className="micro-label">Users & Access</span>
+                    <strong>4-digit PIN users</strong>
+                    <small>{offlineUsers.length} saved user(s); manager controls required.</small>
+                  </div>
+                  <span>{managerControlsUnlocked ? "Unlocked" : "Locked"}</span>
+                </header>
+                <div className="user-access-list">
+                  {offlineUsers.map((user) => (
+                    <article className={`user-access-card ${user.role}`} key={user.id}>
+                      <div className="user-access-identity">
+                        <strong>{user.name}</strong>
+                        <small>
+                          {user.role === "manager" ? "Manager PIN" : "Staff PIN"} {"*".repeat(user.pin.length)}
+                        </small>
+                      </div>
+                      <label>
+                        <span className="micro-label">Role</span>
+                        <select
+                          disabled={!managerControlsUnlocked}
+                          value={user.role}
+                          onChange={(event) =>
+                            handleOfflineUserRoleChange(
+                              user.id,
+                              event.target.value as Exclude<AppSessionRole, "locked">,
+                            )
+                          }
+                        >
+                          <option value="staff">Staff</option>
+                          <option value="manager">Manager</option>
+                        </select>
+                      </label>
+                      <div className="access-chip-grid" aria-label={`${user.name} access`}>
+                        {ACCESS_SECTIONS.map((section) => (
+                          <label className="access-chip" key={section}>
+                            <input
+                              type="checkbox"
+                              disabled={!managerControlsUnlocked || user.role === "manager"}
+                              checked={user.role === "manager" || user.access.includes(section)}
+                              onChange={() => handleOfflineUserAccessToggle(user.id, section)}
+                            />
+                            <span>{section}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <div className="user-access-editor" aria-label="Add offline user">
+                  <label>
+                    <span className="micro-label">Name</span>
+                    <input
+                      disabled={!managerControlsUnlocked}
+                      value={newUserName}
+                      onChange={(event) => setNewUserName(event.target.value)}
+                      placeholder="Employee name"
+                    />
+                  </label>
+                  <label>
+                    <span className="micro-label">4-digit PIN</span>
+                    <input
+                      disabled={!managerControlsUnlocked}
+                      inputMode="numeric"
+                      maxLength={4}
+                      type="password"
+                      value={newUserPin}
+                      onChange={(event) =>
+                        setNewUserPin(event.target.value.replace(/\D/g, "").slice(0, 4))
+                      }
+                      placeholder="----"
+                    />
+                  </label>
+                  <label>
+                    <span className="micro-label">Role</span>
+                    <select
+                      disabled={!managerControlsUnlocked}
+                      value={newUserRole}
+                      onChange={(event) => {
+                        const nextRole = event.target.value as Exclude<AppSessionRole, "locked">
+                        setNewUserRole(nextRole)
+                        setNewUserAccess(
+                          nextRole === "manager" ? [...ACCESS_SECTIONS] : ["Inventory", "Kiosk", "Queue"],
+                        )
+                      }}
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                    </select>
+                  </label>
+                  <div className="access-chip-grid" aria-label="New user allowed workspaces">
+                    {ACCESS_SECTIONS.map((section) => (
+                      <label className="access-chip" key={section}>
+                        <input
+                          type="checkbox"
+                          disabled={!managerControlsUnlocked || newUserRole === "manager"}
+                          checked={newUserRole === "manager" || newUserAccess.includes(section)}
+                          onChange={() => toggleNewUserAccess(section)}
+                        />
+                        <span>{section}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!managerControlsUnlocked}
+                    onClick={handleAddOfflineUser}
+                  >
+                    <Icon name="plus" />
+                    <span>Add User</span>
+                  </button>
+                </div>
+              </div>
               <div className="connector-editor" aria-label="Connector draft editor">
                 <label>
                   <span className="micro-label">Company name</span>
                   <input
+                    disabled={!managerControlsUnlocked}
                     value={connectorDraft.companyName}
                     onChange={(event) =>
                       setConnectorDraft((draft) => ({
@@ -3682,6 +4367,7 @@ export function App() {
                 <label>
                   <span className="micro-label">Short name</span>
                   <input
+                    disabled={!managerControlsUnlocked}
                     value={connectorDraft.companyShortName}
                     onChange={(event) =>
                       setConnectorDraft((draft) => ({
@@ -3695,6 +4381,7 @@ export function App() {
                 <label>
                   <span className="micro-label">Website host or URL</span>
                   <input
+                    disabled={!managerControlsUnlocked}
                     value={connectorDraft.siteUrl}
                     onChange={(event) =>
                       setConnectorDraft((draft) => ({
@@ -3708,6 +4395,7 @@ export function App() {
                 <label>
                   <span className="micro-label">Environment</span>
                   <select
+                    disabled={!managerControlsUnlocked}
                     value={connectorDraft.environment}
                     onChange={(event) =>
                       setConnectorDraft((draft) => ({
@@ -3724,6 +4412,7 @@ export function App() {
                 <label>
                   <span className="micro-label">ScryDex label</span>
                   <input
+                    disabled={!managerControlsUnlocked}
                     value={connectorDraft.scrydexTeamLabel}
                     onChange={(event) =>
                       setConnectorDraft((draft) => ({
@@ -3737,6 +4426,7 @@ export function App() {
                 <label className="toggle-field">
                   <input
                     type="checkbox"
+                    disabled={!managerControlsUnlocked}
                     checked={connectorDraft.canonicalInventoryWritesEnabled}
                     onChange={(event) =>
                       setConnectorDraft((draft) => ({
@@ -3765,18 +4455,19 @@ export function App() {
                     id="pairing-code"
                     type="password"
                     autoComplete="off"
+                    disabled={!managerControlsUnlocked}
                     value={pairingCode}
                     onChange={(event) => setPairingCode(event.target.value)}
                     placeholder="Manager code"
                   />
                 </label>
-                <button type="button" onClick={handlePairingPreview}>
+                <button type="button" disabled={!managerControlsUnlocked} onClick={handlePairingPreview}>
                   <Icon name="check" />
                   <span>Prepare Pairing</span>
                 </button>
                 <button
                   type="button"
-                  disabled={pairingRouteCheck.status === "loading"}
+                  disabled={!managerControlsUnlocked || pairingRouteCheck.status === "loading"}
                   onClick={() => void handleCheckPairingRoute()}
                 >
                   <Icon name="link" />
@@ -3788,7 +4479,7 @@ export function App() {
                 </button>
                 <button
                   type="button"
-                  disabled={pairingTokenRequest.status === "loading"}
+                  disabled={!managerControlsUnlocked || pairingTokenRequest.status === "loading"}
                   onClick={() => void handlePairDevice()}
                 >
                   <Icon name="link" />
@@ -3837,13 +4528,13 @@ export function App() {
                 ) : null}
               </div>
               <div className="connector-actions">
-                <button type="button" onClick={handleNewConnectorDraft}>
+                <button type="button" disabled={!managerControlsUnlocked} onClick={handleNewConnectorDraft}>
                   <Icon name="plus" />
                   <span>Reset Website Setup</span>
                 </button>
                 <button
                   type="button"
-                  disabled={connectorManifestFetch.status === "loading"}
+                  disabled={!managerControlsUnlocked || connectorManifestFetch.status === "loading"}
                   onClick={() => void handleTestWebsiteConnector()}
                 >
                   <Icon name="link" />
@@ -3853,11 +4544,15 @@ export function App() {
                       : "Test Website Connector"}
                   </span>
                 </button>
-                <button type="button" onClick={handleValidateLocalConnectorPreview}>
+                <button
+                  type="button"
+                  disabled={!managerControlsUnlocked}
+                  onClick={handleValidateLocalConnectorPreview}
+                >
                   <Icon name="database" />
                   <span>Validate Local Preview</span>
                 </button>
-                <button type="button" onClick={handleSaveConnectorDraft}>
+                <button type="button" disabled={!managerControlsUnlocked} onClick={handleSaveConnectorDraft}>
                   <Icon name="check" />
                   <span>Save Website Connection</span>
                 </button>

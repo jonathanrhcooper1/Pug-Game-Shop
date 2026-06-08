@@ -27,7 +27,7 @@
     "scrydex:live-smoke": "node scripts/scrydex-live-smoke.mjs",
     "test": "npm run test:local && npm run test:sync-engine && npm run test:pos-payments && npm run test:api-client && npm run test:offline-app && npm run test:packaging && npm run test:required-matrix",
     "test:local": "cd apps/wordpress-plugin && php tests/run.php && php tests/bootstrap-smoke.php && php tests/lint.php",
-    "test:sync-engine": "node packages/sync-engine/tests/offline-conflict-policy.mjs",
+    "test:sync-engine": "node packages/sync-engine/tests/offline-conflict-policy.mjs && npm --prefix apps/local-sync-server run test:contract",
     "test:pos-payments": "node packages/validation/tests/pos-payment-policy.mjs",
     "test:api-client": "node packages/api-client/tests/square-inventory-adapter.mjs && node packages/api-client/tests/woocommerce-product-adapter.mjs",
     "test:offline-app": "npm --prefix apps/offline-app run typecheck && node apps/offline-app/tests/windows-package-contract.mjs && node apps/offline-app/tests/sqlite-schema-contract.mjs && node apps/offline-app/tests/workspace-state-contract.mjs && node apps/offline-app/tests/pull-inventory-cache-contract.mjs && node apps/offline-app/tests/queue-bridge-contract.mjs && node apps/offline-app/tests/local-queue-persistence-contract.mjs && node apps/offline-app/tests/tauri-command-contract.mjs && node apps/offline-app/tests/ui-shell-contract.mjs && npm run test:offline-app:rust",

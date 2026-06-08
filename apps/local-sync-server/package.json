@@ -1,0 +1,10 @@
+{
+  "name": "@pug-game-shop/local-sync-server",
+  "version": "0.156.0",
+  "private": true,
+  "description": "LAN middleman sync server contract for Pug Game Shop clients.",
+  "type": "module",
+  "scripts": {
+    "test:contract": "node tests/local-sync-server-contract.mjs"
+  }
+}

@@ -17,7 +17,9 @@ const pairingCode = `PAIR-${randomToken(16)}`
 const installationId = `staging-sync-smoke-${smokeId}`
 const batchId = `batch-${smokeId}`
 const clientOperationId = `op-${smokeId}`
-const smokeEntityId = `sync-smoke-inventory-${randomToken(8).toLowerCase()}`
+const smokeInventoryPublicId = stagingUuid()
+const smokeLocationPublicId = stagingUuid()
+const smokeSku = `PUG-OFFLINE-SMOKE-${randomToken(10).toUpperCase()}`
 const remoteRunnerPath = `${remoteUploadDir}/offline-sync-smoke-${timestampForRemoteName(new Date())}.php`
 
 const requiredEnv = {
@@ -69,6 +71,9 @@ if (dryRun) {
         ],
         restoresPreviousRouteAndFeatureSettings: true,
         writesTemporarySyncQueueRows: true,
+        seedsTemporaryInventoryRow: true,
+        removesSmokeInventoryRow: true,
+        removesSmokeLocationRow: true,
         removesSmokeQueueRows: true,
         removesSmokeConflictRows: true,
         removesSmokeDeviceRow: true,
@@ -139,6 +144,127 @@ if ('setup' === $action) {
 		exit(1);
 	}
 
+	global $wpdb;
+	$inventory_public_id = trim((string) ($payload['inventory_public_id'] ?? ''));
+	$location_public_id = trim((string) ($payload['location_public_id'] ?? ''));
+	$sku = strtoupper(trim((string) ($payload['sku'] ?? '')));
+	if (!tcg_staging_offline_sync_smoke_uuid($inventory_public_id) || !tcg_staging_offline_sync_smoke_uuid($location_public_id)) {
+		echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_inventory_identity_invalid'));
+		exit(1);
+	}
+	if ('' === $sku || !preg_match('/^[A-Z0-9-]{8,64}$/', $sku)) {
+		echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_inventory_sku_invalid'));
+		exit(1);
+	}
+	if (!$wpdb instanceof wpdb) {
+		echo wp_json_encode(array('status' => 'error', 'message' => 'wpdb_required'));
+		exit(1);
+	}
+
+	$now = gmdate('Y-m-d H:i:s') . '.000000';
+	$locations_table = $wpdb->prefix . 'tcg_inventory_locations';
+	$inventory_table = $wpdb->prefix . 'tcg_inventory_items';
+	$price_log_table = $wpdb->prefix . 'tcg_price_change_log';
+
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$price_log_table} WHERE inventory_id IN (SELECT inventory_id FROM {$inventory_table} WHERE public_id = %s OR sku = %s OR barcode = %s)",
+			array($inventory_public_id, $sku, $sku)
+		)
+	);
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$inventory_table} WHERE public_id = %s OR sku = %s OR barcode = %s",
+			array($inventory_public_id, $sku, $sku)
+		)
+	);
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$locations_table} WHERE public_id = %s OR code = %s",
+			array($location_public_id, 'OFFLINE-SMOKE')
+		)
+	);
+
+	$location_inserted = $wpdb->insert(
+		$locations_table,
+		array(
+			'public_id' => $location_public_id,
+			'location_type' => 'showcase',
+			'code' => 'OFFLINE-SMOKE',
+			'name' => 'Offline Sync Smoke',
+			'timezone' => 'America/New_York',
+			'is_active' => 1,
+			'sort_order' => 999,
+			'created_at' => $now,
+			'updated_at' => $now,
+			'row_version' => 1,
+		)
+	);
+	if (false === $location_inserted) {
+		echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_location_insert_failed'));
+		exit(1);
+	}
+	$location_id = (int) $wpdb->insert_id;
+	if ($location_id <= 0) {
+		echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_location_id_invalid'));
+		exit(1);
+	}
+
+	$inventory_inserted = $wpdb->insert(
+		$inventory_table,
+		array(
+			'public_id' => $inventory_public_id,
+			'provider_name' => 'staging_offline_sync_smoke',
+			'provider_card_id' => 'offline-sync-smoke-card',
+			'game' => 'pokemon',
+			'card_name' => 'Offline Sync Smoke Card',
+			'set_name' => 'Smoke Test Set',
+			'set_code' => 'SMK',
+			'card_number' => '001',
+			'printed_number' => '001/001',
+			'year' => 2026,
+			'rarity' => 'Common',
+			'rarity_code' => 'C',
+			'variant' => 'Smoke',
+			'finish' => 'Regular',
+			'language' => 'EN',
+			'raw_or_graded' => 'raw',
+			'condition_code' => 'NM',
+			'barcode' => $sku,
+			'sku' => $sku,
+			'cost' => '0.0100',
+			'cost_currency' => 'USD',
+			'market_price' => '1.0000',
+			'market_price_currency' => 'USD',
+			'suggested_price' => '1.0000',
+			'sale_price' => '1.0000',
+			'minimum_sale_price' => '0.0100',
+			'sale_currency' => 'USD',
+			'pricing_source' => 'staging_offline_sync_smoke',
+			'pricing_formula' => 'manual_smoke_seed',
+			'price_lock' => 0,
+			'price_floor_hit' => 0,
+			'location_id' => $location_id,
+			'online_visibility' => 'hidden',
+			'kiosk_visibility' => 'hidden',
+			'pos_visibility' => 'hidden',
+			'status' => 'available',
+			'notes' => 'Disposable staging offline sync smoke seed.',
+			'staff_notes' => 'Seeded by staging-run-offline-sync-smoke.mjs',
+			'date_acquired' => $now,
+			'date_listed' => $now,
+			'created_by' => $manager_id,
+			'updated_by' => $manager_id,
+			'created_at' => $now,
+			'updated_at' => $now,
+			'row_version' => 1,
+		)
+	);
+	if (false === $inventory_inserted) {
+		echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_inventory_insert_failed'));
+		exit(1);
+	}
+
 	update_option(
 		$backup_option,
 		array(
@@ -153,7 +279,7 @@ if ('setup' === $action) {
 	$settings['offline_pairing_authorization'] = array(
 		'pairing_code_hashes' => array(hash('sha256', strtoupper((string) ($payload['pairing_code'] ?? '')))),
 		'manager_ids' => array($manager_id),
-		'location_ids' => array(1),
+		'location_ids' => array($location_id),
 		'allowed_scopes_by_mode' => array(
 			'kiosk' => array(),
 			'staff' => tcg_staging_offline_sync_smoke_scopes($payload['requested_scopes'] ?? array()),
@@ -181,7 +307,10 @@ if ('setup' === $action) {
 		'status' => 'ok',
 		'backup_option' => $backup_option,
 		'manager_id' => $manager_id,
-		'location_id' => 1,
+		'location_id' => $location_id,
+		'inventory_public_id' => $inventory_public_id,
+		'inventory_row_seeded' => true,
+		'location_row_seeded' => true,
 		'expires_at_utc' => $expires_at_utc,
 		'pairing_code_redacted' => true,
 		'device_token_printed' => false,
@@ -220,9 +349,14 @@ if ('cleanup' === $action) {
 	$device_id = trim((string) ($payload['device_id'] ?? ''));
 	$batch_id = trim((string) ($payload['batch_id'] ?? ''));
 	$client_operation_id = trim((string) ($payload['client_operation_id'] ?? ''));
+	$inventory_public_id = trim((string) ($payload['inventory_public_id'] ?? ''));
+	$location_public_id = trim((string) ($payload['location_public_id'] ?? ''));
+	$sku = strtoupper(trim((string) ($payload['sku'] ?? '')));
 	$device_rows_deleted = 0;
 	$queue_rows_deleted = 0;
 	$conflict_rows_deleted = 0;
+	$inventory_rows_deleted = 0;
+	$location_rows_deleted = 0;
 	if ($wpdb instanceof wpdb) {
 		if ('' !== $client_operation_id || '' !== $batch_id || '' !== $device_id) {
 			$conflict_table = $wpdb->prefix . 'tcg_sync_conflicts';
@@ -244,6 +378,31 @@ if ('cleanup' === $action) {
 			$device_table = $wpdb->prefix . 'tcg_offline_devices';
 			$device_rows_deleted = (int) $wpdb->query($wpdb->prepare("DELETE FROM {$device_table} WHERE public_id = %s", array($device_id)));
 		}
+		if ('' !== $inventory_public_id || '' !== $sku) {
+			$inventory_table = $wpdb->prefix . 'tcg_inventory_items';
+			$price_log_table = $wpdb->prefix . 'tcg_price_change_log';
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$price_log_table} WHERE inventory_id IN (SELECT inventory_id FROM {$inventory_table} WHERE public_id = %s OR sku = %s OR barcode = %s)",
+					array($inventory_public_id, $sku, $sku)
+				)
+			);
+			$inventory_rows_deleted = (int) $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$inventory_table} WHERE public_id = %s OR sku = %s OR barcode = %s",
+					array($inventory_public_id, $sku, $sku)
+				)
+			);
+		}
+		if ('' !== $location_public_id) {
+			$locations_table = $wpdb->prefix . 'tcg_inventory_locations';
+			$location_rows_deleted = (int) $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$locations_table} WHERE public_id = %s OR code = %s",
+					array($location_public_id, 'OFFLINE-SMOKE')
+				)
+			);
+		}
 	}
 
 	echo wp_json_encode(array(
@@ -254,6 +413,8 @@ if ('cleanup' === $action) {
 		'device_rows_deleted' => $device_rows_deleted,
 		'queue_rows_deleted' => $queue_rows_deleted,
 		'conflict_rows_deleted' => $conflict_rows_deleted,
+		'inventory_rows_deleted' => $inventory_rows_deleted,
+		'location_rows_deleted' => $location_rows_deleted,
 		'pairing_code_printed' => false,
 		'device_token_printed' => false,
 	));
@@ -275,6 +436,10 @@ function tcg_staging_offline_sync_smoke_scopes($value) {
 	}
 	return empty($scopes) ? $allowed : $scopes;
 }
+
+function tcg_staging_offline_sync_smoke_uuid($value) {
+	return is_string($value) && 1 === preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', $value);
+}
 `
 
 let setup = null
@@ -293,6 +458,9 @@ try {
       smoke_id: smokeId,
       pairing_code: pairingCode,
       requested_scopes: requestedScopes,
+      inventory_public_id: smokeInventoryPublicId,
+      location_public_id: smokeLocationPublicId,
+      sku: smokeSku,
     })
   })
 
@@ -349,7 +517,7 @@ try {
           actor_id: setup.parsed.manager_id,
           operation_type: "inventory_reservation",
           entity_type: "inventory",
-          entity_id: smokeEntityId,
+          entity_id: smokeInventoryPublicId,
           base_row_version: 1,
           occurred_at_local: utcNow(),
           queued_at_utc: utcNow(),
@@ -391,7 +559,9 @@ const report = {
     pushResponse?.json?.meta?.push_canonical_mutations_deferred === true &&
     cleanup?.parsed?.status === "ok" &&
     Number.parseInt(String(cleanup?.parsed?.device_rows_deleted ?? "0"), 10) >= 1 &&
-    Number.parseInt(String(cleanup?.parsed?.queue_rows_deleted ?? "0"), 10) >= 1,
+    Number.parseInt(String(cleanup?.parsed?.queue_rows_deleted ?? "0"), 10) >= 1 &&
+    Number.parseInt(String(cleanup?.parsed?.inventory_rows_deleted ?? "0"), 10) >= 1 &&
+    Number.parseInt(String(cleanup?.parsed?.location_rows_deleted ?? "0"), 10) >= 1,
   setup: redactSetup(setup?.parsed),
   pairing: {
     httpStatus: pairingResponse?.status ?? null,
@@ -419,6 +589,7 @@ const report = {
     httpStatus: pushResponse?.status ?? null,
     status: pushResponse?.json?.status ?? null,
     code: pushResponse?.json?.code ?? null,
+    errors: sanitizedErrors(pushResponse?.json?.errors),
     persistenceStatus: pushResponse?.json?.meta?.persistence_status ?? null,
     operationRowsAffected: pushResponse?.json?.meta?.operation_rows_affected ?? null,
     conflictRowsAffected: pushResponse?.json?.meta?.conflict_rows_affected ?? null,
@@ -432,6 +603,9 @@ const report = {
   remoteRunner: basename(remoteRunnerPath),
   remoteRunnerRemoved: cleanup?.runnerRemoved ?? false,
   writesTemporarySyncQueueRows: true,
+  seedsTemporaryInventoryRow: true,
+  removesSmokeInventoryRow: true,
+  removesSmokeLocationRow: true,
   canonicalInventoryWrites: false,
   squareWrites: false,
   paymentCapture: false,
@@ -462,6 +636,9 @@ async function cleanupSmokeRows(deviceId) {
           device_id: deviceId,
           batch_id: batchId,
           client_operation_id: clientOperationId,
+          inventory_public_id: smokeInventoryPublicId,
+          location_public_id: smokeLocationPublicId,
+          sku: smokeSku,
         })
       } finally {
         await execWithStdin(connection, `rm -f ${shellQuote(remoteRunnerPath)}`, "")
@@ -660,6 +837,31 @@ function utcNow() {
 
 function isDeviceToken(value) {
   return /^[a-zA-Z0-9._:-]{32,256}$/.test(String(value))
+}
+
+function sanitizedErrors(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((item) => String(item).replace(/[A-Fa-f0-9]{64}/g, "[redacted-token]"))
+    .slice(0, 10)
+}
+
+function stagingUuid() {
+  const bytes = randomBytes(16)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const value = bytes.toString("hex")
+
+  return [
+    value.slice(0, 8),
+    value.slice(8, 12),
+    value.slice(12, 16),
+    value.slice(16, 20),
+    value.slice(20),
+  ].join("-")
 }
 
 function shellQuote(value) {

@@ -6,6 +6,12 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app login now uses manager-issued 4-digit staff/manager PINs, with a
+  PIN keypad, session lock control, section-level access gating, and a
+  manager-only Users & Access panel for adding PIN users and assigning app
+  workspaces.
+- Local sync server contract now includes PIN auth, cached user/access policy,
+  manager-only user/access mutations, and hashed PIN credential requirements.
 - Staging deployment tooling now includes `npm run staging:install-package`,
   a confirmed SSH/WP-CLI helper that uploads the runtime plugin ZIP, runs
   `wp plugin install --force --activate`, verifies the active

@@ -256,16 +256,16 @@ repository execution remains disconnected.
 ```mermaid
 flowchart LR
     Customer["Customer Browser"] --> Storefront["WordPress + WooCommerce"]
-    Kiosk["In-Store Kiosk Mode"] --> Desktop["Tauri Offline App"]
-    Staff["Staff / Manager Mode"] --> Desktop
+    Kiosk["In-Store Kiosk Client"] --> LocalServer["LAN Local Sync Server"]
+    Staff["Employee / Manager App"] --> LocalServer
     Admin["WordPress Admin"] --> Plugin["TCG Store Platform Plugin"]
     Storefront --> Plugin
-    Desktop <--> API["/wp-json/tcg-store/v1"]
+    LocalServer <--> API["/wp-json/tcg-store/v1"]
     API --> Plugin
     Plugin --> DB[("MySQL Custom Tables")]
     Storefront --> Woo[("WooCommerce Orders / HPOS")]
     Plugin <--> Woo
-    Desktop --> SQLite[("Local SQLite + Image Cache")]
+    LocalServer --> SQLite[("Shared store-sync.sqlite + Image Cache")]
     Plugin <--> Queue["Action Scheduler"]
     Queue <--> ScryDex["ScryDex Adapter"]
     Plugin <--> POS["POS Adapters"]
@@ -277,14 +277,26 @@ flowchart LR
 
 | Domain | Authority | Replicas / integrations |
 | --- | --- | --- |
-| Serialized card inventory | Plugin custom tables | Woo product projection, Square projection, SQLite |
-| Reservations | Plugin custom tables | Woo session metadata, SQLite pending reservations |
+| Serialized card inventory | Plugin custom tables globally; LAN sync server locally during outage | Woo product projection, Square projection, shared store-sync SQLite |
+| Reservations | Plugin custom tables globally; LAN sync server local lock table before sync | Woo session metadata, shared local pending reservations |
 | Online orders/payments | WooCommerce CRUD/HPOS | Plugin sale conversion and audit |
 | In-store payment | Configured POS/payment provider | Plugin POS reconciliation log |
-| Customer store credit | Immutable plugin ledger | Cached balance and SQLite read model |
+| Customer store credit | Immutable plugin ledger | Cached balance and shared local read model |
 | Card reference/prices | Local normalized reference tables | ScryDex and future providers |
-| Events | Plugin event tables | Woo event products, SQLite event cache |
-| Offline actions | Plugin after accepted sync | SQLite queue before acceptance |
+| Events | Plugin event tables | Woo event products, shared local event cache |
+| Offline actions | Plugin after accepted sync | LAN sync server queue before acceptance |
+| Staff sessions and access | WordPress policy globally; LAN sync server cached policy locally | Employee app/kiosk current session state only |
+
+The employee app and kiosk client do not maintain independent inventory
+authority. They connect to the LAN local sync server. The local server is the
+only in-store component allowed to allocate temporary local reservation locks,
+which prevents two client devices from selecting the same serialized card while
+the website is unreachable.
+
+Employee and manager app sessions use 4-digit PINs verified by the local sync
+server against cached WordPress policy. The server stores PIN credentials as
+hashes, enforces manager-only user/access changes, and exposes only the active
+session and allowed workspace state to clients.
 
 ## Transaction Boundaries
 

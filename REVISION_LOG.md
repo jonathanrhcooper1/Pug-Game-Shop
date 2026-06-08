@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline PIN Login And LAN Access Policy
+
+### What Changed
+
+- Changed the offline app login flow to a 4-digit staff/manager PIN with a
+  keypad, masked PIN status, session lock control, and section-level workspace
+  access gating.
+- Added a manager-only Users & Access panel in Settings for viewing saved PIN
+  users, changing staff/manager role, assigning allowed workspaces, and adding
+  new PIN users.
+- Added LAN sync server contract endpoints and safety requirements for PIN
+  verification, cached user/access policy, manager-only user mutations, and
+  hashed PIN credential storage.
+- Updated offline app product requirements and architecture docs to make
+  WordPress the global policy authority, the LAN sync server the local cached
+  policy authority, and clients current-session-only.
+
+### Why
+
+Store staff need a fast in-store sign-in flow that does not require long
+usernames/passwords on every register or kiosk station. The app also needs a
+clear manager-controlled access model before inventory, customer credit,
+events, kiosk, and sync tools are made fully functional across multiple local
+devices.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/OFFLINE_APP_PRODUCT_REQUIREMENTS.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app UI shell contract markers for PIN login, session lock, disabled
+  workspace navigation, Users & Access, and manager access controls.
+- Local sync server contract markers for PIN auth and user/access policy
+  endpoints and hashed PIN safety requirements.
+
+### Verification
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `npm --prefix apps/offline-app run test:package-contract`
+- `npm run test:sync-engine`
+- `npm run test:packaging`
+- `npm run test:offline-app:rust`
+- `npm run test:offline-app`
+- `npm run test`
+- Browser smoke: staff PIN login, Kiosk navigation, app lock, manager PIN
+  login, Users & Access add-user flow, and newly added PIN access gating.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the prior login/session
+  scaffold and remove the LAN user/access policy contract extensions.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required.
+
 ## 2026-06-08 - Offline App Single-Site Setup And Square Credit Handoff
 
 ### What Changed

@@ -2,10 +2,17 @@
 
 ## Product Direction
 
-The offline app is a single-store operating console for one configured
-WordPress/WooCommerce website per installation. It must run online with live
-pull/push sync when the website is reachable and offline with a durable local
-SQLite queue when the website is unavailable.
+The offline system is a single-store operating stack for one configured
+WordPress/WooCommerce website. WordPress/WooCommerce remains the global source
+of truth. A local LAN sync server runs inside the store as the middleman for
+employee stations and kiosk devices. It must run online with live pull/push
+sync when the website is reachable and offline with a durable shared SQLite
+cache/queue when the website is unavailable.
+
+Employee apps and kiosk apps connect to the local sync server instead of each
+owning an isolated local inventory authority. The local sync server coordinates
+local reservation locks, prevents double-sell between in-store devices, queues
+operations, and then syncs accepted operations to the website.
 
 The underlying connector model may retain profile IDs for staging, support,
 and future white-label reuse, but the cashier/staff UI must not present a
@@ -16,10 +23,12 @@ only secret-free metadata in browser/UI state.
 
 ## Required App Sections
 
-- Setup: website URL, manifest validation, device pairing, secure-store token
-  status, sync route status, and setup troubleshooting.
-- Login: staff/manager login before app use, with session timeout and lock
-  behavior controlled from WordPress admin settings.
+- Setup: website URL, local sync server URL, manifest validation, device
+  pairing, secure-store token status, sync route status, and setup
+  troubleshooting.
+- Login: 4-digit staff/manager PIN before app use, with user access, session
+  timeout, and lock behavior controlled from WordPress admin settings and
+  cached through the local sync server.
 - Inventory: scan/search cards, add inventory, edit card details, create
   guarded holds, print labels, and push accepted changes to the website
   database.
@@ -29,34 +38,42 @@ only secret-free metadata in browser/UI state.
   ledger entries, add manager-approved store credit, and redeem store credit.
 - Checkout/POS Handoff: calculate store-credit redemption, show remaining
   amount due, and produce the Square POS handoff instructions/metadata.
-- Queue: show local operations, retry/void/export for support, and mark
-  accepted operations synced after website acceptance.
+- Kiosk: customer-facing inventory lookup, pickup cart, first/last-name order
+  submission, and local reservation request through the LAN sync server.
+- Queue: show local sync server operations, retry/void/export for support, and
+  mark accepted operations synced after website acceptance.
 - Conflicts: manager-only resolution for inventory, customer credit, events,
   and stale offline operations.
-- Settings: manager-only website connection, timeout, sync interval, feature
-  gates, role requirements, and device pairing controls.
+- Settings: manager-only website connection, LAN sync server connection,
+  timeout, sync interval, feature gates, role requirements, and device pairing
+  controls.
 
 Menu items should navigate to full app pages or page-like workspaces, not just
 scroll a long developer console.
 
 ## Online And Offline Behavior
 
-- Online mode runs authenticated pull/push sync through the paired website
-  connector.
-- Offline mode keeps scanning, inventory intake, customer lookup, credit
-  redemption, event check-in, and queue review available using cached data.
-- The app never accesses MySQL directly. WordPress accepts or rejects queued
-  operations and remains authoritative after sync.
-- When the network returns, the app pushes local operations, pulls canonical
-  inventory/customer/event/conflict rows, marks accepted queue rows synced, and
-  leaves conflicts visible for manager review.
+- Online mode lets the LAN sync server run authenticated pull/push sync through
+  the paired website connector.
+- Offline mode keeps employee scanning, inventory intake, customer lookup,
+  credit redemption, event check-in, kiosk pickup orders, and queue review
+  available using the LAN server's shared cache.
+- Employee and kiosk apps never access MySQL directly and do not independently
+  push to the website. They send requests to the local sync server.
+- WordPress accepts or rejects queued operations and remains globally
+  authoritative after sync.
+- When the network returns, the local sync server pushes local operations, pulls
+  canonical inventory/customer/event/conflict rows, marks accepted queue rows
+  synced, and leaves conflicts visible for manager review.
 
 ## Login And Manager Lockdown
 
-Before regular app use, staff must authenticate locally against the website
-session/device policy. WordPress admin settings should control:
+Before regular app use, staff must authenticate with a manager-issued 4-digit
+PIN against the cached website/local sync server user policy. WordPress admin
+settings and the manager Settings screen should control:
 
-- Required login mode for staff and managers.
+- Staff and manager PIN users.
+- Which app workspaces each staff PIN can access.
 - Session timeout minutes.
 - Idle lock timeout minutes.
 - Whether offline login is allowed from cached staff/device policy.
@@ -67,7 +84,9 @@ session/device policy. WordPress admin settings should control:
   or at logout.
 
 The app must lock settings by default unless the current session has a manager
-role or a valid manager override.
+role or a valid manager override. PIN credentials must be stored as hashes in
+the local sync server and WordPress policy stores; desktop/kiosk clients should
+only keep the active session state needed for the current app run.
 
 ## Inventory And ScryDex
 
@@ -76,6 +95,29 @@ identity, condition, barcode/SKU, location, price, quantity, and source
 metadata. ScryDex lookup in the app should call WordPress, which calls ScryDex
 with server-side credentials and returns only card/reference data needed by the
 app. ScryDex API keys must never be copied into local app storage.
+
+## Local Sync Server
+
+The local sync server is required when more than one in-store device is active.
+It runs on a store PC or small dedicated machine on the LAN. Employee apps and
+kiosks connect to it by URL or host name during setup.
+
+The local sync server owns:
+
+- Shared SQLite cache for inventory, customers, credit, events, conflicts, and
+  reference data.
+- Shared operation queue for employee, manager, and kiosk actions.
+- Cached staff/manager PIN access policy with hashed PIN credentials.
+- Local reservation locks so two in-store devices cannot select the same exact
+  inventory item while offline.
+- Kiosk pickup carts keyed by customer first and last name.
+- Pull/push workers to the WordPress offline REST API.
+- Health/status endpoints for every client.
+
+If the internet is unavailable, the local sync server continues accepting local
+operations. If the LAN sync server itself is unavailable, client apps should
+fail closed for inventory holds and kiosk orders, then prompt staff to restore
+the local server or use an explicitly enabled emergency single-device mode.
 
 ## Customer Credit And Square POS
 
@@ -122,10 +164,12 @@ completed website balance changes.
 
 1. Replace user-facing store dropdown behavior with setup/settings website
    connection UX.
-2. Add staff login/session lock scaffolding and manager-only settings/credit
-   controls.
-3. Add offline customer creation and manager-approved credit-add operation
+2. Add LAN sync server setup, health, shared-cache, and local reservation-lock
+   runtime.
+3. Add 4-digit PIN login/session lock scaffolding, manager user/access
+   management, and manager-only settings/credit controls.
+4. Add offline customer creation and manager-approved credit-add operation
    support in the offline push contract and WordPress acceptor.
-4. Add ScryDex app search through WordPress proxy routes.
-5. Convert menu navigation into page-like workspaces with focused, functional
+5. Add ScryDex app search through WordPress proxy routes.
+6. Convert menu navigation into page-like workspaces with focused, functional
    controls.
