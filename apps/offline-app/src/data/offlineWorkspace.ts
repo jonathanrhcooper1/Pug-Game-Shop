@@ -371,6 +371,30 @@ export type OfflinePullRequestBody = {
   schema_version: 1
 }
 
+export type OfflinePullInventoryCacheRecord = {
+  public_id: string
+  row_version: number
+  card_name: string
+  set_name: string
+  card_number: string
+  condition: string
+  barcode: string
+  sale_price_minor_units: number
+  sale_currency: "USD"
+  location_label: string
+  status: InventoryStatus
+  updated_at_utc: string
+}
+
+export type OfflinePullInventoryCacheApplyResult = {
+  items: InventoryItem[]
+  appliedCount: number
+  insertedCount: number
+  updatedCount: number
+  ignoredCount: number
+  changedPublicIds: string[]
+}
+
 export type OfflinePushRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/push"
@@ -1779,6 +1803,53 @@ function sanitizePullCursors(cursors: Record<string, string>): Record<string, st
   return safeCursors
 }
 
+function sanitizeOfflinePullInventoryCacheRecords(
+  records: OfflinePullInventoryCacheRecord[],
+): OfflinePullInventoryCacheRecord[] {
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  return records
+    .filter((record) =>
+      record &&
+      typeof record.public_id === "string" &&
+      record.public_id.trim() !== "" &&
+      typeof record.row_version === "number" &&
+      Number.isFinite(record.row_version) &&
+      record.row_version > 0 &&
+      typeof record.card_name === "string" &&
+      record.card_name.trim() !== "" &&
+      typeof record.set_name === "string" &&
+      typeof record.card_number === "string" &&
+      typeof record.condition === "string" &&
+      typeof record.barcode === "string" &&
+      typeof record.sale_price_minor_units === "number" &&
+      Number.isFinite(record.sale_price_minor_units) &&
+      record.sale_price_minor_units >= 0 &&
+      record.sale_currency === "USD" &&
+      typeof record.location_label === "string" &&
+      (record.status === "available" || record.status === "reserved" || record.status === "conflict") &&
+      typeof record.updated_at_utc === "string" &&
+      record.updated_at_utc.trim() !== "",
+    )
+    .map((record) => ({
+      public_id: record.public_id.trim(),
+      row_version: Math.floor(record.row_version),
+      card_name: record.card_name.trim(),
+      set_name: record.set_name.trim() || "Unknown set",
+      card_number: record.card_number.trim(),
+      condition: record.condition.trim() || "Raw",
+      barcode: record.barcode.trim(),
+      sale_price_minor_units: Math.floor(record.sale_price_minor_units),
+      sale_currency: "USD" as const,
+      location_label: record.location_label.trim() || "Unassigned",
+      status: record.status,
+      updated_at_utc: record.updated_at_utc.trim(),
+    }))
+    .slice(0, 50)
+}
+
 function safeRecordIdPart(value: unknown, fallback: string): string {
   const candidate = stringValue(value) || fallback
   const safeValue = candidate
@@ -2305,6 +2376,62 @@ export function buildOfflinePullRequestBody(
     page_size: pageSize,
     include_tombstones: options.includeTombstones ?? true,
     schema_version: 1,
+  }
+}
+
+export function applyOfflinePullInventoryRecordsToCache(
+  items: InventoryItem[],
+  records: OfflinePullInventoryCacheRecord[],
+): OfflinePullInventoryCacheApplyResult {
+  const itemMap = new Map(items.map((item) => [item.publicId, item]))
+  const changedPublicIds: string[] = []
+  let insertedCount = 0
+  let updatedCount = 0
+  let ignoredCount = 0
+  let nextId = items.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
+
+  for (const record of sanitizeOfflinePullInventoryCacheRecords(records)) {
+    const existing = itemMap.get(record.public_id)
+
+    if (existing && record.row_version <= existing.rowVersion) {
+      ignoredCount += 1
+      continue
+    }
+
+    const nextItem: InventoryItem = {
+      id: existing?.id ?? nextId++,
+      publicId: record.public_id,
+      rowVersion: record.row_version,
+      cardName: record.card_name,
+      setName: record.set_name,
+      number: record.card_number,
+      condition: record.condition || existing?.condition || "Raw",
+      barcode: record.barcode || existing?.barcode || record.public_id,
+      price: formatMoney(record.sale_price_minor_units, "USD"),
+      priceMinorUnits: record.sale_price_minor_units,
+      currency: "USD",
+      location: record.location_label || existing?.location || "Unassigned",
+      status: record.status,
+      source: "accepted",
+    }
+
+    itemMap.set(record.public_id, nextItem)
+    changedPublicIds.push(record.public_id)
+
+    if (existing) {
+      updatedCount += 1
+    } else {
+      insertedCount += 1
+    }
+  }
+
+  return {
+    items: Array.from(itemMap.values()).sort((left, right) => left.id - right.id),
+    appliedCount: insertedCount + updatedCount,
+    insertedCount,
+    updatedCount,
+    ignoredCount,
+    changedPublicIds,
   }
 }
 

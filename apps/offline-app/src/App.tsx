@@ -13,6 +13,7 @@ import {
   buildDevicePairingRequestBody,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
+  applyOfflinePullInventoryRecordsToCache,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
   buildPreparedPairingStorageSnapshot,
@@ -134,6 +135,10 @@ type DesktopSyncExecutionState = {
   detail: string
   pull?: OfflineSyncCommandResponse
   push?: OfflineSyncCommandResponse
+  cacheAppliedCount: number
+  cacheInsertedCount: number
+  cacheUpdatedCount: number
+  cacheIgnoredCount: number
   rawTokenReturned: false
   rawResponseReturned: false
   credentialsSyncedToApp: false
@@ -285,6 +290,10 @@ export function App() {
   const [desktopSyncExecution, setDesktopSyncExecution] = useState<DesktopSyncExecutionState>({
     status: "idle",
     detail: "Desktop live sync has not run for this connector.",
+    cacheAppliedCount: 0,
+    cacheInsertedCount: 0,
+    cacheUpdatedCount: 0,
+    cacheIgnoredCount: 0,
     rawTokenReturned: false,
     rawResponseReturned: false,
     credentialsSyncedToApp: false,
@@ -407,6 +416,10 @@ export function App() {
     setDesktopSyncExecution({
       status: "idle",
       detail: "Desktop live sync has not run for this connector.",
+      cacheAppliedCount: 0,
+      cacheInsertedCount: 0,
+      cacheUpdatedCount: 0,
+      cacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -884,7 +897,6 @@ export function App() {
       operationsForSync,
     )
     setPullRefreshPreview(nextPullRefreshPreview)
-    await runDesktopSyncIfReady(nextSyncSessionPlan, syncBatchForExecution)
     setInventoryItems((items) =>
       items.map((item) =>
         item.source === "cached"
@@ -896,6 +908,7 @@ export function App() {
           : item,
       ),
     )
+    await runDesktopSyncIfReady(nextSyncSessionPlan, syncBatchForExecution)
     setActiveSection("Sync")
     setActivityMessage({
       title: "Sync plan prepared",
@@ -914,6 +927,10 @@ export function App() {
       setDesktopSyncExecution({
         status: "blocked",
         detail: "Production live sync is blocked until the manual deployment approval checklist is complete.",
+        cacheAppliedCount: 0,
+        cacheInsertedCount: 0,
+        cacheUpdatedCount: 0,
+        cacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -925,6 +942,10 @@ export function App() {
       setDesktopSyncExecution({
         status: "preview",
         detail: "Desktop live sync preview only; pair this company connector before network pull/push execution.",
+        cacheAppliedCount: 0,
+        cacheInsertedCount: 0,
+        cacheUpdatedCount: 0,
+        cacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -936,6 +957,10 @@ export function App() {
       setDesktopSyncExecution({
         status: "preview",
         detail: `Desktop live sync preview only; paired device ${activePairedDevice.devicePublicId} token status is ${activePairedDevice.tokenStatus}.`,
+        cacheAppliedCount: 0,
+        cacheInsertedCount: 0,
+        cacheUpdatedCount: 0,
+        cacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -947,6 +972,10 @@ export function App() {
       setDesktopSyncExecution({
         status: "preview",
         detail: "Desktop live sync preview only; open the Windows Tauri shell to attach the secure-store token.",
+        cacheAppliedCount: 0,
+        cacheInsertedCount: 0,
+        cacheUpdatedCount: 0,
+        cacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -957,6 +986,10 @@ export function App() {
     setDesktopSyncExecution({
       status: "loading",
       detail: "Running authenticated desktop pull/push sync through the Tauri command.",
+      cacheAppliedCount: 0,
+      cacheInsertedCount: 0,
+      cacheUpdatedCount: 0,
+      cacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -983,14 +1016,26 @@ export function App() {
       const completed =
         pull.status === "offline_sync_request_completed" &&
         (!push || push.status === "offline_sync_request_completed")
+      const cacheApplyResult = applyOfflinePullInventoryRecordsToCache(
+        inventoryItems,
+        completed ? pull.pull_inventory_records : [],
+      )
+
+      if (cacheApplyResult.appliedCount > 0) {
+        setInventoryItems(cacheApplyResult.items)
+      }
 
       setDesktopSyncExecution({
         status: completed ? "synced" : "blocked",
         detail: completed
-          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} cache row(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
           : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
         pull,
         push,
+        cacheAppliedCount: cacheApplyResult.appliedCount,
+        cacheInsertedCount: cacheApplyResult.insertedCount,
+        cacheUpdatedCount: cacheApplyResult.updatedCount,
+        cacheIgnoredCount: cacheApplyResult.ignoredCount,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -999,6 +1044,10 @@ export function App() {
       setDesktopSyncExecution({
         status: "blocked",
         detail: `${desktopSyncErrorMessage(error)} Raw token and raw response body were not returned to the UI.`,
+        cacheAppliedCount: 0,
+        cacheInsertedCount: 0,
+        cacheUpdatedCount: 0,
+        cacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1688,6 +1737,15 @@ export function App() {
                   {desktopSyncExecution.push
                     ? `${desktopSyncExecution.push.http_status} ${desktopSyncExecution.push.wordpress_code}; ${desktopSyncExecution.push.conflict_count} conflict(s), ${desktopSyncExecution.push.rejected_count} rejected`
                     : "Runs only when local queued operations exist."}
+                </small>
+              </div>
+              <div>
+                <span className="micro-label">Cache apply</span>
+                <strong>{desktopSyncExecution.cacheAppliedCount} row(s)</strong>
+                <small>
+                  {desktopSyncExecution.cacheInsertedCount} inserted;
+                  {desktopSyncExecution.cacheUpdatedCount} updated;
+                  {desktopSyncExecution.cacheIgnoredCount} ignored as stale.
                 </small>
               </div>
               <div>

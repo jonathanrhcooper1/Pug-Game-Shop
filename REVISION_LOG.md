@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pull Inventory Cache Apply
+
+### What Changed
+
+- Added bounded sanitized inventory row extraction to the Tauri desktop
+  `run_offline_sync_request` pull response.
+- Added TypeScript cache application for newer pulled inventory rows, including
+  inserted, updated, ignored-as-stale, and changed-public-ID counts.
+- Updated `Sync Now` to apply live desktop pull inventory rows after successful
+  pull completion and show cache-apply counts in the Desktop sync execution
+  panel.
+- Kept browser mode in preview and kept raw WordPress response bodies out of
+  React state.
+
+### Why
+
+The desktop sync bridge could call WordPress pull routes and show sanitized
+counts, but inventory data from successful pull responses did not yet update
+the offline app's local workspace. This revision closes the first cache-mutation
+step for real website-to-app inventory sync while preserving the credential and
+raw-payload boundary.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull inventory row extraction from WordPress
+  response data.
+- Offline app contract coverage for the Tauri response field, TypeScript
+  cache-apply helper behavior, stale row rejection, inserted/updated counts,
+  and visible Sync Now cache-apply UI markers.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to return desktop pull responses to count-only summaries
+  and stop applying pulled inventory rows into the local cache.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
 ## 2026-06-08 - Offline App Authenticated Sync Bridge
 
 ### What Changed

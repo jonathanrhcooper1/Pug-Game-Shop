@@ -178,6 +178,8 @@ plus offline app secret-free paired-device metadata restore and Sync Now
 desktop-token readiness reporting per company connector profile
 plus guarded Tauri authenticated offline pull/push request command and desktop
 Sync Now execution panel with sanitized WordPress response summaries
+plus sanitized desktop pull inventory record extraction and local cache apply
+counts for newer server rows
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview

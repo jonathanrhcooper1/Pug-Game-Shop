@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core"
 
-import type { OfflinePullRequestBody, OfflinePushBatchPayload } from "./offlineWorkspace"
+import type {
+  OfflinePullInventoryCacheRecord,
+  OfflinePullRequestBody,
+  OfflinePushBatchPayload,
+} from "./offlineWorkspace"
 import { isTauriRuntime } from "./tauriQueueAdapter"
 
 export const offlineSyncRequestCommandName = "run_offline_sync_request"
@@ -33,6 +37,7 @@ export type OfflineSyncCommandResponse = {
   pull_domain_count: number
   pull_record_count: number
   pull_tombstone_count: number
+  pull_inventory_records: OfflinePullInventoryCacheRecord[]
   cursor_count: number
   network_request_completed: boolean
   authorization_header_attached: boolean

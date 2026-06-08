@@ -18,6 +18,8 @@ for (const requiredExport of [
   "OfflineConnectorSyncSessionPlan",
   "OfflinePushBatchPayload",
   "OfflinePullRequestBody",
+  "OfflinePullInventoryCacheRecord",
+  "OfflinePullInventoryCacheApplyResult",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
   "OfflinePullRefreshPreview",
@@ -51,6 +53,7 @@ for (const requiredExport of [
   "buildConflictReviewOperation",
   "buildOfflinePushBatchPayload",
   "buildOfflinePullRequestBody",
+  "applyOfflinePullInventoryRecordsToCache",
   "buildOfflinePushRequestPlan",
   "buildOfflineConnectorSyncSessionPlan",
   "buildOfflinePullRefreshPreview",
@@ -134,6 +137,9 @@ for (const marker of [
   "queuedOperationsPreserved",
   "changedInventoryPublicIds",
   "inventoryRowsRefreshed",
+  "sanitizeOfflinePullInventoryCacheRecords",
+  "sale_price_minor_units",
+  "location_label",
   "deviceAuthorizationHeaderDeferred: true",
   "offline_connector_test_report",
   "Manifest shape",
@@ -226,6 +232,8 @@ assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operat
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload("))
 assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.devicePublicId)"))
+assert.ok(appSource.includes("applyOfflinePullInventoryRecordsToCache("))
+assert.ok(appSource.includes("pull.pull_inventory_records"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
 assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))

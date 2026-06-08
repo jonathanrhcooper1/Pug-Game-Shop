@@ -224,6 +224,7 @@ struct OfflineSyncRequestResponse {
     pull_domain_count: usize,
     pull_record_count: usize,
     pull_tombstone_count: usize,
+    pull_inventory_records: Vec<OfflineSyncInventoryRecord>,
     cursor_count: usize,
     network_request_completed: bool,
     authorization_header_attached: bool,
@@ -232,6 +233,22 @@ struct OfflineSyncRequestResponse {
     credentials_synced_to_app: bool,
     direct_mysql_access: bool,
     schema_version: u8,
+}
+
+#[derive(Debug, Serialize)]
+struct OfflineSyncInventoryRecord {
+    public_id: String,
+    row_version: u64,
+    card_name: String,
+    set_name: String,
+    card_number: String,
+    condition: String,
+    barcode: String,
+    sale_price_minor_units: u64,
+    sale_currency: String,
+    location_label: String,
+    status: String,
+    updated_at_utc: String,
 }
 
 #[tauri::command]
@@ -782,6 +799,11 @@ fn summarize_offline_sync_response(
     } else {
         summarize_pull_sync_data(data)
     };
+    let pull_inventory_records = if route == "pull" {
+        sanitized_pull_inventory_records(data)
+    } else {
+        Vec::new()
+    };
 
     OfflineSyncRequestResponse {
         status,
@@ -800,6 +822,7 @@ fn summarize_offline_sync_response(
         pull_domain_count,
         pull_record_count,
         pull_tombstone_count,
+        pull_inventory_records,
         cursor_count,
         network_request_completed: true,
         authorization_header_attached: true,
@@ -853,6 +876,126 @@ fn summarize_push_sync_data(
         0,
         0,
     )
+}
+
+fn sanitized_pull_inventory_records(data: &serde_json::Value) -> Vec<OfflineSyncInventoryRecord> {
+    let records = data
+        .get("domains")
+        .and_then(|domains| domains.get("inventory"))
+        .and_then(|inventory| inventory.get("data"))
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    records
+        .iter()
+        .filter_map(sanitized_pull_inventory_record)
+        .take(50)
+        .collect()
+}
+
+fn sanitized_pull_inventory_record(record: &serde_json::Value) -> Option<OfflineSyncInventoryRecord> {
+    if json_path_string(record, &["entity_type"]).as_deref() != Some("inventory_item") {
+        return None;
+    }
+
+    let payload = record.get("payload")?.as_object()?;
+    let entity_id = json_path_string(record, &["entity_id"])?;
+    let public_id = json_object_string(payload, "public_id");
+    let safe_public_id = if public_id.is_empty() { entity_id } else { public_id };
+    let row_version = record.get("row_version")?.as_u64()?;
+    let updated_at_utc = json_path_string(record, &["updated_at_utc"])?;
+    let status = normalized_inventory_status(&json_object_string(payload, "status"));
+    let location_label = normalized_location_label(payload);
+
+    Some(OfflineSyncInventoryRecord {
+        public_id: safe_public_id,
+        row_version,
+        card_name: first_non_empty_json_string(payload, &["card_name", "cardName", "name"])
+            .unwrap_or_else(|| "Unknown card".to_string()),
+        set_name: first_non_empty_json_string(payload, &["set_name", "setName", "set"])
+            .unwrap_or_else(|| "Unknown set".to_string()),
+        card_number: first_non_empty_json_string(payload, &["card_number", "cardNumber", "number"])
+            .unwrap_or_default(),
+        condition: first_non_empty_json_string(payload, &["condition", "condition_label"])
+            .unwrap_or_else(|| "Raw".to_string()),
+        barcode: json_object_string(payload, "barcode"),
+        sale_price_minor_units: json_object_money_minor_units(payload),
+        sale_currency: first_non_empty_json_string(payload, &["sale_currency", "currency"])
+            .unwrap_or_else(|| "USD".to_string())
+            .to_ascii_uppercase(),
+        location_label,
+        status,
+        updated_at_utc,
+    })
+}
+
+fn normalized_inventory_status(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "available" => "available".to_string(),
+        "reserved" | "pending" | "hold" | "sold" => "reserved".to_string(),
+        "conflict" | "needs_review" => "conflict".to_string(),
+        _ => "available".to_string(),
+    }
+}
+
+fn normalized_location_label(object: &serde_json::Map<String, serde_json::Value>) -> String {
+    if let Some(label) = first_non_empty_json_string(object, &["location_label", "location"]) {
+        return label;
+    }
+
+    if let Some(location_id) = object.get("location_id").and_then(serde_json::Value::as_u64) {
+        return format!("Location {}", location_id);
+    }
+
+    "Unassigned".to_string()
+}
+
+fn first_non_empty_json_string(
+    object: &serde_json::Map<String, serde_json::Value>,
+    keys: &[&str],
+) -> Option<String> {
+    keys.iter()
+        .find_map(|key| normalized_json_string(object.get(*key)))
+}
+
+fn normalized_json_string(value: Option<&serde_json::Value>) -> Option<String> {
+    value
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn json_object_money_minor_units(object: &serde_json::Map<String, serde_json::Value>) -> u64 {
+    if let Some(value) = object
+        .get("sale_price_minor_units")
+        .or_else(|| object.get("price_minor_units"))
+        .and_then(serde_json::Value::as_u64)
+    {
+        return value;
+    }
+
+    object
+        .get("sale_price")
+        .or_else(|| object.get("price"))
+        .and_then(money_value_to_minor_units)
+        .unwrap_or(0)
+}
+
+fn money_value_to_minor_units(value: &serde_json::Value) -> Option<u64> {
+    if let Some(number) = value.as_u64() {
+        return Some(number * 100);
+    }
+
+    if let Some(number) = value.as_f64() {
+        return u64::try_from((number * 100.0).round() as i128).ok();
+    }
+
+    let text = value.as_str()?.trim().trim_start_matches('$').replace(',', "");
+    let parsed = text.parse::<f64>().ok()?;
+
+    u64::try_from((parsed * 100.0).round() as i128).ok()
 }
 
 fn summarize_pull_sync_data(
@@ -1639,6 +1782,15 @@ mod tests {
                                 "row_version": 12,
                                 "updated_at_utc": "2026-06-06T20:00:00Z",
                                 "payload": {
+                                    "public_id": "inv-1001",
+                                    "card_name": "Charizard",
+                                    "set_name": "Base Set",
+                                    "card_number": "4/102",
+                                    "condition": "NM",
+                                    "barcode": "PKM-BASE-004-HOLO",
+                                    "sale_price": "125.00",
+                                    "sale_currency": "USD",
+                                    "location_id": 2,
                                     "status": "available"
                                 }
                             }
@@ -1671,6 +1823,12 @@ mod tests {
         assert_eq!(summary.pull_domain_count, 2);
         assert_eq!(summary.pull_record_count, 1);
         assert_eq!(summary.pull_tombstone_count, 1);
+        assert_eq!(summary.pull_inventory_records.len(), 1);
+        assert_eq!(summary.pull_inventory_records[0].public_id, "inv-1001");
+        assert_eq!(summary.pull_inventory_records[0].card_name, "Charizard");
+        assert_eq!(summary.pull_inventory_records[0].sale_price_minor_units, 12500);
+        assert_eq!(summary.pull_inventory_records[0].location_label, "Location 2");
+        assert_eq!(summary.pull_inventory_records[0].status, "available");
         assert_eq!(summary.cursor_count, 2);
         assert!(summary.authorization_header_attached);
         assert!(!summary.raw_token_returned);
