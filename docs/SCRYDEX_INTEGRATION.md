@@ -79,6 +79,23 @@ SCRYDEX_BASE_URL
 Production credentials must not be used in local development or automated pull
 request checks.
 
+## Live Smoke Verification
+
+Use the live smoke only for a manual, read-only credential check. It is not
+part of CI and must not be run with production credentials in automated tests.
+
+```text
+SCRYDEX_API_KEY=...
+SCRYDEX_TEAM_ID=...
+SCRYDEX_SMOKE_CONFIRM=pull-live-scrydex
+npm run scrydex:live-smoke
+```
+
+The helper calls `GET /pokemon/v1/cards`, defaults the query to `Charizard`,
+and reports only the HTTP status, count/total metadata, and sanitized first-card
+fields. It does not write WordPress data, persist rows, download images, enqueue
+workers, or print raw response bodies or credentials.
+
 ## Execution Gate
 
 The health endpoint includes `scrydex_sync_execution_gate` for staff and

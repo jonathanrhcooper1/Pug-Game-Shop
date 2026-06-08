@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Gated Live ScryDex Smoke Helper
+
+### What Changed
+
+- Added `npm run scrydex:live-smoke` backed by
+  `scripts/scrydex-live-smoke.mjs`.
+- The helper performs a read-only cards search against `/pokemon/v1/cards`
+  only when ScryDex credential env vars and
+  `SCRYDEX_SMOKE_CONFIRM=pull-live-scrydex` are present.
+- Added sanitized output for HTTP status, result counts, and first-card summary
+  fields while refusing to print raw responses or credentials.
+- Added dry-run output and a contract test that enforces the confirmation gate,
+  credential-redaction posture, and no WordPress database/plugin side effects.
+- Documented the manual live-smoke workflow in the ScryDex integration notes.
+
+### Why
+
+The team needs a safe way to prove live ScryDex connectivity on demand without
+turning local or CI tests into live API consumers and without exposing API keys
+in logs, screenshots, commits, or pull request notes.
+
+### Files Affected
+
+- `package.json`
+- `scripts/scrydex-live-smoke.mjs`
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+
+### Tests Run
+
+- `npm.cmd run package:wordpress`: passed and produced
+  `dist/tcg-store-platform-0.156.0.zip` at 518,082 bytes.
+- `npm.cmd run staging:upload-package -- --dry-run`: passed with upload-only
+  staging metadata and no activation/overwrite behavior.
+- `npm.cmd run scrydex:live-smoke -- --dry-run`: passed.
+- `node scripts/tests/scrydex-live-smoke-contract.mjs`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run test`: passed, including 869 PHP unit tests with 0 failures,
+  WordPress bootstrap/lint checks, sync-engine, POS/payment policy, API client,
+  offline app, packaging, and required matrix coverage.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the manual live ScryDex smoke command.
+- No WordPress data, staging files, database migrations, or production rollback
+  actions are required.
+
 ## 2026-06-08 - Offline Queue And Sync Attempt Local Persistence
 
 ### What Changed
