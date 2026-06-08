@@ -22,11 +22,14 @@ price observation inserts, and checkpoint upsert plans with repository audit
 metadata, but still performs no `wpdb` writes. Health output now includes a
 `scrydex_persistence_repository` readiness payload, and the execution gate uses
 that payload to derive the persistence repository gate. Scheduled ScryDex
-workers, database write workers, image workers, usage-budget enforcement, and
-webhook route handling remain disabled until staging acceptance. WordPress
-administrator settings now provide secret-preserving staging credential storage
-and redacted readiness output, but those settings do not execute provider
-network requests by themselves.
+workers are not enabled yet, but the cards worker orchestration planner can now
+accept an injected/mock provider result and rehearse page processing,
+persistence planning, SQL template building, and repository audit staging.
+Database write workers, image workers, usage-budget enforcement, and webhook
+route handling remain disabled until staging acceptance. WordPress administrator
+settings now provide secret-preserving staging credential storage and redacted
+readiness output, but those settings do not execute provider network requests
+by themselves.
 
 Schema migration `0010_provider_price_observations` adds
 `tcg_provider_price_observations` for raw provider market-price snapshots. This
@@ -117,6 +120,13 @@ Default blockers are:
 The gate embeds the dry-run request/checkpoint plan and readiness metadata, but
 it does not call ScryDex, write checkpoints, persist normalized rows, download
 images, register webhooks, or enqueue a scheduled worker by itself.
+
+The ScryDex cards worker orchestration planner sits after the execution gate
+and before any live worker enablement. It requires the provider result to be
+injected, then stages the page processor, persistence planner, query builder,
+and deferred repository result. It intentionally does not fetch ScryDex,
+persist reference cards, write provider price observations, upsert checkpoints,
+download images, or enqueue scheduled workers.
 
 Budget-specific blockers are:
 
@@ -212,9 +222,9 @@ webhook registration based only on marketing copy.
 5. Fetch cards in provider-supported pages.
 6. Store sanitized raw payload and hash.
 7. Normalize card, set, variant, image metadata, and current prices.
-8. Use the sync page processor, persistence planner, query builder, and
-   repository boundary to stage row writes and checkpoint upserts after each
-   committed page.
+8. Use the worker orchestration planner to rehearse the sync page processor,
+   persistence planner, query builder, and repository boundary after each
+   provider page.
 9. Queue image downloads separately.
 10. Queue optional price-history/population pulls only for supported scope.
 11. Rebuild affected search projections.

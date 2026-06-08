@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex cards sync worker orchestration planning that accepts injected/mock
+  provider results and stages page processing, persistence planning, SQL
+  building, and deferred repository audit output without live provider calls or
+  database writes.
 - ScryDex persistence repository readiness diagnostics in health and execution
   gate output, deriving the persistence repository gate from staged query and
   repository audit plans instead of manual overrides.

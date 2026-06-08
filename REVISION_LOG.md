@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Cards Worker Orchestration Planning
+
+### What Changed
+
+- Added `ScryDexCardsSyncWorkerPlanner` to rehearse a cards-page sync with an
+  injected `ScryDexResult`.
+- The planner now stages execution-gate output, page processing, persistence
+  planning, SQL query build audits, and deferred repository results in one
+  worker-level payload.
+- Added unit coverage for successful mock provider pages, retryable
+  rate-limited provider failures, invalid table-prefix blocking, credential
+  redaction, injected-result requirements, and retained deferrals.
+
+### Why
+
+The project needs a worker orchestration boundary before enabling any real
+scheduled worker. This checkpoint proves the full cards-page path can be
+planned end to end with fixture data while live provider fetches and database
+writes remain disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- ScryDex cards worker orchestration tests for mock success, retryable
+  provider failure, invalid persistence repository prefix, no provider fetches,
+  no database writes, and secret redaction.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 846 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexCardsSyncWorkerPlanner.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 557 PHP files.
+- `npm.cmd run test`: passed, including 846 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove worker-level ScryDex cards orchestration
+  planning and its tests.
+- No migrations, scheduled workers, provider fetches, checkpoint execution, or
+  database writes are introduced.
+- Existing page processing, persistence planning, query staging, and readiness
+  diagnostics remain available after rollback.
+
 ## 2026-06-07 - ScryDex Persistence Readiness Wiring
 
 ### What Changed
