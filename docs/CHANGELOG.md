@@ -37,6 +37,9 @@ All notable changes follow Semantic Versioning.
   hold readiness per company/site, and `Hold Item` stages a WordPress public-ID
   `inventory_reservation` operation while staging keeps canonical writes
   deferred unless the selected non-production connector enables them.
+- Offline app website connector testing now creates a secret-free per-company
+  report covering manifest shape, route map, pairing readiness, guarded
+  inventory hold status, credential boundaries, and deferred network status.
 - Gated live ScryDex smoke helper for read-only card-search verification,
   requiring explicit environment confirmation and reporting only sanitized
   status/count/first-card metadata without writing WordPress data or printing

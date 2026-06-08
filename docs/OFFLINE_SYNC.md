@@ -467,6 +467,10 @@ WordPress public inventory IDs and per-connector route/canonical write
 readiness. The staging connector keeps canonical inventory writes deferred by
 default, while non-production connectors can explicitly mark guarded holds as
 ready for future paired-device push execution.
+Connector testing in the offline app now produces a local, secret-free report
+for each company/site profile. The report checks manifest shape, offline route
+map, pairing readiness, guarded inventory hold status, credential boundaries,
+and deferred network reachability before live pairing or push execution.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

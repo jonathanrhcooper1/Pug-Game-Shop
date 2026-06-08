@@ -16,15 +16,16 @@ future offline sync app.
   status filters, list/grid inventory modes, connector profile controls,
   multi-company connector draft editing, WordPress connector manifest
   validation, pairing-code request preview, connector-aware guarded inventory
-  hold staging, visible local queue rows, conflict-review history, print-label
-  job preparation, customer-credit pending holds, and responsive desktop/mobile
-  layout.
+  hold staging, per-company connector test reports, visible local queue rows,
+  conflict-review history, print-label job preparation, customer-credit pending
+  holds, and responsive desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
   WordPress connector manifests, plus SQLite-compatible staged operation
   envelopes for inventory, customer credit, and conflict review workflows,
   deferred pairing/push request plans, per-company route/canonical inventory
-  write readiness, and response summaries for reconnect sync.
+  write readiness, connector test reports, and response summaries for reconnect
+  sync.
 - Browser-safe offline queue bridge contract for staging inventory, conflict,
   customer-credit, and sync-batch operations before the desktop SQLite/Tauri
   command adapter is connected.

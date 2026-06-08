@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Connector Test Reports
+
+### What Changed
+
+- Added a secret-free offline connector test report model for reusable
+  company/site profiles.
+- `Test Website Connector` now records a visible checklist for manifest shape,
+  offline route map, pairing readiness, guarded inventory hold status,
+  credential boundaries, and deferred network reachability.
+- Added compact connector report UI styling and contract coverage for the new
+  report surface.
+
+### Why
+
+The offline app will be used by more than one company/site, so connector setup
+needs a repeatable local readiness report. This keeps credentials out of the
+desktop profile while giving staff a practical view of what is ready and what
+still needs pairing or live adapter work.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace-state contract coverage for
+  `OfflineConnectorTestReport` and `buildConnectorTestReport`.
+- Offline app UI shell contract coverage for the visible connector test report
+  and its checklist classes.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- Browser verification at `http://127.0.0.1:1420/`: passed for the connector
+  test report checklist and `Needs review` warning state.
+- `npm run test`: passed, including PHP plugin tests, offline app contracts,
+  packaging contracts, and required test matrix.
+- `git diff --check`: passed with line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return `Test Website Connector` to manifest
+  validation only.
+- No schema rollback is required.
+
 ## 2026-06-08 - Offline App Connector Inventory Holds
 
 ### What Changed

@@ -33,6 +33,9 @@ for (const requiredText of [
   "Connector profile",
   "Manifest validation",
   "Ready to test",
+  "Connector test report",
+  "Network deferred",
+  "Pairing readiness",
   "Pairing code",
   "Prepare Pairing",
   "Prepared pairing requests",
@@ -91,6 +94,8 @@ for (const className of [
   "sync-attempt-list",
   "sync-attempt-panel",
   "toggle-field",
+  "connector-test-report",
+  "connector-test-checks",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
 }
@@ -109,6 +114,8 @@ for (const interactionMarker of [
   "setSyncAttempts",
   "setSyncSessionPlan",
   "handleTestWebsiteConnector",
+  "buildConnectorTestReport",
+  "setConnectorTestReport",
   "handleCreditRedemption",
   "handlePairingPreview",
   "buildPreparedDevicePairingRequest",

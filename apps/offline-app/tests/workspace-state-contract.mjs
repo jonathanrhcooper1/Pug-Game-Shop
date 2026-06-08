@@ -19,6 +19,7 @@ for (const requiredExport of [
   "OfflinePushBatchPayload",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
+  "OfflineConnectorTestReport",
   "StoreConnectorProfile",
   "OfflineConnectorManifest",
   "ConnectorManifestValidation",
@@ -45,6 +46,7 @@ for (const requiredExport of [
   "buildOfflinePushBatchPayload",
   "buildOfflinePushRequestPlan",
   "buildOfflineConnectorSyncSessionPlan",
+  "buildConnectorTestReport",
   "summarizeOfflinePushResult",
   "buildConnectorManifestPreview",
   "validateConnectorManifest",
@@ -111,6 +113,12 @@ for (const marker of [
   "device_authorization_header_deferred: true",
   "provider_credentials_required: false",
   "offline_connector_sync_session_plan",
+  "offline_connector_test_report",
+  "Manifest shape",
+  "Pairing readiness",
+  "Guarded inventory holds",
+  "Network reachability",
+  "networkRequestsDeferred: true",
   "no-local-operations",
   "prepared_pairing_available",
   "device_pairing_required",
@@ -175,6 +183,7 @@ assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)")
 assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
+assert.ok(appSource.includes("buildConnectorTestReport("))
 assert.ok(appSource.includes("summarizeOfflinePushResult({"))
 assert.ok(appSource.includes("stagedOperation.client_operation_id"))
 assert.ok(appSource.includes("stagedPushBatch.batch_id"))

@@ -258,6 +258,31 @@ export type ConnectorManifestValidation = {
   credentialsSyncedToApp: false
 }
 
+export type ConnectorTestCheckStatus = "pass" | "warning" | "blocked"
+
+export type ConnectorTestCheck = {
+  label: string
+  status: ConnectorTestCheckStatus
+  detail: string
+}
+
+export type OfflineConnectorTestReport = {
+  action: "offline_connector_test_report"
+  profileId: string
+  companyName: string
+  siteUrl: string
+  environment: ConnectorEnvironment
+  generatedAtLabel: string
+  status: ConnectorTestCheckStatus
+  routeCount: number
+  endpointCount: number
+  checks: ConnectorTestCheck[]
+  issues: string[]
+  networkRequestsDeferred: true
+  credentialsSyncedToApp: false
+  directMysqlAccess: false
+}
+
 export type OfflineOperationEnvelope = {
   client_operation_id: string
   device_id: string
@@ -1183,6 +1208,93 @@ export function validateConnectorManifest(
     issues,
     manifestPublicSafe: manifest.manifest_public_safe,
     credentialsSyncedToApp: false,
+  }
+}
+
+export function buildConnectorTestReport(
+  profile: StoreConnectorProfile,
+  validation: ConnectorManifestValidation = validateConnectorManifest(
+    buildConnectorManifestPreview(profile),
+  ),
+  preparedPairingRequest: PreparedDevicePairingRequest | null = null,
+  options: { generatedAt?: Date } = {},
+): OfflineConnectorTestReport {
+  const hasPreparedPairing = preparedPairingRequest?.profileId === profile.id
+  const canonicalInventoryWritesReady =
+    profile.wordpress.routeConnectedPushReady &&
+    profile.wordpress.canonicalInventoryWritesEnabled &&
+    profile.environment !== "production"
+  const generatedAt = options.generatedAt ?? new Date()
+  const checks: ConnectorTestCheck[] = [
+    {
+      label: "Manifest shape",
+      status:
+        validation.status === "accepted"
+          ? "pass"
+          : validation.status === "warning"
+            ? "warning"
+            : "blocked",
+      detail: `${validation.endpointCount} endpoint(s) across ${validation.routeCount} offline route(s); public-safe manifest ${validation.manifestPublicSafe ? "yes" : "no"}.`,
+    },
+    {
+      label: "Route map",
+      status: validation.routeCount >= 3 && validation.endpointCount === validation.routeCount ? "pass" : "warning",
+      detail: `${profile.wordpress.restBasePath}/offline/pull and /offline/push are planned for ${connectorDisplayUrl(profile)}.`,
+    },
+    {
+      label: "Pairing readiness",
+      status: hasPreparedPairing ? "pass" : "warning",
+      detail: hasPreparedPairing
+        ? `Prepared pairing fingerprint ${preparedPairingRequest.pairingCodeFingerprint}; token storage ${preparedPairingRequest.tokenStorage}.`
+        : "No raw code or token is stored; prepare pairing before live sync.",
+    },
+    {
+      label: "Guarded inventory holds",
+      status:
+        profile.environment === "production" && profile.wordpress.canonicalInventoryWritesEnabled
+          ? "blocked"
+          : canonicalInventoryWritesReady
+            ? "pass"
+            : "warning",
+      detail: canonicalInventoryWritesReady
+        ? "Route-connected canonical inventory execution is enabled for this non-production connector."
+        : "Inventory hold writes remain deferred for this connector.",
+    },
+    {
+      label: "Credential boundary",
+      status: validation.credentialsSyncedToApp ? "blocked" : "pass",
+      detail: "WordPress, ScryDex, Square, SSH, and payment credentials stay out of the offline profile.",
+    },
+    {
+      label: "Network reachability",
+      status: "warning",
+      detail: "Live requests are deferred until the desktop pairing/token adapter is connected.",
+    },
+  ]
+  const status = checks.some((check) => check.status === "blocked")
+    ? "blocked"
+    : checks.some((check) => check.status === "warning")
+      ? "warning"
+      : "pass"
+
+  return {
+    action: "offline_connector_test_report",
+    profileId: profile.id,
+    companyName: profile.companyName,
+    siteUrl: connectorDisplayUrl(profile),
+    environment: profile.environment,
+    generatedAtLabel: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(generatedAt),
+    status,
+    routeCount: validation.routeCount,
+    endpointCount: validation.endpointCount,
+    checks,
+    issues: validation.issues,
+    networkRequestsDeferred: true,
+    credentialsSyncedToApp: false,
+    directMysqlAccess: false,
   }
 }
 

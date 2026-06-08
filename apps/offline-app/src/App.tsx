@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   buildOfflinePushBatchPayload,
   buildOfflinePushRequestPlan,
+  buildConnectorTestReport,
   buildConnectorManifestPreview,
   buildConflictReviewOperation,
   buildConnectorProfileFromDraft,
@@ -47,6 +48,7 @@ import {
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
   type OfflinePushResultSummary,
+  type OfflineConnectorTestReport,
   type OfflineSessionStorageRestoreResult,
   type OfflineSyncAttemptRecord,
   type PreparedDevicePairingRequest,
@@ -204,6 +206,8 @@ export function App() {
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
+  const [connectorTestReport, setConnectorTestReport] =
+    useState<OfflineConnectorTestReport | null>(null)
   const [connectorDraft, setConnectorDraft] = useState<ConnectorProfileDraft>(() =>
     workspace.connectorProfiles[0]
       ? connectorProfileDraftFromProfile(workspace.connectorProfiles[0])
@@ -485,6 +489,7 @@ export function App() {
     setConnectorDraft(createEmptyConnectorProfileDraft())
     setConnectorDraftIssues([])
     setConnectorValidation(null)
+    setConnectorTestReport(null)
     setPairingPlan(null)
     setActiveSection("Settings")
     setActivityMessage({
@@ -510,10 +515,12 @@ export function App() {
 
     const profile = result.profile
     const validation = validateConnectorManifest(buildConnectorManifestPreview(profile))
+    const report = buildConnectorTestReport(profile, validation, null)
 
     setConnectorProfiles((profiles) => upsertConnectorProfile(profiles, profile))
     setActiveProfileId(profile.id)
     setConnectorValidation(validation)
+    setConnectorTestReport(report)
     setPairingPlan(null)
     setActiveSection("Settings")
     setActivityMessage({
@@ -592,12 +599,18 @@ export function App() {
 
   function handleTestWebsiteConnector() {
     const validation = validateConnectorManifest(manifestPreview)
+    const report = buildConnectorTestReport(
+      activeProfile,
+      validation,
+      activePreparedPairingRequests[0] ?? null,
+    )
     const issueText =
       validation.issues.length > 0
         ? validation.issues.join(" ")
         : "Manifest shape is valid and credential values are not synced to the app."
 
     setConnectorValidation(validation)
+    setConnectorTestReport(report)
     setActiveSection("Settings")
     setActivityMessage({
       title:
@@ -606,7 +619,7 @@ export function App() {
           : validation.status === "warning"
             ? "Connector manifest needs pairing review"
             : "Connector manifest rejected",
-      detail: `${validation.profile.companyName} ${validation.profile.environment} exposes ${validation.routeCount} offline routes. ${issueText}`,
+      detail: `${validation.profile.companyName} ${validation.profile.environment} exposes ${validation.routeCount} offline routes. Connector test report is ${report.status}; ${issueText}`,
     })
   }
 
@@ -625,6 +638,9 @@ export function App() {
         ),
       ].slice(0, 6))
       setPairingCode("")
+      setConnectorTestReport(
+        buildConnectorTestReport(activeProfile, validateConnectorManifest(manifestPreview), preparedRequest),
+      )
     }
     setActiveSection("Settings")
     setActivityMessage({
@@ -1248,6 +1264,39 @@ export function App() {
                   </ul>
                 ) : null}
               </div>
+              {connectorTestReport ? (
+                <div
+                  className={`connector-test-report ${connectorTestReport.status}`}
+                  aria-label="Connector test report"
+                >
+                  <div className="connector-test-heading">
+                    <span className="micro-label">Connector test report</span>
+                    <strong>
+                      {connectorTestReport.status === "pass"
+                        ? "Ready"
+                        : connectorTestReport.status === "warning"
+                          ? "Needs review"
+                          : "Blocked"}
+                    </strong>
+                    <small>
+                      {connectorTestReport.companyName}; {connectorTestReport.endpointCount} endpoints;
+                      network deferred at {connectorTestReport.generatedAtLabel}
+                    </small>
+                  </div>
+                  <div className="connector-test-checks">
+                    {connectorTestReport.checks.map((check) => (
+                      <div className={`connector-test-check ${check.status}`} key={check.label}>
+                        <span>{check.label}</span>
+                        <strong>{check.status}</strong>
+                        <small>{check.detail}</small>
+                      </div>
+                    ))}
+                  </div>
+                  <small className="connector-test-footnote">
+                    Network deferred; credentials synced to app: no; direct database access: no.
+                  </small>
+                </div>
+              ) : null}
               <div className="connector-editor" aria-label="Connector draft editor">
                 <label>
                   <span className="micro-label">Company name</span>
