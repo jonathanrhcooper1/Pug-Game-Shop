@@ -24,6 +24,10 @@
 - Local unit coverage now includes offline route runtime settings, contract
   mutation, staging-only feature availability, runtime-aware bootstrap/health
   planning, and pairing-route registration readiness.
+- Local unit coverage now verifies offline pairing authorization settings can
+  hash a raw Settings API pairing code on save while discarding the raw value,
+  and PHP lint covers the admin settings renderer for pairing hashes,
+  manager/location allow lists, mode scopes, and UTC expiry.
 - Local ScryDex provider coverage now targets the documented
   `/pokemon/v1/cards` endpoint shape, including live response `data` rows,
   `page_size`/`total_count` pagination fields, and game-context normalization.

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress settings now expose offline pairing authorization policy fields for
+  pairing-code hashes, manager IDs, location IDs, per-mode scopes, and UTC
+  expiry; raw pairing codes submitted through the settings form are hashed on
+  save and never stored.
 - Offline app desktop pairing now has a Tauri-only
   `pair_offline_device` command that POSTs the manager pairing request to the
   WordPress device registration route, stores the one-time device token in the

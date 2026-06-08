@@ -155,6 +155,23 @@ final class SettingsTest extends TestCase {
 		$this->assert_false( isset( $policy['pairing_code'] ) );
 	}
 
+	public function test_offline_pairing_authorization_hashes_raw_settings_api_pairing_code(): void {
+		$result = Settings::sanitize(
+			array(
+				'offline_pairing_authorization' => array(
+					'pairing_code' => 'pair-2026-register-device',
+				),
+			)
+		);
+		$policy = $result['offline_pairing_authorization'];
+
+		$this->assert_same(
+			array( hash( 'sha256', 'PAIR-2026-REGISTER-DEVICE' ) ),
+			$policy['pairing_code_hashes']
+		);
+		$this->assert_false( isset( $policy['pairing_code'] ) );
+	}
+
 	public function test_offline_pairing_authorization_policy_preserves_existing_partial_values(): void {
 		$hash     = hash( 'sha256', 'PAIR-2026-REGISTER-DEVICE' );
 		$existing = array(

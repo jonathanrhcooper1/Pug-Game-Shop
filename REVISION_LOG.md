@@ -3,6 +3,60 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress Offline Pairing Authorization Settings
+
+### What Changed
+
+- Added an Offline pairing authorization section to the WordPress settings UI.
+- Added fields for new one-time pairing code entry, pairing-code hashes,
+  manager IDs, location IDs, per-mode scopes, and UTC expiry.
+- Added a trusted Settings API save-path helper that hashes a submitted raw
+  pairing code, merges it into the saved hash list, and discards the raw code
+  before storage.
+- Added `OfflinePairingAuthorizationSettings::KEY` for consistent option field
+  names.
+
+### Why
+
+The desktop pairing command needs a configurable server-side policy before a
+manager code can authorize offline devices. The UI gives staging admins a way
+to configure that policy without storing raw pairing codes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Settings/OfflinePairingAuthorizationSettings.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Unit coverage for raw pairing code hashing through `Settings::sanitize()`
+  with raw-code redaction from saved policy output.
+
+### Tests Run
+
+- `php tests/run.php`: passed, 879 tests.
+- `php tests/bootstrap-smoke.php`: passed.
+- `php tests/lint.php`: passed, 573 PHP files.
+
+### Rollback Notes
+
+- Revert this revision to remove the admin pairing policy fields and raw-code
+  hashing save path.
+- Existing saved pairing-code hashes can be cleared through the settings page
+  or by resetting `tcg_store_platform_settings[offline_pairing_authorization]`
+  to defaults.
+- No database schema rollback is required.
+
 ## 2026-06-08 - Offline App Desktop Pairing Command
 
 ### What Changed

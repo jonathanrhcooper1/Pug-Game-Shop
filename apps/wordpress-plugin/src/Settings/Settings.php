@@ -88,8 +88,14 @@ final class Settings {
 			is_array( $existing['branding'] ?? null ) ? $existing['branding'] : BrandingSettings::defaults()
 		);
 
-		$offline_pairing_authorization = OfflinePairingAuthorizationSettings::sanitize(
+		$offline_pairing_input         = self::prepare_offline_pairing_authorization_input(
 			$value['offline_pairing_authorization'] ?? ( $existing['offline_pairing_authorization'] ?? array() ),
+			is_array( $existing['offline_pairing_authorization'] ?? null )
+				? $existing['offline_pairing_authorization']
+				: OfflinePairingAuthorizationSettings::defaults()
+		);
+		$offline_pairing_authorization = OfflinePairingAuthorizationSettings::sanitize(
+			$offline_pairing_input,
 			is_array( $existing['offline_pairing_authorization'] ?? null )
 			? $existing['offline_pairing_authorization']
 				: OfflinePairingAuthorizationSettings::defaults()
@@ -141,6 +147,42 @@ final class Settings {
 		$value = get_option( self::OPTION_NAME, array() );
 
 		return is_array( $value ) ? $value : array();
+	}
+
+	/**
+	 * Hash one-time pairing codes submitted through the trusted Settings API.
+	 *
+	 * Direct settings providers intentionally cannot pass raw pairing codes to
+	 * the authorizer factory; this save path converts them into hashes and
+	 * discards the raw value before sanitization/storage.
+	 *
+	 * @param mixed                $value Submitted pairing settings.
+	 * @param array<string, mixed> $existing Existing pairing settings.
+	 * @return array<string, mixed>
+	 */
+	private static function prepare_offline_pairing_authorization_input( mixed $value, array $existing ): array {
+		$value = is_array( $value ) ? $value : array();
+		$code  = strtoupper( trim( (string) ( $value['pairing_code'] ?? '' ) ) );
+
+		unset( $value['pairing_code'] );
+
+		if ( 1 !== preg_match( '/^[A-Z0-9-]{6,32}$/', $code ) ) {
+			return $value;
+		}
+
+		$hashes = $value['pairing_code_hashes'] ?? ( $existing['pairing_code_hashes'] ?? array() );
+		$hashes = is_array( $hashes ) ? $hashes : preg_split( '/[\s,]+/', trim( (string) $hashes ) );
+
+		if ( ! is_array( $hashes ) ) {
+			$hashes = array();
+		}
+
+		$value['pairing_code_hashes'] = array_merge(
+			$hashes,
+			array( hash( 'sha256', $code ) )
+		);
+
+		return $value;
 	}
 
 	private function __construct() {

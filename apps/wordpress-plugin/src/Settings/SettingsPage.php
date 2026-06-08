@@ -182,6 +182,21 @@ final class SettingsPage {
 		);
 
 		add_settings_section(
+			'tcg_store_platform_offline_pairing',
+			__( 'Offline pairing authorization', 'tcg-store-platform' ),
+			array( $this, 'render_offline_pairing_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'offline_pairing_authorization',
+			__( 'Pairing policy', 'tcg-store-platform' ),
+			array( $this, 'render_offline_pairing_authorization' ),
+			'tcg-store-platform',
+			'tcg_store_platform_offline_pairing'
+		);
+
+		add_settings_section(
 			'tcg_store_platform_scrydex',
 			__( 'ScryDex', 'tcg-store-platform' ),
 			array( $this, 'render_scrydex_description' ),
@@ -446,6 +461,68 @@ final class SettingsPage {
 		echo '</fieldset>';
 	}
 
+	public function render_offline_pairing_description(): void {
+		echo '<p>';
+		echo esc_html__( 'Pairing authorization controls which manager-issued code can register desktop devices. Raw codes submitted here are hashed on save and never stored.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_offline_pairing_authorization(): void {
+		$policy = OfflinePairingAuthorizationSettings::policy( Settings::all() );
+
+		echo '<fieldset>';
+		echo '<p><label for="tcg-store-offline-pairing-code">';
+		echo esc_html__( 'New pairing code', 'tcg-store-platform' );
+		echo '</label> ';
+		echo '<input type="password" autocomplete="off" id="tcg-store-offline-pairing-code" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( OfflinePairingAuthorizationSettings::KEY )
+			. '][pairing_code]" value="" placeholder="'
+			. esc_attr__( 'Hashed on save', 'tcg-store-platform' )
+			. '" class="regular-text" /></p>';
+
+		echo '<p><label for="tcg-store-offline-pairing-hashes">';
+		echo esc_html__( 'Allowed pairing code hashes', 'tcg-store-platform' );
+		echo '</label><br />';
+		echo '<textarea id="tcg-store-offline-pairing-hashes" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( OfflinePairingAuthorizationSettings::KEY )
+			. '][pairing_code_hashes]" rows="3" class="large-text code">';
+		echo esc_textarea( implode( "\n", $policy['pairing_code_hashes'] ) );
+		echo '</textarea></p>';
+
+		$this->render_offline_pairing_text_input(
+			'manager_ids',
+			__( 'Allowed manager IDs', 'tcg-store-platform' ),
+			implode( ', ', $policy['manager_ids'] )
+		);
+		$this->render_offline_pairing_text_input(
+			'location_ids',
+			__( 'Allowed location IDs', 'tcg-store-platform' ),
+			implode( ', ', $policy['location_ids'] )
+		);
+
+		foreach ( array( 'staff', 'kiosk', 'admin' ) as $mode ) {
+			$this->render_offline_pairing_scope_input(
+				$mode,
+				$policy['allowed_scopes_by_mode'][ $mode ] ?? array()
+			);
+		}
+
+		$this->render_offline_pairing_text_input(
+			'expires_at_utc',
+			__( 'Expires at UTC', 'tcg-store-platform' ),
+			(string) $policy['expires_at_utc'],
+			'text',
+			'2026-06-08T23:59:59Z'
+		);
+
+		echo '<p class="description">';
+		echo esc_html__( 'For the current offline app, staff mode should include offline_pull, offline_push, and conflicts. Enable the offline_sync feature flag and device-pairing route gate only after staging backup confirmation.', 'tcg-store-platform' );
+		echo '</p>';
+		echo '</fieldset>';
+	}
+
 	public function render_scrydex_description(): void {
 		echo '<p>';
 		echo esc_html__( 'Configure ScryDex for staging reference-card sync. Values are saved in WordPress settings, redacted from status output, and never used by local tests.', 'tcg-store-platform' );
@@ -632,6 +709,47 @@ final class SettingsPage {
 			. '[' . esc_attr( ScryDexUsageBudgetSettings::KEY )
 			. '][' . esc_attr( $key ) . ']" value="'
 			. esc_attr( (string) $value )
+			. '" class="regular-text" /></p>';
+	}
+
+	private function render_offline_pairing_text_input(
+		string $key,
+		string $label,
+		string $value,
+		string $type = 'text',
+		string $placeholder = ''
+	): void {
+		echo '<p><label for="tcg-store-offline-pairing-' . esc_attr( $key ) . '">';
+		echo esc_html( $label );
+		echo '</label> ';
+		echo '<input type="' . esc_attr( $type ) . '" id="tcg-store-offline-pairing-' . esc_attr( $key ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( OfflinePairingAuthorizationSettings::KEY )
+			. '][' . esc_attr( $key ) . ']" value="'
+			. esc_attr( $value )
+			. '" placeholder="'
+			. esc_attr( $placeholder )
+			. '" class="regular-text" /></p>';
+	}
+
+	/**
+	 * @param list<string> $scopes Allowed scopes.
+	 */
+	private function render_offline_pairing_scope_input( string $mode, array $scopes ): void {
+		echo '<p><label for="tcg-store-offline-pairing-scopes-' . esc_attr( $mode ) . '">';
+		echo esc_html(
+			sprintf(
+				/* translators: %s: device mode. */
+				__( '%s scopes', 'tcg-store-platform' ),
+				ucfirst( $mode )
+			)
+		);
+		echo '</label> ';
+		echo '<input type="text" id="tcg-store-offline-pairing-scopes-' . esc_attr( $mode ) . '" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( OfflinePairingAuthorizationSettings::KEY )
+			. '][allowed_scopes_by_mode][' . esc_attr( $mode ) . ']" value="'
+			. esc_attr( implode( ' ', $scopes ) )
 			. '" class="regular-text" /></p>';
 	}
 
