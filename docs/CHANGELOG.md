@@ -6,6 +6,16 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- LAN sync server can now push queued local event registrations and customer
+  credit ledger posts to WordPress using server-held credentials; credit writes
+  are limited to existing WordPress customers until customer upsert is live.
+- WordPress now exposes staff-only customer credit write endpoints for manager
+  adjustments and purchase redemptions, with idempotency headers, permission
+  callbacks, and existing ledger service validation.
+- Offline app Sync and Queue views now show an operation sync visibility panel
+  that separates WordPress-push-capable work from local-only queued work for
+  inventory, events, kiosk orders, customer upserts, credit ledger posts, and
+  PIN user access.
 - Added a guarded `staging:run-scrydex-sync` runner for bounded staging-only
   ScryDex catalog imports through the existing WordPress worker, with explicit
   confirmation, page/game limits, redacted output, and live staging verification.

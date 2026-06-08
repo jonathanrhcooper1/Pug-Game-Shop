@@ -312,6 +312,9 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   event_count: number
   active_session_count: number
   wordpress_push_connected: boolean
+  wordpress_inventory_push_connected?: boolean
+  wordpress_event_registration_push_connected?: boolean
+  wordpress_credit_push_connected?: boolean
   wordpress_pull_connected: boolean
   scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   scrydex_fallback_connected: boolean
@@ -353,6 +356,9 @@ export type LocalSyncPushResult = LocalSyncResult<{
     http_status?: number
   }>
   wordpress_push_connected: true
+  wordpress_inventory_push_connected?: boolean
+  wordpress_event_registration_push_connected?: boolean
+  wordpress_credit_push_connected?: boolean
   credentials_synced_to_client: false
   local_queue_depth: number
 }>

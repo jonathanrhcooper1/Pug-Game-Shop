@@ -27,6 +27,9 @@ export function createLocalSyncStore(options = {}) {
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
+  const wordpressEventRegistrationPush =
+    typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
+  const wordpressCreditPush = typeof options.wordpressCreditPush === "function" ? options.wordpressCreditPush : null
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
@@ -821,7 +824,10 @@ export function createLocalSyncStore(options = {}) {
       event_count: eventSnapshots.length,
       active_session_count: sessions.size,
       wordpress_pull_connected: Boolean(wordpressInventoryPull),
-      wordpress_push_connected: Boolean(wordpressInventoryPush),
+      wordpress_push_connected: Boolean(wordpressInventoryPush || wordpressEventRegistrationPush),
+      wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
+      wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
+      wordpress_credit_push_connected: Boolean(wordpressCreditPush),
       scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       local_operations_preserved: true,
@@ -917,15 +923,33 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
-    if (!wordpressInventoryPush) {
-      return blocked("wordpress_push_unavailable", "WordPress inventory push is not configured on this LAN server.")
+    if (!wordpressInventoryPush && !wordpressEventRegistrationPush && !wordpressCreditPush) {
+      return blocked("wordpress_push_unavailable", "WordPress push is not configured on this LAN server.")
     }
 
     const pendingOperations = pendingQueueOperations(queue)
     const inventoryOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_intake")
+    const eventRegistrationOperations = pendingOperations.filter(
+      (operation) => operation.operation_type === "event_registration",
+    )
+    const creditOperations = pendingOperations.filter(
+      (operation) => operation.operation_type === "credit_adjustment" || operation.operation_type === "credit_redemption",
+    )
     const results = []
 
     for (const operation of inventoryOperations) {
+      if (!wordpressInventoryPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_inventory_push_unavailable",
+          message: "WordPress inventory push is not configured on this LAN server.",
+        })
+        continue
+      }
+
       const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
 
       if (!item) {
@@ -977,19 +1001,136 @@ export function createLocalSyncStore(options = {}) {
       })
     }
 
+    for (const operation of eventRegistrationOperations) {
+      if (!wordpressEventRegistrationPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_event_registration_push_unavailable",
+          message: "WordPress event registration push is not configured on this LAN server.",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressEventRegistrationPush({ operation })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
+
+      const event = findEvent(eventSnapshots, operation.payload?.registration?.event_id ?? operation.payload?.event?.event_id)
+
+      if (event) {
+        event.source = "accepted"
+        event.note = "Registration accepted by WordPress; next pull remains authoritative for final counts."
+        event.row_version += 1
+        saveEventSnapshot(database, event, now)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_registration: pushResult.registration,
+      })
+    }
+
+    for (const operation of creditOperations) {
+      if (!wordpressCreditPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_credit_push_unavailable",
+          message: "WordPress customer credit push is not configured on this LAN server.",
+        })
+        continue
+      }
+
+      if (!positiveInt(operation.payload?.customer?.wordpress_customer_id)) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_customer_id_required",
+          message: "Credit operation stays queued until the customer exists in WordPress.",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressCreditPush({ operation })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
+
+      const ledgerEntry = creditLedgerEntries.find((entry) => entry.entry_id === operation.entity_id)
+
+      if (ledgerEntry) {
+        ledgerEntry.status = "accepted"
+        ledgerEntry.source = "wordpress_credit_ledger"
+        saveCreditLedgerEntry(database, ledgerEntry)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_credit: pushResult.credit,
+      })
+    }
+
     const acceptedCount = results.filter((result) => result.status === "accepted").length
     const retryCount = results.filter((result) => result.status === "retry").length
     const rejectedCount = results.filter((result) => result.status === "rejected").length
+    const supportedOperationCount = inventoryOperations.length + eventRegistrationOperations.length + creditOperations.length
 
     return {
       status: "ok",
-      operation_count: inventoryOperations.length,
+      operation_count: supportedOperationCount,
       accepted_count: acceptedCount,
       retry_count: retryCount,
       rejected_count: rejectedCount,
-      unsupported_operation_count: pendingOperations.length - inventoryOperations.length,
+      unsupported_operation_count: pendingOperations.length - supportedOperationCount,
       results,
       wordpress_push_connected: true,
+      wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
+      wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
+      wordpress_credit_push_connected: Boolean(wordpressCreditPush),
       credentials_synced_to_client: false,
       local_queue_depth: pendingQueueOperations(queue).length,
     }

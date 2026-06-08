@@ -1,5 +1,7 @@
 import { listenLocalSyncHttpServer } from "./localSyncHttpServer.mjs"
 import { createWordPressCatalogFallback } from "./wordpressCatalogFallback.mjs"
+import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
+import { createWordPressEventRegistrationPush } from "./wordpressEventRegistrationPush.mjs"
 import { createWordPressInventoryPull } from "./wordpressInventoryPull.mjs"
 import { createWordPressInventoryPush } from "./wordpressInventoryPush.mjs"
 
@@ -33,10 +35,34 @@ const wordpressInventoryPull = createWordPressInventoryPull({
     process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
   pageSize: process.env.PUG_WORDPRESS_PULL_PAGE_SIZE,
 })
+const wordpressEventRegistrationPush = createWordPressEventRegistrationPush({
+  websiteUrl: process.env.PUG_WORDPRESS_URL,
+  restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
+  authHeader: process.env.PUG_WORDPRESS_EVENTS_AUTH_HEADER ?? process.env.PUG_WORDPRESS_CATALOG_AUTH_HEADER,
+  username: process.env.PUG_WORDPRESS_EVENTS_USERNAME ?? process.env.PUG_WORDPRESS_CATALOG_USERNAME,
+  applicationPassword:
+    process.env.PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD ??
+    process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
+})
+const wordpressCreditPush = createWordPressCreditPush({
+  websiteUrl: process.env.PUG_WORDPRESS_URL,
+  restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
+  authHeader: process.env.PUG_WORDPRESS_CREDIT_AUTH_HEADER ?? process.env.PUG_WORDPRESS_CATALOG_AUTH_HEADER,
+  username: process.env.PUG_WORDPRESS_CREDIT_USERNAME ?? process.env.PUG_WORDPRESS_CATALOG_USERNAME,
+  applicationPassword:
+    process.env.PUG_WORDPRESS_CREDIT_APPLICATION_PASSWORD ?? process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
+})
 const server = await listenLocalSyncHttpServer({
   host,
   port,
-  storeOptions: { databasePath, websiteCatalogFallback, wordpressInventoryPull, wordpressInventoryPush },
+  storeOptions: {
+    databasePath,
+    websiteCatalogFallback,
+    wordpressInventoryPull,
+    wordpressInventoryPush,
+    wordpressEventRegistrationPush,
+    wordpressCreditPush,
+  },
 })
 const address = server.address()
 const resolvedPort = typeof address === "object" && address ? address.port : port

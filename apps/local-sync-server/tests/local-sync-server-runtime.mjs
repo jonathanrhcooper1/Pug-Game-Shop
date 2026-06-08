@@ -5,6 +5,7 @@ import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 let websiteCatalogFallbackCalls = 0
 let wordpressInventoryPullCalls = 0
 let wordpressInventoryPushCalls = 0
+let wordpressEventRegistrationPushCalls = 0
 let wordpressInventoryPullRows = []
 
 const server = createLocalSyncHttpServer({
@@ -69,10 +70,10 @@ const server = createLocalSyncHttpServer({
       wordpressInventoryPushCalls += 1
 
       assert.equal(operation.operation_type, "inventory_intake")
-      assert.equal(item.card_name, "Mewtwo")
+      assert.ok(["Mewtwo", "Local Only Pull Guard"].includes(item.card_name))
       assert.equal(item.status, "pending_intake")
       assert.equal(item.source, "queued")
-      assert.ok(item.image_url.includes("mewtwo.png"))
+      assert.match(item.image_url, /mewtwo|pull-guard-local/)
 
       return {
         status: "ok",
@@ -85,6 +86,30 @@ const server = createLocalSyncHttpServer({
           barcode: item.barcode,
           status: "available",
           price_change_log_persisted: true,
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressEventRegistrationPush: async ({ operation }) => {
+      wordpressEventRegistrationPushCalls += 1
+
+      assert.equal(operation.operation_type, "event_registration")
+      assert.equal(operation.payload.registration.attendee_label, "Local Event Guest")
+      assert.equal(operation.payload.registration.status, "queued")
+
+      return {
+        status: "ok",
+        code: "wordpress_event_registration_created",
+        http_status: 201,
+        wordpress_code: "registered",
+        registration: {
+          public_id: `wp-${operation.entity_id}`,
+          event_id: 100,
+          status: "reserved",
+          payment_status: "not_required",
+          email: `${operation.entity_id}@offline-registration.example.invalid`,
+          created_at: "2026-06-08 21:50:00",
         },
         credentials_synced_to_client: false,
         authorization_header_printed: false,
@@ -485,6 +510,34 @@ try {
   assert.equal(eventCheckin.event.source, "queued")
   assert.equal(eventCheckin.wordpress_acceptance_required, true)
 
+  const pushedEventRegistration = await fetchJson(`${baseUrl}/sync/push`, {
+    method: "POST",
+    token: managerToken,
+  })
+  assert.equal(pushedEventRegistration.status, "ok")
+  assert.equal(pushedEventRegistration.operation_count, 2)
+  assert.equal(pushedEventRegistration.accepted_count, 2)
+  assert.equal(pushedEventRegistration.retry_count, 0)
+  assert.equal(pushedEventRegistration.unsupported_operation_count, 5)
+  assert.equal(pushedEventRegistration.wordpress_inventory_push_connected, true)
+  assert.equal(pushedEventRegistration.wordpress_event_registration_push_connected, true)
+  assert.equal(wordpressEventRegistrationPushCalls, 1)
+  assert.equal(wordpressInventoryPushCalls, 3)
+  assert.ok(
+    pushedEventRegistration.results.some(
+      (result) => result.operation_type === "event_registration" && result.status === "accepted",
+    ),
+  )
+  assert.ok(
+    pushedEventRegistration.results.some(
+      (result) => result.operation_type === "inventory_intake" && result.status === "accepted",
+    ),
+  )
+
+  const acceptedEvents = await fetchJson(`${baseUrl}/events`)
+  const acceptedEvent = acceptedEvents.events.find((event) => event.event_id === "event-100")
+  assert.equal(acceptedEvent.source, "accepted")
+
   const customerSearch = await fetchJson(`${baseUrl}/customers/search?q=morgan`)
   assert.equal(customerSearch.status, "ok")
   assert.equal(customerSearch.wordpress_ledger_authority, true)
@@ -565,7 +618,7 @@ try {
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 9)
+  assert.ok(syncStatus.queue_depth >= 8)
   assert.ok(syncStatus.reference_card_count >= 6)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
@@ -574,6 +627,8 @@ try {
   assert.equal(syncStatus.scrydex_fallback_connected, true)
   assert.equal(syncStatus.wordpress_pull_connected, true)
   assert.equal(syncStatus.wordpress_push_connected, true)
+  assert.equal(syncStatus.wordpress_inventory_push_connected, true)
+  assert.equal(syncStatus.wordpress_event_registration_push_connected, true)
 
   console.log("PASS local sync server runtime")
 } finally {

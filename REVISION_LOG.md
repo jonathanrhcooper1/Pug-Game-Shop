@@ -3,6 +3,90 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Event and Credit Push Visibility
+
+### What Changed
+
+- Added LAN sync server WordPress push adapters for queued local event
+  registrations and customer credit ledger operations.
+- Added staff-only WordPress customer credit REST write endpoints for manager
+  adjustments and purchase redemptions using the existing ledger parser,
+  service, repository, presenter, permissions, and idempotency boundary.
+- Updated `/sync/status` and `/sync/push` to report channel-specific
+  WordPress push connectivity for inventory, events, and credit.
+- Updated the offline app Sync and Queue views with an operation visibility
+  panel that shows what can push to WordPress now and what still remains local.
+
+### Why
+
+Inventory push alone was not enough for a useful preview. Staff workflows also
+need event registrations and store credit actions to move from the shared LAN
+queue toward the website while keeping Square payment capture delegated to the
+official Square POS/WooCommerce integration. This revision connects the next
+two highest-value write paths without exposing WordPress credentials to client
+apps and without inventing a custom payment gateway.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressEventRegistrationPush.mjs`
+- `apps/local-sync-server/src/wordpressCreditPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-event-registration-push.mjs`
+- `apps/local-sync-server/tests/wordpress-credit-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/wordpress-plugin/src/Api/V1/CustomerCreditController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRouteContractTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses the existing event registration and customer credit
+  ledger tables.
+
+### Tests Added
+
+- LAN event registration push adapter coverage for authenticated WordPress
+  request mapping, idempotency headers, response parsing, payload validation,
+  and secret-safe failure output.
+- LAN credit push adapter coverage for adjustment/redemption endpoint mapping,
+  WordPress customer ID requirements, idempotency headers, ledger payload
+  shaping, and secret-safe failure output.
+- LAN runtime coverage for pushing inventory, event registrations, and credit
+  operations while leaving unsupported operation types queued.
+- WordPress route contract coverage for the live customer credit write
+  controller methods and permission callbacks.
+- Offline UI shell contract coverage for the operation visibility panel.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove customer credit REST write routes and return
+  LAN push to inventory-only behavior.
+- Event registration and credit operations already accepted by WordPress should
+  be reviewed in staging before rollback; queued local retry rows can remain in
+  `store-sync.sqlite` for later replay or be voided from the offline app Queue
+  workspace.
+- New local-only customers still cannot post credit to WordPress until the
+  customer upsert route is implemented; those operations intentionally stay
+  queued with `wordpress_customer_id_required`.
+- The currently running LAN preview server must be restarted with WordPress
+  event/credit credential environment variables before this new push behavior
+  is visible in the live `http://127.0.0.1:1420` preview.
+
 ## 2026-06-08 - Guarded Staging ScryDex Catalog Import Runner
 
 ### What Changed

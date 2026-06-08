@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Bootstrap;
 
 use TCGStorePlatform\Admin\AdminMenu;
+use TCGStorePlatform\Api\V1\CustomerCreditController;
 use TCGStorePlatform\Api\V1\EventsController;
 use TCGStorePlatform\Api\V1\HealthController;
 use TCGStorePlatform\Api\V1\OfflineConnectorManifestController;
@@ -76,6 +77,7 @@ final class Plugin {
 		( new OfflineRouteBootstrapper() )->register();
 		( new PosPaymentRouteDependencyFactory() )->bootstrapper()->register();
 		InventoryRouteDependencyFactory::from_settings( Settings::all() )->bootstrapper()->register();
+		( new CustomerCreditController() )->register();
 		( new EventsController() )->register();
 		( new EventShortcodes() )->register();
 		$scrydex_runner->register();

@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\CustomerCreditRouteContracts;
+use TCGStorePlatform\Api\V1\CustomerCreditController;
 use TCGStorePlatform\Tests\TestCase;
 
 final class CustomerCreditRouteContractTest extends TestCase {
@@ -32,6 +33,17 @@ final class CustomerCreditRouteContractTest extends TestCase {
 			),
 			$this->permission_map()
 		);
+	}
+
+	public function test_live_write_controller_exposes_only_credit_posting_callbacks(): void {
+		$controller = new CustomerCreditController();
+
+		$this->assert_true( method_exists( $controller, 'adjust_customer_credit' ) );
+		$this->assert_true( method_exists( $controller, 'redeem_customer_credit' ) );
+		$this->assert_true( method_exists( $controller, 'can_adjust_credit' ) );
+		$this->assert_true( method_exists( $controller, 'can_redeem_credit' ) );
+		$this->assert_false( method_exists( $controller, 'get_customer_credit' ) );
+		$this->assert_false( method_exists( $controller, 'list_customer_credit_ledger' ) );
 	}
 
 	/**

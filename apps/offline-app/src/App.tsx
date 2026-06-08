@@ -204,6 +204,18 @@ type QueueExportStatus = {
   rawCredentialsCopied: false
 }
 
+type OperationSyncVisibilityTone = "wordpress" | "local"
+
+type OperationSyncVisibilityRow = {
+  id: string
+  label: string
+  countLabel: string
+  wordpressStatus: string
+  localStatus: string
+  detail: string
+  tone: OperationSyncVisibilityTone
+}
+
 type ConnectorManifestFetchState = {
   status: "idle" | "loading" | "success" | "error"
   detail: string
@@ -461,6 +473,188 @@ function safeSummaryValue(value: unknown) {
   return "empty"
 }
 
+function countLabel(count: number, singular: string, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`
+}
+
+function queuedOperationCount(
+  operations: OfflineOperationEnvelope[],
+  operationType: OfflineOperationEnvelope["operation_type"],
+) {
+  return operations.filter((operation) => operation.operation_type === operationType).length
+}
+
+function queuedKioskHoldCount(operations: OfflineOperationEnvelope[]) {
+  return operations.filter((operation) => {
+    if (operation.operation_type !== "inventory_reservation") {
+      return false
+    }
+
+    const payload = safeJsonRecord(operation.payload_json)
+
+    return String(payload.hold_reason ?? "").toLowerCase().includes("kiosk pickup order")
+  }).length
+}
+
+function syncVisibilityQueueSummary(
+  localSyncStatus: LocalSyncStatusResult | null,
+  queuedOperations: OfflineOperationEnvelope[],
+) {
+  const appQueueLabel = countLabel(queuedOperations.length, "app queued op")
+
+  if (localSyncStatus?.status === "ok") {
+    return `${countLabel(localSyncStatus.queue_depth, "LAN queued op")}; ${appQueueLabel}`
+  }
+
+  return `LAN status unavailable; ${appQueueLabel}`
+}
+
+function buildOperationSyncVisibilityRows(options: {
+  queuedOperations: OfflineOperationEnvelope[]
+  inventoryItems: InventoryItem[]
+  localSyncStatus: LocalSyncStatusResult | null
+  pendingEventRegistrationCount: number
+  pendingEventCheckinCount: number
+  customerCreditDirectory: CustomerCreditSnapshot[]
+  customerCreditLedgerEntries: CustomerCreditLedgerEntry[]
+  offlineUsers: OfflineAppUser[]
+}): OperationSyncVisibilityRow[] {
+  const localStatus = options.localSyncStatus?.status === "ok" ? options.localSyncStatus : null
+  const wordpressPushStatus = localStatus?.wordpress_push_connected
+    ? "Push-capable through LAN sync"
+    : "Push waits for LAN/WordPress connection"
+  const inventoryPushConnected =
+    localStatus?.wordpress_inventory_push_connected ?? localStatus?.wordpress_push_connected ?? false
+  const eventPushConnected =
+    localStatus?.wordpress_event_registration_push_connected ?? localStatus?.wordpress_push_connected ?? false
+  const creditPushConnected = localStatus?.wordpress_credit_push_connected ?? false
+  const inventoryPushStatus = inventoryPushConnected
+    ? "Push-capable through LAN sync"
+    : "Push waits for LAN/WordPress connection"
+  const eventPushStatus = eventPushConnected
+    ? "Push-capable through LAN sync"
+    : "Push waits for LAN/WordPress connection"
+  const creditPushStatus = creditPushConnected
+    ? "Push-capable through LAN sync for existing WordPress customers"
+    : "Push waits for LAN/WordPress credit connection"
+  const localOnlyStatus = "Still queued locally; current LAN push leaves this type unsupported"
+  const lanQueueStatus = localStatus
+    ? countLabel(localStatus.queue_depth, "LAN queued op")
+    : "LAN queue status not loaded"
+  const pendingIntakeCount = options.inventoryItems.filter(
+    (item) => item.status === "pending_intake",
+  ).length
+  const eventRegistrationCount = Math.max(
+    queuedOperationCount(options.queuedOperations, "event_reservation"),
+    options.pendingEventRegistrationCount,
+  )
+  const eventCheckinCount = Math.max(
+    queuedOperationCount(options.queuedOperations, "event_checkin"),
+    options.pendingEventCheckinCount,
+  )
+  const kioskHoldCount = queuedKioskHoldCount(options.queuedOperations)
+  const creditRedemptionCount = queuedOperationCount(options.queuedOperations, "credit_redemption")
+  const pendingCreditLedgerCount = options.customerCreditLedgerEntries.filter(
+    (entry) => entry.status === "pending_sync",
+  ).length
+  const activeSessionCount = localStatus?.active_session_count ?? 0
+
+  return [
+    {
+      id: "inventory-intake",
+      label: "Inventory intake",
+      countLabel: pendingIntakeCount > 0
+        ? countLabel(pendingIntakeCount, "pending row")
+        : countLabel(localStatus?.inventory_count ?? options.inventoryItems.length, "local row"),
+      wordpressStatus: `${inventoryPushStatus}: inventory_intake`,
+      localStatus: `LAN intake queue until accepted by WordPress; ${lanQueueStatus}`,
+      detail:
+        "New cards stay pending_intake in store-sync.sqlite until WordPress accepts the inventory push.",
+      tone: "wordpress",
+    },
+    {
+      id: "event-registration",
+      label: "Event registration",
+      countLabel: countLabel(eventRegistrationCount, "visible op"),
+      wordpressStatus: `${eventPushStatus}: event_registration`,
+      localStatus:
+        `LAN event queue plus app review queue; ${countLabel(
+          queuedOperationCount(options.queuedOperations, "event_reservation"),
+          "app op",
+        )}`,
+      detail:
+        "Walk-ins and waitlist requests keep website capacity authoritative until sync acceptance.",
+      tone: "wordpress",
+    },
+    {
+      id: "event-checkin",
+      label: "Event check-in",
+      countLabel: countLabel(eventCheckinCount, "visible op"),
+      wordpressStatus: `${localOnlyStatus}: event_checkin`,
+      localStatus:
+        `LAN event queue plus app review queue; ${countLabel(
+          queuedOperationCount(options.queuedOperations, "event_checkin"),
+          "app op",
+        )}`,
+      detail:
+        "Manual check-ins stay queued locally while WordPress remains the registration match authority.",
+      tone: "local",
+    },
+    {
+      id: "kiosk-order",
+      label: "Kiosk order",
+      countLabel: localStatus
+        ? countLabel(localStatus.kiosk_order_count, "local order")
+        : countLabel(kioskHoldCount, "visible hold"),
+      wordpressStatus: `${localOnlyStatus}: kiosk_order`,
+      localStatus:
+        `Pickup order stays in the LAN kiosk queue; ${countLabel(kioskHoldCount, "app hold")}`,
+      detail:
+        "The kiosk order shell stays local for staff pickup; app review rows still show related holds.",
+      tone: "local",
+    },
+    {
+      id: "customer-upsert",
+      label: "Customer upsert",
+      countLabel: countLabel(
+        localStatus?.customer_count ?? options.customerCreditDirectory.length,
+        "local customer",
+      ),
+      wordpressStatus: `${localOnlyStatus}: customer_upsert`,
+      localStatus: `LAN customer queue/cache; ${lanQueueStatus}`,
+      detail:
+        "Created customer records stay local in store-sync.sqlite for later replay or staff review.",
+      tone: "local",
+    },
+    {
+      id: "credit-adjustment-redemption",
+      label: "Credit adjustment/redemption",
+      countLabel: pendingCreditLedgerCount > 0 || creditRedemptionCount > 0
+        ? countLabel(Math.max(pendingCreditLedgerCount, creditRedemptionCount), "pending ledger op")
+        : countLabel(
+          localStatus?.credit_ledger_entry_count ?? options.customerCreditLedgerEntries.length,
+          "ledger row",
+        ),
+      wordpressStatus: `${creditPushStatus}: credit_adjustment and credit_redemption`,
+      localStatus:
+        `LAN ledger queue; Square payment capture still stays in Square POS; ${lanQueueStatus}`,
+      detail:
+        "Existing WordPress customers can sync ledger posts; new local customers stay queued until customer upsert is live.",
+      tone: creditPushConnected ? "wordpress" : "local",
+    },
+    {
+      id: "user-access",
+      label: "User access",
+      countLabel: countLabel(options.offlineUsers.length, "PIN user"),
+      wordpressStatus: "Not in the WordPress push batch: user_access_upsert",
+      localStatus: `LAN access policy cache; ${countLabel(activeSessionCount, "active session")}`,
+      detail:
+        "PIN users, roles, and workspace access are managed by LAN user endpoints, with no raw PIN hash returned.",
+      tone: "local",
+    },
+  ]
+}
+
 function customerCreditSnapshotFromLocalSyncCustomer(
   customer: LocalSyncCustomer,
   fallback: CustomerCreditSnapshot,
@@ -554,7 +748,7 @@ function lanSyncPushMessage(result: LocalSyncPushResult | null) {
     return `LAN inventory push blocked: ${result.message}`
   }
 
-  return `LAN inventory push accepted ${result.accepted_count} item(s), left ${result.retry_count} retry and ${result.unsupported_operation_count} non-inventory operation(s) queued.`
+  return `LAN push accepted ${result.accepted_count} operation(s), left ${result.retry_count} retry and ${result.unsupported_operation_count} unsupported operation(s) queued.`
 }
 
 function lanSyncPullMessage(result: LocalSyncPullResult | null) {
@@ -910,6 +1104,33 @@ export function App() {
     eventSnapshots.length + pendingEventRegistrationIds.length + pendingEventCheckinIds.length
   const pendingEventRegistrationCount = pendingEventRegistrationIds.length
   const pendingEventCheckinCount = pendingEventCheckinIds.length
+  const operationSyncVisibilityRows = useMemo(
+    () =>
+      buildOperationSyncVisibilityRows({
+        queuedOperations,
+        inventoryItems,
+        localSyncStatus,
+        pendingEventRegistrationCount,
+        pendingEventCheckinCount,
+        customerCreditDirectory,
+        customerCreditLedgerEntries,
+        offlineUsers,
+      }),
+    [
+      queuedOperations,
+      inventoryItems,
+      localSyncStatus,
+      pendingEventRegistrationCount,
+      pendingEventCheckinCount,
+      customerCreditDirectory,
+      customerCreditLedgerEntries,
+      offlineUsers,
+    ],
+  )
+  const operationSyncVisibilitySummary = syncVisibilityQueueSummary(
+    localSyncStatus,
+    queuedOperations,
+  )
   const displayedCreditMinorUnits = customerCreditAvailableAfterPending(
     customerCredit,
     pendingCreditMinorUnits,
@@ -3780,6 +4001,39 @@ export function App() {
     moveConflictToReviewed(conflict)
   }
 
+  function renderOperationSyncVisibilityPanel() {
+    return (
+      <section className="sync-visibility-panel" aria-label="Operation sync visibility">
+        <div className="sync-visibility-heading">
+          <div>
+            <span className="micro-label">Operation sync visibility</span>
+            <strong>WordPress push vs local queue</strong>
+          </div>
+          <span>{operationSyncVisibilitySummary}</span>
+        </div>
+        <div className="sync-visibility-grid">
+          {operationSyncVisibilityRows.map((row) => (
+            <article className={`sync-visibility-row ${row.tone}`} key={row.id}>
+              <div className="sync-visibility-row-head">
+                <span>{row.label}</span>
+                <strong>{row.countLabel}</strong>
+              </div>
+              <div className="sync-visibility-path">
+                <span>WordPress</span>
+                <small>{row.wordpressStatus}</small>
+              </div>
+              <div className="sync-visibility-path">
+                <span>Local queue</span>
+                <small>{row.localStatus}</small>
+              </div>
+              <p>{row.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
   if (!sessionIsUnlocked) {
     return (
       <main className="offline-shell login-shell">
@@ -3997,6 +4251,8 @@ export function App() {
               {activityMessage.detail}
             </p>
           </section>
+
+          {renderOperationSyncVisibilityPanel()}
 
           {syncSessionPlan ? (
             <section className="sync-session-panel" aria-label="Website sync session plan">
@@ -4755,6 +5011,7 @@ export function App() {
               <p className="queue-storage-note">
                 Queue and sync attempts are saved locally on this device.
               </p>
+              {renderOperationSyncVisibilityPanel()}
               {lanSyncLastResult ? (
                 <div className="queue-review-card lan-sync-result" aria-label="Last LAN sync result">
                   <span>Last LAN sync</span>
