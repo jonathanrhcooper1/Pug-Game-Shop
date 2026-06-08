@@ -3,6 +3,80 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Conflict Resolution Route Adapter
+
+### What Changed
+
+- Added a current conflict row provider for the resolution route.
+- Added a route handler that validates conflict resolution requests, loads the
+  current row, plans the manager decision, applies the repository writeback, and
+  reports applied/stale/rejected outcomes.
+- Added a conflict route handler factory that keeps list/resolve handlers
+  parser-only by default and composes repository-backed resolution only when
+  explicitly enabled.
+- Added injectable manager conflict permission callbacks to offline route
+  permission planning.
+- Wired the offline route bootstrapper to include conflict handlers and the
+  WordPress `resolve_conflicts` capability callback under the existing runtime
+  conflict route gate.
+
+### Why
+
+The previous checkpoint added the writeback primitive, but the REST route layer
+still could not use it. This connects the route-facing adapter without enabling
+production behavior by default.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionCurrentRowProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineConflictRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Current-row provider coverage for `tcg_sync_conflicts` lookups and resolution
+  option normalization.
+- Route-handler coverage for deferred validation, applied writeback, and stale
+  writeback.
+- Conflict route factory coverage for default deferred handlers and explicit
+  repository-backed route execution.
+- Permission and registration planner coverage for manager-only conflict route
+  callbacks.
+
+### Tests Run
+
+- `php apps/wordpress-plugin/tests/run.php`: passed, 898 tests and 0 failures.
+- `npm run test`: passed, including PHP/plugin tests, offline app contracts,
+  Rust command tests, packaging contracts, staging contract scaffolds, and
+  ScryDex live smoke contract.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove route-level conflict resolution writeback
+  wiring.
+- No schema rollback is required.
+- The route remains disabled unless the offline feature flag and conflict route
+  runtime setting are enabled, so rollback from the default local state only
+  removes staged code.
+
 ## 2026-06-08 - Offline Conflict Resolution Writeback Foundation
 
 ### What Changed

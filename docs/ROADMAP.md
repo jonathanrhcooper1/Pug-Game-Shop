@@ -198,6 +198,8 @@ connector isolation with legacy shared-session migration fallback
 plus guarded WordPress conflict resolution SQL planning and repository
 writeback foundation with row-version guards while live route registration
 stays gated
+plus explicit WordPress conflict resolution route adapter and manager
+permission wiring behind the existing conflict route runtime gate
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview

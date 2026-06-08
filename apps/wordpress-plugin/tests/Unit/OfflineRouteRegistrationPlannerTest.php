@@ -45,6 +45,7 @@ namespace {
 
 namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineController;
+	use TCGStorePlatform\Api\V1\OfflineConflictRouteHandlerFactory;
 	use TCGStorePlatform\Api\V1\OfflineRoutePermissionCallbackFactory;
 	use TCGStorePlatform\Api\V1\OfflineRouteRegistrationPlanner;
 	use TCGStorePlatform\Api\V1\OfflineRouteRuntimeConfigurator;
@@ -152,6 +153,36 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $plan['controller_callback_ready'] );
 			$this->assert_true( $plan['should_register'] );
 			$this->assert_same( array(), $plan['registration_block_reasons'] );
+			$this->assert_false( $plans['POST /offline/pull']['should_register'] );
+			$this->assert_false( $plans['POST /offline/push']['should_register'] );
+		}
+
+		public function test_runtime_enabled_conflict_routes_can_register_with_manager_permission(): void {
+			$route_contracts = ( new OfflineRouteRuntimeConfigurator() )->route_contracts(
+				array(
+					'conflict_routes_enabled' => true,
+				)
+			);
+			$manager_callback = static function ( mixed $request = null ): bool {
+				unset( $request );
+
+				return true;
+			};
+			$plans            = ( new OfflineRouteRegistrationPlanner(
+				new OfflineRoutePermissionCallbackFactory( null, null, null, $manager_callback ),
+				( new OfflineConflictRouteHandlerFactory() )->controller()
+			) )->planned_registration_args( $route_contracts );
+
+			$this->assert_true( $plans['GET /offline/conflicts']['should_register'] );
+			$this->assert_true(
+				$plans['POST /offline/conflicts/(?P<conflict_id>[a-zA-Z0-9_-]+)/resolve']['should_register']
+			);
+			$this->assert_same( array(), $plans['GET /offline/conflicts']['registration_block_reasons'] );
+			$this->assert_same(
+				array(),
+				$plans['POST /offline/conflicts/(?P<conflict_id>[a-zA-Z0-9_-]+)/resolve']['registration_block_reasons']
+			);
+			$this->assert_false( $plans['POST /offline/devices/register']['should_register'] );
 			$this->assert_false( $plans['POST /offline/pull']['should_register'] );
 			$this->assert_false( $plans['POST /offline/push']['should_register'] );
 		}

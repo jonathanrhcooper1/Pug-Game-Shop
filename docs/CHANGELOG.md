@@ -11,6 +11,10 @@ All notable changes follow Semantic Versioning.
   conflict-row version checks, mutable-status guards, redacted audits, and
   applied/stale/rejected repository outcomes while live route registration
   remains gated.
+- Offline conflict resolution routes now have an explicit handler factory,
+  current-row provider, manager-permission callback injection, and runtime
+  registration planning so the resolve route can apply guarded writeback when
+  the existing conflict route gate is enabled.
 - Tauri desktop queue restore now has a local `mark_offline_operations_synced`
   command so accepted website push IDs are marked `synced` in `offline.sqlite`
   and do not reappear as pending operations on the next restore.

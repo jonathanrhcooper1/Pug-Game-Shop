@@ -141,6 +141,7 @@ final class OfflineRouteBootstrapper {
 	 * @param array<string, mixed> $settings Platform settings.
 	 */
 	private function runtime_registration_planner( array $settings ): OfflineRouteRegistrationPlanner {
+		$runtime_settings           = OfflineRouteRuntimeSettings::from_settings( $settings );
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory(
 			static fn (): array => $settings
 		);
@@ -153,9 +154,13 @@ final class OfflineRouteBootstrapper {
 		$pairing_permission         = $pairing_authorizer_factory->is_policy_configured()
 			? $pairing_authorizer_factory->permission_callback()
 			: null;
+		$conflict_handler_factory   = new OfflineConflictRouteHandlerFactory(
+			route_connected_execution_enabled: true === $runtime_settings['conflict_routes_enabled']
+		);
 		$handlers                   = array_merge(
 			$sync_handler_factory->handlers(),
-			null !== $pairing_handler ? $pairing_handler->handlers() : array()
+			null !== $pairing_handler ? $pairing_handler->handlers() : array(),
+			$conflict_handler_factory->handlers()
 		);
 		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
 
@@ -163,7 +168,12 @@ final class OfflineRouteBootstrapper {
 			new OfflineRoutePermissionCallbackFactory(
 				$device_permission_factory->resolver(),
 				null,
-				$pairing_permission
+				$pairing_permission,
+				static function ( mixed $request = null ): bool {
+					unset( $request );
+
+					return function_exists( 'current_user_can' ) && current_user_can( 'resolve_conflicts' );
+				}
 			),
 			new OfflineController( null, $handlers )
 		);

@@ -995,6 +995,9 @@ corresponding modules are implemented:
 - Offline conflict resolution SQL updates require the expected conflict row
   version, a mutable current status, and a single affected row before the
   repository reports the manager decision as applied.
+- Offline conflict resolution REST adapters must stay deferred by default, then
+  apply or report stale manager decisions only when the conflict route gate,
+  current-row lookup, repository, and manager permission callback are present.
 
 ### Buylist
 
