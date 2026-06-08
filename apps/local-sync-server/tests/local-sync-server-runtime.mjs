@@ -167,6 +167,58 @@ try {
   })
   assert.equal(staffAuth.status, "ok")
   assert.ok(staffAuth.user.access.includes("Customers"))
+  assert.ok(staffAuth.user.access.includes("Events"))
+
+  const eventList = await fetchJson(`${baseUrl}/events`)
+  assert.equal(eventList.status, "ok")
+  assert.equal(eventList.wordpress_event_authority, true)
+  assert.ok(eventList.events.some((event) => event.event_id === "event-100"))
+
+  const blockedEventRegistration = await fetchJson(`${baseUrl}/events/registrations`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    body: {
+      event_id: "event-100",
+      attendee_label: "No Event Access",
+      payment_status: "not_required",
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(blockedEventRegistration.status, "blocked")
+  assert.equal(blockedEventRegistration.code, "workspace_access_required")
+
+  const eventRegistration = await fetchJson(`${baseUrl}/events/registrations`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      event_id: "event-100",
+      attendee_label: "Local Event Guest",
+      payment_status: "pay_at_store",
+    },
+  })
+  assert.equal(eventRegistration.status, "ok")
+  assert.equal(eventRegistration.registration.status, "queued")
+  assert.equal(eventRegistration.registration.registration_status, "registered")
+  assert.equal(eventRegistration.registration.payment_status, "pay_at_store")
+  assert.equal(eventRegistration.event.registered_count, 11)
+  assert.equal(eventRegistration.event.source, "queued")
+  assert.equal(eventRegistration.wordpress_acceptance_required, true)
+
+  const eventCheckin = await fetchJson(`${baseUrl}/events/check-ins`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      event_id: "event-100",
+      attendee_label: "Local Event Guest",
+      registration_public_id: "registration-event-100-local-event-guest",
+      checkin_method: "manual_lookup",
+    },
+  })
+  assert.equal(eventCheckin.status, "ok")
+  assert.equal(eventCheckin.checkin.status, "queued")
+  assert.equal(eventCheckin.checkin.registration_public_id, "registration-event-100-local-event-guest")
+  assert.equal(eventCheckin.event.source, "queued")
+  assert.equal(eventCheckin.wordpress_acceptance_required, true)
 
   const customerSearch = await fetchJson(`${baseUrl}/customers/search?q=morgan`)
   assert.equal(customerSearch.status, "ok")
@@ -248,9 +300,10 @@ try {
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 8)
+  assert.ok(syncStatus.queue_depth >= 10)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
+  assert.ok(syncStatus.event_count >= 2)
 
   console.log("PASS local sync server runtime")
 } finally {

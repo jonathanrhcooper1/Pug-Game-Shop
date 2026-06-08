@@ -3,6 +3,84 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Event Registration Runtime
+
+### What Changed
+
+- Added a durable local sync server `event_snapshots` SQLite table.
+- Seeded cached event snapshots for the local LAN server runtime.
+- Added `GET /events`, `POST /events/registrations`, and
+  `POST /events/check-ins` routes to the LAN sync server.
+- Enforced Events workspace access before local event registration and
+  check-in operations.
+- Updated shared event snapshots when local registrations/check-ins are queued,
+  including row-version bumps, capacity counters, source state, and local notes.
+- Added typed offline app client methods for listing events, event
+  registrations, and event check-ins.
+- Wired the offline app Events workflow to call the LAN server before staging
+  the existing event queue preview operations.
+
+### Why
+
+The employee app can already stage event operations, but multiple local
+stations need a shared middleman so capacity and check-in activity do not drift
+between computers. This revision moves event registration/check-in state into
+the LAN server while keeping WordPress as the final event authority after sync.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local development SQLite schema creation for `event_snapshots`.
+- No WordPress/MySQL production migration was added.
+
+### Tests Added
+
+- Local sync server contract coverage for shared event list, registration, and
+  check-in routes.
+- Local sync server runtime coverage for event listing, Events access
+  enforcement, queued registration, queued check-in, and sync status event
+  counts.
+- Local sync server persistence coverage proving queued event snapshot changes
+  survive reopening the same SQLite database.
+- Offline app client contract coverage for event route types and request
+  payload fields.
+- Offline app UI shell coverage proving the Events workflow calls the LAN event
+  endpoints before using existing event queue builders.
+
+### Verification
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- Browser smoke: PIN `1420` login, Events page, LAN event registration, LAN
+  event check-in, queue-depth increase from 9 to 11, updated capacity display,
+  event queue preview rows, and zero new browser console errors.
+
+### Rollback Notes
+
+- Revert this revision to return Events to app-local queue preview behavior.
+- If reverting after staff used LAN event registration/check-in, preserve
+  `store-sync.sqlite` first so queued event operations are not lost.
+- No WordPress database, Square, payment, POS, ScryDex, customer, inventory, or
+  production rollback is required because this revision only affects the local
+  LAN server and offline app runtime.
+
 ## 2026-06-08 - ScryDex-Assisted Local Intake Lookup
 
 ### What Changed

@@ -15,7 +15,9 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/customers", purpose: "Employee customer creation queue" },
   { method: "POST", path: "/credit/adjustments", purpose: "Manager-approved store credit add/correction" },
   { method: "POST", path: "/credit/redemptions", purpose: "Store credit use queue for Square POS handoff" },
+  { method: "GET", path: "/events", purpose: "Shared local event cache list" },
   { method: "POST", path: "/events/registrations", purpose: "Event registration queue" },
+  { method: "POST", path: "/events/check-ins", purpose: "Event check-in queue" },
   { method: "GET", path: "/sync/status", purpose: "WordPress sync status and backlog counts" },
   { method: "POST", path: "/sync/pull", purpose: "Pull canonical website changes into local cache" },
   { method: "POST", path: "/sync/push", purpose: "Push accepted local operations to WordPress" },
@@ -97,6 +99,7 @@ export function planLocalClientConnection({ mode, serverUrl, websiteUrl }) {
             "/customers",
             "/credit/redemptions",
             "/events/registrations",
+            "/events/check-ins",
           ],
     manager_required_paths:
       normalizedMode === "manager"

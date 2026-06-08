@@ -50,6 +50,9 @@ for (const endpoint of [
   "POST /inventory/reservations",
   "POST /credit/adjustments",
   "POST /credit/redemptions",
+  "GET /events",
+  "POST /events/registrations",
+  "POST /events/check-ins",
   "POST /sync/push",
 ]) {
   const [method, path] = endpoint.split(" ")
@@ -75,6 +78,8 @@ const employee = planLocalClientConnection({
 })
 assert.ok(employee.allowed_write_paths.includes("/inventory/intake"))
 assert.ok(employee.allowed_write_paths.includes("/customers"))
+assert.ok(employee.allowed_write_paths.includes("/events/registrations"))
+assert.ok(employee.allowed_write_paths.includes("/events/check-ins"))
 assert.equal(employee.local_cache_source, "local_sync_server")
 
 console.log("PASS local sync server contract")

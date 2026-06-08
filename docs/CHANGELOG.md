@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server now persists cached event snapshots and supports shared LAN
+  event listing, registration, and check-in routes; the offline app Events
+  workflow now calls those LAN routes before staging its existing local queue
+  previews so multiple staff stations share event capacity/check-in state.
 - Offline app Inventory intake now includes a ScryDex card lookup panel backed
   by the LAN sync server, allowing staff to fill intake fields from secret-free
   reference-card results while ScryDex credentials remain in WordPress/server

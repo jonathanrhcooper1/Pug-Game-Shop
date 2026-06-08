@@ -86,6 +86,18 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.createCreditRedemption(token, await readJson(request)))
       }
 
+      if (request.method === "GET" && url.pathname === "/events") {
+        return sendStoreResult(response, store.listEvents())
+      }
+
+      if (request.method === "POST" && url.pathname === "/events/registrations") {
+        return sendStoreResult(response, store.createEventRegistration(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/events/check-ins") {
+        return sendStoreResult(response, store.createEventCheckin(token, await readJson(request)))
+      }
+
       if (request.method === "GET" && url.pathname === "/sync/status") {
         return sendStoreResult(response, store.syncStatus())
       }

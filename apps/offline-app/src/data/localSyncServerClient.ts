@@ -213,6 +213,58 @@ export type LocalSyncCreditRedemptionResult = LocalSyncResult<{
   square_payment_capture_supported: false
 }>
 
+export type LocalSyncEventSnapshot = {
+  event_id: string
+  row_version: number
+  title: string
+  starts_at_utc: string
+  starts_at_label: string
+  registration_status: "open" | "waitlist" | "full" | "closed"
+  capacity: number
+  registered_count: number
+  location_label: string
+  note: string
+  source: "cached" | "queued" | "accepted"
+}
+
+export type LocalSyncEventRegistration = {
+  registration_id: string
+  event_id: string
+  attendee_label: string
+  registration_status: "registered" | "waitlist"
+  payment_status: "not_required" | "pay_at_store"
+  status: "queued"
+  created_at_utc: string
+}
+
+export type LocalSyncEventCheckin = {
+  checkin_id: string
+  event_id: string
+  registration_public_id: string
+  attendee_label: string
+  checkin_method: string
+  status: "queued"
+  created_at_utc: string
+}
+
+export type LocalSyncEventListResult = LocalSyncResult<{
+  events: LocalSyncEventSnapshot[]
+  local_cache_source: "local_sync_server"
+  wordpress_event_authority: true
+}>
+
+export type LocalSyncEventRegistrationResult = LocalSyncResult<{
+  event: LocalSyncEventSnapshot
+  registration: LocalSyncEventRegistration
+  wordpress_acceptance_required: true
+}>
+
+export type LocalSyncEventCheckinResult = LocalSyncResult<{
+  event: LocalSyncEventSnapshot
+  checkin: LocalSyncEventCheckin
+  wordpress_acceptance_required: true
+}>
+
 export type LocalSyncStatusResult = LocalSyncResult<{
   local_database: "store-sync.sqlite"
   persistence_mode: "sqlite_adapter_pending" | "sqlite"
@@ -221,6 +273,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   inventory_count: number
   customer_count: number
   credit_ledger_entry_count: number
+  event_count: number
   active_session_count: number
   wordpress_push_connected: boolean
   local_operations_preserved: true
@@ -294,6 +347,24 @@ export type LocalSyncServerClient = {
       reason: string
     },
   ) => Promise<LocalSyncCreditRedemptionResult>
+  listEvents: () => Promise<LocalSyncEventListResult>
+  createEventRegistration: (
+    sessionToken: string,
+    input: {
+      eventId: string
+      attendeeLabel: string
+      paymentStatus: "not_required" | "pay_at_store"
+    },
+  ) => Promise<LocalSyncEventRegistrationResult>
+  createEventCheckin: (
+    sessionToken: string,
+    input: {
+      eventId: string
+      attendeeLabel: string
+      registrationPublicId: string
+      checkinMethod: string
+    },
+  ) => Promise<LocalSyncEventCheckinResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
 }
 
@@ -411,6 +482,29 @@ export function createLocalSyncServerClient(
           reason: input.reason,
         },
       }) as Promise<LocalSyncCreditRedemptionResult>,
+    listEvents: () =>
+      requestLocalSync(fetcher, baseUrl, "/events") as Promise<LocalSyncEventListResult>,
+    createEventRegistration: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/events/registrations", {
+        method: "POST",
+        sessionToken,
+        body: {
+          event_id: input.eventId,
+          attendee_label: input.attendeeLabel,
+          payment_status: input.paymentStatus,
+        },
+      }) as Promise<LocalSyncEventRegistrationResult>,
+    createEventCheckin: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/events/check-ins", {
+        method: "POST",
+        sessionToken,
+        body: {
+          event_id: input.eventId,
+          attendee_label: input.attendeeLabel,
+          registration_public_id: input.registrationPublicId,
+          checkin_method: input.checkinMethod,
+        },
+      }) as Promise<LocalSyncEventCheckinResult>,
     getSyncStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/sync/status") as Promise<LocalSyncStatusResult>,
   }

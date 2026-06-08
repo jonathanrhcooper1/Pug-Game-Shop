@@ -34,6 +34,7 @@ export function createLocalSyncStore(options = {}) {
   const kioskOrders = loadKioskOrders(database)
   const customers = loadCustomers(database)
   const creditLedgerEntries = loadCreditLedgerEntries(database)
+  const eventSnapshots = loadEventSnapshots(database)
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -427,6 +428,121 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function listEvents() {
+    return {
+      status: "ok",
+      events: eventSnapshots.map(publicEventSnapshot),
+      local_cache_source: "local_sync_server",
+      wordpress_event_authority: true,
+    }
+  }
+
+  function createEventRegistration(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Events")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const event = findEvent(eventSnapshots, input.event_id ?? input.entity_id)
+
+    if (!event) {
+      return blocked("event_not_found", "No cached event matched that event ID.")
+    }
+
+    if (event.registration_status === "closed" || event.registration_status === "full") {
+      return blocked("event_registration_closed", "The cached event is not accepting local registrations.")
+    }
+
+    const attendeeLabel = cleanName(input.attendee_label) || "Offline walk-in"
+    const paymentStatus = cleanEventPaymentStatus(input.payment_status)
+    const registrationStatus = event.registration_status === "waitlist" ? "waitlist" : "registered"
+    const registration = {
+      registration_id: `event-registration-${randomUUID()}`,
+      event_id: event.event_id,
+      attendee_label: attendeeLabel,
+      registration_status: registrationStatus,
+      payment_status: paymentStatus,
+      status: "queued",
+      created_at_utc: now().toISOString(),
+    }
+
+    if (event.registration_status === "open") {
+      event.registered_count = Math.min(event.capacity, event.registered_count + 1)
+      event.registration_status = event.registered_count >= event.capacity ? "full" : "open"
+    }
+
+    event.row_version += 1
+    event.source = "queued"
+    event.note =
+      registrationStatus === "waitlist"
+        ? "Waitlist request queued on the LAN server; WordPress remains authoritative."
+        : "Registration queued on the LAN server; WordPress capacity remains authoritative."
+    saveEventSnapshot(database, event, now)
+    appendQueueOperation(database, queue, "event_registration", registration.registration_id, {
+      event: publicEventSnapshot(event),
+      registration,
+      actor_id: session.user.id,
+      sync_intent: "offline_event_registration",
+    }, now)
+
+    return {
+      status: "ok",
+      event: publicEventSnapshot(event),
+      registration,
+      wordpress_acceptance_required: true,
+    }
+  }
+
+  function createEventCheckin(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Events")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const event = findEvent(eventSnapshots, input.event_id ?? input.entity_id)
+
+    if (!event) {
+      return blocked("event_not_found", "No cached event matched that event ID.")
+    }
+
+    if (event.registration_status === "closed") {
+      return blocked("event_checkin_closed", "The cached event is closed for local check-ins.")
+    }
+
+    const attendeeLabel = cleanName(input.attendee_label) || "Offline attendee"
+    const registrationPublicId =
+      cleanPublicId(input.registration_public_id) || `registration-${event.event_id}-${randomUUID().slice(0, 8)}`
+    const checkin = {
+      checkin_id: `event-checkin-${randomUUID()}`,
+      event_id: event.event_id,
+      registration_public_id: registrationPublicId,
+      attendee_label: attendeeLabel,
+      checkin_method: cleanName(input.checkin_method) || "manual_lookup",
+      status: "queued",
+      created_at_utc: now().toISOString(),
+    }
+
+    event.row_version += 1
+    event.source = "queued"
+    event.note = "Check-in queued on the LAN server; WordPress registration match remains authoritative."
+    saveEventSnapshot(database, event, now)
+    appendQueueOperation(database, queue, "event_checkin", checkin.checkin_id, {
+      event: publicEventSnapshot(event),
+      checkin,
+      actor_id: session.user.id,
+      sync_intent: "offline_event_checkin",
+    }, now)
+
+    return {
+      status: "ok",
+      event: publicEventSnapshot(event),
+      checkin,
+      wordpress_acceptance_required: true,
+    }
+  }
+
   function createCustomer(token, input = {}) {
     const session = requireWorkspaceAccess(token, "Customers")
 
@@ -652,6 +768,7 @@ export function createLocalSyncStore(options = {}) {
       inventory_count: inventoryItems.length,
       customer_count: customers.length,
       credit_ledger_entry_count: creditLedgerEntries.length,
+      event_count: eventSnapshots.length,
       active_session_count: sessions.size,
       wordpress_push_connected: false,
       local_operations_preserved: true,
@@ -664,8 +781,11 @@ export function createLocalSyncStore(options = {}) {
     createCreditAdjustment,
     createCreditRedemption,
     createCustomer,
+    createEventCheckin,
+    createEventRegistration,
     createInventoryIntake,
     createKioskOrder,
+    listEvents,
     createSession,
     listAccessPolicy,
     reserveInventory,
@@ -768,6 +888,21 @@ function migrateLocalSyncDatabase(database) {
       created_at_utc TEXT NOT NULL,
       FOREIGN KEY (customer_public_id) REFERENCES customers(customer_public_id)
     );
+
+    CREATE TABLE IF NOT EXISTS event_snapshots (
+      event_id TEXT PRIMARY KEY,
+      row_version INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      starts_at_utc TEXT NOT NULL,
+      starts_at_label TEXT NOT NULL,
+      registration_status TEXT NOT NULL,
+      capacity INTEGER NOT NULL,
+      registered_count INTEGER NOT NULL,
+      location_label TEXT NOT NULL,
+      note TEXT NOT NULL,
+      source TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
+    );
   `)
 }
 
@@ -775,6 +910,7 @@ function seedLocalSyncDatabase(database, now) {
   const userCount = database.prepare("SELECT COUNT(*) AS count FROM users").get().count
   const inventoryCount = database.prepare("SELECT COUNT(*) AS count FROM inventory_items").get().count
   const customerCount = database.prepare("SELECT COUNT(*) AS count FROM customers").get().count
+  const eventCount = database.prepare("SELECT COUNT(*) AS count FROM event_snapshots").get().count
 
   if (Number(userCount) === 0) {
     for (const user of seedUsers()) {
@@ -795,6 +931,12 @@ function seedLocalSyncDatabase(database, now) {
 
     for (const ledgerEntry of seedCreditLedgerEntries()) {
       saveCreditLedgerEntry(database, ledgerEntry)
+    }
+  }
+
+  if (Number(eventCount) === 0) {
+    for (const event of seedEventSnapshots()) {
+      saveEventSnapshot(database, event, now)
     }
   }
 }
@@ -922,6 +1064,30 @@ function loadCreditLedgerEntries(database) {
       reason: row.reason,
       source: row.source,
       created_at_utc: row.created_at_utc,
+    }))
+}
+
+function loadEventSnapshots(database) {
+  return database
+    .prepare(`
+      SELECT event_id, row_version, title, starts_at_utc, starts_at_label,
+        registration_status, capacity, registered_count, location_label, note, source
+      FROM event_snapshots
+      ORDER BY starts_at_utc, event_id
+    `)
+    .all()
+    .map((row) => ({
+      event_id: row.event_id,
+      row_version: Number(row.row_version),
+      title: row.title,
+      starts_at_utc: row.starts_at_utc,
+      starts_at_label: row.starts_at_label,
+      registration_status: cleanEventRegistrationStatus(row.registration_status),
+      capacity: Number(row.capacity),
+      registered_count: Number(row.registered_count),
+      location_label: row.location_label,
+      note: row.note,
+      source: row.source,
     }))
 }
 
@@ -1071,6 +1237,44 @@ function saveCreditLedgerEntry(database, entry) {
       entry.reason,
       entry.source,
       entry.created_at_utc,
+    )
+}
+
+function saveEventSnapshot(database, event, now) {
+  database
+    .prepare(`
+      INSERT INTO event_snapshots (
+        event_id, row_version, title, starts_at_utc, starts_at_label,
+        registration_status, capacity, registered_count, location_label, note,
+        source, updated_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(event_id) DO UPDATE SET
+        row_version = excluded.row_version,
+        title = excluded.title,
+        starts_at_utc = excluded.starts_at_utc,
+        starts_at_label = excluded.starts_at_label,
+        registration_status = excluded.registration_status,
+        capacity = excluded.capacity,
+        registered_count = excluded.registered_count,
+        location_label = excluded.location_label,
+        note = excluded.note,
+        source = excluded.source,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run(
+      event.event_id,
+      event.row_version,
+      event.title,
+      event.starts_at_utc,
+      event.starts_at_label,
+      event.registration_status,
+      event.capacity,
+      event.registered_count,
+      event.location_label,
+      event.note,
+      event.source,
+      now().toISOString(),
     )
 }
 
@@ -1246,6 +1450,37 @@ function seedCreditLedgerEntries() {
   ]
 }
 
+function seedEventSnapshots() {
+  return [
+    {
+      event_id: "event-100",
+      row_version: 3,
+      title: "Friday Commander Night",
+      starts_at_utc: "2026-06-12T23:00:00Z",
+      starts_at_label: "Fri Jun 12, 7:00 PM",
+      registration_status: "open",
+      capacity: 24,
+      registered_count: 10,
+      location_label: "Event Room",
+      note: "Cached event ready for offline check-in and registration review.",
+      source: "cached",
+    },
+    {
+      event_id: "event-101",
+      row_version: 2,
+      title: "Pokemon League Challenge",
+      starts_at_utc: "2026-06-14T17:00:00Z",
+      starts_at_label: "Sun Jun 14, 1:00 PM",
+      registration_status: "waitlist",
+      capacity: 32,
+      registered_count: 32,
+      location_label: "Main Tables",
+      note: "Waitlist state cached for offline staff review.",
+      source: "cached",
+    },
+  ]
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -1303,6 +1538,22 @@ function publicCreditLedgerEntry(entry) {
     reason: entry.reason,
     source: entry.source,
     created_at_utc: entry.created_at_utc,
+  }
+}
+
+function publicEventSnapshot(event) {
+  return {
+    event_id: event.event_id,
+    row_version: event.row_version,
+    title: event.title,
+    starts_at_utc: event.starts_at_utc,
+    starts_at_label: event.starts_at_label,
+    registration_status: event.registration_status,
+    capacity: event.capacity,
+    registered_count: event.registered_count,
+    location_label: event.location_label,
+    note: event.note,
+    source: event.source,
   }
 }
 
@@ -1389,6 +1640,16 @@ function findCustomer(customers, input = {}) {
   )
 }
 
+function findEvent(events, eventId) {
+  const rawEventId = String(eventId ?? "").trim()
+
+  if (!rawEventId) {
+    return null
+  }
+
+  return events.find((event) => event.event_id === rawEventId) ?? null
+}
+
 function cleanAccess(access) {
   if (!Array.isArray(access)) {
     return []
@@ -1423,6 +1684,18 @@ function cleanCondition(value) {
 
 function cleanBarcode(value) {
   return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 64)
+}
+
+function cleanPublicId(value) {
+  return String(value ?? "").trim().replace(/[^a-zA-Z0-9-_:.]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 96)
+}
+
+function cleanEventPaymentStatus(value) {
+  return value === "pay_at_store" ? "pay_at_store" : "not_required"
+}
+
+function cleanEventRegistrationStatus(value) {
+  return ["open", "waitlist", "full", "closed"].includes(value) ? value : "closed"
 }
 
 function cleanScryDexQuery(value) {

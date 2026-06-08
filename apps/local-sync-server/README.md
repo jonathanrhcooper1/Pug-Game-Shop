@@ -40,12 +40,15 @@ Current runtime:
   and `POST /credit/redemptions` provide the first shared LAN customer-credit
   surface with manager approval for credit adds and Square POS handoff metadata
   for credit use.
+- `GET /events`, `POST /events/registrations`, and
+  `POST /events/check-ins` provide the first shared LAN event registration and
+  check-in surface while WordPress remains the final event authority.
 - Staff PIN users, access policy changes, local inventory reservation locks,
   local inventory intake rows, kiosk pickup orders, local customers, pending
-  credit ledger entries, and operation queue rows persist across server
-  restarts.
+  credit ledger entries, event snapshots, and operation queue rows persist
+  across server restarts.
 
 The current SQLite schema is a development runtime for the LAN middleman. Live
 WordPress pull/push workers, WordPress-backed ScryDex proxy calls, richer event
-cache tables, conflict tables, and full installer packaging are still upcoming
-layers.
+registration tables, conflict tables, and full installer packaging are still
+upcoming layers.

@@ -109,6 +109,7 @@ import {
   type LocalSyncAuthResult,
   type LocalSyncCreditLedgerEntry,
   type LocalSyncCustomer,
+  type LocalSyncEventSnapshot,
   type LocalSyncInventoryItem,
   type LocalSyncScryDexCard,
   type LocalSyncStatusResult,
@@ -516,6 +517,21 @@ function inventoryItemFromLocalSync(
     location: item.location,
     status: item.status,
     source: item.source,
+  }
+}
+
+function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapshot {
+  return {
+    eventId: event.event_id,
+    rowVersion: event.row_version,
+    title: event.title,
+    startsAtUtc: event.starts_at_utc,
+    startsAtLabel: event.starts_at_label,
+    registrationStatus: event.registration_status,
+    capacity: event.capacity,
+    registeredCount: event.registered_count,
+    locationLabel: event.location_label,
+    note: event.note,
   }
 }
 
@@ -2177,8 +2193,29 @@ export function App() {
       return
     }
 
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with a staff or manager PIN before registering event attendees.",
+      })
+      return
+    }
+
     const waitlistIntent = event.registrationStatus === "waitlist"
     const attendeeLabel = cleanOfflineEventAttendeeLabel(eventAttendeeLabel)
+    const registrationResult = await localSyncClient.createEventRegistration(localSyncSessionToken, {
+      eventId: event.eventId,
+      attendeeLabel,
+      paymentStatus: eventPaymentStatus,
+    })
+
+    if (registrationResult.status !== "ok") {
+      setActivityMessage({
+        title: registrationResult.status === "unavailable" ? "LAN server unavailable" : "Event registration blocked",
+        detail: registrationResult.message,
+      })
+      return
+    }
 
     await stageOfflineOperation(
       buildEventRegistrationOperation(event, {
@@ -2191,6 +2228,7 @@ export function App() {
         ? `${attendeeLabel} waitlist request for ${event.title} is queued for ${activeProfile.companyName}; website capacity remains authoritative after sync acceptance.`
         : `${attendeeLabel} walk-in registration for ${event.title} is queued for ${activeProfile.companyName}; website capacity guard runs when the paired sync accepts the push.`,
     )
+    void refreshLocalSyncStatus()
 
     setPendingEventRegistrationIds((eventIds) => [
       event.eventId,
@@ -2198,30 +2236,9 @@ export function App() {
     ].slice(0, 8))
     setShowEventQueue(true)
     setActiveSection("Events")
+    const nextEvent = eventSnapshotFromLocalSync(registrationResult.event)
     setEventSnapshots((events) =>
-      events.map((item) => {
-        if (item.eventId !== event.eventId) {
-          return item
-        }
-
-        const nextRegisteredCount =
-          item.registrationStatus === "open"
-            ? Math.min(item.capacity, item.registeredCount + 1)
-            : item.registeredCount
-        const nextStatus =
-          item.registrationStatus === "open" && nextRegisteredCount >= item.capacity
-            ? "full"
-            : item.registrationStatus
-
-        return {
-          ...item,
-          registeredCount: nextRegisteredCount,
-          registrationStatus: nextStatus,
-          note: waitlistIntent
-            ? "Waitlist request queued locally; website capacity remains authoritative."
-            : "Offline walk-in registration queued locally; website capacity guard pending sync.",
-        }
-      }),
+      events.map((item) => (item.eventId === nextEvent.eventId ? nextEvent : item)),
     )
   }
 
@@ -2242,11 +2259,33 @@ export function App() {
       return
     }
 
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with a staff or manager PIN before checking in event attendees.",
+      })
+      return
+    }
+
     const attendeeLabel = cleanOfflineEventAttendeeLabel(eventAttendeeLabel, "Offline attendee")
     const registrationPublicId = cleanOfflineEventRegistrationPublicId(
       eventCheckinLookup,
       event.eventId,
     )
+    const checkinResult = await localSyncClient.createEventCheckin(localSyncSessionToken, {
+      eventId: event.eventId,
+      attendeeLabel,
+      registrationPublicId,
+      checkinMethod: "manual_lookup",
+    })
+
+    if (checkinResult.status !== "ok") {
+      setActivityMessage({
+        title: checkinResult.status === "unavailable" ? "LAN server unavailable" : "Event check-in blocked",
+        detail: checkinResult.message,
+      })
+      return
+    }
 
     await stageOfflineOperation(
       buildEventCheckinOperation(event, {
@@ -2257,6 +2296,7 @@ export function App() {
       "Event check-in staged",
       `${attendeeLabel} check-in (${registrationPublicId}) for ${event.title} is queued for ${activeProfile.companyName}; website registration matching remains authoritative after sync acceptance.`,
     )
+    void refreshLocalSyncStatus()
 
     setPendingEventCheckinIds((eventIds) => [
       event.eventId,
@@ -2264,15 +2304,9 @@ export function App() {
     ].slice(0, 8))
     setShowEventQueue(true)
     setActiveSection("Events")
+    const nextEvent = eventSnapshotFromLocalSync(checkinResult.event)
     setEventSnapshots((events) =>
-      events.map((item) =>
-        item.eventId === event.eventId
-          ? {
-              ...item,
-              note: "Offline attendee check-in queued locally; website registration match pending sync.",
-            }
-          : item,
-      ),
+      events.map((item) => (item.eventId === nextEvent.eventId ? nextEvent : item)),
     )
   }
 

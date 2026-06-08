@@ -25,12 +25,18 @@ for (const requiredExport of [
   "LocalSyncCreditAdjustmentResult",
   "LocalSyncCreditRedemptionResult",
   "LocalSyncSquareCreditHandoff",
+  "LocalSyncEventSnapshot",
+  "LocalSyncEventListResult",
+  "LocalSyncEventRegistrationResult",
+  "LocalSyncEventCheckinResult",
   "LocalSyncStatusResult",
   "createLocalSyncServerClient",
   "normalizeLocalSyncServerUrl",
   "updateUserAccess",
   "createCreditRedemption",
   "searchScryDexCards",
+  "createEventRegistration",
+  "createEventCheckin",
 ]) {
   assert.ok(clientSource.includes(requiredExport), `Missing local sync client export: ${requiredExport}`)
 }
@@ -49,6 +55,9 @@ for (const route of [
   "/customers",
   "/credit/adjustments",
   "/credit/redemptions",
+  "/events",
+  "/events/registrations",
+  "/events/check-ins",
   "/sync/status",
 ]) {
   assert.ok(clientSource.includes(route), `Missing local sync client route: ${route}`)
@@ -83,6 +92,12 @@ for (const marker of [
   "customer_public_id",
   "amount_minor_units",
   "sale_total_minor_units",
+  "wordpress_event_authority: true",
+  "event_count",
+  "event_id",
+  "attendee_label",
+  "registration_public_id",
+  "payment_status",
 ]) {
   assert.ok(clientSource.includes(marker), `Missing local sync client marker: ${marker}`)
 }

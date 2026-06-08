@@ -64,9 +64,17 @@ try {
   assert.equal(creditRedemption.status, "ok")
   assert.equal(creditRedemption.customer.credit.balance_minor_units, 1200)
 
+  const eventRegistration = firstStore.createEventRegistration(managerAuth.session.token, {
+    event_id: "event-100",
+    attendee_label: "Persistent Event Guest",
+    payment_status: "not_required",
+  })
+  assert.equal(eventRegistration.status, "ok")
+  assert.equal(eventRegistration.event.registered_count, 11)
+
   const firstStatus = firstStore.syncStatus()
   assert.equal(firstStatus.persistence_mode, "sqlite")
-  assert.equal(firstStatus.queue_depth, 6)
+  assert.equal(firstStatus.queue_depth, 7)
   firstStore.close()
 
   const restartedStore = createLocalSyncStore({ databasePath })
@@ -87,6 +95,11 @@ try {
   assert.equal(persistedCustomers.customers.length, 1)
   assert.equal(persistedCustomers.customers[0].credit.balance_minor_units, 1200)
 
+  const persistedEvents = restartedStore.listEvents()
+  const persistedEvent = persistedEvents.events.find((event) => event.event_id === "event-100")
+  assert.equal(persistedEvent.registered_count, 11)
+  assert.equal(persistedEvent.source, "queued")
+
   const duplicateReservation = restartedStore.reserveInventory(persistedCashierAuth.session.token, {
     inventory_public_id: "inv-1001",
     hold_reason: "duplicate after restart",
@@ -95,9 +108,10 @@ try {
   assert.equal(duplicateReservation.code, "inventory_unavailable")
 
   const restartedStatus = restartedStore.syncStatus()
-  assert.equal(restartedStatus.queue_depth, 6)
+  assert.equal(restartedStatus.queue_depth, 7)
   assert.ok(restartedStatus.customer_count >= 4)
   assert.ok(restartedStatus.credit_ledger_entry_count >= 5)
+  assert.ok(restartedStatus.event_count >= 2)
   assert.equal(restartedStatus.local_operations_preserved, true)
   restartedStore.close()
 
