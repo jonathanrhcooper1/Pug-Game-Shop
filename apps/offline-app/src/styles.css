@@ -1678,6 +1678,25 @@ h2 {
   outline-offset: 2px;
 }
 
+.credit-redemption-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 11px;
+  color: #172016;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(121, 215, 143, 0.16);
+  border: 1px solid rgba(121, 215, 143, 0.26);
+  border-radius: 8px;
+}
+
+.credit-redemption-control button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .credit-redemption-control strong {
   color: #249344;
   font-size: 18px;

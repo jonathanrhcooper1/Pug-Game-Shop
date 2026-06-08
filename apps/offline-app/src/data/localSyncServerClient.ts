@@ -107,12 +107,89 @@ export type LocalSyncKioskOrderResult = LocalSyncResult<{
   reservations: LocalSyncReservation[]
 }>
 
+export type LocalSyncCustomer = {
+  customer_public_id: string
+  customer_id: number | null
+  row_version: number
+  display_name: string
+  first_name: string
+  last_name: string
+  customer_lookup: string
+  email: string
+  status: "active"
+  credit: {
+    balance_minor_units: number
+    currency: "USD"
+  }
+  source: "cached" | "queued" | "accepted"
+}
+
+export type LocalSyncCreditLedgerEntry = {
+  entry_id: string
+  customer_public_id: string
+  entry_type: string
+  amount_minor_units: number
+  balance_after_minor_units: number
+  currency: "USD"
+  status: "cached" | "pending_sync"
+  reason: string
+  source: string
+  created_at_utc: string
+}
+
+export type LocalSyncCustomerSearchResult = LocalSyncResult<{
+  customers: LocalSyncCustomer[]
+  credit_ledger_entries: LocalSyncCreditLedgerEntry[]
+  local_cache_source: "local_sync_server"
+  wordpress_ledger_authority: true
+}>
+
+export type LocalSyncCreateCustomerResult = LocalSyncResult<{
+  customer: LocalSyncCustomer
+  wordpress_acceptance_required: true
+}>
+
+export type LocalSyncCreditAdjustmentResult = LocalSyncResult<{
+  customer: LocalSyncCustomer
+  ledger_entry: LocalSyncCreditLedgerEntry
+  manager_approved: true
+  wordpress_acceptance_required: true
+}>
+
+export type LocalSyncSquareCreditHandoff = {
+  action: "customer_credit_square_pos_handoff"
+  customer_public_id: string
+  customer_id: number | null
+  customer_name: string
+  sale_total_minor_units: number
+  credit_redeemed_minor_units: number
+  square_amount_due_minor_units: number
+  currency: "USD"
+  square_payment_method_label: "Pug Store Credit"
+  square_handoff_mode: "custom_payment_method"
+  square_instruction: string
+  pug_ledger_authority: true
+  square_credit_balance_authority: false
+  square_payment_capture_supported: false
+  sync_required_for_ledger_posting: true
+}
+
+export type LocalSyncCreditRedemptionResult = LocalSyncResult<{
+  customer: LocalSyncCustomer
+  ledger_entry: LocalSyncCreditLedgerEntry
+  square_handoff: LocalSyncSquareCreditHandoff
+  wordpress_acceptance_required: true
+  square_payment_capture_supported: false
+}>
+
 export type LocalSyncStatusResult = LocalSyncResult<{
   local_database: "store-sync.sqlite"
   persistence_mode: "sqlite_adapter_pending" | "sqlite"
   queue_depth: number
   kiosk_order_count: number
   inventory_count: number
+  customer_count: number
+  credit_ledger_entry_count: number
   active_session_count: number
   wordpress_push_connected: boolean
   local_operations_preserved: true
@@ -152,6 +229,24 @@ export type LocalSyncServerClient = {
   createKioskOrder: (
     input: { firstName: string; lastName: string; inventoryPublicIds: string[] },
   ) => Promise<LocalSyncKioskOrderResult>
+  searchCustomers: (query: string) => Promise<LocalSyncCustomerSearchResult>
+  createCustomer: (
+    sessionToken: string,
+    input: { firstName: string; lastName: string; email: string },
+  ) => Promise<LocalSyncCreateCustomerResult>
+  createCreditAdjustment: (
+    sessionToken: string,
+    input: { customerPublicId: string; amountMinorUnits: number; reason: string },
+  ) => Promise<LocalSyncCreditAdjustmentResult>
+  createCreditRedemption: (
+    sessionToken: string,
+    input: {
+      customerPublicId: string
+      amountMinorUnits: number
+      saleTotalMinorUnits: number
+      reason: string
+    },
+  ) => Promise<LocalSyncCreditRedemptionResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
 }
 
@@ -214,6 +309,41 @@ export function createLocalSyncServerClient(
           inventory_public_ids: input.inventoryPublicIds,
         },
       }) as Promise<LocalSyncKioskOrderResult>,
+    searchCustomers: (query) =>
+      requestLocalSync(fetcher, baseUrl, `/customers/search?q=${encodeURIComponent(query)}`) as Promise<
+        LocalSyncCustomerSearchResult
+      >,
+    createCustomer: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/customers", {
+        method: "POST",
+        sessionToken,
+        body: {
+          first_name: input.firstName,
+          last_name: input.lastName,
+          email: input.email,
+        },
+      }) as Promise<LocalSyncCreateCustomerResult>,
+    createCreditAdjustment: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/credit/adjustments", {
+        method: "POST",
+        sessionToken,
+        body: {
+          customer_public_id: input.customerPublicId,
+          amount_minor_units: input.amountMinorUnits,
+          reason: input.reason,
+        },
+      }) as Promise<LocalSyncCreditAdjustmentResult>,
+    createCreditRedemption: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/credit/redemptions", {
+        method: "POST",
+        sessionToken,
+        body: {
+          customer_public_id: input.customerPublicId,
+          amount_minor_units: input.amountMinorUnits,
+          sale_total_minor_units: input.saleTotalMinorUnits,
+          reason: input.reason,
+        },
+      }) as Promise<LocalSyncCreditRedemptionResult>,
     getSyncStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/sync/status") as Promise<LocalSyncStatusResult>,
   }

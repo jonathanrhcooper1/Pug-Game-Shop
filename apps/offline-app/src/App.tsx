@@ -79,6 +79,8 @@ import {
   type ConnectorManifestValidation,
   type ConnectorProfileDraft,
   type ConnectorProfileStorageRestoreResult,
+  type CustomerCreditLedgerEntry,
+  type CustomerCreditSnapshot,
   type DevicePairingRequestPlan,
   type EventPaymentStatus,
   type EventSnapshot,
@@ -104,6 +106,8 @@ import {
 import {
   createLocalSyncServerClient,
   type LocalSyncAuthResult,
+  type LocalSyncCreditLedgerEntry,
+  type LocalSyncCustomer,
   type LocalSyncStatusResult,
 } from "./data/localSyncServerClient"
 import {
@@ -436,6 +440,53 @@ function safeSummaryValue(value: unknown) {
   return "empty"
 }
 
+function customerCreditSnapshotFromLocalSyncCustomer(
+  customer: LocalSyncCustomer,
+  fallback: CustomerCreditSnapshot,
+): CustomerCreditSnapshot {
+  const customerId = customer.customer_id ?? fallback.customerId
+  const availableMinorUnits = Math.max(0, Math.trunc(customer.credit.balance_minor_units))
+
+  return {
+    customerId,
+    customerPublicId: customer.customer_public_id,
+    rowVersion: customer.row_version,
+    label: "Customer credit",
+    customerName: customer.display_name,
+    customerLookup: customer.customer_lookup || customer.email || fallback.customerLookup,
+    availableMinorUnits,
+    redemptionPreviewMinorUnits: Math.min(fallback.redemptionPreviewMinorUnits, availableMinorUnits),
+    currency: customer.credit.currency,
+    note:
+      customer.source === "queued"
+        ? "LAN server balance updated locally; website ledger posting is pending sync acceptance."
+        : "Cached website ledger balance from the LAN local sync server.",
+  }
+}
+
+function customerCreditLedgerEntryFromLocalSync(
+  entry: LocalSyncCreditLedgerEntry,
+  customerId: number,
+): CustomerCreditLedgerEntry {
+  return {
+    entryId: entry.entry_id,
+    customerId,
+    occurredAtLabel: new Intl.DateTimeFormat("en-US", {
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+    }).format(new Date(entry.created_at_utc)),
+    description: entry.reason || entry.entry_type,
+    amountMinorUnits: entry.amount_minor_units,
+    balanceAfterMinorUnits: entry.balance_after_minor_units,
+    currency: entry.currency,
+    status: entry.status,
+    sourceLabel: entry.status === "pending_sync" ? "LAN queue" : "Website cache",
+    operationId: entry.entry_id,
+  }
+}
+
 export function App() {
   const workspace = offlineWorkspaceSeed
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
@@ -476,7 +527,9 @@ export function App() {
   const [customerCreditDirectory, setCustomerCreditDirectory] = useState(
     workspace.customerCreditDirectory,
   )
-  const [customerCreditLedgerEntries] = useState(workspace.customerCreditLedgerEntries)
+  const [customerCreditLedgerEntries, setCustomerCreditLedgerEntries] = useState(
+    workspace.customerCreditLedgerEntries,
+  )
   const [eventSnapshots, setEventSnapshots] = useState(workspace.eventSnapshots)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
@@ -489,6 +542,11 @@ export function App() {
   const [creditRedemptionInput, setCreditRedemptionInput] = useState(() =>
     creditRedemptionInputFromMinorUnits(workspace.customerCredit.redemptionPreviewMinorUnits),
   )
+  const [newCustomerFirstName, setNewCustomerFirstName] = useState("")
+  const [newCustomerLastName, setNewCustomerLastName] = useState("")
+  const [newCustomerEmail, setNewCustomerEmail] = useState("")
+  const [creditAdjustmentInput, setCreditAdjustmentInput] = useState("0.00")
+  const [creditAdjustmentReason, setCreditAdjustmentReason] = useState("Manager-approved store credit")
   const [pendingEventRegistrationIds, setPendingEventRegistrationIds] = useState<string[]>([])
   const [pendingEventCheckinIds, setPendingEventCheckinIds] = useState<string[]>([])
   const [showCreditLedger, setShowCreditLedger] = useState(false)
@@ -743,6 +801,15 @@ export function App() {
           : creditRedemptionMinorUnits > displayedCreditMinorUnits
             ? "Amount exceeds the cached balance after local holds."
             : ""
+  const creditAdjustmentMinorUnits = creditRedemptionInputToMinorUnits(creditAdjustmentInput)
+  const creditAdjustmentIssue =
+    creditAdjustmentInput.trim() === ""
+      ? "Enter a credit amount before adding."
+      : creditAdjustmentMinorUnits === null
+        ? "Use a valid dollar amount with up to two decimals."
+        : creditAdjustmentMinorUnits <= 0
+          ? "Credit add must be greater than $0.00."
+          : ""
   const creditRedemptionAmountLabel = formatMoney(
     creditRedemptionMinorUnits ?? 0,
     customerCredit.currency,
@@ -2065,6 +2132,137 @@ export function App() {
       detail:
         `${customerCreditDisplayName(nextCustomerCredit)} cached balance is ready for offline review; ` +
         "website ledger remains authoritative after sync acceptance.",
+      })
+  }
+
+  async function handleCreateCustomer() {
+    const firstName = newCustomerFirstName.trim()
+    const lastName = newCustomerLastName.trim()
+    const email = newCustomerEmail.trim()
+
+    if (!firstName && !lastName && !email) {
+      setActivityMessage({
+        title: "Customer details needed",
+        detail: "Enter at least a customer name or email before creating the local customer.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with a staff or manager PIN before creating customers.",
+      })
+      return
+    }
+
+    const createResult = await localSyncClient.createCustomer(localSyncSessionToken, {
+      firstName,
+      lastName,
+      email,
+    })
+
+    if (createResult.status !== "ok") {
+      setActivityMessage({
+        title: createResult.status === "unavailable" ? "LAN server unavailable" : "Customer blocked",
+        detail:
+          createResult.status === "unavailable"
+            ? createResult.message
+            : `${createResult.message} Website customer creation remains pending until sync acceptance.`,
+      })
+      return
+    }
+
+    const localCustomerId =
+      createResult.customer.customer_id ??
+      customerCreditDirectory.reduce((maxId, credit) => Math.max(maxId, credit.customerId), 0) + 1
+    const nextCreditSnapshot = customerCreditSnapshotFromLocalSyncCustomer(createResult.customer, {
+      customerId: localCustomerId,
+      customerPublicId: createResult.customer.customer_public_id,
+      rowVersion: createResult.customer.row_version,
+      label: "Customer credit",
+      customerName: createResult.customer.display_name,
+      customerLookup: createResult.customer.customer_lookup,
+      availableMinorUnits: 0,
+      redemptionPreviewMinorUnits: 0,
+      currency: createResult.customer.credit.currency,
+      note: "Local customer created through the LAN server; website customer creation is pending sync acceptance.",
+    })
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+    setNewCustomerFirstName("")
+    setNewCustomerLastName("")
+    setNewCustomerEmail("")
+    setShowCreditLedger(true)
+    void refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "Customer queued",
+      detail:
+        `${nextCreditSnapshot.customerName ?? "Customer"} was created in ${localSyncClient.serverUrl}; ` +
+        "WordPress assigns the final customer record after sync acceptance.",
+    })
+  }
+
+  async function handleCreditAdjustment() {
+    if (creditAdjustmentIssue || creditAdjustmentMinorUnits === null) {
+      setActivityMessage({
+        title: "Credit add blocked",
+        detail: creditAdjustmentIssue || "Enter a valid customer credit amount.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "Manager PIN required",
+        detail: "Sign in with a manager PIN before adding store credit.",
+      })
+      return
+    }
+
+    const adjustmentResult = await localSyncClient.createCreditAdjustment(localSyncSessionToken, {
+      customerPublicId: customerCredit.customerPublicId ?? String(customerCredit.customerId),
+      amountMinorUnits: creditAdjustmentMinorUnits,
+      reason: creditAdjustmentReason.trim() || "Manager-approved store credit",
+    })
+
+    if (adjustmentResult.status !== "ok") {
+      setActivityMessage({
+        title: adjustmentResult.status === "unavailable" ? "LAN server unavailable" : "Credit add blocked",
+        detail:
+          adjustmentResult.status === "unavailable"
+            ? adjustmentResult.message
+            : `${adjustmentResult.message} Manager approval and website ledger acceptance are required.`,
+      })
+      return
+    }
+
+    const nextCreditSnapshot = customerCreditSnapshotFromLocalSyncCustomer(
+      adjustmentResult.customer,
+      customerCredit,
+    )
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setCustomerCreditLedgerEntries((entries) => [
+      customerCreditLedgerEntryFromLocalSync(
+        adjustmentResult.ledger_entry,
+        nextCreditSnapshot.customerId,
+      ),
+      ...entries.filter((entry) => entry.entryId !== adjustmentResult.ledger_entry.entry_id),
+    ])
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+    setCreditAdjustmentInput("0.00")
+    setCreditRedemptionInput(
+      creditRedemptionInputFromMinorUnits(nextCreditSnapshot.redemptionPreviewMinorUnits),
+    )
+    setShowCreditLedger(true)
+    void refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "Credit add queued",
+      detail:
+        `${formatMoney(creditAdjustmentMinorUnits, nextCreditSnapshot.currency)} added locally by manager approval; ` +
+        "WordPress posts the final ledger entry after sync acceptance.",
     })
   }
 
@@ -2079,22 +2277,66 @@ export function App() {
     }
 
     const amount = formatMoney(creditRedemptionMinorUnits, customerCredit.currency)
+    const creditPreviewOperation = buildCustomerCreditRedemptionOperation(customerCredit, {
+      amountMinorUnits: creditRedemptionMinorUnits,
+      reason: `offline customer credit redemption ${amount}`,
+    })
 
-    await stageOfflineOperation(
-      buildCustomerCreditRedemptionOperation(customerCredit, {
-        amountMinorUnits: creditRedemptionMinorUnits,
-        reason: `offline customer credit redemption ${amount}`,
-      }),
-      "Credit redemption staged",
-      `${amount} customer credit redemption prepared for ${activeCustomerName}; ledger replay remains deferred until website sync acceptance.`,
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with a staff or manager PIN before using customer credit.",
+      })
+      return
+    }
+
+    const redemptionResult = await localSyncClient.createCreditRedemption(localSyncSessionToken, {
+      customerPublicId: customerCredit.customerPublicId ?? String(customerCredit.customerId),
+      amountMinorUnits: creditRedemptionMinorUnits,
+      saleTotalMinorUnits: squareCreditHandoffPlan.saleTotalMinorUnits,
+      reason: `offline customer credit redemption ${amount}`,
+    })
+
+    if (redemptionResult.status !== "ok") {
+      setActivityMessage({
+        title: redemptionResult.status === "unavailable" ? "LAN server unavailable" : "Credit use blocked",
+        detail:
+          redemptionResult.status === "unavailable"
+            ? redemptionResult.message
+            : `${redemptionResult.message} WordPress remains the final ledger authority.`,
+      })
+      return
+    }
+
+    const nextCreditSnapshot = customerCreditSnapshotFromLocalSyncCustomer(
+      redemptionResult.customer,
+      customerCredit,
+    )
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setCustomerCreditLedgerEntries((entries) => [
+      customerCreditLedgerEntryFromLocalSync(
+        redemptionResult.ledger_entry,
+        nextCreditSnapshot.customerId,
+      ),
+      ...entries.filter((entry) => entry.entryId !== redemptionResult.ledger_entry.entry_id),
+    ])
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+    setCreditRedemptionInput(
+      creditRedemptionInputFromMinorUnits(nextCreditSnapshot.redemptionPreviewMinorUnits),
     )
     setPendingCreditByCustomer((holds) => ({
       ...holds,
-      [customerCredit.customerId]: Math.min(
-        customerCredit.availableMinorUnits,
-        (holds[customerCredit.customerId] ?? 0) + creditRedemptionMinorUnits,
-      ),
+      [customerCredit.customerId]: 0,
     }))
+    void refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "LAN credit use queued",
+      detail:
+        `${amount} customer credit locked by ${localSyncClient.serverUrl}; ` +
+        `${redemptionResult.square_handoff.square_instruction} ` +
+        `Trace ${creditPreviewOperation.client_operation_id}; WordPress posts the final ledger entry after sync acceptance.`,
+    })
     setShowCreditLedger(true)
   }
 
@@ -4842,6 +5084,44 @@ export function App() {
                   <small>{activeCustomerName}; holds are local until accepted sync.</small>
                 </div>
               </div>
+              <div className="credit-redemption-control" aria-label="Create local customer">
+                <label htmlFor="new-customer-first-name">
+                  <span className="micro-label">New customer</span>
+                  <input
+                    id="new-customer-first-name"
+                    value={newCustomerFirstName}
+                    onChange={(event) => setNewCustomerFirstName(event.target.value)}
+                    placeholder="First name"
+                  />
+                </label>
+                <label htmlFor="new-customer-last-name">
+                  <span className="micro-label">Last name</span>
+                  <input
+                    id="new-customer-last-name"
+                    value={newCustomerLastName}
+                    onChange={(event) => setNewCustomerLastName(event.target.value)}
+                    placeholder="Last name"
+                  />
+                </label>
+                <label htmlFor="new-customer-email">
+                  <span className="micro-label">Email</span>
+                  <input
+                    id="new-customer-email"
+                    inputMode="email"
+                    value={newCustomerEmail}
+                    onChange={(event) => setNewCustomerEmail(event.target.value)}
+                    placeholder="name@example.com"
+                  />
+                </label>
+                <div>
+                  <span className="micro-label">LAN customer queue</span>
+                  <strong>Website acceptance pending</strong>
+                  <button type="button" onClick={() => void handleCreateCustomer()}>
+                    <Icon name="plus" />
+                    <span>Create Customer</span>
+                  </button>
+                </div>
+              </div>
               <div className="credit-redemption-control" aria-label="Customer credit redemption amount">
                 <label htmlFor="credit-redemption-amount">
                   <span className="micro-label">Redemption amount</span>
@@ -4867,6 +5147,47 @@ export function App() {
                     Available after local holds: {formatMoney(displayedCreditMinorUnits, customerCredit.currency)}
                   </small>
                   {creditRedemptionIssue ? <small>{creditRedemptionIssue}</small> : null}
+                </div>
+              </div>
+              <div className="credit-redemption-control" aria-label="Manager customer credit add">
+                <label htmlFor="credit-adjustment-amount">
+                  <span className="micro-label">Manager credit add</span>
+                  <input
+                    id="credit-adjustment-amount"
+                    inputMode="decimal"
+                    value={creditAdjustmentInput}
+                    onBlur={() => {
+                      const parsed = creditRedemptionInputToMinorUnits(creditAdjustmentInput)
+
+                      if (parsed !== null) {
+                        setCreditAdjustmentInput(creditRedemptionInputFromMinorUnits(parsed))
+                      }
+                    }}
+                    onChange={(event) => setCreditAdjustmentInput(event.target.value)}
+                    placeholder="0.00"
+                  />
+                </label>
+                <label htmlFor="credit-adjustment-reason">
+                  <span className="micro-label">Reason</span>
+                  <input
+                    id="credit-adjustment-reason"
+                    value={creditAdjustmentReason}
+                    onChange={(event) => setCreditAdjustmentReason(event.target.value)}
+                    placeholder="Manager-approved store credit"
+                  />
+                </label>
+                <div>
+                  <span className="micro-label">Approval</span>
+                  <strong>{managerControlsUnlocked ? "Manager unlocked" : "Manager PIN required"}</strong>
+                  {creditAdjustmentIssue ? <small>{creditAdjustmentIssue}</small> : null}
+                  <button
+                    type="button"
+                    disabled={!managerControlsUnlocked}
+                    onClick={() => void handleCreditAdjustment()}
+                  >
+                    <Icon name="check" />
+                    <span>Add Credit</span>
+                  </button>
                 </div>
               </div>
               <div className="square-credit-handoff" aria-label="Square POS credit handoff">

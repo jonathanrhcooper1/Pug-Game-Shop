@@ -32,6 +32,8 @@ export function createLocalSyncStore(options = {}) {
   const inventoryItems = loadInventoryItems(database)
   const queue = loadQueue(database)
   const kioskOrders = loadKioskOrders(database)
+  const customers = loadCustomers(database)
+  const creditLedgerEntries = loadCreditLedgerEntries(database)
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -96,6 +98,20 @@ export function createLocalSyncStore(options = {}) {
 
     if (sessionResult.user.role !== "manager") {
       return blocked("manager_required", "A manager PIN session is required.")
+    }
+
+    return sessionResult
+  }
+
+  function requireWorkspaceAccess(token, workspace) {
+    const sessionResult = requireSession(token)
+
+    if (sessionResult.status !== "ok") {
+      return sessionResult
+    }
+
+    if (sessionResult.user.role !== "manager" && !sessionResult.user.access.includes(workspace)) {
+      return blocked("workspace_access_required", `This PIN cannot access ${workspace}.`)
     }
 
     return sessionResult
@@ -291,6 +307,209 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function searchCustomers({ query = "" } = {}) {
+    const needle = String(query).trim().toLowerCase()
+    const matches = customers.filter((customer) => {
+      if (!needle) {
+        return true
+      }
+
+      return [
+        customer.customer_public_id,
+        customer.display_name,
+        customer.first_name,
+        customer.last_name,
+        customer.lookup,
+        customer.email,
+      ].some((value) => String(value ?? "").toLowerCase().includes(needle))
+    })
+
+    return {
+      status: "ok",
+      customers: matches.map(publicCustomer),
+      credit_ledger_entries: creditLedgerEntries.map(publicCreditLedgerEntry),
+      local_cache_source: "local_sync_server",
+      wordpress_ledger_authority: true,
+    }
+  }
+
+  function createCustomer(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Customers")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const firstName = cleanName(input.first_name)
+    const lastName = cleanName(input.last_name)
+    const displayName = cleanName(input.display_name) || cleanName(`${firstName} ${lastName}`)
+    const email = cleanEmail(input.email)
+    const lookup = email || cleanName(input.customer_lookup)
+
+    if (!displayName || (!firstName && !lastName && !email)) {
+      return blocked("invalid_customer", "Customer name or email is required.")
+    }
+
+    if (email && customers.some((customer) => customer.email.toLowerCase() === email.toLowerCase())) {
+      return blocked("duplicate_customer", "A cached customer already uses that email address.")
+    }
+
+    const customer = {
+      customer_public_id: `local-customer-${randomUUID()}`,
+      wordpress_customer_id: null,
+      row_version: 1,
+      display_name: displayName,
+      first_name: firstName,
+      last_name: lastName,
+      lookup,
+      email,
+      status: "active",
+      credit_balance_minor_units: 0,
+      credit_currency: "USD",
+      source: "queued",
+    }
+
+    customers.push(customer)
+    saveCustomer(database, customer, now)
+    appendQueueOperation(database, queue, "customer_upsert", customer.customer_public_id, {
+      customer: publicCustomer(customer),
+      actor_id: session.user.id,
+      sync_intent: "offline_customer_create",
+    }, now)
+
+    return {
+      status: "ok",
+      customer: publicCustomer(customer),
+      wordpress_acceptance_required: true,
+    }
+  }
+
+  function createCreditAdjustment(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const customer = findCustomer(customers, input)
+
+    if (!customer) {
+      return blocked("customer_not_found", "No cached customer matched that customer ID.")
+    }
+
+    const amountMinorUnits = minorUnits(input.amount_minor_units)
+    const reason = cleanReason(input.reason ?? "manager credit adjustment")
+
+    if (amountMinorUnits === 0) {
+      return blocked("invalid_credit_amount", "Credit adjustment amount must be non-zero.")
+    }
+
+    const balanceAfterMinorUnits = customer.credit_balance_minor_units + amountMinorUnits
+
+    if (balanceAfterMinorUnits < 0) {
+      return blocked("insufficient_credit", "Customer credit balance cannot go negative.")
+    }
+
+    customer.credit_balance_minor_units = balanceAfterMinorUnits
+    customer.row_version += 1
+    customer.source = "queued"
+    saveCustomer(database, customer, now)
+
+    const ledgerEntry = buildCreditLedgerEntry({
+      customer,
+      entryType: amountMinorUnits > 0 ? "manual_credit_add" : "manual_credit_correction",
+      amountMinorUnits,
+      balanceAfterMinorUnits,
+      reason,
+      source: "manager_adjustment",
+      now,
+    })
+    creditLedgerEntries.push(ledgerEntry)
+    saveCreditLedgerEntry(database, ledgerEntry)
+    appendQueueOperation(database, queue, "credit_adjustment", ledgerEntry.entry_id, {
+      customer: publicCustomer(customer),
+      ledger_entry: publicCreditLedgerEntry(ledgerEntry),
+      manager_user_id: manager.user.id,
+      sync_intent: "offline_credit_adjustment",
+    }, now)
+
+    return {
+      status: "ok",
+      customer: publicCustomer(customer),
+      ledger_entry: publicCreditLedgerEntry(ledgerEntry),
+      manager_approved: true,
+      wordpress_acceptance_required: true,
+    }
+  }
+
+  function createCreditRedemption(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Customers")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const customer = findCustomer(customers, input)
+
+    if (!customer) {
+      return blocked("customer_not_found", "No cached customer matched that customer ID.")
+    }
+
+    const amountMinorUnits = minorUnits(input.amount_minor_units)
+    const saleTotalMinorUnits = Math.max(0, minorUnits(input.sale_total_minor_units ?? amountMinorUnits))
+    const reason = cleanReason(input.reason ?? "store credit redemption")
+
+    if (amountMinorUnits <= 0) {
+      return blocked("invalid_credit_amount", "Credit redemption amount must be greater than zero.")
+    }
+
+    if (saleTotalMinorUnits > 0 && amountMinorUnits > saleTotalMinorUnits) {
+      return blocked("credit_exceeds_sale_total", "Credit redemption cannot exceed the Square sale total.")
+    }
+
+    if (amountMinorUnits > customer.credit_balance_minor_units) {
+      return blocked("insufficient_credit", "Customer does not have enough cached credit for this redemption.", {
+        customer: publicCustomer(customer),
+      })
+    }
+
+    const balanceAfterMinorUnits = customer.credit_balance_minor_units - amountMinorUnits
+    customer.credit_balance_minor_units = balanceAfterMinorUnits
+    customer.row_version += 1
+    customer.source = "queued"
+    saveCustomer(database, customer, now)
+
+    const ledgerEntry = buildCreditLedgerEntry({
+      customer,
+      entryType: "purchase_redemption",
+      amountMinorUnits: -amountMinorUnits,
+      balanceAfterMinorUnits,
+      reason,
+      source: "employee_redemption",
+      now,
+    })
+    const squareHandoff = buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits)
+
+    creditLedgerEntries.push(ledgerEntry)
+    saveCreditLedgerEntry(database, ledgerEntry)
+    appendQueueOperation(database, queue, "credit_redemption", ledgerEntry.entry_id, {
+      customer: publicCustomer(customer),
+      ledger_entry: publicCreditLedgerEntry(ledgerEntry),
+      square_handoff: squareHandoff,
+      actor_id: session.user.id,
+      sync_intent: "offline_credit_redemption",
+    }, now)
+
+    return {
+      status: "ok",
+      customer: publicCustomer(customer),
+      ledger_entry: publicCreditLedgerEntry(ledgerEntry),
+      square_handoff: squareHandoff,
+      wordpress_acceptance_required: true,
+      square_payment_capture_supported: false,
+    }
+  }
+
   function reserveInventoryItem({ source, publicId, holdReason, actorId }) {
     const item = inventoryItems.find((candidate) => candidate.public_id === publicId)
 
@@ -337,6 +556,8 @@ export function createLocalSyncStore(options = {}) {
       queue_depth: queue.length,
       kiosk_order_count: kioskOrders.length,
       inventory_count: inventoryItems.length,
+      customer_count: customers.length,
+      credit_ledger_entry_count: creditLedgerEntries.length,
       active_session_count: sessions.size,
       wordpress_push_connected: false,
       local_operations_preserved: true,
@@ -346,10 +567,14 @@ export function createLocalSyncStore(options = {}) {
   return {
     addUser,
     close: () => database.close(),
+    createCreditAdjustment,
+    createCreditRedemption,
+    createCustomer,
     createKioskOrder,
     createSession,
     listAccessPolicy,
     reserveInventory,
+    searchCustomers,
     searchInventory,
     syncStatus,
     updateUserAccess,
@@ -417,12 +642,43 @@ function migrateLocalSyncDatabase(database) {
       reservation_ids_json TEXT NOT NULL,
       created_at_utc TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS customers (
+      customer_public_id TEXT PRIMARY KEY,
+      wordpress_customer_id INTEGER NULL,
+      row_version INTEGER NOT NULL,
+      display_name TEXT NOT NULL,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      lookup TEXT NOT NULL,
+      email TEXT NOT NULL,
+      status TEXT NOT NULL,
+      credit_balance_minor_units INTEGER NOT NULL,
+      credit_currency TEXT NOT NULL,
+      source TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS credit_ledger_entries (
+      entry_id TEXT PRIMARY KEY,
+      customer_public_id TEXT NOT NULL,
+      entry_type TEXT NOT NULL,
+      amount_minor_units INTEGER NOT NULL,
+      balance_after_minor_units INTEGER NOT NULL,
+      currency TEXT NOT NULL,
+      status TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      source TEXT NOT NULL,
+      created_at_utc TEXT NOT NULL,
+      FOREIGN KEY (customer_public_id) REFERENCES customers(customer_public_id)
+    );
   `)
 }
 
 function seedLocalSyncDatabase(database, now) {
   const userCount = database.prepare("SELECT COUNT(*) AS count FROM users").get().count
   const inventoryCount = database.prepare("SELECT COUNT(*) AS count FROM inventory_items").get().count
+  const customerCount = database.prepare("SELECT COUNT(*) AS count FROM customers").get().count
 
   if (Number(userCount) === 0) {
     for (const user of seedUsers()) {
@@ -433,6 +689,16 @@ function seedLocalSyncDatabase(database, now) {
   if (Number(inventoryCount) === 0) {
     for (const item of seedInventoryItems()) {
       saveInventoryItem(database, item, now)
+    }
+  }
+
+  if (Number(customerCount) === 0) {
+    for (const customer of seedCustomers()) {
+      saveCustomer(database, customer, now)
+    }
+
+    for (const ledgerEntry of seedCreditLedgerEntries()) {
+      saveCreditLedgerEntry(database, ledgerEntry)
     }
   }
 }
@@ -507,6 +773,58 @@ function loadKioskOrders(database) {
       last_name: row.last_name,
       status: row.status,
       reservation_ids: parseJson(row.reservation_ids_json, []),
+      created_at_utc: row.created_at_utc,
+    }))
+}
+
+function loadCustomers(database) {
+  return database
+    .prepare(`
+      SELECT customer_public_id, wordpress_customer_id, row_version, display_name,
+        first_name, last_name, lookup, email, status, credit_balance_minor_units,
+        credit_currency, source
+      FROM customers
+      ORDER BY display_name, customer_public_id
+    `)
+    .all()
+    .map((row) => ({
+      customer_public_id: row.customer_public_id,
+      wordpress_customer_id:
+        row.wordpress_customer_id === null || row.wordpress_customer_id === undefined
+          ? null
+          : Number(row.wordpress_customer_id),
+      row_version: Number(row.row_version),
+      display_name: row.display_name,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      lookup: row.lookup,
+      email: row.email,
+      status: row.status,
+      credit_balance_minor_units: Number(row.credit_balance_minor_units),
+      credit_currency: row.credit_currency,
+      source: row.source,
+    }))
+}
+
+function loadCreditLedgerEntries(database) {
+  return database
+    .prepare(`
+      SELECT entry_id, customer_public_id, entry_type, amount_minor_units,
+        balance_after_minor_units, currency, status, reason, source, created_at_utc
+      FROM credit_ledger_entries
+      ORDER BY created_at_utc DESC, entry_id
+    `)
+    .all()
+    .map((row) => ({
+      entry_id: row.entry_id,
+      customer_public_id: row.customer_public_id,
+      entry_type: row.entry_type,
+      amount_minor_units: Number(row.amount_minor_units),
+      balance_after_minor_units: Number(row.balance_after_minor_units),
+      currency: row.currency,
+      status: row.status,
+      reason: row.reason,
+      source: row.source,
       created_at_utc: row.created_at_utc,
     }))
 }
@@ -590,6 +908,73 @@ function saveKioskOrder(database, order) {
       order.status,
       JSON.stringify(order.reservation_ids),
       order.created_at_utc,
+    )
+}
+
+function saveCustomer(database, customer, now) {
+  database
+    .prepare(`
+      INSERT INTO customers (
+        customer_public_id, wordpress_customer_id, row_version, display_name,
+        first_name, last_name, lookup, email, status, credit_balance_minor_units,
+        credit_currency, source, updated_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(customer_public_id) DO UPDATE SET
+        wordpress_customer_id = excluded.wordpress_customer_id,
+        row_version = excluded.row_version,
+        display_name = excluded.display_name,
+        first_name = excluded.first_name,
+        last_name = excluded.last_name,
+        lookup = excluded.lookup,
+        email = excluded.email,
+        status = excluded.status,
+        credit_balance_minor_units = excluded.credit_balance_minor_units,
+        credit_currency = excluded.credit_currency,
+        source = excluded.source,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run(
+      customer.customer_public_id,
+      customer.wordpress_customer_id,
+      customer.row_version,
+      customer.display_name,
+      customer.first_name,
+      customer.last_name,
+      customer.lookup,
+      customer.email,
+      customer.status,
+      customer.credit_balance_minor_units,
+      customer.credit_currency,
+      customer.source,
+      now().toISOString(),
+    )
+}
+
+function saveCreditLedgerEntry(database, entry) {
+  database
+    .prepare(`
+      INSERT INTO credit_ledger_entries (
+        entry_id, customer_public_id, entry_type, amount_minor_units,
+        balance_after_minor_units, currency, status, reason, source, created_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(entry_id) DO UPDATE SET
+        status = excluded.status,
+        reason = excluded.reason,
+        source = excluded.source
+    `)
+    .run(
+      entry.entry_id,
+      entry.customer_public_id,
+      entry.entry_type,
+      entry.amount_minor_units,
+      entry.balance_after_minor_units,
+      entry.currency,
+      entry.status,
+      entry.reason,
+      entry.source,
+      entry.created_at_utc,
     )
 }
 
@@ -677,6 +1062,94 @@ function seedInventoryItems() {
   ]
 }
 
+function seedCustomers() {
+  return [
+    {
+      customer_public_id: "customer-91",
+      wordpress_customer_id: 91,
+      row_version: 6,
+      display_name: "Morgan Lee",
+      first_name: "Morgan",
+      last_name: "Lee",
+      lookup: "morgan@example.test",
+      email: "morgan@example.test",
+      status: "active",
+      credit_balance_minor_units: 24600,
+      credit_currency: "USD",
+      source: "cached",
+    },
+    {
+      customer_public_id: "customer-104",
+      wordpress_customer_id: 104,
+      row_version: 3,
+      display_name: "Avery Chen",
+      first_name: "Avery",
+      last_name: "Chen",
+      lookup: "avery@example.test",
+      email: "avery@example.test",
+      status: "active",
+      credit_balance_minor_units: 7250,
+      credit_currency: "USD",
+      source: "cached",
+    },
+    {
+      customer_public_id: "customer-117",
+      wordpress_customer_id: 117,
+      row_version: 2,
+      display_name: "Riley Patel",
+      first_name: "Riley",
+      last_name: "Patel",
+      lookup: "riley@example.test",
+      email: "riley@example.test",
+      status: "active",
+      credit_balance_minor_units: 0,
+      credit_currency: "USD",
+      source: "cached",
+    },
+  ]
+}
+
+function seedCreditLedgerEntries() {
+  return [
+    {
+      entry_id: "ledger-91-buylist-001",
+      customer_public_id: "customer-91",
+      entry_type: "buylist_credit",
+      amount_minor_units: 5000,
+      balance_after_minor_units: 24600,
+      currency: "USD",
+      status: "cached",
+      reason: "Buylist payout approved",
+      source: "website_cache",
+      created_at_utc: "2026-06-07T20:18:00.000Z",
+    },
+    {
+      entry_id: "ledger-91-purchase-002",
+      customer_public_id: "customer-91",
+      entry_type: "purchase_redemption",
+      amount_minor_units: -1800,
+      balance_after_minor_units: 19600,
+      currency: "USD",
+      status: "cached",
+      reason: "Singles purchase redemption",
+      source: "website_cache",
+      created_at_utc: "2026-06-06T18:42:00.000Z",
+    },
+    {
+      entry_id: "ledger-104-league-001",
+      customer_public_id: "customer-104",
+      entry_type: "league_prize_credit",
+      amount_minor_units: 7250,
+      balance_after_minor_units: 7250,
+      currency: "USD",
+      status: "cached",
+      reason: "League prize credit",
+      source: "website_cache",
+      created_at_utc: "2026-06-05T23:05:00.000Z",
+    },
+  ]
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -703,6 +1176,86 @@ function publicInventoryItem(item) {
   }
 }
 
+function publicCustomer(customer) {
+  return {
+    customer_public_id: customer.customer_public_id,
+    customer_id: customer.wordpress_customer_id,
+    row_version: customer.row_version,
+    display_name: customer.display_name,
+    first_name: customer.first_name,
+    last_name: customer.last_name,
+    customer_lookup: customer.lookup,
+    email: customer.email,
+    status: customer.status,
+    credit: {
+      balance_minor_units: customer.credit_balance_minor_units,
+      currency: customer.credit_currency,
+    },
+    source: customer.source,
+  }
+}
+
+function publicCreditLedgerEntry(entry) {
+  return {
+    entry_id: entry.entry_id,
+    customer_public_id: entry.customer_public_id,
+    entry_type: entry.entry_type,
+    amount_minor_units: entry.amount_minor_units,
+    balance_after_minor_units: entry.balance_after_minor_units,
+    currency: entry.currency,
+    status: entry.status,
+    reason: entry.reason,
+    source: entry.source,
+    created_at_utc: entry.created_at_utc,
+  }
+}
+
+function buildCreditLedgerEntry({
+  customer,
+  entryType,
+  amountMinorUnits,
+  balanceAfterMinorUnits,
+  reason,
+  source,
+  now,
+}) {
+  return {
+    entry_id: `credit-${randomUUID()}`,
+    customer_public_id: customer.customer_public_id,
+    entry_type: entryType,
+    amount_minor_units: amountMinorUnits,
+    balance_after_minor_units: balanceAfterMinorUnits,
+    currency: customer.credit_currency,
+    status: "pending_sync",
+    reason,
+    source,
+    created_at_utc: now().toISOString(),
+  }
+}
+
+function buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits) {
+  return {
+    action: "customer_credit_square_pos_handoff",
+    customer_public_id: customer.customer_public_id,
+    customer_id: customer.wordpress_customer_id,
+    customer_name: customer.display_name,
+    sale_total_minor_units: saleTotalMinorUnits,
+    credit_redeemed_minor_units: amountMinorUnits,
+    square_amount_due_minor_units: Math.max(0, saleTotalMinorUnits - amountMinorUnits),
+    currency: customer.credit_currency,
+    square_payment_method_label: "Pug Store Credit",
+    square_handoff_mode: "custom_payment_method",
+    square_instruction:
+      `Record ${formatMoney(amountMinorUnits, customer.credit_currency)} as Pug Store Credit in Square POS, ` +
+      `then collect ${formatMoney(Math.max(0, saleTotalMinorUnits - amountMinorUnits), customer.credit_currency)} ` +
+      "with the customer's remaining tender.",
+    pug_ledger_authority: true,
+    square_credit_balance_authority: false,
+    square_payment_capture_supported: false,
+    sync_required_for_ledger_posting: true,
+  }
+}
+
 function queueOperation(type, entityId, payload, now) {
   return {
     operation_id: `op-${randomUUID()}`,
@@ -722,6 +1275,24 @@ function hashPin(pin, salt) {
   return createHash("sha256").update(`${salt}:${pin}`).digest("hex")
 }
 
+function findCustomer(customers, input = {}) {
+  const rawCustomerId = String(
+    input.customer_public_id ?? input.customer_id ?? input.entity_id ?? input.wordpress_customer_id ?? "",
+  ).trim()
+
+  if (!rawCustomerId) {
+    return null
+  }
+
+  return (
+    customers.find(
+      (customer) =>
+        customer.customer_public_id === rawCustomerId ||
+        String(customer.wordpress_customer_id ?? "") === rawCustomerId,
+    ) ?? null
+  )
+}
+
 function cleanAccess(access) {
   if (!Array.isArray(access)) {
     return []
@@ -734,12 +1305,31 @@ function cleanName(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 80)
 }
 
+function cleanEmail(value) {
+  const email = String(value ?? "").trim().toLowerCase().slice(0, 120)
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ""
+}
+
 function cleanRole(value) {
   return value === "manager" ? "manager" : "staff"
 }
 
 function cleanReason(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 160) || "local reservation"
+}
+
+function minorUnits(value) {
+  const parsed = Number(value)
+
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : 0
+}
+
+function formatMoney(minorUnitsValue, currency) {
+  return new Intl.NumberFormat("en-US", {
+    currency,
+    style: "currency",
+  }).format(Math.max(0, Math.trunc(minorUnitsValue)) / 100)
 }
 
 function parseJson(value, fallback) {

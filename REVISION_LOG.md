@@ -3,6 +3,86 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Customer Credit Runtime
+
+### What Changed
+
+- Added durable local sync server customer and credit-ledger SQLite tables.
+- Added LAN server routes for customer search, local customer creation,
+  manager-approved credit adjustment, and customer credit redemption.
+- Enforced manager-only credit adjustment and staff/manager Customers workspace
+  access for customer creation and credit redemption.
+- Added Square POS handoff metadata to credit redemption responses while
+  keeping Square payment capture unsupported in the local server.
+- Wired the offline app Customer workspace to call the LAN customer-credit
+  routes for customer creation, manager credit add, and credit use.
+- Added visible Customer workspace controls for local customer creation,
+  manager credit add, and pending LAN ledger entries.
+
+### Why
+
+The local employee app needs usable customer and credit workflows while the
+store is offline, but WordPress must remain the final ledger authority. This
+revision lets the LAN middleman lock local customer-credit changes, show staff
+the Square handoff, and queue operations for later WordPress acceptance.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local development SQLite schema creation for `customers` and
+  `credit_ledger_entries`.
+- No WordPress/MySQL production migration was added.
+
+### Tests Added
+
+- Local sync server runtime coverage for customer search, customer creation,
+  staff-blocked credit adjustment, manager-approved credit add, credit
+  redemption, Square handoff metadata, and overspend blocking.
+- Local sync server persistence coverage for customer creation, credit add,
+  redemption, restart balance persistence, and credit ledger counts.
+- Offline app contract coverage for customer public IDs, LAN customer-credit
+  client routes, and Customer workspace controls.
+
+### Verification
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- Browser smoke: manager PIN login, local customer creation, manager credit
+  add, LAN ledger row display, credit redemption, balance reduction, redemption
+  ledger row display, LAN queue-depth increase, and zero new browser console
+  errors after reload.
+
+### Rollback Notes
+
+- Revert this revision to remove the LAN customer-credit runtime and return
+  the offline app Customer page to local preview-only behavior.
+- If reverting after staff used the LAN server in-store, preserve
+  `store-sync.sqlite` first so pending customer/credit operations are not lost.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because this revision only affects the local
+  LAN server and offline app runtime.
+
 ## 2026-06-08 - Local Sync Server SQLite Persistence
 
 ### What Changed

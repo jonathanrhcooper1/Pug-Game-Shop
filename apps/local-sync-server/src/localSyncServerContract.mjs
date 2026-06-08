@@ -10,6 +10,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/inventory/intake", purpose: "Employee inventory intake queue" },
   { method: "POST", path: "/inventory/reservations", purpose: "Local reservation lock request" },
   { method: "POST", path: "/kiosk/orders", purpose: "Customer pickup order from kiosk clients" },
+  { method: "GET", path: "/customers/search", purpose: "Shared local customer and credit cache search" },
   { method: "POST", path: "/customers", purpose: "Employee customer creation queue" },
   { method: "POST", path: "/credit/adjustments", purpose: "Manager-approved store credit add/correction" },
   { method: "POST", path: "/credit/redemptions", purpose: "Store credit use queue for Square POS handoff" },

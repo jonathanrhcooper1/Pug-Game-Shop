@@ -95,6 +95,7 @@ export type ConflictItem = {
 
 export type CustomerCreditSnapshot = {
   customerId: number
+  customerPublicId?: string
   rowVersion: number
   label: string
   customerName?: string
@@ -1006,6 +1007,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   ],
   customerCredit: {
     customerId: 91,
+    customerPublicId: "customer-91",
     rowVersion: 6,
     label: "Customer credit",
     customerName: "Morgan Lee",
@@ -1018,6 +1020,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   customerCreditDirectory: [
     {
       customerId: 91,
+      customerPublicId: "customer-91",
       rowVersion: 6,
       label: "Customer credit",
       customerName: "Morgan Lee",
@@ -1029,6 +1032,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     },
     {
       customerId: 104,
+      customerPublicId: "customer-104",
       rowVersion: 3,
       label: "Customer credit",
       customerName: "Avery Chen",
@@ -1040,6 +1044,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     },
     {
       customerId: 117,
+      customerPublicId: "customer-117",
       rowVersion: 2,
       label: "Customer credit",
       customerName: "Riley Patel",
@@ -3507,6 +3512,7 @@ export function buildCustomerCreditRedemptionOperation(
     queued_at_utc: queuedAtUtc,
     payload_json: JSON.stringify({
       amount_minor_units: amountMinorUnits,
+      customer_public_id: credit.customerPublicId ?? `customer-${credit.customerId}`,
       currency: credit.currency,
       available_credit_snapshot_minor_units: credit.availableMinorUnits,
       sync_intent: "offline_credit_redemption",

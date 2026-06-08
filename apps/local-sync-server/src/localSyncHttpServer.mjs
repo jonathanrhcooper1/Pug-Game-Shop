@@ -56,6 +56,22 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.createKioskOrder(await readJson(request)))
       }
 
+      if (request.method === "GET" && url.pathname === "/customers/search") {
+        return sendStoreResult(response, store.searchCustomers({ query: url.searchParams.get("q") ?? "" }))
+      }
+
+      if (request.method === "POST" && url.pathname === "/customers") {
+        return sendStoreResult(response, store.createCustomer(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/credit/adjustments") {
+        return sendStoreResult(response, store.createCreditAdjustment(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/credit/redemptions") {
+        return sendStoreResult(response, store.createCreditRedemption(token, await readJson(request)))
+      }
+
       if (request.method === "GET" && url.pathname === "/sync/status") {
         return sendStoreResult(response, store.syncStatus())
       }

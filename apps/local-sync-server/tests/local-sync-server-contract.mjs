@@ -42,8 +42,11 @@ for (const endpoint of [
   "PATCH /users/:user_id/access",
   "GET /inventory/search",
   "POST /kiosk/orders",
+  "GET /customers/search",
+  "POST /customers",
   "POST /inventory/reservations",
   "POST /credit/adjustments",
+  "POST /credit/redemptions",
   "POST /sync/push",
 ]) {
   const [method, path] = endpoint.split(" ")

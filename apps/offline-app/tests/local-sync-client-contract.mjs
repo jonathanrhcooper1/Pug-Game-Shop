@@ -17,10 +17,16 @@ for (const requiredExport of [
   "LocalSyncInventorySearchResult",
   "LocalSyncReservationResult",
   "LocalSyncKioskOrderResult",
+  "LocalSyncCustomerSearchResult",
+  "LocalSyncCreateCustomerResult",
+  "LocalSyncCreditAdjustmentResult",
+  "LocalSyncCreditRedemptionResult",
+  "LocalSyncSquareCreditHandoff",
   "LocalSyncStatusResult",
   "createLocalSyncServerClient",
   "normalizeLocalSyncServerUrl",
   "updateUserAccess",
+  "createCreditRedemption",
 ]) {
   assert.ok(clientSource.includes(requiredExport), `Missing local sync client export: ${requiredExport}`)
 }
@@ -33,6 +39,10 @@ for (const route of [
   "/inventory/search?q=",
   "/inventory/reservations",
   "/kiosk/orders",
+  "/customers/search?q=",
+  "/customers",
+  "/credit/adjustments",
+  "/credit/redemptions",
   "/sync/status",
 ]) {
   assert.ok(clientSource.includes(route), `Missing local sync client route: ${route}`)
@@ -49,11 +59,17 @@ for (const marker of [
   "store-sync.sqlite",
   "local_operations_preserved: true",
   "wordpress_acceptance_required: true",
+  "wordpress_ledger_authority: true",
+  "square_payment_capture_supported: false",
+  "Pug Store Credit",
   "first_name",
   "last_name",
   "inventory_public_ids",
   "hold_reason",
   "inventory_public_id",
+  "customer_public_id",
+  "amount_minor_units",
+  "sale_total_minor_units",
 ]) {
   assert.ok(clientSource.includes(marker), `Missing local sync client marker: ${marker}`)
 }

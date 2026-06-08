@@ -111,11 +111,96 @@ try {
   assert.equal(kioskOrder.order.status, "queued")
   assert.equal(kioskOrder.reservations.length, 1)
 
+  const staffAuth = await fetchJson(`${baseUrl}/auth/pin`, {
+    method: "POST",
+    body: { pin: "1234" },
+  })
+  assert.equal(staffAuth.status, "ok")
+  assert.ok(staffAuth.user.access.includes("Customers"))
+
+  const customerSearch = await fetchJson(`${baseUrl}/customers/search?q=morgan`)
+  assert.equal(customerSearch.status, "ok")
+  assert.equal(customerSearch.wordpress_ledger_authority, true)
+  assert.equal(customerSearch.customers[0].display_name, "Morgan Lee")
+
+  const createdCustomer = await fetchJson(`${baseUrl}/customers`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      first_name: "Local",
+      last_name: "Customer",
+      email: "local.customer@example.test",
+    },
+  })
+  assert.equal(createdCustomer.status, "ok")
+  assert.equal(createdCustomer.customer.display_name, "Local Customer")
+  assert.equal(createdCustomer.customer.credit.balance_minor_units, 0)
+  assert.equal(createdCustomer.wordpress_acceptance_required, true)
+
+  const staffCreditAdjustment = await fetchJson(`${baseUrl}/credit/adjustments`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      customer_public_id: createdCustomer.customer.customer_public_id,
+      amount_minor_units: 3000,
+      reason: "staff should not add credit",
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(staffCreditAdjustment.status, "blocked")
+  assert.equal(staffCreditAdjustment.code, "manager_required")
+
+  const creditAdjustment = await fetchJson(`${baseUrl}/credit/adjustments`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      customer_public_id: createdCustomer.customer.customer_public_id,
+      amount_minor_units: 3000,
+      reason: "manager-approved store credit",
+    },
+  })
+  assert.equal(creditAdjustment.status, "ok")
+  assert.equal(creditAdjustment.manager_approved, true)
+  assert.equal(creditAdjustment.customer.credit.balance_minor_units, 3000)
+  assert.equal(creditAdjustment.ledger_entry.status, "pending_sync")
+
+  const creditRedemption = await fetchJson(`${baseUrl}/credit/redemptions`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      customer_public_id: createdCustomer.customer.customer_public_id,
+      amount_minor_units: 1000,
+      sale_total_minor_units: 4500,
+      reason: "Square handoff credit use",
+    },
+  })
+  assert.equal(creditRedemption.status, "ok")
+  assert.equal(creditRedemption.customer.credit.balance_minor_units, 2000)
+  assert.equal(creditRedemption.square_payment_capture_supported, false)
+  assert.equal(creditRedemption.square_handoff.square_payment_method_label, "Pug Store Credit")
+  assert.equal(creditRedemption.square_handoff.square_amount_due_minor_units, 3500)
+
+  const overspendRedemption = await fetchJson(`${baseUrl}/credit/redemptions`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      customer_public_id: createdCustomer.customer.customer_public_id,
+      amount_minor_units: 10000,
+      sale_total_minor_units: 10000,
+      reason: "overspend should be blocked",
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(overspendRedemption.status, "blocked")
+  assert.equal(overspendRedemption.code, "insufficient_credit")
+
   const syncStatus = await fetchJson(`${baseUrl}/sync/status`)
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 4)
+  assert.ok(syncStatus.queue_depth >= 7)
+  assert.ok(syncStatus.customer_count >= 4)
+  assert.ok(syncStatus.credit_ledger_entry_count >= 5)
 
   console.log("PASS local sync server runtime")
 } finally {

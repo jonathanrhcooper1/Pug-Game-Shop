@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server customer-credit runtime now supports customer search,
+  local customer creation, manager-approved credit adds/corrections, and
+  credit redemptions with Square POS handoff metadata; the offline app Customer
+  workspace now calls those LAN routes and shows pending local ledger rows.
 - Local sync server now persists staff PIN users, inventory locks, kiosk
   orders, and queued operations in `store-sync.sqlite`, with restart
   persistence tests and a configurable `PUG_LOCAL_SYNC_DB` runtime path.

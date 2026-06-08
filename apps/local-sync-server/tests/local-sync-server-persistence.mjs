@@ -30,9 +30,32 @@ try {
   })
   assert.equal(firstReservation.status, "ok")
 
+  const createdCustomer = firstStore.createCustomer(managerAuth.session.token, {
+    first_name: "Persistent",
+    last_name: "Customer",
+    email: "persistent.customer@example.test",
+  })
+  assert.equal(createdCustomer.status, "ok")
+
+  const creditAdjustment = firstStore.createCreditAdjustment(managerAuth.session.token, {
+    customer_public_id: createdCustomer.customer.customer_public_id,
+    amount_minor_units: 2000,
+    reason: "restart credit add",
+  })
+  assert.equal(creditAdjustment.status, "ok")
+
+  const creditRedemption = firstStore.createCreditRedemption(managerAuth.session.token, {
+    customer_public_id: createdCustomer.customer.customer_public_id,
+    amount_minor_units: 800,
+    sale_total_minor_units: 3000,
+    reason: "restart credit use",
+  })
+  assert.equal(creditRedemption.status, "ok")
+  assert.equal(creditRedemption.customer.credit.balance_minor_units, 1200)
+
   const firstStatus = firstStore.syncStatus()
   assert.equal(firstStatus.persistence_mode, "sqlite")
-  assert.equal(firstStatus.queue_depth, 2)
+  assert.equal(firstStatus.queue_depth, 5)
   firstStore.close()
 
   const restartedStore = createLocalSyncStore({ databasePath })
@@ -44,6 +67,10 @@ try {
   assert.equal(persistedInventory.items[0].status, "reserved")
   assert.equal(persistedInventory.items[0].row_version, 2)
 
+  const persistedCustomers = restartedStore.searchCustomers({ query: "persistent.customer@example.test" })
+  assert.equal(persistedCustomers.customers.length, 1)
+  assert.equal(persistedCustomers.customers[0].credit.balance_minor_units, 1200)
+
   const duplicateReservation = restartedStore.reserveInventory(persistedCashierAuth.session.token, {
     inventory_public_id: "inv-1001",
     hold_reason: "duplicate after restart",
@@ -52,7 +79,9 @@ try {
   assert.equal(duplicateReservation.code, "inventory_unavailable")
 
   const restartedStatus = restartedStore.syncStatus()
-  assert.equal(restartedStatus.queue_depth, 2)
+  assert.equal(restartedStatus.queue_depth, 5)
+  assert.ok(restartedStatus.customer_count >= 4)
+  assert.ok(restartedStatus.credit_ledger_entry_count >= 5)
   assert.equal(restartedStatus.local_operations_preserved, true)
   restartedStore.close()
 
