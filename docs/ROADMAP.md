@@ -200,6 +200,8 @@ writeback foundation with row-version guards while live route registration
 stays gated
 plus explicit WordPress conflict resolution route adapter and manager
 permission wiring behind the existing conflict route runtime gate
+plus offline app guarded desktop conflict-resolution execution with local queue
+fallback for paired non-production connector profiles
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview

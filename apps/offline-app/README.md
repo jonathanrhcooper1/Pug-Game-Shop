@@ -76,11 +76,12 @@ account, event snapshots, and conflict snapshots from successful live desktop
 pull responses into the local cache. Event walk-in registration and waitlist
 requests plus attendee check-ins can be queued locally from cached event
 snapshots. WordPress now has a guarded conflict resolution writeback foundation
-and explicit route adapter for future manager-approved replay, but the offline
-app still needs the client-side resolve call before reviewed conflicts can sync
-back from the UI. Full customer-directory cache mutation, live event check-in
-writeback, printer/scanner adapters, kiosk lockdown, and signed updater
-behavior still need follow-on passes.
+and explicit route adapter; the desktop app can now attempt guarded live
+manager conflict resolution for paired non-production connector profiles while
+falling back to local queue staging when offline or deferred. Full
+customer-directory cache mutation, live event check-in writeback,
+printer/scanner adapters, kiosk lockdown, and signed updater behavior still
+need follow-on passes.
 Browser local session restore is isolated per connector profile, with a legacy
 shared-session migration fallback for existing local data. Browser mode still
 previews queue persistence, while the desktop Tauri command now writes accepted

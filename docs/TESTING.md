@@ -520,6 +520,10 @@
   preview capping, event registration count capping, event conflict operation
   preservation, manager override preservation, and visible Sync Now cache apply
   status markers.
+- Offline app coverage now includes guarded desktop conflict-resolution request
+  shaping, route validation, idempotency/header checks, no-raw-response
+  summaries, UI live-apply/fallback markers, and Windows package manifest route
+  exposure.
 - Local unit coverage now includes the staged offline pull route handler,
   proving valid requests return the presenter-shaped response contract,
   injected change-set providers are passed through without cursor advancement,

@@ -13,6 +13,7 @@ import {
   buildDevicePairingRequestBody,
   buildEventCheckinOperation,
   buildEventRegistrationOperation,
+  buildOfflineConflictResolutionRequestBody,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
   applyOfflinePushResultToQueue,
@@ -35,6 +36,7 @@ import {
   buildInventoryUpdateOperation,
   buildInventoryReservationOperation,
   buildOfflineConnectorSyncSessionPlan,
+  connectorOfflineConflictResolutionUrl,
   filterInventoryItems,
   findConnectorProfile,
   findInventoryItem,
@@ -1891,16 +1893,107 @@ export function App() {
     })
   }
 
-  async function handleConflictAction(conflict: ConflictItem) {
-    setSelectedConflictTitle(conflict.title)
-    await stageOfflineOperation(
-      buildConflictReviewOperation(conflict),
-      `${conflict.action} conflict staged`,
-      `${conflict.title} is queued for staff review. Resolution writes stay deferred until manager approval and website sync acceptance.`,
-    )
+  function moveConflictToReviewed(conflict: ConflictItem) {
     setOpenConflicts((conflicts) => conflicts.filter((item) => item.conflictId !== conflict.conflictId))
     setReviewedConflicts((conflicts) => [conflict, ...conflicts])
     setShowConflictHistory(true)
+  }
+
+  async function runLiveConflictResolution(conflict: ConflictItem) {
+    if (
+      activeProfile.environment === "production" ||
+      !activePairedDevice ||
+      activePairedDevice.tokenStatus !== "stored" ||
+      !offlineSyncAdapter
+    ) {
+      return null
+    }
+
+    const body = buildOfflineConflictResolutionRequestBody(
+      conflict,
+      activePairedDevice.devicePublicId,
+      { managerId: workspace.device.managerId },
+    )
+
+    try {
+      const response = await offlineSyncAdapter.runOfflineSyncRequest({
+        endpoint: connectorOfflineConflictResolutionUrl(activeProfile, conflict.conflictId),
+        route: "conflict_resolution",
+        profile_id: activeProfile.id,
+        device_public_id: activePairedDevice.devicePublicId,
+        body,
+        idempotency_key: body.resolution_id,
+      })
+
+      return { body, response }
+    } catch (error) {
+      return {
+        body,
+        response: null,
+        error: conflictResolutionErrorMessage(error),
+      }
+    }
+  }
+
+  function conflictResolutionErrorMessage(error: unknown) {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.slice(0, 220)
+    }
+
+    if (typeof error === "string" && error.trim()) {
+      return error.slice(0, 220)
+    }
+
+    return "Conflict resolution failed before a sanitized response summary was returned."
+  }
+
+  async function handleConflictAction(conflict: ConflictItem) {
+    setSelectedConflictTitle(conflict.title)
+
+    const liveResolution = await runLiveConflictResolution(conflict)
+
+    if (
+      liveResolution?.response?.status === "offline_sync_request_completed" &&
+      liveResolution.response.wordpress_code === "offline_conflict_resolution_applied"
+    ) {
+      moveConflictToReviewed(conflict)
+      setActiveSection("Conflicts")
+      setActivityMessage({
+        title: "Conflict resolved on website",
+        detail: `${conflict.title} was resolved through ${activeProfile.companyName}; row version ${conflict.rowVersion} was accepted without returning a raw response body.`,
+      })
+      return
+    }
+
+    if (liveResolution?.response && liveResolution.response.http_status >= 400) {
+      setActiveSection("Conflicts")
+      setActivityMessage({
+        title: "Conflict still needs review",
+        detail: `${conflict.title} was not changed on the website: ${liveResolution.response.http_status} ${liveResolution.response.wordpress_code}. The conflict remains open locally so staff can sync the latest snapshot and retry.`,
+      })
+      return
+    }
+
+    await stageOfflineOperation(
+      buildConflictReviewOperation(
+        conflict,
+        activePairedDevice
+          ? {
+              actorId: workspace.device.managerId,
+              deviceId: activePairedDevice.devicePublicId,
+              locationId: workspace.device.locationId,
+            }
+          : {
+              actorId: workspace.device.managerId,
+              locationId: workspace.device.locationId,
+            },
+      ),
+      `${conflict.action} conflict staged`,
+      liveResolution?.error
+        ? `${liveResolution.error} ${conflict.title} is queued locally for staff review and later website sync acceptance.`
+        : `${conflict.title} is queued for staff review. Resolution writes stay deferred until manager approval and website sync acceptance.`,
+    )
+    moveConflictToReviewed(conflict)
   }
 
   return (

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app conflict review actions now attempt a guarded live desktop
+  `conflict_resolution` request for paired non-production connector profiles,
+  fall back to local queue staging when offline/deferred, and leave stale or
+  rejected conflicts open for retry without returning raw WordPress responses.
 - Offline conflict resolution now has guarded WordPress SQL planning and a
   `$wpdb` repository adapter for applying manager decisions with
   conflict-row version checks, mutable-status guards, redacted audits, and

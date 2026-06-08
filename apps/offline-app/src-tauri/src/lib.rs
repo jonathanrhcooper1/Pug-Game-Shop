@@ -433,7 +433,7 @@ async fn run_offline_sync_request(
         .header("Authorization", format!("Bearer {}", device_token))
         .json(&request.body);
 
-    if request.route.trim() == "push" {
+    if matches!(request.route.trim(), "push" | "conflict_resolution") {
         if let Some(idempotency_key) = normalized_optional_text(request.idempotency_key.as_deref()) {
             builder = builder
                 .header("idempotency-key", idempotency_key)
@@ -829,17 +829,11 @@ fn validate_offline_sync_request(request: &OfflineSyncRequest) -> Result<(), Str
         return Err("offline_sync_endpoint_https_required".to_string());
     }
 
-    if route != "pull" && route != "push" {
+    if route != "pull" && route != "push" && route != "conflict_resolution" {
         return Err("offline_sync_route_unsupported".to_string());
     }
 
-    let expected_suffix = if route == "pull" {
-        "/wp-json/tcg-store/v1/offline/pull"
-    } else {
-        "/wp-json/tcg-store/v1/offline/push"
-    };
-
-    if !endpoint.ends_with(expected_suffix) {
+    if !offline_sync_endpoint_matches_route(endpoint, route) {
         return Err("offline_sync_endpoint_invalid".to_string());
     }
 
@@ -867,7 +861,88 @@ fn validate_offline_sync_request(request: &OfflineSyncRequest) -> Result<(), Str
         }
     }
 
+    if route == "conflict_resolution" {
+        validate_offline_conflict_resolution_request(request, body, endpoint)?;
+    }
+
     Ok(())
+}
+
+fn offline_sync_endpoint_matches_route(endpoint: &str, route: &str) -> bool {
+    if route == "pull" {
+        return endpoint.ends_with("/wp-json/tcg-store/v1/offline/pull");
+    }
+
+    if route == "push" {
+        return endpoint.ends_with("/wp-json/tcg-store/v1/offline/push");
+    }
+
+    endpoint_conflict_id(endpoint).is_some()
+}
+
+fn validate_offline_conflict_resolution_request(
+    request: &OfflineSyncRequest,
+    body: &serde_json::Map<String, serde_json::Value>,
+    endpoint: &str,
+) -> Result<(), String> {
+    let Some(idempotency_key) = normalized_optional_text(request.idempotency_key.as_deref()) else {
+        return Err("offline_sync_conflict_resolution_idempotency_key_required".to_string());
+    };
+    let Some(endpoint_conflict_id) = endpoint_conflict_id(endpoint) else {
+        return Err("offline_sync_endpoint_invalid".to_string());
+    };
+    let conflict_id = json_object_string(body, "conflict_id");
+    let resolution_id = json_object_string(body, "resolution_id");
+    let resolution_action = json_object_string(body, "resolution_action");
+
+    if conflict_id != endpoint_conflict_id {
+        return Err("offline_sync_conflict_id_mismatch".to_string());
+    }
+
+    if resolution_id != idempotency_key {
+        return Err("offline_sync_conflict_resolution_id_mismatch".to_string());
+    }
+
+    if json_object_u64(body, "manager_id").is_none_or(|value| value == 0) {
+        return Err("offline_sync_conflict_manager_id_required".to_string());
+    }
+
+    if json_object_u64(body, "expected_conflict_version").is_none_or(|value| value == 0) {
+        return Err("offline_sync_conflict_version_required".to_string());
+    }
+
+    if !matches!(
+        resolution_action.as_str(),
+        "accept_server" | "accept_device" | "manager_adjust" | "retry_operation" | "dismiss"
+    ) {
+        return Err("offline_sync_conflict_resolution_action_unsupported".to_string());
+    }
+
+    if body
+        .get("resolution_payload")
+        .and_then(serde_json::Value::as_object)
+        .is_none()
+    {
+        return Err("offline_sync_conflict_resolution_payload_required".to_string());
+    }
+
+    Ok(())
+}
+
+fn endpoint_conflict_id(endpoint: &str) -> Option<String> {
+    let marker = "/wp-json/tcg-store/v1/offline/conflicts/";
+    let (_, tail) = endpoint.rsplit_once(marker)?;
+    let conflict_id = tail.strip_suffix("/resolve")?.trim();
+
+    if conflict_id.is_empty()
+        || !conflict_id
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
+    {
+        return None;
+    }
+
+    Some(conflict_id.to_string())
 }
 
 fn offline_sync_device_token(
@@ -2017,6 +2092,34 @@ mod tests {
         }
     }
 
+    fn valid_conflict_resolution_sync_request() -> OfflineSyncRequest {
+        OfflineSyncRequest {
+            endpoint: "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/conflicts/conflict-inv-1004-location/resolve"
+                .to_string(),
+            route: "conflict_resolution".to_string(),
+            profile_id: "pug-game-shop-staging".to_string(),
+            device_public_id: "device-public-123".to_string(),
+            body: serde_json::json!({
+                "conflict_id": "conflict-inv-1004-location",
+                "resolution_id": "resolve-conflict-inv-1004-location-20260607120000",
+                "device_id": "device-public-123",
+                "manager_id": 42,
+                "resolution_action": "accept_server",
+                "resolution_note": "Manager chose the website snapshot.",
+                "resolved_at_utc": "2026-06-07T12:00:00Z",
+                "expected_conflict_version": 2,
+                "resolution_payload": {
+                    "conflict_title": "Mox Amber location mismatch",
+                    "source": "offline_app"
+                },
+                "schema_version": 1
+            }),
+            idempotency_key: Some(
+                "resolve-conflict-inv-1004-location-20260607120000".to_string(),
+            ),
+        }
+    }
+
     #[test]
     fn secure_store_persists_device_token_without_returning_secret() {
         let store = MemoryDeviceTokenStore::default();
@@ -2224,6 +2327,39 @@ mod tests {
     }
 
     #[test]
+    fn offline_sync_request_accepts_guarded_conflict_resolution_route() {
+        let request = valid_conflict_resolution_sync_request();
+
+        validate_offline_sync_request(&request).expect("conflict resolution request should pass");
+
+        let mut missing_key = request.clone();
+        missing_key.idempotency_key = None;
+
+        assert_eq!(
+            validate_offline_sync_request(&missing_key).expect_err("idempotency required"),
+            "offline_sync_conflict_resolution_idempotency_key_required"
+        );
+
+        let mut conflict_mismatch = request.clone();
+        conflict_mismatch.body["conflict_id"] = serde_json::json!("conflict-other");
+
+        assert_eq!(
+            validate_offline_sync_request(&conflict_mismatch)
+                .expect_err("conflict id must match route"),
+            "offline_sync_conflict_id_mismatch"
+        );
+
+        let mut action_unsupported = request;
+        action_unsupported.body["resolution_action"] = serde_json::json!("approve");
+
+        assert_eq!(
+            validate_offline_sync_request(&action_unsupported)
+                .expect_err("resolution action must be canonical"),
+            "offline_sync_conflict_resolution_action_unsupported"
+        );
+    }
+
+    #[test]
     fn offline_sync_pull_summary_never_returns_raw_token_or_response_body() {
         let request = valid_pull_sync_request();
         let body = serde_json::json!({
@@ -2425,6 +2561,36 @@ mod tests {
         assert!(summary.authorization_header_attached);
         assert!(!summary.raw_token_returned);
         assert!(!summary.raw_response_returned);
+    }
+
+    #[test]
+    fn offline_sync_conflict_resolution_summary_never_returns_raw_payload() {
+        let request = valid_conflict_resolution_sync_request();
+        let body = serde_json::json!({
+            "status": "ready",
+            "status_code": 200,
+            "code": "offline_conflict_resolution_applied",
+            "data": {
+                "conflict_id": "conflict-inv-1004-location",
+                "resolution_id": "resolve-conflict-inv-1004-location-20260607120000",
+                "status": "resolved",
+                "row_version": 3,
+                "schema_version": 1
+            }
+        });
+
+        let summary = summarize_offline_sync_response(&request, 200, &body);
+
+        assert_eq!(summary.status, "offline_sync_request_completed");
+        assert_eq!(summary.route, "conflict_resolution");
+        assert_eq!(summary.wordpress_code, "offline_conflict_resolution_applied");
+        assert_eq!(summary.operation_count, 0);
+        assert_eq!(summary.pull_record_count, 0);
+        assert!(summary.network_request_completed);
+        assert!(summary.authorization_header_attached);
+        assert!(!summary.raw_token_returned);
+        assert!(!summary.raw_response_returned);
+        assert!(!summary.credentials_synced_to_app);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core"
 
 import type {
+  OfflineConflictResolutionRequestBody,
   OfflinePullConflictCacheRecord,
   OfflinePullCustomerCreditCacheRecord,
   OfflinePullEventCacheRecord,
@@ -12,14 +13,14 @@ import { isTauriRuntime } from "./tauriQueueAdapter"
 
 export const offlineSyncRequestCommandName = "run_offline_sync_request"
 
-export type OfflineSyncRequestRoute = "pull" | "push"
+export type OfflineSyncRequestRoute = "pull" | "push" | "conflict_resolution"
 
 export type OfflineSyncCommandRequest = {
   endpoint: string
   route: OfflineSyncRequestRoute
   profile_id: string
   device_public_id: string
-  body: OfflinePullRequestBody | OfflinePushBatchPayload
+  body: OfflinePullRequestBody | OfflinePushBatchPayload | OfflineConflictResolutionRequestBody
   idempotency_key?: string
 }
 

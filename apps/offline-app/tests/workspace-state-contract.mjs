@@ -19,6 +19,7 @@ for (const requiredExport of [
   "EventSnapshot",
   "OfflineConnectorSyncSessionPlan",
   "OfflinePushBatchPayload",
+  "OfflineConflictResolutionRequestBody",
   "OfflinePullRequestBody",
   "OfflinePullInventoryCacheRecord",
   "OfflinePullInventoryCacheApplyResult",
@@ -62,6 +63,7 @@ for (const requiredExport of [
   "buildEventRegistrationOperation",
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
+  "buildOfflineConflictResolutionRequestBody",
   "buildOfflinePushBatchPayload",
   "buildOfflinePullRequestBody",
   "applyOfflinePullInventoryRecordsToCache",
@@ -77,6 +79,7 @@ for (const requiredExport of [
   "buildConnectorManifestPreview",
   "validateConnectorManifest",
   "connectorManifestUrl",
+  "connectorOfflineConflictResolutionUrl",
   "CONNECTOR_PROFILE_STORAGE_KEY",
   "PREPARED_PAIRING_STORAGE_KEY",
   "PAIRED_DEVICE_STORAGE_KEY",
@@ -115,6 +118,8 @@ for (const route of [
   "/wp-json/tcg-store/v1/offline/devices/register",
   "/wp-json/tcg-store/v1/offline/pull",
   "/wp-json/tcg-store/v1/offline/push",
+  "/offline/conflicts/",
+  "/resolve",
 ]) {
   assert.ok(workspaceSource.includes(route), `Missing workspace route: ${route}`)
 }
@@ -173,6 +178,9 @@ for (const marker of [
   "available_minor_units",
   "registered_count",
   "conflict_id",
+  "resolution_id",
+  "resolution_action",
+  "expected_conflict_version",
   "deviceAuthorizationHeaderDeferred: true",
   "offline_connector_test_report",
   "Manifest shape",

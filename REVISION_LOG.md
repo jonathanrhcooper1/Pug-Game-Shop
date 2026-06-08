@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Conflict Resolution Execution
+
+### What Changed
+
+- Added typed offline app conflict resolution request bodies and per-conflict
+  resolution action/note fields.
+- Added connector-profile conflict resolution URLs for
+  `/offline/conflicts/{conflict_id}/resolve`.
+- Extended the Tauri desktop sync adapter and Rust command to support a guarded
+  `conflict_resolution` POST route with endpoint, device, idempotency, manager,
+  conflict-id, expected-version, action, and payload validation.
+- Updated the conflict review button to attempt live website resolution only for
+  paired, token-backed, non-production desktop profiles, fall back to local
+  queue staging when unavailable/deferred, and keep rejected/stale conflicts
+  open for retry.
+- Added the conflict resolution route to the Windows package manifest.
+
+### Why
+
+The WordPress route adapter existed, but the offline app still only staged
+conflict review locally. This connects the desktop client path while preserving
+offline-first behavior and the no-raw-secret/no-raw-response boundary.
+
+### Files Affected
+
+- `apps/offline-app/config/windows-package.manifest.json`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust command coverage for guarded conflict resolution route validation and
+  sanitized response summaries.
+- Offline app contract coverage for conflict resolution request body shaping,
+  route/manifest exposure, UI live-resolution markers, and pulled conflict
+  resolution action/note preservation.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- `npm run test`: passed, including PHP/plugin tests, sync-engine tests,
+  POS/payment policy tests, API-client tests, offline app tests, packaging
+  contracts, staging contract scaffolds, and ScryDex live smoke contract.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to return conflict review buttons to local queue staging
+  only.
+- No schema rollback is required.
+- Website writes remain unavailable unless the packaged desktop app has a paired
+  stored token, the connector is non-production, and the WordPress conflict
+  route gate is enabled.
+
 ## 2026-06-08 - Offline Conflict Resolution Route Adapter
 
 ### What Changed

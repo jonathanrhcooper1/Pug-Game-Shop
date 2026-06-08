@@ -12,6 +12,7 @@
     "pairing_route": "/offline/devices/register",
     "pull_route": "/offline/pull",
     "push_route": "/offline/push",
+    "conflict_resolution_route": "/offline/conflicts/{conflict_id}/resolve",
     "direct_mysql_access": false
   },
   "branding": {

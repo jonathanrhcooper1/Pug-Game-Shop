@@ -31,6 +31,7 @@ try {
     applyOfflinePushResultToQueue,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
+    buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
@@ -265,6 +266,8 @@ try {
         title: "Mox Amber location mismatch",
         detail: "Local scan says MTG Tray; website snapshot says Sold.",
         action: "Review",
+        resolutionAction: "accept_server",
+        resolutionNote: "Manager chose the website snapshot.",
         entityType: "inventory",
         entityId: "inv-1004",
         baseRowVersion: 17,
@@ -291,7 +294,9 @@ try {
         row_version: 3,
         title: "Mox Amber location mismatch",
         detail: "Website snapshot says Sold.",
-        action: "Review",
+        action: "Use website",
+        resolution_action: "accept_server",
+        resolution_note: "Manager chose the website snapshot.",
         entity_type: "inventory",
         entity_id: "inv-1004",
         base_row_version: 17,
@@ -305,6 +310,8 @@ try {
         title: "Event capacity conflict",
         detail: "Offline registration exceeded website capacity.",
         action: "Approve",
+        resolution_action: "accept_device",
+        resolution_note: "Manager approved the offline event registration.",
         entity_type: "event",
         entity_id: "event-200",
         base_row_version: 1,
@@ -329,6 +336,8 @@ try {
   )
   assert.equal(updatedConflict.rowVersion, 3)
   assert.equal(updatedConflict.detail, "Website snapshot says Sold.")
+  assert.equal(updatedConflict.resolutionAction, "accept_server")
+  assert.equal(updatedConflict.resolutionNote, "Manager chose the website snapshot.")
 
   const insertedConflict = conflictResult.conflicts.find(
     (conflict) => conflict.conflictId === "conflict-event-200-capacity",
@@ -336,6 +345,23 @@ try {
   assert.equal(insertedConflict.entityType, "event")
   assert.equal(insertedConflict.operationType, "event_reservation")
   assert.equal(insertedConflict.managerOverride, true)
+  assert.equal(insertedConflict.resolutionAction, "accept_device")
+
+  const conflictResolutionBody = buildOfflineConflictResolutionRequestBody(
+    updatedConflict,
+    "device-public-123",
+    {
+      managerId: 42,
+      resolutionId: "resolve-conflict-inv-1004-location-20260607120500",
+      resolvedAtUtc: "2026-06-08T12:05:00.000Z",
+    },
+  )
+  assert.equal(conflictResolutionBody.conflict_id, "conflict-inv-1004-location")
+  assert.equal(conflictResolutionBody.device_id, "device-public-123")
+  assert.equal(conflictResolutionBody.manager_id, 42)
+  assert.equal(conflictResolutionBody.resolution_action, "accept_server")
+  assert.equal(conflictResolutionBody.expected_conflict_version, 3)
+  assert.equal(conflictResolutionBody.resolution_payload.source, "offline_app")
 
   const eventRegistrationOperation = buildEventRegistrationOperation(
     {

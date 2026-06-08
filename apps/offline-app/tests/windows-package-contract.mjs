@@ -47,6 +47,7 @@ assert.equal(manifest.sync.rest_namespace, "/wp-json/tcg-store/v1")
 assert.equal(manifest.sync.pairing_route, "/offline/devices/register")
 assert.equal(manifest.sync.pull_route, "/offline/pull")
 assert.equal(manifest.sync.push_route, "/offline/push")
+assert.equal(manifest.sync.conflict_resolution_route, "/offline/conflicts/{conflict_id}/resolve")
 assert.equal(manifest.sync.direct_mysql_access, false)
 
 const requiredBrandingTokens = [
@@ -89,6 +90,7 @@ for (const route of [
   manifest.sync.pairing_route,
   manifest.sync.pull_route,
   manifest.sync.push_route,
+  manifest.sync.conflict_resolution_route,
 ]) {
   assert.ok(route.startsWith("/offline/"))
 }

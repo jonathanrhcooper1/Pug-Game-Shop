@@ -51,12 +51,21 @@ export type QueueItem = {
   tone: QueueTone
 }
 
+export type ConflictResolutionAction =
+  | "accept_server"
+  | "accept_device"
+  | "manager_adjust"
+  | "retry_operation"
+  | "dismiss"
+
 export type ConflictItem = {
   conflictId: string
   rowVersion: number
   title: string
   detail: string
   action: string
+  resolutionAction: ConflictResolutionAction
+  resolutionNote: string
   entityType: "inventory" | "customer_credit" | "event"
   entityId: string
   baseRowVersion: number
@@ -383,6 +392,29 @@ export type OfflinePushBatchPayload = {
   operations: OfflinePushOperationPayload[]
 }
 
+export type OfflineConflictResolutionRequestBody = {
+  conflict_id: string
+  resolution_id: string
+  device_id: string
+  manager_id: number
+  resolution_action: ConflictResolutionAction
+  resolution_note: string
+  resolved_at_utc: string
+  expected_conflict_version: number
+  resolution_payload: {
+    conflict_title: string
+    conflict_detail: string
+    entity_type: ConflictItem["entityType"]
+    entity_id: string
+    operation_type: ConflictItem["operationType"]
+    base_row_version: number
+    requested_action: string
+    manager_override: boolean
+    source: "offline_app"
+  }
+  schema_version: 1
+}
+
 export type OfflinePullRequestBody = {
   device_id: string
   domains: ["inventory", "customer_credit", "events", "conflicts"]
@@ -462,6 +494,8 @@ export type OfflinePullConflictCacheRecord = {
   title: string
   detail: string
   action: string
+  resolution_action?: ConflictResolutionAction
+  resolution_note?: string
   entity_type: ConflictItem["entityType"]
   entity_id: string
   base_row_version: number
@@ -840,7 +874,9 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       rowVersion: 2,
       title: "Mox Amber location mismatch",
       detail: "Local scan says MTG Tray; website snapshot says Sold.",
-      action: "Review",
+      action: "Use website",
+      resolutionAction: "accept_server",
+      resolutionNote: "Manager chose the website snapshot for this inventory conflict.",
       entityType: "inventory",
       entityId: "inv-1004",
       baseRowVersion: 17,
@@ -853,6 +889,8 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       title: "Credit redemption needs manager",
       detail: "$28.00 offline credit use awaits approval.",
       action: "Approve",
+      resolutionAction: "accept_device",
+      resolutionNote: "Manager approved the offline customer credit redemption.",
       entityType: "customer_credit",
       entityId: "customer-91",
       baseRowVersion: 6,
@@ -920,8 +958,21 @@ export function connectorManifestUrl(profile: StoreConnectorProfile) {
   return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}/offline/connector-manifest`
 }
 
-function connectorRestUrl(profile: StoreConnectorProfile, path: "/offline/pull" | "/offline/push") {
+function connectorRestUrl(
+  profile: StoreConnectorProfile,
+  path: "/offline/pull" | "/offline/push" | `/offline/conflicts/${string}/resolve`,
+) {
   return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}${path}`
+}
+
+export function connectorOfflineConflictResolutionUrl(
+  profile: StoreConnectorProfile,
+  conflictId: string,
+) {
+  return connectorRestUrl(
+    profile,
+    `/offline/conflicts/${encodeURIComponent(conflictId.trim())}/resolve`,
+  )
 }
 
 export function findConnectorProfile(
@@ -2133,6 +2184,11 @@ function sanitizeOfflinePullConflictCacheRecords(
       title: record.title.trim(),
       detail: record.detail.trim(),
       action: record.action.trim(),
+      resolution_action: normalizeConflictResolutionAction(record.resolution_action ?? record.action),
+      resolution_note:
+        typeof record.resolution_note === "string" && record.resolution_note.trim() !== ""
+          ? record.resolution_note.trim()
+          : `Manager selected ${normalizeConflictResolutionAction(record.resolution_action ?? record.action)} for ${record.title.trim()}.`,
       entity_type: record.entity_type,
       entity_id: record.entity_id.trim(),
       base_row_version: Math.floor(record.base_row_version),
@@ -2709,6 +2765,7 @@ export function buildConflictReviewOperation(
       conflict_title: conflict.title,
       conflict_detail: conflict.detail,
       requested_action: conflict.action,
+      resolution_action: conflict.resolutionAction,
       sync_intent: "staff_conflict_review",
     }),
     authorization_context_json: JSON.stringify({
@@ -2717,6 +2774,70 @@ export function buildConflictReviewOperation(
     }),
     schema_version: 1,
   }
+}
+
+export function buildOfflineConflictResolutionRequestBody(
+  conflict: ConflictItem,
+  devicePublicId: string,
+  options: {
+    managerId?: number
+    resolutionId?: string
+    resolvedAtUtc?: string
+  } = {},
+): OfflineConflictResolutionRequestBody {
+  const resolvedAtUtc = options.resolvedAtUtc ?? new Date().toISOString()
+  const operationStamp = resolvedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+
+  return {
+    conflict_id: conflict.conflictId,
+    resolution_id:
+      options.resolutionId ?? `resolve-${conflict.conflictId}-${operationStamp}`,
+    device_id: devicePublicId.trim(),
+    manager_id: options.managerId ?? 1,
+    resolution_action: conflict.resolutionAction,
+    resolution_note: conflict.resolutionNote,
+    resolved_at_utc: resolvedAtUtc,
+    expected_conflict_version: conflict.rowVersion,
+    resolution_payload: {
+      conflict_title: conflict.title,
+      conflict_detail: conflict.detail,
+      entity_type: conflict.entityType,
+      entity_id: conflict.entityId,
+      operation_type: conflict.operationType,
+      base_row_version: conflict.baseRowVersion,
+      requested_action: conflict.action,
+      manager_override: conflict.managerOverride,
+      source: "offline_app",
+    },
+    schema_version: 1,
+  }
+}
+
+function normalizeConflictResolutionAction(
+  value: string | undefined,
+  fallback: ConflictResolutionAction = "retry_operation",
+): ConflictResolutionAction {
+  const normalized = (value ?? "").trim().toLowerCase()
+
+  if (
+    normalized === "accept_server" ||
+    normalized === "accept_device" ||
+    normalized === "manager_adjust" ||
+    normalized === "retry_operation" ||
+    normalized === "dismiss"
+  ) {
+    return normalized
+  }
+
+  if (normalized === "approve" || normalized === "approved") {
+    return "accept_device"
+  }
+
+  if (normalized === "use website" || normalized === "server" || normalized === "review") {
+    return "accept_server"
+  }
+
+  return fallback
 }
 
 export function buildOfflinePushBatchPayload(
@@ -2941,6 +3062,10 @@ export function applyOfflinePullConflictRecordsToCache(
       title: record.title,
       detail: record.detail,
       action: record.action,
+      resolutionAction: normalizeConflictResolutionAction(record.resolution_action, "retry_operation"),
+      resolutionNote:
+        record.resolution_note?.trim() ||
+        `Manager selected ${normalizeConflictResolutionAction(record.resolution_action, "retry_operation")} for ${record.title}.`,
       entityType: record.entity_type,
       entityId: record.entity_id,
       baseRowVersion: record.base_row_version,
