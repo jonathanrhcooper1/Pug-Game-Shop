@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Connector Manifest Validation
+
+### What Changed
+
+- Added typed offline connector manifest models and validation helpers in the
+  offline app workspace state.
+- Added local manifest preview building from the selected company/site profile
+  and normalization back into a reusable connector profile.
+- Wired `Test Website Connector` to validate the selected manifest shape and
+  show accepted/warning/rejected state in the Settings connector panel.
+- Added route-count, WordPress device-token auth, desktop secure credential
+  storage, official WooCommerce Square payment authority, ScryDex redaction,
+  HTTPS/environment, and no-credential-sync checks.
+- Updated offline app contracts and documentation for reusable multi-company
+  website connector validation.
+
+### Why
+
+The offline app needs to support more than one company or website without
+hardcoding secrets or assuming the current staging host forever. This
+checkpoint lets the app validate WordPress connector metadata locally while
+keeping pairing, token exchange, ScryDex keys, Square tokens, and provider
+network execution deferred.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for connector manifest types,
+  route preview, preview building, manifest validation, site parsing, safe
+  connector IDs, and no-credential-sync markers.
+- Extended UI shell contracts for manifest validation status text and the
+  `Test Website Connector` interaction handler.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- In-app browser DOM/interaction QA against `http://127.0.0.1:1420/`: passed
+  for page identity, no framework overlay, connector button click,
+  manifest-accepted state, no console warnings/errors, and no horizontal
+  overflow. Screenshot capture through the in-app browser runtime timed out,
+  so this checkpoint relies on DOM/console evidence instead of a rendered
+  screenshot artifact.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return `Test Website Connector` to a static preview
+  action and remove app-side manifest validation.
+- No database migrations, live pairing, token exchange, live SQLite writes,
+  website network calls, provider writes, payment capture, ScryDex credential
+  import, or production mutations are introduced.
+- Existing local connector profiles and WordPress-side manifest diagnostics
+  remain available if only this app-side validation layer is rolled back.
+
 ## 2026-06-08 - WordPress Offline Connector Manifest Diagnostics
 
 ### What Changed

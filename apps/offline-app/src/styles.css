@@ -1309,6 +1309,62 @@ dd {
   font-size: 12px;
 }
 
+.manifest-validation {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  color: #172016;
+  background: rgba(119, 183, 255, 0.08);
+  border: 1px solid rgba(119, 183, 255, 0.18);
+  border-radius: 8px;
+}
+
+.manifest-validation.accepted {
+  background: rgba(121, 215, 143, 0.1);
+  border-color: rgba(121, 215, 143, 0.26);
+}
+
+.manifest-validation.warning {
+  background: rgba(246, 199, 96, 0.12);
+  border-color: rgba(246, 199, 96, 0.3);
+}
+
+.manifest-validation.rejected {
+  background: rgba(240, 126, 103, 0.12);
+  border-color: rgba(240, 126, 103, 0.28);
+}
+
+.manifest-validation div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.manifest-validation strong,
+.manifest-validation small {
+  overflow-wrap: anywhere;
+}
+
+.manifest-validation strong {
+  color: #172016;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.manifest-validation small,
+.manifest-validation li {
+  color: #607061;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.manifest-validation ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+}
+
 .connector-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

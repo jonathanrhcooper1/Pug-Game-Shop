@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   buildOfflinePushBatchPayload,
   buildOfflinePushRequestPlan,
+  buildConnectorManifestPreview,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorStatusLabel,
@@ -14,6 +15,8 @@ import {
   offlineWorkspaceSeed,
   statusLabel,
   summarizeOfflinePushResult,
+  validateConnectorManifest,
+  type ConnectorManifestValidation,
   type IconName,
   type InventoryStatus,
   type OfflineOperationEnvelope,
@@ -106,8 +109,11 @@ export function App() {
   const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
+  const [connectorValidation, setConnectorValidation] =
+    useState<ConnectorManifestValidation | null>(null)
   const activeProfile = findConnectorProfile(workspace.connectorProfiles, activeProfileId)
-  const connectorHealth = connectorHealthSummary(activeProfile)
+  const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
+  const connectorHealth = connectorHealthSummary(connectorValidation?.profile ?? activeProfile)
   const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
@@ -125,6 +131,10 @@ export function App() {
       setSelectedId(filteredItems[0].id)
     }
   }, [filteredItems, selectedId])
+
+  useEffect(() => {
+    setConnectorValidation(null)
+  }, [activeProfile.id])
 
   function sectionTarget(label: string) {
     if (label === "Sync") {
@@ -213,6 +223,26 @@ export function App() {
     setActivityMessage({
       title: "Sync plan prepared",
       detail: `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; network execution waits for pairing approval.`,
+    })
+  }
+
+  function handleTestWebsiteConnector() {
+    const validation = validateConnectorManifest(manifestPreview)
+    const issueText =
+      validation.issues.length > 0
+        ? validation.issues.join(" ")
+        : "Manifest shape is valid and credential values are not synced to the app."
+
+    setConnectorValidation(validation)
+    setActiveSection("Settings")
+    setActivityMessage({
+      title:
+        validation.status === "accepted"
+          ? "Connector manifest accepted"
+          : validation.status === "warning"
+            ? "Connector manifest needs pairing review"
+            : "Connector manifest rejected",
+      detail: `${validation.profile.companyName} ${validation.profile.environment} exposes ${validation.routeCount} offline routes. ${issueText}`,
     })
   }
 
@@ -659,8 +689,37 @@ export function App() {
                   <small>Secrets stay on WordPress/server settings</small>
                 </div>
               </div>
+              <div
+                className={`manifest-validation ${connectorValidation?.status ?? "idle"}`}
+                aria-live="polite"
+              >
+                <div>
+                  <span className="micro-label">Manifest validation</span>
+                  <strong>
+                    {connectorValidation
+                      ? connectorValidation.status === "accepted"
+                        ? "Accepted"
+                        : connectorValidation.status === "warning"
+                          ? "Needs review"
+                          : "Rejected"
+                      : "Ready to test"}
+                  </strong>
+                  <small>
+                    {connectorValidation
+                      ? `${connectorValidation.endpointCount} endpoints / ${connectorValidation.routeCount} routes; credentials synced to app: no`
+                      : `${manifestPreview.offline_route_count} planned routes; import validates before pairing`}
+                  </small>
+                </div>
+                {connectorValidation?.issues.length ? (
+                  <ul>
+                    {connectorValidation.issues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
               <div className="connector-actions">
-                <button type="button" onClick={handleSyncNowPreview}>
+                <button type="button" onClick={handleTestWebsiteConnector}>
                   <Icon name="link" />
                   <span>Test Website Connector</span>
                 </button>

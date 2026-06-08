@@ -13,11 +13,13 @@ future offline sync app.
   sync controls, selected-card visual frame, staged inventory actions, queue
   and conflict badges, sync queue, conflict review, customer credit snapshot,
   active sidebar navigation, status filters, list/grid inventory modes,
-  connector profile controls, and responsive desktop/mobile layout.
+  connector profile controls, WordPress connector manifest validation, and
+  responsive desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
-  SQLite-compatible staged operation envelopes, plus deferred REST push request
-  plans and response summaries for reconnect sync.
+  WordPress connector manifests, plus SQLite-compatible staged operation
+  envelopes, deferred REST push request plans, and response summaries for
+  reconnect sync.
 - Browser-safe offline queue bridge contract for staging inventory operations
   before the desktop SQLite/Tauri command adapter is connected.
 - Local SQLite `operation_queue` insert planning for staged operations, with
@@ -36,9 +38,10 @@ future offline sync app.
 
 The app does not yet implement live pairing, live SQLite writes, live push/pull
 sync execution, printer/scanner adapters, kiosk lockdown, or signed updater
-behavior. Connector profiles are currently local, secret-free configuration
-models; real device tokens must be stored in the desktop secure store and
-ScryDex/Square credentials must remain in WordPress/server-side settings.
+behavior. Connector profiles and manifest validation are currently local,
+secret-free configuration models; real device tokens must be stored in the
+desktop secure store and ScryDex/Square credentials must remain in
+WordPress/server-side settings.
 
 ## Local Commands
 

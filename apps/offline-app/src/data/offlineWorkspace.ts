@@ -14,6 +14,7 @@ export type InventorySource = "cached" | "queued" | "accepted"
 export type QueueTone = "success" | "warning" | "neutral"
 export type ConnectorEnvironment = "development" | "staging" | "production"
 export type ConnectorStatus = "ready" | "needs_pairing" | "sandbox_only"
+export type ConnectorScheme = "http" | "https"
 
 export type NavItem = {
   label: string
@@ -68,7 +69,7 @@ export type StoreConnectorProfile = {
   environment: ConnectorEnvironment
   status: ConnectorStatus
   wordpress: {
-    scheme: "https"
+    scheme: ConnectorScheme
     host: string
     restBasePath: "/wp-json/tcg-store/v1"
     authMode: "offline_device_token"
@@ -87,6 +88,75 @@ export type StoreConnectorProfile = {
     credentialStorage: "wordpress_server_settings"
     credentialsSyncedToApp: false
   }
+}
+
+export type OfflineConnectorRouteManifest = {
+  path: string
+  method: string
+  required_scope: string
+  permission_strategy: string
+  live_enabled_by_default: boolean
+}
+
+export type OfflineConnectorManifest = {
+  status: "ready" | "degraded"
+  action: "offline_connector_manifest"
+  profile_manifest_ready: boolean
+  profile_id: string
+  environment: ConnectorEnvironment
+  company: {
+    name: string
+    short_name?: string
+  }
+  wordpress: {
+    site_url: string
+    site_url_secure: boolean
+    rest_namespace: "tcg-store/v1"
+    rest_base_path: "/wp-json/tcg-store/v1"
+    rest_base_url: string
+    auth_mode: "offline_device_token"
+    device_pairing_required: boolean
+    credential_storage: "desktop_secure_store"
+    network_requests_deferred: boolean
+    route_registration_deferred: boolean
+    https_required_for_remote_pairing: boolean
+  }
+  offline_routes: OfflineConnectorRouteManifest[]
+  offline_route_count: number
+  square: {
+    inventory_authority: "tcg_store_platform"
+    payment_authority: "official_woocommerce_square_extension"
+    provider_inventory_writes_deferred: boolean
+    payment_capture_deferred: boolean
+    production_provider_writes_deferred: boolean
+    production_payment_capture_deferred: boolean
+  }
+  scrydex: {
+    configured: boolean
+    environment: string
+    base_url: string
+    team_id_configured: boolean
+    active_key_slot: string
+    credential_storage: "wordpress_server_settings"
+    credential_values_redacted: boolean
+    credentials_synced_to_app: false
+    network_requests_deferred: boolean
+    database_writes_deferred: boolean
+    configuration_issues: string[]
+  }
+  credentials_synced_to_app: false
+  production_credentials_deferred: boolean
+  manifest_public_safe: boolean
+}
+
+export type ConnectorManifestValidation = {
+  status: "accepted" | "warning" | "rejected"
+  profile: StoreConnectorProfile
+  routeCount: number
+  endpointCount: number
+  issues: string[]
+  manifestPublicSafe: boolean
+  credentialsSyncedToApp: false
 }
 
 export type OfflineOperationEnvelope = {
@@ -405,6 +475,185 @@ export function connectorHealthSummary(profile: StoreConnectorProfile) {
   }
 }
 
+export const offlineConnectorRoutePreview: OfflineConnectorRouteManifest[] = [
+  {
+    path: "/offline/devices/register",
+    method: "POST",
+    required_scope: "offline_device_register",
+    permission_strategy: "manager_pairing_code",
+    live_enabled_by_default: false,
+  },
+  {
+    path: "/offline/pull",
+    method: "POST",
+    required_scope: "offline_pull",
+    permission_strategy: "offline_device_token",
+    live_enabled_by_default: false,
+  },
+  {
+    path: "/offline/push",
+    method: "POST",
+    required_scope: "offline_push",
+    permission_strategy: "offline_device_token",
+    live_enabled_by_default: false,
+  },
+  {
+    path: "/offline/conflicts",
+    method: "GET",
+    required_scope: "offline_conflict_review",
+    permission_strategy: "offline_device_token",
+    live_enabled_by_default: false,
+  },
+  {
+    path: "/offline/devices/revoke",
+    method: "POST",
+    required_scope: "offline_device_revoke",
+    permission_strategy: "manager_capability",
+    live_enabled_by_default: false,
+  },
+]
+
+export function buildConnectorManifestPreview(
+  profile: StoreConnectorProfile,
+  routes: OfflineConnectorRouteManifest[] = offlineConnectorRoutePreview,
+): OfflineConnectorManifest {
+  const siteUrl = connectorDisplayUrl(profile)
+
+  return {
+    status: profile.environment === "development" ? "degraded" : "ready",
+    action: "offline_connector_manifest",
+    profile_manifest_ready: true,
+    profile_id: profile.id,
+    environment: profile.environment,
+    company: {
+      name: profile.companyName,
+      short_name: profile.companyShortName,
+    },
+    wordpress: {
+      site_url: siteUrl,
+      site_url_secure: profile.wordpress.scheme === "https",
+      rest_namespace: "tcg-store/v1",
+      rest_base_path: profile.wordpress.restBasePath,
+      rest_base_url: `${siteUrl}${profile.wordpress.restBasePath}`,
+      auth_mode: profile.wordpress.authMode,
+      device_pairing_required: profile.wordpress.devicePairingRequired,
+      credential_storage: profile.wordpress.credentialStorage,
+      network_requests_deferred: profile.wordpress.networkRequestsDeferred,
+      route_registration_deferred: true,
+      https_required_for_remote_pairing: true,
+    },
+    offline_routes: routes,
+    offline_route_count: routes.length,
+    square: {
+      inventory_authority: profile.square.inventoryAuthority,
+      payment_authority: profile.square.paymentAuthority,
+      provider_inventory_writes_deferred: profile.square.providerWritesDeferred,
+      payment_capture_deferred: true,
+      production_provider_writes_deferred: true,
+      production_payment_capture_deferred: true,
+    },
+    scrydex: {
+      configured: true,
+      environment: profile.environment,
+      base_url: "wordpress-server-configured",
+      team_id_configured: true,
+      active_key_slot: "redacted",
+      credential_storage: profile.scrydex.credentialStorage,
+      credential_values_redacted: true,
+      credentials_synced_to_app: profile.scrydex.credentialsSyncedToApp,
+      network_requests_deferred: true,
+      database_writes_deferred: true,
+      configuration_issues: [],
+    },
+    credentials_synced_to_app: false,
+    production_credentials_deferred: true,
+    manifest_public_safe: true,
+  }
+}
+
+export function validateConnectorManifest(
+  manifest: OfflineConnectorManifest,
+): ConnectorManifestValidation {
+  const issues: string[] = []
+  const site = parseManifestSite(manifest.wordpress.site_url)
+
+  if (manifest.action !== "offline_connector_manifest") {
+    issues.push("Manifest action must be offline_connector_manifest.")
+  }
+
+  if (!manifest.profile_manifest_ready) {
+    issues.push("Manifest is not marked ready for profile creation.")
+  }
+
+  if (!manifest.manifest_public_safe) {
+    issues.push("Manifest must be marked public-safe before desktop import.")
+  }
+
+  if (manifest.credentials_synced_to_app !== false) {
+    issues.push("Manifest must not sync WordPress, ScryDex, Square, or SSH credentials to the app.")
+  }
+
+  if (manifest.scrydex.credentials_synced_to_app !== false) {
+    issues.push("ScryDex credentials must remain in WordPress server settings.")
+  }
+
+  if (!manifest.scrydex.credential_values_redacted) {
+    issues.push("ScryDex credential values must be redacted in the connector manifest.")
+  }
+
+  if (manifest.wordpress.auth_mode !== "offline_device_token") {
+    issues.push("WordPress auth mode must use offline device tokens.")
+  }
+
+  if (manifest.wordpress.credential_storage !== "desktop_secure_store") {
+    issues.push("Device credentials must be stored in the desktop secure store.")
+  }
+
+  if (manifest.square.payment_authority !== "official_woocommerce_square_extension") {
+    issues.push("Square payment authority must stay with the official WooCommerce Square extension.")
+  }
+
+  if (manifest.square.inventory_authority !== "tcg_store_platform") {
+    issues.push("Square inventory authority must be the TCG Store Platform plugin.")
+  }
+
+  if (manifest.offline_route_count !== manifest.offline_routes.length) {
+    issues.push("Offline route count must match the manifest route list.")
+  }
+
+  if (!site) {
+    issues.push("WordPress site URL must be a valid website URL.")
+  } else if (
+    site.scheme === "http" &&
+    manifest.environment === "production" &&
+    manifest.wordpress.https_required_for_remote_pairing
+  ) {
+    issues.push("Production connector pairing requires HTTPS.")
+  }
+
+  const rejected =
+    !site ||
+    manifest.action !== "offline_connector_manifest" ||
+    !manifest.manifest_public_safe ||
+    manifest.credentials_synced_to_app !== false ||
+    manifest.scrydex.credentials_synced_to_app !== false ||
+    manifest.wordpress.auth_mode !== "offline_device_token" ||
+    manifest.wordpress.credential_storage !== "desktop_secure_store" ||
+    manifest.square.payment_authority !== "official_woocommerce_square_extension"
+  const status = rejected ? "rejected" : issues.length > 0 || manifest.status === "degraded" ? "warning" : "accepted"
+  const profile = connectorProfileFromManifest(manifest, site)
+
+  return {
+    status,
+    profile,
+    routeCount: manifest.offline_routes.length,
+    endpointCount: manifest.offline_routes.filter((route) => route.method && route.path).length,
+    issues,
+    manifestPublicSafe: manifest.manifest_public_safe,
+    credentialsSyncedToApp: false,
+  }
+}
+
 export function filterInventoryItems(
   items: InventoryItem[],
   query: string,
@@ -428,6 +677,88 @@ export function filterInventoryItems(
 
 export function findInventoryItem(items: InventoryItem[], selectedId: number) {
   return items.find((item) => item.id === selectedId) ?? items[0]
+}
+
+function connectorProfileFromManifest(
+  manifest: OfflineConnectorManifest,
+  site: { scheme: ConnectorScheme; host: string } | null,
+): StoreConnectorProfile {
+  const environment = cleanConnectorEnvironment(manifest.environment)
+  const safeSite = site ?? { scheme: "https" as const, host: "offline.local" }
+
+  return {
+    id: safeConnectorId(manifest.profile_id, manifest.company.name, environment, safeSite.host),
+    companyName: manifest.company.name || "TCG Store",
+    companyShortName: manifest.company.short_name || manifest.company.name || "TCG",
+    environment,
+    status:
+      environment === "development"
+        ? "sandbox_only"
+        : manifest.wordpress.device_pairing_required
+          ? "needs_pairing"
+          : "ready",
+    wordpress: {
+      scheme: safeSite.scheme,
+      host: safeSite.host,
+      restBasePath: "/wp-json/tcg-store/v1",
+      authMode: "offline_device_token",
+      credentialStorage: "desktop_secure_store",
+      devicePairingRequired: manifest.wordpress.device_pairing_required,
+      networkRequestsDeferred: true,
+    },
+    square: {
+      inventoryAuthority: "tcg_store_platform",
+      paymentAuthority: "official_woocommerce_square_extension",
+      providerWritesDeferred: true,
+      sandboxRequired: environment !== "production",
+    },
+    scrydex: {
+      teamLabel: manifest.scrydex.team_id_configured
+        ? "Configured in WordPress"
+        : "Needs WordPress team setting",
+      credentialStorage: "wordpress_server_settings",
+      credentialsSyncedToApp: false,
+    },
+  }
+}
+
+function parseManifestSite(value: string): { scheme: ConnectorScheme; host: string } | null {
+  try {
+    const parsed = new URL(value)
+    const scheme = parsed.protocol.replace(":", "") as ConnectorScheme
+
+    if ((scheme !== "https" && scheme !== "http") || !parsed.host) {
+      return null
+    }
+
+    return {
+      scheme,
+      host: parsed.host,
+    }
+  } catch {
+    return null
+  }
+}
+
+function cleanConnectorEnvironment(value: string): ConnectorEnvironment {
+  return value === "development" || value === "staging" || value === "production"
+    ? value
+    : "development"
+}
+
+function safeConnectorId(
+  profileId: string,
+  companyName: string,
+  environment: ConnectorEnvironment,
+  host: string,
+) {
+  const candidate = profileId || `${companyName}-${environment}-${host}`
+  const slug = candidate
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return slug || "tcg-store-development-offline-local"
 }
 
 export function buildInventoryUpdateOperation(

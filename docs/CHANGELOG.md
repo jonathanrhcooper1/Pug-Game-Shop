@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app WordPress connector manifest ingestion and validation for
+  reusable multi-company website profiles, including route-count checks,
+  HTTPS/environment warnings, official WooCommerce Square payment authority,
+  ScryDex redaction requirements, and explicit no-credential-sync status.
 - Offline app functional controls for sidebar navigation, sync preview,
   status filters, list/grid inventory views, scan staging, quantity staging,
   print-label preview, conflict review/history selection, and reusable

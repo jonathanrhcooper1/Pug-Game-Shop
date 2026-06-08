@@ -73,6 +73,15 @@ inventory/payment authority boundaries, ScryDex redaction status, and HTTPS
 readiness flags. It does not issue tokens, expose ScryDex keys, call providers,
 or register live offline routes.
 
+The offline app can now ingest and validate that manifest shape locally. The
+Settings connector panel turns a manifest into a reusable company/site profile,
+checks route counts, confirms device-token and desktop secure-storage
+boundaries, verifies Square payments remain delegated to the official
+WooCommerce Square extension, confirms ScryDex credentials are redacted, and
+shows whether credentials are synced to the app. Network calls, token exchange,
+pairing-code submission, provider writes, and production mutations remain
+deferred.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.
