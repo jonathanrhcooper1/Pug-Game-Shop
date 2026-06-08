@@ -22,13 +22,20 @@ Primary responsibilities:
 
 Current runtime:
 
+- Requires Node 22.13+ or the current Node 24 line so `node:sqlite` is
+  available without an extra native npm dependency.
 - `npm start` starts the local HTTP server on `127.0.0.1:8787` by default.
+- Set `PUG_LOCAL_SYNC_DB=C:\path\to\store-sync.sqlite` to choose the durable
+  SQLite database location. If omitted, the server writes
+  `apps/local-sync-server/store-sync.sqlite`.
 - `POST /auth/pin` verifies cached 4-digit PIN users.
 - `GET /users/access-policy`, `POST /users`, and
   `PATCH /users/{id}/access` are manager-session protected.
 - `GET /inventory/search`, `POST /inventory/reservations`, and
   `POST /kiosk/orders` provide the first shared LAN inventory/order surface.
+- Staff PIN users, access policy changes, local inventory reservation locks,
+  kiosk pickup orders, and operation queue rows persist across server restarts.
 
-The runtime currently uses an in-process store with the same API boundary the
-SQLite adapter will implement. Durable `store-sync.sqlite` persistence remains
-the next storage layer behind this contract.
+The current SQLite schema is a development runtime for the LAN middleman. Live
+WordPress pull/push workers, customer-credit cache tables, event cache tables,
+conflict tables, and full installer packaging are still upcoming layers.

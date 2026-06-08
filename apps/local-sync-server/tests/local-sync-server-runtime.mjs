@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 
 import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
-const server = createLocalSyncHttpServer()
+const server = createLocalSyncHttpServer({ storeOptions: { databasePath: ":memory:" } })
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
 
 try {
@@ -113,6 +113,7 @@ try {
 
   const syncStatus = await fetchJson(`${baseUrl}/sync/status`)
   assert.equal(syncStatus.status, "ok")
+  assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
   assert.ok(syncStatus.queue_depth >= 4)
 

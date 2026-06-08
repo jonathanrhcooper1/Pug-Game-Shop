@@ -1,4 +1,8 @@
 import { createHash, randomUUID } from "node:crypto"
+import { mkdirSync } from "node:fs"
+import { dirname, resolve } from "node:path"
+import { DatabaseSync } from "node:sqlite"
+import { fileURLToPath } from "node:url"
 
 export const ACCESS_SECTIONS = Object.freeze([
   "Inventory",
@@ -11,13 +15,23 @@ export const ACCESS_SECTIONS = Object.freeze([
   "Settings",
 ])
 
+export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "store-sync.sqlite",
+)
+
 export function createLocalSyncStore(options = {}) {
   const now = options.now ?? (() => new Date())
-  const users = seedUsers()
+  const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
+  migrateLocalSyncDatabase(database)
+  seedLocalSyncDatabase(database, now)
+
+  const users = loadUsers(database)
   const sessions = new Map()
-  const inventoryItems = seedInventoryItems()
-  const queue = []
-  const kioskOrders = []
+  const inventoryItems = loadInventoryItems(database)
+  const queue = loadQueue(database)
+  const kioskOrders = loadKioskOrders(database)
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -132,7 +146,8 @@ export function createLocalSyncStore(options = {}) {
     }
     user.pinHash = hashPin(pin, user.pinSalt)
     users.push(user)
-    queue.push(queueOperation("user_access_upsert", user.id, { role: user.role, access: user.access }))
+    saveUser(database, user, now)
+    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now)
 
     return {
       status: "ok",
@@ -169,7 +184,8 @@ export function createLocalSyncStore(options = {}) {
       return blocked("access_required", "Staff users need access to at least one workspace.")
     }
 
-    queue.push(queueOperation("user_access_upsert", user.id, { role: user.role, access: user.access }))
+    saveUser(database, user, now)
+    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now)
 
     return {
       status: "ok",
@@ -184,8 +200,9 @@ export function createLocalSyncStore(options = {}) {
         return true
       }
 
-      return [item.card_name, item.set_name, item.barcode, item.public_id]
-        .some((value) => String(value).toLowerCase().includes(needle))
+      return [item.card_name, item.set_name, item.barcode, item.public_id].some((value) =>
+        String(value).toLowerCase().includes(needle),
+      )
     })
 
     return {
@@ -223,6 +240,20 @@ export function createLocalSyncStore(options = {}) {
       return blocked("invalid_kiosk_order", "First name, last name, and at least one item are required.")
     }
 
+    for (const publicId of publicIds) {
+      const item = inventoryItems.find((candidate) => candidate.public_id === publicId)
+
+      if (!item) {
+        return blocked("inventory_not_found", "No cached inventory item matched that public ID.")
+      }
+
+      if (item.status !== "available") {
+        return blocked("inventory_unavailable", "The local sync server already has a lock or accepted status for this item.", {
+          item: publicInventoryItem(item),
+        })
+      }
+    }
+
     const reservations = []
 
     for (const publicId of publicIds) {
@@ -250,7 +281,8 @@ export function createLocalSyncStore(options = {}) {
     }
 
     kioskOrders.push(order)
-    queue.push(queueOperation("kiosk_order", order.order_id, order))
+    saveKioskOrder(database, order)
+    appendQueueOperation(database, queue, "kiosk_order", order.order_id, order, now)
 
     return {
       status: "ok",
@@ -275,6 +307,7 @@ export function createLocalSyncStore(options = {}) {
     item.status = "reserved"
     item.source = "queued"
     item.row_version += 1
+    saveInventoryItem(database, item, now)
 
     const reservation = {
       reservation_id: `reservation-${randomUUID()}`,
@@ -286,7 +319,7 @@ export function createLocalSyncStore(options = {}) {
       created_at_utc: now().toISOString(),
     }
 
-    queue.push(queueOperation("inventory_reservation", reservation.reservation_id, reservation))
+    appendQueueOperation(database, queue, "inventory_reservation", reservation.reservation_id, reservation, now)
 
     return {
       status: "ok",
@@ -300,7 +333,7 @@ export function createLocalSyncStore(options = {}) {
     return {
       status: "ok",
       local_database: "store-sync.sqlite",
-      persistence_mode: "sqlite_adapter_pending",
+      persistence_mode: "sqlite",
       queue_depth: queue.length,
       kiosk_order_count: kioskOrders.length,
       inventory_count: inventoryItems.length,
@@ -312,6 +345,7 @@ export function createLocalSyncStore(options = {}) {
 
   return {
     addUser,
+    close: () => database.close(),
     createKioskOrder,
     createSession,
     listAccessPolicy,
@@ -320,6 +354,264 @@ export function createLocalSyncStore(options = {}) {
     syncStatus,
     updateUserAccess,
   }
+}
+
+function openLocalSyncDatabase(databasePath) {
+  const resolvedPath = String(databasePath || DEFAULT_LOCAL_SYNC_DATABASE_PATH)
+
+  if (resolvedPath !== ":memory:") {
+    mkdirSync(dirname(resolvedPath), { recursive: true })
+  }
+
+  const database = new DatabaseSync(resolvedPath)
+  database.exec("PRAGMA foreign_keys = ON;")
+
+  if (resolvedPath !== ":memory:") {
+    database.exec("PRAGMA journal_mode = WAL;")
+  }
+
+  return database
+}
+
+function migrateLocalSyncDatabase(database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('staff', 'manager')),
+      access_json TEXT NOT NULL,
+      pin_salt TEXT NOT NULL,
+      pin_hash TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS inventory_items (
+      public_id TEXT PRIMARY KEY,
+      row_version INTEGER NOT NULL,
+      card_name TEXT NOT NULL,
+      set_name TEXT NOT NULL,
+      condition TEXT NOT NULL,
+      barcode TEXT NOT NULL,
+      price_minor_units INTEGER NOT NULL,
+      currency TEXT NOT NULL,
+      location TEXT NOT NULL,
+      status TEXT NOT NULL,
+      source TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS operation_queue (
+      operation_id TEXT PRIMARY KEY,
+      operation_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      queued_at_utc TEXT NOT NULL,
+      sync_status TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS kiosk_orders (
+      order_id TEXT PRIMARY KEY,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      status TEXT NOT NULL,
+      reservation_ids_json TEXT NOT NULL,
+      created_at_utc TEXT NOT NULL
+    );
+  `)
+}
+
+function seedLocalSyncDatabase(database, now) {
+  const userCount = database.prepare("SELECT COUNT(*) AS count FROM users").get().count
+  const inventoryCount = database.prepare("SELECT COUNT(*) AS count FROM inventory_items").get().count
+
+  if (Number(userCount) === 0) {
+    for (const user of seedUsers()) {
+      saveUser(database, user, now)
+    }
+  }
+
+  if (Number(inventoryCount) === 0) {
+    for (const item of seedInventoryItems()) {
+      saveInventoryItem(database, item, now)
+    }
+  }
+}
+
+function loadUsers(database) {
+  return database
+    .prepare("SELECT id, name, role, access_json, pin_salt, pin_hash FROM users ORDER BY id")
+    .all()
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      role: cleanRole(row.role),
+      access: cleanAccess(parseJson(row.access_json, [])),
+      pinSalt: row.pin_salt,
+      pinHash: row.pin_hash,
+    }))
+}
+
+function loadInventoryItems(database) {
+  return database
+    .prepare(`
+      SELECT public_id, row_version, card_name, set_name, condition, barcode,
+        price_minor_units, currency, location, status, source
+      FROM inventory_items
+      ORDER BY public_id
+    `)
+    .all()
+    .map((row) => ({
+      public_id: row.public_id,
+      row_version: Number(row.row_version),
+      card_name: row.card_name,
+      set_name: row.set_name,
+      condition: row.condition,
+      barcode: row.barcode,
+      price_minor_units: Number(row.price_minor_units),
+      currency: row.currency,
+      location: row.location,
+      status: row.status,
+      source: row.source,
+    }))
+}
+
+function loadQueue(database) {
+  return database
+    .prepare(`
+      SELECT operation_id, operation_type, entity_id, payload_json, queued_at_utc, sync_status
+      FROM operation_queue
+      ORDER BY queued_at_utc, operation_id
+    `)
+    .all()
+    .map((row) => ({
+      operation_id: row.operation_id,
+      operation_type: row.operation_type,
+      entity_id: row.entity_id,
+      payload: parseJson(row.payload_json, {}),
+      queued_at_utc: row.queued_at_utc,
+      sync_status: row.sync_status,
+    }))
+}
+
+function loadKioskOrders(database) {
+  return database
+    .prepare(`
+      SELECT order_id, first_name, last_name, status, reservation_ids_json, created_at_utc
+      FROM kiosk_orders
+      ORDER BY created_at_utc, order_id
+    `)
+    .all()
+    .map((row) => ({
+      order_id: row.order_id,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      status: row.status,
+      reservation_ids: parseJson(row.reservation_ids_json, []),
+      created_at_utc: row.created_at_utc,
+    }))
+}
+
+function saveUser(database, user, now) {
+  database
+    .prepare(`
+      INSERT INTO users (id, name, role, access_json, pin_salt, pin_hash, updated_at_utc)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        role = excluded.role,
+        access_json = excluded.access_json,
+        pin_salt = excluded.pin_salt,
+        pin_hash = excluded.pin_hash,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run(
+      user.id,
+      user.name,
+      user.role,
+      JSON.stringify(cleanAccess(user.access)),
+      user.pinSalt,
+      user.pinHash,
+      now().toISOString(),
+    )
+}
+
+function saveInventoryItem(database, item, now) {
+  database
+    .prepare(`
+      INSERT INTO inventory_items (
+        public_id, row_version, card_name, set_name, condition, barcode,
+        price_minor_units, currency, location, status, source, updated_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(public_id) DO UPDATE SET
+        row_version = excluded.row_version,
+        card_name = excluded.card_name,
+        set_name = excluded.set_name,
+        condition = excluded.condition,
+        barcode = excluded.barcode,
+        price_minor_units = excluded.price_minor_units,
+        currency = excluded.currency,
+        location = excluded.location,
+        status = excluded.status,
+        source = excluded.source,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run(
+      item.public_id,
+      item.row_version,
+      item.card_name,
+      item.set_name,
+      item.condition,
+      item.barcode,
+      item.price_minor_units,
+      item.currency,
+      item.location,
+      item.status,
+      item.source,
+      now().toISOString(),
+    )
+}
+
+function saveKioskOrder(database, order) {
+  database
+    .prepare(`
+      INSERT INTO kiosk_orders (order_id, first_name, last_name, status, reservation_ids_json, created_at_utc)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(order_id) DO UPDATE SET
+        first_name = excluded.first_name,
+        last_name = excluded.last_name,
+        status = excluded.status,
+        reservation_ids_json = excluded.reservation_ids_json
+    `)
+    .run(
+      order.order_id,
+      order.first_name,
+      order.last_name,
+      order.status,
+      JSON.stringify(order.reservation_ids),
+      order.created_at_utc,
+    )
+}
+
+function appendQueueOperation(database, queue, type, entityId, payload, now) {
+  const operation = queueOperation(type, entityId, payload, now)
+
+  database
+    .prepare(`
+      INSERT INTO operation_queue (operation_id, operation_type, entity_id, payload_json, queued_at_utc, sync_status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    .run(
+      operation.operation_id,
+      operation.operation_type,
+      operation.entity_id,
+      JSON.stringify(operation.payload),
+      operation.queued_at_utc,
+      operation.sync_status,
+    )
+  queue.push(operation)
+
+  return operation
 }
 
 function seedUsers() {
@@ -411,13 +703,13 @@ function publicInventoryItem(item) {
   }
 }
 
-function queueOperation(type, entityId, payload) {
+function queueOperation(type, entityId, payload, now) {
   return {
     operation_id: `op-${randomUUID()}`,
     operation_type: type,
     entity_id: entityId,
     payload,
-    queued_at_utc: new Date().toISOString(),
+    queued_at_utc: now().toISOString(),
     sync_status: "pending",
   }
 }
@@ -448,6 +740,14 @@ function cleanRole(value) {
 
 function cleanReason(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 160) || "local reservation"
+}
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(String(value ?? ""))
+  } catch {
+    return fallback
+  }
 }
 
 function boundedInt(value, min, max, fallback) {

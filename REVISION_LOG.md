@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Local Sync Server SQLite Persistence
+
+### What Changed
+
+- Replaced the local sync server's in-memory store with a SQLite-backed
+  `store-sync.sqlite` runtime.
+- Added database migration/seed logic for cached PIN users, cached inventory,
+  queued operations, and kiosk pickup orders.
+- Persisted manager-created PIN users, role/access edits, local inventory
+  reservation locks, kiosk pickup orders, and queued operations across server
+  restarts.
+- Added `PUG_LOCAL_SYNC_DB` support so development, tests, and future installers
+  can choose the local database path.
+- Hardened kiosk order creation so a multi-card kiosk request validates item
+  availability before reserving any item.
+
+### Why
+
+The local server is the in-store middleman for multiple employee and kiosk
+devices. It needs durable shared state so local reservations, PIN users, and
+queued work survive restarts and stay consistent while WordPress remains the
+global source of truth.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/README.md`
+- `.gitignore`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local development SQLite schema creation for `users`, `inventory_items`,
+  `operation_queue`, and `kiosk_orders`.
+- No WordPress/MySQL production migration was added.
+
+### Tests Added
+
+- Local sync server persistence test proving a staff PIN, inventory
+  reservation, row version, and operation queue depth survive closing and
+  reopening the same SQLite database.
+- Runtime test assertion that sync status reports `persistence_mode: sqlite`.
+
+### Verification
+
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `node --check apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `npm --prefix apps/local-sync-server run test`
+
+### Rollback Notes
+
+- Revert this revision to return the LAN server to the previous in-memory
+  development store.
+- Delete the local `store-sync.sqlite` file only after confirming it contains
+  no unsynced local operations that staff need to preserve.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because this revision only affects the local
+  LAN server development runtime.
+
 ## 2026-06-08 - Offline App LAN Sync Client Wiring
 
 ### What Changed

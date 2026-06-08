@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server now persists staff PIN users, inventory locks, kiosk
+  orders, and queued operations in `store-sync.sqlite`, with restart
+  persistence tests and a configurable `PUG_LOCAL_SYNC_DB` runtime path.
 - Offline app setup profiles now include a configurable LAN sync server URL,
   and the app has a typed local sync server client used for PIN auth,
   manager user creation/access edits, inventory holds, kiosk pickup orders, and

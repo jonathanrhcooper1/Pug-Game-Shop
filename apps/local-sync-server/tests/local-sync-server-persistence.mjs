@@ -1,0 +1,62 @@
+import assert from "node:assert/strict"
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+import { createLocalSyncStore } from "../src/localSyncStore.mjs"
+
+const tempDir = await mkdtemp(join(tmpdir(), "pug-local-sync-"))
+const databasePath = join(tempDir, "store-sync.sqlite")
+
+try {
+  const firstStore = createLocalSyncStore({ databasePath })
+  const managerAuth = firstStore.createSession({ pin: "9999" })
+  assert.equal(managerAuth.status, "ok")
+
+  const createdUser = firstStore.addUser(managerAuth.session.token, {
+    name: "Persistent Cashier",
+    pin: "1357",
+    role: "staff",
+    access: ["Inventory", "Kiosk", "Queue"],
+  })
+  assert.equal(createdUser.status, "ok")
+
+  const cashierAuth = firstStore.createSession({ pin: "1357" })
+  assert.equal(cashierAuth.status, "ok")
+
+  const firstReservation = firstStore.reserveInventory(cashierAuth.session.token, {
+    inventory_public_id: "inv-1001",
+    hold_reason: "restart persistence check",
+  })
+  assert.equal(firstReservation.status, "ok")
+
+  const firstStatus = firstStore.syncStatus()
+  assert.equal(firstStatus.persistence_mode, "sqlite")
+  assert.equal(firstStatus.queue_depth, 2)
+  firstStore.close()
+
+  const restartedStore = createLocalSyncStore({ databasePath })
+  const persistedCashierAuth = restartedStore.createSession({ pin: "1357" })
+  assert.equal(persistedCashierAuth.status, "ok")
+  assert.equal(persistedCashierAuth.user.name, "Persistent Cashier")
+
+  const persistedInventory = restartedStore.searchInventory({ query: "charizard" })
+  assert.equal(persistedInventory.items[0].status, "reserved")
+  assert.equal(persistedInventory.items[0].row_version, 2)
+
+  const duplicateReservation = restartedStore.reserveInventory(persistedCashierAuth.session.token, {
+    inventory_public_id: "inv-1001",
+    hold_reason: "duplicate after restart",
+  })
+  assert.equal(duplicateReservation.status, "blocked")
+  assert.equal(duplicateReservation.code, "inventory_unavailable")
+
+  const restartedStatus = restartedStore.syncStatus()
+  assert.equal(restartedStatus.queue_depth, 2)
+  assert.equal(restartedStatus.local_operations_preserved, true)
+  restartedStore.close()
+
+  console.log("PASS local sync server persistence")
+} finally {
+  await rm(tempDir, { recursive: true, force: true })
+}
