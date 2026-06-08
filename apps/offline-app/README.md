@@ -17,8 +17,9 @@ future offline sync app.
   multi-company connector draft editing, WordPress connector manifest
   validation, pairing-code request preview, connector-aware guarded inventory
   hold staging, per-company connector test reports, visible local queue rows,
-  conflict-review history, print-label job preparation, customer-credit pending
-  holds, and responsive desktop/mobile layout.
+  desktop SQLite queue restore, conflict-review history, print-label job
+  preparation, customer-credit pending holds, and responsive desktop/mobile
+  layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
   WordPress connector manifests, plus SQLite-compatible staged operation
@@ -34,8 +35,8 @@ future offline sync app.
   columns, parameter count, persistence result, and remaining replay deferrals.
 - Tauri command persistence for validating and writing staged inventory,
   reservation, event, and credit operation envelopes to `offline.sqlite`, with
-  local and CI Rust tests available through `cargo test` when the Windows MSVC
-  toolchain is installed.
+  a companion pending-operation restore command and local/CI Rust tests
+  available through `cargo test` when the Windows MSVC toolchain is installed.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,

@@ -31,9 +31,15 @@ const SQLITE_QUEUE_INSERT_SQL: &str = concat!(
     "payload_json, authorization_context_json, schema_version, status, retry_count",
     ") VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)"
 );
+const SQLITE_QUEUE_SELECT_PENDING_SQL: &str = concat!(
+    "SELECT client_operation_id, device_id, location_id, actor_id, operation_type, ",
+    "entity_type, entity_id, base_row_version, occurred_at_local, queued_at_utc, ",
+    "payload_json, authorization_context_json, schema_version ",
+    "FROM operation_queue WHERE status = 'pending' ORDER BY queued_at_utc DESC LIMIT ?1"
+);
 const SQLITE_QUEUE_PARAMETER_COUNT: u8 = 15;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct OfflineOperationEnvelope {
     client_operation_id: String,
     device_id: String,
@@ -68,6 +74,21 @@ struct QueueOfflineOperationResponse {
     schema_version: u8,
 }
 
+#[derive(Debug, Serialize)]
+struct ListOfflineOperationsResponse {
+    status: &'static str,
+    persistence_mode: &'static str,
+    sqlite_table: &'static str,
+    sqlite_database_file: &'static str,
+    operation_count: usize,
+    operations: Vec<OfflineOperationEnvelope>,
+    queue_replay_deferred: bool,
+    canonical_mutations_deferred: bool,
+    direct_mysql_access: bool,
+    network_write: bool,
+    schema_version: u8,
+}
+
 #[tauri::command]
 fn queue_offline_operation(
     app: tauri::AppHandle,
@@ -77,6 +98,17 @@ fn queue_offline_operation(
     let connection = open_offline_database(&database_path)?;
 
     queue_offline_operation_with_connection(operation, &connection)
+}
+
+#[tauri::command]
+fn list_offline_operations(
+    app: tauri::AppHandle,
+    limit: Option<u16>,
+) -> Result<ListOfflineOperationsResponse, String> {
+    let database_path = offline_database_path(&app)?;
+    let connection = open_offline_database(&database_path)?;
+
+    list_offline_operations_with_connection(&connection, limit)
 }
 
 fn queue_offline_operation_with_connection(
@@ -105,6 +137,27 @@ fn queue_offline_operation_with_connection(
     })
 }
 
+fn list_offline_operations_with_connection(
+    connection: &Connection,
+    limit: Option<u16>,
+) -> Result<ListOfflineOperationsResponse, String> {
+    let operations = load_pending_operations(connection, limit)?;
+
+    Ok(ListOfflineOperationsResponse {
+        status: "loaded_local_queue",
+        persistence_mode: "sqlite",
+        sqlite_table: SQLITE_QUEUE_TABLE,
+        sqlite_database_file: OFFLINE_DATABASE_FILE,
+        operation_count: operations.len(),
+        operations,
+        queue_replay_deferred: true,
+        canonical_mutations_deferred: true,
+        direct_mysql_access: false,
+        network_write: false,
+        schema_version: 1,
+    })
+}
+
 #[derive(Debug)]
 struct QueueInsertOutcome {
     status: &'static str,
@@ -125,6 +178,89 @@ fn offline_database_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 fn open_offline_database(path: &Path) -> Result<Connection, String> {
     Connection::open(path).map_err(|_| "offline_database_open_failed".to_string())
+}
+
+fn load_pending_operations(
+    connection: &Connection,
+    limit: Option<u16>,
+) -> Result<Vec<OfflineOperationEnvelope>, String> {
+    ensure_operation_queue_schema(connection)?;
+
+    let mut statement = connection
+        .prepare(SQLITE_QUEUE_SELECT_PENDING_SQL)
+        .map_err(|_| "offline_queue_select_failed".to_string())?;
+    let mut rows = statement
+        .query(params![normalized_queue_limit(limit)])
+        .map_err(|_| "offline_queue_select_failed".to_string())?;
+    let mut operations = Vec::new();
+
+    while let Some(row) = rows
+        .next()
+        .map_err(|_| "offline_queue_row_read_failed".to_string())?
+    {
+        let schema_version = row
+            .get::<_, i64>(12)
+            .map_err(|_| "offline_queue_row_invalid".to_string())?;
+
+        if schema_version != 1 {
+            return Err("offline_queue_row_invalid".to_string());
+        }
+
+        let operation = OfflineOperationEnvelope {
+            client_operation_id: row
+                .get(0)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            device_id: row
+                .get(1)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            location_id: sqlite_unsigned(
+                row.get(2)
+                    .map_err(|_| "offline_queue_row_invalid".to_string())?,
+                "offline_queue_row_invalid",
+            )?,
+            actor_id: sqlite_unsigned(
+                row.get(3)
+                    .map_err(|_| "offline_queue_row_invalid".to_string())?,
+                "offline_queue_row_invalid",
+            )?,
+            operation_type: row
+                .get(4)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            entity_type: row
+                .get(5)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            entity_id: row
+                .get(6)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            base_row_version: sqlite_unsigned(
+                row.get(7)
+                    .map_err(|_| "offline_queue_row_invalid".to_string())?,
+                "offline_queue_row_invalid",
+            )?,
+            occurred_at_local: row
+                .get(8)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            queued_at_utc: row
+                .get(9)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            payload_json: row
+                .get(10)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            authorization_context_json: row
+                .get(11)
+                .map_err(|_| "offline_queue_row_invalid".to_string())?,
+            schema_version: 1,
+        };
+
+        validate_operation(&operation).map_err(|_| "offline_queue_row_invalid".to_string())?;
+        operations.push(operation);
+    }
+
+    Ok(operations)
+}
+
+fn normalized_queue_limit(limit: Option<u16>) -> i64 {
+    i64::from(limit.unwrap_or(50).clamp(1, 100))
 }
 
 fn ensure_operation_queue_schema(connection: &Connection) -> Result<(), String> {
@@ -178,6 +314,10 @@ fn sqlite_integer(value: u64, error: &'static str) -> Result<i64, String> {
     i64::try_from(value).map_err(|_| error.to_string())
 }
 
+fn sqlite_unsigned(value: i64, error: &'static str) -> Result<u64, String> {
+    u64::try_from(value).map_err(|_| error.to_string())
+}
+
 fn validate_operation(operation: &OfflineOperationEnvelope) -> Result<(), String> {
     if operation.client_operation_id.trim().is_empty() {
         return Err("missing_client_operation_id".to_string());
@@ -229,7 +369,10 @@ fn validate_operation(operation: &OfflineOperationEnvelope) -> Result<(), String
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![queue_offline_operation])
+        .invoke_handler(tauri::generate_handler![
+            queue_offline_operation,
+            list_offline_operations
+        ])
         .run(tauri::generate_context!())
         .expect("error while running TCG Store Offline");
 }
@@ -349,5 +492,56 @@ mod tests {
         assert_eq!(first.sqlite_rows_affected, 1);
         assert_eq!(second.status, "already_queued_local_queue");
         assert_eq!(second.sqlite_rows_affected, 0);
+    }
+
+    #[test]
+    fn list_command_loads_pending_operations_from_local_queue() {
+        let connection = Connection::open_in_memory().expect("in-memory sqlite should open");
+        let first_operation = valid_operation();
+        let mut second_operation = valid_operation();
+        second_operation.client_operation_id = "offline-inventory-87-20260607120500".to_string();
+        second_operation.entity_id = "87".to_string();
+        second_operation.queued_at_utc = "2026-06-07T12:05:00.000Z".to_string();
+
+        queue_offline_operation_with_connection(first_operation, &connection)
+            .expect("first insert should persist");
+        queue_offline_operation_with_connection(second_operation, &connection)
+            .expect("second insert should persist");
+
+        let result = list_offline_operations_with_connection(&connection, Some(10))
+            .expect("list command should load rows");
+
+        assert_eq!(result.status, "loaded_local_queue");
+        assert_eq!(result.persistence_mode, "sqlite");
+        assert_eq!(result.sqlite_table, "operation_queue");
+        assert_eq!(result.sqlite_database_file, "offline.sqlite");
+        assert_eq!(result.operation_count, 2);
+        assert_eq!(
+            result.operations[0].client_operation_id,
+            "offline-inventory-87-20260607120500"
+        );
+        assert!(result.queue_replay_deferred);
+        assert!(result.canonical_mutations_deferred);
+        assert!(!result.direct_mysql_access);
+        assert!(!result.network_write);
+    }
+
+    #[test]
+    fn list_command_honors_bounded_limit() {
+        let connection = Connection::open_in_memory().expect("in-memory sqlite should open");
+
+        for index in 1..=3 {
+            let mut operation = valid_operation();
+            operation.client_operation_id = format!("offline-inventory-{}-20260607120000", index);
+            operation.entity_id = index.to_string();
+
+            queue_offline_operation_with_connection(operation, &connection)
+                .expect("operation should persist");
+        }
+
+        let result = list_offline_operations_with_connection(&connection, Some(2))
+            .expect("list command should load limited rows");
+
+        assert_eq!(result.operation_count, 2);
     }
 }

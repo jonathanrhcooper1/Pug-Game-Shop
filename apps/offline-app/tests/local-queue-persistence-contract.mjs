@@ -61,6 +61,7 @@ assert.ok(appSource.includes("insert planned"))
 for (const marker of [
   "SQLITE_QUEUE_TABLE",
   "SQLITE_QUEUE_INSERT_SQL",
+  "SQLITE_QUEUE_SELECT_PENDING_SQL",
   "SQLITE_QUEUE_PARAMETER_COUNT",
   "SQLITE_QUEUE_CREATE_TABLE_SQL",
   "sqlite_table",
@@ -68,6 +69,8 @@ for (const marker of [
   "sqlite_statement",
   "sqlite_parameter_count",
   "sqlite_rows_affected",
+  "loaded_local_queue",
+  "operation_count",
   "sqlite_persistence_deferred: false",
   "queue_replay_deferred: true",
   "canonical_mutations_deferred: true",

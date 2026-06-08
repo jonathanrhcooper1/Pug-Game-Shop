@@ -480,6 +480,10 @@ the local `offline.sqlite` `operation_queue` table using an idempotent
 `client_operation_id` primary key. Browser mode remains preview-only, and queue
 replay, push execution, canonical WordPress mutations, and device-token network
 writes remain deferred until the paired-device route gates are enabled.
+The desktop app can also read pending local queue rows back from SQLite on
+startup, validate each operation envelope, and merge those operations into the
+visible queue. This restore path is bounded, local-only, and still does not
+perform website writes or direct MySQL access.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

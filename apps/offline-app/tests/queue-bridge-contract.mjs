@@ -11,10 +11,13 @@ const appSource = await readFile(path.join(appRoot, "src/App.tsx"), "utf8")
 
 for (const marker of [
   "queue_offline_operation",
+  "list_offline_operations",
   "preview_only",
   "tauri_command",
   "submitOfflineOperation",
+  "restoreDesktopQueuedOperations",
   "previewOfflineOperation",
+  "sanitizeRestoredOperations",
   "buildOfflineQueueInsertPlan",
   "sqlitePlan",
   "OfflineQueueCommandAdapter",
@@ -25,9 +28,11 @@ for (const marker of [
 }
 
 assert.ok(appSource.includes("submitOfflineOperation(operation, queueAdapter)"))
+assert.ok(appSource.includes("restoreDesktopQueuedOperations(queueAdapter)"))
 assert.ok(appSource.includes("OfflineQueueSubmissionResult"))
 assert.ok(appSource.includes("queueSubmission?.message"))
 assert.ok(appSource.includes("createTauriQueueAdapter"))
+assert.ok(appSource.includes("Desktop queue restored"))
 
 for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
   assert.equal(bridgeSource.includes(forbidden), false, `Forbidden queue bridge marker: ${forbidden}`)

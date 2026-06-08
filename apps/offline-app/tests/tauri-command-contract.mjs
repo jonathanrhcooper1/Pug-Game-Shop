@@ -21,15 +21,20 @@ for (const dependency of [
 for (const marker of [
   "#[tauri::command]",
   "queue_offline_operation",
-  "tauri::generate_handler![queue_offline_operation]",
+  "list_offline_operations",
+  "tauri::generate_handler![",
   "persisted_to_local_queue",
   "already_queued_local_queue",
+  "loaded_local_queue",
   "sqlite",
   "Connection::open",
   "CREATE TABLE IF NOT EXISTS operation_queue",
+  "SELECT client_operation_id",
   "SQLITE_QUEUE_INSERT_SQL",
+  "SQLITE_QUEUE_SELECT_PENDING_SQL",
   "sqlite_database_file",
   "sqlite_rows_affected",
+  "operation_count",
   "sqlite_persistence_deferred",
   "queue_replay_deferred",
   "canonical_mutations_deferred",
@@ -42,6 +47,7 @@ for (const marker of [
   "invalid_payload_json",
   "invalid_authorization_context_json",
   "unsupported_operation",
+  "offline_queue_row_invalid",
 ]) {
   assert.ok(libSource.includes(marker), `Missing Tauri command marker: ${marker}`)
 }

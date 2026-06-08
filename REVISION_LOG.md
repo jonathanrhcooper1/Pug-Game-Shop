@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Desktop Queue Restore
+
+### What Changed
+
+- Added a `list_offline_operations` Tauri command that reads pending rows from
+  the local SQLite `operation_queue`.
+- Added bounded pending-operation listing with row validation, schema version
+  checks, and queue ordering by `queued_at_utc`.
+- Added a TypeScript queue-restore bridge that sanitizes desktop rows before
+  React merges them into local state.
+- Added a startup restore hook so the visible queue can hydrate from the
+  desktop SQLite queue when running inside Tauri.
+
+### Why
+
+Local queue writes are only useful if staff can close and reopen the offline
+app without losing visibility into pending work. This adds read-back without
+enabling network push, direct MySQL access, or canonical website mutations.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust command coverage for loading pending local queue rows.
+- Rust command coverage for bounded queue restore limits.
+- Contract coverage for the restore bridge, Tauri read command, and startup
+  restore hook.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove desktop queue read-back while leaving local
+  queue writes intact.
+- Existing `offline.sqlite` files do not require schema rollback because this
+  revision only reads the existing queue table.
+
 ## 2026-06-08 - Offline App SQLite Queue Persistence
 
 ### What Changed

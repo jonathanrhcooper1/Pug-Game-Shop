@@ -56,7 +56,11 @@ import {
   type PreparedDevicePairingRequest,
   type PreparedPairingStorageRestoreResult,
 } from "./data/offlineWorkspace"
-import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
+import {
+  restoreDesktopQueuedOperations,
+  submitOfflineOperation,
+  type OfflineQueueSubmissionResult,
+} from "./data/offlineQueueBridge"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import pugGameShopCrest from "./assets/pug-game-shop-crest.png"
 import "./styles.css"
@@ -283,6 +287,43 @@ export function App() {
       JSON.stringify(buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)),
     )
   }, [queuedOperations, syncAttempts])
+
+  useEffect(() => {
+    if (!queueAdapter) {
+      return
+    }
+
+    let cancelled = false
+
+    void restoreDesktopQueuedOperations(queueAdapter).then((restoreResult) => {
+      if (cancelled || restoreResult.operations.length === 0) {
+        return
+      }
+
+      setQueuedOperations((currentOperations) => {
+        const currentIds = new Set(
+          currentOperations.map((operation) => operation.client_operation_id),
+        )
+        const restoredOperations = restoreResult.operations.filter(
+          (operation) => !currentIds.has(operation.client_operation_id),
+        )
+
+        if (restoredOperations.length === 0) {
+          return currentOperations
+        }
+
+        return [...restoredOperations, ...currentOperations]
+      })
+      setActivityMessage({
+        title: "Desktop queue restored",
+        detail: restoreResult.message,
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [queueAdapter])
 
   function sectionTarget(label: string) {
     if (label === "Sync") {

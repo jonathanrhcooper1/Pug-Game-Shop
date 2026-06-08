@@ -113,6 +113,9 @@
   creation, accepted operation inserts, duplicate `client_operation_id`
   idempotency, invalid payload rejection, unsupported operation rejection, and
   no direct MySQL or network write behavior.
+- Tauri Rust command coverage now also verifies pending-operation read-back
+  from local SQLite, bounded restore limits, row validation, and startup bridge
+  contract markers for hydrating the visible queue in the desktop app.
 - Offline app browser verification now covers the functional local-session
   controls at desktop width: stage inventory update, prepare print label,
   review/approve all conflicts into history, stage customer-credit use into a
