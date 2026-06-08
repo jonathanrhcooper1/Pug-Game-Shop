@@ -131,6 +131,10 @@ staging database acceptance remains pending.
   execution, staged inventory create response metadata, dependency
   health/admin summaries, and the Staff Inventory workspace, with production
   request-context rejection before any product writer callback can run.
+- API-client WooCommerce product adapter contract for validating staged
+  create/update/stockout request envelopes outside WordPress, rejecting
+  production/live-looking credential contexts, and preserving official
+  WooCommerce Square handoff for catalog/inventory sync.
 - Guarded WooCommerce product projection execution for staging-only adapter
   handoff, including default lockout, explicit execution requirements,
   skipped/failed projection handling, writer failure rejection, audit-safe

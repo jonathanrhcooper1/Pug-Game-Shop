@@ -37,6 +37,10 @@
   supported offline operation/entity type validation, and no direct browser
   storage/network markers. The offline app Windows workflow also runs
   `cargo test` for the Tauri command tests when Rust is available in CI.
+- `packages/api-client/tests/woocommerce-product-adapter.mjs` verifies staged
+  WooCommerce create/update/stockout request plans stay non-production,
+  reject live-looking credential contexts, keep writes deferred, and preserve
+  the official WooCommerce Square handoff for catalog/inventory sync.
 - `.github/workflows/php.yml` runs Composer validation, dependency audit,
   syntax checks, unit tests, bootstrap smoke, and WordPress coding standards
   against PHP 8.1, 8.2, and 8.3.
@@ -127,6 +131,10 @@
   through guarded projection execution, staged inventory create metadata,
   dependency health/admin summaries, Staff Inventory workspace rows, and
   production request-context rejection before writer callbacks.
+- Package-level API-client coverage now includes WooCommerce product adapter
+  validation for staged create/update/stockout request plans, production/live
+  credential rejection, deferred WordPress/WooCommerce writes, and official
+  WooCommerce Square handoff.
 - Local unit coverage now includes inventory route runtime settings,
   staging-only staff search/create route contract configuration, and dependency
   factory proof that staff inventory search and create routes register only

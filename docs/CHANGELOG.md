@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Executable API-client WooCommerce product adapter contract that validates
+  non-production create/update/stockout request envelopes, rejects production
+  contexts and live-looking credentials, and keeps Square handoff delegated to
+  the official WooCommerce Square extension.
 - WooCommerce product write request readiness wiring across guarded projection
   execution, staged inventory create metadata, dependency health/admin
   summaries, and Staff Inventory workspace rows, including production-context

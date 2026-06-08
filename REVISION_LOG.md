@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - WooCommerce Product API-Client Contract
+
+### What Changed
+
+- Added `packages/api-client/src/woocommerceProductAdapter.mjs`.
+- Added executable WooCommerce product adapter coverage for staged product
+  create, update, stockout, skipped, malformed, and production-rejected
+  request envelopes.
+- Updated `test:api-client` so Square and WooCommerce adapter contracts run
+  together.
+- Documented the WooCommerce product adapter in the API-client README,
+  changelog, testing notes, and Phase 2 inventory/pricing notes.
+
+### Why
+
+The WordPress plugin now emits WooCommerce product write request plans. This
+revision adds a package-level contract that validates those envelopes without
+network execution, keeps WordPress/WooCommerce writes deferred, rejects
+production/live-looking credential contexts, and preserves the official
+WooCommerce Square extension handoff for catalog/inventory sync.
+
+### Files Affected
+
+- `packages/api-client/src/woocommerceProductAdapter.mjs`
+- `packages/api-client/tests/woocommerce-product-adapter.mjs`
+- `packages/api-client/tests/woocommerce-product-adapter.md`
+- `packages/api-client/README.md`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- WooCommerce API-client contract coverage for create/update request planning.
+- WooCommerce API-client contract coverage for stockout request planning.
+- Production and live-looking credential rejection coverage.
+- Malformed request envelope rejection coverage.
+- Skipped hidden projection coverage.
+
+### Tests Run
+
+- `npm.cmd run test:api-client`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the package-level WooCommerce product adapter
+  contract and restore `test:api-client` to Square-only coverage.
+- No schema rollback, product cleanup, Square cleanup, or payment cleanup is
+  required because no network calls, product writes, provider writes, or
+  payment actions were enabled.
+
 ## 2026-06-07 - WooCommerce Write Request Readiness Wiring
 
 ### What Changed
