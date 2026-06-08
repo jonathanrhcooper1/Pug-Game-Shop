@@ -103,6 +103,34 @@ final class SquareInventorySyncReadinessPlanner {
 	}
 
 	/**
+	 * @param array<string, mixed>      $context Square request planning context.
+	 * @param array<string, mixed>|null $inventory_row Optional probe inventory row.
+	 * @return array{value:string,status:string}
+	 */
+	public function admin_summary( array $context = array(), ?array $inventory_row = null ): array {
+		$plan = $this->plan( $context, $inventory_row );
+
+		if ( 'ready' === $plan['status'] ) {
+			return array(
+				'value'  => sprintf(
+					'sandbox probe ready; %d Square operation plans; payments delegated',
+					(int) ( $plan['projection_operation_count'] ?? 0 )
+				),
+				'status' => 'ok',
+			);
+		}
+
+		$issues = $this->list_values( $plan['configuration_issues'] ?? $plan['block_reasons'] ?? array() );
+
+		return array(
+			'value'  => array() === $issues
+				? 'inventory sync blocked; payments delegated'
+				: 'inventory sync blocked: ' . implode( ', ', array_slice( $issues, 0, 3 ) ),
+			'status' => 'blocked',
+		);
+	}
+
+	/**
 	 * @return array<string, mixed>
 	 */
 	private function probe_inventory_row(): array {
@@ -152,5 +180,26 @@ final class SquareInventorySyncReadinessPlanner {
 
 	private function string_value( mixed $value ): string {
 		return substr( trim( (string) ( is_array( $value ) || is_object( $value ) ? '' : $value ) ), 0, 191 );
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	private function list_values( mixed $values ): array {
+		if ( ! is_array( $values ) ) {
+			return array();
+		}
+
+		return array_values(
+			array_filter(
+				array_map(
+					static fn ( mixed $value ): string => is_array( $value ) || is_object( $value )
+						? ''
+						: trim( (string) $value ),
+					$values
+				),
+				static fn ( string $value ): bool => '' !== $value
+			)
+		);
 	}
 }

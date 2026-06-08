@@ -3,6 +3,61 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Inventory Sync System Status Summary
+
+### What Changed
+
+- Added an admin summary to `SquareInventorySyncReadinessPlanner`.
+- Added a `Square inventory sync` row to WordPress admin System Status,
+  separate from the `WooCommerce Square extension` payment-extension row.
+- Added unit coverage for ready sandbox probe summaries and blocked production
+  context summaries.
+
+### Why
+
+Staging/admin users need a quick visible distinction between Square inventory
+sync planning and Square payment handling. This keeps payment capture delegated
+to the official WooCommerce Square extension while showing whether the plugin's
+inventory sync probe can plan sandbox Catalog/Inventory requests.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncReadinessPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory sync admin summary tests for ready sandbox planning and
+  blocked production-context planning.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 851 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventorySyncReadinessPlanner.php apps\wordpress-plugin\src\Admin\AdminMenu.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 559 PHP files.
+- `npm.cmd run test`: passed, including 851 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the System Status row and admin summary tests.
+- No migrations, Square network calls, Square inventory writes, payment
+  capture, refunds, or custom gateway behavior are introduced.
+- Authenticated health still exposes the raw Square inventory readiness payload
+  if the previous readiness-diagnostics revision remains in place.
+
 ## 2026-06-07 - Square Inventory Sync Readiness Diagnostics
 
 ### What Changed

@@ -98,4 +98,28 @@ final class SquareInventorySyncReadinessPlannerTest extends TestCase {
 		$this->assert_true( in_array( 'PKM-BASE-002-HOLO', $plan['sync_request_external_ids']['skus'], true ) );
 		$this->assert_same( 2, count( $plan['sync_request_idempotency_keys'] ) );
 	}
+
+	public function test_admin_summary_reports_sandbox_probe_readiness(): void {
+		$summary = ( new SquareInventorySyncReadinessPlanner() )->admin_summary();
+
+		$this->assert_same( 'ok', $summary['status'] );
+		$this->assert_contains( 'sandbox probe ready', $summary['value'] );
+		$this->assert_contains( '2 Square operation plans', $summary['value'] );
+		$this->assert_contains( 'payments delegated', $summary['value'] );
+	}
+
+	public function test_admin_summary_reports_blocked_production_context(): void {
+		$summary = ( new SquareInventorySyncReadinessPlanner() )->admin_summary(
+			array(
+				'environment'            => 'production',
+				'credential_environment' => 'production',
+				'access_token'           => 'prod-square-token',
+			)
+		);
+
+		$this->assert_same( 'blocked', $summary['status'] );
+		$this->assert_contains( 'inventory sync blocked', $summary['value'] );
+		$this->assert_contains( 'square_inventory_sync_sandbox_environment_required', $summary['value'] );
+		$this->assert_contains( 'square_inventory_sync_production_credentials_rejected', $summary['value'] );
+	}
 }

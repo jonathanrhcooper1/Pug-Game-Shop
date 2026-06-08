@@ -56,8 +56,9 @@
   database write execution.
 - Local unit coverage now includes Square inventory sync readiness diagnostics
   for default sandbox probe planning, production-context rejection, supplied
-  inventory rows, deferred catalog/inventory writers, and continued payment
-  authority delegation to the official WooCommerce Square extension.
+  inventory rows, admin System Status summaries, deferred catalog/inventory
+  writers, and continued payment authority delegation to the official
+  WooCommerce Square extension.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment
