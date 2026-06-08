@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex persistence repository now has an explicit transaction-backed
+  execution path for accepted reference-card, provider-price observation, and
+  checkpoint SQL plans, with table-prefix validation, rollback-on-failure
+  behavior, and audit output that distinguishes staged/deferred plans from
+  executed writes.
 - ScryDex now has a gated cards sync worker shell that can call the configured
   provider for bounded paginated pages in staging/tests, rehearse normalization
   and persistence planning per page, expose continuation checkpoints, keep raw

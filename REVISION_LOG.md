@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Persistence Execution Boundary
+
+### What Changed
+
+- Added an explicit execution path to the ScryDex persistence repository.
+- Added transaction handling for accepted reference-card inserts/updates,
+  provider price-observation inserts, and checkpoint upserts.
+- Added WordPress table-prefix validation before any ScryDex persistence query
+  can run.
+- Expanded repository audit output to distinguish deferred, executed, and
+  rejected states, including transaction start/commit/rollback metadata.
+- Added rollback behavior when any ScryDex persistence query fails.
+
+### Why
+
+The paginated ScryDex worker needs a safe persistence boundary before it can
+be connected to WordPress cron or staging refresh controls. This revision keeps
+the existing staged/dry-run path intact while adding the separate, explicit
+database execution method future worker code can call after all gates pass.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepository.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex persistence execution commits accepted query plans in a transaction.
+- ScryDex persistence execution rejects WordPress table-prefix mismatches
+  before preparing or running queries.
+- ScryDex persistence execution rolls back on a failed reference-card write.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit ScryDex persistence execution
+  method and return to staged/deferred repository behavior only.
+- If staging has already executed ScryDex catalog writes using this boundary,
+  rollback requires restoring the staging database backup or truncating the
+  staging-only ScryDex reference-card, price-observation, and checkpoint rows
+  created by the affected sync job.
+- No Square/POS, customer credit, payment, event, local SQLite, offline app, or
+  production rollback is required from this code change alone.
+
 ## 2026-06-08 - ScryDex Paginated Worker Shell
 
 ### What Changed

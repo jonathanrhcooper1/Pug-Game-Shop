@@ -9,6 +9,7 @@ namespace TCGStorePlatform\ScryDex;
 
 final class ScryDexPersistenceRepositoryResult {
 	public const STATUS_DEFERRED = 'deferred';
+	public const STATUS_EXECUTED = 'executed';
 	public const STATUS_REJECTED = 'rejected';
 
 	/**
@@ -18,6 +19,7 @@ final class ScryDexPersistenceRepositoryResult {
 	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert staging result.
 	 * @param list<string>              $errors Repository errors.
 	 * @param array<string, mixed>      $query_audit ScryDex persistence query audit.
+	 * @param list<string>              $transaction_commands Transaction commands attempted.
 	 */
 	private function __construct(
 		private string $status,
@@ -26,7 +28,8 @@ final class ScryDexPersistenceRepositoryResult {
 		private array $price_observation_results,
 		private ?array $checkpoint_result,
 		private array $errors,
-		private array $query_audit
+		private array $query_audit,
+		private array $transaction_commands = array()
 	) {
 	}
 
@@ -56,16 +59,57 @@ final class ScryDexPersistenceRepositoryResult {
 
 	/**
 	 * @param list<string> $errors Repository errors.
+	 * @param list<array<string, mixed>> $reference_insert_results Reference insert execution results.
+	 * @param list<array<string, mixed>> $reference_update_results Reference update execution results.
+	 * @param list<array<string, mixed>> $price_observation_results Provider price observation execution results.
+	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert execution result.
+	 * @param list<string>              $transaction_commands Transaction commands attempted.
 	 */
-	public static function rejected( ScryDexPersistenceQueryBuildPlan $query_plan, array $errors ): self {
+	public static function rejected(
+		ScryDexPersistenceQueryBuildPlan $query_plan,
+		array $errors,
+		array $reference_insert_results = array(),
+		array $reference_update_results = array(),
+		array $price_observation_results = array(),
+		?array $checkpoint_result = null,
+		array $transaction_commands = array()
+	): self {
 		return new self(
 			self::STATUS_REJECTED,
-			array(),
-			array(),
-			array(),
-			null,
+			array_values( $reference_insert_results ),
+			array_values( $reference_update_results ),
+			array_values( $price_observation_results ),
+			$checkpoint_result,
 			array_values( array_unique( $errors ) ),
-			$query_plan->audit_payload()
+			$query_plan->audit_payload(),
+			array_values( $transaction_commands )
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $reference_insert_results Reference insert execution results.
+	 * @param list<array<string, mixed>> $reference_update_results Reference update execution results.
+	 * @param list<array<string, mixed>> $price_observation_results Provider price observation execution results.
+	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert execution result.
+	 * @param list<string>              $transaction_commands Transaction commands attempted.
+	 */
+	public static function executed(
+		ScryDexPersistenceQueryBuildPlan $query_plan,
+		array $reference_insert_results,
+		array $reference_update_results,
+		array $price_observation_results,
+		?array $checkpoint_result,
+		array $transaction_commands
+	): self {
+		return new self(
+			self::STATUS_EXECUTED,
+			array_values( $reference_insert_results ),
+			array_values( $reference_update_results ),
+			array_values( $price_observation_results ),
+			$checkpoint_result,
+			array(),
+			$query_plan->audit_payload(),
+			array_values( $transaction_commands )
 		);
 	}
 
@@ -77,12 +121,22 @@ final class ScryDexPersistenceRepositoryResult {
 		return self::STATUS_DEFERRED === $this->status;
 	}
 
+	public function is_executed(): bool {
+		return self::STATUS_EXECUTED === $this->status;
+	}
+
 	public function is_rejected(): bool {
 		return self::STATUS_REJECTED === $this->status;
 	}
 
 	public function rows_affected(): int {
-		return 0;
+		$rows = 0;
+
+		foreach ( $this->all_results() as $result ) {
+			$rows += $this->non_negative_int( $result['rows_affected'] ?? 0 );
+		}
+
+		return $rows;
 	}
 
 	public function reference_insert_query_count(): int {
@@ -157,10 +211,13 @@ final class ScryDexPersistenceRepositoryResult {
 	 * @return array<string, mixed>
 	 */
 	public function audit_payload(): array {
+		$executed = $this->is_executed();
+
 		return array(
 			'action'                                     => 'scrydex_persistence_repository',
 			'status'                                     => $this->status,
 			'is_deferred'                                => $this->is_deferred(),
+			'is_executed'                                => $executed,
 			'is_rejected'                                => $this->is_rejected(),
 			'reference_insert_query_count'               => $this->reference_insert_query_count(),
 			'reference_update_query_count'               => $this->reference_update_query_count(),
@@ -175,11 +232,15 @@ final class ScryDexPersistenceRepositoryResult {
 			'price_observation_results'                  => $this->price_observation_results,
 			'checkpoint_result'                          => $this->checkpoint_result,
 			'explicit_execution_required'                => true,
-			'persistence_query_execution_deferred'       => true,
-			'persistence_repository_deferred'            => true,
-			'reference_card_writes_deferred'             => true,
-			'provider_price_observation_writes_deferred' => true,
-			'checkpoint_upsert_execution_deferred'       => true,
+			'transaction_started'                        => in_array( 'START TRANSACTION', $this->transaction_commands, true ),
+			'transaction_committed'                      => $executed && in_array( 'COMMIT', $this->transaction_commands, true ),
+			'transaction_rolled_back'                    => in_array( 'ROLLBACK', $this->transaction_commands, true ),
+			'transaction_commands'                       => $this->transaction_commands,
+			'persistence_query_execution_deferred'       => ! $executed,
+			'persistence_repository_deferred'            => ! $executed,
+			'reference_card_writes_deferred'             => ! $executed,
+			'provider_price_observation_writes_deferred' => ! $executed,
+			'checkpoint_upsert_execution_deferred'       => ! $executed,
 			'errors'                                     => $this->errors,
 		);
 	}

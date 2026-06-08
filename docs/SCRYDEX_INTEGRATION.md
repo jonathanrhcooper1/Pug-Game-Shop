@@ -19,7 +19,10 @@ reference-card inserts, changed-row updates, unchanged row detection, and
 current price observations from normalized page plans. Persistence SQL staging
 now converts those plans into deferred reference-card insert/update templates,
 provider price observation inserts, and checkpoint upsert plans with repository
-audit metadata, but still performs no `wpdb` writes. Health output now includes a
+audit metadata. The persistence repository now has a separate explicit
+execution path that validates the active WordPress table prefix, runs accepted
+reference-card, price-observation, and checkpoint query plans in a transaction,
+and rolls back on failure. Health output still uses the staged/deferred
 `scrydex_persistence_repository` readiness payload, and the execution gate uses
 that payload to derive the persistence repository gate. The cards worker
 orchestration planner can accept an injected/mock provider result and rehearse
@@ -27,8 +30,9 @@ page processing, persistence planning, SQL template building, and repository
 audit staging. The gated cards worker shell can also call the configured
 provider for bounded paginated pages in staging/tests, expose continuation
 checkpoints, and then feed each page through that same orchestration planner.
-Database write workers, image workers, durable scheduled cron routing, and
-webhook route handling remain disabled until staging acceptance. WordPress
+The worker shell does not call the persistence execution method by default.
+Durable scheduled cron routing, image workers, and webhook route handling remain
+disabled until staging acceptance. WordPress
 administrator settings provide secret-preserving staging credential storage and
 redacted readiness output, but those settings do not execute provider network
 requests by themselves.
@@ -151,10 +155,14 @@ or upsert; database writes remain behind the separate execution gate.
 
 The ScryDex persistence query builder stages reference-card writes,
 provider-price observation writes, and checkpoint upserts. The repository layer
-currently returns deferred execution audit rows only. The persistence repository
-readiness planner runs an empty-page probe through that boundary to expose
-table names, query counts, prepare-argument counts, and block reasons in health
-diagnostics before the project enables live database writes.
+returns deferred execution audit rows through `stage()` and can execute accepted
+plans through explicit `execute()` calls. Execution requires a WordPress `wpdb`
+instance, validates query-plan table names against the active database prefix,
+wraps the planned writes in a transaction, and reports commit or rollback
+status in the audit payload. The persistence repository readiness planner runs
+an empty-page probe through the staged boundary to expose table names, query
+counts, prepare-argument counts, and block reasons in health diagnostics before
+cron-connected live database writes are enabled.
 
 Default blockers are:
 
@@ -177,14 +185,18 @@ database-write, and scheduler gates are all ready or explicitly overridden in a
 controlled staging/test context. It returns page summaries, continuation
 checkpoint rows, and secret-free audit metadata. It still intentionally does
 not persist reference cards, write provider price observations, upsert
-checkpoints, download images, or register webhooks.
+checkpoints, download images, or register webhooks by default.
+
+The explicit persistence `execute()` boundary is available for the future
+staging cron worker. It is not invoked by health checks, dry runs, local tests
+with real credentials, or offline clients.
 
 Next implementation step: replace the seeded development catalog with the
 WordPress-owned persisted worker loop. That worker must iterate configured
 games, sets, and provider cursors/pages; enforce fresh usage budgets/rate
-limits; execute accepted reference-card and price-observation writes; checkpoint
-after each committed page; and run a daily refresh without sending ScryDex
-credentials to offline clients.
+limits; call the persistence execution boundary only after all gates pass;
+checkpoint after each committed page; and run a daily refresh without sending
+ScryDex credentials to offline clients.
 
 Budget-specific blockers are:
 
