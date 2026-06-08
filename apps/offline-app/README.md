@@ -8,9 +8,10 @@ future offline sync app.
 ## Current Scope
 
 - Tauri project metadata.
-- React/Vite inventory workspace with scanner/search input, selected-card
-  detail panel, sync queue, conflict review, customer credit snapshot, and
-  responsive desktop/mobile layout.
+- React/Vite inventory command workspace with scanner/search input, grouped
+  offline sync controls, selected-card visual frame, staged inventory actions,
+  sync queue, conflict review, customer credit snapshot, and responsive
+  desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, and SQLite-compatible staged operation
   envelopes.

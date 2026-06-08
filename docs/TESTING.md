@@ -20,8 +20,9 @@
   for production secret markers on pull requests.
 - `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
   inventory workspace keeps its scanner/search, sync queue, conflict center,
-  customer credit, responsive layout, and no-production-secret UI markers in
-  place.
+  customer credit, grouped sync controls, selected-card visual frame, detail
+  action cluster, empty search state, responsive mobile title constraint, and
+  no-production-secret UI markers in place.
 - `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
   app's typed local workspace state includes the planned sync routes,
   SQLite operation envelope fields, queued inventory operation markers, and no

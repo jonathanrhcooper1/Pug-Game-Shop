@@ -84,17 +84,23 @@ export function App() {
 
       <section className="workspace">
         <header className="top-bar">
-          <div>
+          <div className="title-stack">
             <span className="micro-label">{workspace.device.storeLabel}</span>
             <h1>Offline Inventory Command</h1>
           </div>
-          <div className="connection-pill" aria-label="Offline mode active">
-            <Icon name="wifi" />
-            <span>{workspace.device.modeLabel}</span>
-          </div>
-          <div className="sync-time">
-            <span>Last sync</span>
-            <strong>{workspace.device.lastSyncLabel}</strong>
+          <div className="top-actions" aria-label="Offline sync status">
+            <div className="connection-pill" aria-label="Offline mode active">
+              <Icon name="wifi" />
+              <span>{workspace.device.modeLabel}</span>
+            </div>
+            <div className="sync-time">
+              <span>Last sync</span>
+              <strong>{workspace.device.lastSyncLabel}</strong>
+            </div>
+            <button className="sync-now" type="button" disabled>
+              <Icon name="sync" />
+              <span>Sync Now</span>
+            </button>
           </div>
         </header>
 
@@ -120,6 +126,7 @@ export function App() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Barcode, card, set, or location"
               />
+              <span className="scan-beam" aria-hidden="true" />
               <button type="button">Add Scan</button>
             </div>
 
@@ -159,13 +166,28 @@ export function App() {
                   ))}
                 </tbody>
               </table>
+              {filteredItems.length === 0 ? (
+                <p className="empty-table">No cached cards match this scan.</p>
+              ) : null}
             </div>
           </section>
 
           <aside className="detail-panel" aria-label="Selected card details">
             <div className="card-preview">
-              <Icon name="card" />
-              <span>{selectedItem.number}</span>
+              <div className="card-frame">
+                <div className="card-frame-title">
+                  <span>{selectedItem.cardName}</span>
+                  <small>{selectedItem.condition}</small>
+                </div>
+                <div className="card-art">
+                  <Icon name="card" />
+                  <span className="foil-line" aria-hidden="true" />
+                </div>
+                <div className="card-frame-footer">
+                  <span>{selectedItem.setName}</span>
+                  <strong>{selectedItem.number}</strong>
+                </div>
+              </div>
             </div>
             <div className="detail-copy">
               <span className={`status-dot ${selectedItem.status}`}>
@@ -192,13 +214,21 @@ export function App() {
                 <dd>{selectedItem.source}</dd>
               </div>
             </dl>
-            <button
-              className="wide-action"
-              type="button"
-              onClick={handleStageInventoryUpdate}
-            >
-              Stage Inventory Update
-            </button>
+            <div className="detail-actions">
+              <button
+                className="wide-action"
+                type="button"
+                onClick={handleStageInventoryUpdate}
+              >
+                Stage Inventory Update
+              </button>
+              <button type="button" onClick={handleStageInventoryUpdate}>
+                Adjust Qty
+              </button>
+              <button type="button" onClick={handleStageInventoryUpdate}>
+                Print Label
+              </button>
+            </div>
             <div className="operation-preview" aria-live="polite">
               {stagedOperation ? (
                 <>

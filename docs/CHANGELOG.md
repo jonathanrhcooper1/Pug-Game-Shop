@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Refined offline app command workspace visuals with grouped sync controls,
+  manual sync affordance, scanner beam, richer selected-card frame, detail
+  action cluster, empty-search state, responsive mobile title behavior, and
+  headless desktop/mobile screenshot QA.
 - Polished offline app inventory command workspace UI with scanner/search,
   selected-card detail, sync queue, conflict review, customer credit snapshot,
   responsive layout, local favicon, Vite build dependency refresh, and UI shell

@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline App Command Workspace Visual Refinement
+
+### What Changed
+
+- Refined the offline app inventory command workspace shell with grouped sync
+  status controls and a disabled manual sync affordance.
+- Added scanner beam styling, an empty search state, a richer selected-card
+  visual frame, and a three-action inventory detail cluster.
+- Tightened mobile behavior so the app title wraps cleanly and sync controls
+  stack within a phone viewport.
+- Extended the offline app UI shell contract to preserve the new visual and
+  responsive markers.
+- Updated offline app, testing, and changelog documentation.
+
+### Why
+
+The standalone app needs to feel like a polished staff tool while preserving
+the offline-first safety boundary. This pass improves the command-center UI
+around scanning, selected-card review, queued work, and sync status without
+adding live network, provider, or database writes.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app UI shell contract assertions for the manual sync affordance,
+  selected-card visual frame, detail action cluster, empty search state, and
+  mobile title constraint.
+
+### Tests Run
+
+- Headless Chrome desktop screenshot at `1440x900`: passed visual inspection.
+- Headless Chrome mobile screenshot at `390x844`: passed visual inspection.
+- `npm.cmd run test:offline-app` from repository root: passed.
+- `npm.cmd --prefix apps\offline-app run typecheck` from repository root:
+  passed.
+- `npm.cmd run test` from repository root: passed, including the 791-test PHP
+  local runner and all JavaScript/offline app contract layers.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the prior simpler shell.
+- No schema rollback, provider cleanup, or queued operation cleanup is required
+  because this change only affects React/CSS UI, contract tests, and docs.
+
 ## 2026-06-07 - Square Sync Request Planner Wiring
 
 ### What Changed

@@ -18,7 +18,11 @@ for (const requiredText of [
   "Conflicts",
   "Customer credit",
   "Offline Mode",
+  "Sync Now",
   "Stage Inventory Update",
+  "Adjust Qty",
+  "Print Label",
+  "No cached cards match this scan.",
 ]) {
   assert.ok(appSurface.includes(requiredText), `Missing offline UI text: ${requiredText}`)
 }
@@ -34,12 +38,21 @@ for (const route of [
 for (const className of [
   "offline-shell",
   "nav-rail",
+  "top-actions",
+  "title-stack",
   "scanner-row",
+  "scan-beam",
   "inventory-panel",
   "detail-panel",
+  "card-frame",
+  "detail-actions",
   "conflict-panel",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
+}
+
+for (const responsiveMarker of ["@media (max-width: 760px)", "max-width: 12em"]) {
+  assert.ok(styles.includes(responsiveMarker), `Missing responsive marker: ${responsiveMarker}`)
 }
 
 for (const color of ["#f6c760", "#79d78f", "#f07e67"]) {
