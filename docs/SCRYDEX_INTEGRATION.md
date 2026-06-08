@@ -16,12 +16,15 @@ persistence, database-write, and scheduler readiness without running the worker.
 Card and current market price normalization is implemented against sanitized
 fixtures. Persistence planning now prepares deterministic reference-card
 inserts, changed-row updates, unchanged row detection, and current price
-observations from normalized page plans. Scheduled ScryDex workers, database
-write workers, image workers, usage-budget enforcement, and webhook route
-handling remain disabled until staging acceptance. WordPress administrator
-settings now provide secret-preserving staging credential storage and redacted
-readiness output, but those settings do not execute provider network requests by
-themselves.
+observations from normalized page plans. Persistence SQL staging now converts
+those plans into deferred reference-card insert/update templates, provider
+price observation inserts, and checkpoint upsert plans with repository audit
+metadata, but still performs no `wpdb` writes. Scheduled ScryDex workers,
+database write workers, image workers, usage-budget enforcement, and webhook
+route handling remain disabled until staging acceptance. WordPress
+administrator settings now provide secret-preserving staging credential storage
+and redacted readiness output, but those settings do not execute provider
+network requests by themselves.
 
 Schema migration `0010_provider_price_observations` adds
 `tcg_provider_price_observations` for raw provider market-price snapshots. This
@@ -33,8 +36,9 @@ The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
 provider page response. The persistence planner turns those page plans into
 write payloads with stable provider price observation IDs, game context,
-observed timestamps, and sync job IDs, but it does not execute `wpdb` writes or
-schedule follow-up jobs yet.
+observed timestamps, and sync job IDs. The persistence query builder and
+repository boundary stage the resulting SQL templates and audit payloads, but
+they do not execute `wpdb` writes or schedule follow-up jobs yet.
 
 ## Credential Handling
 
@@ -91,6 +95,12 @@ builds the read and upsert SQL templates for `tcg_sync_checkpoints`, validates
 the active WordPress table prefix and checkpoint identity, and reports whether
 the repository boundary is configured. It does not execute the checkpoint read
 or upsert; database writes remain behind the separate execution gate.
+
+The ScryDex persistence query builder stages reference-card writes,
+provider-price observation writes, and checkpoint upserts. The repository layer
+currently returns deferred execution audit rows only. This keeps SQL shape,
+table-prefix validation, prepare-argument counts, and worker diagnostics
+testable before the project enables live database writes.
 
 Default blockers are:
 
@@ -199,8 +209,9 @@ webhook registration based only on marketing copy.
 5. Fetch cards in provider-supported pages.
 6. Store sanitized raw payload and hash.
 7. Normalize card, set, variant, image metadata, and current prices.
-8. Use the sync page processor and persistence planner to plan row writes and checkpoint
-   after each committed page.
+8. Use the sync page processor, persistence planner, query builder, and
+   repository boundary to stage row writes and checkpoint upserts after each
+   committed page.
 9. Queue image downloads separately.
 10. Queue optional price-history/population pulls only for supported scope.
 11. Rebuild affected search projections.

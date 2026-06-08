@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex persistence SQL staging that builds deferred reference-card
+  insert/update templates, provider price observation inserts, checkpoint
+  upserts, and repository audit results without executing `wpdb` writes.
 - ScryDex checkpoint repository planning that builds deferred read/upsert SQL
   templates for `tcg_sync_checkpoints`, exposes checkpoint repository readiness
   in health/execution-gate diagnostics, and keeps checkpoint reads/writes

@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Persistence SQL Staging
+
+### What Changed
+
+- Added ScryDex persistence query build planning for reference-card inserts,
+  changed-row updates, provider price observation inserts, and checkpoint
+  upsert SQL templates.
+- Added a deferred ScryDex persistence repository boundary that reports staged
+  query execution audit rows without running `wpdb` writes.
+- Added unit coverage for SQL template construction, prepare-argument counts,
+  invalid table prefixes, failed source plans, deferred repository results, and
+  rejected query plans.
+- Updated ScryDex integration, changelog, roadmap, and testing documentation.
+
+### Why
+
+ScryDex worker execution needs a testable SQL/repository boundary before
+staging can safely enable database writes. This checkpoint proves the query
+shape, table-prefix validation, checkpoint handoff, and audit metadata while
+keeping live persistence disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepository.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- ScryDex persistence query builder tests for insert/update SQL templates,
+  provider price observation inserts, checkpoint upsert plans, prepare
+  arguments, failed source plans, and table-prefix rejection.
+- ScryDex persistence repository tests for deferred audit results and
+  invalid-plan rejection.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 841 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceQueryBuildPlan.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceQueryBuilder.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceRepositoryResult.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceRepository.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 553 PHP files.
+- `npm.cmd run test`: passed, including 841 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex SQL staging and repository audit
+  boundary.
+- No migrations or database writes are introduced, so rollback does not require
+  schema changes.
+- ScryDex provider calls, scheduled workers, checkpoint execution, reference
+  writes, and provider price observation writes remain deferred.
+
 ## 2026-06-07 - Provider Price Observation Schema
 
 ### What Changed

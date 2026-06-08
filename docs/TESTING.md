@@ -43,6 +43,10 @@
   contracts for ScryDex market-price snapshots, migration plan/rollback target
   updates, and persistence planner observation IDs, game context, timestamps,
   and sync job IDs.
+- Local unit coverage now includes ScryDex persistence SQL staging for
+  reference-card inserts, changed-row updates, provider price observation
+  inserts, checkpoint upsert plans, invalid source plans, table-prefix guards,
+  and repository deferred audit results.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment
@@ -712,6 +716,9 @@
 - Local unit coverage now includes ScryDex persistence planning for
   deterministic reference-card inserts, changed-row updates, unchanged-row
   detection, price observations, and failed page plan guards.
+- Local unit coverage now includes ScryDex persistence query building and
+  repository staging for SQL templates, prepare-argument counts, checkpoint
+  upserts, deferred execution audit rows, and invalid-plan rejection.
 - Local unit coverage now includes inventory search SQL-template planning for
   public/staff/hidden card listings, prepared `SELECT` and `COUNT` templates,
   scan-column filters, pagination arguments, and tamper rejection.
