@@ -12,6 +12,8 @@ export type IconName =
 export type InventoryStatus = "available" | "reserved" | "conflict"
 export type InventorySource = "cached" | "queued" | "accepted"
 export type QueueTone = "success" | "warning" | "neutral"
+export type ConnectorEnvironment = "development" | "staging" | "production"
+export type ConnectorStatus = "ready" | "needs_pairing" | "sandbox_only"
 
 export type NavItem = {
   label: string
@@ -57,6 +59,34 @@ export type CustomerCreditSnapshot = {
   availableMinorUnits: number
   currency: "USD"
   note: string
+}
+
+export type StoreConnectorProfile = {
+  id: string
+  companyName: string
+  companyShortName: string
+  environment: ConnectorEnvironment
+  status: ConnectorStatus
+  wordpress: {
+    scheme: "https"
+    host: string
+    restBasePath: "/wp-json/tcg-store/v1"
+    authMode: "offline_device_token"
+    credentialStorage: "desktop_secure_store"
+    devicePairingRequired: boolean
+    networkRequestsDeferred: true
+  }
+  square: {
+    inventoryAuthority: "tcg_store_platform"
+    paymentAuthority: "official_woocommerce_square_extension"
+    providerWritesDeferred: true
+    sandboxRequired: boolean
+  }
+  scrydex: {
+    teamLabel: string
+    credentialStorage: "wordpress_server_settings"
+    credentialsSyncedToApp: false
+  }
 }
 
 export type OfflineOperationEnvelope = {
@@ -122,6 +152,7 @@ export type OfflinePushResultSummary = {
 export type OfflineWorkspaceState = {
   navItems: NavItem[]
   syncRoutes: string[]
+  connectorProfiles: StoreConnectorProfile[]
   device: {
     storeLabel: string
     modeLabel: string
@@ -163,6 +194,62 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     "/wp-json/tcg-store/v1/offline/devices/register",
     "/wp-json/tcg-store/v1/offline/pull",
     "/wp-json/tcg-store/v1/offline/push",
+  ],
+  connectorProfiles: [
+    {
+      id: "pug-game-shop-staging",
+      companyName: "Pug Game Shop",
+      companyShortName: "Pug",
+      environment: "staging",
+      status: "needs_pairing",
+      wordpress: {
+        scheme: "https",
+        host: "vbf.2a7.myftpupload.com",
+        restBasePath: "/wp-json/tcg-store/v1",
+        authMode: "offline_device_token",
+        credentialStorage: "desktop_secure_store",
+        devicePairingRequired: true,
+        networkRequestsDeferred: true,
+      },
+      square: {
+        inventoryAuthority: "tcg_store_platform",
+        paymentAuthority: "official_woocommerce_square_extension",
+        providerWritesDeferred: true,
+        sandboxRequired: true,
+      },
+      scrydex: {
+        teamLabel: "Configured in WordPress",
+        credentialStorage: "wordpress_server_settings",
+        credentialsSyncedToApp: false,
+      },
+    },
+    {
+      id: "demo-company-development",
+      companyName: "Demo Company",
+      companyShortName: "Demo",
+      environment: "development",
+      status: "sandbox_only",
+      wordpress: {
+        scheme: "https",
+        host: "demo-company.local",
+        restBasePath: "/wp-json/tcg-store/v1",
+        authMode: "offline_device_token",
+        credentialStorage: "desktop_secure_store",
+        devicePairingRequired: true,
+        networkRequestsDeferred: true,
+      },
+      square: {
+        inventoryAuthority: "tcg_store_platform",
+        paymentAuthority: "official_woocommerce_square_extension",
+        providerWritesDeferred: true,
+        sandboxRequired: true,
+      },
+      scrydex: {
+        teamLabel: "Per-company WordPress setting",
+        credentialStorage: "wordpress_server_settings",
+        credentialsSyncedToApp: false,
+      },
+    },
   ],
   device: {
     storeLabel: "Front Counter",
@@ -273,19 +360,70 @@ export function formatMoney(minorUnits: number, currency: "USD") {
   }).format(minorUnits / 100)
 }
 
-export function filterInventoryItems(items: InventoryItem[], query: string) {
-  const normalized = query.trim().toLowerCase()
+export function connectorDisplayUrl(profile: StoreConnectorProfile) {
+  return `${profile.wordpress.scheme}://${profile.wordpress.host}`
+}
 
-  if (!normalized) {
-    return items
+export function findConnectorProfile(
+  profiles: StoreConnectorProfile[],
+  selectedId: string,
+): StoreConnectorProfile {
+  const selectedProfile = profiles.find((profile) => profile.id === selectedId)
+
+  if (selectedProfile) {
+    return selectedProfile
   }
 
-  return items.filter((item) =>
-    [item.cardName, item.setName, item.barcode, item.location]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalized),
-  )
+  if (profiles[0]) {
+    return profiles[0]
+  }
+
+  throw new Error("At least one connector profile is required.")
+}
+
+export function connectorStatusLabel(status: ConnectorStatus) {
+  return status === "ready"
+    ? "Ready"
+    : status === "needs_pairing"
+      ? "Needs device pairing"
+      : "Sandbox only"
+}
+
+export function connectorHealthSummary(profile: StoreConnectorProfile) {
+  return {
+    company: profile.companyName,
+    environment: profile.environment,
+    website: connectorDisplayUrl(profile),
+    restBasePath: profile.wordpress.restBasePath,
+    status: connectorStatusLabel(profile.status),
+    paymentAuthority: profile.square.paymentAuthority,
+    squareInventoryAuthority: profile.square.inventoryAuthority,
+    networkRequestsDeferred: profile.wordpress.networkRequestsDeferred,
+    providerWritesDeferred: profile.square.providerWritesDeferred,
+    scrydexCredentialStorage: profile.scrydex.credentialStorage,
+    secretsSyncedToApp: profile.scrydex.credentialsSyncedToApp,
+  }
+}
+
+export function filterInventoryItems(
+  items: InventoryItem[],
+  query: string,
+  statusFilter: InventoryStatus | "all" = "all",
+) {
+  const normalized = query.trim().toLowerCase()
+
+  return items
+    .filter((item) => statusFilter === "all" || item.status === statusFilter)
+    .filter((item) => {
+      if (!normalized) {
+        return true
+      }
+
+      return [item.cardName, item.setName, item.barcode, item.location]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized)
+    })
 }
 
 export function findInventoryItem(items: InventoryItem[], selectedId: number) {

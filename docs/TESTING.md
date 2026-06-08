@@ -74,18 +74,21 @@
 - `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
   inventory workspace keeps its scanner/search, sync queue, conflict center,
   customer credit, grouped sync controls, selected-card visual frame, detail
-  action cluster, empty search state, responsive mobile title constraint, and
-  no-production-secret UI markers in place. The current visual checkpoint also
-  captures desktop `1440x1000` and mobile `390x844` Chrome screenshots against
-  the Vite dev server, clicks `Stage Inventory Update`, asserts four cached
-  rows render by default, and checks for zero horizontal overflow or console
-  warnings/errors.
+  action cluster, connector profile controls, active navigation, filter/grid
+  interaction markers, empty search state, responsive mobile title constraint,
+  and no-production-secret UI markers in place. The current visual/functional
+  checkpoint also captures desktop `1440x1000` and mobile `390x844` Chrome
+  screenshots against the Vite dev server, clicks filters, grid/list controls,
+  `Sync Now`, `Stage New Update`, and `Test Website Connector`, verifies the
+  filtered detail panel follows Mox Amber, and checks for zero horizontal
+  overflow or console warnings/errors.
 - `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
   app's typed local workspace state includes the planned sync routes,
-  SQLite operation envelope fields, queued inventory operation markers,
-  REST-ready offline push batch shaping, deferred push request planning,
-  response summarization, and no direct external endpoint or database access
-  markers. The offline app package contract also runs `tsc --noEmit`.
+  reusable company/site connector profiles, SQLite operation envelope fields,
+  queued inventory operation markers, REST-ready offline push batch shaping,
+  deferred push request planning, response summarization, and no direct
+  external endpoint or database access markers. The offline app package
+  contract also runs `tsc --noEmit`.
 - `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
   queue operations stay behind a Tauri command adapter boundary and do not use
   direct browser storage or network writes.

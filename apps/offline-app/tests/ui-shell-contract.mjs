@@ -22,6 +22,10 @@ for (const requiredText of [
   "Stage Inventory Update",
   "Adjust Qty",
   "Print Label",
+  "Connector profile",
+  "Test Website Connector",
+  "Save Profile Draft",
+  "Company",
   "No cached cards match this scan.",
 ]) {
   assert.ok(appSurface.includes(requiredText), `Missing offline UI text: ${requiredText}`)
@@ -47,8 +51,24 @@ for (const className of [
   "card-frame",
   "detail-actions",
   "conflict-panel",
+  "connector-panel",
+  "filter-tray",
+  "inventory-card-grid",
+  "workflow-status",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
+}
+
+for (const interactionMarker of [
+  "handleNavSelection(item.label)",
+  "scrollIntoView",
+  "handleConnectorProfileChange",
+  "handleSyncNowPreview",
+  "setViewMode(\"grid\")",
+  "setStatusFilter(status)",
+  "handleConflictAction",
+]) {
+  assert.ok(appSource.includes(interactionMarker), `Missing interaction marker: ${interactionMarker}`)
 }
 
 for (const responsiveMarker of ["@media (max-width: 760px)", "max-width: 12em"]) {

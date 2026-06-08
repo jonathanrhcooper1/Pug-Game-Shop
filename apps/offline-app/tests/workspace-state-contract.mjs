@@ -18,12 +18,16 @@ for (const requiredExport of [
   "OfflinePushBatchPayload",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
+  "StoreConnectorProfile",
   "offlineWorkspaceSeed",
   "operationEnvelopeFields",
   "buildInventoryUpdateOperation",
   "buildOfflinePushBatchPayload",
   "buildOfflinePushRequestPlan",
   "summarizeOfflinePushResult",
+  "connectorDisplayUrl",
+  "findConnectorProfile",
+  "connectorHealthSummary",
   "filterInventoryItems",
   "findInventoryItem",
 ]) {
@@ -58,6 +62,13 @@ for (const marker of [
   "operationIdsByStatus",
   "manager_override",
   "source: \"offline_app\"",
+  "connectorProfiles",
+  "pug-game-shop-staging",
+  "offline_device_token",
+  "desktop_secure_store",
+  "official_woocommerce_square_extension",
+  "wordpress_server_settings",
+  "credentialsSyncedToApp: false",
 ]) {
   assert.ok(workspaceSource.includes(marker), `Missing queued operation marker: ${marker}`)
 }

@@ -45,7 +45,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -392,6 +393,36 @@ h2 {
   gap: 10px;
 }
 
+.profile-select {
+  display: grid;
+  gap: 4px;
+  min-width: 214px;
+}
+
+.profile-select span {
+  color: #9fb29e;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-select select {
+  min-height: 44px;
+  color: #fffaf0;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(245, 242, 233, 0.12);
+  border-radius: 8px;
+  outline: none;
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.profile-select select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(246, 199, 96, 0.15);
+}
+
 .title-stack {
   min-width: 0;
 }
@@ -467,6 +498,7 @@ h2 {
 .detail-panel,
 .queue-panel,
 .conflict-panel,
+.connector-panel,
 .credit-panel {
   border: 1px solid rgba(20, 23, 19, 0.14);
   border-radius: 8px;
@@ -507,13 +539,48 @@ h2 {
   line-height: 1;
 }
 
+.workflow-status {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  color: #fffaf0;
+  background:
+    linear-gradient(90deg, rgba(246, 199, 96, 0.14), rgba(119, 183, 255, 0.08)),
+    rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 250, 240, 0.12);
+  border-radius: 8px;
+}
+
+.workflow-status strong,
+.workflow-status b {
+  display: block;
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.workflow-status p {
+  color: #d9e1d5;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.workflow-status b {
+  margin-bottom: 2px;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.68fr);
   grid-template-areas:
     "inventory detail"
     "queue conflicts"
-    "credit conflicts";
+    "connector conflicts"
+    "credit credit";
+  align-items: start;
   gap: 14px;
 }
 
@@ -540,6 +607,7 @@ h2 {
 
 .queue-panel,
 .conflict-panel,
+.connector-panel,
 .credit-panel {
   color: var(--text);
 }
@@ -558,6 +626,14 @@ h2 {
   gap: 11px;
   padding: 14px;
   background: linear-gradient(180deg, #fffefe, #f5f6fb);
+}
+
+.connector-panel {
+  grid-area: connector;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(180deg, #fffefe, #f6f8f5);
 }
 
 .credit-panel {
@@ -653,6 +729,7 @@ h2 {
 .wide-action,
 .detail-actions button,
 .conflict-row button,
+.connector-actions button,
 .secondary-command {
   display: inline-flex;
   align-items: center;
@@ -683,6 +760,12 @@ h2 {
   border: 1px solid rgba(15, 22, 19, 0.14);
 }
 
+.filter-button.is-active {
+  color: #fffaf0;
+  background: #18201e;
+  border-color: #18201e;
+}
+
 .icon-button {
   width: 42px;
   min-width: 42px;
@@ -693,6 +776,34 @@ h2 {
   color: #fffaf0;
   background: #18201e;
   border-color: #18201e;
+}
+
+.filter-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -2px 0 10px;
+  padding: 10px;
+  background: rgba(20, 23, 19, 0.045);
+  border: 1px solid rgba(20, 23, 19, 0.1);
+  border-radius: 8px;
+}
+
+.filter-tray button {
+  min-height: 34px;
+  color: #202a25;
+  background: #ffffff;
+  border: 1px solid rgba(15, 22, 19, 0.14);
+  border-radius: 8px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.filter-tray button.is-active {
+  color: #141713;
+  background: var(--gold);
+  border-color: var(--gold);
 }
 
 .table-meta {
@@ -802,6 +913,50 @@ td small {
   padding: 14px 10px;
   color: var(--text-soft);
   font-size: 13px;
+}
+
+.inventory-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(166px, 1fr));
+  gap: 10px;
+}
+
+.inventory-card {
+  display: grid;
+  gap: 7px;
+  min-height: 132px;
+  align-content: start;
+  justify-items: start;
+  padding: 12px;
+  color: #172016;
+  background:
+    linear-gradient(180deg, #ffffff, #f6f8f1),
+    repeating-linear-gradient(135deg, rgba(119, 183, 255, 0.08) 0 1px, transparent 1px 18px);
+  border: 1px solid rgba(15, 22, 19, 0.12);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.inventory-card.is-selected,
+.inventory-card:hover {
+  border-color: rgba(217, 159, 49, 0.6);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.inventory-card strong {
+  font-size: 15px;
+}
+
+.inventory-card small {
+  color: #61705f;
+  font-size: 12px;
+}
+
+.inventory-card > span:last-child {
+  margin-top: auto;
+  color: #927000;
+  font-size: 18px;
+  font-weight: 900;
 }
 
 .selected-card-header {
@@ -1069,6 +1224,11 @@ dd {
   padding: 12px;
 }
 
+.conflict-row.is-selected {
+  border-color: rgba(240, 126, 103, 0.45);
+  box-shadow: inset 3px 0 0 var(--coral);
+}
+
 .conflict-row strong {
   color: #172016;
   font-size: 13px;
@@ -1098,6 +1258,66 @@ dd {
   color: #7b332b;
   background: rgba(240, 126, 103, 0.1);
   border-color: rgba(240, 126, 103, 0.32);
+}
+
+.history-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  color: #6f453e;
+  background: rgba(240, 126, 103, 0.09);
+  border: 1px solid rgba(240, 126, 103, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.history-note strong {
+  color: #7b332b;
+}
+
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.connector-grid div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px;
+  background: rgba(20, 23, 19, 0.045);
+  border: 1px solid rgba(20, 23, 19, 0.1);
+  border-radius: 8px;
+}
+
+.connector-grid strong,
+.connector-grid small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connector-grid strong {
+  color: #172016;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.connector-grid small {
+  color: #607061;
+  font-size: 12px;
+}
+
+.connector-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.connector-actions button {
+  color: #fffaf0;
+  background: #202927;
 }
 
 @media (max-width: 1180px) {
@@ -1136,6 +1356,7 @@ dd {
       "detail"
       "queue"
       "conflicts"
+      "connector"
       "credit";
   }
 
@@ -1206,8 +1427,11 @@ dd {
   .top-bar,
   .top-actions,
   .sync-strip,
+  .workflow-status,
   .detail-panel,
   .detail-actions,
+  .connector-grid,
+  .connector-actions,
   .credit-panel {
     grid-template-columns: 1fr;
   }

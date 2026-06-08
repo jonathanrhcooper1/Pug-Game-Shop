@@ -1,16 +1,21 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import {
   buildOfflinePushBatchPayload,
   buildOfflinePushRequestPlan,
+  connectorDisplayUrl,
+  connectorHealthSummary,
+  connectorStatusLabel,
   buildInventoryUpdateOperation,
   filterInventoryItems,
+  findConnectorProfile,
   findInventoryItem,
   formatMoney,
   offlineWorkspaceSeed,
   statusLabel,
   summarizeOfflinePushResult,
   type IconName,
+  type InventoryStatus,
   type OfflineOperationEnvelope,
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
@@ -21,7 +26,25 @@ import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import pugGameShopCrest from "./assets/pug-game-shop-crest.png"
 import "./styles.css"
 
-type AppIconName = IconName | "upload" | "history" | "search" | "grid" | "list" | "plus" | "database"
+type AppIconName =
+  | IconName
+  | "upload"
+  | "history"
+  | "search"
+  | "grid"
+  | "list"
+  | "plus"
+  | "database"
+  | "link"
+  | "check"
+  | "tag"
+
+type ViewMode = "list" | "grid"
+
+type ActivityMessage = {
+  title: string
+  detail: string
+}
 
 function Icon({ name }: { name: AppIconName }) {
   const paths: Record<AppIconName, string> = {
@@ -42,6 +65,9 @@ function Icon({ name }: { name: AppIconName }) {
     list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
     plus: "M12 5v14M5 12h14",
     database: "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Zm0 0v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6m-16 6c0 1.7 3.6 3 8 3s8-1.3 8-3",
+    link: "M10 13a5 5 0 0 0 7.1 0l1.4-1.4a5 5 0 0 0-7.1-7.1L10.6 5.3M14 11a5 5 0 0 0-7.1 0l-1.4 1.4a5 5 0 0 0 7.1 7.1l.8-.8",
+    check: "m5 13 4 4L19 7",
+    tag: "M20 13 13 20 4 11V4h7l9 9Zm-11-4h.01",
   }
 
   return (
@@ -54,22 +80,84 @@ function Icon({ name }: { name: AppIconName }) {
 export function App() {
   const workspace = offlineWorkspaceSeed
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
+  const inventoryPanelRef = useRef<HTMLElement>(null)
+  const workflowPanelRef = useRef<HTMLElement>(null)
+  const queuePanelRef = useRef<HTMLElement>(null)
+  const conflictPanelRef = useRef<HTMLElement>(null)
+  const creditPanelRef = useRef<HTMLElement>(null)
+  const connectorPanelRef = useRef<HTMLElement>(null)
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(42)
+  const [activeSection, setActiveSection] = useState("Inventory")
+  const [activeProfileId, setActiveProfileId] = useState(
+    workspace.connectorProfiles[0]?.id ?? "pug-game-shop-staging",
+  )
+  const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>("list")
+  const [activityMessage, setActivityMessage] = useState<ActivityMessage>({
+    title: "Local workspace ready",
+    detail: "Choose a connector profile, scan inventory, or stage a queue update.",
+  })
+  const [selectedConflictTitle, setSelectedConflictTitle] = useState("")
+  const [showConflictHistory, setShowConflictHistory] = useState(false)
   const [stagedOperation, setStagedOperation] = useState<OfflineOperationEnvelope | null>(null)
   const [stagedPushBatch, setStagedPushBatch] = useState<OfflinePushBatchPayload | null>(null)
   const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
+  const activeProfile = findConnectorProfile(workspace.connectorProfiles, activeProfileId)
+  const connectorHealth = connectorHealthSummary(activeProfile)
   const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
-    return filterInventoryItems(workspace.inventoryItems, query)
-  }, [query, workspace.inventoryItems])
-  const queueBadgeCount = workspace.queueItems.reduce((total, item) => total + item.count, 0)
+    return filterInventoryItems(workspace.inventoryItems, query, statusFilter)
+  }, [query, statusFilter, workspace.inventoryItems])
+  const queueBadgeCount =
+    workspace.queueItems.reduce((total, item) => total + item.count, 0) + (stagedOperation ? 1 : 0)
   const conflictBadgeCount = workspace.conflicts.length
 
-  async function handleStageInventoryUpdate() {
+  useEffect(() => {
+    if (
+      filteredItems.length > 0 &&
+      filteredItems.every((item) => item.id !== selectedId)
+    ) {
+      setSelectedId(filteredItems[0].id)
+    }
+  }, [filteredItems, selectedId])
+
+  function sectionTarget(label: string) {
+    if (label === "Sync") {
+      return workflowPanelRef
+    }
+
+    if (label === "Queue") {
+      return queuePanelRef
+    }
+
+    if (label === "Conflicts") {
+      return conflictPanelRef
+    }
+
+    if (label === "Customers") {
+      return creditPanelRef
+    }
+
+    if (label === "Settings") {
+      return connectorPanelRef
+    }
+
+    return inventoryPanelRef
+  }
+
+  function handleNavSelection(label: string) {
+    setActiveSection(label)
+    window.requestAnimationFrame(() => {
+      sectionTarget(label).current?.scrollIntoView({ block: "start", behavior: "smooth" })
+    })
+  }
+
+  async function handleStageInventoryUpdate(actionTitle = "Inventory update staged") {
     const operation = buildInventoryUpdateOperation(selectedItem)
     const batch = buildOfflinePushBatchPayload([operation])
     const requestPlan = buildOfflinePushRequestPlan(batch)
@@ -102,6 +190,52 @@ export function App() {
       }),
     )
     setQueueSubmission(await submitOfflineOperation(operation, queueAdapter))
+    setActiveSection("Queue")
+    setActivityMessage({
+      title: actionTitle,
+      detail: `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+    })
+  }
+
+  function handleConnectorProfileChange(profileId: string) {
+    const nextProfile = findConnectorProfile(workspace.connectorProfiles, profileId)
+
+    setActiveProfileId(nextProfile.id)
+    setActiveSection("Settings")
+    setActivityMessage({
+      title: "Connector profile selected",
+      detail: `${nextProfile.companyName} ${nextProfile.environment} is active. Credentials stay in the desktop secure store and WordPress server settings.`,
+    })
+  }
+
+  function handleSyncNowPreview() {
+    setActiveSection("Sync")
+    setActivityMessage({
+      title: "Sync plan prepared",
+      detail: `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; network execution waits for pairing approval.`,
+    })
+  }
+
+  function handleAddScan() {
+    setQuery(selectedItem.barcode)
+    void handleStageInventoryUpdate("Scan staged")
+  }
+
+  function handlePrintLabel() {
+    setActiveSection("Inventory")
+    setActivityMessage({
+      title: "Label preview prepared",
+      detail: `${selectedItem.barcode} is ready for the future printer adapter; physical printing remains deferred until device hardware is connected.`,
+    })
+  }
+
+  function handleConflictAction(title: string, action: string) {
+    setSelectedConflictTitle(title)
+    setActiveSection("Conflicts")
+    setActivityMessage({
+      title: `${action} plan opened`,
+      detail: `${title} is selected for staff review. Resolution writes stay queued until manager approval and website sync acceptance.`,
+    })
   }
 
   return (
@@ -130,9 +264,10 @@ export function App() {
           <nav>
             {workspace.navItems.map((item) => (
               <button
-                className={item.active ? "nav-item is-active" : "nav-item"}
+                className={item.label === activeSection ? "nav-item is-active" : "nav-item"}
                 type="button"
                 key={item.label}
+                onClick={() => handleNavSelection(item.label)}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
@@ -157,10 +292,25 @@ export function App() {
         <section className="workspace">
           <header className="top-bar">
             <div className="title-stack">
-              <span className="micro-label">{workspace.device.storeLabel}</span>
+              <span className="micro-label">
+                {workspace.device.storeLabel} / {activeProfile.environment}
+              </span>
               <h1>Offline Inventory Command</h1>
             </div>
             <div className="top-actions" aria-label="Offline sync status">
+              <label className="profile-select">
+                <span>Company</span>
+                <select
+                  value={activeProfile.id}
+                  onChange={(event) => handleConnectorProfileChange(event.target.value)}
+                >
+                  {workspace.connectorProfiles.map((profile) => (
+                    <option value={profile.id} key={profile.id}>
+                      {profile.companyName} / {profile.environment}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="connection-pill" aria-label="Offline mode active">
                 <Icon name="wifi" />
                 <span>{workspace.device.modeLabel}</span>
@@ -169,7 +319,7 @@ export function App() {
                 <span>Last sync</span>
                 <strong>{workspace.device.lastSyncLabel}</strong>
               </div>
-              <button className="sync-now" type="button" disabled>
+              <button className="sync-now" type="button" onClick={handleSyncNowPreview}>
                 <Icon name="sync" />
                 <span>Sync Now</span>
               </button>
@@ -185,8 +335,19 @@ export function App() {
             ))}
           </section>
 
+          <section className="workflow-status" aria-live="polite" ref={workflowPanelRef}>
+            <div>
+              <span className="micro-label">Active workspace</span>
+              <strong>{activeSection}</strong>
+            </div>
+            <p>
+              <b>{activityMessage.title}</b>
+              {activityMessage.detail}
+            </p>
+          </section>
+
           <section className="content-grid">
-            <section className="inventory-panel" aria-label="Offline inventory">
+            <section className="inventory-panel" aria-label="Offline inventory" ref={inventoryPanelRef}>
               <div className="scanner-row">
                 <label htmlFor="offline-search">
                   <Icon name="scan" />
@@ -202,66 +363,117 @@ export function App() {
                   />
                   <span className="scan-beam" aria-hidden="true" />
                 </div>
-                <button className="filter-button" type="button">
+                <button
+                  className={filtersOpen ? "filter-button is-active" : "filter-button"}
+                  type="button"
+                  aria-expanded={filtersOpen}
+                  onClick={() => setFiltersOpen((open) => !open)}
+                >
                   Filters
                 </button>
-                <button className="icon-button" type="button" aria-label="Grid view">
+                <button
+                  className={viewMode === "grid" ? "icon-button is-active" : "icon-button"}
+                  type="button"
+                  aria-label="Grid view"
+                  onClick={() => setViewMode("grid")}
+                >
                   <Icon name="grid" />
                 </button>
-                <button className="icon-button is-active" type="button" aria-label="List view">
+                <button
+                  className={viewMode === "list" ? "icon-button is-active" : "icon-button"}
+                  type="button"
+                  aria-label="List view"
+                  onClick={() => setViewMode("list")}
+                >
                   <Icon name="list" />
                 </button>
-                <button type="button">
+                <button type="button" onClick={handleAddScan}>
                   <Icon name="plus" />
                   <span>Add Scan</span>
                 </button>
               </div>
 
+              {filtersOpen ? (
+                <div className="filter-tray" aria-label="Inventory filters">
+                  {(["all", "available", "reserved", "conflict"] as const).map((status) => (
+                    <button
+                      type="button"
+                      className={statusFilter === status ? "is-active" : ""}
+                      onClick={() => setStatusFilter(status)}
+                      key={status}
+                    >
+                      {status === "all" ? "All" : statusLabel(status)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="table-meta">
                 <span>{filteredItems.length} cached results</span>
-                <strong>Website authority after sync acceptance</strong>
+                <strong>{activeProfile.companyName} website authority after sync acceptance</strong>
               </div>
 
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Card</th>
-                      <th>Set</th>
-                      <th>Condition</th>
-                      <th>Price</th>
-                      <th>Location</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredItems.map((item) => (
-                      <tr
-                        key={item.id}
-                        className={item.id === selectedId ? "is-selected" : ""}
-                        onClick={() => setSelectedId(item.id)}
-                      >
-                        <td>
-                          <span className="card-title">{item.cardName}</span>
-                          <small>{item.barcode}</small>
-                        </td>
-                        <td>{item.setName}</td>
-                        <td>{item.condition}</td>
-                        <td>{item.price}</td>
-                        <td>{item.location}</td>
-                        <td>
-                          <span className={`status-dot ${item.status}`}>
-                            {statusLabel(item.status)}
-                          </span>
-                        </td>
+              {viewMode === "list" ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Card</th>
+                        <th>Set</th>
+                        <th>Condition</th>
+                        <th>Price</th>
+                        <th>Location</th>
+                        <th>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {filteredItems.length === 0 ? (
-                  <p className="empty-table">No cached cards match this scan.</p>
-                ) : null}
-              </div>
+                    </thead>
+                    <tbody>
+                      {filteredItems.map((item) => (
+                        <tr
+                          key={item.id}
+                          className={item.id === selectedId ? "is-selected" : ""}
+                          onClick={() => setSelectedId(item.id)}
+                        >
+                          <td>
+                            <span className="card-title">{item.cardName}</span>
+                            <small>{item.barcode}</small>
+                          </td>
+                          <td>{item.setName}</td>
+                          <td>{item.condition}</td>
+                          <td>{item.price}</td>
+                          <td>{item.location}</td>
+                          <td>
+                            <span className={`status-dot ${item.status}`}>
+                              {statusLabel(item.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredItems.length === 0 ? (
+                    <p className="empty-table">No cached cards match this scan.</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="inventory-card-grid" aria-label="Inventory grid">
+                  {filteredItems.map((item) => (
+                    <button
+                      className={item.id === selectedId ? "inventory-card is-selected" : "inventory-card"}
+                      type="button"
+                      onClick={() => setSelectedId(item.id)}
+                      key={item.id}
+                    >
+                      <span className={`status-dot ${item.status}`}>{statusLabel(item.status)}</span>
+                      <strong>{item.cardName}</strong>
+                      <small>{item.setName}</small>
+                      <span>{item.price}</span>
+                    </button>
+                  ))}
+                  {filteredItems.length === 0 ? (
+                    <p className="empty-table">No cached cards match this scan.</p>
+                  ) : null}
+                </div>
+              )}
             </section>
 
             <aside className="detail-panel" aria-label="Selected card details">
@@ -314,15 +526,18 @@ export function App() {
                 <button
                   className="wide-action"
                   type="button"
-                  onClick={handleStageInventoryUpdate}
+                  onClick={() => void handleStageInventoryUpdate()}
                 >
                   <Icon name="upload" />
                   <span>Stage Inventory Update</span>
                 </button>
-                <button type="button" onClick={handleStageInventoryUpdate}>
+                <button
+                  type="button"
+                  onClick={() => void handleStageInventoryUpdate("Quantity adjustment staged")}
+                >
                   Adjust Qty
                 </button>
-                <button type="button" onClick={handleStageInventoryUpdate}>
+                <button type="button" onClick={handlePrintLabel}>
                   Print Label
                 </button>
               </div>
@@ -351,7 +566,7 @@ export function App() {
               </div>
             </aside>
 
-            <section className="queue-panel" aria-label="Sync queue">
+            <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>
               <div className="section-heading">
                 <h2>Sync queue</h2>
                 <span>{queueBadgeCount} pending</span>
@@ -362,33 +577,110 @@ export function App() {
                   <strong>{item.count}</strong>
                 </div>
               ))}
-              <button className="secondary-command" type="button" onClick={handleStageInventoryUpdate}>
+              <button
+                className="secondary-command"
+                type="button"
+                onClick={() => void handleStageInventoryUpdate("Queue update staged")}
+              >
                 <Icon name="plus" />
                 <span>Stage New Update</span>
               </button>
             </section>
 
-            <section className="conflict-panel" aria-label="Conflict review">
+            <section className="conflict-panel" aria-label="Conflict review" ref={conflictPanelRef}>
               <div className="section-heading">
                 <h2>Conflicts</h2>
                 <span>Needs review</span>
               </div>
               {workspace.conflicts.map((item) => (
-                <article className="conflict-row" key={item.title}>
+                <article
+                  className={
+                    item.title === selectedConflictTitle
+                      ? "conflict-row is-selected"
+                      : "conflict-row"
+                  }
+                  key={item.title}
+                >
                   <div>
                     <strong>{item.title}</strong>
                     <p>{item.detail}</p>
                   </div>
-                  <button type="button">{item.action}</button>
+                  <button
+                    type="button"
+                    onClick={() => handleConflictAction(item.title, item.action)}
+                  >
+                    {item.action}
+                  </button>
                 </article>
               ))}
-              <button className="secondary-command danger-command" type="button">
+              {showConflictHistory ? (
+                <div className="history-note">
+                  <strong>Last review</strong>
+                  <span>Manager review, queue replay, and website write are still deferred.</span>
+                </div>
+              ) : null}
+              <button
+                className="secondary-command danger-command"
+                type="button"
+                onClick={() => {
+                  setShowConflictHistory((shown) => !shown)
+                  setActiveSection("Conflicts")
+                }}
+              >
                 <Icon name="history" />
                 <span>Review History</span>
               </button>
             </section>
 
-            <section className="credit-panel" aria-label="Customer credit snapshot">
+            <section className="connector-panel" aria-label="Connector profile setup" ref={connectorPanelRef}>
+              <div className="section-heading">
+                <h2>Connector profile</h2>
+                <span>{connectorStatusLabel(activeProfile.status)}</span>
+              </div>
+              <div className="connector-grid">
+                <div>
+                  <span className="micro-label">Company</span>
+                  <strong>{connectorHealth.company}</strong>
+                  <small>{connectorHealth.environment}</small>
+                </div>
+                <div>
+                  <span className="micro-label">Website</span>
+                  <strong>{connectorHealth.website}</strong>
+                  <small>{connectorHealth.restBasePath}</small>
+                </div>
+                <div>
+                  <span className="micro-label">Square</span>
+                  <strong>Inventory pulls from plugin</strong>
+                  <small>Payments stay in WooCommerce Square</small>
+                </div>
+                <div>
+                  <span className="micro-label">ScryDex</span>
+                  <strong>{activeProfile.scrydex.teamLabel}</strong>
+                  <small>Secrets stay on WordPress/server settings</small>
+                </div>
+              </div>
+              <div className="connector-actions">
+                <button type="button" onClick={handleSyncNowPreview}>
+                  <Icon name="link" />
+                  <span>Test Website Connector</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActivityMessage({
+                      title: "Profile draft saved",
+                      detail:
+                        "This local profile is ready for secure desktop storage; no API keys or passwords are written into source code.",
+                    })
+                  }
+                >
+                  <Icon name="check" />
+                  <span>Save Profile Draft</span>
+                </button>
+              </div>
+            </section>
+
+            <section className="credit-panel" aria-label="Customer credit snapshot" ref={creditPanelRef}>
               <div>
                 <span className="micro-label">{workspace.customerCredit.label}</span>
                 <h2>

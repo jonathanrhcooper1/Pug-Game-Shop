@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Functional Controls And Connector Profiles
+
+### What Changed
+
+- Added active offline app sidebar navigation that scrolls to Inventory, Sync,
+  Queue, Conflicts, Customers, and Settings/connector sections.
+- Added reusable company/site connector profiles with WordPress host, REST base,
+  environment, offline device-token storage boundary, Square inventory/payment
+  authority split, and ScryDex credential-storage boundary.
+- Wired previously static controls: `Sync Now`, company profile selection,
+  inventory status filters, list/grid view toggles, `Add Scan`, quantity
+  staging, print-label preview, conflict review, review history, connector test
+  preview, and save-profile draft.
+- Added filtered-selection synchronization so the selected-card inspector
+  follows the current filtered inventory result.
+- Tightened the content grid so the inventory panel no longer stretches into a
+  large empty block when the detail panel is taller.
+
+### Why
+
+The offline app needed to move past a visual prototype. This checkpoint makes
+most visible controls perform safe local state changes while preserving the
+offline-first boundary: no live pairing, live SQLite write, network sync,
+direct MySQL access, production credentials, printer output, or canonical
+website mutations are enabled yet. The connector profile model also supports
+future reuse across multiple companies/sites without hardcoding secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for reusable connector
+  profiles, offline device-token storage boundaries, official WooCommerce
+  Square payment authority, and server-side ScryDex credential storage.
+- Extended UI shell contracts for connector controls and functional interaction
+  markers covering active nav, sync preview, grid toggle, filters, and conflict
+  actions.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed, including 858 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- Temporary Playwright/Chrome rendered QA against `http://127.0.0.1:1420/`:
+  passed. It clicked filters, selected the Conflict filter, switched to grid,
+  clicked `Sync Now`, staged a queue update, opened Settings, clicked `Test
+  Website Connector`, verified Mox Amber follows the filtered selection, and
+  confirmed no console warnings/errors or horizontal overflow at desktop
+  `1440x1000` and mobile `390x844`.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the previous mostly-static
+  command-center shell.
+- No database migrations, live SQLite writes, WordPress push/pull execution,
+  direct MySQL access, payment capture, production network calls, printer
+  output, or canonical inventory mutations are introduced.
+- The previous queue-staging, Tauri command, and local SQLite planning
+  contracts remain available if only these UI/connector enhancements are
+  rolled back.
+
 ## 2026-06-08 - Square Inventory Batch Sync Readiness Diagnostics
 
 ### What Changed

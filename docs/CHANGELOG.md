@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app functional controls for sidebar navigation, sync preview,
+  status filters, list/grid inventory views, scan staging, quantity staging,
+  print-label preview, conflict review/history selection, and reusable
+  company/site connector profiles that keep credentials outside source while
+  showing the active WordPress, Square, and ScryDex boundaries.
 - Offline app visual command-center refresh with a project-local Pug Game Shop
   crest asset, desktop app-window chrome, queue/conflict nav badges, fuller
   default cached inventory state, tighter selected-card inspection actions,

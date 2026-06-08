@@ -55,6 +55,16 @@ captures desktop and mobile screenshots, clicks `Stage Inventory Update`, and
 checks for no horizontal overflow or console warnings while live SQLite writes,
 push execution, and production network calls remain disabled.
 
+The current functional checkpoint adds active sidebar navigation, status
+filters, list/grid inventory modes, scan and quantity staging, print-label
+preview, conflict review/history selection, a sync preview button, and
+company/site connector profiles. The Pug Game Shop staging profile points to
+the configured WordPress host and records that Square inventory is owned by
+the plugin while payment capture stays with the official WooCommerce Square
+extension. ScryDex credentials remain WordPress/server-side only, device
+tokens remain reserved for desktop secure storage, and all network execution
+remains deferred until pairing and staging acceptance.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.
