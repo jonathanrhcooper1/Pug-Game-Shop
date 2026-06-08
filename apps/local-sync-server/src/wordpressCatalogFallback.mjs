@@ -2,6 +2,7 @@ export function createWordPressCatalogFallback(options = {}) {
   const endpointBase = normalizeWordPressCatalogBaseUrl(options.websiteUrl, options.restBasePath)
   const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
   const timeoutMs = boundedTimeout(options.timeoutMs)
+  const authorizationHeader = catalogAuthorizationHeader(options)
 
   if (!endpointBase || typeof fetcher !== "function") {
     return null
@@ -18,9 +19,10 @@ export function createWordPressCatalogFallback(options = {}) {
 
     try {
       const response = await fetcher(endpoint, {
-        headers: {
+        headers: cleanHeaders({
           accept: "application/json",
-        },
+          authorization: authorizationHeader,
+        }),
         signal: controller?.signal,
       })
 
@@ -32,6 +34,8 @@ export function createWordPressCatalogFallback(options = {}) {
           cards: [],
           live_provider_request_performed: false,
           credentials_synced_to_client: false,
+          auth_configured: Boolean(authorizationHeader),
+          authorization_header_printed: false,
           endpoint: secretSafeEndpoint(endpoint),
         }
       }
@@ -48,6 +52,8 @@ export function createWordPressCatalogFallback(options = {}) {
             body?.meta?.live_provider_request,
         ),
         credentials_synced_to_client: false,
+        auth_configured: Boolean(authorizationHeader),
+        authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
       }
     } catch (error) {
@@ -58,6 +64,8 @@ export function createWordPressCatalogFallback(options = {}) {
         cards: [],
         live_provider_request_performed: false,
         credentials_synced_to_client: false,
+        auth_configured: Boolean(authorizationHeader),
+        authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
       }
     } finally {
@@ -66,6 +74,23 @@ export function createWordPressCatalogFallback(options = {}) {
       }
     }
   }
+}
+
+export function catalogAuthorizationHeader(options = {}) {
+  const explicit = String(options.authHeader ?? "").trim()
+
+  if (isSafeAuthorizationHeader(explicit)) {
+    return explicit
+  }
+
+  const username = String(options.username ?? "").trim()
+  const applicationPassword = String(options.applicationPassword ?? "").trim()
+
+  if (!username || !applicationPassword) {
+    return ""
+  }
+
+  return `Basic ${Buffer.from(`${username}:${applicationPassword}`, "utf8").toString("base64")}`
 }
 
 export function normalizeWordPressCatalogBaseUrl(websiteUrl, restBasePath = "/wp-json/tcg-store/v1") {
@@ -124,6 +149,16 @@ function secretSafeEndpoint(endpoint) {
   safe.searchParams.delete("api_key")
 
   return safe.toString()
+}
+
+function cleanHeaders(headers) {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([, value]) => typeof value === "string" && value.trim() !== ""),
+  )
+}
+
+function isSafeAuthorizationHeader(value) {
+  return /^(Bearer|Basic)\s+[A-Za-z0-9+/_=:.~,-]+$/i.test(value)
 }
 
 function boundedLimit(value) {

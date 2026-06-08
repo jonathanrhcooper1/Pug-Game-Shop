@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Local Sync WordPress Catalog Connector Auth
+
+### What Changed
+
+- Added server-side WordPress catalog authorization support to the LAN sync
+  server fallback client.
+- Added CLI environment inputs for either a complete catalog authorization
+  header or a WordPress username plus application password.
+- Updated catalog fallback tests to verify authorization headers are sent to
+  WordPress, redacted from responses, and never synced to clients.
+
+### Why
+
+The staging website keeps public inventory/catalog reads disabled. The local
+sync server therefore needs its own per-company connector credential so offline
+clients can still search the website catalog through the LAN server without
+opening public endpoints or storing ScryDex credentials on clients.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- WordPress catalog fallback assertions for Bearer/app-password authorization
+  handling and redacted response metadata.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- Staging smoke: local sync server in-memory API used a staging WordPress
+  application password to fetch `/reference/search` after a local cache miss.
+
+### Rollback Notes
+
+- Revert this revision to remove authenticated WordPress catalog fallback
+  support.
+- Revoke any staging WordPress application passwords created for connector
+  smoke testing if the staging connector path is disabled.
+
 ## 2026-06-08 - Staging Reference Search Runtime Verification
 
 ### What Changed

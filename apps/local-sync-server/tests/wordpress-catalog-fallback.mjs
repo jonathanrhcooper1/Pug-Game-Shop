@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 
 import {
+  catalogAuthorizationHeader,
   cardsFromWordPressCatalogResponse,
   createWordPressCatalogFallback,
   normalizeWordPressCatalogBaseUrl,
@@ -19,9 +20,11 @@ assert.equal(normalizeWordPressCatalogBaseUrl("not a url"), "")
 let capturedUrl = ""
 const fallback = createWordPressCatalogFallback({
   websiteUrl: "https://example.test/",
+  authHeader: "Bearer preview-token",
   fetcher: async (url, init) => {
     capturedUrl = url.toString()
     assert.equal(init.headers.accept, "application/json")
+    assert.equal(init.headers.authorization, "Bearer preview-token")
 
     return {
       ok: true,
@@ -54,6 +57,8 @@ assert.equal(result.cards.length, 1)
 assert.equal(result.cards[0].provider_card_id, "scrydex-pokemon-evs-215")
 assert.equal(result.live_provider_request_performed, false)
 assert.equal(result.credentials_synced_to_client, false)
+assert.equal(result.auth_configured, true)
+assert.equal(result.authorization_header_printed, false)
 assert.ok(capturedUrl.startsWith("https://example.test/wp-json/tcg-store/v1/reference/search?"))
 assert.ok(capturedUrl.includes("q=moonbreon"))
 assert.ok(capturedUrl.includes("game=pokemon"))
@@ -73,9 +78,12 @@ assert.equal(unavailable.status, "blocked")
 assert.equal(unavailable.cards.length, 0)
 assert.equal(unavailable.http_status, 503)
 assert.equal(unavailable.live_provider_request_performed, false)
+assert.equal(unavailable.auth_configured, false)
 
 assert.equal(cardsFromWordPressCatalogResponse({ data: { cards: [{ id: "one" }] } }).length, 1)
 assert.equal(cardsFromWordPressCatalogResponse({ items: [{ id: "two" }] }).length, 1)
 assert.equal(cardsFromWordPressCatalogResponse({ data: { cards: "bad" } }).length, 0)
+assert.equal(catalogAuthorizationHeader({ authHeader: "Digest nope" }), "")
+assert.equal(catalogAuthorizationHeader({ username: "staff", applicationPassword: "abcd efgh ijkl mnop" }).startsWith("Basic "), true)
 
 console.log("PASS WordPress catalog fallback")

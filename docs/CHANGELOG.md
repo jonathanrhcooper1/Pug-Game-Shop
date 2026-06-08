@@ -10,6 +10,10 @@ All notable changes follow Semantic Versioning.
   migrations after creating a staging database export, and verify inventory
   intake plus `/reference/search` card photo/version/price payloads through a
   WP-CLI smoke test.
+- Local sync server WordPress catalog fallback now supports server-held
+  authorization headers or WordPress application-password credentials, allowing
+  company-specific website connectors without exposing ScryDex or WordPress
+  credentials to offline app clients.
 - ScryDex catalog sync now normalizes provider variants/versions into
   reference-variant upserts, includes variant counts in worker/query/repository
   audits, exposes variants from the WordPress `/reference/search` fallback
