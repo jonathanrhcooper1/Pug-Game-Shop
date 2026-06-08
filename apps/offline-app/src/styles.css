@@ -1922,13 +1922,41 @@ h2 {
 
 .scrydex-result-list article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   padding: 8px;
   background: rgba(20, 23, 19, 0.04);
   border: 1px solid rgba(20, 23, 19, 0.08);
   border-radius: 8px;
+}
+
+.scrydex-result-list article.is-selected {
+  border-color: rgba(121, 215, 143, 0.46);
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.scrydex-card-art {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  aspect-ratio: 0.72;
+  overflow: hidden;
+  color: #249344;
+  background: linear-gradient(145deg, rgba(121, 215, 143, 0.18), rgba(255, 255, 255, 0.92));
+  border: 1px solid rgba(35, 100, 70, 0.15);
+  border-radius: 7px;
+}
+
+.scrydex-card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scrydex-card-art .icon {
+  width: 24px;
+  height: 24px;
 }
 
 .scrydex-result-list article > div {
@@ -2385,6 +2413,15 @@ dd {
   color: #5d6d5d;
   font-size: 12px;
   font-weight: 900;
+}
+
+.section-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .queue-storage-note {

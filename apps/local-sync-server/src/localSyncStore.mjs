@@ -255,6 +255,7 @@ export function createLocalSyncStore(options = {}) {
           card.printed_number,
         ].some((value) => String(value).toLowerCase().includes(needle)),
       )
+      .map((card) => enrichScryDexCard(card, inventoryItems))
       .slice(0, 8)
 
     return {
@@ -262,7 +263,7 @@ export function createLocalSyncStore(options = {}) {
       cards,
       query: needle,
       game: normalizedGame,
-      source: "local_reference_cache",
+      source: "wordpress_catalog_cache",
       wordpress_proxy_required: true,
       credential_storage: "wordpress_server_settings",
       credentials_synced_to_client: false,
@@ -298,45 +299,69 @@ export function createLocalSyncStore(options = {}) {
 
     const cardName = cleanName(input.card_name)
     const setName = cleanName(input.set_name) || "Manual Intake"
+    const providerCardId = cleanPublicId(input.provider_card_id)
+    const game = cleanGame(input.game)
+    const setCode = cleanName(input.set_code).toUpperCase()
+    const cardNumber = cleanName(input.card_number)
+    const printedNumber = cleanName(input.printed_number)
     const condition = cleanCondition(input.condition ?? input.condition_code)
-    const barcode = cleanBarcode(input.barcode) || `PUG-${randomUUID().slice(0, 8).toUpperCase()}`
+    const barcodeBase = cleanBarcode(input.barcode) || `PUG-${randomUUID().slice(0, 8).toUpperCase()}`
     const priceMinorUnits = Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units))
     const location = cleanName(input.location ?? input.location_label) || "Intake Queue"
+    const imageUrl = cleanHttpUrl(input.image_url)
+    const quantity = boundedInt(input.quantity ?? input.quantity_added, 1, 200, 1)
 
     if (!cardName || priceMinorUnits <= 0) {
       return blocked("invalid_inventory_intake", "Card name and positive price are required for local intake.")
     }
 
-    if (inventoryItems.some((item) => item.barcode.toLowerCase() === barcode.toLowerCase())) {
+    const barcodes = Array.from({ length: quantity }, (_, index) =>
+      quantity === 1 ? barcodeBase : `${barcodeBase}-${String(index + 1).padStart(2, "0")}`,
+    )
+    const duplicateBarcode = barcodes.find((barcode) =>
+      inventoryItems.some((item) => item.barcode.toLowerCase() === barcode.toLowerCase()),
+    )
+
+    if (duplicateBarcode) {
       return blocked("duplicate_barcode", "A cached inventory item already uses that barcode.")
     }
 
-    const item = {
+    const items = barcodes.map((barcode) => ({
       public_id: `local-inventory-${randomUUID()}`,
       row_version: 1,
+      provider_card_id: providerCardId,
+      game,
       card_name: cardName,
       set_name: setName,
+      set_code: setCode,
+      card_number: cardNumber,
+      printed_number: printedNumber,
       condition,
       barcode,
       price_minor_units: priceMinorUnits,
       currency: "USD",
       location,
       status: "pending_intake",
+      image_url: imageUrl,
       source: "queued",
-    }
+    }))
 
-    inventoryItems.push(item)
-    saveInventoryItem(database, item, now)
-    appendQueueOperation(database, queue, "inventory_intake", item.public_id, {
-      item: publicInventoryItem(item),
-      actor_id: session.user.id,
-      sync_intent: "offline_inventory_intake",
-      wordpress_acceptance_required: true,
-    }, now)
+    for (const item of items) {
+      inventoryItems.push(item)
+      saveInventoryItem(database, item, now)
+      appendQueueOperation(database, queue, "inventory_intake", item.public_id, {
+        item: publicInventoryItem(item),
+        actor_id: session.user.id,
+        sync_intent: "offline_inventory_intake",
+        wordpress_acceptance_required: true,
+      }, now)
+    }
 
     return {
       status: "ok",
-      item: publicInventoryItem(item),
+      item: publicInventoryItem(items[0]),
+      items: items.map(publicInventoryItem),
+      quantity_added: items.length,
       wordpress_acceptance_required: true,
       label_print_deferred: true,
     }
@@ -829,14 +854,20 @@ function migrateLocalSyncDatabase(database) {
     CREATE TABLE IF NOT EXISTS inventory_items (
       public_id TEXT PRIMARY KEY,
       row_version INTEGER NOT NULL,
+      provider_card_id TEXT NOT NULL DEFAULT '',
+      game TEXT NOT NULL DEFAULT 'pokemon',
       card_name TEXT NOT NULL,
       set_name TEXT NOT NULL,
+      set_code TEXT NOT NULL DEFAULT '',
+      card_number TEXT NOT NULL DEFAULT '',
+      printed_number TEXT NOT NULL DEFAULT '',
       condition TEXT NOT NULL,
       barcode TEXT NOT NULL,
       price_minor_units INTEGER NOT NULL,
       currency TEXT NOT NULL,
       location TEXT NOT NULL,
       status TEXT NOT NULL,
+      image_url TEXT NOT NULL DEFAULT '',
       source TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
     );
@@ -904,6 +935,13 @@ function migrateLocalSyncDatabase(database) {
       updated_at_utc TEXT NOT NULL
     );
   `)
+
+  ensureLocalSyncColumn(database, "inventory_items", "provider_card_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "game", "TEXT NOT NULL DEFAULT 'pokemon'")
+  ensureLocalSyncColumn(database, "inventory_items", "set_code", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "card_number", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "printed_number", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "image_url", "TEXT NOT NULL DEFAULT ''")
 }
 
 function seedLocalSyncDatabase(database, now) {
@@ -941,6 +979,15 @@ function seedLocalSyncDatabase(database, now) {
   }
 }
 
+function ensureLocalSyncColumn(database, tableName, columnName, definition) {
+  const columns = database.prepare(`PRAGMA table_info(${tableName})`).all()
+  const hasColumn = columns.some((column) => column.name === columnName)
+
+  if (!hasColumn) {
+    database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
+  }
+}
+
 function loadUsers(database) {
   return database
     .prepare("SELECT id, name, role, access_json, pin_salt, pin_hash FROM users ORDER BY id")
@@ -958,8 +1005,9 @@ function loadUsers(database) {
 function loadInventoryItems(database) {
   return database
     .prepare(`
-      SELECT public_id, row_version, card_name, set_name, condition, barcode,
-        price_minor_units, currency, location, status, source
+      SELECT public_id, row_version, provider_card_id, game, card_name, set_name,
+        set_code, card_number, printed_number, condition, barcode, price_minor_units,
+        currency, location, status, image_url, source
       FROM inventory_items
       ORDER BY public_id
     `)
@@ -967,14 +1015,20 @@ function loadInventoryItems(database) {
     .map((row) => ({
       public_id: row.public_id,
       row_version: Number(row.row_version),
+      provider_card_id: row.provider_card_id ?? "",
+      game: cleanGame(row.game),
       card_name: row.card_name,
       set_name: row.set_name,
+      set_code: row.set_code ?? "",
+      card_number: row.card_number ?? "",
+      printed_number: row.printed_number ?? "",
       condition: row.condition,
       barcode: row.barcode,
       price_minor_units: Number(row.price_minor_units),
       currency: row.currency,
       location: row.location,
       status: row.status,
+      image_url: row.image_url ?? "",
       source: row.source,
     }))
 }
@@ -1119,34 +1173,47 @@ function saveInventoryItem(database, item, now) {
   database
     .prepare(`
       INSERT INTO inventory_items (
-        public_id, row_version, card_name, set_name, condition, barcode,
-        price_minor_units, currency, location, status, source, updated_at_utc
+        public_id, row_version, provider_card_id, game, card_name, set_name,
+        set_code, card_number, printed_number, condition, barcode, price_minor_units,
+        currency, location, status, image_url, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         row_version = excluded.row_version,
+        provider_card_id = excluded.provider_card_id,
+        game = excluded.game,
         card_name = excluded.card_name,
         set_name = excluded.set_name,
+        set_code = excluded.set_code,
+        card_number = excluded.card_number,
+        printed_number = excluded.printed_number,
         condition = excluded.condition,
         barcode = excluded.barcode,
         price_minor_units = excluded.price_minor_units,
         currency = excluded.currency,
         location = excluded.location,
         status = excluded.status,
+        image_url = excluded.image_url,
         source = excluded.source,
         updated_at_utc = excluded.updated_at_utc
     `)
     .run(
       item.public_id,
       item.row_version,
+      item.provider_card_id ?? "",
+      cleanGame(item.game),
       item.card_name,
       item.set_name,
+      item.set_code ?? "",
+      item.card_number ?? "",
+      item.printed_number ?? "",
       item.condition,
       item.barcode,
       item.price_minor_units,
       item.currency,
       item.location,
       item.status,
+      item.image_url ?? "",
       item.source,
       now().toISOString(),
     )
@@ -1336,27 +1403,39 @@ function seedInventoryItems() {
     {
       public_id: "inv-1001",
       row_version: 1,
+      provider_card_id: "scrydex-pokemon-base-004",
+      game: "pokemon",
       card_name: "Charizard",
       set_name: "Base Set",
+      set_code: "BASE",
+      card_number: "4",
+      printed_number: "4/102",
       condition: "LP",
       barcode: "PUG-000001",
       price_minor_units: 125000,
       currency: "USD",
       location: "Showcase A",
       status: "available",
+      image_url: "https://images.pokemontcg.io/base1/4_hires.png",
       source: "cached",
     },
     {
       public_id: "inv-1002",
       row_version: 1,
+      provider_card_id: "scrydex-pokemon-jungle-060",
+      game: "pokemon",
       card_name: "Pikachu",
-      set_name: "Base Set",
+      set_name: "Jungle",
+      set_code: "JGL",
+      card_number: "60",
+      printed_number: "60/64",
       condition: "NM",
       barcode: "PUG-000002",
       price_minor_units: 3200,
       currency: "USD",
       location: "Case 2",
       status: "available",
+      image_url: "https://images.pokemontcg.io/jungle/60_hires.png",
       source: "cached",
     },
   ]
@@ -1495,14 +1574,20 @@ function publicInventoryItem(item) {
   return {
     public_id: item.public_id,
     row_version: item.row_version,
+    provider_card_id: item.provider_card_id ?? "",
+    game: cleanGame(item.game),
     card_name: item.card_name,
     set_name: item.set_name,
+    set_code: item.set_code ?? "",
+    card_number: item.card_number ?? "",
+    printed_number: item.printed_number ?? "",
     condition: item.condition,
     barcode: item.barcode,
     price_minor_units: item.price_minor_units,
     currency: item.currency,
     location: item.location,
     status: item.status,
+    image_url: item.image_url ?? "",
     source: item.source,
   }
 }
@@ -1690,6 +1775,22 @@ function cleanPublicId(value) {
   return String(value ?? "").trim().replace(/[^a-zA-Z0-9-_:.]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 96)
 }
 
+function cleanHttpUrl(value) {
+  const candidate = String(value ?? "").trim()
+
+  if (!candidate) {
+    return ""
+  }
+
+  try {
+    const url = new URL(candidate)
+
+    return ["http:", "https:"].includes(url.protocol) ? url.toString().slice(0, 255) : ""
+  } catch {
+    return ""
+  }
+}
+
 function cleanEventPaymentStatus(value) {
   return value === "pay_at_store" ? "pay_at_store" : "not_required"
 }
@@ -1721,7 +1822,9 @@ function seedScryDexReferenceCards() {
       suggested_barcode: "PKM-BASE-004-HOLO",
       market_price_minor_units: 12500,
       currency: "USD",
-      image_url: "",
+      image_url: "https://images.pokemontcg.io/base1/4_hires.png",
+      price_observed_at_utc: "2026-06-06T09:00:00.000Z",
+      catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },
     {
       provider_card_id: "scrydex-pokemon-jungle-060",
@@ -1734,7 +1837,9 @@ function seedScryDexReferenceCards() {
       suggested_barcode: "PKM-JGL-060-YLW",
       market_price_minor_units: 1800,
       currency: "USD",
-      image_url: "",
+      image_url: "https://images.pokemontcg.io/jungle/60_hires.png",
+      price_observed_at_utc: "2026-06-06T09:00:00.000Z",
+      catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },
     {
       provider_card_id: "scrydex-pokemon-evs-094",
@@ -1747,7 +1852,9 @@ function seedScryDexReferenceCards() {
       suggested_barcode: "PKM-EVS-094-V",
       market_price_minor_units: 7400,
       currency: "USD",
-      image_url: "",
+      image_url: "https://images.pokemontcg.io/swsh7/94_hires.png",
+      price_observed_at_utc: "2026-06-06T09:00:00.000Z",
+      catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },
     {
       provider_card_id: "scrydex-pokemon-sv2-203",
@@ -1760,7 +1867,9 @@ function seedScryDexReferenceCards() {
       suggested_barcode: "PKM-PAL-203-IONO",
       market_price_minor_units: 3200,
       currency: "USD",
-      image_url: "",
+      image_url: "https://images.pokemontcg.io/sv2/203_hires.png",
+      price_observed_at_utc: "2026-06-06T09:00:00.000Z",
+      catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },
     {
       provider_card_id: "scrydex-magic-dom-224",
@@ -1774,8 +1883,43 @@ function seedScryDexReferenceCards() {
       market_price_minor_units: 3200,
       currency: "USD",
       image_url: "",
+      price_observed_at_utc: "2026-06-06T09:00:00.000Z",
+      catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },
   ]
+}
+
+function enrichScryDexCard(card, inventoryItems) {
+  const matchingItems = inventoryItems.filter((item) => inventoryMatchesScryDexCard(item, card))
+  const stockByCondition = new Map()
+
+  for (const item of matchingItems) {
+    if (!["available", "pending_intake", "reserved"].includes(item.status)) {
+      continue
+    }
+
+    stockByCondition.set(item.condition, (stockByCondition.get(item.condition) ?? 0) + 1)
+  }
+
+  return {
+    ...card,
+    catalog_source: "wordpress_catalog_cache",
+    stock_available_count: matchingItems.filter((item) => item.status === "available").length,
+    stock_total_count: matchingItems.length,
+    stock_by_condition: Array.from(stockByCondition.entries()).map(([condition, quantity]) => ({
+      condition,
+      quantity,
+    })),
+  }
+}
+
+function inventoryMatchesScryDexCard(item, card) {
+  if (item.provider_card_id && item.provider_card_id === card.provider_card_id) {
+    return true
+  }
+
+  return cleanScryDexQuery(item.card_name) === cleanScryDexQuery(card.card_name)
+    && cleanScryDexQuery(item.set_name) === cleanScryDexQuery(card.set_name)
 }
 
 function minorUnits(value) {

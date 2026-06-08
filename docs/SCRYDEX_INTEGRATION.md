@@ -13,13 +13,13 @@ a sync dry-run plan with the next cards-page request and checkpoint row while
 all execution remains deferred. The health payload also includes a cards sync
 execution gate that reports provider, network, usage-budget, checkpoint,
 persistence, database-write, and scheduler readiness without running the worker.
-Card and current market price normalization is implemented against sanitized
-fixtures. Persistence planning now prepares deterministic reference-card
-inserts, changed-row updates, unchanged row detection, and current price
-observations from normalized page plans. Persistence SQL staging now converts
-those plans into deferred reference-card insert/update templates, provider
-price observation inserts, and checkpoint upsert plans with repository audit
-metadata, but still performs no `wpdb` writes. Health output now includes a
+Card, provider image URL, and current market price normalization is implemented
+against sanitized fixtures. Persistence planning now prepares deterministic
+reference-card inserts, changed-row updates, unchanged row detection, and
+current price observations from normalized page plans. Persistence SQL staging
+now converts those plans into deferred reference-card insert/update templates,
+provider price observation inserts, and checkpoint upsert plans with repository
+audit metadata, but still performs no `wpdb` writes. Health output now includes a
 `scrydex_persistence_repository` readiness payload, and the execution gate uses
 that payload to derive the persistence repository gate. Scheduled ScryDex
 workers are not enabled yet, but the cards worker orchestration planner can now
@@ -36,6 +36,21 @@ Schema migration `0010_provider_price_observations` adds
 keeps ScryDex price observations separate from inventory-item price change
 history, which requires an exact `inventory_id` and should only track store
 sale-price decisions.
+
+Schema migration `0011_reference_card_images` adds nullable `front_image_url`
+and `back_image_url` columns to `tcg_reference_cards`. ScryDex card
+normalization and persistence planning now carry provider image URLs into those
+columns so the website catalog, local sync server, offline employee app, kiosk,
+and storefront can show the actual card art from the mirrored catalog.
+
+The local sync server ScryDex lookup surface now models the final architecture:
+clients receive a secret-free `wordpress_catalog_cache` result that includes
+card identity, image URL, current market price, catalog sync timestamp, and
+local stock counts. The development server still seeds this cache locally until
+the WordPress daily paginated worker is enabled, but the offline app no longer
+treats ScryDex as a one-off text fill. Staff can select a card, review image,
+price, local stock, condition, and quantity, then add one provisional inventory
+row per physical copy.
 
 The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
@@ -158,6 +173,13 @@ injected, then stages the page processor, persistence planner, query builder,
 and deferred repository result. It intentionally does not fetch ScryDex,
 persist reference cards, write provider price observations, upsert checkpoints,
 download images, or enqueue scheduled workers.
+
+Next implementation step: replace the seeded development catalog with the
+WordPress-owned worker loop. That worker must iterate configured games, sets,
+and provider cursors/pages; respect usage budgets/rate limits; upsert
+reference-card rows and price observations; checkpoint after each committed
+page; and run a daily refresh without sending ScryDex credentials to offline
+clients.
 
 Budget-specific blockers are:
 

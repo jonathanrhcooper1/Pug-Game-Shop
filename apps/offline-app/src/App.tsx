@@ -506,9 +506,12 @@ function inventoryItemFromLocalSync(
     id: nextId,
     publicId: item.public_id,
     rowVersion: item.row_version,
+    providerCardId: item.provider_card_id,
+    game: item.game,
     cardName: item.card_name,
     setName: item.set_name,
-    number: item.public_id,
+    number: item.printed_number || item.card_number || item.public_id,
+    setCode: item.set_code,
     condition: item.condition,
     barcode: item.barcode,
     price: formatMoney(item.price_minor_units, item.currency),
@@ -516,6 +519,7 @@ function inventoryItemFromLocalSync(
     currency: item.currency,
     location: item.location,
     status: item.status,
+    imageUrl: item.image_url,
     source: item.source,
   }
 }
@@ -610,11 +614,13 @@ export function App() {
   const [scryDexQuery, setScryDexQuery] = useState("")
   const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
   const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
+  const [selectedScryDexCardId, setSelectedScryDexCardId] = useState("")
   const [scryDexLookupStatus, setScryDexLookupStatus] = useState<
     "idle" | "searching" | "ready" | "blocked"
   >("idle")
   const [scryDexLookupDetail, setScryDexLookupDetail] = useState("Ready")
   const [selectedId, setSelectedId] = useState(42)
+  const [intakeQuantityInput, setIntakeQuantityInput] = useState("1")
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
   const [eventAttendeeLabel, setEventAttendeeLabel] = useState("Offline walk-in")
   const [eventPaymentStatus, setEventPaymentStatus] =
@@ -775,6 +781,7 @@ export function App() {
     ? "available; device tokens can be persisted through the Tauri desktop secure-store commands"
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
+  const selectedScryDexCard = scryDexCards.find((card) => card.provider_card_id === selectedScryDexCardId) ?? null
   const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
   const customerCredit =
     findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
@@ -891,6 +898,10 @@ export function App() {
       ? "Enter a whole-number quantity change from -99 to 99, excluding 0."
       : ""
   const intakePriceMinorUnits = creditRedemptionInputToMinorUnits(intakePriceInput)
+  const parsedIntakeQuantity = Number.parseInt(intakeQuantityInput, 10)
+  const intakeQuantity = Number.isFinite(parsedIntakeQuantity)
+    ? Math.min(200, Math.max(1, parsedIntakeQuantity))
+    : null
   const intakeIssue =
     intakeCardName.trim() === ""
       ? "Enter a card name before adding local inventory."
@@ -898,7 +909,9 @@ export function App() {
         ? "Use a valid dollar amount with up to two decimals."
         : intakePriceMinorUnits <= 0
           ? "Inventory price must be greater than $0.00."
-          : ""
+          : intakeQuantity === null
+            ? "Enter a quantity from 1 to 200."
+            : ""
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -1233,6 +1246,35 @@ export function App() {
     return nextStatus
   }
 
+  async function refreshLanEventSnapshots(options: { announce?: boolean } = {}) {
+    const eventResult = await localSyncClient.listEvents()
+
+    if (eventResult.status !== "ok") {
+      setActivityMessage({
+        title: eventResult.status === "unavailable" ? "LAN server unavailable" : "Event refresh blocked",
+        detail: eventResult.message,
+      })
+      await refreshLocalSyncStatus()
+      return
+    }
+
+    const nextEvents = eventResult.events.map(eventSnapshotFromLocalSync)
+    setEventSnapshots(nextEvents)
+    setSelectedEventId((currentEventId) =>
+      nextEvents.some((event) => event.eventId === currentEventId)
+        ? currentEventId
+        : nextEvents[0]?.eventId ?? "",
+    )
+    await refreshLocalSyncStatus()
+
+    if (options.announce) {
+      setActivityMessage({
+        title: "LAN events refreshed",
+        detail: `${nextEvents.length} event snapshot(s) loaded from ${localSyncClient.serverUrl}; website event authority is preserved until sync acceptance.`,
+      })
+    }
+  }
+
   async function handlePinLogin() {
     if (!/^\d{4}$/.test(loginPin)) {
       setLoginIssue("Enter a valid 4-digit staff or manager PIN.")
@@ -1533,6 +1575,9 @@ export function App() {
     }
 
     setActiveSection(label)
+    if (label === "Events") {
+      void refreshLanEventSnapshots()
+    }
     window.requestAnimationFrame(() => {
       sectionTarget(label).current?.scrollIntoView({ block: "start", behavior: "smooth" })
     })
@@ -1947,7 +1992,7 @@ export function App() {
   }
 
   async function handleInventoryIntake() {
-    if (intakeIssue || intakePriceMinorUnits === null) {
+    if (intakeIssue || intakePriceMinorUnits === null || intakeQuantity === null) {
       setActivityMessage({
         title: "Inventory intake blocked",
         detail: intakeIssue || "Enter valid card intake details.",
@@ -1970,6 +2015,13 @@ export function App() {
       barcode: intakeBarcode.trim(),
       priceMinorUnits: intakePriceMinorUnits,
       location: intakeLocation.trim() || "Intake Queue",
+      quantity: intakeQuantity,
+      providerCardId: selectedScryDexCard?.provider_card_id,
+      game: selectedScryDexCard?.game ?? scryDexGame,
+      setCode: selectedScryDexCard?.set_code,
+      cardNumber: selectedScryDexCard?.card_number,
+      printedNumber: selectedScryDexCard?.printed_number,
+      imageUrl: selectedScryDexCard?.image_url,
     })
 
     if (intakeResult.status !== "ok") {
@@ -1983,10 +2035,15 @@ export function App() {
       return
     }
 
+    const responseItems =
+      intakeResult.items && intakeResult.items.length > 0
+        ? intakeResult.items
+        : [intakeResult.item]
     const nextId = inventoryItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
-    const nextItem = inventoryItemFromLocalSync(intakeResult.item, nextId)
+    const nextItems = responseItems.map((item, index) => inventoryItemFromLocalSync(item, nextId + index))
+    const nextItem = nextItems[0]
 
-    setInventoryItems((items) => [nextItem, ...items])
+    setInventoryItems((items) => [...nextItems, ...items])
     setSelectedId(nextItem.id)
     setQuery(nextItem.barcode)
     setIntakeCardName("")
@@ -1995,11 +2052,12 @@ export function App() {
     setIntakeBarcode("")
     setIntakePriceInput("0.00")
     setIntakeLocation("Intake Queue")
+    setIntakeQuantityInput("1")
     void refreshLocalSyncStatus()
     setActivityMessage({
       title: "Inventory intake queued",
       detail:
-        `${nextItem.cardName} (${nextItem.barcode}) was added to ${localSyncClient.serverUrl}; ` +
+        `${nextItem.cardName} x${intakeResult.quantity_added ?? nextItems.length} was added to ${localSyncClient.serverUrl}; ` +
         "WordPress acceptance and label printing remain pending sync.",
     })
   }
@@ -2011,6 +2069,7 @@ export function App() {
       setScryDexLookupStatus("blocked")
       setScryDexLookupDetail("Enter a card, set, or number.")
       setScryDexCards([])
+      setSelectedScryDexCardId("")
       return
     }
 
@@ -2018,6 +2077,7 @@ export function App() {
       setScryDexLookupStatus("blocked")
       setScryDexLookupDetail("Staff PIN session required.")
       setScryDexCards([])
+      setSelectedScryDexCardId("")
       return
     }
 
@@ -2034,10 +2094,12 @@ export function App() {
       setScryDexLookupStatus("blocked")
       setScryDexLookupDetail(result.message)
       setScryDexCards([])
+      setSelectedScryDexCardId("")
       return
     }
 
     setScryDexCards(result.cards)
+    setSelectedScryDexCardId(result.cards[0]?.provider_card_id ?? "")
     setScryDexLookupStatus("ready")
     setScryDexLookupDetail(
       `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} from ${result.source}.`,
@@ -2045,6 +2107,7 @@ export function App() {
   }
 
   function handleUseScryDexCard(card: LocalSyncScryDexCard) {
+    setSelectedScryDexCardId(card.provider_card_id)
     setIntakeCardName(card.card_name)
     setIntakeSetName(card.set_name)
     setIntakeBarcode(card.suggested_barcode)
@@ -4093,13 +4156,38 @@ export function App() {
                   {scryDexCards.length > 0 ? (
                     <div className="scrydex-result-list" aria-label="ScryDex card results">
                       {scryDexCards.map((card) => (
-                        <article key={card.provider_card_id}>
+                        <article
+                          className={
+                            card.provider_card_id === selectedScryDexCardId
+                              ? "is-selected"
+                              : ""
+                          }
+                          key={card.provider_card_id}
+                        >
+                          <div className="scrydex-card-art" aria-hidden="true">
+                            {card.image_url ? (
+                              <img alt="" src={card.image_url} loading="lazy" />
+                            ) : (
+                              <Icon name="card" />
+                            )}
+                          </div>
                           <div>
                             <strong>{card.card_name}</strong>
                             <small>
                               {card.set_name} - {card.printed_number}
                             </small>
-                            <span>{formatMoney(card.market_price_minor_units, card.currency)}</span>
+                            <span>
+                              {formatMoney(card.market_price_minor_units, card.currency)} market;
+                              {" "}
+                              {card.stock_available_count} in stock
+                            </span>
+                            <small>
+                              {card.stock_by_condition.length > 0
+                                ? card.stock_by_condition
+                                    .map((entry) => `${entry.condition} x${entry.quantity}`)
+                                    .join(", ")
+                                : "No local copies cached yet"}
+                            </small>
                           </div>
                           <button type="button" onClick={() => handleUseScryDexCard(card)}>
                             <Icon name="check" />
@@ -4130,11 +4218,34 @@ export function App() {
                 </label>
                 <label htmlFor="intake-condition">
                   <span className="micro-label">Condition</span>
-                  <input
+                  <select
                     id="intake-condition"
                     value={intakeCondition}
                     onChange={(event) => setIntakeCondition(event.target.value)}
-                    placeholder="LP"
+                  >
+                    <option value="NM">Near Mint</option>
+                    <option value="LP">Lightly Played</option>
+                    <option value="MP">Moderately Played</option>
+                    <option value="HP">Heavily Played</option>
+                    <option value="DMG">Damaged</option>
+                    <option value="RAW">Raw</option>
+                  </select>
+                </label>
+                <label htmlFor="intake-quantity">
+                  <span className="micro-label">Quantity</span>
+                  <input
+                    id="intake-quantity"
+                    inputMode="numeric"
+                    min="1"
+                    max="200"
+                    type="number"
+                    value={intakeQuantityInput}
+                    onBlur={() => {
+                      if (intakeQuantity !== null) {
+                        setIntakeQuantityInput(String(intakeQuantity))
+                      }
+                    }}
+                    onChange={(event) => setIntakeQuantityInput(event.target.value)}
                   />
                 </label>
                 <label htmlFor="intake-barcode">
@@ -4622,9 +4733,19 @@ export function App() {
             <section className="event-panel" aria-label="Offline events" ref={eventPanelRef}>
               <div className="section-heading">
                 <h2>Events</h2>
-                <span>
-                  {pendingEventRegistrationCount} registration; {pendingEventCheckinCount} check-in
-                </span>
+                <div className="section-heading-actions">
+                  <span>
+                    {pendingEventRegistrationCount} registration; {pendingEventCheckinCount} check-in
+                  </span>
+                  <button
+                    className="secondary-command"
+                    type="button"
+                    onClick={() => void refreshLanEventSnapshots({ announce: true })}
+                  >
+                    <Icon name="sync" />
+                    <span>Refresh LAN Events</span>
+                  </button>
+                </div>
               </div>
               <div className="event-list" aria-label="Cached event snapshots">
                 {eventSnapshots.map((event) => {

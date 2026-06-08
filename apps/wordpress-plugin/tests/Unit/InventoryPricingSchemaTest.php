@@ -37,6 +37,14 @@ final class InventoryPricingSchemaTest extends TestCase {
 		$this->assert_contains( 'KEY floor_hit_created (floor_hit, created_at)', $prices );
 	}
 
+	public function test_reference_cards_store_provider_image_urls(): void {
+		$tables    = InventoryPricingSchema::tables( 'wp_', 'DEFAULT CHARACTER SET utf8mb4' );
+		$reference = $tables['wp_tcg_reference_cards'];
+
+		$this->assert_contains( 'front_image_url varchar(255) NULL', $reference );
+		$this->assert_contains( 'back_image_url varchar(255) NULL', $reference );
+	}
+
 	public function test_dbdelta_statements_avoid_if_not_exists(): void {
 		foreach ( InventoryPricingSchema::tables( 'wp_', 'DEFAULT CHARACTER SET utf8mb4' ) as $sql ) {
 			$this->assert_not_contains( 'IF NOT EXISTS', $sql );

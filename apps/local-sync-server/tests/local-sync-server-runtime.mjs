@@ -74,6 +74,12 @@ try {
   assert.equal(scrydexSearch.cards.length, 1)
   assert.equal(scrydexSearch.cards[0].card_name, "Charizard")
   assert.equal(scrydexSearch.cards[0].suggested_barcode, "PKM-BASE-004-HOLO")
+  assert.equal(scrydexSearch.cards[0].catalog_source, "wordpress_catalog_cache")
+  assert.ok(scrydexSearch.cards[0].image_url.includes("images.pokemontcg.io"))
+  assert.equal(scrydexSearch.cards[0].stock_available_count, 1)
+  assert.equal(scrydexSearch.cards[0].stock_total_count, 1)
+  assert.equal(scrydexSearch.cards[0].stock_by_condition[0].condition, "LP")
+  assert.equal(scrydexSearch.source, "wordpress_catalog_cache")
   assert.equal(scrydexSearch.credential_storage, "wordpress_server_settings")
   assert.equal(scrydexSearch.credentials_synced_to_client, false)
   assert.equal(scrydexSearch.live_provider_request_performed, false)
@@ -95,10 +101,23 @@ try {
       barcode: "PUG-SMOKE-MEWTWO",
       price_minor_units: 4200,
       location: "Intake Bin",
+      quantity: 2,
+      provider_card_id: "scrydex-pokemon-test-mewtwo",
+      game: "pokemon",
+      set_code: "BASE",
+      card_number: "10",
+      printed_number: "10/102",
+      image_url: "https://images.example.test/mewtwo.png",
     },
   })
   assert.equal(intake.status, "ok")
+  assert.equal(intake.quantity_added, 2)
+  assert.equal(intake.items.length, 2)
   assert.equal(intake.item.card_name, "Mewtwo")
+  assert.equal(intake.item.provider_card_id, "scrydex-pokemon-test-mewtwo")
+  assert.equal(intake.item.printed_number, "10/102")
+  assert.equal(intake.item.image_url, "https://images.example.test/mewtwo.png")
+  assert.equal(intake.item.barcode, "PUG-SMOKE-MEWTWO-01")
   assert.equal(intake.item.status, "pending_intake")
   assert.equal(intake.item.source, "queued")
   assert.equal(intake.wordpress_acceptance_required, true)
@@ -108,7 +127,7 @@ try {
     token: cashierAuth.session.token,
     body: {
       card_name: "Duplicate Mewtwo",
-      barcode: "PUG-SMOKE-MEWTWO",
+      barcode: "PUG-SMOKE-MEWTWO-01",
       price_minor_units: 4200,
     },
     expectedStatus: 409,

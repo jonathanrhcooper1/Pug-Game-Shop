@@ -51,6 +51,7 @@ final class ScryDexCardNormalizer {
 		}
 
 		$set                 = is_array( $raw['set'] ?? null ) ? $raw['set'] : array();
+		$images              = is_array( $raw['images'] ?? null ) ? $raw['images'] : array();
 		$provider_updated_at = $this->normalize_datetime( $raw['updated_at'] ?? '' );
 		$card                = array(
 			'provider_name'       => self::PROVIDER,
@@ -63,6 +64,10 @@ final class ScryDexCardNormalizer {
 			'card_number'         => $this->nullable_string( $raw['number'] ?? null ),
 			'printed_number'      => $this->nullable_string( $raw['printed_number'] ?? null ),
 			'rarity'              => $this->nullable_string( $raw['rarity'] ?? null ),
+			'front_image_url'     => $this->image_url(
+				$raw['image_url'] ?? $images['front'] ?? $images['large'] ?? $images['small'] ?? null
+			),
+			'back_image_url'      => $this->image_url( $images['back'] ?? $raw['back_image_url'] ?? null ),
 			'provider_updated_at' => $provider_updated_at,
 			'search_text'         => $this->search_text( $raw, $set, $name, $game ),
 		);
@@ -164,6 +169,22 @@ final class ScryDexCardNormalizer {
 		$value = strtoupper( $this->clean_string( $value ) );
 
 		return preg_match( '/^[A-Z]{3}$/', $value ) ? $value : '';
+	}
+
+	private function image_url( mixed $value ): ?string {
+		$value = $this->clean_string( $value ?? '' );
+
+		if ( '' === $value || ! filter_var( $value, FILTER_VALIDATE_URL ) ) {
+			return null;
+		}
+
+		$scheme = strtolower( (string) parse_url( $value, PHP_URL_SCHEME ) );
+
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return null;
+		}
+
+		return substr( $value, 0, 255 );
 	}
 
 	/**

@@ -6,6 +6,14 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex catalog intake now carries provider image URLs into WordPress
+  reference-card schema, persistence plans, local sync server catalog results,
+  and offline app intake rows; the offline app shows card art, market price,
+  local stock counts, condition selection, and quantity-to-add, while LAN
+  intake creates one provisional inventory row per physical copy.
+- Offline app Events now includes a Refresh LAN Events action and refreshes
+  cached event snapshots from the LAN sync server when staff open the Events
+  workspace.
 - Local sync server now persists cached event snapshots and supports shared LAN
   event listing, registration, and check-in routes; the offline app Events
   workflow now calls those LAN routes before staging its existing local queue

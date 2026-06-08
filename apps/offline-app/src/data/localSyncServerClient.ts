@@ -63,14 +63,20 @@ export type LocalSyncAccessPolicyResult = LocalSyncResult<{
 export type LocalSyncInventoryItem = {
   public_id: string
   row_version: number
+  provider_card_id: string
+  game: "pokemon" | "magic" | "lorcana" | "one-piece"
   card_name: string
   set_name: string
+  set_code: string
+  card_number: string
+  printed_number: string
   condition: string
   barcode: string
   price_minor_units: number
   currency: "USD"
   location: string
   status: "available" | "reserved" | "conflict" | "pending_intake"
+  image_url: string
   source: "cached" | "queued" | "accepted"
 }
 
@@ -97,9 +103,16 @@ export type LocalSyncReservationResult = LocalSyncResult<{
 
 export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
   item: LocalSyncInventoryItem
+  items: LocalSyncInventoryItem[]
+  quantity_added: number
   wordpress_acceptance_required: true
   label_print_deferred: true
 }>
+
+export type LocalSyncStockByCondition = {
+  condition: string
+  quantity: number
+}
 
 export type LocalSyncScryDexCard = {
   provider_card_id: string
@@ -113,13 +126,19 @@ export type LocalSyncScryDexCard = {
   market_price_minor_units: number
   currency: "USD"
   image_url: string
+  catalog_source: "wordpress_catalog_cache" | "local_reference_cache"
+  price_observed_at_utc: string | null
+  catalog_synced_at_utc: string
+  stock_available_count: number
+  stock_total_count: number
+  stock_by_condition: LocalSyncStockByCondition[]
 }
 
 export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   cards: LocalSyncScryDexCard[]
   query: string
   game: LocalSyncScryDexCard["game"]
-  source: "local_reference_cache" | "wordpress_proxy"
+  source: "wordpress_catalog_cache" | "local_reference_cache" | "wordpress_proxy"
   wordpress_proxy_required: true
   credential_storage: "wordpress_server_settings"
   credentials_synced_to_client: false
@@ -319,6 +338,13 @@ export type LocalSyncServerClient = {
       barcode: string
       priceMinorUnits: number
       location: string
+      quantity?: number
+      providerCardId?: string
+      game?: LocalSyncScryDexCard["game"]
+      setCode?: string
+      cardNumber?: string
+      printedNumber?: string
+      imageUrl?: string
     },
   ) => Promise<LocalSyncInventoryIntakeResult>
   searchScryDexCards: (
@@ -429,6 +455,13 @@ export function createLocalSyncServerClient(
           barcode: input.barcode,
           price_minor_units: input.priceMinorUnits,
           location: input.location,
+          quantity: input.quantity ?? 1,
+          provider_card_id: input.providerCardId ?? "",
+          game: input.game ?? "pokemon",
+          set_code: input.setCode ?? "",
+          card_number: input.cardNumber ?? "",
+          printed_number: input.printedNumber ?? "",
+          image_url: input.imageUrl ?? "",
         },
       }) as Promise<LocalSyncInventoryIntakeResult>,
     searchScryDexCards: (sessionToken, query, game = "pokemon") =>

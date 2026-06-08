@@ -3,6 +3,113 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Catalog Intake Images And Quantities
+
+### What Changed
+
+- Added `front_image_url` and `back_image_url` to the WordPress reference-card
+  schema and registered migration version 11 for existing installs.
+- Updated ScryDex card normalization, persistence planning, and persistence SQL
+  staging to carry provider image URLs into reference-card rows.
+- Expanded the local sync server ScryDex catalog search payload with catalog
+  source, image URL, price-observed timestamps, and local stock counts by card
+  and condition.
+- Expanded local sync server inventory rows with provider card identity, game,
+  set code, card number, printed number, and image URL metadata.
+- Updated LAN inventory intake to accept a quantity and create one pending
+  inventory row per physical copy, using suffixed unique barcodes when quantity
+  is greater than one.
+- Updated the offline app ScryDex intake UI to show card art, market price,
+  local stock count, stock-by-condition text, a condition selector, and a
+  quantity field before Add Inventory.
+- Added a Refresh LAN Events action to the offline app Events workspace and
+  refreshes event snapshots from the local sync server when staff open Events.
+
+### Why
+
+Inventory intake needs to be driven from the website-owned ScryDex catalog
+mirror, not an ad hoc workstation lookup. Staff must see the card image,
+variant/set identity, current market price, and current stock before adding
+copies. Multiple copies also need distinct provisional inventory rows so local
+reservations, kiosk orders, labels, and later WordPress acceptance can operate
+per physical card.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0011ReferenceCardImages.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryPricingSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/Unit/ReferenceCardImagesMigrationTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `fixtures/mocks/scrydex/cards-page-1.json`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress database migration version 11:
+  `reference_card_images`.
+- Adds nullable `front_image_url` and `back_image_url` columns to
+  `tcg_reference_cards`.
+- Rollback drops those two columns.
+- Local development SQLite migration-on-open adds catalog metadata columns to
+  `inventory_items`.
+
+### Tests Added
+
+- Local sync server runtime coverage for ScryDex catalog image/stock metadata
+  and multi-copy inventory intake response rows.
+- Offline app client contract coverage for catalog stock metadata and
+  quantity-added intake payloads.
+- Offline app UI shell coverage for ScryDex image cards, selected catalog
+  state, and quantity intake control.
+- WordPress schema coverage for reference-card image URL columns.
+- WordPress migration plan coverage for database version 11.
+- WordPress migration metadata coverage for `reference_card_images`.
+- ScryDex normalizer coverage for provider image URL extraction.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `php apps/wordpress-plugin/tests/run.php --filter 'ScryDexCardNormalizerTest|ScryDexPersistencePlannerTest|ScryDexPersistenceQueryBuilderTest|InventoryPricingSchemaTest|MigrationRunnerPlanTest|ReferenceCardImagesMigrationTest'`
+  (the local runner executed the full PHP suite: 904 tests, 0 failures).
+- Browser smoke: PIN `1420` login, Inventory page, ScryDex search for Iono,
+  visible card image/price/stock metadata from `wordpress_catalog_cache`, Use
+  Card, condition set to NM, quantity set to 2, Add Inventory, two pending
+  local inventory rows verified through the LAN API, queue depth increased by
+  two, and zero recent browser console errors.
+
+### Rollback Notes
+
+- Before rollback, preserve `apps/local-sync-server/store-sync.sqlite` if staff
+  created local inventory rows that have not yet synced to WordPress.
+- Revert migration 11 to remove `front_image_url` and `back_image_url` from
+  `tcg_reference_cards` if the release is rolled back before catalog image
+  persistence is needed.
+- Reverting the app/server changes returns ScryDex intake to single-copy
+  metadata fill behavior and removes image/stock/quantity display from the
+  offline app.
+- No Square, payment capture, POS, customer-credit, or production deployment
+  rollback is required for this checkpoint.
+
 ## 2026-06-08 - LAN Event Registration Runtime
 
 ### What Changed

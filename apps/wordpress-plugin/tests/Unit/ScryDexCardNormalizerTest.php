@@ -27,6 +27,8 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( 'BS', $card['set_code'] );
 		$this->assert_same( '4', $card['card_number'] );
 		$this->assert_same( 'Rare Holo', $card['rarity'] );
+		$this->assert_same( 'https://images.example.test/pokemon/base-set-charizard.png', $card['front_image_url'] );
+		$this->assert_same( null, $card['back_image_url'] );
 		$this->assert_same( '2026-06-06 09:00:00', $card['provider_updated_at'] );
 		$this->assert_contains( 'Base Set', $card['search_text'] );
 		$this->assert_true( is_array( $price ) );
@@ -46,6 +48,7 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_true( $second->is_valid() );
 		$this->assert_same( 'sdx-mtg-001', $card['provider_card_id'] );
 		$this->assert_same( 'lightning bolt', $card['normalized_name'] );
+		$this->assert_same( 'https://images.example.test/magic/lightning-bolt.png', $card['front_image_url'] );
 		$this->assert_true( is_array( $price ) );
 		$this->assert_same( '2.0000', $price['market_price'] );
 	}

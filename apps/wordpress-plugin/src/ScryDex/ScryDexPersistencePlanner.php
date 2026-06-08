@@ -19,6 +19,8 @@ final class ScryDexPersistencePlanner {
 		'card_number',
 		'printed_number',
 		'rarity',
+		'front_image_url',
+		'back_image_url',
 		'provider_updated_at',
 		'search_text',
 	);

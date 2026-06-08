@@ -27,9 +27,12 @@ export type InventoryItem = {
   id: number
   publicId: string
   rowVersion: number
+  providerCardId?: string
+  game?: string
   cardName: string
   setName: string
   number: string
+  setCode?: string
   condition: string
   barcode: string
   price: string
@@ -37,6 +40,7 @@ export type InventoryItem = {
   currency: "USD"
   location: string
   status: InventoryStatus
+  imageUrl?: string
   source: InventorySource
 }
 

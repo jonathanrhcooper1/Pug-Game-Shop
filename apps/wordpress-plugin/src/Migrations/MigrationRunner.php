@@ -142,6 +142,7 @@ final class MigrationRunner {
 			new Version0008OfflineSync(),
 			new Version0009PosPayments(),
 			new Version0010ProviderPriceObservations(),
+			new Version0011ReferenceCardImages(),
 		);
 	}
 	/**
