@@ -102,7 +102,11 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.syncStatus())
       }
 
-      if (request.method === "POST" && ["/sync/pull", "/sync/push"].includes(url.pathname)) {
+      if (request.method === "POST" && url.pathname === "/sync/push") {
+        return sendStoreResult(response, await store.pushQueuedOperations(token))
+      }
+
+      if (request.method === "POST" && url.pathname === "/sync/pull") {
         return sendJson(response, 202, {
           status: "deferred",
           route: url.pathname,

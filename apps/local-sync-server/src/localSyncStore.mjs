@@ -25,6 +25,7 @@ export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
 export function createLocalSyncStore(options = {}) {
   const now = options.now ?? (() => new Date())
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
+  const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
@@ -810,7 +811,7 @@ export function createLocalSyncStore(options = {}) {
       status: "ok",
       local_database: "store-sync.sqlite",
       persistence_mode: "sqlite",
-      queue_depth: queue.length,
+      queue_depth: pendingQueueOperations(queue).length,
       kiosk_order_count: kioskOrders.length,
       inventory_count: inventoryItems.length,
       reference_card_count: referenceCards.length,
@@ -818,10 +819,95 @@ export function createLocalSyncStore(options = {}) {
       credit_ledger_entry_count: creditLedgerEntries.length,
       event_count: eventSnapshots.length,
       active_session_count: sessions.size,
-      wordpress_push_connected: false,
+      wordpress_push_connected: Boolean(wordpressInventoryPush),
       scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       local_operations_preserved: true,
+    }
+  }
+
+  async function pushQueuedOperations(token) {
+    const session = requireWorkspaceAccess(token, "Sync")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    if (!wordpressInventoryPush) {
+      return blocked("wordpress_push_unavailable", "WordPress inventory push is not configured on this LAN server.")
+    }
+
+    const pendingOperations = pendingQueueOperations(queue)
+    const inventoryOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_intake")
+    const results = []
+
+    for (const operation of inventoryOperations) {
+      const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
+
+      if (!item) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "rejected",
+          code: "local_inventory_item_missing",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressInventoryPush({ operation, item })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
+
+      const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+
+      if (localItem) {
+        localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "pending_intake"
+        localItem.source = "accepted"
+        localItem.row_version += 1
+        saveInventoryItem(database, localItem, now)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_inventory: pushResult.inventory,
+      })
+    }
+
+    const acceptedCount = results.filter((result) => result.status === "accepted").length
+    const retryCount = results.filter((result) => result.status === "retry").length
+    const rejectedCount = results.filter((result) => result.status === "rejected").length
+
+    return {
+      status: "ok",
+      operation_count: inventoryOperations.length,
+      accepted_count: acceptedCount,
+      retry_count: retryCount,
+      rejected_count: rejectedCount,
+      unsupported_operation_count: pendingOperations.length - inventoryOperations.length,
+      results,
+      wordpress_push_connected: true,
+      credentials_synced_to_client: false,
+      local_queue_depth: pendingQueueOperations(queue).length,
     }
   }
 
@@ -843,6 +929,7 @@ export function createLocalSyncStore(options = {}) {
     searchInventory,
     searchScryDexCards,
     syncStatus,
+    pushQueuedOperations,
     updateUserAccess,
   }
 }
@@ -1477,6 +1564,28 @@ function appendQueueOperation(database, queue, type, entityId, payload, now) {
   queue.push(operation)
 
   return operation
+}
+
+function deleteQueueOperation(database, queue, operationId) {
+  database
+    .prepare("DELETE FROM operation_queue WHERE operation_id = ?")
+    .run(operationId)
+
+  const index = queue.findIndex((operation) => operation.operation_id === operationId)
+
+  if (index >= 0) {
+    queue.splice(index, 1)
+  }
+}
+
+function pendingQueueOperations(queue) {
+  return queue.filter((operation) => operation.sync_status === "pending")
+}
+
+function localInventoryStatus(value) {
+  const status = String(value ?? "").trim()
+
+  return ["available", "reserved", "conflict", "pending_intake"].includes(status) ? status : null
 }
 
 function seedUsers() {

@@ -31,6 +31,7 @@ for (const requiredExport of [
   "LocalSyncEventRegistrationResult",
   "LocalSyncEventCheckinResult",
   "LocalSyncStatusResult",
+  "LocalSyncPushResult",
   "createLocalSyncServerClient",
   "normalizeLocalSyncServerUrl",
   "updateUserAccess",
@@ -39,6 +40,7 @@ for (const requiredExport of [
   "listEvents",
   "createEventRegistration",
   "createEventCheckin",
+  "pushQueuedOperations",
 ]) {
   assert.ok(clientSource.includes(requiredExport), `Missing local sync client export: ${requiredExport}`)
 }
@@ -61,6 +63,7 @@ for (const route of [
   "/events/registrations",
   "/events/check-ins",
   "/sync/status",
+  "/sync/push",
 ]) {
   assert.ok(clientSource.includes(route), `Missing local sync client route: ${route}`)
 }
@@ -104,6 +107,9 @@ for (const marker of [
   "reference_card_count",
   "scrydex_lookup_order",
   "scrydex_fallback_connected",
+  "wordpress_push_connected",
+  "accepted_count",
+  "unsupported_operation_count",
   "customer_public_id",
   "amount_minor_units",
   "sale_total_minor_units",

@@ -317,6 +317,26 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   local_operations_preserved: true
 }>
 
+export type LocalSyncPushResult = LocalSyncResult<{
+  operation_count: number
+  accepted_count: number
+  retry_count: number
+  rejected_count: number
+  unsupported_operation_count: number
+  results: Array<{
+    operation_id: string
+    operation_type: string
+    entity_id: string
+    status: "accepted" | "retry" | "rejected"
+    code?: string
+    wordpress_code?: string
+    http_status?: number
+  }>
+  wordpress_push_connected: true
+  credentials_synced_to_client: false
+  local_queue_depth: number
+}>
+
 export type LocalSyncFetch = (
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -411,6 +431,7 @@ export type LocalSyncServerClient = {
     },
   ) => Promise<LocalSyncEventCheckinResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
+  pushQueuedOperations: (sessionToken: string) => Promise<LocalSyncPushResult>
 }
 
 export function createLocalSyncServerClient(
@@ -559,6 +580,11 @@ export function createLocalSyncServerClient(
       }) as Promise<LocalSyncEventCheckinResult>,
     getSyncStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/sync/status") as Promise<LocalSyncStatusResult>,
+    pushQueuedOperations: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/sync/push", {
+        method: "POST",
+        sessionToken,
+      }) as Promise<LocalSyncPushResult>,
   }
 }
 

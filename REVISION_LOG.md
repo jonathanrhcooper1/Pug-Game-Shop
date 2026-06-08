@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Inventory Push To WordPress
+
+### What Changed
+
+- Added a local sync server WordPress inventory push adapter that maps queued
+  `inventory_intake` operations to the staging WordPress `/inventory` REST
+  create route with server-held WordPress authorization.
+- Wired `/sync/push` to replay manager-authorized queued inventory intake
+  operations, mark accepted local rows as `accepted`, and clear accepted queue
+  rows while leaving unsupported operation types queued.
+- Added an offline app local sync client method for `/sync/push`.
+- Updated the offline app Sync Now action to call the LAN server push route
+  when a PIN session is active and reflect accepted inventory rows in the local
+  UI.
+
+### Why
+
+The local app and LAN server already could search website-backed ScryDex
+references and create local pending inventory. This revision closes the first
+write loop by letting the LAN server send accepted inventory intake rows back
+to WordPress, keeping the website as the source of truth and keeping WordPress
+credentials off the client.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/src/App.tsx`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- WordPress inventory push adapter contract for request mapping, idempotency
+  header use, credential redaction, accepted responses, and rejected responses.
+- Local sync server runtime coverage for manager-only inventory push replay,
+  accepted queued inventory rows, preserved image URL, queue-depth reduction,
+  and unsupported operation retention.
+- Offline app local sync client contract coverage for `/sync/push`.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- Live local server restart against GoDaddy staging with server-held WordPress
+  application password; `/sync/push` accepted the pending Charizard intake row
+  with WordPress code `inventory_item_created` and reduced LAN queue depth from
+  1 to 0.
+- Browser smoke at `http://127.0.0.1:1420`: PIN `1420`, Inventory, ScryDex
+  lookup, Use Card, Add Inventory, then Sync Now accepted 1 LAN inventory item
+  into WordPress with no console errors.
+
+### Rollback Notes
+
+- Revert this revision to return `/sync/push` to a deferred/scaffold state.
+- Any disposable staging inventory rows created during live push smoke can be
+  removed from the WordPress staging inventory table by barcode if a clean
+  staging catalog is needed.
+- Revoke staging WordPress application passwords created for LAN push smoke
+  after the preview window if they are no longer needed.
+
 ## 2026-06-08 - Offline ScryDex Image Intake Preview
 
 ### What Changed

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- LAN sync server can now push queued local `inventory_intake` operations to
+  the WordPress `/inventory` route using server-held WordPress credentials;
+  the offline app Sync Now action calls this route, clears accepted inventory
+  queue rows, and keeps credentials out of clients.
 - Offline app Inventory intake now promotes the selected ScryDex/website
   reference image into the main selected-card preview, leaves the physical-copy
   barcode blank by default for safe auto-generation, and was browser-verified

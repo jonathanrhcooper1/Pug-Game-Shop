@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
 let websiteCatalogFallbackCalls = 0
+let wordpressInventoryPushCalls = 0
 
 const server = createLocalSyncHttpServer({
   storeOptions: {
@@ -40,6 +41,31 @@ const server = createLocalSyncHttpServer({
             observed_at: "2026-06-08T16:00:00.000Z",
           },
         ],
+      }
+    },
+    wordpressInventoryPush: async ({ operation, item }) => {
+      wordpressInventoryPushCalls += 1
+
+      assert.equal(operation.operation_type, "inventory_intake")
+      assert.equal(item.card_name, "Mewtwo")
+      assert.equal(item.status, "pending_intake")
+      assert.equal(item.source, "queued")
+      assert.ok(item.image_url.includes("mewtwo.png"))
+
+      return {
+        status: "ok",
+        code: "wordpress_inventory_item_created",
+        http_status: 201,
+        wordpress_code: "inventory_item_created",
+        inventory: {
+          public_id: `wp-${item.public_id}`,
+          sku: item.barcode,
+          barcode: item.barcode,
+          status: "available",
+          price_change_log_persisted: true,
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
       }
     },
   },
@@ -212,6 +238,37 @@ try {
   })
   assert.equal(duplicateIntake.status, "blocked")
   assert.equal(duplicateIntake.code, "duplicate_barcode")
+
+  const blockedPush = await fetchJson(`${baseUrl}/sync/push`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    expectedStatus: 409,
+  })
+  assert.equal(blockedPush.status, "blocked")
+  assert.equal(blockedPush.code, "workspace_access_required")
+
+  const pushedIntake = await fetchJson(`${baseUrl}/sync/push`, {
+    method: "POST",
+    token: managerToken,
+  })
+  assert.equal(pushedIntake.status, "ok")
+  assert.equal(pushedIntake.operation_count, 2)
+  assert.equal(pushedIntake.accepted_count, 2)
+  assert.equal(pushedIntake.retry_count, 0)
+  assert.equal(pushedIntake.rejected_count, 0)
+  assert.equal(pushedIntake.unsupported_operation_count, 1)
+  assert.equal(pushedIntake.wordpress_push_connected, true)
+  assert.equal(pushedIntake.credentials_synced_to_client, false)
+  assert.equal(pushedIntake.local_queue_depth, 1)
+  assert.equal(wordpressInventoryPushCalls, 2)
+  assert.ok(pushedIntake.results.every((result) => result.status === "accepted"))
+
+  const acceptedIntakeInventory = await fetchJson(`${baseUrl}/inventory/search?q=mewtwo`)
+  assert.equal(acceptedIntakeInventory.status, "ok")
+  assert.equal(acceptedIntakeInventory.items.length, 2)
+  assert.equal(acceptedIntakeInventory.items[0].status, "available")
+  assert.equal(acceptedIntakeInventory.items[0].source, "accepted")
+  assert.equal(acceptedIntakeInventory.items[0].image_url, "https://images.example.test/mewtwo.png")
 
   const inventory = await fetchJson(`${baseUrl}/inventory/search?q=charizard`)
   assert.equal(inventory.status, "ok")
@@ -397,13 +454,14 @@ try {
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 10)
+  assert.ok(syncStatus.queue_depth >= 9)
   assert.ok(syncStatus.reference_card_count >= 6)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
   assert.ok(syncStatus.event_count >= 2)
   assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
   assert.equal(syncStatus.scrydex_fallback_connected, true)
+  assert.equal(syncStatus.wordpress_push_connected, true)
 
   console.log("PASS local sync server runtime")
 } finally {

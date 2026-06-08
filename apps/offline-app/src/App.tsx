@@ -111,6 +111,7 @@ import {
   type LocalSyncCustomer,
   type LocalSyncEventSnapshot,
   type LocalSyncInventoryItem,
+  type LocalSyncPushResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
@@ -535,6 +536,18 @@ function formatScryDexVariant(variant: LocalSyncScryDexVariant) {
   ]
     .filter(Boolean)
     .join(" / ")
+}
+
+function lanSyncPushMessage(result: LocalSyncPushResult | null) {
+  if (!result) {
+    return "LAN inventory push was not run because no PIN session is active."
+  }
+
+  if (result.status !== "ok") {
+    return `LAN inventory push blocked: ${result.message}`
+  }
+
+  return `LAN inventory push accepted ${result.accepted_count} item(s), left ${result.retry_count} retry and ${result.unsupported_operation_count} non-inventory operation(s) queued.`
 }
 
 function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapshot {
@@ -2692,6 +2705,33 @@ export function App() {
   }
 
   async function handleSyncNowPreview() {
+    let lanPushResult: LocalSyncPushResult | null = null
+
+    if (localSyncSessionToken) {
+      lanPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
+
+      if (lanPushResult.status === "ok" && lanPushResult.accepted_count > 0) {
+        const acceptedPublicIds = new Set(
+          lanPushResult.results
+            .filter((result) => result.status === "accepted")
+            .map((result) => result.entity_id),
+        )
+
+        setInventoryItems((items) =>
+          items.map((item) =>
+            acceptedPublicIds.has(item.publicId)
+              ? {
+                  ...item,
+                  status: "available",
+                  source: "accepted",
+                  rowVersion: item.rowVersion + 1,
+                }
+              : item,
+          ),
+        )
+      }
+    }
+
     const nextLocalSyncStatus = await localSyncClient.getSyncStatus()
 
     setLocalSyncStatus(nextLocalSyncStatus)
@@ -2786,8 +2826,8 @@ export function App() {
       title: "Sync plan prepared",
       detail:
         operationsForSync.length > 0
-          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
-          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; local cache refresh preview applied without network execution.`,
+          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; ${lanSyncPushMessage(lanPushResult)} pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
+          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; ${lanSyncPushMessage(lanPushResult)} local cache refresh preview applied without network execution.`,
     })
   }
 
