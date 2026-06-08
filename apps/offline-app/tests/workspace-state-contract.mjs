@@ -16,10 +16,14 @@ for (const requiredExport of [
   "OfflineWorkspaceState",
   "OfflineOperationEnvelope",
   "OfflinePushBatchPayload",
+  "OfflinePushRequestPlan",
+  "OfflinePushResultSummary",
   "offlineWorkspaceSeed",
   "operationEnvelopeFields",
   "buildInventoryUpdateOperation",
   "buildOfflinePushBatchPayload",
+  "buildOfflinePushRequestPlan",
+  "summarizeOfflinePushResult",
   "filterInventoryItems",
   "findInventoryItem",
 ]) {
@@ -46,6 +50,12 @@ for (const marker of [
   "sync_intent: \"staff_inventory_update\"",
   "payload: parseJsonObject(operation.payload_json)",
   "authorization_context: parseJsonObject(operation.authorization_context_json)",
+  "network_request_deferred: true",
+  "device_authorization_header_deferred: true",
+  "provider_credentials_required: false",
+  "push_queue_replay_deferred",
+  "push_canonical_mutations_deferred",
+  "operationIdsByStatus",
   "manager_override",
   "source: \"offline_app\"",
 ]) {
@@ -55,8 +65,12 @@ for (const marker of [
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem)"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
+assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
+assert.ok(appSource.includes("summarizeOfflinePushResult({"))
 assert.ok(appSource.includes("stagedOperation.client_operation_id"))
 assert.ok(appSource.includes("stagedPushBatch.batch_id"))
+assert.ok(appSource.includes("stagedPushRequest.method"))
+assert.ok(appSource.includes("pushSummary.status"))
 
 for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "http://", "https://"]) {
   assert.equal(workspaceSource.includes(forbidden), false, `Forbidden workspace marker found: ${forbidden}`)

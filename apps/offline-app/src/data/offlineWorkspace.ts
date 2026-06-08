@@ -93,6 +93,32 @@ export type OfflinePushBatchPayload = {
   operations: OfflinePushOperationPayload[]
 }
 
+export type OfflinePushRequestPlan = {
+  method: "POST"
+  path: "/wp-json/tcg-store/v1/offline/push"
+  headers: {
+    "idempotency-key": string
+    "x-tcg-device-id": string
+  }
+  body: OfflinePushBatchPayload
+  network_request_deferred: true
+  direct_mysql_access: false
+  provider_credentials_required: false
+  device_authorization_header_deferred: true
+}
+
+export type OfflinePushResultSummary = {
+  batch_id: string
+  status: "accepted" | "conflict" | "rejected" | "validated"
+  operation_count: number
+  accepted_operation_ids: string[]
+  conflict_operation_ids: string[]
+  rejected_operation_ids: string[]
+  server_time_utc: string
+  push_queue_replay_deferred: boolean
+  push_canonical_mutations_deferred: boolean
+}
+
 export type OfflineWorkspaceState = {
   navItems: NavItem[]
   syncRoutes: string[]
@@ -337,6 +363,53 @@ export function buildOfflinePushBatchPayload(
   }
 }
 
+export function buildOfflinePushRequestPlan(batch: OfflinePushBatchPayload): OfflinePushRequestPlan {
+  return {
+    method: "POST",
+    path: "/wp-json/tcg-store/v1/offline/push",
+    headers: {
+      "idempotency-key": batch.batch_id,
+      "x-tcg-device-id": batch.device_id,
+    },
+    body: batch,
+    network_request_deferred: true,
+    direct_mysql_access: false,
+    provider_credentials_required: false,
+    device_authorization_header_deferred: true,
+  }
+}
+
+export function summarizeOfflinePushResult(response: Record<string, unknown>): OfflinePushResultSummary {
+  const data = objectValue(response.data) ?? response
+  const meta = objectValue(response.meta) ?? {}
+  const counts = objectValue(data.counts) ?? {}
+  const results = Array.isArray(data.results) ? data.results : []
+  const acceptedIds = operationIdsByStatus(results, "accepted")
+  const conflictIds = operationIdsByStatus(results, "conflict")
+  const rejectedIds = operationIdsByStatus(results, "rejected")
+  const operationCount = numberValue(data.operation_count) ?? results.length
+  const status =
+    conflictIds.length > 0 || (numberValue(counts.conflict) ?? 0) > 0
+      ? "conflict"
+      : rejectedIds.length > 0 || (numberValue(counts.rejected) ?? 0) > 0
+        ? "rejected"
+        : acceptedIds.length > 0 || (numberValue(counts.accepted) ?? 0) > 0
+          ? "accepted"
+          : "validated"
+
+  return {
+    batch_id: stringValue(data.batch_id),
+    status,
+    operation_count: operationCount,
+    accepted_operation_ids: acceptedIds,
+    conflict_operation_ids: conflictIds,
+    rejected_operation_ids: rejectedIds,
+    server_time_utc: stringValue(data.server_time_utc),
+    push_queue_replay_deferred: booleanValue(meta.push_queue_replay_deferred, true),
+    push_canonical_mutations_deferred: booleanValue(meta.push_canonical_mutations_deferred, true),
+  }
+}
+
 function parseJsonObject(value: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(value) as unknown
@@ -349,4 +422,31 @@ function parseJsonObject(value: string): Record<string, unknown> {
   }
 
   return {}
+}
+
+function operationIdsByStatus(values: unknown[], status: string): string[] {
+  return values
+    .map((value) => objectValue(value))
+    .filter((value): value is Record<string, unknown> => value !== null)
+    .filter((value) => stringValue(value.status) === status)
+    .map((value) => stringValue(value.client_operation_id))
+    .filter((value) => value !== "")
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+function numberValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+function booleanValue(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback
 }

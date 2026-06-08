@@ -3,6 +3,70 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline Reconnect Push Request Planning
+
+### What Changed
+
+- Added offline app types for deferred push request plans and push response
+  summaries.
+- Added `buildOfflinePushRequestPlan()` to shape queued operation batches into
+  `POST /wp-json/tcg-store/v1/offline/push` request plans without executing
+  network calls.
+- Added `summarizeOfflinePushResult()` to classify WordPress push responses
+  into accepted, conflict, rejected, or validated summaries.
+- Surfaced the deferred push request path and preview status in the offline
+  app operation preview.
+- Expanded offline app contract tests to guard request planning, response
+  summarization, deferred network execution, deferred authorization headers,
+  no production API key requirement, and canonical mutation deferrals.
+- Updated offline app README, changelog, testing, and deployment notes.
+
+### Why
+
+The standalone app must be able to work offline and then update the website
+when connectivity returns. This revision adds the reconnect request/response
+planning contract while keeping browser-side network writes, direct database
+access, production keys, queue replay, and canonical website mutations
+disabled until the desktop sync executor is accepted.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app workspace-state contract markers for deferred push request
+  planning and response summarization.
+- Offline app TypeScript coverage for the new reconnect request/response
+  planner types.
+
+### Tests Run
+
+- `npm.cmd --prefix apps\offline-app run typecheck`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline app reconnect push request
+  planner, response summarizer, UI preview text, and docs/tests.
+- No schema rollback or server cleanup is required because no SQLite migration,
+  network execution, website mutation, or production credential handling was
+  added.
+
 ## 2026-06-07 - WooCommerce Product API-Client Contract
 
 ### What Changed

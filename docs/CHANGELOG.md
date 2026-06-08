@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app reconnect push request planning and response summarization for
+  queued operation batches, keeping network execution, direct MySQL access,
+  production API keys, queue replay, and canonical mutations deferred.
 - Executable API-client WooCommerce product adapter contract that validates
   non-production create/update/stockout request envelopes, rejects production
   contexts and live-looking credentials, and keeps Square handoff delegated to

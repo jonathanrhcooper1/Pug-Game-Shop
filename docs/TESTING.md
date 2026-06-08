@@ -26,9 +26,9 @@
 - `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
   app's typed local workspace state includes the planned sync routes,
   SQLite operation envelope fields, queued inventory operation markers,
-  REST-ready offline push batch shaping, and no direct external endpoint or
-  database access markers. The offline app package contract also runs
-  `tsc --noEmit`.
+  REST-ready offline push batch shaping, deferred push request planning,
+  response summarization, and no direct external endpoint or database access
+  markers. The offline app package contract also runs `tsc --noEmit`.
 - `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
   queue operations stay behind a Tauri command adapter boundary and do not use
   direct browser storage or network writes.
@@ -135,6 +135,10 @@
   validation for staged create/update/stockout request plans, production/live
   credential rejection, deferred WordPress/WooCommerce writes, and official
   WooCommerce Square handoff.
+- Offline app package coverage now includes reconnect push request planning
+  and response summarization for queued operation batches while network
+  execution, direct MySQL access, production API keys, queue replay, and
+  canonical mutations stay deferred.
 - Local unit coverage now includes inventory route runtime settings,
   staging-only staff search/create route contract configuration, and dependency
   factory proof that staff inventory search and create routes register only

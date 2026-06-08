@@ -2,15 +2,19 @@ import { useMemo, useState } from "react"
 
 import {
   buildOfflinePushBatchPayload,
+  buildOfflinePushRequestPlan,
   buildInventoryUpdateOperation,
   filterInventoryItems,
   findInventoryItem,
   formatMoney,
   offlineWorkspaceSeed,
   statusLabel,
+  summarizeOfflinePushResult,
   type IconName,
   type OfflineOperationEnvelope,
   type OfflinePushBatchPayload,
+  type OfflinePushRequestPlan,
+  type OfflinePushResultSummary,
 } from "./data/offlineWorkspace"
 import { submitOfflineOperation, type OfflineQueueSubmissionResult } from "./data/offlineQueueBridge"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
@@ -44,6 +48,8 @@ export function App() {
   const [selectedId, setSelectedId] = useState(42)
   const [stagedOperation, setStagedOperation] = useState<OfflineOperationEnvelope | null>(null)
   const [stagedPushBatch, setStagedPushBatch] = useState<OfflinePushBatchPayload | null>(null)
+  const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
+  const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
   const filteredItems = useMemo(() => {
@@ -52,8 +58,36 @@ export function App() {
 
   async function handleStageInventoryUpdate() {
     const operation = buildInventoryUpdateOperation(selectedItem)
+    const batch = buildOfflinePushBatchPayload([operation])
+    const requestPlan = buildOfflinePushRequestPlan(batch)
+
     setStagedOperation(operation)
-    setStagedPushBatch(buildOfflinePushBatchPayload([operation]))
+    setStagedPushBatch(batch)
+    setStagedPushRequest(requestPlan)
+    setPushSummary(
+      summarizeOfflinePushResult({
+        data: {
+          batch_id: batch.batch_id,
+          server_time_utc: operation.queued_at_utc,
+          operation_count: batch.operations.length,
+          counts: {
+            accepted: 1,
+            conflict: 0,
+            rejected: 0,
+          },
+          results: [
+            {
+              client_operation_id: operation.client_operation_id,
+              status: "accepted",
+            },
+          ],
+        },
+        meta: {
+          push_queue_replay_deferred: true,
+          push_canonical_mutations_deferred: true,
+        },
+      }),
+    )
     setQueueSubmission(await submitOfflineOperation(operation, queueAdapter))
   }
 
@@ -241,8 +275,10 @@ export function App() {
                   </span>
                   <strong>{stagedOperation.client_operation_id}</strong>
                   <small>
-                    {stagedPushBatch
-                      ? `Push batch ${stagedPushBatch.batch_id} ready after reconnect.`
+                    {stagedPushRequest && pushSummary
+                      ? `${stagedPushRequest.method} ${stagedPushRequest.path.replace("/wp-json/tcg-store/v1", "")} deferred; ${pushSummary.status} preview.`
+                      : stagedPushBatch
+                        ? `Push batch ${stagedPushBatch.batch_id} ready after reconnect.`
                       : (queueSubmission?.message ?? "Ready for local queue handoff.")}
                   </small>
                 </>

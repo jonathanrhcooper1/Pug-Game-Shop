@@ -14,7 +14,8 @@ future offline sync app.
   desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, and SQLite-compatible staged operation
-  envelopes, plus REST-ready push batch previews for reconnect sync.
+  envelopes, plus deferred REST push request plans and response summaries for
+  reconnect sync.
 - Browser-safe offline queue bridge contract for staging inventory operations
   before the desktop SQLite/Tauri command adapter is connected.
 - Tauri command scaffold for validating staged inventory, reservation, event,
@@ -28,8 +29,9 @@ future offline sync app.
   schema shape, local workspace state, queue bridge safety, UI shell markers,
   and secret safety.
 
-The app does not yet implement live pairing, SQLite persistence, push/pull sync,
-printer/scanner adapters, kiosk lockdown, or signed updater behavior.
+The app does not yet implement live pairing, SQLite persistence, live push/pull
+sync execution, printer/scanner adapters, kiosk lockdown, or signed updater
+behavior.
 
 ## Local Commands
 
