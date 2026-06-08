@@ -30,6 +30,17 @@ try {
   })
   assert.equal(firstReservation.status, "ok")
 
+  const intake = firstStore.createInventoryIntake(cashierAuth.session.token, {
+    card_name: "Persistent Dragonite",
+    set_name: "Fossil",
+    condition: "LP",
+    barcode: "PUG-PERSIST-DRAGONITE",
+    price_minor_units: 8800,
+    location: "Restart Bin",
+  })
+  assert.equal(intake.status, "ok")
+  assert.equal(intake.item.status, "pending_intake")
+
   const createdCustomer = firstStore.createCustomer(managerAuth.session.token, {
     first_name: "Persistent",
     last_name: "Customer",
@@ -55,7 +66,7 @@ try {
 
   const firstStatus = firstStore.syncStatus()
   assert.equal(firstStatus.persistence_mode, "sqlite")
-  assert.equal(firstStatus.queue_depth, 5)
+  assert.equal(firstStatus.queue_depth, 6)
   firstStore.close()
 
   const restartedStore = createLocalSyncStore({ databasePath })
@@ -66,6 +77,11 @@ try {
   const persistedInventory = restartedStore.searchInventory({ query: "charizard" })
   assert.equal(persistedInventory.items[0].status, "reserved")
   assert.equal(persistedInventory.items[0].row_version, 2)
+
+  const persistedIntake = restartedStore.searchInventory({ query: "dragonite" })
+  assert.equal(persistedIntake.items.length, 1)
+  assert.equal(persistedIntake.items[0].status, "pending_intake")
+  assert.equal(persistedIntake.items[0].source, "queued")
 
   const persistedCustomers = restartedStore.searchCustomers({ query: "persistent.customer@example.test" })
   assert.equal(persistedCustomers.customers.length, 1)
@@ -79,7 +95,7 @@ try {
   assert.equal(duplicateReservation.code, "inventory_unavailable")
 
   const restartedStatus = restartedStore.syncStatus()
-  assert.equal(restartedStatus.queue_depth, 5)
+  assert.equal(restartedStatus.queue_depth, 6)
   assert.ok(restartedStatus.customer_count >= 4)
   assert.ok(restartedStatus.credit_ledger_entry_count >= 5)
   assert.equal(restartedStatus.local_operations_preserved, true)

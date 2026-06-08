@@ -1861,6 +1861,71 @@ h2 {
   border-color: var(--gold);
 }
 
+.inventory-intake-control {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(140px, 0.8fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.inventory-intake-control label,
+.inventory-intake-control div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.inventory-intake-control label:nth-child(1),
+.inventory-intake-control label:nth-child(2) {
+  grid-column: span 2;
+}
+
+.inventory-intake-control div {
+  grid-column: span 2;
+}
+
+.inventory-intake-control input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(35, 100, 70, 0.22);
+  border-radius: 8px;
+}
+
+.inventory-intake-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 11px;
+  color: #172016;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(121, 215, 143, 0.16);
+  border: 1px solid rgba(121, 215, 143, 0.26);
+  border-radius: 8px;
+}
+
+.inventory-intake-control strong {
+  color: #249344;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.inventory-intake-control small {
+  color: #596a58;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .table-meta {
   display: flex;
   align-items: center;
@@ -1958,6 +2023,10 @@ td small {
 
 .status-dot.reserved {
   color: #b98116;
+}
+
+.status-dot.pending_intake {
+  color: #4b74a8;
 }
 
 .status-dot.conflict {
@@ -3335,6 +3404,7 @@ dd {
   .kiosk-cart div,
   .manager-session-panel,
   .detail-actions,
+  .inventory-intake-control,
   .inventory-adjustment-controls,
   .event-row,
   .event-detail-card,

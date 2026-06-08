@@ -70,7 +70,7 @@ export type LocalSyncInventoryItem = {
   price_minor_units: number
   currency: "USD"
   location: string
-  status: "available" | "reserved" | "conflict"
+  status: "available" | "reserved" | "conflict" | "pending_intake"
   source: "cached" | "queued" | "accepted"
 }
 
@@ -93,6 +93,12 @@ export type LocalSyncReservationResult = LocalSyncResult<{
   item: LocalSyncInventoryItem
   reservation: LocalSyncReservation
   wordpress_acceptance_required: true
+}>
+
+export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
+  item: LocalSyncInventoryItem
+  wordpress_acceptance_required: true
+  label_print_deferred: true
 }>
 
 export type LocalSyncKioskOrderResult = LocalSyncResult<{
@@ -226,6 +232,17 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input: { inventoryPublicId: string; holdReason: string },
   ) => Promise<LocalSyncReservationResult>
+  createInventoryIntake: (
+    sessionToken: string,
+    input: {
+      cardName: string
+      setName: string
+      condition: string
+      barcode: string
+      priceMinorUnits: number
+      location: string
+    },
+  ) => Promise<LocalSyncInventoryIntakeResult>
   createKioskOrder: (
     input: { firstName: string; lastName: string; inventoryPublicIds: string[] },
   ) => Promise<LocalSyncKioskOrderResult>
@@ -300,6 +317,19 @@ export function createLocalSyncServerClient(
           hold_reason: input.holdReason,
         },
       }) as Promise<LocalSyncReservationResult>,
+    createInventoryIntake: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/inventory/intake", {
+        method: "POST",
+        sessionToken,
+        body: {
+          card_name: input.cardName,
+          set_name: input.setName,
+          condition: input.condition,
+          barcode: input.barcode,
+          price_minor_units: input.priceMinorUnits,
+          location: input.location,
+        },
+      }) as Promise<LocalSyncInventoryIntakeResult>,
     createKioskOrder: (input) =>
       requestLocalSync(fetcher, baseUrl, "/kiosk/orders", {
         method: "POST",

@@ -247,6 +247,59 @@ export function createLocalSyncStore(options = {}) {
     })
   }
 
+  function createInventoryIntake(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const cardName = cleanName(input.card_name)
+    const setName = cleanName(input.set_name) || "Manual Intake"
+    const condition = cleanCondition(input.condition ?? input.condition_code)
+    const barcode = cleanBarcode(input.barcode) || `PUG-${randomUUID().slice(0, 8).toUpperCase()}`
+    const priceMinorUnits = Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units))
+    const location = cleanName(input.location ?? input.location_label) || "Intake Queue"
+
+    if (!cardName || priceMinorUnits <= 0) {
+      return blocked("invalid_inventory_intake", "Card name and positive price are required for local intake.")
+    }
+
+    if (inventoryItems.some((item) => item.barcode.toLowerCase() === barcode.toLowerCase())) {
+      return blocked("duplicate_barcode", "A cached inventory item already uses that barcode.")
+    }
+
+    const item = {
+      public_id: `local-inventory-${randomUUID()}`,
+      row_version: 1,
+      card_name: cardName,
+      set_name: setName,
+      condition,
+      barcode,
+      price_minor_units: priceMinorUnits,
+      currency: "USD",
+      location,
+      status: "pending_intake",
+      source: "queued",
+    }
+
+    inventoryItems.push(item)
+    saveInventoryItem(database, item, now)
+    appendQueueOperation(database, queue, "inventory_intake", item.public_id, {
+      item: publicInventoryItem(item),
+      actor_id: session.user.id,
+      sync_intent: "offline_inventory_intake",
+      wordpress_acceptance_required: true,
+    }, now)
+
+    return {
+      status: "ok",
+      item: publicInventoryItem(item),
+      wordpress_acceptance_required: true,
+      label_print_deferred: true,
+    }
+  }
+
   function createKioskOrder(input = {}) {
     const firstName = cleanName(input.first_name)
     const lastName = cleanName(input.last_name)
@@ -570,6 +623,7 @@ export function createLocalSyncStore(options = {}) {
     createCreditAdjustment,
     createCreditRedemption,
     createCustomer,
+    createInventoryIntake,
     createKioskOrder,
     createSession,
     listAccessPolicy,
@@ -1317,6 +1371,16 @@ function cleanRole(value) {
 
 function cleanReason(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 160) || "local reservation"
+}
+
+function cleanCondition(value) {
+  const condition = String(value ?? "").trim().toUpperCase().slice(0, 16)
+
+  return condition || "RAW"
+}
+
+function cleanBarcode(value) {
+  return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 64)
 }
 
 function minorUnits(value) {

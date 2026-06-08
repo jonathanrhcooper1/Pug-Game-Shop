@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server inventory intake now supports LAN-side card creation with
+  duplicate-barcode protection, `pending_intake` status, durable SQLite
+  persistence, queued WordPress acceptance operations, and an offline app
+  Inventory form that displays locally added cards as pending instead of
+  accepted stock.
 - Local sync server customer-credit runtime now supports customer search,
   local customer creation, manager-approved credit adds/corrections, and
   credit redemptions with Square POS handoff metadata; the offline app Customer

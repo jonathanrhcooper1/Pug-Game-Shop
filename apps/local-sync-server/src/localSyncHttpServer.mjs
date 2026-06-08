@@ -48,6 +48,10 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.searchInventory({ query: url.searchParams.get("q") ?? "" }))
       }
 
+      if (request.method === "POST" && url.pathname === "/inventory/intake") {
+        return sendStoreResult(response, store.createInventoryIntake(token, await readJson(request)))
+      }
+
       if (request.method === "POST" && url.pathname === "/inventory/reservations") {
         return sendStoreResult(response, store.reserveInventory(token, await readJson(request)))
       }

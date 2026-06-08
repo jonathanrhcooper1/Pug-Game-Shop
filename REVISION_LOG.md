@@ -3,6 +3,87 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Inventory Intake Runtime
+
+### What Changed
+
+- Added a local sync server `POST /inventory/intake` route for employee app
+  card intake through the in-store LAN middleman.
+- Added SQLite-backed inventory intake creation with card name, set,
+  condition, barcode, price, and location fields.
+- Added duplicate-barcode blocking and positive-price validation before local
+  inventory intake rows are created.
+- Saved newly added local cards as `pending_intake` with `queued` source until
+  WordPress accepts the synced operation.
+- Queued an `inventory_intake` operation for later WordPress acceptance without
+  writing directly to production inventory.
+- Wired the offline app Inventory workspace to submit intake cards to the LAN
+  server and immediately show the queued card in the local inventory table.
+- Added a distinct `Pending Intake` status and filter so locally queued cards
+  are not shown as accepted available website stock.
+
+### Why
+
+Staff need to add inventory from the local employee app while the store is
+online or offline, but WordPress must remain the final inventory authority.
+This revision lets the LAN middleman capture new card intake safely, share it
+with local devices, and queue the website sync operation for later acceptance.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No new WordPress/MySQL production migration was added.
+- No new SQLite table was added; the intake workflow uses the existing local
+  `inventory_items` and `operation_queue` tables.
+
+### Tests Added
+
+- Local sync server runtime coverage for successful inventory intake,
+  duplicate-barcode blocking, pending-intake status, and queued website
+  acceptance metadata.
+- Local sync server persistence coverage proving a locally added intake card
+  remains searchable after reopening the same SQLite database.
+- Offline app client contract coverage for the `/inventory/intake` route and
+  intake response metadata.
+- Offline app UI shell coverage for the inventory intake form and
+  `Pending Intake` status markers.
+
+### Verification
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/local-sync-server run test`
+- Browser smoke: manager PIN login, Inventory page, local card intake through
+  the LAN server, queue-depth increase, card row display with barcode, price,
+  location, `queued` source, `Pending Intake` status, and zero new browser
+  console errors after reload.
+
+### Rollback Notes
+
+- Revert this revision to remove LAN inventory intake and return the offline
+  app Inventory page to existing scan/hold/adjust workflows only.
+- If reverting after staff used local intake, preserve `store-sync.sqlite`
+  first so pending intake operations are not lost.
+- No WordPress database, Square, ScryDex, payment, POS, customer, event, or
+  production rollback is required because this revision only affects the local
+  LAN server and offline app runtime.
+
 ## 2026-06-08 - LAN Customer Credit Runtime
 
 ### What Changed

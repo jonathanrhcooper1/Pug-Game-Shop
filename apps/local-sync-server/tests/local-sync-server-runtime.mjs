@@ -66,6 +66,37 @@ try {
   assert.equal(cashierAuth.user.name, "Test Cashier")
   assert.deepEqual(cashierAuth.user.access, ["Inventory", "Kiosk", "Queue"])
 
+  const intake = await fetchJson(`${baseUrl}/inventory/intake`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    body: {
+      card_name: "Mewtwo",
+      set_name: "Base Set",
+      condition: "MP",
+      barcode: "PUG-SMOKE-MEWTWO",
+      price_minor_units: 4200,
+      location: "Intake Bin",
+    },
+  })
+  assert.equal(intake.status, "ok")
+  assert.equal(intake.item.card_name, "Mewtwo")
+  assert.equal(intake.item.status, "pending_intake")
+  assert.equal(intake.item.source, "queued")
+  assert.equal(intake.wordpress_acceptance_required, true)
+
+  const duplicateIntake = await fetchJson(`${baseUrl}/inventory/intake`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    body: {
+      card_name: "Duplicate Mewtwo",
+      barcode: "PUG-SMOKE-MEWTWO",
+      price_minor_units: 4200,
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(duplicateIntake.status, "blocked")
+  assert.equal(duplicateIntake.code, "duplicate_barcode")
+
   const inventory = await fetchJson(`${baseUrl}/inventory/search?q=charizard`)
   assert.equal(inventory.status, "ok")
   assert.equal(inventory.items.length, 1)
@@ -198,7 +229,7 @@ try {
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
-  assert.ok(syncStatus.queue_depth >= 7)
+  assert.ok(syncStatus.queue_depth >= 8)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
 

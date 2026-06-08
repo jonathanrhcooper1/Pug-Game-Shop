@@ -31,15 +31,18 @@ Current runtime:
 - `POST /auth/pin` verifies cached 4-digit PIN users.
 - `GET /users/access-policy`, `POST /users`, and
   `PATCH /users/{id}/access` are manager-session protected.
-- `GET /inventory/search`, `POST /inventory/reservations`, and
-  `POST /kiosk/orders` provide the first shared LAN inventory/order surface.
+- `GET /inventory/search`, `POST /inventory/intake`,
+  `POST /inventory/reservations`, and `POST /kiosk/orders` provide the first
+  shared LAN inventory/order surface, including locally queued card intake
+  rows that remain pending until WordPress accepts them.
 - `GET /customers/search`, `POST /customers`, `POST /credit/adjustments`,
   and `POST /credit/redemptions` provide the first shared LAN customer-credit
   surface with manager approval for credit adds and Square POS handoff metadata
   for credit use.
 - Staff PIN users, access policy changes, local inventory reservation locks,
-  kiosk pickup orders, local customers, pending credit ledger entries, and
-  operation queue rows persist across server restarts.
+  local inventory intake rows, kiosk pickup orders, local customers, pending
+  credit ledger entries, and operation queue rows persist across server
+  restarts.
 
 The current SQLite schema is a development runtime for the LAN middleman. Live
 WordPress pull/push workers, richer event cache tables, conflict tables, and

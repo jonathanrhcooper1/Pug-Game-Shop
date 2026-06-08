@@ -10,7 +10,7 @@ export type IconName =
   | "wifi"
   | "card"
 
-export type InventoryStatus = "available" | "reserved" | "conflict"
+export type InventoryStatus = "available" | "reserved" | "conflict" | "pending_intake"
 export type InventorySource = "cached" | "queued" | "accepted"
 export type QueueTone = "success" | "warning" | "neutral"
 export type ConnectorEnvironment = "development" | "staging" | "production"
@@ -1130,7 +1130,16 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
 }
 
 export function statusLabel(status: InventoryStatus) {
-  return status === "available" ? "Available" : status === "reserved" ? "Reserved" : "Conflict"
+  if (status === "available") {
+    return "Available"
+  }
+  if (status === "reserved") {
+    return "Reserved"
+  }
+  if (status === "pending_intake") {
+    return "Pending Intake"
+  }
+  return "Conflict"
 }
 
 export function inventoryQuantityDeltaFromInput(value: string): number | null {

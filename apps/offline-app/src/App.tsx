@@ -85,6 +85,7 @@ import {
   type EventPaymentStatus,
   type EventSnapshot,
   type IconName,
+  type InventoryItem,
   type InventoryStatus,
   type OfflineOperationEnvelope,
   type OfflineLabelPrintJob,
@@ -108,6 +109,7 @@ import {
   type LocalSyncAuthResult,
   type LocalSyncCreditLedgerEntry,
   type LocalSyncCustomer,
+  type LocalSyncInventoryItem,
   type LocalSyncStatusResult,
 } from "./data/localSyncServerClient"
 import {
@@ -144,6 +146,13 @@ type AppIconName =
 
 type ViewMode = "list" | "grid"
 type AppSessionRole = "locked" | "staff" | "manager"
+const INVENTORY_STATUS_FILTERS = [
+  "all",
+  "available",
+  "pending_intake",
+  "reserved",
+  "conflict",
+] as const
 const ACCESS_SECTIONS = [
   "Inventory",
   "Kiosk",
@@ -487,6 +496,28 @@ function customerCreditLedgerEntryFromLocalSync(
   }
 }
 
+function inventoryItemFromLocalSync(
+  item: LocalSyncInventoryItem,
+  nextId: number,
+): InventoryItem {
+  return {
+    id: nextId,
+    publicId: item.public_id,
+    rowVersion: item.row_version,
+    cardName: item.card_name,
+    setName: item.set_name,
+    number: item.public_id,
+    condition: item.condition,
+    barcode: item.barcode,
+    price: formatMoney(item.price_minor_units, item.currency),
+    priceMinorUnits: item.price_minor_units,
+    currency: item.currency,
+    location: item.location,
+    status: item.status,
+    source: item.source,
+  }
+}
+
 export function App() {
   const workspace = offlineWorkspaceSeed
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
@@ -553,6 +584,12 @@ export function App() {
   const [showEventQueue, setShowEventQueue] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<OfflineLabelPrintJob[]>([])
   const [query, setQuery] = useState("")
+  const [intakeCardName, setIntakeCardName] = useState("")
+  const [intakeSetName, setIntakeSetName] = useState("")
+  const [intakeCondition, setIntakeCondition] = useState("LP")
+  const [intakeBarcode, setIntakeBarcode] = useState("")
+  const [intakePriceInput, setIntakePriceInput] = useState("0.00")
+  const [intakeLocation, setIntakeLocation] = useState("Intake Queue")
   const [selectedId, setSelectedId] = useState(42)
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
   const [eventAttendeeLabel, setEventAttendeeLabel] = useState("Offline walk-in")
@@ -829,6 +866,15 @@ export function App() {
     quantityDelta === null
       ? "Enter a whole-number quantity change from -99 to 99, excluding 0."
       : ""
+  const intakePriceMinorUnits = creditRedemptionInputToMinorUnits(intakePriceInput)
+  const intakeIssue =
+    intakeCardName.trim() === ""
+      ? "Enter a card name before adding local inventory."
+      : intakePriceMinorUnits === null
+        ? "Use a valid dollar amount with up to two decimals."
+        : intakePriceMinorUnits <= 0
+          ? "Inventory price must be greater than $0.00."
+          : ""
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -1874,6 +1920,64 @@ export function App() {
         : item,
       ),
     )
+  }
+
+  async function handleInventoryIntake() {
+    if (intakeIssue || intakePriceMinorUnits === null) {
+      setActivityMessage({
+        title: "Inventory intake blocked",
+        detail: intakeIssue || "Enter valid card intake details.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with a staff or manager PIN before adding local inventory.",
+      })
+      return
+    }
+
+    const intakeResult = await localSyncClient.createInventoryIntake(localSyncSessionToken, {
+      cardName: intakeCardName.trim(),
+      setName: intakeSetName.trim() || "Manual Intake",
+      condition: intakeCondition.trim() || "RAW",
+      barcode: intakeBarcode.trim(),
+      priceMinorUnits: intakePriceMinorUnits,
+      location: intakeLocation.trim() || "Intake Queue",
+    })
+
+    if (intakeResult.status !== "ok") {
+      setActivityMessage({
+        title: intakeResult.status === "unavailable" ? "LAN server unavailable" : "Inventory intake blocked",
+        detail:
+          intakeResult.status === "unavailable"
+            ? intakeResult.message
+            : `${intakeResult.message} WordPress remains the final inventory authority.`,
+      })
+      return
+    }
+
+    const nextId = inventoryItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
+    const nextItem = inventoryItemFromLocalSync(intakeResult.item, nextId)
+
+    setInventoryItems((items) => [nextItem, ...items])
+    setSelectedId(nextItem.id)
+    setQuery(nextItem.barcode)
+    setIntakeCardName("")
+    setIntakeSetName("")
+    setIntakeCondition("LP")
+    setIntakeBarcode("")
+    setIntakePriceInput("0.00")
+    setIntakeLocation("Intake Queue")
+    void refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "Inventory intake queued",
+      detail:
+        `${nextItem.cardName} (${nextItem.barcode}) was added to ${localSyncClient.serverUrl}; ` +
+        "WordPress acceptance and label printing remain pending sync.",
+    })
   }
 
   function handleKioskAddItem(item = selectedItem) {
@@ -3833,7 +3937,7 @@ export function App() {
 
               {filtersOpen ? (
                 <div className="filter-tray" aria-label="Inventory filters">
-                  {(["all", "available", "reserved", "conflict"] as const).map((status) => (
+                  {INVENTORY_STATUS_FILTERS.map((status) => (
                     <button
                       type="button"
                       className={statusFilter === status ? "is-active" : ""}
@@ -3845,6 +3949,80 @@ export function App() {
                   ))}
                 </div>
               ) : null}
+
+              <div className="inventory-intake-control" aria-label="Local inventory intake">
+                <label htmlFor="intake-card-name">
+                  <span className="micro-label">Card name</span>
+                  <input
+                    id="intake-card-name"
+                    value={intakeCardName}
+                    onChange={(event) => setIntakeCardName(event.target.value)}
+                    placeholder="Card name"
+                  />
+                </label>
+                <label htmlFor="intake-set-name">
+                  <span className="micro-label">Set</span>
+                  <input
+                    id="intake-set-name"
+                    value={intakeSetName}
+                    onChange={(event) => setIntakeSetName(event.target.value)}
+                    placeholder="Set name"
+                  />
+                </label>
+                <label htmlFor="intake-condition">
+                  <span className="micro-label">Condition</span>
+                  <input
+                    id="intake-condition"
+                    value={intakeCondition}
+                    onChange={(event) => setIntakeCondition(event.target.value)}
+                    placeholder="LP"
+                  />
+                </label>
+                <label htmlFor="intake-barcode">
+                  <span className="micro-label">Barcode</span>
+                  <input
+                    id="intake-barcode"
+                    value={intakeBarcode}
+                    onChange={(event) => setIntakeBarcode(event.target.value)}
+                    placeholder="Auto if blank"
+                  />
+                </label>
+                <label htmlFor="intake-price">
+                  <span className="micro-label">Price</span>
+                  <input
+                    id="intake-price"
+                    inputMode="decimal"
+                    value={intakePriceInput}
+                    onBlur={() => {
+                      const parsed = creditRedemptionInputToMinorUnits(intakePriceInput)
+
+                      if (parsed !== null) {
+                        setIntakePriceInput(creditRedemptionInputFromMinorUnits(parsed))
+                      }
+                    }}
+                    onChange={(event) => setIntakePriceInput(event.target.value)}
+                    placeholder="0.00"
+                  />
+                </label>
+                <label htmlFor="intake-location">
+                  <span className="micro-label">Location</span>
+                  <input
+                    id="intake-location"
+                    value={intakeLocation}
+                    onChange={(event) => setIntakeLocation(event.target.value)}
+                    placeholder="Intake Queue"
+                  />
+                </label>
+                <div>
+                  <span className="micro-label">LAN inventory queue</span>
+                  <strong>{intakeIssue ? "Needs details" : "Ready"}</strong>
+                  {intakeIssue ? <small>{intakeIssue}</small> : null}
+                  <button type="button" onClick={() => void handleInventoryIntake()}>
+                    <Icon name="plus" />
+                    <span>Add Inventory</span>
+                  </button>
+                </div>
+              </div>
 
               <div className="table-meta">
                 <span>{filteredItems.length} cached results</span>
