@@ -91,6 +91,13 @@
   batch shaping, deferred push request planning, response summarization, and
   no direct external endpoint or database access markers. The offline app
   package contract also runs `tsc --noEmit`.
+- Offline app browser verification now covers the functional local-session
+  controls at desktop width: stage inventory update, prepare print label,
+  review/approve all conflicts into history, stage customer-credit use into a
+  pending hold, add a second company connector profile, validate its connector
+  manifest, and confirm no console warnings/errors or horizontal overflow. A
+  mobile-width pass verifies the compact Settings nav remains accessible by
+  button name and the connector editor can save a profile without overflow.
 - Local unit and WordPress smoke coverage now include the WordPress offline
   connector manifest diagnostics, proving authenticated health exposes the
   company/site profile, route count, offline device-token auth mode, desktop

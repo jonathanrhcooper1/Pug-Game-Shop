@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Functional Connector And Local Action State
+
+### What Changed
+
+- Added connector draft types and helpers for creating, validating, and
+  upserting multi-company website profiles from local form input.
+- Added a Settings connector editor for company name, short name, website
+  host/URL, environment, and ScryDex display label.
+- Changed `Save Profile Draft` from a message-only button into a local
+  profile add/update workflow that validates the secret-free connector
+  manifest and selects the saved profile.
+- Added live local state for queued operations, open/reviewed conflicts,
+  customer-credit pending holds, and prepared print-label jobs.
+- Updated queue, conflict, customer credit, and selected-card panels to show
+  visible results after button clicks.
+- Added accessible names to compact sidebar navigation buttons so mobile and
+  automated testing can target hidden-label nav items.
+- Extended offline app contract tests for connector draft helpers, local
+  session state markers, and compact nav accessibility.
+
+### Why
+
+The offline app preview had several controls that prepared status messages but
+did not leave enough visible state behind. The app also needed a reusable
+connector model so it can target the correct WordPress/WooCommerce site per
+company instead of being hardwired to one shop.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Contract coverage for connector profile draft types/helpers and profile
+  upsert behavior markers.
+- Contract coverage for visible queue rows, connector editor, ledger preview,
+  print-label jobs, local conflict/credit state, and compact nav accessible
+  labels.
+
+### Tests Run
+
+- `npm.cmd run typecheck` in `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run build` in `apps/offline-app`: passed.
+- Playwright desktop functional pass at `1440x1000`: staged inventory update,
+  prepared print label, reviewed and approved both conflicts, staged customer
+  credit hold, added and validated a second company connector, with zero
+  console warnings/errors and zero horizontal overflow.
+- Playwright mobile functional pass at `390x844`: opened Settings through
+  compact nav, saved a connector draft, with zero console warnings/errors and
+  zero horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to seed-only connector
+  profiles and message-only local action previews.
+- No database migrations, live website writes, live Tauri SQLite writes,
+  provider calls, payment capture, credential persistence, or production
+  mutations are introduced.
+- Rust/Cargo are not installed on this workstation, so the Tauri command could
+  not be compiled locally in this checkpoint; the existing Rust command
+  remains scaffolded behind contract tests.
+
 ## 2026-06-08 - WordPress App Pairing Contract Diagnostics
 
 ### What Changed

@@ -6,6 +6,15 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app multi-company connector draft editing, allowing staff to add or
+  update company/site profiles by company name, website host/URL, environment,
+  and ScryDex display label while keeping credentials out of source and out of
+  the app profile.
+- Offline app local session state for previously static controls: staged
+  queue operations now appear in the sync queue, conflict review/approval
+  clears open conflicts into local history, customer-credit redemptions create
+  a pending hold and ledger preview, print-label actions create visible label
+  jobs, and compact navigation has explicit accessible labels.
 - WordPress offline pairing readiness now exposes a secret-free app pairing
   contract for `/offline/devices/register`, including redacted pairing-code
   handling, requested offline scopes, desktop secure token storage, and

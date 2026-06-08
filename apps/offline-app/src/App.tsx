@@ -5,11 +5,14 @@ import {
   buildOfflinePushRequestPlan,
   buildConnectorManifestPreview,
   buildConflictReviewOperation,
+  buildConnectorProfileFromDraft,
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
   connectorDisplayUrl,
   connectorHealthSummary,
+  connectorProfileDraftFromProfile,
   connectorStatusLabel,
+  createEmptyConnectorProfileDraft,
   buildInventoryUpdateOperation,
   filterInventoryItems,
   findConnectorProfile,
@@ -18,9 +21,11 @@ import {
   offlineWorkspaceSeed,
   statusLabel,
   summarizeOfflinePushResult,
+  upsertConnectorProfile,
   validateConnectorManifest,
   type ConflictItem,
   type ConnectorManifestValidation,
+  type ConnectorProfileDraft,
   type DevicePairingRequestPlan,
   type IconName,
   type InventoryStatus,
@@ -94,6 +99,14 @@ export function App() {
   const conflictPanelRef = useRef<HTMLElement>(null)
   const creditPanelRef = useRef<HTMLElement>(null)
   const connectorPanelRef = useRef<HTMLElement>(null)
+  const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
+  const [connectorProfiles, setConnectorProfiles] = useState(workspace.connectorProfiles)
+  const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
+  const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>([])
+  const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>([])
+  const [pendingCreditMinorUnits, setPendingCreditMinorUnits] = useState(0)
+  const [showCreditLedger, setShowCreditLedger] = useState(false)
+  const [labelPrintJobs, setLabelPrintJobs] = useState<string[]>([])
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(42)
   const [activeSection, setActiveSection] = useState("Inventory")
@@ -116,19 +129,29 @@ export function App() {
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
+  const [connectorDraft, setConnectorDraft] = useState<ConnectorProfileDraft>(() =>
+    workspace.connectorProfiles[0]
+      ? connectorProfileDraftFromProfile(workspace.connectorProfiles[0])
+      : createEmptyConnectorProfileDraft(),
+  )
+  const [connectorDraftIssues, setConnectorDraftIssues] = useState<string[]>([])
   const [pairingCode, setPairingCode] = useState("")
   const [pairingPlan, setPairingPlan] = useState<DevicePairingRequestPlan | null>(null)
-  const activeProfile = findConnectorProfile(workspace.connectorProfiles, activeProfileId)
+  const activeProfile = findConnectorProfile(connectorProfiles, activeProfileId)
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
   const connectorHealth = connectorHealthSummary(connectorValidation?.profile ?? activeProfile)
-  const selectedItem = findInventoryItem(workspace.inventoryItems, selectedId)
+  const selectedItem = findInventoryItem(inventoryItems, selectedId)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
-    return filterInventoryItems(workspace.inventoryItems, query, statusFilter)
-  }, [query, statusFilter, workspace.inventoryItems])
+    return filterInventoryItems(inventoryItems, query, statusFilter)
+  }, [query, statusFilter, inventoryItems])
   const queueBadgeCount =
-    workspace.queueItems.reduce((total, item) => total + item.count, 0) + (stagedOperation ? 1 : 0)
-  const conflictBadgeCount = workspace.conflicts.length
+    workspace.queueItems.reduce((total, item) => total + item.count, 0) + queuedOperations.length
+  const conflictBadgeCount = openConflicts.length
+  const displayedCreditMinorUnits = Math.max(
+    0,
+    workspace.customerCredit.availableMinorUnits - pendingCreditMinorUnits,
+  )
 
   useEffect(() => {
     if (
@@ -142,6 +165,8 @@ export function App() {
   useEffect(() => {
     setConnectorValidation(null)
     setPairingPlan(null)
+    setConnectorDraft(connectorProfileDraftFromProfile(activeProfile))
+    setConnectorDraftIssues([])
   }, [activeProfile.id])
 
   function sectionTarget(label: string) {
@@ -210,7 +235,21 @@ export function App() {
         },
       }),
     )
-    setQueueSubmission(await submitOfflineOperation(operation, queueAdapter))
+    const submission = await submitOfflineOperation(operation, queueAdapter)
+
+    setQueueSubmission(submission)
+    setQueuedOperations((currentOperations) => {
+      if (
+        currentOperations.some(
+          (queuedOperation) =>
+            queuedOperation.client_operation_id === operation.client_operation_id,
+        )
+      ) {
+        return currentOperations
+      }
+
+      return [operation, ...currentOperations]
+    })
     setActiveSection("Queue")
     setActivityMessage({
       title: actionTitle,
@@ -223,6 +262,16 @@ export function App() {
       buildInventoryUpdateOperation(selectedItem),
       actionTitle,
       `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+    )
+    setInventoryItems((items) =>
+      items.map((item) =>
+        item.id === selectedItem.id
+          ? {
+              ...item,
+              source: "queued",
+            }
+          : item,
+      ),
     )
   }
 
@@ -237,12 +286,20 @@ export function App() {
       "Credit redemption staged",
       `${amount} customer credit redemption prepared from cached balance; ledger replay remains deferred until website sync acceptance.`,
     )
+    setPendingCreditMinorUnits((current) =>
+      Math.min(
+        workspace.customerCredit.availableMinorUnits,
+        current + workspace.customerCredit.redemptionPreviewMinorUnits,
+      ),
+    )
+    setShowCreditLedger(true)
   }
 
   function handleConnectorProfileChange(profileId: string) {
-    const nextProfile = findConnectorProfile(workspace.connectorProfiles, profileId)
+    const nextProfile = findConnectorProfile(connectorProfiles, profileId)
 
     setActiveProfileId(nextProfile.id)
+    setConnectorDraft(connectorProfileDraftFromProfile(nextProfile))
     setActiveSection("Settings")
     setActivityMessage({
       title: "Connector profile selected",
@@ -250,11 +307,87 @@ export function App() {
     })
   }
 
+  function handleNewConnectorDraft() {
+    setConnectorDraft(createEmptyConnectorProfileDraft())
+    setConnectorDraftIssues([])
+    setConnectorValidation(null)
+    setPairingPlan(null)
+    setActiveSection("Settings")
+    setActivityMessage({
+      title: "New connector draft opened",
+      detail:
+        "Add a company name and WordPress website host. Secret values stay out of this app profile.",
+    })
+  }
+
+  function handleSaveConnectorDraft() {
+    const result = buildConnectorProfileFromDraft(connectorDraft)
+
+    setConnectorDraftIssues(result.issues)
+
+    if (!result.profile) {
+      setActiveSection("Settings")
+      setActivityMessage({
+        title: "Connector draft needs details",
+        detail: result.issues.join(" "),
+      })
+      return
+    }
+
+    const profile = result.profile
+    const validation = validateConnectorManifest(buildConnectorManifestPreview(profile))
+
+    setConnectorProfiles((profiles) => upsertConnectorProfile(profiles, profile))
+    setActiveProfileId(profile.id)
+    setConnectorValidation(validation)
+    setPairingPlan(null)
+    setActiveSection("Settings")
+    setActivityMessage({
+      title: validation.status === "rejected" ? "Connector saved with issues" : "Connector profile saved",
+      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)}. Credentials are still server-side or desktop secure-store only.`,
+    })
+  }
+
   function handleSyncNowPreview() {
+    const operationsForSync = queuedOperations.length > 0
+      ? queuedOperations
+      : stagedOperation
+        ? [stagedOperation]
+        : []
+
+    if (operationsForSync.length > 0) {
+      const batch = buildOfflinePushBatchPayload(operationsForSync)
+
+      setStagedPushBatch(batch)
+      setStagedPushRequest(buildOfflinePushRequestPlan(batch))
+      setPushSummary(
+        summarizeOfflinePushResult({
+          data: {
+            batch_id: batch.batch_id,
+            server_time_utc: new Date().toISOString(),
+            operation_count: batch.operations.length,
+            counts: {
+              accepted: 0,
+              conflict: 0,
+              rejected: 0,
+            },
+            results: [],
+          },
+          meta: {
+            push_queue_replay_deferred: true,
+            push_canonical_mutations_deferred: true,
+          },
+        }),
+      )
+    }
+
     setActiveSection("Sync")
     setActivityMessage({
       title: "Sync plan prepared",
-      detail: `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; network execution waits for pairing approval.`,
+      detail:
+        operationsForSync.length > 0
+          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; pull/push network execution waits for device pairing approval.`
+          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; network execution waits for pairing approval.`,
     })
   }
 
@@ -297,6 +430,7 @@ export function App() {
   }
 
   function handlePrintLabel() {
+    setLabelPrintJobs((jobs) => [selectedItem.barcode, ...jobs.filter((job) => job !== selectedItem.barcode)].slice(0, 4))
     setActiveSection("Inventory")
     setActivityMessage({
       title: "Label preview prepared",
@@ -311,6 +445,9 @@ export function App() {
       `${conflict.action} conflict staged`,
       `${conflict.title} is queued for staff review. Resolution writes stay deferred until manager approval and website sync acceptance.`,
     )
+    setOpenConflicts((conflicts) => conflicts.filter((item) => item.title !== conflict.title))
+    setReviewedConflicts((conflicts) => [conflict, ...conflicts])
+    setShowConflictHistory(true)
   }
 
   return (
@@ -341,6 +478,7 @@ export function App() {
               <button
                 className={item.label === activeSection ? "nav-item is-active" : "nav-item"}
                 type="button"
+                aria-label={item.label}
                 key={item.label}
                 onClick={() => handleNavSelection(item.label)}
               >
@@ -379,7 +517,7 @@ export function App() {
                   value={activeProfile.id}
                   onChange={(event) => handleConnectorProfileChange(event.target.value)}
                 >
-                  {workspace.connectorProfiles.map((profile) => (
+                  {connectorProfiles.map((profile) => (
                     <option value={profile.id} key={profile.id}>
                       {profile.companyName} / {profile.environment}
                     </option>
@@ -639,6 +777,14 @@ export function App() {
                   </>
                 )}
               </div>
+              {labelPrintJobs.length > 0 ? (
+                <div className="label-job-list" aria-label="Prepared label jobs">
+                  <span>Prepared labels</span>
+                  {labelPrintJobs.map((barcode) => (
+                    <strong key={barcode}>{barcode}</strong>
+                  ))}
+                </div>
+              ) : null}
             </aside>
 
             <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>
@@ -652,6 +798,18 @@ export function App() {
                   <strong>{item.count}</strong>
                 </div>
               ))}
+              {queuedOperations.length > 0 ? (
+                <div className="queued-operation-list" aria-label="Queued local operations">
+                  {queuedOperations.slice(0, 4).map((operation) => (
+                    <div key={operation.client_operation_id}>
+                      <span>{operation.operation_type.replaceAll("_", " ")}</span>
+                      <strong>{operation.client_operation_id}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="panel-empty">No new local operations staged this session.</p>
+              )}
               <button
                 className="secondary-command"
                 type="button"
@@ -667,7 +825,7 @@ export function App() {
                 <h2>Conflicts</h2>
                 <span>Needs review</span>
               </div>
-              {workspace.conflicts.map((item) => (
+              {openConflicts.map((item) => (
                 <article
                   className={
                     item.title === selectedConflictTitle
@@ -688,10 +846,20 @@ export function App() {
                   </button>
                 </article>
               ))}
+              {openConflicts.length === 0 ? (
+                <p className="panel-empty">No open conflicts remain in this local session.</p>
+              ) : null}
               {showConflictHistory ? (
                 <div className="history-note">
                   <strong>Last review</strong>
-                  <span>Manager review, queue replay, and website write are still deferred.</span>
+                  <span>
+                    {reviewedConflicts[0]
+                      ? `${reviewedConflicts[0].title} was staged for manager review.`
+                      : "Manager review, queue replay, and website write are still deferred."}
+                  </span>
+                  {reviewedConflicts.length > 1 ? (
+                    <small>{reviewedConflicts.length} reviews staged this session.</small>
+                  ) : null}
                 </div>
               ) : null}
               <button
@@ -763,6 +931,83 @@ export function App() {
                   </ul>
                 ) : null}
               </div>
+              <div className="connector-editor" aria-label="Connector draft editor">
+                <label>
+                  <span className="micro-label">Company name</span>
+                  <input
+                    value={connectorDraft.companyName}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        companyName: event.target.value,
+                      }))
+                    }
+                    placeholder="Company name"
+                  />
+                </label>
+                <label>
+                  <span className="micro-label">Short name</span>
+                  <input
+                    value={connectorDraft.companyShortName}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        companyShortName: event.target.value,
+                      }))
+                    }
+                    placeholder="Register label"
+                  />
+                </label>
+                <label>
+                  <span className="micro-label">Website host or URL</span>
+                  <input
+                    value={connectorDraft.siteUrl}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        siteUrl: event.target.value,
+                      }))
+                    }
+                    placeholder="company.example.com"
+                  />
+                </label>
+                <label>
+                  <span className="micro-label">Environment</span>
+                  <select
+                    value={connectorDraft.environment}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        environment: event.target.value as ConnectorProfileDraft["environment"],
+                      }))
+                    }
+                  >
+                    <option value="development">Development</option>
+                    <option value="staging">Staging</option>
+                    <option value="production">Production</option>
+                  </select>
+                </label>
+                <label>
+                  <span className="micro-label">ScryDex label</span>
+                  <input
+                    value={connectorDraft.scrydexTeamLabel}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        scrydexTeamLabel: event.target.value,
+                      }))
+                    }
+                    placeholder="Configured in WordPress"
+                  />
+                </label>
+              </div>
+              {connectorDraftIssues.length > 0 ? (
+                <ul className="connector-issues">
+                  {connectorDraftIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="pairing-panel" aria-live="polite">
                 <label htmlFor="pairing-code">
                   <span className="micro-label">Pairing code</span>
@@ -786,20 +1031,15 @@ export function App() {
                 </small>
               </div>
               <div className="connector-actions">
+                <button type="button" onClick={handleNewConnectorDraft}>
+                  <Icon name="plus" />
+                  <span>New Connector</span>
+                </button>
                 <button type="button" onClick={handleTestWebsiteConnector}>
                   <Icon name="link" />
                   <span>Test Website Connector</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActivityMessage({
-                      title: "Profile draft saved",
-                      detail:
-                        "This local profile is ready for secure desktop storage; no API keys or passwords are written into source code.",
-                    })
-                  }
-                >
+                <button type="button" onClick={handleSaveConnectorDraft}>
                   <Icon name="check" />
                   <span>Save Profile Draft</span>
                 </button>
@@ -811,12 +1051,34 @@ export function App() {
                 <span className="micro-label">{workspace.customerCredit.label}</span>
                 <h2>
                   {formatMoney(
-                    workspace.customerCredit.availableMinorUnits,
+                    displayedCreditMinorUnits,
                     workspace.customerCredit.currency,
                   )}
                 </h2>
               </div>
               <p>{workspace.customerCredit.note}</p>
+              {showCreditLedger ? (
+                <div className="ledger-preview" aria-label="Offline credit ledger preview">
+                  <div>
+                    <span>Pending local hold</span>
+                    <strong>
+                      {formatMoney(
+                        pendingCreditMinorUnits,
+                        workspace.customerCredit.currency,
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Cached balance after hold</span>
+                    <strong>
+                      {formatMoney(
+                        displayedCreditMinorUnits,
+                        workspace.customerCredit.currency,
+                      )}
+                    </strong>
+                  </div>
+                </div>
+              ) : null}
               <div className="credit-actions">
                 <button type="button" onClick={() => void handleCreditRedemption()}>
                   <Icon name="tag" />
@@ -825,6 +1087,7 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => {
+                    setShowCreditLedger((shown) => !shown)
                     setActiveSection("Customers")
                     setActivityMessage({
                       title: "Ledger review opened",

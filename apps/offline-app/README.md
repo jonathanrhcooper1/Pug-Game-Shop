@@ -14,16 +14,19 @@ future offline sync app.
   and conflict badges, sync queue, staged conflict review, customer credit
   snapshot with staged redemption/review actions, active sidebar navigation,
   status filters, list/grid inventory modes, connector profile controls,
-  WordPress connector manifest validation, pairing-code request preview, and
-  responsive desktop/mobile layout.
+  multi-company connector draft editing, WordPress connector manifest
+  validation, pairing-code request preview, visible local queue rows,
+  conflict-review history, print-label job preparation, customer-credit
+  pending holds, and responsive desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
   WordPress connector manifests, plus SQLite-compatible staged operation
   envelopes for inventory, customer credit, and conflict review workflows,
   deferred pairing/push request plans, and response summaries for reconnect
   sync.
-- Browser-safe offline queue bridge contract for staging inventory operations
-  before the desktop SQLite/Tauri command adapter is connected.
+- Browser-safe offline queue bridge contract for staging inventory, conflict,
+  customer-credit, and sync-batch operations before the desktop SQLite/Tauri
+  command adapter is connected.
 - Local SQLite `operation_queue` insert planning for staged operations, with
   browser bridge and Tauri command response metadata proving the exact table,
   columns, parameter count, and deferrals before persistence is enabled.
@@ -40,10 +43,10 @@ future offline sync app.
 
 The app does not yet implement live pairing, live SQLite writes, live push/pull
 sync execution, printer/scanner adapters, kiosk lockdown, or signed updater
-behavior. Connector profiles and manifest validation are currently local,
-secret-free configuration models; real device tokens must be stored in the
-desktop secure store and ScryDex/Square credentials must remain in
-WordPress/server-side settings.
+behavior. Connector profiles, draft editing, and manifest validation are
+currently local, secret-free configuration models; real device tokens must be
+stored in the desktop secure store and ScryDex/Square credentials must remain
+in WordPress/server-side settings.
 
 ## Local Commands
 

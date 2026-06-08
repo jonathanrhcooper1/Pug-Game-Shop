@@ -104,6 +104,20 @@ export type StoreConnectorProfile = {
   }
 }
 
+export type ConnectorProfileDraft = {
+  id?: string
+  companyName: string
+  companyShortName: string
+  siteUrl: string
+  environment: ConnectorEnvironment
+  scrydexTeamLabel: string
+}
+
+export type ConnectorProfileDraftResult = {
+  profile: StoreConnectorProfile | null
+  issues: string[]
+}
+
 export type OfflineConnectorRouteManifest = {
   path: string
   method: string
@@ -497,6 +511,103 @@ export function findConnectorProfile(
   throw new Error("At least one connector profile is required.")
 }
 
+export function createEmptyConnectorProfileDraft(): ConnectorProfileDraft {
+  return {
+    companyName: "",
+    companyShortName: "",
+    siteUrl: "",
+    environment: "staging",
+    scrydexTeamLabel: "Configured in WordPress",
+  }
+}
+
+export function connectorProfileDraftFromProfile(
+  profile: StoreConnectorProfile,
+): ConnectorProfileDraft {
+  return {
+    id: profile.id,
+    companyName: profile.companyName,
+    companyShortName: profile.companyShortName,
+    siteUrl: connectorDisplayUrl(profile),
+    environment: profile.environment,
+    scrydexTeamLabel: profile.scrydex.teamLabel,
+  }
+}
+
+export function buildConnectorProfileFromDraft(
+  draft: ConnectorProfileDraft,
+): ConnectorProfileDraftResult {
+  const issues: string[] = []
+  const companyName = draft.companyName.trim()
+  const companyShortName = draft.companyShortName.trim() || companyName
+  const scrydexTeamLabel = draft.scrydexTeamLabel.trim() || "Configured in WordPress"
+  const environment = cleanConnectorEnvironment(draft.environment)
+  const site = parseConnectorSiteInput(draft.siteUrl)
+
+  if (!companyName) {
+    issues.push("Company name is required.")
+  }
+
+  if (!site) {
+    issues.push("A valid WordPress website host or URL is required.")
+  }
+
+  if (!site || !companyName) {
+    return { profile: null, issues }
+  }
+
+  if (
+    site.scheme === "http" &&
+    environment === "production"
+  ) {
+    issues.push("Production connectors require HTTPS before pairing.")
+  }
+
+  return {
+    profile: {
+      id: safeConnectorId(draft.id ?? "", companyName, environment, site.host),
+      companyName,
+      companyShortName,
+      environment,
+      status: environment === "development" ? "sandbox_only" : "needs_pairing",
+      wordpress: {
+        scheme: site.scheme,
+        host: site.host,
+        restBasePath: "/wp-json/tcg-store/v1",
+        authMode: "offline_device_token",
+        credentialStorage: "desktop_secure_store",
+        devicePairingRequired: true,
+        networkRequestsDeferred: true,
+      },
+      square: {
+        inventoryAuthority: "tcg_store_platform",
+        paymentAuthority: "official_woocommerce_square_extension",
+        providerWritesDeferred: true,
+        sandboxRequired: environment !== "production",
+      },
+      scrydex: {
+        teamLabel: scrydexTeamLabel,
+        credentialStorage: "wordpress_server_settings",
+        credentialsSyncedToApp: false,
+      },
+    },
+    issues,
+  }
+}
+
+export function upsertConnectorProfile(
+  profiles: StoreConnectorProfile[],
+  profile: StoreConnectorProfile,
+): StoreConnectorProfile[] {
+  const existingIndex = profiles.findIndex((item) => item.id === profile.id)
+
+  if (existingIndex === -1) {
+    return [...profiles, profile]
+  }
+
+  return profiles.map((item, index) => (index === existingIndex ? profile : item))
+}
+
 export function connectorStatusLabel(status: ConnectorStatus) {
   return status === "ready"
     ? "Ready"
@@ -815,6 +926,34 @@ function parseManifestSite(value: string): { scheme: ConnectorScheme; host: stri
   } catch {
     return null
   }
+}
+
+function parseConnectorSiteInput(value: string): { scheme: ConnectorScheme; host: string } | null {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return null
+  }
+
+  const secureScheme: ConnectorScheme = "https"
+  const rawValue = trimmed.includes("://") ? trimmed : `${secureScheme}://${trimmed}`
+  const site = parseManifestSite(rawValue)
+
+  if (!site) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(rawValue)
+
+    if (parsed.username || parsed.password) {
+      return null
+    }
+  } catch {
+    return null
+  }
+
+  return site
 }
 
 function cleanConnectorEnvironment(value: string): ConnectorEnvironment {
