@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app website connector testing now gives route-missing staging
+  guidance when the WordPress REST index is reachable but `tcg-store` offline
+  connector routes are not registered, pointing staff to install/activate the
+  staging plugin package before pairing.
 - Offline app event staging now captures staff-entered attendee labels,
   pay-at-store/not-required payment status, and sanitized check-in public IDs
   before queuing event registration or check-in operations.

@@ -27,7 +27,8 @@ future offline sync app.
   execution summaries, exact barcode/public-ID scan targeting with
   Enter-to-stage support, customer-credit amount entry with cached-balance
   guards, event attendee/payment/check-in inputs, accepted push-result queue
-  clearing, conflict-review history, print-label job
+  clearing, route-missing connector guidance for staging plugin activation,
+  conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,

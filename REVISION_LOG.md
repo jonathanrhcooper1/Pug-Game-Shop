@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Connector Route Readiness Guidance
+
+### What Changed
+
+- Added a connector-manifest unavailable guidance helper for missing route,
+  timeout, and non-JSON manifest failures.
+- Updated website connector testing so failed live manifest fetches include the
+  specific next step: install/activate the staging plugin package and confirm
+  offline route gates before pairing.
+- Added contract coverage for the route-missing guidance.
+
+### Why
+
+The staging WordPress REST index is reachable, but the `tcg-store/v1` routes
+are not currently registered. Staff need the offline app to distinguish a
+missing plugin route from an invalid local connector profile or credential
+problem.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for route-missing and non-JSON manifest
+  guidance.
+- UI/workspace contract markers proving failed connector tests surface the new
+  staging activation guidance.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Live credential-free staging check: `/wp-json/` returned HTTP 200 and did
+  not list `tcg-store`; `/wp-json/tcg-store/v1/offline/connector-manifest` and
+  `/wp-json/tcg-store/v1/health` returned HTTP 404.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for live
+  connector test failure guidance and no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to return to the generic live manifest failure message.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Event Detail Workflow
 
 ### What Changed

@@ -36,6 +36,7 @@ try {
     buildOfflineSessionStorageSnapshot,
     cleanOfflineEventAttendeeLabel,
     cleanOfflineEventRegistrationPublicId,
+    connectorManifestUnavailableGuidance,
     creditRedemptionInputFromMinorUnits,
     creditRedemptionInputToMinorUnits,
     customerCreditAvailableAfterPending,
@@ -357,6 +358,16 @@ try {
   assert.equal(findInventoryItemByScan(result.items, "PKM-JGL-060-YLW").publicId, "inv-2002")
   assert.equal(findInventoryItemByScan(result.items, " inv-1001 ").barcode, "PKM-BASE-004-HOLO")
   assert.equal(findInventoryItemByScan(result.items, "charizard"), null)
+  assert.ok(
+    connectorManifestUnavailableGuidance("Manifest endpoint returned HTTP 404.").includes(
+      "Install and activate the staging plugin package",
+    ),
+  )
+  assert.ok(
+    connectorManifestUnavailableGuidance("Manifest endpoint did not return JSON.").includes(
+      "endpoint responded",
+    ),
+  )
 
   const conflictResolutionBody = buildOfflineConflictResolutionRequestBody(
     updatedConflict,

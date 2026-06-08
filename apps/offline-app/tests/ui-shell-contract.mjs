@@ -239,6 +239,7 @@ for (const interactionMarker of [
   "buildCustomerCreditRedemptionOperation(customerCredit, {",
   "amountMinorUnits: creditRedemptionMinorUnits",
   "buildConnectorProfileFromDraft",
+  "connectorManifestUnavailableGuidance(detail)",
   "buildConnectorProfileStorageSnapshot",
   "buildPreparedPairingStorageSnapshot",
   "buildPairedDeviceRecord",

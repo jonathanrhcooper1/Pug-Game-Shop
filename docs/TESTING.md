@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app connector coverage now verifies route-missing manifest guidance,
+  and the live staging check confirmed `/wp-json/` responds while
+  `/wp-json/tcg-store/v1/offline/connector-manifest` and `/health` return 404
+  until the staging plugin is installed/activated.
 - Offline app contract and browser coverage now verifies event workflow inputs:
   attendee labels, pay-at-store status, and sanitized check-in public IDs flow
   into queued `event_reservation` and `event_checkin` operation payloads.

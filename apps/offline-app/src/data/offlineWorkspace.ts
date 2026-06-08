@@ -1010,6 +1010,24 @@ export function connectorManifestUrl(profile: StoreConnectorProfile) {
   return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}/offline/connector-manifest`
 }
 
+export function connectorManifestUnavailableGuidance(detail: string) {
+  const normalized = detail.toLowerCase()
+
+  if (normalized.includes("http 404") || normalized.includes("not found")) {
+    return "WordPress REST is reachable, but TCG Store connector routes are not registered. Install and activate the staging plugin package, then confirm offline route gates before pairing."
+  }
+
+  if (normalized.includes("timed out")) {
+    return "The website did not answer the public manifest request in time. Recheck staging hosting availability before pairing this device."
+  }
+
+  if (normalized.includes("json")) {
+    return "The endpoint responded, but not with a connector manifest. Confirm the plugin route is active and not replaced by a theme, cache, or security page."
+  }
+
+  return "Validate the local preview, then install or activate the staging plugin package before attempting device pairing."
+}
+
 function connectorRestUrl(
   profile: StoreConnectorProfile,
   path: "/offline/pull" | "/offline/push" | `/offline/conflicts/${string}/resolve`,

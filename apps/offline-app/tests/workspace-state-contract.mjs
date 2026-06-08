@@ -107,6 +107,7 @@ for (const requiredExport of [
   "findInventoryItemByScan",
   "cleanOfflineEventAttendeeLabel",
   "cleanOfflineEventRegistrationPublicId",
+  "connectorManifestUnavailableGuidance",
   "creditRedemptionInputFromMinorUnits",
   "creditRedemptionInputToMinorUnits",
   "customerCreditAvailableAfterPending",
@@ -308,6 +309,8 @@ assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
 assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))
 assert.ok(appSource.includes("setPullRefreshPreview"))
 assert.ok(appSource.includes("buildConnectorTestReport("))
+assert.ok(appSource.includes("connectorManifestUnavailableGuidance(detail)"))
+assert.ok(workspaceSource.includes("Install and activate the staging plugin package"))
 assert.ok(appSource.includes("summarizeOfflinePushResult({"))
 assert.ok(appSource.includes("applyOfflinePushResultToQueue(queuedOperations, pushSummaryResult)"))
 assert.ok(appSource.includes("stagedOperation.client_operation_id"))

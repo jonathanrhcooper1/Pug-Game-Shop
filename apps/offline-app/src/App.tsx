@@ -30,6 +30,7 @@ import {
   cleanOfflineEventAttendeeLabel,
   cleanOfflineEventRegistrationPublicId,
   connectorManifestUrl,
+  connectorManifestUnavailableGuidance,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorProfileDraftFromProfile,
@@ -1597,6 +1598,7 @@ export function App() {
       })
     } catch (error) {
       const detail = connectorManifestFetchErrorMessage(error)
+      const readinessGuidance = connectorManifestUnavailableGuidance(detail)
       const previewValidation = validateConnectorManifest(buildConnectorManifestPreview(draftResult.profile))
       const report = buildConnectorTestReport(draftResult.profile, previewValidation, null)
 
@@ -1604,14 +1606,14 @@ export function App() {
       setConnectorTestReport(report)
       setConnectorManifestFetch({
         status: "error",
-        detail,
+        detail: `${detail} ${readinessGuidance}`,
         sourceUrl,
         profileId: draftResult.profile.id,
       })
       setActiveSection("Settings")
       setActivityMessage({
         title: "Live connector manifest unavailable",
-        detail: `${detail} Local profile validation still passed with ${previewValidation.routeCount} planned offline route(s).`,
+        detail: `${detail} ${readinessGuidance} Local profile validation still passed with ${previewValidation.routeCount} planned offline route(s).`,
       })
     } finally {
       window.clearTimeout(timeoutId)
