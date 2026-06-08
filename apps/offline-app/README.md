@@ -26,8 +26,9 @@ future offline sync app.
   desktop secure-store token status reporting, guarded desktop pull/push sync
   execution summaries, exact barcode/public-ID scan targeting with
   Enter-to-stage support, customer-credit amount entry with cached-balance
-  guards, event attendee/payment/check-in inputs, accepted push-result queue
-  clearing, route-missing connector guidance for staging plugin activation,
+  guards, quantity adjustment delta/reason controls, event
+  attendee/payment/check-in inputs, accepted push-result queue clearing,
+  route-missing connector guidance for staging plugin activation,
   conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.

@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app inventory adjustments now accept staff-entered quantity deltas
+  and adjustment reasons, validate non-zero whole-number changes, and queue the
+  exact quantity payload for later website sync acceptance.
 - Offline app website connector testing now gives route-missing staging
   guidance when the WordPress REST index is reachable but `tcg-store` offline
   connector routes are not registered, pointing staff to install/activate the

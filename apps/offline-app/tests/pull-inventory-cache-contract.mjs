@@ -32,8 +32,10 @@ try {
     buildCustomerCreditRedemptionOperation,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
+    buildInventoryUpdateOperation,
     buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
+    cleanInventoryAdjustmentReason,
     cleanOfflineEventAttendeeLabel,
     cleanOfflineEventRegistrationPublicId,
     connectorManifestUnavailableGuidance,
@@ -41,6 +43,7 @@ try {
     creditRedemptionInputToMinorUnits,
     customerCreditAvailableAfterPending,
     findInventoryItemByScan,
+    inventoryQuantityDeltaFromInput,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
@@ -358,6 +361,13 @@ try {
   assert.equal(findInventoryItemByScan(result.items, "PKM-JGL-060-YLW").publicId, "inv-2002")
   assert.equal(findInventoryItemByScan(result.items, " inv-1001 ").barcode, "PKM-BASE-004-HOLO")
   assert.equal(findInventoryItemByScan(result.items, "charizard"), null)
+  assert.equal(inventoryQuantityDeltaFromInput("+12"), 12)
+  assert.equal(inventoryQuantityDeltaFromInput("-2"), -2)
+  assert.equal(inventoryQuantityDeltaFromInput("0"), null)
+  assert.equal(inventoryQuantityDeltaFromInput("1.5"), null)
+  assert.equal(inventoryQuantityDeltaFromInput("100"), null)
+  assert.equal(cleanInventoryAdjustmentReason("  cycle   count shelf  "), "cycle count shelf")
+  assert.equal(cleanInventoryAdjustmentReason(""), "staff offline quantity correction")
   assert.ok(
     connectorManifestUnavailableGuidance("Manifest endpoint returned HTTP 404.").includes(
       "Install and activate the staging plugin package",
@@ -368,6 +378,20 @@ try {
       "endpoint responded",
     ),
   )
+
+  const quantityAdjustmentOperation = buildInventoryUpdateOperation(existingItems[0], {
+    operationKind: "quantity",
+    quantityDelta: -2,
+    adjustmentReason: "cycle count shelf",
+    syncIntent: "staff_quantity_adjustment",
+    occurredAtLocal: "2026-06-08T08:25:00Z",
+    queuedAtUtc: "2026-06-08T12:25:00Z",
+  })
+  const quantityAdjustmentPayload = JSON.parse(quantityAdjustmentOperation.payload_json)
+  assert.equal(quantityAdjustmentOperation.client_operation_id, "offline-inventory-quantity-7-20260608122500")
+  assert.equal(quantityAdjustmentPayload.quantity_delta, -2)
+  assert.equal(quantityAdjustmentPayload.adjustment_reason, "cycle count shelf")
+  assert.equal(quantityAdjustmentPayload.sync_intent, "staff_quantity_adjustment")
 
   const conflictResolutionBody = buildOfflineConflictResolutionRequestBody(
     updatedConflict,

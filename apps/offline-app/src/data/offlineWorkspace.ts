@@ -939,6 +939,31 @@ export function statusLabel(status: InventoryStatus) {
   return status === "available" ? "Available" : status === "reserved" ? "Reserved" : "Conflict"
 }
 
+export function inventoryQuantityDeltaFromInput(value: string): number | null {
+  const normalized = value.trim()
+
+  if (!/^[+-]?\d+$/.test(normalized)) {
+    return null
+  }
+
+  const parsed = Number(normalized)
+
+  if (!Number.isSafeInteger(parsed) || parsed === 0 || parsed < -99 || parsed > 99) {
+    return null
+  }
+
+  return parsed
+}
+
+export function cleanInventoryAdjustmentReason(
+  value: string,
+  fallback = "staff offline quantity correction",
+): string {
+  const cleaned = value.trim().replace(/\s+/g, " ")
+
+  return cleaned ? cleaned.slice(0, 120) : fallback
+}
+
 export function eventRegistrationStatusLabel(status: EventRegistrationStatus) {
   return status === "open" ? "Open" : status === "waitlist" ? "Waitlist" : status === "full" ? "Full" : "Closed"
 }

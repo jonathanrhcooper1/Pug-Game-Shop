@@ -3,6 +3,53 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Quantity Adjustment Workflow
+
+### What Changed
+
+- Added quantity delta and adjustment-reason inputs to the selected inventory
+  detail workflow.
+- Validated quantity adjustments as non-zero whole numbers from -99 to 99,
+  including signed values such as `+1` and `-2`.
+- Updated the offline quantity adjustment action so queued inventory operation
+  payloads include the exact `quantity_delta`, sanitized `adjustment_reason`,
+  and staff quantity sync intent.
+
+### Why
+
+The previous `Adjust Qty` button always staged a generic `+1` correction. Staff
+need offline cycle counts, receiving corrections, and shelf fixes to capture
+the actual quantity change and reason before reconnecting to the website.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for quantity delta parsing, reason
+  sanitization, and queued inventory quantity payloads.
+- UI/workspace contract markers proving the quantity controls and blocked-state
+  path remain wired into the offline app.
+
+### Rollback Notes
+
+- Revert this revision to restore the fixed `+1` quantity staging behavior.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Connector Route Readiness Guidance
 
 ### What Changed

@@ -105,6 +105,8 @@ for (const requiredExport of [
   "upsertConnectorProfile",
   "filterInventoryItems",
   "findInventoryItemByScan",
+  "inventoryQuantityDeltaFromInput",
+  "cleanInventoryAdjustmentReason",
   "cleanOfflineEventAttendeeLabel",
   "cleanOfflineEventRegistrationPublicId",
   "connectorManifestUnavailableGuidance",
@@ -283,6 +285,12 @@ for (const marker of [
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(targetItem, operationOptions)"))
+assert.ok(appSource.includes("quantityDeltaInput"))
+assert.ok(appSource.includes("quantityAdjustmentReason"))
+assert.ok(appSource.includes("inventoryQuantityDeltaFromInput(quantityDeltaInput)"))
+assert.ok(appSource.includes("handleQuantityAdjustment"))
+assert.ok(appSource.includes("quantityDelta,"))
+assert.ok(appSource.includes("adjustmentReason: reason"))
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
 assert.ok(appSource.includes("buildEventCheckinOperation(event"))
 assert.ok(appSource.includes("buildEventRegistrationOperation(event"))

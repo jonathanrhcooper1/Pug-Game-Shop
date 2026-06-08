@@ -18,6 +18,9 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract and browser coverage now verifies inventory quantity
+  adjustment controls: staff-entered signed deltas and reasons stage exact
+  `quantity_delta` payloads, while zero or malformed changes are blocked.
 - Offline app connector coverage now verifies route-missing manifest guidance,
   and the live staging check confirmed `/wp-json/` responds while
   `/wp-json/tcg-store/v1/offline/connector-manifest` and `/health` return 404

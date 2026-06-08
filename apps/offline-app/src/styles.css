@@ -1432,6 +1432,48 @@ dd {
   gap: 8px;
 }
 
+.inventory-adjustment-controls {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(110px, 0.45fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.inventory-adjustment-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.inventory-adjustment-controls input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: #172016;
+  font-size: 14px;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(35, 100, 70, 0.24);
+  border-radius: 8px;
+}
+
+.inventory-adjustment-controls input:focus {
+  outline: 2px solid rgba(92, 171, 119, 0.45);
+  outline-offset: 2px;
+}
+
+.inventory-adjustment-controls small {
+  grid-column: 1 / -1;
+  color: #8b443d;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .detail-actions .wide-action {
   grid-column: 1 / -1;
 }
@@ -2254,6 +2296,7 @@ dd {
   .desktop-sync-panel,
   .detail-panel,
   .detail-actions,
+  .inventory-adjustment-controls,
   .event-row,
   .event-detail-card,
   .event-offline-fields,

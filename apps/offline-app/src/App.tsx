@@ -29,6 +29,7 @@ import {
   CONNECTOR_PROFILE_STORAGE_KEY,
   cleanOfflineEventAttendeeLabel,
   cleanOfflineEventRegistrationPublicId,
+  cleanInventoryAdjustmentReason,
   connectorManifestUrl,
   connectorManifestUnavailableGuidance,
   connectorDisplayUrl,
@@ -49,6 +50,7 @@ import {
   findInventoryItem,
   findPairedDeviceRecord,
   formatMoney,
+  inventoryQuantityDeltaFromInput,
   offlineWorkspaceSeed,
   OFFLINE_SESSION_STORAGE_KEY,
   offlineSessionStorageKey,
@@ -332,6 +334,9 @@ export function App() {
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
+  const [quantityDeltaInput, setQuantityDeltaInput] = useState("1")
+  const [quantityAdjustmentReason, setQuantityAdjustmentReason] =
+    useState("staff offline quantity correction")
   const [activityMessage, setActivityMessage] = useState<ActivityMessage>({
     title: offlineSessionStorage.restored ? "Local queue restored" : "Local workspace ready",
     detail: offlineSessionStorage.restored
@@ -471,6 +476,11 @@ export function App() {
     creditRedemptionMinorUnits ?? 0,
     customerCredit.currency,
   )
+  const quantityDelta = inventoryQuantityDeltaFromInput(quantityDeltaInput)
+  const quantityAdjustmentIssue =
+    quantityDelta === null
+      ? "Enter a whole-number quantity change from -99 to 99, excluding 0."
+      : ""
 
   useEffect(() => {
     if (scannedInventoryItem && scannedInventoryItem.id !== selectedId) {
@@ -898,6 +908,32 @@ export function App() {
             }
           : item,
       ),
+    )
+  }
+
+  async function handleQuantityAdjustment() {
+    if (quantityDelta === null) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Quantity adjustment blocked",
+        detail: quantityAdjustmentIssue,
+      })
+      return
+    }
+
+    const reason = cleanInventoryAdjustmentReason(quantityAdjustmentReason)
+    const signedDelta = quantityDelta > 0 ? `+${quantityDelta}` : String(quantityDelta)
+    setQuantityAdjustmentReason(reason)
+
+    await handleStageInventoryUpdate(
+      "Quantity adjustment staged",
+      {
+        operationKind: "quantity",
+        quantityDelta,
+        syncIntent: "staff_quantity_adjustment",
+        adjustmentReason: reason,
+      },
+      `${selectedItem.cardName} quantity correction (${signedDelta}) is queued locally with reason "${reason}"; exact website inventory remains authoritative after sync acceptance.`,
     )
   }
 
@@ -2547,6 +2583,33 @@ export function App() {
                 </div>
               </dl>
               <div className="detail-actions">
+                <div className="inventory-adjustment-controls" aria-label="Inventory adjustment details">
+                  <label htmlFor="quantity-delta">
+                    <span className="micro-label">Qty delta</span>
+                    <input
+                      id="quantity-delta"
+                      inputMode="numeric"
+                      value={quantityDeltaInput}
+                      onChange={(event) => setQuantityDeltaInput(event.target.value)}
+                      placeholder="+1"
+                    />
+                  </label>
+                  <label htmlFor="quantity-adjustment-reason">
+                    <span className="micro-label">Reason</span>
+                    <input
+                      id="quantity-adjustment-reason"
+                      value={quantityAdjustmentReason}
+                      onBlur={() =>
+                        setQuantityAdjustmentReason(
+                          cleanInventoryAdjustmentReason(quantityAdjustmentReason),
+                        )
+                      }
+                      onChange={(event) => setQuantityAdjustmentReason(event.target.value)}
+                      placeholder="Reason"
+                    />
+                  </label>
+                  {quantityAdjustmentIssue ? <small>{quantityAdjustmentIssue}</small> : null}
+                </div>
                 <button
                   className="wide-action"
                   type="button"
@@ -2562,21 +2625,7 @@ export function App() {
                 >
                   Hold Item
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void handleStageInventoryUpdate(
-                      "Quantity adjustment staged",
-                      {
-                        operationKind: "quantity",
-                        quantityDelta: 1,
-                        syncIntent: "staff_quantity_adjustment",
-                        adjustmentReason: "staff offline quantity correction",
-                      },
-                      `${selectedItem.cardName} quantity correction (+1) is queued locally; exact website inventory remains authoritative after sync acceptance.`,
-                    )
-                  }
-                >
+                <button type="button" onClick={() => void handleQuantityAdjustment()}>
                   Adjust Qty
                 </button>
                 <button type="button" onClick={handlePrintLabel}>
