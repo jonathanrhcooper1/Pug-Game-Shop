@@ -47,8 +47,11 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_true( is_array( $checkpoint ) );
 		$this->assert_same( 7, $query_plan->total_query_count() );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_reference_cards`', $reference['sql_template'] );
+		$this->assert_contains( 'ON DUPLICATE KEY UPDATE', $reference['sql_template'] );
+		$this->assert_contains( '`row_version` = `row_version` + 1', $reference['sql_template'] );
 		$this->assert_contains( '`public_id`', $reference['sql_template'] );
 		$this->assert_same( 'reference_card_insert', $reference['query_kind'] );
+		$this->assert_true( $reference['reference_card_insert_idempotent'] );
 		$this->assert_same( 'sdx-pkm-001', $reference['provider_card_id'] );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_reference_variants`', $variant['sql_template'] );
 		$this->assert_contains( 'ON DUPLICATE KEY UPDATE', $variant['sql_template'] );

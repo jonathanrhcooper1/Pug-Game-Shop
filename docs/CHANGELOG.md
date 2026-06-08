@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex reference-card persistence now uses provider-key idempotent upserts,
+  allowing repeated paginated staging imports to refresh cached card metadata
+  without duplicate-key failures.
 - WordPress now exposes a staff-only event check-in route that records
   check-ins against existing event registrations, updates registration check-in
   state, and treats duplicate local check-ins idempotently.

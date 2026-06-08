@@ -99,14 +99,9 @@ final class ScryDexPersistenceQueryBuilder {
 				continue;
 			}
 
-			$reference_insert_queries[] = $this->insert_query_for_row(
+			$reference_insert_queries[] = $this->reference_insert_query_for_row(
 				$table_names['reference_cards'],
-				self::REFERENCE_INSERT_COLUMNS,
-				$row,
-				array(
-					'query_kind'       => 'reference_card_insert',
-					'provider_card_id' => (string) $row['provider_card_id'],
-				)
+				$row
 			);
 		}
 
@@ -382,6 +377,38 @@ final class ScryDexPersistenceQueryBuilder {
 				'persistence_query_execution_deferred' => true,
 			)
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference-card insert/upsert row.
+	 * @return array<string, mixed>
+	 */
+	private function reference_insert_query_for_row( string $table_name, array $row ): array {
+		$query       = $this->insert_query_for_row(
+			$table_name,
+			self::REFERENCE_INSERT_COLUMNS,
+			$row,
+			array(
+				'query_kind'                     => 'reference_card_insert',
+				'provider_card_id'               => (string) $row['provider_card_id'],
+				'reference_card_insert_idempotent' => true,
+			)
+		);
+		$assignments = array();
+
+		foreach ( self::REFERENCE_UPDATABLE_COLUMNS as $column ) {
+			if ( in_array( $column, array( 'provider_name', 'provider_card_id', 'row_version' ), true ) ) {
+				continue;
+			}
+
+			$quoted        = $this->quote_identifier( $column );
+			$assignments[] = $quoted . ' = VALUES(' . $quoted . ')';
+		}
+
+		$assignments[]         = '`row_version` = `row_version` + 1';
+		$query['sql_template'] .= ' ON DUPLICATE KEY UPDATE ' . implode( ', ', $assignments );
+
+		return $query;
 	}
 
 	/**

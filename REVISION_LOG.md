@@ -3,6 +3,57 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Reference Import Idempotency
+
+### What Changed
+
+- Changed ScryDex reference-card insert SQL templates to use
+  `ON DUPLICATE KEY UPDATE` against the provider identity key.
+- Preserved existing reference card `public_id` values on duplicate provider
+  cards while refreshing metadata, images, search text, timestamps, and row
+  versions.
+- Added query-builder contract coverage requiring idempotent reference-card
+  write templates for resumable paginated imports.
+
+### Why
+
+The ScryDex scheduled runner can receive the same provider card again when a
+page is retried or a paginated staging import resumes. Provider-price
+observations and reference variants already tolerate repeat writes; reference
+cards also need to be idempotent so long-running catalog imports do not fail on
+duplicate provider keys.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses the existing unique provider identity key on
+  `tcg_reference_cards`.
+
+### Tests Added
+
+- Updated ScryDex persistence query-builder coverage to require
+  `ON DUPLICATE KEY UPDATE`, row-version advancement, and the
+  `reference_card_insert_idempotent` audit flag for reference-card writes.
+
+### Verification
+
+- `php -l apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `php -l apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+
+### Rollback Notes
+
+- Revert this revision to restore pure reference-card inserts.
+- If rollback happens after a staging import retry, no data migration is
+  required, but future repeated ScryDex pages may again fail on duplicate
+  provider-card rows until existing rows are supplied to the planner.
+
 ## 2026-06-08 - Event Check-In Push to WordPress
 
 ### What Changed
