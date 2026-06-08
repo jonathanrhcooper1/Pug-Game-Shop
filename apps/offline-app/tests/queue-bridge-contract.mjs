@@ -13,11 +13,13 @@ for (const marker of [
   "queue_offline_operation",
   "list_offline_operations",
   "mark_offline_operations_synced",
+  "void_offline_operations",
   "preview_only",
   "tauri_command",
   "submitOfflineOperation",
   "restoreDesktopQueuedOperations",
   "markOfflineOperationsSynced",
+  "voidOfflineOperations",
   "previewOfflineOperation",
   "sanitizeOperationIds",
   "sanitizeRestoredOperations",
@@ -33,6 +35,7 @@ for (const marker of [
 assert.ok(appSource.includes("submitOfflineOperation(operation, queueAdapter)"))
 assert.ok(appSource.includes("restoreDesktopQueuedOperations(queueAdapter)"))
 assert.ok(appSource.includes("markOfflineOperationsSynced(queueApplyResult.removedOperationIds, queueAdapter)"))
+assert.ok(appSource.includes("voidOfflineOperations("))
 assert.ok(appSource.includes("OfflineQueueSubmissionResult"))
 assert.ok(appSource.includes("queueSubmission?.message"))
 assert.ok(appSource.includes("createTauriQueueAdapter"))

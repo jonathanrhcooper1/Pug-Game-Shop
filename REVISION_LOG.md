@@ -3,6 +3,61 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Desktop Queue Void Command
+
+### What Changed
+
+- Added a Tauri `void_offline_operations` command for selected pending local
+  queue rows.
+- Added Rust request/response contracts, command registration, SQLite update
+  planning, and in-memory SQLite tests.
+- The command marks matching pending queue rows as `rejected` rather than
+  deleting them, so staff-cleared rows stop restoring as pending while leaving
+  an auditable local status.
+- Added a TypeScript bridge function, `voidOfflineOperations`, and wired the
+  offline app `Clear Session Queue` action to call it when the Tauri queue
+  adapter is available.
+
+### Why
+
+The queue UI could clear browser/session state, but the standalone desktop app
+also needs a local persistence boundary for staff-cleared pending rows. Marking
+rows rejected keeps the action reversible/auditable at the database level while
+preventing accidental replay of bad local queue work.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The existing offline SQLite schema already allows `rejected` queue
+  statuses.
+
+### Tests Added
+
+- Rust coverage for voiding pending rows, excluding them from pending restore,
+  preserving the row with `rejected` status, and rejecting empty/unsafe
+  operation IDs.
+- Offline app bridge, local queue persistence, Tauri command, and UI shell
+  contract coverage for the void command and React handoff.
+
+### Rollback Notes
+
+- Revert this revision to remove desktop queue voiding and return
+  `Clear Session Queue` to browser/session-only clearing.
+- No WordPress database, staging, Square, ScryDex, payment, or production
+  rollback is required.
+
 ## 2026-06-08 - Offline App Queue Management Actions
 
 ### What Changed

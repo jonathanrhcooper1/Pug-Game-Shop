@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app desktop queue persistence now supports voiding selected pending
+  SQLite queue rows by marking them `rejected` for audit, removing them from
+  pending restore without deleting local history or touching website, Square,
+  ScryDex, payment, or production systems.
 - Offline app queue management now lets staff select queued operations, review
   the selected operation payload summary, copy a single secret-safe operation
   JSON payload with a manual preview fallback, export the current profile queue

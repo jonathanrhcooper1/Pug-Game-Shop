@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app Rust and contract coverage now verifies desktop queue voiding:
+  selected pending operation IDs are sanitized, marked `rejected` in SQLite,
+  removed from pending restore, and still avoid direct MySQL, network, website,
+  Square, ScryDex, payment, or production writes.
 - Offline app contract coverage now verifies queue management actions:
   selectable queued operation cards, selected-operation review, secret-safe copy
   and JSON export controls, session queue clearing, and explicit

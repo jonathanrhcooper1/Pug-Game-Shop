@@ -7,6 +7,7 @@ import {
 export const offlineQueueCommandName = "queue_offline_operation"
 export const offlineQueueListCommandName = "list_offline_operations"
 export const offlineQueueMarkSyncedCommandName = "mark_offline_operations_synced"
+export const offlineQueueVoidCommandName = "void_offline_operations"
 
 export type OfflineQueuePersistenceMode = "preview_only" | "tauri_command"
 export type OfflineQueueStatus = "previewed" | "queued" | "deferred"
@@ -50,6 +51,19 @@ export type OfflineQueueMarkSyncedResult = {
   acceptedOperationIds: string[]
   persistenceMode: OfflineQueuePersistenceMode
   status: "marked" | "previewed" | "deferred"
+  message: string
+  audit: {
+    directMysqlAccess: false
+    networkWrite: false
+    schemaVersion: 1
+  }
+}
+
+export type OfflineQueueVoidResult = {
+  commandName: typeof offlineQueueVoidCommandName
+  operationIds: string[]
+  persistenceMode: OfflineQueuePersistenceMode
+  status: "voided" | "previewed" | "deferred"
   message: string
   audit: {
     directMysqlAccess: false
@@ -181,6 +195,77 @@ export async function markOfflineOperationsSynced(
       persistenceMode: "preview_only",
       status: "deferred",
       message: "Desktop queue sync marking is deferred.",
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  }
+}
+
+export async function voidOfflineOperations(
+  operationIds: string[],
+  adapter?: OfflineQueueCommandAdapter,
+): Promise<OfflineQueueVoidResult> {
+  const safeOperationIds = sanitizeOperationIds(operationIds)
+
+  if (safeOperationIds.length === 0) {
+    return {
+      commandName: offlineQueueVoidCommandName,
+      operationIds: [],
+      persistenceMode: "preview_only",
+      status: "previewed",
+      message: "No pending local queue rows were selected for voiding.",
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  }
+
+  if (!adapter) {
+    return {
+      commandName: offlineQueueVoidCommandName,
+      operationIds: safeOperationIds,
+      persistenceMode: "preview_only",
+      status: "previewed",
+      message: `${safeOperationIds.length} pending queue row(s) ready for desktop void marking.`,
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  }
+
+  try {
+    await adapter.invoke(offlineQueueVoidCommandName, {
+      request: {
+        operation_ids: safeOperationIds,
+      },
+    })
+
+    return {
+      commandName: offlineQueueVoidCommandName,
+      operationIds: safeOperationIds,
+      persistenceMode: "tauri_command",
+      status: "voided",
+      message: `${safeOperationIds.length} pending queue row(s) marked rejected in the desktop queue.`,
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  } catch {
+    return {
+      commandName: offlineQueueVoidCommandName,
+      operationIds: safeOperationIds,
+      persistenceMode: "preview_only",
+      status: "deferred",
+      message: "Desktop queue void marking is deferred.",
       audit: {
         directMysqlAccess: false,
         networkWrite: false,

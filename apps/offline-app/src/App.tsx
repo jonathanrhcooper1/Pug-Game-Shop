@@ -103,6 +103,7 @@ import {
   markOfflineOperationsSynced,
   restoreDesktopQueuedOperations,
   submitOfflineOperation,
+  voidOfflineOperations,
   type OfflineQueueSubmissionResult,
 } from "./data/offlineQueueBridge"
 import { createTauriDevicePairingAdapter } from "./data/tauriDevicePairingAdapter"
@@ -1122,7 +1123,7 @@ export function App() {
     setActiveSection("Queue")
   }
 
-  function handleClearSessionQueue() {
+  async function handleClearSessionQueue() {
     if (queuedOperations.length === 0) {
       setQueueExportStatus({
         status: "blocked",
@@ -1134,6 +1135,10 @@ export function App() {
     }
 
     const clearedCount = queuedOperations.length
+    const voidResult = await voidOfflineOperations(
+      queuedOperations.map((operation) => operation.client_operation_id),
+      queueAdapter,
+    )
 
     setQueuedOperations([])
     setSelectedQueuedOperationId("")
@@ -1144,15 +1149,18 @@ export function App() {
     setQueueSubmission(null)
     setQueueExportStatus({
       status: "cleared",
-      detail: `${clearedCount} current-session queue operation(s) cleared locally; desktop durable rows still clear only after accepted sync marking.`,
+      detail:
+        `${clearedCount} current-session queue operation(s) cleared locally; ` +
+        `${voidResult.status === "voided"
+          ? "desktop pending rows were marked rejected for audit."
+          : `${voidResult.message} Desktop durable rows also clear after accepted sync marking.`}`,
       rawCredentialsCopied: false,
     })
     setQueueExportPreview("")
     setActiveSection("Queue")
     setActivityMessage({
       title: "Session queue cleared",
-      detail:
-        "Current browser/session queue rows were cleared without website, Square, ScryDex, payment, or production writes.",
+      detail: `${voidResult.message} Current browser/session queue rows were cleared without website, Square, ScryDex, payment, or production writes.`,
     })
   }
 
@@ -3117,7 +3125,7 @@ export function App() {
                   className="secondary-command danger-command"
                   type="button"
                   disabled={queuedOperations.length === 0}
-                  onClick={handleClearSessionQueue}
+                  onClick={() => void handleClearSessionQueue()}
                 >
                   <Icon name="trash" />
                   <span>Clear Session Queue</span>

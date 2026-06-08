@@ -249,6 +249,7 @@ for (const interactionMarker of [
   "handleCopySelectedQueueOperation",
   "handleExportQueueJson",
   "handleClearSessionQueue",
+  "voidOfflineOperations(",
   "credentials_synced_to_app: false",
   "findInventoryItemByScan(inventoryItems, query)",
   "addScanTarget",
