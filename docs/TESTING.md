@@ -524,6 +524,9 @@
   shaping, route validation, idempotency/header checks, no-raw-response
   summaries, UI live-apply/fallback markers, and Windows package manifest route
   exposure.
+- Packaging coverage now includes a shared staging SSH helper contract so all
+  guarded SFTP/WP-CLI staging scripts use the same GoDaddy-compatible
+  algorithm configuration and continue to avoid printing credentials.
 - Local unit coverage now includes the staged offline pull route handler,
   proving valid requests return the presenter-shaped response contract,
   injected change-set providers are passed through without cursor advancement,

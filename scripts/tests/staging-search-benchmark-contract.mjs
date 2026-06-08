@@ -58,6 +58,7 @@ for (const requiredMarker of [
   "sftp.unlink",
   "stdoutTail",
   "stderrTail",
+  "stagingSshConnectConfig(requiredEnv)",
 ]) {
   assert.ok(
     scriptSource.includes(requiredMarker),

@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging SSH Compatibility Helper
+
+### What Changed
+
+- Added a shared staging SSH/SFTP connection helper with the OpenSSH-compatible
+  algorithm set verified against the GoDaddy Managed WordPress staging host.
+- Updated package upload, inventory smoke, migration rehearsal, and search
+  benchmark scripts to use the shared connection config.
+- Added a packaging contract that requires the helper, safe algorithm markers,
+  and helper usage across all staging SSH scripts.
+- Updated existing staging script contracts to require helper usage.
+
+### Why
+
+The staging host is reachable and accepts password authentication, but the
+default `ssh2` negotiation timed out unless the client pinned a compatible
+algorithm set. Centralizing that setting makes future uploads and WP-CLI
+staging checks repeatable.
+
+### Files Affected
+
+- `scripts/lib/staging-ssh.mjs`
+- `scripts/staging-upload-wordpress-package.mjs`
+- `scripts/staging-run-inventory-smoke.mjs`
+- `scripts/staging-run-migration-rehearsal.mjs`
+- `scripts/staging-run-search-benchmark.mjs`
+- `scripts/tests/staging-ssh-contract.mjs`
+- `scripts/tests/staging-upload-contract.mjs`
+- `scripts/tests/staging-inventory-smoke-contract.mjs`
+- `scripts/tests/staging-migration-rehearsal-contract.mjs`
+- `scripts/tests/staging-search-benchmark-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging SSH helper packaging contract.
+- Existing staging upload/smoke/rehearsal/benchmark contracts now assert helper
+  usage.
+
+### Tests Run
+
+- `npm run test:packaging`: passed.
+- `npm run test`: passed, including PHP/plugin tests, sync-engine tests,
+  POS/payment policy tests, API-client tests, offline app tests, packaging
+  contracts, staging contract scaffolds, and ScryDex live smoke contract.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore direct per-script `ssh2` connection configs.
+- No WordPress, staging, database, or remote file rollback is required.
+
 ## 2026-06-08 - Offline App Conflict Resolution Execution
 
 ### What Changed

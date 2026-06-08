@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Staging SSH/SFTP scripts now share a GoDaddy-compatible SSH algorithm
+  configuration for upload-only package transfer, inventory smoke,
+  migration rehearsal, and search benchmark runners.
 - Offline app conflict review actions now attempt a guarded live desktop
   `conflict_resolution` request for paired non-production connector profiles,
   fall back to local queue staging when offline/deferred, and leave stale or

@@ -64,6 +64,9 @@ The upload script writes a timestamped `tcg-store-platform` zip under
 `/html/wp-content/uploads` by default, verifies the remote byte size, and
 prints only non-secret metadata. It does not activate the plugin, overwrite
 active plugin files, run migrations, delete remote files, or deploy production.
+Staging SSH/SFTP scripts use a shared OpenSSH-compatible algorithm set for
+GoDaddy Managed WordPress hosts that negotiate `ssh-ed25519` host keys and
+modern curve/AES ciphers.
 
 ## Gated Inventory Smoke Runner
 

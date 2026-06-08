@@ -34,6 +34,7 @@ for (const requiredMarker of [
   "fastPut",
   "sftp.stat",
   "sizeMatched",
+  "stagingSshConnectConfig(requiredEnv)",
 ]) {
   assert.ok(scriptSource.includes(requiredMarker), `Missing staging upload marker: ${requiredMarker}`)
 }

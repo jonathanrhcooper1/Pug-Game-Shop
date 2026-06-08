@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Client } from "ssh2"
+import { stagingSshConnectConfig } from "./lib/staging-ssh.mjs"
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
@@ -109,12 +110,7 @@ const result = await new Promise((resolveResult, reject) => {
       })
     })
     .on("error", reject)
-    .connect({
-      host: requiredEnv.PUG_STAGING_SSH_HOST,
-      username: requiredEnv.PUG_STAGING_SSH_USER,
-      password: requiredEnv.PUG_STAGING_SSH_PASSWORD,
-      readyTimeout: 20000,
-    })
+    .connect(stagingSshConnectConfig(requiredEnv))
 })
 
 if (!result.sizeMatched) {
