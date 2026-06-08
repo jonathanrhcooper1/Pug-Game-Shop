@@ -30,7 +30,10 @@ page processing, persistence planning, SQL template building, and repository
 audit staging. The gated cards worker shell can also call the configured
 provider for bounded paginated pages in staging/tests, expose continuation
 checkpoints, and then feed each page through that same orchestration planner.
-The worker shell does not call the persistence execution method by default.
+The worker shell can call the persistence execution method only when explicitly
+requested through `execute_database_writes`; staged/deferred mode remains the
+default. The `scrydex_sync` feature flag is available only in local,
+development, and staging environments and remains unavailable in production.
 Durable scheduled cron routing, image workers, and webhook route handling remain
 disabled until staging acceptance. WordPress
 administrator settings provide secret-preserving staging credential storage and
@@ -185,7 +188,10 @@ database-write, and scheduler gates are all ready or explicitly overridden in a
 controlled staging/test context. It returns page summaries, continuation
 checkpoint rows, and secret-free audit metadata. It still intentionally does
 not persist reference cards, write provider price observations, upsert
-checkpoints, download images, or register webhooks by default.
+checkpoints, download images, or register webhooks by default. When
+`execute_database_writes` is true, the worker/page planner uses the explicit
+persistence execution boundary and reports executed page status plus
+transaction audit metadata.
 
 The explicit persistence `execute()` boundary is available for the future
 staging cron worker. It is not invoked by health checks, dry runs, local tests

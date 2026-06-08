@@ -34,16 +34,21 @@ final class ScryDexCardsSyncWorkerPlanner {
 		array $request,
 		ScryDexResult $provider_result,
 		array $existing_reference_rows = array(),
-		array $gate_overrides = array()
+		array $gate_overrides = array(),
+		bool $execute_database_writes = false
 	): array {
 		$gate                 = $this->execution_gate->plan_cards_worker( $request, $gate_overrides );
 		$checkpoint           = ScryDexSyncCheckpoint::from_row( $gate['checkpoint_row'] );
 		$page_plan            = $this->page_processor->process_cards_page( $checkpoint, $provider_result );
 		$persistence_plan     = $this->persistence_planner->plan_page( $page_plan, $existing_reference_rows );
 		$query_plan           = $this->query_builder->build( $persistence_plan, $this->table_prefix );
-		$repository_result    = $this->repository->stage( $query_plan );
+		$repository_result    = $execute_database_writes
+			? $this->repository->execute( $query_plan )
+			: $this->repository->stage( $query_plan );
 		$block_reasons        = $this->block_reasons( $gate, $page_plan, $query_plan, $repository_result );
 		$provider_result_data = $provider_result->to_array();
+		$repository_audit     = $repository_result->audit_payload();
+		$database_deferred    = true === ( $repository_audit['persistence_repository_deferred'] ?? true );
 
 		return array(
 			'status'                                     => $this->status( $gate, $page_plan, $query_plan, $repository_result ),
@@ -59,17 +64,18 @@ final class ScryDexCardsSyncWorkerPlanner {
 			'page_plan'                                  => $this->page_plan_summary( $page_plan ),
 			'persistence_plan'                           => $this->persistence_plan_summary( $persistence_plan ),
 			'persistence_query_plan'                     => $query_plan->audit_payload(),
-			'persistence_repository_result'              => $repository_result->audit_payload(),
+			'persistence_repository_result'              => $repository_audit,
 			'credential_values_redacted'                 => true,
 			'network_requests_deferred'                  => true,
 			'provider_fetch_deferred'                    => true,
 			'provider_result_must_be_injected'           => true,
-			'persistence_query_execution_deferred'       => true,
-			'persistence_repository_deferred'            => true,
-			'reference_card_writes_deferred'             => true,
-			'provider_price_observation_writes_deferred' => true,
-			'checkpoint_upsert_execution_deferred'       => true,
-			'database_writes_deferred'                   => true,
+			'persistence_query_execution_deferred'       => true === ( $repository_audit['persistence_query_execution_deferred'] ?? true ),
+			'persistence_repository_deferred'            => $database_deferred,
+			'reference_card_writes_deferred'             => true === ( $repository_audit['reference_card_writes_deferred'] ?? true ),
+			'provider_price_observation_writes_deferred' => true === ( $repository_audit['provider_price_observation_writes_deferred'] ?? true ),
+			'checkpoint_upsert_execution_deferred'       => true === ( $repository_audit['checkpoint_upsert_execution_deferred'] ?? true ),
+			'database_writes_deferred'                   => $database_deferred,
+			'execute_database_writes_requested'          => $execute_database_writes,
 			'scheduled_worker_deferred'                  => true,
 			'image_downloads_deferred'                   => true,
 			'webhook_registration_deferred'              => true,
@@ -90,6 +96,10 @@ final class ScryDexCardsSyncWorkerPlanner {
 
 		if ( 'ready' !== ( $gate['status'] ?? '' ) || ! $query_plan->is_valid() || $repository_result->is_rejected() ) {
 			return 'blocked';
+		}
+
+		if ( $repository_result->is_executed() ) {
+			return 'executed';
 		}
 
 		return 'planned';

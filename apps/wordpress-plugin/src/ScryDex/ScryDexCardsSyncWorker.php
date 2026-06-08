@@ -40,6 +40,7 @@ final class ScryDexCardsSyncWorker {
 	): array {
 		$max_pages              = $this->max_pages( $request['max_pages'] ?? 1 );
 		$current_request        = $request;
+		$execute_database_writes = true === ( $request['execute_database_writes'] ?? false );
 		$pages                  = array();
 		$provider               = null;
 		$provider_request_count = 0;
@@ -77,12 +78,13 @@ final class ScryDexCardsSyncWorker {
 				$current_request,
 				$provider_result,
 				$existing_reference_rows,
-				$gate_overrides
+				$gate_overrides,
+				$execute_database_writes
 			);
 			$next_checkpoint_row = $this->next_checkpoint_row( $page_plan );
 			$pages[]             = $this->page_summary( $index + 1, $provider_request, $provider_result, $page_plan );
 
-			if ( 'planned' !== ( $page_plan['status'] ?? '' ) ) {
+			if ( ! in_array( (string) ( $page_plan['status'] ?? '' ), array( 'planned', 'executed' ), true ) ) {
 				$status        = (string) ( $page_plan['status'] ?? 'blocked' );
 				$block_reasons = $this->string_list( $page_plan['block_reasons'] ?? array() );
 				break;
@@ -123,9 +125,10 @@ final class ScryDexCardsSyncWorker {
 			'provider_request_count'              => $provider_request_count,
 			'provider_fetch_deferred'             => 0 === $provider_request_count,
 			'network_requests_deferred'           => 0 === $provider_request_count,
-			'database_writes_deferred'            => true,
-			'reference_card_writes_deferred'      => true,
-			'checkpoint_upsert_execution_deferred' => true,
+			'database_writes_deferred'            => $this->database_writes_deferred( $pages ),
+			'reference_card_writes_deferred'      => $this->reference_card_writes_deferred( $pages ),
+			'checkpoint_upsert_execution_deferred' => $this->checkpoint_writes_deferred( $pages ),
+			'execute_database_writes_requested'   => $execute_database_writes,
 			'provider_result_bodies_not_logged'   => true,
 			'credential_values_redacted'          => true,
 			'continuation_available'              => $continuation_available,
@@ -136,6 +139,44 @@ final class ScryDexCardsSyncWorker {
 			'block_reasons'                       => array_values( array_unique( $block_reasons ) ),
 			'configuration_issues'                => $this->configuration_issues( $last_gate, $block_reasons ),
 		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $pages Worker page summaries.
+	 */
+	private function database_writes_deferred( array $pages ): bool {
+		return $this->all_page_flag_deferred( $pages, 'database_writes_deferred' );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $pages Worker page summaries.
+	 */
+	private function reference_card_writes_deferred( array $pages ): bool {
+		return $this->all_page_flag_deferred( $pages, 'reference_card_writes_deferred' );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $pages Worker page summaries.
+	 */
+	private function checkpoint_writes_deferred( array $pages ): bool {
+		return $this->all_page_flag_deferred( $pages, 'checkpoint_upsert_execution_deferred' );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $pages Worker page summaries.
+	 */
+	private function all_page_flag_deferred( array $pages, string $flag ): bool {
+		if ( array() === $pages ) {
+			return true;
+		}
+
+		foreach ( $pages as $page ) {
+			if ( true !== ( $page['orchestration_plan'][ $flag ] ?? true ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**

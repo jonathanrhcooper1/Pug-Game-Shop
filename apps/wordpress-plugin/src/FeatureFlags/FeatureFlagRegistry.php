@@ -27,10 +27,11 @@ final class FeatureFlagRegistry {
 				'available_environments' => array( 'local', 'development', 'staging' ),
 			),
 			'scrydex_sync'             => array(
-				'label'     => 'ScryDex sync',
-				'default'   => false,
-				'available' => false,
-				'phase'     => 3,
+				'label'                  => 'ScryDex sync',
+				'default'                => false,
+				'available'              => true,
+				'phase'                  => 3,
+				'available_environments' => array( 'local', 'development', 'staging' ),
 			),
 			'woocommerce_reservations' => array(
 				'label'     => 'WooCommerce reservations',

@@ -24,7 +24,7 @@ final class FeatureFlagsTest extends TestCase {
 	}
 
 	public function test_staged_features_are_available_outside_production_only(): void {
-		foreach ( array( 'inventory_pricing', 'offline_sync' ) as $flag ) {
+		foreach ( array( 'inventory_pricing', 'scrydex_sync', 'offline_sync' ) as $flag ) {
 			$this->assert_true( FeatureFlags::is_available( $flag, 'local' ) );
 			$this->assert_true( FeatureFlags::is_available( $flag, 'development' ) );
 			$this->assert_true( FeatureFlags::is_available( $flag, 'staging' ) );
@@ -38,6 +38,7 @@ final class FeatureFlagsTest extends TestCase {
 
 		$this->assert_true( $result['core'] );
 		$this->assert_false( $result['inventory_pricing'] );
+		$this->assert_false( $result['scrydex_sync'] );
 		$this->assert_false( $result['offline_sync'] );
 		$this->assert_false( $result['events'] );
 	}
@@ -48,6 +49,7 @@ final class FeatureFlagsTest extends TestCase {
 
 		$this->assert_true( $result['core'] );
 		$this->assert_true( $result['inventory_pricing'] );
+		$this->assert_true( $result['scrydex_sync'] );
 		$this->assert_true( $result['offline_sync'] );
 		$this->assert_false( $result['events'] );
 	}

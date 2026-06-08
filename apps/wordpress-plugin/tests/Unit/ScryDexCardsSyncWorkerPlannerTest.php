@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\ScryDex\ScryDexCardsSyncWorkerPlanner;
+use TCGStorePlatform\ScryDex\ScryDexPersistenceRepository;
 use TCGStorePlatform\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 use TCGStorePlatform\ScryDex\ScryDexResult;
@@ -105,7 +106,39 @@ final class ScryDexCardsSyncWorkerPlannerTest extends TestCase {
 		$this->assert_true( $plan['database_writes_deferred'] );
 	}
 
-	private function planner( string $table_prefix = 'wp_' ): ScryDexCardsSyncWorkerPlanner {
+	public function test_planner_can_execute_persistence_when_explicitly_requested(): void {
+		$database = $this->database();
+		$plan     = $this->planner(
+			'wp_',
+			new ScryDexPersistenceRepository( $database )
+		)->plan_cards_page(
+			array(
+				'game'       => 'pokemon',
+				'page_size'  => 2,
+				'checkpoint' => ScryDexSyncCheckpoint::initial( 42, 'cards', 'pokemon' )->to_row(),
+			),
+			new ScryDexResult( ScryDexResult::SUCCESS, 200, $this->cards_fixture() ),
+			array(),
+			$this->ready_gate_overrides(),
+			true
+		);
+
+		$this->assert_same( 'executed', $plan['status'] );
+		$this->assert_false( $plan['database_writes_deferred'] );
+		$this->assert_false( $plan['reference_card_writes_deferred'] );
+		$this->assert_false( $plan['provider_price_observation_writes_deferred'] );
+		$this->assert_false( $plan['checkpoint_upsert_execution_deferred'] );
+		$this->assert_true( $plan['execute_database_writes_requested'] );
+		$this->assert_same( 'executed', $plan['persistence_repository_result']['status'] );
+		$this->assert_true( $plan['persistence_repository_result']['transaction_committed'] );
+		$this->assert_same( 7, $database->query_count );
+		$this->assert_same( 5, $database->prepare_count );
+	}
+
+	private function planner(
+		string $table_prefix = 'wp_',
+		?ScryDexPersistenceRepository $repository = null
+	): ScryDexCardsSyncWorkerPlanner {
 		return new ScryDexCardsSyncWorkerPlanner(
 			$table_prefix,
 			new ScryDexSyncExecutionGate(
@@ -133,7 +166,11 @@ final class ScryDexCardsSyncWorkerPlannerTest extends TestCase {
 				),
 				new ScryDexSyncCheckpointRepositoryPlanner( $table_prefix ),
 				new ScryDexPersistenceRepositoryReadinessPlanner( $table_prefix )
-			)
+			),
+			null,
+			null,
+			null,
+			$repository
 		);
 	}
 
@@ -166,5 +203,30 @@ final class ScryDexCardsSyncWorkerPlannerTest extends TestCase {
 			'database_writes_enabled'     => true,
 			'scheduled_worker_configured' => true,
 		);
+	}
+
+	private function database(): \wpdb {
+		return new class() extends \wpdb {
+			public string $prefix = 'wp_';
+			public int $prepare_count = 0;
+			public int $query_count = 0;
+
+			/**
+			 * @param list<mixed> $args Prepared arguments.
+			 */
+			public function prepare( string $query, array $args ): string {
+				++$this->prepare_count;
+				unset( $args );
+
+				return 'prepared:' . $query;
+			}
+
+			public function query( string $query ): int|false {
+				++$this->query_count;
+				unset( $query );
+
+				return 1;
+			}
+		};
 	}
 }

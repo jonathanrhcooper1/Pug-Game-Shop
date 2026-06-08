@@ -8,6 +8,8 @@
 namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\ScryDex\ScryDexCardsSyncWorker;
+use TCGStorePlatform\ScryDex\ScryDexCardsSyncWorkerPlanner;
+use TCGStorePlatform\ScryDex\ScryDexPersistenceRepository;
 use TCGStorePlatform\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner;
 use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 use TCGStorePlatform\ScryDex\ScryDexSyncCheckpointRepositoryPlanner;
@@ -117,10 +119,42 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 		$this->assert_same( 1, $result['continuation_checkpoint_row']['page_number'] );
 	}
 
+	public function test_worker_can_execute_persistence_when_explicitly_requested(): void {
+		$database = $this->database();
+		$worker   = $this->worker(
+			fn (): array => array(
+				'status' => 200,
+				'body'   => $this->cards_page( 1, '', 'sdx-pkm-001', 'Charizard' ),
+			),
+			new ScryDexPersistenceRepository( $database )
+		);
+		$result   = $worker->run_cards_pages(
+			array(
+				'game'                    => 'pokemon',
+				'page_size'               => 2,
+				'max_pages'               => 1,
+				'execute_database_writes' => true,
+			),
+			array(),
+			$this->ready_gate_overrides()
+		);
+
+		$this->assert_same( 'completed', $result['status'] );
+		$this->assert_false( $result['database_writes_deferred'] );
+		$this->assert_false( $result['reference_card_writes_deferred'] );
+		$this->assert_false( $result['checkpoint_upsert_execution_deferred'] );
+		$this->assert_true( $result['execute_database_writes_requested'] );
+		$this->assert_same( 'executed', $result['pages'][0]['orchestration_plan']['status'] );
+		$this->assert_same( 'executed', $result['pages'][0]['orchestration_plan']['persistence_repository_result']['status'] );
+		$this->assert_true( $result['pages'][0]['orchestration_plan']['persistence_repository_result']['transaction_committed'] );
+		$this->assert_same( 3, $database->prepare_count );
+		$this->assert_same( 5, $database->query_count );
+	}
+
 	/**
 	 * @param callable $transport ScryDex transport.
 	 */
-	private function worker( callable $transport ): ScryDexCardsSyncWorker {
+	private function worker( callable $transport, ?ScryDexPersistenceRepository $repository = null ): ScryDexCardsSyncWorker {
 		$factory = new ScryDexProviderFactory(
 			array(
 				'scrydex_provider' => array(
@@ -132,25 +166,35 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 			),
 			$transport
 		);
+		$gate    = new ScryDexSyncExecutionGate(
+			new ScryDexSyncDryRunPlanner( $factory ),
+			new ScryDexUsageBudgetPlanner(
+				array(
+					'scrydex_usage_budget' => array(
+						'enabled'                        => true,
+						'daily_credit_budget'            => 1000,
+						'minimum_remaining_credits'      => 100,
+						'per_cards_page_credit_estimate' => 5,
+					),
+				)
+			),
+			new ScryDexSyncCheckpointRepositoryPlanner( 'wp_' ),
+			new ScryDexPersistenceRepositoryReadinessPlanner( 'wp_' )
+		);
+		$page_planner = null === $repository ? null : new ScryDexCardsSyncWorkerPlanner(
+			'wp_',
+			$gate,
+			null,
+			null,
+			null,
+			$repository
+		);
 
 		return new ScryDexCardsSyncWorker(
 			'wp_',
 			$factory,
-			new ScryDexSyncExecutionGate(
-				new ScryDexSyncDryRunPlanner( $factory ),
-				new ScryDexUsageBudgetPlanner(
-					array(
-						'scrydex_usage_budget' => array(
-							'enabled'                        => true,
-							'daily_credit_budget'            => 1000,
-							'minimum_remaining_credits'      => 100,
-							'per_cards_page_credit_estimate' => 5,
-						),
-					)
-				),
-				new ScryDexSyncCheckpointRepositoryPlanner( 'wp_' ),
-				new ScryDexPersistenceRepositoryReadinessPlanner( 'wp_' )
-			)
+			$gate,
+			$page_planner
 		);
 	}
 
@@ -202,5 +246,30 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 			'database_writes_enabled'     => true,
 			'scheduled_worker_configured' => true,
 		);
+	}
+
+	private function database(): \wpdb {
+		return new class() extends \wpdb {
+			public string $prefix = 'wp_';
+			public int $prepare_count = 0;
+			public int $query_count = 0;
+
+			/**
+			 * @param list<mixed> $args Prepared arguments.
+			 */
+			public function prepare( string $query, array $args ): string {
+				++$this->prepare_count;
+				unset( $args );
+
+				return 'prepared:' . $query;
+			}
+
+			public function query( string $query ): int|false {
+				++$this->query_count;
+				unset( $query );
+
+				return 1;
+			}
+		};
 	}
 }

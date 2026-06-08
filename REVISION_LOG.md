@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Worker Execution Mode
+
+### What Changed
+
+- Made the `scrydex_sync` feature flag available in local, development, and
+  staging environments while keeping it unavailable in production.
+- Added explicit database-execution mode to the ScryDex cards worker page
+  planner.
+- Threaded `execute_database_writes` through the paginated ScryDex worker so a
+  future staging cron wrapper can request real catalog writes only after all
+  gates pass.
+- Updated worker and planner status output so executed pages distinguish
+  database writes from staged/deferred pages.
+- Added unit coverage for explicit ScryDex worker/page planner persistence
+  execution and staging-only feature-flag availability.
+
+### Why
+
+The project needs the website to own the ScryDex catalog mirror. The previous
+checkpoint added a safe persistence execution boundary; this revision connects
+the paginated worker to that boundary without enabling production access or
+making database writes the default behavior.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex page planner executes persistence when explicitly requested.
+- Paginated ScryDex worker executes persistence when explicitly requested.
+- ScryDex feature flag is available in local/development/staging and forced off
+  in production.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+
+### Rollback Notes
+
+- Revert this revision to return ScryDex sync to unavailable and keep the
+  paginated worker staged-only.
+- If staging used `execute_database_writes` before rollback, restore the
+  staging database backup or remove rows written by that staging sync job from
+  ScryDex reference-card, price-observation, and checkpoint tables.
+- No production rollback is required because production still cannot enable
+  `scrydex_sync`.
+
 ## 2026-06-08 - ScryDex Persistence Execution Boundary
 
 ### What Changed

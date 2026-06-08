@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex sync is now feature-flag available in local/development/staging
+  environments while remaining unavailable in production, and the paginated
+  worker/page planner can explicitly request database execution through the
+  new persistence boundary instead of staying staged-only.
 - ScryDex persistence repository now has an explicit transaction-backed
   execution path for accepted reference-card, provider-price observation, and
   checkpoint SQL plans, with table-prefix validation, rollback-on-failure
