@@ -47,6 +47,24 @@ Before major database migrations:
 3. Run migration checks on staging.
 4. Record the backup reference in `REVISION_LOG.md` or the release notes.
 
+## Upload-Only Package Transfer
+
+Build and upload the runtime-only WordPress plugin zip to staging uploads:
+
+```bash
+npm run package:wordpress
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_UPLOAD=upload-to-staging \
+npm run staging:upload-package
+```
+
+The upload script writes a timestamped `tcg-store-platform` zip under
+`/html/wp-content/uploads` by default, verifies the remote byte size, and
+prints only non-secret metadata. It does not activate the plugin, overwrite
+active plugin files, run migrations, delete remote files, or deploy production.
+
 ## Staging Smoke Checks
 
 - Plugin activates cleanly.

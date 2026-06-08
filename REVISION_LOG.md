@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Upload-Only Staging Package Transfer Script
+
+### What Changed
+
+- Added `npm run staging:upload-package` backed by
+  `scripts/staging-upload-wordpress-package.mjs`.
+- Added `ssh2` as a dev dependency for password-based SFTP upload from the
+  local development machine to the staging WordPress filesystem.
+- Added `scripts/tests/staging-upload-contract.mjs` and wired it into
+  `npm run test:packaging`.
+- Updated staging documentation with required environment variables and
+  upload-only behavior.
+
+### Why
+
+The prior staging package transfer was proven manually through a scratch
+script. This makes the workflow repeatable while keeping it intentionally short
+of activation, migration, production deployment, active plugin overwrite, or
+secret disclosure.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `scripts/staging-upload-wordpress-package.mjs`
+- `scripts/tests/staging-upload-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging upload contract coverage for required environment variable gates,
+  explicit upload confirmation, default `/html/wp-content/uploads` remote
+  target, SFTP `fastPut`, remote size verification, dry-run output, no
+  activation, no active plugin overwrite, and no credential printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:upload-package -- --dry-run` with placeholder staging
+  env values and upload confirmation: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the SFTP upload script, contract test, npm
+  script, and `ssh2` dev dependency.
+- No staging cleanup is required for this revision because only dry-run was
+  executed during verification.
+- A real upload, when run later, leaves a timestamped zip under staging
+  uploads; remove that zip manually if it is no longer needed.
+
 ## 2026-06-08 - Offline Prepared Pairing Local Persistence
 
 ### What Changed

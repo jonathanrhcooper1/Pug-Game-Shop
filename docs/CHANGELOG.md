@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Upload-only staging package transfer script for the WordPress plugin zip,
+  gated by explicit staging SSH environment variables and confirmation, with a
+  contract test and dry-run mode that verifies no plugin activation, active
+  file overwrite, production deployment, or credential printing occurs.
 - Offline app connector-specific sync session planning for `Sync Now`, showing
   the active website connector, pull and push endpoint URLs, queued operation
   count, pairing readiness, desktop secure-token storage, and deferred network
