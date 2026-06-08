@@ -82,6 +82,12 @@ shows whether credentials are synced to the app. Network calls, token exchange,
 pairing-code submission, provider writes, and production mutations remain
 deferred.
 
+The same local queue preview now covers customer-credit redemption and conflict
+review controls. These buttons produce offline operation envelopes and SQLite
+queue insert plans, but ledger replay, manager approval writes, website sync,
+canonical inventory/customer mutations, and network execution remain deferred
+until device pairing and staging acceptance.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

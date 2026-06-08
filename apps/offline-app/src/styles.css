@@ -661,6 +661,19 @@ h2 {
   line-height: 1.52;
 }
 
+.credit-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.credit-actions button {
+  color: #172016;
+  background: rgba(121, 215, 143, 0.16);
+  border: 1px solid rgba(121, 215, 143, 0.26);
+}
+
 .scanner-row {
   position: relative;
   display: grid;
@@ -729,6 +742,7 @@ h2 {
 .wide-action,
 .detail-actions button,
 .conflict-row button,
+.credit-actions button,
 .connector-actions button,
 .secondary-command {
   display: inline-flex;
@@ -748,6 +762,7 @@ h2 {
 
 .scanner-row button .icon,
 .wide-action .icon,
+.credit-actions button .icon,
 .secondary-command .icon {
   width: 17px;
   height: 17px;
@@ -1488,6 +1503,7 @@ dd {
   .detail-actions,
   .connector-grid,
   .connector-actions,
+  .credit-actions,
   .credit-panel {
     grid-template-columns: 1fr;
   }

@@ -3,6 +3,80 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Credit And Conflict Staged Actions
+
+### What Changed
+
+- Added structured customer-credit and conflict metadata to the offline app
+  workspace state.
+- Added `buildCustomerCreditRedemptionOperation` and
+  `buildConflictReviewOperation` so customer-credit and conflict controls
+  produce real offline operation envelopes.
+- Refactored the React app to route inventory, credit, and conflict actions
+  through a shared local queue staging path.
+- Added `Stage Credit Use` and `Review Ledger` controls to the customer credit
+  panel.
+- Wired conflict `Review`/`Approve` buttons to queue staged conflict-review
+  envelopes instead of only selecting the row.
+- Updated contract tests and documentation for these newly functional buttons.
+
+### Why
+
+The offline app needed more visible controls to perform useful local workflow
+state changes. This checkpoint extends the operation-envelope preview beyond
+inventory so staff can stage customer-credit and conflict work while the app is
+offline.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for customer-credit
+  redemption and conflict-review operation builders, `credit_redemption`,
+  `customer_credit`, `offline_credit_redemption`, and `staff_conflict_review`
+  markers.
+- Extended UI shell contracts for `Stage Credit Use`, `Review Ledger`,
+  `handleCreditRedemption`, and conflict operation staging.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- In-app browser DOM/interaction QA against `http://127.0.0.1:1420/`: passed
+  for `Stage Credit Use`, `Approve`, and `Review Ledger`, confirming staged
+  `offline-credit-*` and `offline-conflict-*` queue envelopes, no console
+  warnings/errors, and no horizontal overflow.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove customer-credit and conflict-review local
+  operation staging from the offline app.
+- No database migrations, live SQLite writes, website network calls, customer
+  ledger mutations, manager-approval writes, payment capture, Square writes,
+  ScryDex calls, or production mutations are introduced.
+- Existing inventory queue staging and connector manifest validation remain
+  available if only this credit/conflict action layer is rolled back.
+
 ## 2026-06-08 - Offline App Connector Manifest Validation
 
 ### What Changed

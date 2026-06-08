@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app customer-credit and conflict-review actions that stage
+  `credit_redemption` and conflict-review operation envelopes through the
+  local queue preview, keeping ledger replay, manager approval, website sync,
+  and canonical mutations deferred.
 - Offline app WordPress connector manifest ingestion and validation for
   reusable multi-company website profiles, including route-count checks,
   HTTPS/environment warnings, official WooCommerce Square payment authority,

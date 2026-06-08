@@ -53,11 +53,19 @@ export type ConflictItem = {
   title: string
   detail: string
   action: string
+  entityType: "inventory" | "customer_credit"
+  entityId: string
+  baseRowVersion: number
+  operationType: "inventory_update" | "credit_redemption"
+  managerOverride: boolean
 }
 
 export type CustomerCreditSnapshot = {
+  customerId: number
+  rowVersion: number
   label: string
   availableMinorUnits: number
+  redemptionPreviewMinorUnits: number
   currency: "USD"
   note: string
 }
@@ -404,16 +412,29 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       title: "Mox Amber location mismatch",
       detail: "Local scan says MTG Tray; website snapshot says Sold.",
       action: "Review",
+      entityType: "inventory",
+      entityId: "151",
+      baseRowVersion: 17,
+      operationType: "inventory_update",
+      managerOverride: false,
     },
     {
       title: "Credit redemption needs manager",
       detail: "$28.00 offline credit use awaits approval.",
       action: "Approve",
+      entityType: "customer_credit",
+      entityId: "customer-91",
+      baseRowVersion: 6,
+      operationType: "credit_redemption",
+      managerOverride: true,
     },
   ],
   customerCredit: {
+    customerId: 91,
+    rowVersion: 6,
     label: "Customer credit",
     availableMinorUnits: 24600,
+    redemptionPreviewMinorUnits: 2800,
     currency: "USD",
     note: "Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.",
   },
@@ -795,6 +816,89 @@ export function buildInventoryUpdateOperation(
     }),
     authorization_context_json: JSON.stringify({
       manager_override: false,
+      source: "offline_app",
+    }),
+    schema_version: 1,
+  }
+}
+
+export function buildCustomerCreditRedemptionOperation(
+  credit: CustomerCreditSnapshot,
+  options: {
+    amountMinorUnits?: number
+    actorId?: number
+    deviceId?: string
+    locationId?: number
+    managerOverride?: boolean
+    occurredAtLocal?: string
+    queuedAtUtc?: string
+    reason?: string
+  } = {},
+): OfflineOperationEnvelope {
+  const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
+  const queuedAtUtc = options.queuedAtUtc ?? occurredAtLocal
+  const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+  const amountMinorUnits = options.amountMinorUnits ?? credit.redemptionPreviewMinorUnits
+
+  return {
+    client_operation_id: `offline-credit-${credit.customerId}-${operationStamp}`,
+    device_id: options.deviceId ?? "local-device-preview",
+    location_id: options.locationId ?? 1,
+    actor_id: options.actorId ?? 1,
+    operation_type: "credit_redemption",
+    entity_type: "customer_credit",
+    entity_id: String(credit.customerId),
+    base_row_version: credit.rowVersion,
+    occurred_at_local: occurredAtLocal,
+    queued_at_utc: queuedAtUtc,
+    payload_json: JSON.stringify({
+      amount_minor_units: amountMinorUnits,
+      currency: credit.currency,
+      available_credit_snapshot_minor_units: credit.availableMinorUnits,
+      sync_intent: "offline_credit_redemption",
+    }),
+    authorization_context_json: JSON.stringify({
+      manager_override: options.managerOverride ?? false,
+      reason: options.reason ?? "offline customer credit redemption",
+      source: "offline_app",
+    }),
+    schema_version: 1,
+  }
+}
+
+export function buildConflictReviewOperation(
+  conflict: ConflictItem,
+  options: {
+    actorId?: number
+    deviceId?: string
+    locationId?: number
+    occurredAtLocal?: string
+    queuedAtUtc?: string
+  } = {},
+): OfflineOperationEnvelope {
+  const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
+  const queuedAtUtc = options.queuedAtUtc ?? occurredAtLocal
+  const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+
+  return {
+    client_operation_id: `offline-conflict-${conflict.entityId}-${operationStamp}`,
+    device_id: options.deviceId ?? "local-device-preview",
+    location_id: options.locationId ?? 1,
+    actor_id: options.actorId ?? 1,
+    operation_type: conflict.operationType,
+    entity_type: conflict.entityType,
+    entity_id: conflict.entityId,
+    base_row_version: conflict.baseRowVersion,
+    occurred_at_local: occurredAtLocal,
+    queued_at_utc: queuedAtUtc,
+    payload_json: JSON.stringify({
+      conflict_title: conflict.title,
+      conflict_detail: conflict.detail,
+      requested_action: conflict.action,
+      sync_intent: "staff_conflict_review",
+    }),
+    authorization_context_json: JSON.stringify({
+      manager_override: conflict.managerOverride,
       source: "offline_app",
     }),
     schema_version: 1,

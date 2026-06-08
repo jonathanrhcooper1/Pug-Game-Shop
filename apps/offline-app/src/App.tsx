@@ -4,6 +4,8 @@ import {
   buildOfflinePushBatchPayload,
   buildOfflinePushRequestPlan,
   buildConnectorManifestPreview,
+  buildConflictReviewOperation,
+  buildCustomerCreditRedemptionOperation,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorStatusLabel,
@@ -16,6 +18,7 @@ import {
   statusLabel,
   summarizeOfflinePushResult,
   validateConnectorManifest,
+  type ConflictItem,
   type ConnectorManifestValidation,
   type IconName,
   type InventoryStatus,
@@ -167,8 +170,11 @@ export function App() {
     })
   }
 
-  async function handleStageInventoryUpdate(actionTitle = "Inventory update staged") {
-    const operation = buildInventoryUpdateOperation(selectedItem)
+  async function stageOfflineOperation(
+    operation: OfflineOperationEnvelope,
+    actionTitle: string,
+    detail: string,
+  ) {
     const batch = buildOfflinePushBatchPayload([operation])
     const requestPlan = buildOfflinePushRequestPlan(batch)
 
@@ -203,8 +209,29 @@ export function App() {
     setActiveSection("Queue")
     setActivityMessage({
       title: actionTitle,
-      detail: `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+      detail,
     })
+  }
+
+  async function handleStageInventoryUpdate(actionTitle = "Inventory update staged") {
+    await stageOfflineOperation(
+      buildInventoryUpdateOperation(selectedItem),
+      actionTitle,
+      `${selectedItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+    )
+  }
+
+  async function handleCreditRedemption() {
+    const amount = formatMoney(
+      workspace.customerCredit.redemptionPreviewMinorUnits,
+      workspace.customerCredit.currency,
+    )
+
+    await stageOfflineOperation(
+      buildCustomerCreditRedemptionOperation(workspace.customerCredit),
+      "Credit redemption staged",
+      `${amount} customer credit redemption prepared from cached balance; ledger replay remains deferred until website sync acceptance.`,
+    )
   }
 
   function handleConnectorProfileChange(profileId: string) {
@@ -259,13 +286,13 @@ export function App() {
     })
   }
 
-  function handleConflictAction(title: string, action: string) {
-    setSelectedConflictTitle(title)
-    setActiveSection("Conflicts")
-    setActivityMessage({
-      title: `${action} plan opened`,
-      detail: `${title} is selected for staff review. Resolution writes stay queued until manager approval and website sync acceptance.`,
-    })
+  async function handleConflictAction(conflict: ConflictItem) {
+    setSelectedConflictTitle(conflict.title)
+    await stageOfflineOperation(
+      buildConflictReviewOperation(conflict),
+      `${conflict.action} conflict staged`,
+      `${conflict.title} is queued for staff review. Resolution writes stay deferred until manager approval and website sync acceptance.`,
+    )
   }
 
   return (
@@ -637,7 +664,7 @@ export function App() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleConflictAction(item.title, item.action)}
+                    onClick={() => void handleConflictAction(item)}
                   >
                     {item.action}
                   </button>
@@ -750,6 +777,26 @@ export function App() {
                 </h2>
               </div>
               <p>{workspace.customerCredit.note}</p>
+              <div className="credit-actions">
+                <button type="button" onClick={() => void handleCreditRedemption()}>
+                  <Icon name="tag" />
+                  <span>Stage Credit Use</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection("Customers")
+                    setActivityMessage({
+                      title: "Ledger review opened",
+                      detail:
+                        "Cached credit balance, manager approval, and website ledger replay are ready for the next paired sync.",
+                    })
+                  }}
+                >
+                  <Icon name="history" />
+                  <span>Review Ledger</span>
+                </button>
+              </div>
             </section>
           </section>
         </section>

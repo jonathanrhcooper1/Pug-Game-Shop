@@ -11,15 +11,16 @@ future offline sync app.
 - React/Vite inventory command workspace with project-local Pug Game Shop crest
   artwork, desktop app-window chrome, scanner/search input, grouped offline
   sync controls, selected-card visual frame, staged inventory actions, queue
-  and conflict badges, sync queue, conflict review, customer credit snapshot,
-  active sidebar navigation, status filters, list/grid inventory modes,
-  connector profile controls, WordPress connector manifest validation, and
-  responsive desktop/mobile layout.
+  and conflict badges, sync queue, staged conflict review, customer credit
+  snapshot with staged redemption/review actions, active sidebar navigation,
+  status filters, list/grid inventory modes, connector profile controls,
+  WordPress connector manifest validation, and responsive desktop/mobile
+  layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
   WordPress connector manifests, plus SQLite-compatible staged operation
-  envelopes, deferred REST push request plans, and response summaries for
-  reconnect sync.
+  envelopes for inventory, customer credit, and conflict review workflows,
+  deferred REST push request plans, and response summaries for reconnect sync.
 - Browser-safe offline queue bridge contract for staging inventory operations
   before the desktop SQLite/Tauri command adapter is connected.
 - Local SQLite `operation_queue` insert planning for staged operations, with
