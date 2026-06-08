@@ -105,6 +105,19 @@ export type CustomerCreditSnapshot = {
   note: string
 }
 
+export type CustomerCreditLedgerEntry = {
+  entryId: string
+  customerId: number
+  occurredAtLabel: string
+  description: string
+  amountMinorUnits: number
+  balanceAfterMinorUnits: number
+  currency: "USD"
+  status: "cached" | "pending_sync"
+  sourceLabel: string
+  operationId?: string
+}
+
 export type EventRegistrationStatus = "open" | "waitlist" | "full" | "closed"
 
 export type EventSnapshot = {
@@ -707,6 +720,7 @@ export type OfflineWorkspaceState = {
   conflicts: ConflictItem[]
   customerCredit: CustomerCreditSnapshot
   customerCreditDirectory: CustomerCreditSnapshot[]
+  customerCreditLedgerEntries: CustomerCreditLedgerEntry[]
   eventSnapshots: EventSnapshot[]
 }
 
@@ -967,6 +981,52 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       note: "No cached credit remains; website ledger stays authoritative after reconnect.",
     },
   ],
+  customerCreditLedgerEntries: [
+    {
+      entryId: "ledger-91-buylist-001",
+      customerId: 91,
+      occurredAtLabel: "Jun 7, 4:18 PM",
+      description: "Buylist payout approved",
+      amountMinorUnits: 5000,
+      balanceAfterMinorUnits: 24600,
+      currency: "USD",
+      status: "cached",
+      sourceLabel: "Website cache",
+    },
+    {
+      entryId: "ledger-91-purchase-002",
+      customerId: 91,
+      occurredAtLabel: "Jun 6, 2:42 PM",
+      description: "Singles purchase redemption",
+      amountMinorUnits: -1800,
+      balanceAfterMinorUnits: 19600,
+      currency: "USD",
+      status: "cached",
+      sourceLabel: "Website cache",
+    },
+    {
+      entryId: "ledger-104-league-001",
+      customerId: 104,
+      occurredAtLabel: "Jun 5, 7:05 PM",
+      description: "League prize credit",
+      amountMinorUnits: 7250,
+      balanceAfterMinorUnits: 7250,
+      currency: "USD",
+      status: "cached",
+      sourceLabel: "Website cache",
+    },
+    {
+      entryId: "ledger-117-purchase-001",
+      customerId: 117,
+      occurredAtLabel: "Jun 4, 1:11 PM",
+      description: "Store credit redemption",
+      amountMinorUnits: -1200,
+      balanceAfterMinorUnits: 0,
+      currency: "USD",
+      status: "cached",
+      sourceLabel: "Website cache",
+    },
+  ],
   eventSnapshots: [
     {
       eventId: "event-100",
@@ -1172,6 +1232,98 @@ export function upsertCustomerCreditSnapshot(
   }
 
   return credits.map((credit) => (credit.customerId === snapshot.customerId ? snapshot : credit))
+}
+
+export function customerCreditLedgerEntriesForCustomer(
+  entries: CustomerCreditLedgerEntry[],
+  customerId: number,
+): CustomerCreditLedgerEntry[] {
+  return entries.filter((entry) => entry.customerId === customerId)
+}
+
+function creditLedgerDateLabel(utcValue: string): string {
+  const date = new Date(utcValue)
+
+  if (Number.isNaN(date.getTime())) {
+    return "Pending sync"
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  }).format(date)
+}
+
+export function buildPendingCustomerCreditLedgerEntries(
+  operations: OfflineOperationEnvelope[],
+  credit: CustomerCreditSnapshot,
+): CustomerCreditLedgerEntry[] {
+  let pendingTotalMinorUnits = 0
+
+  return operations
+    .filter(
+      (operation) =>
+        operation.operation_type === "credit_redemption" &&
+        operation.entity_type === "customer_credit" &&
+        operation.entity_id === String(credit.customerId),
+    )
+    .map((operation) => {
+      let amountMinorUnits = 0
+
+      try {
+        const payload = JSON.parse(operation.payload_json) as { amount_minor_units?: unknown }
+        amountMinorUnits =
+          typeof payload.amount_minor_units === "number" && Number.isFinite(payload.amount_minor_units)
+            ? Math.max(0, Math.trunc(payload.amount_minor_units))
+            : 0
+      } catch {
+        amountMinorUnits = 0
+      }
+
+      pendingTotalMinorUnits += amountMinorUnits
+
+      return {
+        entryId: `pending-${operation.client_operation_id}`,
+        customerId: credit.customerId,
+        occurredAtLabel: creditLedgerDateLabel(operation.queued_at_utc),
+        description: "Offline credit redemption",
+        amountMinorUnits: -amountMinorUnits,
+        balanceAfterMinorUnits: Math.max(0, credit.availableMinorUnits - pendingTotalMinorUnits),
+        currency: credit.currency,
+        status: "pending_sync",
+        sourceLabel: "Local queue",
+        operationId: operation.client_operation_id,
+      }
+    })
+}
+
+export function customerCreditPendingMinorUnitsFromOperations(
+  operations: OfflineOperationEnvelope[],
+  customerId: number,
+): number {
+  return operations
+    .filter(
+      (operation) =>
+        operation.operation_type === "credit_redemption" &&
+        operation.entity_type === "customer_credit" &&
+        operation.entity_id === String(customerId),
+    )
+    .reduce((totalMinorUnits, operation) => {
+      try {
+        const payload = JSON.parse(operation.payload_json) as { amount_minor_units?: unknown }
+        const amountMinorUnits =
+          typeof payload.amount_minor_units === "number" && Number.isFinite(payload.amount_minor_units)
+            ? Math.max(0, Math.trunc(payload.amount_minor_units))
+            : 0
+
+        return totalMinorUnits + amountMinorUnits
+      } catch {
+        return totalMinorUnits
+      }
+    }, 0)
 }
 
 export function connectorDisplayUrl(profile: StoreConnectorProfile) {

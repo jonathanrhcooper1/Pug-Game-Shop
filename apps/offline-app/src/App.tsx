@@ -41,7 +41,10 @@ import {
   creditRedemptionInputToMinorUnits,
   customerCreditAvailableAfterPending,
   customerCreditDisplayName,
+  customerCreditLedgerEntriesForCustomer,
+  customerCreditPendingMinorUnitsFromOperations,
   createEmptyConnectorProfileDraft,
+  buildPendingCustomerCreditLedgerEntries,
   buildInventoryUpdateOperation,
   buildInventoryReservationOperation,
   buildOfflineConnectorSyncSessionPlan,
@@ -312,6 +315,7 @@ export function App() {
   const [customerCreditDirectory, setCustomerCreditDirectory] = useState(
     workspace.customerCreditDirectory,
   )
+  const [customerCreditLedgerEntries] = useState(workspace.customerCreditLedgerEntries)
   const [eventSnapshots, setEventSnapshots] = useState(workspace.eventSnapshots)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
@@ -445,7 +449,26 @@ export function App() {
   const customerCredit =
     findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
   const activeCustomerName = customerCreditDisplayName(customerCredit)
-  const pendingCreditMinorUnits = pendingCreditByCustomer[customerCredit.customerId] ?? 0
+  const queuedPendingCreditMinorUnits = customerCreditPendingMinorUnitsFromOperations(
+    queuedOperations,
+    customerCredit.customerId,
+  )
+  const pendingCreditMinorUnits = Math.max(
+    pendingCreditByCustomer[customerCredit.customerId] ?? 0,
+    queuedPendingCreditMinorUnits,
+  )
+  const cachedCustomerCreditLedgerEntries = customerCreditLedgerEntriesForCustomer(
+    customerCreditLedgerEntries,
+    customerCredit.customerId,
+  )
+  const pendingCustomerCreditLedgerEntries = buildPendingCustomerCreditLedgerEntries(
+    queuedOperations,
+    customerCredit,
+  )
+  const visibleCustomerCreditLedgerEntries = [
+    ...pendingCustomerCreditLedgerEntries,
+    ...cachedCustomerCreditLedgerEntries,
+  ].slice(0, 6)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
@@ -3329,7 +3352,13 @@ export function App() {
                         {formatMoney(
                           customerCreditAvailableAfterPending(
                             credit,
-                            pendingCreditByCustomer[credit.customerId] ?? 0,
+                            Math.max(
+                              pendingCreditByCustomer[credit.customerId] ?? 0,
+                              customerCreditPendingMinorUnitsFromOperations(
+                                queuedOperations,
+                                credit.customerId,
+                              ),
+                            ),
                           ),
                           credit.currency,
                         )}
@@ -3374,7 +3403,7 @@ export function App() {
               </div>
               {showCreditLedger ? (
                 <div className="ledger-preview" aria-label="Offline credit ledger preview">
-                  <div>
+                  <div className="ledger-summary-card">
                     <span>Pending local hold</span>
                     <strong>
                       {formatMoney(
@@ -3383,7 +3412,7 @@ export function App() {
                       )}
                     </strong>
                   </div>
-                  <div>
+                  <div className="ledger-summary-card">
                     <span>Cached balance after hold</span>
                     <strong>
                       {formatMoney(
@@ -3391,6 +3420,38 @@ export function App() {
                         customerCredit.currency,
                       )}
                     </strong>
+                  </div>
+                  <div
+                    className="credit-ledger-entry-list"
+                    aria-label="Selected customer credit ledger entries"
+                  >
+                    <span>Ledger entries</span>
+                    {visibleCustomerCreditLedgerEntries.length > 0 ? (
+                      visibleCustomerCreditLedgerEntries.map((entry) => (
+                        <article
+                          className={`credit-ledger-entry ${entry.status}`}
+                          key={entry.entryId}
+                        >
+                          <div>
+                            <strong>{entry.description}</strong>
+                            <small>
+                              {entry.occurredAtLabel}; {entry.sourceLabel}
+                              {entry.operationId ? `; ${entry.operationId}` : ""}
+                            </small>
+                          </div>
+                          <div>
+                            <strong>
+                              {formatMoney(entry.amountMinorUnits, entry.currency)}
+                            </strong>
+                            <small>
+                              Balance {formatMoney(entry.balanceAfterMinorUnits, entry.currency)}
+                            </small>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <p>No cached ledger entries for this customer yet.</p>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -3402,7 +3463,7 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowCreditLedger((shown) => !shown)
+                    setShowCreditLedger(true)
                     setActiveSection("Customers")
                     setActivityMessage({
                       title: "Ledger review opened",

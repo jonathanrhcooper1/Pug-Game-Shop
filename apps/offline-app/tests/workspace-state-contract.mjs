@@ -116,6 +116,9 @@ for (const requiredExport of [
   "creditRedemptionInputToMinorUnits",
   "customerCreditAvailableAfterPending",
   "customerCreditDisplayName",
+  "customerCreditLedgerEntriesForCustomer",
+  "buildPendingCustomerCreditLedgerEntries",
+  "customerCreditPendingMinorUnitsFromOperations",
   "findCustomerCreditSnapshot",
   "upsertCustomerCreditSnapshot",
   "findInventoryItem",
@@ -312,6 +315,11 @@ assert.ok(appSource.includes("creditRedemptionInputToMinorUnits(creditRedemption
 assert.ok(appSource.includes("customerCreditDirectory"))
 assert.ok(appSource.includes("activeCustomerId"))
 assert.ok(appSource.includes("pendingCreditByCustomer"))
+assert.ok(appSource.includes("customerCreditLedgerEntries"))
+assert.ok(appSource.includes("cachedCustomerCreditLedgerEntries"))
+assert.ok(appSource.includes("pendingCustomerCreditLedgerEntries"))
+assert.ok(appSource.includes("visibleCustomerCreditLedgerEntries"))
+assert.ok(appSource.includes("queuedPendingCreditMinorUnits"))
 assert.ok(appSource.includes("handleCustomerCreditSelection"))
 assert.ok(appSource.includes("customerCreditDisplayName(credit)"))
 assert.ok(appSource.includes("upsertCustomerCreditSnapshot(credits, creditCacheApplyResult.customerCredit)"))

@@ -19,6 +19,10 @@
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
 - Offline app contract and browser coverage now verifies customer credit
+  ledger review: cached website ledger rows and pending local queue redemption
+  rows render together, and pending-hold totals are derived from queued
+  operations after session restore.
+- Offline app contract and browser coverage now verifies customer credit
   account selection: cached customer directory entries can be selected, lookup
   details render, and pending credit holds remain scoped per customer.
 - Offline app contract and browser coverage now verifies label printing:

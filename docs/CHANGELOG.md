@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app customer credit ledger review now shows cached website ledger
+  entries together with pending local queue redemptions, with pending-hold
+  totals derived from queued operations after browser/session restore.
 - Offline app customer credit now supports a local multi-customer credit
   directory, active account selection, lookup display, and per-customer pending
   holds so one offline redemption does not reduce another customer's balance.

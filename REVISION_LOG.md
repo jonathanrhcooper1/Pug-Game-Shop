@@ -3,6 +3,53 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Customer Credit Ledger Review
+
+### What Changed
+
+- Added a local customer credit ledger entry model and cached seed ledger rows.
+- Added helpers for selected-customer ledger filtering, pending queued
+  redemption entries, and pending-hold totals derived from queued operations.
+- Expanded Review Ledger to show pending local redemption rows and cached
+  website ledger rows for the selected customer.
+- Changed Review Ledger to open the ledger panel instead of toggling it closed.
+
+### Why
+
+The customer credit panel previously showed only balance summaries. Staff need
+to see what cached website ledger rows exist and which offline redemptions are
+waiting in the local queue. Pending-hold totals also need to reflect restored
+queue rows after a browser or desktop session reload.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for customer ledger filtering, pending
+  queued-redemption rows, and pending total derivation from queued operations.
+- UI/workspace contract markers proving the ledger entry list and selected
+  customer ledger panel remain wired.
+
+### Rollback Notes
+
+- Revert this revision to return Review Ledger to balance-summary-only display.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Customer Credit Directory
 
 ### What Changed

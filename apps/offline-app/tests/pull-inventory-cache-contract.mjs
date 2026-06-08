@@ -44,6 +44,9 @@ try {
     creditRedemptionInputToMinorUnits,
     customerCreditAvailableAfterPending,
     customerCreditDisplayName,
+    customerCreditLedgerEntriesForCustomer,
+    customerCreditPendingMinorUnitsFromOperations,
+    buildPendingCustomerCreditLedgerEntries,
     findInventoryItemByScan,
     findCustomerCreditSnapshot,
     inventoryQuantityDeltaFromInput,
@@ -558,6 +561,28 @@ try {
   assert.equal(creditRedemptionPayload.amount_minor_units, 1250)
   assert.equal(creditRedemptionPayload.available_credit_snapshot_minor_units, 2100)
   assert.equal(creditRedemptionAuthorization.reason, "offline customer credit redemption $12.50")
+  const cachedMorganLedgerEntries = customerCreditLedgerEntriesForCustomer(
+    offlineWorkspaceSeed.customerCreditLedgerEntries,
+    91,
+  )
+  assert.equal(cachedMorganLedgerEntries.length, 2)
+  assert.equal(cachedMorganLedgerEntries[0].description, "Buylist payout approved")
+  const pendingCreditLedgerEntries = buildPendingCustomerCreditLedgerEntries(
+    [creditRedemptionOperation],
+    creditResult.customerCredit,
+  )
+  assert.equal(pendingCreditLedgerEntries.length, 1)
+  assert.equal(pendingCreditLedgerEntries[0].status, "pending_sync")
+  assert.equal(pendingCreditLedgerEntries[0].amountMinorUnits, -1250)
+  assert.equal(pendingCreditLedgerEntries[0].balanceAfterMinorUnits, 850)
+  assert.equal(pendingCreditLedgerEntries[0].operationId, "offline-credit-91-20260608122000")
+  assert.equal(
+    customerCreditPendingMinorUnitsFromOperations(
+      [creditRedemptionOperation],
+      creditResult.customerCredit.customerId,
+    ),
+    1250,
+  )
 
   const scopedSessionKey = offlineSessionStorageKey("Pug Game Shop Staging!")
   assert.equal(scopedSessionKey, "tcg-store-offline-session-state-v1:pug-game-shop-staging")

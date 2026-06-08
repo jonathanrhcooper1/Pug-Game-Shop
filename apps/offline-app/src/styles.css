@@ -2236,7 +2236,7 @@ dd {
   gap: 8px;
 }
 
-.ledger-preview div {
+.ledger-preview > .ledger-summary-card {
   display: grid;
   gap: 4px;
   padding: 10px;
@@ -2256,6 +2256,77 @@ dd {
   color: #249344;
   font-size: 17px;
   font-weight: 900;
+}
+
+.credit-ledger-entry-list {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.credit-ledger-entry-list > span {
+  color: #596a58;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.credit-ledger-entry-list p {
+  margin: 0;
+  color: #596a58;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.credit-ledger-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, auto);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+  padding: 9px;
+  background: rgba(20, 23, 19, 0.04);
+  border: 1px solid rgba(20, 23, 19, 0.08);
+  border-radius: 8px;
+}
+
+.credit-ledger-entry.pending_sync {
+  background: rgba(246, 199, 96, 0.18);
+  border-color: rgba(185, 129, 22, 0.22);
+}
+
+.credit-ledger-entry div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.credit-ledger-entry div:last-child {
+  text-align: right;
+}
+
+.credit-ledger-entry strong {
+  overflow-wrap: anywhere;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.credit-ledger-entry div:last-child strong {
+  color: #249344;
+}
+
+.credit-ledger-entry small {
+  overflow-wrap: anywhere;
+  color: #647364;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 @media (max-width: 1180px) {
@@ -2383,8 +2454,13 @@ dd {
   .credit-redemption-control,
   .pairing-panel,
   .ledger-preview,
+  .credit-ledger-entry,
   .credit-panel {
     grid-template-columns: 1fr;
+  }
+
+  .credit-ledger-entry div:last-child {
+    text-align: left;
   }
 
   .top-actions {

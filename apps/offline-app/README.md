@@ -27,11 +27,11 @@ future offline sync app.
   execution summaries, exact barcode/public-ID scan targeting with
   Enter-to-stage support, customer-credit amount entry with cached-balance
   guards, cached customer credit account selection, per-customer pending holds,
-  quantity adjustment delta/reason controls, event attendee/payment/check-in
-  inputs, accepted push-result queue clearing, route-missing connector guidance
-  for staging plugin activation, conflict-review history, structured offline
-  label job payloads, print-label preparation, and responsive desktop/mobile
-  layout.
+  cached and pending customer-credit ledger review, quantity adjustment
+  delta/reason controls, event attendee/payment/check-in inputs, accepted
+  push-result queue clearing, route-missing connector guidance for staging
+  plugin activation, conflict-review history, structured offline label job
+  payloads, print-label preparation, and responsive desktop/mobile layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
   WordPress connector manifests, plus SQLite-compatible staged operation
@@ -112,6 +112,8 @@ desktop printer adapter is connected.
 Customer credit now uses a local cached account directory and keeps pending
 offline holds scoped to the selected customer while website ledger replay
 remains authoritative after sync acceptance.
+Review Ledger shows cached website ledger rows alongside pending local queued
+redemptions, and pending-hold totals are recomputed from restored queue rows.
 
 ## Local Commands
 
