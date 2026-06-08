@@ -17,6 +17,7 @@ import {
   connectorStatusLabel,
   createEmptyConnectorProfileDraft,
   buildInventoryUpdateOperation,
+  buildOfflineConnectorSyncSessionPlan,
   filterInventoryItems,
   findConnectorProfile,
   findInventoryItem,
@@ -35,6 +36,7 @@ import {
   type IconName,
   type InventoryStatus,
   type OfflineOperationEnvelope,
+  type OfflineConnectorSyncSessionPlan,
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
   type OfflinePushResultSummary,
@@ -146,6 +148,7 @@ export function App() {
   const [stagedPushBatch, setStagedPushBatch] = useState<OfflinePushBatchPayload | null>(null)
   const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
+  const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
@@ -243,6 +246,13 @@ export function App() {
     setStagedOperation(operation)
     setStagedPushBatch(batch)
     setStagedPushRequest(requestPlan)
+    setSyncSessionPlan(
+      buildOfflineConnectorSyncSessionPlan(
+        activeProfile,
+        batch,
+        activePreparedPairingRequests[0] ?? null,
+      ),
+    )
     setPushSummary(
       summarizeOfflinePushResult({
         data: {
@@ -392,6 +402,13 @@ export function App() {
 
       setStagedPushBatch(batch)
       setStagedPushRequest(buildOfflinePushRequestPlan(batch))
+      setSyncSessionPlan(
+        buildOfflineConnectorSyncSessionPlan(
+          activeProfile,
+          batch,
+          activePreparedPairingRequests[0] ?? null,
+        ),
+      )
       setPushSummary(
         summarizeOfflinePushResult({
           data: {
@@ -410,6 +427,14 @@ export function App() {
             push_canonical_mutations_deferred: true,
           },
         }),
+      )
+    } else {
+      setSyncSessionPlan(
+        buildOfflineConnectorSyncSessionPlan(
+          activeProfile,
+          null,
+          activePreparedPairingRequests[0] ?? null,
+        ),
       )
     }
 
@@ -602,6 +627,37 @@ export function App() {
               {activityMessage.detail}
             </p>
           </section>
+
+          {syncSessionPlan ? (
+            <section className="sync-session-panel" aria-label="Website sync session plan">
+              <div>
+                <span className="micro-label">Website connector</span>
+                <strong>{syncSessionPlan.companyName}</strong>
+                <small>{syncSessionPlan.siteUrl}</small>
+              </div>
+              <div>
+                <span className="micro-label">Pull route</span>
+                <strong>{syncSessionPlan.pull.path.replace(syncSessionPlan.restBasePath, "")}</strong>
+                <small>{syncSessionPlan.pull.url}</small>
+              </div>
+              <div>
+                <span className="micro-label">Push route</span>
+                <strong>{syncSessionPlan.push.operation_count} operation(s)</strong>
+                <small>{syncSessionPlan.push.url}</small>
+              </div>
+              <div>
+                <span className="micro-label">Pairing</span>
+                <strong>
+                  {syncSessionPlan.prepared_pairing_available ? "Prepared locally" : "Required"}
+                </strong>
+                <small>
+                  {syncSessionPlan.prepared_pairing_available
+                    ? `Fingerprint ${syncSessionPlan.pairing_code_fingerprint}; token storage ${syncSessionPlan.device_token_storage}`
+                    : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
+                </small>
+              </div>
+            </section>
+          ) : null}
 
           <section className="content-grid">
             <section className="inventory-panel" aria-label="Offline inventory" ref={inventoryPanelRef}>

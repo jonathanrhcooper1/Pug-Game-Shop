@@ -19,6 +19,10 @@ for (const requiredText of [
   "Customer credit",
   "Offline Mode",
   "Sync Now",
+  "Website sync session plan",
+  "Website connector",
+  "Pull route",
+  "Push route",
   "Stage Inventory Update",
   "Adjust Qty",
   "Print Label",
@@ -76,6 +80,7 @@ for (const className of [
   "label-job-list",
   "panel-empty",
   "workflow-status",
+  "sync-session-panel",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
 }
@@ -89,6 +94,7 @@ for (const interactionMarker of [
   "handleSaveConnectorDraft",
   "loadConnectorProfileStorage",
   "handleSyncNowPreview",
+  "setSyncSessionPlan",
   "handleTestWebsiteConnector",
   "handleCreditRedemption",
   "handlePairingPreview",
@@ -109,6 +115,7 @@ for (const interactionMarker of [
   "buildCustomerCreditRedemptionOperation(workspace.customerCredit)",
   "buildConnectorProfileFromDraft",
   "buildConnectorProfileStorageSnapshot",
+  "buildOfflineConnectorSyncSessionPlan",
   "restoreConnectorProfileStorageSnapshot",
   "CONNECTOR_PROFILE_STORAGE_KEY",
   "window.localStorage",

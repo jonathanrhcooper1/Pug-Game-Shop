@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Connector Sync Session Plan
+
+### What Changed
+
+- Added `OfflineConnectorSyncSessionPlan` and
+  `buildOfflineConnectorSyncSessionPlan()` to tie active connector profiles to
+  offline pull/push endpoint URLs and queued operation counts.
+- Updated staged offline operations and `Sync Now` to create a website-specific
+  sync session plan for the active company connector.
+- Added a compact sync session panel that shows the active website connector,
+  pull route, push route, operation count, pairing readiness, and desktop
+  secure-token storage.
+- Updated offline app contracts and changelog coverage for the new plan.
+
+### Why
+
+The standalone app needs to make website sync behavior concrete for multiple
+companies/sites. This moves `Sync Now` from a generic preview toward an
+auditable connector-specific sync plan while keeping live network execution,
+device tokens, provider credentials, and direct database access deferred.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for
+  `OfflineConnectorSyncSessionPlan`,
+  `buildOfflineConnectorSyncSessionPlan`, sync-session action metadata,
+  no-local-operation plans, pairing readiness, and device-pairing markers.
+- Offline app UI contract checks for the visible sync session panel and
+  `Sync Now` session planning state.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: passed. `Sync Now`
+  rendered the active staging website connector, `/offline/pull`,
+  `/offline/push`, zero-operation push plan, required pairing status, and no
+  console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to remove connector-specific sync session planning and
+  return `Sync Now` to the previous generic push preview.
+- No database migration, remote staging cleanup, or local storage cleanup is
+  required.
+
 ## 2026-06-08 - Offline Connector Profile Local Persistence
 
 ### What Changed

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app connector-specific sync session planning for `Sync Now`, showing
+  the active website connector, pull and push endpoint URLs, queued operation
+  count, pairing readiness, desktop secure-token storage, and deferred network
+  status without exposing credentials.
 - Offline app prepared pairing request history for multi-company connector
   setup. Preparing a device pairing now records the selected company, endpoint,
   requested offline scopes, desktop secure-token storage, and a redacted

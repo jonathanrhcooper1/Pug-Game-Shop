@@ -253,6 +253,39 @@ export type OfflinePushRequestPlan = {
   device_authorization_header_deferred: true
 }
 
+export type OfflineConnectorSyncSessionPlan = {
+  action: "offline_connector_sync_session_plan"
+  profileId: string
+  companyName: string
+  siteUrl: string
+  environment: ConnectorEnvironment
+  restBasePath: "/wp-json/tcg-store/v1"
+  pull: {
+    method: "POST"
+    path: "/wp-json/tcg-store/v1/offline/pull"
+    url: string
+    network_request_deferred: true
+    device_authorization_header_deferred: true
+  }
+  push: {
+    method: "POST"
+    path: "/wp-json/tcg-store/v1/offline/push"
+    url: string
+    batch_id: string
+    operation_count: number
+    network_request_deferred: true
+    device_authorization_header_deferred: true
+  }
+  prepared_pairing_available: boolean
+  pairing_code_fingerprint: string
+  device_pairing_required: boolean
+  device_token_storage: "desktop_secure_store"
+  direct_mysql_access: false
+  provider_credentials_required: false
+  credentialsSyncedToApp: false
+  network_request_deferred: true
+}
+
 export type OfflinePushResultSummary = {
   batch_id: string
   status: "accepted" | "conflict" | "rejected" | "validated"
@@ -528,6 +561,10 @@ export function formatMoney(minorUnits: number, currency: "USD") {
 
 export function connectorDisplayUrl(profile: StoreConnectorProfile) {
   return `${profile.wordpress.scheme}://${profile.wordpress.host}`
+}
+
+function connectorRestUrl(profile: StoreConnectorProfile, path: "/offline/pull" | "/offline/push") {
+  return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}${path}`
 }
 
 export function findConnectorProfile(
@@ -1350,6 +1387,51 @@ export function buildOfflinePushRequestPlan(batch: OfflinePushBatchPayload): Off
     direct_mysql_access: false,
     provider_credentials_required: false,
     device_authorization_header_deferred: true,
+  }
+}
+
+export function buildOfflineConnectorSyncSessionPlan(
+  profile: StoreConnectorProfile,
+  batch: OfflinePushBatchPayload | null,
+  preparedPairingRequest: PreparedDevicePairingRequest | null = null,
+): OfflineConnectorSyncSessionPlan {
+  const pushBatchId = batch?.batch_id ?? "no-local-operations"
+  const operationCount = batch?.operations.length ?? 0
+
+  return {
+    action: "offline_connector_sync_session_plan",
+    profileId: profile.id,
+    companyName: profile.companyName,
+    siteUrl: connectorDisplayUrl(profile),
+    environment: profile.environment,
+    restBasePath: profile.wordpress.restBasePath,
+    pull: {
+      method: "POST",
+      path: "/wp-json/tcg-store/v1/offline/pull",
+      url: connectorRestUrl(profile, "/offline/pull"),
+      network_request_deferred: true,
+      device_authorization_header_deferred: true,
+    },
+    push: {
+      method: "POST",
+      path: "/wp-json/tcg-store/v1/offline/push",
+      url: connectorRestUrl(profile, "/offline/push"),
+      batch_id: pushBatchId,
+      operation_count: operationCount,
+      network_request_deferred: true,
+      device_authorization_header_deferred: true,
+    },
+    prepared_pairing_available: preparedPairingRequest?.profileId === profile.id,
+    pairing_code_fingerprint:
+      preparedPairingRequest?.profileId === profile.id
+        ? preparedPairingRequest.pairingCodeFingerprint
+        : "missing",
+    device_pairing_required: profile.wordpress.devicePairingRequired,
+    device_token_storage: profile.wordpress.credentialStorage,
+    direct_mysql_access: false,
+    provider_credentials_required: false,
+    credentialsSyncedToApp: false,
+    network_request_deferred: true,
   }
 }
 

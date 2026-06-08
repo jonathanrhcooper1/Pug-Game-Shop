@@ -572,6 +572,42 @@ h2 {
   margin-bottom: 2px;
 }
 
+.sync-session-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #fffaf0;
+}
+
+.sync-session-panel div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 250, 240, 0.12);
+  border-radius: 8px;
+}
+
+.sync-session-panel strong,
+.sync-session-panel small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sync-session-panel strong {
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sync-session-panel small {
+  color: #d5ded2;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.68fr);
@@ -1730,6 +1766,7 @@ dd {
   .top-actions,
   .sync-strip,
   .workflow-status,
+  .sync-session-panel,
   .detail-panel,
   .detail-actions,
   .connector-grid,
