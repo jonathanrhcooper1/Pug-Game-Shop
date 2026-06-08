@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Variant Catalog Sync
+
+### What Changed
+
+- Extended ScryDex normalization to extract provider variants, versions,
+  printings, and finishes into normalized reference-variant rows.
+- Added reference-variant upsert planning, SQL generation, staged repository
+  results, transaction-backed execution, and audit counters to the ScryDex
+  sync pipeline.
+- Updated `/tcg-store/v1/reference/search` to return card variants alongside
+  image, stock, and latest price data.
+- Added LAN sync server variant caching in `reference_cards.variants_json`,
+  local search matching across variant/version fields, and seeded preview
+  variant rows.
+- Added offline app typing and lookup display for version/finish labels.
+
+### Why
+
+Inventory intake needs more than a flat card name. Staff must be able to see
+which version/finish/printing they are adding, while the website remains the
+source of truth and offline stations keep enough cached data for disconnected
+work.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizationResult.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepository.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPagePlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPageProcessor.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncPageProcessorTest.php`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `fixtures/mocks/scrydex/cards-page-1.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL migration was added; this uses the existing
+  `tcg_reference_variants` table.
+- Local SQLite cache adds/ensures a `reference_cards.variants_json` column.
+
+### Tests Added
+
+- ScryDex normalizer, page processor, persistence planner, query builder,
+  repository, worker planner, and reference-search route assertions for
+  variant/version rows.
+- Existing LAN sync server persistence/runtime tests now exercise the expanded
+  reference-card cache shape.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+
+### Rollback Notes
+
+- Revert this revision to remove provider variant extraction, variant upsert
+  SQL, WordPress reference-search variant payloads, and local
+  `variants_json` caching.
+- No WordPress schema rollback is needed because the existing
+  `tcg_reference_variants` table remains valid.
+- Local SQLite rollback can leave `reference_cards.variants_json` in place; it
+  is ignored by older code and can be dropped manually only if a clean local
+  cache rebuild is desired.
+
 ## 2026-06-08 - WordPress Reference Search Route
 
 ### What Changed

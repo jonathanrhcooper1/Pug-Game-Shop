@@ -112,6 +112,7 @@ import {
   type LocalSyncEventSnapshot,
   type LocalSyncInventoryItem,
   type LocalSyncScryDexCard,
+  type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
 } from "./data/localSyncServerClient"
 import {
@@ -523,6 +524,17 @@ function inventoryItemFromLocalSync(
     imageUrl: item.image_url,
     source: item.source,
   }
+}
+
+function formatScryDexVariant(variant: LocalSyncScryDexVariant) {
+  return [
+    variant.variant,
+    variant.finish,
+    variant.edition,
+    variant.language,
+  ]
+    .filter(Boolean)
+    .join(" / ")
 }
 
 function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapshot {
@@ -4212,6 +4224,11 @@ export function App() {
                                     .map((entry) => `${entry.condition} x${entry.quantity}`)
                                     .join(", ")
                                 : "No local copies cached yet"}
+                            </small>
+                            <small>
+                              {card.variants.length > 0
+                                ? card.variants.slice(0, 3).map(formatScryDexVariant).join(", ")
+                                : "Version details pending"}
                             </small>
                           </div>
                           <button type="button" onClick={() => handleUseScryDexCard(card)}>

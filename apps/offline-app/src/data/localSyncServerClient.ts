@@ -115,6 +115,17 @@ export type LocalSyncStockByCondition = {
   quantity: number
 }
 
+export type LocalSyncScryDexVariant = {
+  provider_variant_id: string
+  variant: string
+  finish: string
+  parallel_name: string
+  edition: string
+  language: string
+  raw_or_graded_support: "raw" | "graded" | "both"
+  attributes: Record<string, unknown>
+}
+
 export type LocalSyncScryDexCard = {
   provider_card_id: string
   game: "pokemon" | "magic" | "lorcana" | "one-piece"
@@ -133,6 +144,7 @@ export type LocalSyncScryDexCard = {
   stock_available_count: number
   stock_total_count: number
   stock_by_condition: LocalSyncStockByCondition[]
+  variants: LocalSyncScryDexVariant[]
 }
 
 export type LocalSyncScryDexSearchResult = LocalSyncResult<{

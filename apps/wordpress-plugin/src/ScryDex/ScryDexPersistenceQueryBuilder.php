@@ -9,6 +9,7 @@ namespace TCGStorePlatform\ScryDex;
 
 final class ScryDexPersistenceQueryBuilder {
 	private const REFERENCE_CARDS_TABLE             = 'tcg_reference_cards';
+	private const REFERENCE_VARIANTS_TABLE          = 'tcg_reference_variants';
 	private const PROVIDER_PRICE_OBSERVATIONS_TABLE = 'tcg_provider_price_observations';
 	private const REFERENCE_INSERT_COLUMNS          = array(
 		'public_id',
@@ -62,6 +63,18 @@ final class ScryDexPersistenceQueryBuilder {
 		'sync_job_id',
 		'created_at',
 	);
+	private const REFERENCE_VARIANT_COLUMNS         = array(
+		'provider_variant_id',
+		'variant',
+		'finish',
+		'parallel_name',
+		'edition',
+		'language',
+		'raw_or_graded_support',
+		'normalized_attributes_json',
+		'created_at',
+		'updated_at',
+	);
 
 	public function build( ScryDexPersistencePlan $persistence_plan, string $table_prefix ): ScryDexPersistenceQueryBuildPlan {
 		$errors       = array();
@@ -107,6 +120,22 @@ final class ScryDexPersistenceQueryBuilder {
 			}
 
 			$reference_update_queries[] = $this->reference_update_query_for_row(
+				$table_names['reference_cards'],
+				$row
+			);
+		}
+
+		$reference_variant_upsert_queries = array();
+		foreach ( $persistence_plan->reference_variant_upserts() as $index => $row ) {
+			$row_errors = $this->validate_reference_variant_upsert( $row, $index );
+
+			if ( array() !== $row_errors ) {
+				$errors = array_merge( $errors, $row_errors );
+				continue;
+			}
+
+			$reference_variant_upsert_queries[] = $this->reference_variant_upsert_query_for_row(
+				$table_names['reference_variants'],
 				$table_names['reference_cards'],
 				$row
 			);
@@ -166,6 +195,7 @@ final class ScryDexPersistenceQueryBuilder {
 			$table_names,
 			$reference_insert_queries,
 			$reference_update_queries,
+			$reference_variant_upsert_queries,
 			$price_observation_queries,
 			$checkpoint_upsert_query
 		);
@@ -177,6 +207,7 @@ final class ScryDexPersistenceQueryBuilder {
 	private function table_names( string $table_prefix ): array {
 		return array(
 			'reference_cards'             => $table_prefix . self::REFERENCE_CARDS_TABLE,
+			'reference_variants'          => $table_prefix . self::REFERENCE_VARIANTS_TABLE,
 			'provider_price_observations' => $table_prefix . self::PROVIDER_PRICE_OBSERVATIONS_TABLE,
 			'sync_checkpoints'            => $table_prefix . 'tcg_sync_checkpoints',
 		);
@@ -229,6 +260,34 @@ final class ScryDexPersistenceQueryBuilder {
 
 		if ( null === $this->positive_int( $row['row_version'] ?? null ) ) {
 			$errors[] = 'reference_update_row_' . $index . '_row_version_invalid';
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference variant upsert row.
+	 * @return list<string>
+	 */
+	private function validate_reference_variant_upsert( array $row, int $index ): array {
+		$errors = $this->validate_reference_identity( $row, 'reference_variant_row_' . $index );
+
+		if ( null !== ( $row['reference_card_id'] ?? null ) && null === $this->positive_int( $row['reference_card_id'] ) ) {
+			$errors[] = 'reference_variant_row_' . $index . '_reference_card_id_invalid';
+		}
+
+		if ( ! $this->is_identifier( (string) ( $row['provider_variant_id'] ?? '' ), 1, 191 ) ) {
+			$errors[] = 'reference_variant_row_' . $index . '_provider_variant_id_invalid';
+		}
+
+		if ( ! in_array( (string) ( $row['raw_or_graded_support'] ?? '' ), array( 'raw', 'graded', 'both' ), true ) ) {
+			$errors[] = 'reference_variant_row_' . $index . '_raw_or_graded_support_invalid';
+		}
+
+		foreach ( array( 'created_at', 'updated_at' ) as $field ) {
+			if ( ! $this->is_mysql_datetime( $row[ $field ] ?? null ) ) {
+				$errors[] = 'reference_variant_row_' . $index . '_' . $field . '_invalid';
+			}
 		}
 
 		return $errors;
@@ -357,6 +416,51 @@ final class ScryDexPersistenceQueryBuilder {
 			'prepare_args'                             => $prepare_args,
 			'persistence_query_execution_deferred'     => true,
 			'reference_card_update_execution_deferred' => true,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference variant upsert row.
+	 * @return array<string, mixed>
+	 */
+	private function reference_variant_upsert_query_for_row(
+		string $variant_table_name,
+		string $reference_table_name,
+		array $row
+	): array {
+		$prepare_args = array();
+		$columns      = array_merge( array( 'reference_card_id' ), self::REFERENCE_VARIANT_COLUMNS );
+		$placeholders = array();
+
+		if ( null !== ( $row['reference_card_id'] ?? null ) ) {
+			$placeholders[] = $this->placeholder_for_value( (int) $row['reference_card_id'], $prepare_args );
+		} else {
+			$prepare_args[]  = (string) $row['provider_name'];
+			$prepare_args[]  = (string) $row['provider_card_id'];
+			$placeholders[] = sprintf(
+				'(SELECT reference_card_id FROM `%s` WHERE provider_name = %%s AND provider_card_id = %%s LIMIT 1)',
+				$reference_table_name
+			);
+		}
+
+		foreach ( self::REFERENCE_VARIANT_COLUMNS as $column ) {
+			$placeholders[] = $this->placeholder_for_value( $row[ $column ] ?? null, $prepare_args );
+		}
+
+		return array(
+			'query_kind'                                 => 'reference_variant_upsert',
+			'provider_card_id'                           => (string) $row['provider_card_id'],
+			'provider_variant_id'                        => (string) $row['provider_variant_id'],
+			'reference_card_id'                          => $row['reference_card_id'] ?? null,
+			'sql_template'                               => sprintf(
+				'INSERT INTO `%s` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE variant = VALUES(variant), finish = VALUES(finish), parallel_name = VALUES(parallel_name), edition = VALUES(edition), language = VALUES(language), raw_or_graded_support = VALUES(raw_or_graded_support), normalized_attributes_json = VALUES(normalized_attributes_json), updated_at = VALUES(updated_at)',
+				$variant_table_name,
+				implode( ', ', array_map( array( $this, 'quote_identifier' ), $columns ) ),
+				implode( ', ', $placeholders )
+			),
+			'prepare_args'                               => $prepare_args,
+			'persistence_query_execution_deferred'       => true,
+			'reference_variant_write_execution_deferred' => true,
 		);
 	}
 

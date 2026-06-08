@@ -50,6 +50,15 @@ final class ReferenceCardSearchRouteHandler {
 			);
 		}
 
+		$variants_by_reference = $this->fetch_variants( $query, $rows );
+
+		if ( ! is_array( $variants_by_reference ) ) {
+			return $this->rejected(
+				'reference_search_repository_rejected',
+				array( 'reference_search_variants_failed' )
+			);
+		}
+
 		$total = $this->fetch_total( $query );
 
 		if ( null === $total ) {
@@ -65,7 +74,7 @@ final class ReferenceCardSearchRouteHandler {
 			'code'        => 'reference_search_read_ready',
 			'callback'    => 'search_reference_cards',
 			'data'        => array(
-				'cards'        => $this->present_rows( $rows ),
+				'cards'        => $this->present_rows( $rows, $variants_by_reference ),
 				'query'        => (string) $request['query'],
 				'game'         => (string) $request['game'],
 				'source'       => 'wordpress_catalog_cache',
@@ -150,13 +159,14 @@ final class ReferenceCardSearchRouteHandler {
 			return array( 'errors' => $errors );
 		}
 
-		$cards_table  = $table_prefix . 'tcg_reference_cards';
-		$prices_table = $table_prefix . 'tcg_provider_price_observations';
-		$like         = '%' . addcslashes( $query, "\\_%" ) . '%';
-		$where_parts  = array(
+		$cards_table    = $table_prefix . 'tcg_reference_cards';
+		$variants_table = $table_prefix . 'tcg_reference_variants';
+		$prices_table   = $table_prefix . 'tcg_provider_price_observations';
+		$like          = '%' . addcslashes( $query, "\\_%" ) . '%';
+		$where_parts   = array(
 			'(cards.name LIKE %s OR cards.set_name LIKE %s OR cards.set_code LIKE %s OR cards.card_number LIKE %s OR cards.printed_number LIKE %s OR cards.provider_card_id LIKE %s OR cards.search_text LIKE %s)',
 		);
-		$where_args   = array( $like, $like, $like, $like, $like, $like, $like );
+		$where_args    = array( $like, $like, $like, $like, $like, $like, $like );
 
 		if ( '' !== $game ) {
 			$where_parts[] = 'cards.game = %s';
@@ -167,6 +177,7 @@ final class ReferenceCardSearchRouteHandler {
 		$select    = "
 			SELECT
 				cards.public_id,
+				cards.reference_card_id,
 				cards.provider_name,
 				cards.provider_card_id,
 				cards.game,
@@ -205,6 +216,7 @@ final class ReferenceCardSearchRouteHandler {
 
 		return array(
 			'cards_table'         => $cards_table,
+			'variants_table'      => $variants_table,
 			'prices_table'        => $prices_table,
 			'select_sql_template' => $select,
 			'select_prepare_args' => array_merge( $where_args, array( $limit, $offset ) ),
@@ -212,6 +224,77 @@ final class ReferenceCardSearchRouteHandler {
 			'count_prepare_args'  => $where_args,
 			'errors'              => array(),
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $query Query plan.
+	 * @param list<array<string, mixed>> $rows Reference card rows.
+	 * @return array<int, list<array<string, mixed>>>|false
+	 */
+	private function fetch_variants( array $query, array $rows ): array|false {
+		if ( ! method_exists( $this->database, 'prepare' ) || ! method_exists( $this->database, 'get_results' ) ) {
+			return false;
+		}
+
+		$reference_ids = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						fn ( array $row ): ?int => $this->positive_reference_id( $row['reference_card_id'] ?? null ),
+						$rows
+					)
+				)
+			)
+		);
+
+		if ( array() === $reference_ids ) {
+			return array();
+		}
+
+		$placeholders = implode( ', ', array_fill( 0, count( $reference_ids ), '%d' ) );
+		$template     = "
+			SELECT
+				reference_card_id,
+				provider_variant_id,
+				variant,
+				finish,
+				parallel_name,
+				edition,
+				language,
+				raw_or_graded_support,
+				normalized_attributes_json
+			FROM {$query['variants_table']}
+			WHERE reference_card_id IN ({$placeholders})
+			ORDER BY reference_card_id ASC, variant ASC, finish ASC, edition ASC
+		";
+		$prepared     = $this->database->prepare(
+			$template, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$reference_ids
+		);
+		$variant_rows = $this->database->get_results(
+			$prepared, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$this->array_a_output_type()
+		);
+
+		if ( ! is_array( $variant_rows ) ) {
+			return false;
+		}
+
+		$indexed = array();
+		foreach ( $variant_rows as $variant_row ) {
+			if ( ! is_array( $variant_row ) ) {
+				continue;
+			}
+
+			$reference_id = $this->positive_reference_id( $variant_row['reference_card_id'] ?? null );
+			if ( null === $reference_id ) {
+				continue;
+			}
+
+			$indexed[ $reference_id ][] = $this->present_variant_row( $variant_row );
+		}
+
+		return $indexed;
 	}
 
 	/**
@@ -258,10 +341,13 @@ final class ReferenceCardSearchRouteHandler {
 	 * @param list<array<string, mixed>> $rows Reference card rows.
 	 * @return list<array<string, mixed>>
 	 */
-	private function present_rows( array $rows ): array {
+	private function present_rows( array $rows, array $variants_by_reference = array() ): array {
 		return array_values(
 			array_map(
-				fn ( array $row ): array => $this->present_row( $row ),
+				fn ( array $row ): array => $this->present_row(
+					$row,
+					$variants_by_reference[ (int) ( $row['reference_card_id'] ?? 0 ) ] ?? array()
+				),
 				array_filter( $rows, 'is_array' )
 			)
 		);
@@ -271,7 +357,7 @@ final class ReferenceCardSearchRouteHandler {
 	 * @param array<string, mixed> $row Reference card row.
 	 * @return array<string, mixed>
 	 */
-	private function present_row( array $row ): array {
+	private function present_row( array $row, array $variants = array() ): array {
 		$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
 		$front_image_url  = $this->url( $row['front_image_url'] ?? '' );
 		$market_price     = $this->decimal_string( $row['market_price'] ?? null );
@@ -305,8 +391,28 @@ final class ReferenceCardSearchRouteHandler {
 			'stock_available_count'     => 0,
 			'stock_total_count'         => 0,
 			'stock_by_condition'        => array(),
+			'variants'                  => array_values( $variants ),
 			'live_provider_request'     => false,
 			'credentials_in_response'   => false,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference variant row.
+	 * @return array<string, mixed>
+	 */
+	private function present_variant_row( array $row ): array {
+		$attributes = $this->json_object( $row['normalized_attributes_json'] ?? null );
+
+		return array(
+			'provider_variant_id'   => $this->text( $row['provider_variant_id'] ?? '' ),
+			'variant'               => $this->text( $row['variant'] ?? '' ),
+			'finish'                => $this->text( $row['finish'] ?? '' ),
+			'parallel_name'         => $this->text( $row['parallel_name'] ?? '' ),
+			'edition'               => $this->text( $row['edition'] ?? '' ),
+			'language'              => $this->text( $row['language'] ?? '' ),
+			'raw_or_graded_support' => $this->text( $row['raw_or_graded_support'] ?? 'both' ),
+			'attributes'            => $attributes,
 		);
 	}
 
@@ -323,6 +429,7 @@ final class ReferenceCardSearchRouteHandler {
 			'default_route_registration_deferred' => true,
 			'route_still_gated'               => true,
 			'cards_table'                     => (string) ( $query['cards_table'] ?? '' ),
+			'variants_table'                  => (string) ( $query['variants_table'] ?? '' ),
 			'prices_table'                    => (string) ( $query['prices_table'] ?? '' ),
 			'row_count'                       => $row_count,
 			'total'                           => $total,
@@ -377,6 +484,27 @@ final class ReferenceCardSearchRouteHandler {
 		}
 
 		return null;
+	}
+
+	private function positive_reference_id( mixed $value ): ?int {
+		if ( is_int( $value ) && $value > 0 ) {
+			return $value;
+		}
+
+		if ( is_string( $value ) && 1 === preg_match( '/^\d+$/', $value ) && (int) $value > 0 ) {
+			return (int) $value;
+		}
+
+		return null;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function json_object( mixed $value ): array {
+		$decoded = json_decode( (string) $value, true );
+
+		return is_array( $decoded ) ? $decoded : array();
 	}
 
 	private function minor_units( string $amount ): int {

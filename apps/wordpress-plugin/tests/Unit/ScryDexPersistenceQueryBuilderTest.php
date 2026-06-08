@@ -26,6 +26,7 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$query_plan      = ( new ScryDexPersistenceQueryBuilder() )->build( $persistence_plan, 'wp_' );
 		$audit           = $query_plan->audit_payload();
 		$reference       = $query_plan->reference_insert_queries()[0];
+		$variant         = $query_plan->reference_variant_upsert_queries()[0];
 		$price           = $query_plan->price_observation_queries()[0];
 		$checkpoint      = $query_plan->checkpoint_upsert_query();
 
@@ -33,6 +34,7 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_same(
 			array(
 				'reference_cards'              => 'wp_tcg_reference_cards',
+				'reference_variants'           => 'wp_tcg_reference_variants',
 				'provider_price_observations' => 'wp_tcg_provider_price_observations',
 				'sync_checkpoints'            => 'wp_tcg_sync_checkpoints',
 			),
@@ -40,13 +42,18 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		);
 		$this->assert_same( 2, count( $query_plan->reference_insert_queries() ) );
 		$this->assert_same( 0, count( $query_plan->reference_update_queries() ) );
+		$this->assert_same( 2, count( $query_plan->reference_variant_upsert_queries() ) );
 		$this->assert_same( 2, count( $query_plan->price_observation_queries() ) );
 		$this->assert_true( is_array( $checkpoint ) );
-		$this->assert_same( 5, $query_plan->total_query_count() );
+		$this->assert_same( 7, $query_plan->total_query_count() );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_reference_cards`', $reference['sql_template'] );
 		$this->assert_contains( '`public_id`', $reference['sql_template'] );
 		$this->assert_same( 'reference_card_insert', $reference['query_kind'] );
 		$this->assert_same( 'sdx-pkm-001', $reference['provider_card_id'] );
+		$this->assert_contains( 'INSERT INTO `wp_tcg_reference_variants`', $variant['sql_template'] );
+		$this->assert_contains( 'ON DUPLICATE KEY UPDATE', $variant['sql_template'] );
+		$this->assert_same( 'reference_variant_upsert', $variant['query_kind'] );
+		$this->assert_same( 'sdx-pkm-001-holo-unlimited', $variant['provider_variant_id'] );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_provider_price_observations`', $price['sql_template'] );
 		$this->assert_contains( 'ON DUPLICATE KEY UPDATE', $price['sql_template'] );
 		$this->assert_same( 'provider_price_observation_insert', $price['query_kind'] );
@@ -90,6 +97,7 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_true( $query_plan->is_valid() );
 		$this->assert_same( 1, count( $query_plan->reference_insert_queries() ) );
 		$this->assert_same( 1, count( $query_plan->reference_update_queries() ) );
+		$this->assert_same( 2, count( $query_plan->reference_variant_upsert_queries() ) );
 		$this->assert_contains( 'UPDATE `wp_tcg_reference_cards` SET', $update['sql_template'] );
 		$this->assert_contains( 'WHERE reference_card_id = %d', $update['sql_template'] );
 		$this->assert_same( 88, $update['reference_card_id'] );

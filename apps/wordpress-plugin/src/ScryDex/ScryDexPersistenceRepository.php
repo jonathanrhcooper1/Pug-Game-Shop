@@ -31,6 +31,11 @@ final class ScryDexPersistenceRepository {
 			$reference_update_results[] = $this->staged_result( $query, $index, 'reference_card_update' );
 		}
 
+		$reference_variant_upsert_results = array();
+		foreach ( $query_plan->reference_variant_upsert_queries() as $index => $query ) {
+			$reference_variant_upsert_results[] = $this->staged_result( $query, $index, 'reference_variant_upsert' );
+		}
+
 		$price_observation_results = array();
 		foreach ( $query_plan->price_observation_queries() as $index => $query ) {
 			$price_observation_results[] = $this->staged_result( $query, $index, 'provider_price_observation_insert' );
@@ -46,6 +51,7 @@ final class ScryDexPersistenceRepository {
 			$query_plan,
 			$reference_insert_results,
 			$reference_update_results,
+			$reference_variant_upsert_results,
 			$price_observation_results,
 			$checkpoint_result
 		);
@@ -74,16 +80,18 @@ final class ScryDexPersistenceRepository {
 			);
 		}
 
-		$transaction_commands       = array();
-		$reference_insert_results  = array();
-		$reference_update_results  = array();
-		$price_observation_results = array();
-		$checkpoint_result         = null;
+		$transaction_commands              = array();
+		$reference_insert_results         = array();
+		$reference_update_results         = array();
+		$reference_variant_upsert_results = array();
+		$price_observation_results        = array();
+		$checkpoint_result                = null;
 
 		if ( false === $this->run_transaction_command( 'START TRANSACTION', $transaction_commands ) ) {
 			return ScryDexPersistenceRepositoryResult::rejected(
 				$query_plan,
 				array( 'scrydex_persistence_transaction_begin_failed' ),
+				array(),
 				array(),
 				array(),
 				array(),
@@ -104,6 +112,7 @@ final class ScryDexPersistenceRepository {
 					$errors,
 					$reference_insert_results,
 					$reference_update_results,
+					$reference_variant_upsert_results,
 					$price_observation_results,
 					$checkpoint_result,
 					$transaction_commands
@@ -125,6 +134,7 @@ final class ScryDexPersistenceRepository {
 					$errors,
 					$reference_insert_results,
 					$reference_update_results,
+					$reference_variant_upsert_results,
 					$price_observation_results,
 					$checkpoint_result,
 					$transaction_commands
@@ -132,6 +142,33 @@ final class ScryDexPersistenceRepository {
 			}
 
 			$reference_update_results[] = $this->executed_result( $query, $index, 'reference_card_update', $result );
+		}
+
+		foreach ( $query_plan->reference_variant_upsert_queries() as $index => $query ) {
+			$result = $this->execute_prepared_query( $query );
+
+			if ( false === $result ) {
+				$errors = array( 'scrydex_reference_variant_upsert_failed' );
+				$this->rollback_transaction( $transaction_commands, $errors );
+
+				return ScryDexPersistenceRepositoryResult::rejected(
+					$query_plan,
+					$errors,
+					$reference_insert_results,
+					$reference_update_results,
+					$reference_variant_upsert_results,
+					$price_observation_results,
+					$checkpoint_result,
+					$transaction_commands
+				);
+			}
+
+			$reference_variant_upsert_results[] = $this->executed_result(
+				$query,
+				$index,
+				'reference_variant_upsert',
+				$result
+			);
 		}
 
 		foreach ( $query_plan->price_observation_queries() as $index => $query ) {
@@ -146,6 +183,7 @@ final class ScryDexPersistenceRepository {
 					$errors,
 					$reference_insert_results,
 					$reference_update_results,
+					$reference_variant_upsert_results,
 					$price_observation_results,
 					$checkpoint_result,
 					$transaction_commands
@@ -173,6 +211,7 @@ final class ScryDexPersistenceRepository {
 					$errors,
 					$reference_insert_results,
 					$reference_update_results,
+					$reference_variant_upsert_results,
 					$price_observation_results,
 					$checkpoint_result,
 					$transaction_commands
@@ -191,6 +230,7 @@ final class ScryDexPersistenceRepository {
 				$errors,
 				$reference_insert_results,
 				$reference_update_results,
+				$reference_variant_upsert_results,
 				$price_observation_results,
 				$checkpoint_result,
 				$transaction_commands
@@ -201,6 +241,7 @@ final class ScryDexPersistenceRepository {
 			$query_plan,
 			$reference_insert_results,
 			$reference_update_results,
+			$reference_variant_upsert_results,
 			$price_observation_results,
 			$checkpoint_result,
 			$transaction_commands
@@ -216,6 +257,7 @@ final class ScryDexPersistenceRepository {
 			'query_kind'                                 => (string) ( $query['query_kind'] ?? $query_kind ),
 			'query_index'                                => $index,
 			'provider_card_id'                           => (string) ( $query['provider_card_id'] ?? '' ),
+			'provider_variant_id'                        => (string) ( $query['provider_variant_id'] ?? '' ),
 			'reference_card_id'                          => $query['reference_card_id'] ?? null,
 			'public_id'                                  => (string) ( $query['public_id'] ?? '' ),
 			'resource_key'                               => (string) ( $query['resource_key'] ?? '' ),
@@ -225,6 +267,7 @@ final class ScryDexPersistenceRepository {
 			'persistence_query_execution_deferred'       => true,
 			'persistence_repository_deferred'            => true,
 			'reference_card_writes_deferred'             => true,
+			'reference_variant_writes_deferred'          => true,
 			'provider_price_observation_writes_deferred' => true,
 			'checkpoint_upsert_execution_deferred'       => true,
 		);
@@ -239,6 +282,7 @@ final class ScryDexPersistenceRepository {
 			'query_kind'                                 => (string) ( $query['query_kind'] ?? $query_kind ),
 			'query_index'                                => $index,
 			'provider_card_id'                           => (string) ( $query['provider_card_id'] ?? '' ),
+			'provider_variant_id'                        => (string) ( $query['provider_variant_id'] ?? '' ),
 			'reference_card_id'                          => $query['reference_card_id'] ?? null,
 			'public_id'                                  => (string) ( $query['public_id'] ?? '' ),
 			'resource_key'                               => (string) ( $query['resource_key'] ?? '' ),
@@ -248,6 +292,7 @@ final class ScryDexPersistenceRepository {
 			'persistence_query_execution_deferred'       => false,
 			'persistence_repository_deferred'            => false,
 			'reference_card_writes_deferred'             => false,
+			'reference_variant_writes_deferred'          => false,
 			'provider_price_observation_writes_deferred' => false,
 			'checkpoint_upsert_execution_deferred'       => false,
 		);
@@ -266,6 +311,7 @@ final class ScryDexPersistenceRepository {
 
 		$expected = array(
 			'reference_cards'             => $prefix . 'tcg_reference_cards',
+			'reference_variants'          => $prefix . 'tcg_reference_variants',
 			'provider_price_observations' => $prefix . 'tcg_provider_price_observations',
 			'sync_checkpoints'            => $prefix . 'tcg_sync_checkpoints',
 		);

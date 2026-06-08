@@ -24,17 +24,23 @@ final class ScryDexPersistencePlannerTest extends TestCase {
 			'2026-06-06 12:00:00'
 		);
 		$insert    = $plan->reference_inserts()[0];
+		$variant   = $plan->reference_variant_upserts()[0];
 		$price     = $plan->price_observations()[0];
 
 		$this->assert_same( ScryDexPersistencePlan::READY, $plan->status() );
 		$this->assert_same( 2, count( $plan->reference_inserts() ) );
 		$this->assert_same( 0, count( $plan->reference_updates() ) );
+		$this->assert_same( 2, count( $plan->reference_variant_upserts() ) );
 		$this->assert_same( 2, count( $plan->price_observations() ) );
 		$this->assert_same( 'sdx-pkm-001', $insert['provider_card_id'] );
 		$this->assert_same( '2026-06-06 12:00:00', $insert['created_at'] );
 		$this->assert_same( '2026-06-06 12:00:00', $insert['updated_at'] );
 		$this->assert_same( 1, $insert['row_version'] );
 		$this->assert_true( 1 === preg_match( '/^[a-f0-9-]{36}$/', $insert['public_id'] ) );
+		$this->assert_same( 'sdx-pkm-001-holo-unlimited', $variant['provider_variant_id'] );
+		$this->assert_same( 'Unlimited Holo', $variant['variant'] );
+		$this->assert_same( 'Holofoil', $variant['finish'] );
+		$this->assert_same( null, $variant['reference_card_id'] );
 		$this->assert_same( 'scrydex:sdx-pkm-001', $price['provider_key'] );
 		$this->assert_true( 1 === preg_match( '/^[a-f0-9-]{36}$/', $price['public_id'] ) );
 		$this->assert_same( null, $price['reference_card_id'] );
@@ -75,12 +81,14 @@ final class ScryDexPersistencePlannerTest extends TestCase {
 		$this->assert_same( ScryDexPersistencePlan::READY, $plan->status() );
 		$this->assert_same( 1, count( $plan->reference_inserts() ) );
 		$this->assert_same( 1, count( $plan->reference_updates() ) );
+		$this->assert_same( 2, count( $plan->reference_variant_upserts() ) );
 		$this->assert_same( 88, $update['reference_card_id'] );
 		$this->assert_same( 'Charizard', $update['name'] );
 		$this->assert_same( 'charizard', $update['normalized_name'] );
 		$this->assert_same( '2026-06-06 12:00:00', $update['updated_at'] );
 		$this->assert_same( 4, $update['row_version'] );
 		$this->assert_same( 88, $price['reference_card_id'] );
+		$this->assert_same( 88, $plan->reference_variant_upserts()[0]['reference_card_id'] );
 		$this->assert_same( 'pokemon', $price['game'] );
 	}
 	public function test_planner_marks_unchanged_reference_rows_without_update(): void {
@@ -107,6 +115,7 @@ final class ScryDexPersistencePlannerTest extends TestCase {
 
 		$this->assert_same( ScryDexPersistencePlan::READY, $plan->status() );
 		$this->assert_same( 0, $plan->reference_write_count() );
+		$this->assert_same( 2, $plan->reference_variant_write_count() );
 		$this->assert_same( array( 'scrydex:sdx-pkm-001' ), $plan->unchanged_reference_keys() );
 		$this->assert_same( 55, $plan->price_observations()[0]['reference_card_id'] );
 	}

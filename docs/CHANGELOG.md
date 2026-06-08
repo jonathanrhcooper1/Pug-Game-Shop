@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex catalog sync now normalizes provider variants/versions into
+  reference-variant upserts, includes variant counts in worker/query/repository
+  audits, exposes variants from the WordPress `/reference/search` fallback
+  route, caches them in the LAN sync server, and shows version/finish labels in
+  the offline app lookup results.
 - WordPress inventory routes now include a connected `/reference/search`
   handler under the staff-search read gate, returning catalog-safe ScryDex
   reference card identity, images, latest provider price observation, and

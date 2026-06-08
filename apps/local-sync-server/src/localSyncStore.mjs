@@ -972,6 +972,7 @@ function migrateLocalSyncDatabase(database) {
       market_price_minor_units INTEGER NOT NULL,
       currency TEXT NOT NULL,
       image_url TEXT NOT NULL DEFAULT '',
+      variants_json TEXT NOT NULL DEFAULT '[]',
       price_observed_at_utc TEXT NULL,
       catalog_synced_at_utc TEXT NOT NULL,
       catalog_source TEXT NOT NULL,
@@ -986,6 +987,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "printed_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "image_url", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
+  ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
 }
 
 function seedLocalSyncDatabase(database, now) {
@@ -1089,7 +1091,7 @@ function loadReferenceCards(database) {
     .prepare(`
       SELECT provider_card_id, game, card_name, set_name, set_code, card_number,
         printed_number, suggested_barcode, market_price_minor_units, currency,
-        image_url, price_observed_at_utc, catalog_synced_at_utc, catalog_source
+        image_url, variants_json, price_observed_at_utc, catalog_synced_at_utc, catalog_source
       FROM reference_cards
       ORDER BY card_name, set_name, provider_card_id
     `)
@@ -1289,10 +1291,10 @@ function saveReferenceCard(database, card, now) {
       INSERT INTO reference_cards (
         provider_card_id, game, card_name, set_name, set_code, card_number,
         printed_number, suggested_barcode, market_price_minor_units, currency,
-        image_url, price_observed_at_utc, catalog_synced_at_utc, catalog_source,
+        image_url, variants_json, price_observed_at_utc, catalog_synced_at_utc, catalog_source,
         updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(provider_card_id) DO UPDATE SET
         game = excluded.game,
         card_name = excluded.card_name,
@@ -1304,6 +1306,7 @@ function saveReferenceCard(database, card, now) {
         market_price_minor_units = excluded.market_price_minor_units,
         currency = excluded.currency,
         image_url = excluded.image_url,
+        variants_json = excluded.variants_json,
         price_observed_at_utc = excluded.price_observed_at_utc,
         catalog_synced_at_utc = excluded.catalog_synced_at_utc,
         catalog_source = excluded.catalog_source,
@@ -1321,6 +1324,7 @@ function saveReferenceCard(database, card, now) {
       card.market_price_minor_units,
       card.currency,
       card.image_url,
+      JSON.stringify(card.variants ?? []),
       card.price_observed_at_utc,
       card.catalog_synced_at_utc,
       card.catalog_source,
@@ -1938,6 +1942,14 @@ function searchReferenceCards(referenceCards, needle, game) {
         card.card_number,
         card.printed_number,
         card.suggested_barcode,
+        ...(card.variants ?? []).flatMap((variant) => [
+          variant.provider_variant_id,
+          variant.variant,
+          variant.finish,
+          variant.parallel_name,
+          variant.edition,
+          variant.language,
+        ]),
       ].some((value) => String(value).toLowerCase().includes(needle)),
     )
     .slice(0, 8)
@@ -1970,6 +1982,7 @@ function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new 
   const set = card.set && typeof card.set === "object" ? card.set : {}
   const marketPrice = card.market_price && typeof card.market_price === "object" ? card.market_price : {}
   const images = card.images && typeof card.images === "object" ? card.images : {}
+  const variants = cleanReferenceVariants(card.variants ?? parseJson(card.variants_json, []))
   const priceMinorUnits =
     card.market_price_minor_units !== undefined
       ? minorUnits(card.market_price_minor_units)
@@ -1987,10 +2000,47 @@ function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new 
     market_price_minor_units: Math.max(0, priceMinorUnits),
     currency: cleanCurrency(card.currency ?? marketPrice.currency),
     image_url: cleanHttpUrl(card.image_url ?? card.front_image_url ?? images.front ?? images.small ?? images.large),
+    variants,
     price_observed_at_utc: cleanIsoTimestamp(card.price_observed_at_utc ?? card.observed_at ?? card.updated_at),
     catalog_synced_at_utc: cleanIsoTimestamp(card.catalog_synced_at_utc ?? card.synced_at_utc) || currentTimestamp,
     catalog_source: cleanCatalogSource(card.catalog_source ?? catalogSource),
   }
+}
+
+function cleanReferenceVariants(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((variant) => variant && typeof variant === "object")
+    .map((variant) => ({
+      provider_variant_id: cleanPublicId(variant.provider_variant_id ?? variant.id),
+      variant: cleanName(variant.variant ?? variant.name),
+      finish: cleanName(variant.finish),
+      parallel_name: cleanName(variant.parallel_name ?? variant.parallel),
+      edition: cleanName(variant.edition),
+      language: cleanName(variant.language),
+      raw_or_graded_support: cleanRawOrGradedSupport(variant.raw_or_graded_support),
+      attributes: variant.attributes && typeof variant.attributes === "object" ? variant.attributes : {},
+    }))
+    .filter((variant) =>
+      [
+        variant.provider_variant_id,
+        variant.variant,
+        variant.finish,
+        variant.parallel_name,
+        variant.edition,
+        variant.language,
+      ].some((field) => field),
+    )
+    .slice(0, 24)
+}
+
+function cleanRawOrGradedSupport(value) {
+  const support = String(value ?? "").trim().toLowerCase()
+
+  return ["raw", "graded", "both"].includes(support) ? support : "both"
 }
 
 function upsertReferenceCard(referenceCards, card) {
@@ -2044,6 +2094,28 @@ function seedScryDexReferenceCards() {
       market_price_minor_units: 12500,
       currency: "USD",
       image_url: "https://images.pokemontcg.io/base1/4_hires.png",
+      variants: [
+        {
+          provider_variant_id: "scrydex-pokemon-base-004-holo-unlimited",
+          variant: "Unlimited Holo",
+          finish: "Holofoil",
+          parallel_name: "",
+          edition: "Unlimited",
+          language: "English",
+          raw_or_graded_support: "both",
+          attributes: {},
+        },
+        {
+          provider_variant_id: "scrydex-pokemon-base-004-holo-1st-edition",
+          variant: "1st Edition Holo",
+          finish: "Holofoil",
+          parallel_name: "",
+          edition: "1st Edition",
+          language: "English",
+          raw_or_graded_support: "both",
+          attributes: {},
+        },
+      ],
       price_observed_at_utc: "2026-06-06T09:00:00.000Z",
       catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },
@@ -2059,6 +2131,18 @@ function seedScryDexReferenceCards() {
       market_price_minor_units: 1800,
       currency: "USD",
       image_url: "https://images.pokemontcg.io/jungle/60_hires.png",
+      variants: [
+        {
+          provider_variant_id: "scrydex-pokemon-jungle-060-yellow-cheeks",
+          variant: "Yellow Cheeks",
+          finish: "Regular",
+          parallel_name: "",
+          edition: "Unlimited",
+          language: "English",
+          raw_or_graded_support: "both",
+          attributes: {},
+        },
+      ],
       price_observed_at_utc: "2026-06-06T09:00:00.000Z",
       catalog_synced_at_utc: "2026-06-08T12:00:00.000Z",
     },

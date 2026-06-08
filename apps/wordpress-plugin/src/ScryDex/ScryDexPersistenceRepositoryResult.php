@@ -15,6 +15,7 @@ final class ScryDexPersistenceRepositoryResult {
 	/**
 	 * @param list<array<string, mixed>> $reference_insert_results Reference insert staging results.
 	 * @param list<array<string, mixed>> $reference_update_results Reference update staging results.
+	 * @param list<array<string, mixed>> $reference_variant_upsert_results Reference variant upsert staging results.
 	 * @param list<array<string, mixed>> $price_observation_results Provider price observation staging results.
 	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert staging result.
 	 * @param list<string>              $errors Repository errors.
@@ -25,6 +26,7 @@ final class ScryDexPersistenceRepositoryResult {
 		private string $status,
 		private array $reference_insert_results,
 		private array $reference_update_results,
+		private array $reference_variant_upsert_results,
 		private array $price_observation_results,
 		private ?array $checkpoint_result,
 		private array $errors,
@@ -36,6 +38,7 @@ final class ScryDexPersistenceRepositoryResult {
 	/**
 	 * @param list<array<string, mixed>> $reference_insert_results Reference insert staging results.
 	 * @param list<array<string, mixed>> $reference_update_results Reference update staging results.
+	 * @param list<array<string, mixed>> $reference_variant_upsert_results Reference variant upsert staging results.
 	 * @param list<array<string, mixed>> $price_observation_results Provider price observation staging results.
 	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert staging result.
 	 */
@@ -43,6 +46,7 @@ final class ScryDexPersistenceRepositoryResult {
 		ScryDexPersistenceQueryBuildPlan $query_plan,
 		array $reference_insert_results,
 		array $reference_update_results,
+		array $reference_variant_upsert_results,
 		array $price_observation_results,
 		?array $checkpoint_result
 	): self {
@@ -50,6 +54,7 @@ final class ScryDexPersistenceRepositoryResult {
 			self::STATUS_DEFERRED,
 			array_values( $reference_insert_results ),
 			array_values( $reference_update_results ),
+			array_values( $reference_variant_upsert_results ),
 			array_values( $price_observation_results ),
 			$checkpoint_result,
 			array(),
@@ -61,6 +66,7 @@ final class ScryDexPersistenceRepositoryResult {
 	 * @param list<string> $errors Repository errors.
 	 * @param list<array<string, mixed>> $reference_insert_results Reference insert execution results.
 	 * @param list<array<string, mixed>> $reference_update_results Reference update execution results.
+	 * @param list<array<string, mixed>> $reference_variant_upsert_results Reference variant upsert execution results.
 	 * @param list<array<string, mixed>> $price_observation_results Provider price observation execution results.
 	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert execution result.
 	 * @param list<string>              $transaction_commands Transaction commands attempted.
@@ -70,6 +76,7 @@ final class ScryDexPersistenceRepositoryResult {
 		array $errors,
 		array $reference_insert_results = array(),
 		array $reference_update_results = array(),
+		array $reference_variant_upsert_results = array(),
 		array $price_observation_results = array(),
 		?array $checkpoint_result = null,
 		array $transaction_commands = array()
@@ -78,6 +85,7 @@ final class ScryDexPersistenceRepositoryResult {
 			self::STATUS_REJECTED,
 			array_values( $reference_insert_results ),
 			array_values( $reference_update_results ),
+			array_values( $reference_variant_upsert_results ),
 			array_values( $price_observation_results ),
 			$checkpoint_result,
 			array_values( array_unique( $errors ) ),
@@ -89,6 +97,7 @@ final class ScryDexPersistenceRepositoryResult {
 	/**
 	 * @param list<array<string, mixed>> $reference_insert_results Reference insert execution results.
 	 * @param list<array<string, mixed>> $reference_update_results Reference update execution results.
+	 * @param list<array<string, mixed>> $reference_variant_upsert_results Reference variant upsert execution results.
 	 * @param list<array<string, mixed>> $price_observation_results Provider price observation execution results.
 	 * @param array<string, mixed>|null  $checkpoint_result Checkpoint upsert execution result.
 	 * @param list<string>              $transaction_commands Transaction commands attempted.
@@ -97,6 +106,7 @@ final class ScryDexPersistenceRepositoryResult {
 		ScryDexPersistenceQueryBuildPlan $query_plan,
 		array $reference_insert_results,
 		array $reference_update_results,
+		array $reference_variant_upsert_results,
 		array $price_observation_results,
 		?array $checkpoint_result,
 		array $transaction_commands
@@ -105,6 +115,7 @@ final class ScryDexPersistenceRepositoryResult {
 			self::STATUS_EXECUTED,
 			array_values( $reference_insert_results ),
 			array_values( $reference_update_results ),
+			array_values( $reference_variant_upsert_results ),
 			array_values( $price_observation_results ),
 			$checkpoint_result,
 			array(),
@@ -147,6 +158,10 @@ final class ScryDexPersistenceRepositoryResult {
 		return count( $this->reference_update_results );
 	}
 
+	public function reference_variant_upsert_query_count(): int {
+		return count( $this->reference_variant_upsert_results );
+	}
+
 	public function price_observation_query_count(): int {
 		return count( $this->price_observation_results );
 	}
@@ -158,6 +173,7 @@ final class ScryDexPersistenceRepositoryResult {
 	public function total_query_count(): int {
 		return $this->reference_insert_query_count()
 			+ $this->reference_update_query_count()
+			+ $this->reference_variant_upsert_query_count()
 			+ $this->price_observation_query_count()
 			+ $this->checkpoint_query_count();
 	}
@@ -184,6 +200,13 @@ final class ScryDexPersistenceRepositoryResult {
 	 */
 	public function reference_update_results(): array {
 		return $this->reference_update_results;
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	public function reference_variant_upsert_results(): array {
+		return $this->reference_variant_upsert_results;
 	}
 
 	/**
@@ -221,6 +244,7 @@ final class ScryDexPersistenceRepositoryResult {
 			'is_rejected'                                => $this->is_rejected(),
 			'reference_insert_query_count'               => $this->reference_insert_query_count(),
 			'reference_update_query_count'               => $this->reference_update_query_count(),
+			'reference_variant_upsert_query_count'       => $this->reference_variant_upsert_query_count(),
 			'price_observation_query_count'              => $this->price_observation_query_count(),
 			'checkpoint_query_count'                     => $this->checkpoint_query_count(),
 			'total_query_count'                          => $this->total_query_count(),
@@ -229,6 +253,7 @@ final class ScryDexPersistenceRepositoryResult {
 			'query'                                      => $this->query_audit,
 			'reference_insert_results'                   => $this->reference_insert_results,
 			'reference_update_results'                   => $this->reference_update_results,
+			'reference_variant_upsert_results'           => $this->reference_variant_upsert_results,
 			'price_observation_results'                  => $this->price_observation_results,
 			'checkpoint_result'                          => $this->checkpoint_result,
 			'explicit_execution_required'                => true,
@@ -240,6 +265,7 @@ final class ScryDexPersistenceRepositoryResult {
 			'persistence_repository_deferred'            => ! $executed,
 			'reference_card_writes_deferred'             => ! $executed,
 			'provider_price_observation_writes_deferred' => ! $executed,
+			'reference_variant_writes_deferred'          => ! $executed,
 			'checkpoint_upsert_execution_deferred'       => ! $executed,
 			'errors'                                     => $this->errors,
 		);
@@ -252,6 +278,7 @@ final class ScryDexPersistenceRepositoryResult {
 		$results = array_merge(
 			$this->reference_insert_results,
 			$this->reference_update_results,
+			$this->reference_variant_upsert_results,
 			$this->price_observation_results
 		);
 

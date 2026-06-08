@@ -16,6 +16,7 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$result  = ( new ScryDexCardNormalizer() )->normalize_card( $fixture['cards'][0] );
 		$card    = $result->card();
 		$price   = $result->price();
+		$variants = $result->variants();
 
 		$this->assert_true( $result->is_valid() );
 		$this->assert_same( 'scrydex', $card['provider_name'] );
@@ -31,6 +32,13 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( null, $card['back_image_url'] );
 		$this->assert_same( '2026-06-06 09:00:00', $card['provider_updated_at'] );
 		$this->assert_contains( 'Base Set', $card['search_text'] );
+		$this->assert_contains( '1st Edition Holo', $card['search_text'] );
+		$this->assert_same( 2, count( $variants ) );
+		$this->assert_same( 'sdx-pkm-001-holo-unlimited', $variants[0]['provider_variant_id'] );
+		$this->assert_same( 'Unlimited Holo', $variants[0]['variant'] );
+		$this->assert_same( 'Holofoil', $variants[0]['finish'] );
+		$this->assert_same( 'Unlimited', $variants[0]['edition'] );
+		$this->assert_same( 'both', $variants[0]['raw_or_graded_support'] );
 		$this->assert_true( is_array( $price ) );
 		$this->assert_same( '120.0000', $price['market_price'] );
 		$this->assert_same( 'USD', $price['currency'] );

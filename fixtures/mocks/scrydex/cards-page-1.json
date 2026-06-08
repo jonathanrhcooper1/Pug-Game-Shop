@@ -22,6 +22,22 @@
       "images": {
         "front": "https://images.example.test/pokemon/base-set-charizard.png"
       },
+      "variants": [
+        {
+          "id": "sdx-pkm-001-holo-unlimited",
+          "variant": "Unlimited Holo",
+          "finish": "Holofoil",
+          "edition": "Unlimited",
+          "language": "English"
+        },
+        {
+          "id": "sdx-pkm-001-holo-1st-edition",
+          "variant": "1st Edition Holo",
+          "finish": "Holofoil",
+          "edition": "1st Edition",
+          "language": "English"
+        }
+      ],
       "updated_at": "2026-06-06T09:00:00Z"
     },
     {

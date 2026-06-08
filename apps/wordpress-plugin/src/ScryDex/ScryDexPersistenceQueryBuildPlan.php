@@ -12,6 +12,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 	 * @param array<string, string>      $table_names ScryDex persistence table names.
 	 * @param list<array<string, mixed>> $reference_insert_queries Reference-card insert templates.
 	 * @param list<array<string, mixed>> $reference_update_queries Reference-card update templates.
+	 * @param list<array<string, mixed>> $reference_variant_upsert_queries Reference variant upsert templates.
 	 * @param list<array<string, mixed>> $price_observation_queries Provider price observation insert templates.
 	 * @param array<string, mixed>|null  $checkpoint_upsert_query Checkpoint upsert template.
 	 * @param list<string>              $errors Query build errors.
@@ -21,6 +22,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		private array $table_names,
 		private array $reference_insert_queries,
 		private array $reference_update_queries,
+		private array $reference_variant_upsert_queries,
 		private array $price_observation_queries,
 		private ?array $checkpoint_upsert_query,
 		private array $errors,
@@ -32,6 +34,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 	 * @param array<string, string>      $table_names ScryDex persistence table names.
 	 * @param list<array<string, mixed>> $reference_insert_queries Reference-card insert templates.
 	 * @param list<array<string, mixed>> $reference_update_queries Reference-card update templates.
+	 * @param list<array<string, mixed>> $reference_variant_upsert_queries Reference variant upsert templates.
 	 * @param list<array<string, mixed>> $price_observation_queries Provider price observation insert templates.
 	 * @param array<string, mixed>|null  $checkpoint_upsert_query Checkpoint upsert template.
 	 */
@@ -40,6 +43,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		array $table_names,
 		array $reference_insert_queries,
 		array $reference_update_queries,
+		array $reference_variant_upsert_queries,
 		array $price_observation_queries,
 		?array $checkpoint_upsert_query
 	): self {
@@ -48,6 +52,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 			$table_names,
 			array_values( $reference_insert_queries ),
 			array_values( $reference_update_queries ),
+			array_values( $reference_variant_upsert_queries ),
 			array_values( $price_observation_queries ),
 			$checkpoint_upsert_query,
 			array(),
@@ -63,6 +68,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		return new self(
 			false,
 			$table_names,
+			array(),
 			array(),
 			array(),
 			array(),
@@ -100,6 +106,13 @@ final class ScryDexPersistenceQueryBuildPlan {
 	/**
 	 * @return list<array<string, mixed>>
 	 */
+	public function reference_variant_upsert_queries(): array {
+		return $this->reference_variant_upsert_queries;
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
 	public function price_observation_queries(): array {
 		return $this->price_observation_queries;
 	}
@@ -121,6 +134,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 	public function total_query_count(): int {
 		return count( $this->reference_insert_queries )
 			+ count( $this->reference_update_queries )
+			+ count( $this->reference_variant_upsert_queries )
 			+ count( $this->price_observation_queries )
 			+ ( null === $this->checkpoint_upsert_query ? 0 : 1 );
 	}
@@ -146,11 +160,13 @@ final class ScryDexPersistenceQueryBuildPlan {
 			'source_status'                              => $this->source_plan->status(),
 			'reference_insert_query_count'               => count( $this->reference_insert_queries ),
 			'reference_update_query_count'               => count( $this->reference_update_queries ),
+			'reference_variant_upsert_query_count'       => count( $this->reference_variant_upsert_queries ),
 			'price_observation_query_count'              => count( $this->price_observation_queries ),
 			'checkpoint_upsert_query_present'            => null !== $this->checkpoint_upsert_query,
 			'total_query_count'                          => $this->total_query_count(),
 			'prepare_arg_count'                          => $this->prepare_arg_count(),
 			'reference_write_count'                      => $this->source_plan->reference_write_count(),
+			'reference_variant_write_count'              => $this->source_plan->reference_variant_write_count(),
 			'unchanged_reference_count'                  => count( $this->source_plan->unchanged_reference_keys() ),
 			'price_observation_count'                    => count( $this->source_plan->price_observations() ),
 			'persistence_query_execution_deferred'       => true,
@@ -158,6 +174,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 			'checkpoint_upsert_execution_deferred'       => true,
 			'provider_price_observation_writes_deferred' => true,
 			'reference_card_writes_deferred'             => true,
+			'reference_variant_writes_deferred'          => true,
 			'errors'                                     => $this->errors,
 		);
 	}
@@ -169,6 +186,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		$queries = array_merge(
 			$this->reference_insert_queries,
 			$this->reference_update_queries,
+			$this->reference_variant_upsert_queries,
 			$this->price_observation_queries
 		);
 

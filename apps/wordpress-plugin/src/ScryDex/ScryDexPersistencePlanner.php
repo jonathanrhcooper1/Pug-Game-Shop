@@ -48,6 +48,7 @@ final class ScryDexPersistencePlanner {
 		$reference_inserts  = array();
 		$reference_updates  = array();
 		$unchanged_keys     = array();
+		$variant_upserts    = array();
 		$price_observations = array();
 		$errors             = $page_plan->errors();
 
@@ -79,6 +80,35 @@ final class ScryDexPersistencePlanner {
 			}
 
 			$reference_updates[] = $update;
+		}
+
+		foreach ( $page_plan->variant_rows() as $index => $variant_row ) {
+			$key = $this->provider_key_from_row( $variant_row );
+
+			if ( '' === $key ) {
+				$errors[] = array(
+					'index'  => $index,
+					'errors' => array( 'missing_variant_provider_key' ),
+				);
+				continue;
+			}
+
+			$existing = $existing_by_key[ $key ] ?? null;
+
+			if ( null === $existing && ! isset( $planned_keys[ $key ] ) ) {
+				$errors[] = array(
+					'provider_key' => $key,
+					'errors'       => array( 'missing_reference_for_variant' ),
+				);
+				continue;
+			}
+
+			$variant_upserts[] = $this->variant_upsert_payload(
+				$variant_row,
+				$key,
+				$existing,
+				$now
+			);
 		}
 
 		foreach ( $page_plan->price_rows() as $index => $price_row ) {
@@ -116,9 +146,39 @@ final class ScryDexPersistencePlanner {
 			$reference_inserts,
 			$reference_updates,
 			$unchanged_keys,
+			$variant_upserts,
 			$price_observations,
 			$errors,
 			$page_plan->next_checkpoint()
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $variant_row Normalized reference variant row.
+	 * @param array<string, mixed>|null $existing Existing reference-card row.
+	 * @return array<string, mixed>
+	 */
+	private function variant_upsert_payload(
+		array $variant_row,
+		string $key,
+		?array $existing,
+		string $now
+	): array {
+		return array(
+			'provider_key'               => $key,
+			'provider_name'              => (string) $variant_row['provider_name'],
+			'provider_card_id'           => (string) $variant_row['provider_card_id'],
+			'reference_card_id'          => null === $existing ? null : $this->positive_int( $existing['reference_card_id'] ?? null ),
+			'provider_variant_id'        => $this->nullable_string( $variant_row['provider_variant_id'] ?? null ),
+			'variant'                    => $this->nullable_string( $variant_row['variant'] ?? null ),
+			'finish'                     => $this->nullable_string( $variant_row['finish'] ?? null ),
+			'parallel_name'              => $this->nullable_string( $variant_row['parallel_name'] ?? null ),
+			'edition'                    => $this->nullable_string( $variant_row['edition'] ?? null ),
+			'language'                   => $this->nullable_string( $variant_row['language'] ?? null ),
+			'raw_or_graded_support'      => $this->raw_or_graded_support( $variant_row['raw_or_graded_support'] ?? null ),
+			'normalized_attributes_json' => $this->nullable_string( $variant_row['normalized_attributes_json'] ?? null ),
+			'created_at'                 => $now,
+			'updated_at'                 => $now,
 		);
 	}
 
@@ -287,6 +347,18 @@ final class ScryDexPersistencePlanner {
 		}
 
 		return null;
+	}
+
+	private function nullable_string( mixed $value ): ?string {
+		$value = trim( (string) ( $value ?? '' ) );
+
+		return '' === $value ? null : $value;
+	}
+
+	private function raw_or_graded_support( mixed $value ): string {
+		$value = strtolower( trim( (string) ( $value ?? '' ) ) );
+
+		return in_array( $value, array( 'raw', 'graded', 'both' ), true ) ? $value : 'both';
 	}
 
 	private function next_row_version( mixed $value ): int {

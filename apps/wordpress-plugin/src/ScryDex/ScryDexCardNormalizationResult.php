@@ -12,28 +12,31 @@ final class ScryDexCardNormalizationResult {
 	 * @param list<string> $errors Normalization error codes.
 	 * @param array<string, mixed> $card Reference card row shape.
 	 * @param array<string, mixed>|null $price Current price row shape.
+	 * @param list<array<string, mixed>> $variants Reference variant row shapes.
 	 */
 	private function __construct(
 		private bool $valid,
 		private array $errors,
 		private array $card,
-		private ?array $price
+		private ?array $price,
+		private array $variants
 	) {
 	}
 
 	/**
 	 * @param array<string, mixed> $card Reference card row shape.
 	 * @param array<string, mixed>|null $price Current price row shape.
+	 * @param list<array<string, mixed>> $variants Reference variant row shapes.
 	 */
-	public static function valid( array $card, ?array $price ): self {
-		return new self( true, array(), $card, $price );
+	public static function valid( array $card, ?array $price, array $variants = array() ): self {
+		return new self( true, array(), $card, $price, array_values( $variants ) );
 	}
 
 	/**
 	 * @param list<string> $errors Normalization error codes.
 	 */
 	public static function invalid( array $errors ): self {
-		return new self( false, $errors, array(), null );
+		return new self( false, $errors, array(), null, array() );
 	}
 
 	public function is_valid(): bool {
@@ -62,6 +65,13 @@ final class ScryDexCardNormalizationResult {
 	}
 
 	/**
+	 * @return list<array<string, mixed>>
+	 */
+	public function variants(): array {
+		return $this->variants;
+	}
+
+	/**
 	 * @return array<string, mixed>
 	 */
 	public function to_array(): array {
@@ -70,6 +80,7 @@ final class ScryDexCardNormalizationResult {
 			'errors' => $this->errors,
 			'card'   => $this->card,
 			'price'  => $this->price,
+			'variants' => $this->variants,
 		);
 	}
 }
