@@ -91,7 +91,7 @@ final class InventoryWorkspacePresenter {
 				'Square projection',
 				true === ( $dependency_payload['square_inventory_projection_deferred'] ?? true ) ? 'Deferred' : 'Ready',
 				true === ( $dependency_payload['square_inventory_projection_deferred'] ?? true ) ? 'deferred' : 'ready',
-				'inventory projection only; Square payments handled by WooCommerce Square'
+				$this->square_projection_notes( $dependency_payload )
 			),
 			$this->row(
 				'Square payments',
@@ -296,6 +296,17 @@ final class InventoryWorkspacePresenter {
 				$square_ready
 			)
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 */
+	private function square_projection_notes( array $dependency_payload ): string {
+		$sync_status = true === ( $dependency_payload['square_inventory_sync_request_planner_ready'] ?? false )
+			? 'sync request planner staged'
+			: 'sync request planner pending';
+
+		return 'inventory projection only; ' . $sync_status . '; Square payments handled by WooCommerce Square';
 	}
 
 	private function projection_planning_notes( bool $planning_deferred, bool $woocommerce_ready, bool $square_ready ): string {

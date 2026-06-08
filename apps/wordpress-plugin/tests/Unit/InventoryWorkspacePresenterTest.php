@@ -39,6 +39,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_contains( 'waiting for staged inventory create handler', $index['Projection planning']['notes'] );
 		$this->assert_same( 'Deferred', $index['WooCommerce projection']['value'] );
 		$this->assert_same( 'Deferred', $index['Square projection']['value'] );
+		$this->assert_contains( 'sync request planner staged', $index['Square projection']['notes'] );
 		$this->assert_same( 'Delegated to WooCommerce Square', $index['Square payments']['value'] );
 		$this->assert_same( 'ready', $index['Square payments']['status'] );
 		$this->assert_contains( 'inventory only', $index['Square payments']['notes'] );
@@ -62,6 +63,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 				'inventory_intake_route_writes_deferred'       => false,
 				'woocommerce_projection_planner_ready'         => true,
 				'square_inventory_projection_planner_ready'    => true,
+				'square_inventory_sync_request_planner_ready'  => true,
 				'external_projection_planning_deferred'        => false,
 				'public_read_routes_enabled'                   => false,
 				'public_read_permission_callbacks_configured'  => false,
@@ -78,6 +80,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_contains( 'contracts planned', $index['Projection planning']['notes'] );
 		$this->assert_same( 'Deferred', $index['WooCommerce projection']['value'] );
 		$this->assert_same( 'Deferred', $index['Square projection']['value'] );
+		$this->assert_contains( 'sync request planner staged', $index['Square projection']['notes'] );
 		$this->assert_same( 'Delegated to WooCommerce Square', $index['Square payments']['value'] );
 	}
 

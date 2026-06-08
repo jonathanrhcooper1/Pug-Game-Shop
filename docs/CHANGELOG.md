@@ -32,6 +32,9 @@ All notable changes follow Semantic Versioning.
   projection plans into sandbox-only Catalog/Inventory request envelopes,
   preserves idempotency/external IDs, rejects production-declared credentials,
   and keeps network/provider writes deferred.
+- Square projection execution and inventory dependency/admin readiness now
+  surface Square sync request planner status, request envelopes, external IDs,
+  and production-context rejection before any Square writer can run.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.

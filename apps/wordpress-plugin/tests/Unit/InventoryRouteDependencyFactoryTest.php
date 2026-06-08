@@ -280,11 +280,13 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_same( 'blocked', $blocked['status'] );
 		$this->assert_true( $blocked['woocommerce_projection_planner_ready'] );
 		$this->assert_true( $blocked['square_inventory_projection_planner_ready'] );
+		$this->assert_true( $blocked['square_inventory_sync_request_planner_ready'] );
 		$this->assert_true( $blocked['external_projection_planning_deferred'] );
 		$this->assert_same( 'ready', $ready['status'] );
 		$this->assert_contains( 'handlers 2 / 2', $ready['value'] );
 		$this->assert_contains( 'public reads enabled', $ready['value'] );
 		$this->assert_contains( 'projection planning deferred', $ready['value'] );
+		$this->assert_contains( 'square sync request ready', $ready['value'] );
 	}
 
 	/**

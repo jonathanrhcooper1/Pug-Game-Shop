@@ -226,6 +226,7 @@ final class InventoryRouteDependencyFactory {
 			'inventory_intake_route_dependency_issues'     => $this->list_values( $intake_summary['configuration_issues'] ?? array() ),
 			'woocommerce_projection_planner_ready'         => true === ( $intake_summary['woocommerce_projection_planner_ready'] ?? false ),
 			'square_inventory_projection_planner_ready'    => true === ( $intake_summary['square_inventory_projection_planner_ready'] ?? false ),
+			'square_inventory_sync_request_planner_ready'  => true === ( $intake_summary['square_inventory_sync_request_planner_ready'] ?? false ),
 			'external_projection_planning_deferred'        => true === ( $intake_summary['external_projection_planning_deferred'] ?? true ),
 			'planned_route_count'                          => count( $route_plans ),
 			'registerable_route_count'                     => count( $registerable_route_keys ),

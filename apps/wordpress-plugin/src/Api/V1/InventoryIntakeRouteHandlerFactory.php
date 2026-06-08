@@ -11,6 +11,7 @@ use TCGStorePlatform\Inventory\InventoryIntakeParser;
 use TCGStorePlatform\Inventory\InventoryIntakePersistencePlanner;
 use TCGStorePlatform\Inventory\InventoryIntakeRepository;
 use TCGStorePlatform\Square\SquareInventoryProjectionPlanner;
+use TCGStorePlatform\Square\SquareInventorySyncRequestPlanner;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
 use Throwable;
 
@@ -88,28 +89,29 @@ final class InventoryIntakeRouteHandlerFactory {
 		}
 
 		return array(
-			'action'                                    => 'inventory_intake_route_handler_factory_ready',
-			'configured'                                => true,
-			'handler_factory_ready'                     => true,
-			'intake_parser_ready'                       => method_exists( InventoryIntakeParser::class, 'parse' ),
-			'persistence_planner_ready'                 => method_exists( InventoryIntakePersistencePlanner::class, 'plan' ),
-			'repository_adapter_ready'                  => method_exists( InventoryIntakeRepository::class, 'create' ),
-			'woocommerce_projection_planner_ready'      => method_exists( InventoryProductProjectionPlanner::class, 'plan_row' ),
-			'square_inventory_projection_planner_ready' => method_exists( SquareInventoryProjectionPlanner::class, 'plan_row' ),
-			'route_connected_writes_enabled'            => $this->route_connected_writes_enabled,
-			'database_configured'                       => $database_ready,
-			'table_prefix_ready'                        => $prefix_ready,
-			'repository_configured'                     => $handler_ready,
-			'route_connected_handler_ready'             => $handler_ready,
-			'route_connected_handler_deferred'          => ! $handler_ready,
-			'route_connected_writes_deferred'           => ! $handler_ready,
-			'woocommerce_projection_deferred'           => true,
-			'square_inventory_projection_deferred'      => true,
-			'external_projection_planning_deferred'     => ! $handler_ready,
-			'label_print_deferred'                      => true,
-			'default_route_registration_deferred'       => true,
-			'default_route_execution_deferred'          => ! $handler_ready,
-			'configuration_issues'                      => array_values( array_unique( $issues ) ),
+			'action'                                      => 'inventory_intake_route_handler_factory_ready',
+			'configured'                                  => true,
+			'handler_factory_ready'                       => true,
+			'intake_parser_ready'                         => method_exists( InventoryIntakeParser::class, 'parse' ),
+			'persistence_planner_ready'                   => method_exists( InventoryIntakePersistencePlanner::class, 'plan' ),
+			'repository_adapter_ready'                    => method_exists( InventoryIntakeRepository::class, 'create' ),
+			'woocommerce_projection_planner_ready'        => method_exists( InventoryProductProjectionPlanner::class, 'plan_row' ),
+			'square_inventory_projection_planner_ready'   => method_exists( SquareInventoryProjectionPlanner::class, 'plan_row' ),
+			'square_inventory_sync_request_planner_ready' => method_exists( SquareInventorySyncRequestPlanner::class, 'plan' ),
+			'route_connected_writes_enabled'              => $this->route_connected_writes_enabled,
+			'database_configured'                         => $database_ready,
+			'table_prefix_ready'                          => $prefix_ready,
+			'repository_configured'                       => $handler_ready,
+			'route_connected_handler_ready'               => $handler_ready,
+			'route_connected_handler_deferred'            => ! $handler_ready,
+			'route_connected_writes_deferred'             => ! $handler_ready,
+			'woocommerce_projection_deferred'             => true,
+			'square_inventory_projection_deferred'        => true,
+			'external_projection_planning_deferred'       => ! $handler_ready,
+			'label_print_deferred'                        => true,
+			'default_route_registration_deferred'         => true,
+			'default_route_execution_deferred'            => ! $handler_ready,
+			'configuration_issues'                        => array_values( array_unique( $issues ) ),
 		);
 	}
 

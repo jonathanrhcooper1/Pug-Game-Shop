@@ -703,6 +703,10 @@
   skipped/failed projections, zero-count mapped inventory changes, external ID
   extraction, official Square payment delegation metadata, production-declared
   credential rejection, and deferred network/provider writes.
+- Local WordPress unit coverage now includes Square sync request planner
+  wiring through projection execution, inventory dependency health/admin
+  summaries, and the Inventory workspace, including production-context
+  rejection before writer callbacks can run.
 - WordPress integration coverage now includes a non-production inventory search
   benchmark fixture that seeds 50,000 deterministic disposable rows, runs
   public visible search, staff deep pagination, and staff barcode lookup

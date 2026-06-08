@@ -11,6 +11,7 @@ use TCGStorePlatform\Square\SquareInventoryProjectionExecutionResult;
 use TCGStorePlatform\Square\SquareInventoryProjectionExecutor;
 use TCGStorePlatform\Square\SquareInventoryProjectionPlan;
 use TCGStorePlatform\Square\SquareInventoryProjectionPlanner;
+use TCGStorePlatform\Square\SquareInventorySyncRequestPlanner;
 use TCGStorePlatform\Tests\TestCase;
 
 final class SquareInventoryProjectionExecutorTest extends TestCase {
@@ -36,6 +37,17 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 		$this->assert_true( in_array( 'square_inventory_writer_deferred', $result->block_reasons(), true ) );
 		$this->assert_true( $audit['provider_inventory_write_deferred'] );
 		$this->assert_true( $audit['network_request_deferred'] );
+		$this->assert_same( 'ready', $audit['square_sync_request_status'] );
+		$this->assert_true( $audit['square_sync_request_ready'] );
+		$this->assert_same(
+			array(
+				'square:inventory-projection:card-public-42:v7',
+				'square:inventory-projection:card-public-42:v7:inventory',
+			),
+			$audit['square_sync_request_idempotency_keys']
+		);
+		$this->assert_same( '/v2/catalog/batch-upsert', $audit['square_sync_request_plan']['catalog_batch_upsert']['path'] );
+		$this->assert_same( '/v2/inventory/batch-change', $audit['square_sync_request_plan']['inventory_batch_change']['path'] );
 		$this->assert_true( $audit['payment_capture_deferred'] );
 		$this->assert_same( 'required_for_payments', $audit['official_square_payment_extension'] );
 		$this->assert_same( 'official_woocommerce_square_extension', $audit['payment_capture_authority'] );
@@ -57,7 +69,10 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 		$this->assert_true( $result->is_skipped() );
 		$this->assert_same( 0, $result->operation_count() );
 		$this->assert_same( array(), $result->block_reasons() );
-		$this->assert_true( $result->audit_payload()['provider_inventory_write_deferred'] );
+		$audit = $result->audit_payload();
+
+		$this->assert_true( $audit['provider_inventory_write_deferred'] );
+		$this->assert_same( 'skipped', $audit['square_sync_request_status'] );
 	}
 
 	public function test_executor_rejects_failed_projection_before_writers(): void {
@@ -87,6 +102,43 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 		$this->assert_false( $called );
 		$this->assert_true( in_array( 'square_inventory_projection_plan_failed', $result->errors(), true ) );
 		$this->assert_true( in_array( 'barcode_or_sku_required', $result->errors(), true ) );
+		$this->assert_same( 'rejected', $result->audit_payload()['square_sync_request_status'] );
+	}
+
+	public function test_executor_rejects_production_request_context_before_writers(): void {
+		$called = false;
+		$plan   = ( new SquareInventoryProjectionPlanner() )->plan_row(
+			$this->available_row(),
+			array( 'square_location_id' => 'L-SANDBOX-1' )
+		);
+		$result = ( new SquareInventoryProjectionExecutor(
+			true,
+			function () use ( &$called ): array {
+				$called = true;
+
+				return array( 'status' => 'written' );
+			},
+			function () use ( &$called ): array {
+				$called = true;
+
+				return array( 'status' => 'written' );
+			},
+			new SquareInventorySyncRequestPlanner(),
+			array(
+				'environment'            => 'production',
+				'credential_environment' => 'production',
+			)
+		) )->execute( $plan );
+		$audit  = $result->audit_payload();
+
+		$this->assert_same( SquareInventoryProjectionExecutionResult::STATUS_REJECTED, $result->status() );
+		$this->assert_false( $called );
+		$this->assert_true( in_array( 'square_inventory_sync_request_rejected', $result->errors(), true ) );
+		$this->assert_true( in_array( 'square_inventory_sync_sandbox_environment_required', $result->errors(), true ) );
+		$this->assert_true( in_array( 'square_inventory_sync_production_credentials_rejected', $result->errors(), true ) );
+		$this->assert_same( 'rejected', $audit['square_sync_request_status'] );
+		$this->assert_same( array(), $audit['square_sync_request_plan'] );
+		$this->assert_true( $audit['provider_inventory_write_deferred'] );
 	}
 
 	public function test_executor_runs_enabled_projection_with_configured_writers(): void {
@@ -132,6 +184,8 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 		$this->assert_same( array( 'SQUARE-ITEM-1', 'SQUARE-VARIATION-1' ), $result->catalog_object_ids() );
 		$this->assert_false( $audit['provider_inventory_write_deferred'] );
 		$this->assert_false( $audit['network_request_deferred'] );
+		$this->assert_same( 'ready', $audit['square_sync_request_status'] );
+		$this->assert_same( '/v2/catalog/batch-upsert', $audit['square_sync_request_plan']['catalog_batch_upsert']['path'] );
 		$this->assert_true( $audit['production_provider_write_deferred'] );
 		$this->assert_true( $audit['payment_capture_deferred'] );
 		$this->assert_same( 'official_woocommerce_square_extension', $audit['payment_capture_authority'] );

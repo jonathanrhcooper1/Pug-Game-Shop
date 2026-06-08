@@ -137,6 +137,15 @@ credential placeholders for staging planning only. Network requests, provider
 inventory writes, production network requests, WooCommerce gateway capture, and
 plugin Square payment capture remain deferred.
 
+Square projection execution results now carry the sync request planner status,
+request envelopes, idempotency keys, external IDs, and errors in their audit
+payloads. If request planning rejects a projection because the context is
+production or production-declared, the executor rejects the operation before
+any catalog or inventory writer callback can run. Inventory dependency health,
+admin summaries, and the Inventory workspace expose whether the Square sync
+request planner is staged while route-connected writes and Square network calls
+remain disabled.
+
 ## Transaction Ingestion Contract
 
 The shared validation package now includes a sandbox-safe POS transaction

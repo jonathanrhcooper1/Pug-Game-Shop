@@ -20,28 +20,49 @@ final class SquareInventoryProjectionExecutor {
 	 */
 	private $inventory_writer;
 
+	/**
+	 * @param array<string, mixed> $request_context Square request planning context.
+	 */
 	public function __construct(
 		private bool $execution_enabled = false,
 		?callable $catalog_writer = null,
-		?callable $inventory_writer = null
+		?callable $inventory_writer = null,
+		private ?SquareInventorySyncRequestPlanner $request_planner = null,
+		private array $request_context = array()
 	) {
 		$this->catalog_writer   = $catalog_writer;
 		$this->inventory_writer = $inventory_writer;
 	}
 
 	public function execute( SquareInventoryProjectionPlan $plan ): SquareInventoryProjectionExecutionResult {
+		$sync_request_plan = $this->request_planner()->plan( $plan, $this->request_context );
+
 		if ( SquareInventoryProjectionPlan::FAILED === $plan->status() ) {
 			return SquareInventoryProjectionExecutionResult::rejected(
 				$plan,
 				array_merge(
 					array( 'square_inventory_projection_plan_failed' ),
 					$plan->errors()
-				)
+				),
+				array(),
+				$sync_request_plan
 			);
 		}
 
 		if ( SquareInventoryProjectionPlan::SKIPPED === $plan->status() ) {
-			return SquareInventoryProjectionExecutionResult::skipped( $plan );
+			return SquareInventoryProjectionExecutionResult::skipped( $plan, $sync_request_plan );
+		}
+
+		if ( $sync_request_plan->is_rejected() ) {
+			return SquareInventoryProjectionExecutionResult::rejected(
+				$plan,
+				array_merge(
+					array( 'square_inventory_sync_request_rejected' ),
+					$sync_request_plan->errors()
+				),
+				array(),
+				$sync_request_plan
+			);
 		}
 
 		$block_reasons = array();
@@ -64,7 +85,7 @@ final class SquareInventoryProjectionExecutor {
 		}
 
 		if ( array() !== $block_reasons ) {
-			return SquareInventoryProjectionExecutionResult::blocked( $plan, $block_reasons );
+			return SquareInventoryProjectionExecutionResult::blocked( $plan, $block_reasons, $sync_request_plan );
 		}
 
 		$results = array();
@@ -95,10 +116,10 @@ final class SquareInventoryProjectionExecutor {
 		}
 
 		if ( array() !== $errors ) {
-			return SquareInventoryProjectionExecutionResult::rejected( $plan, $errors, $results );
+			return SquareInventoryProjectionExecutionResult::rejected( $plan, $errors, $results, $sync_request_plan );
 		}
 
-		return SquareInventoryProjectionExecutionResult::executed( $plan, $results );
+		return SquareInventoryProjectionExecutionResult::executed( $plan, $results, $sync_request_plan );
 	}
 
 	public function execution_enabled(): bool {
@@ -111,6 +132,14 @@ final class SquareInventoryProjectionExecutor {
 
 	public function inventory_writer_configured(): bool {
 		return is_callable( $this->inventory_writer );
+	}
+
+	private function request_planner(): SquareInventorySyncRequestPlanner {
+		if ( null === $this->request_planner ) {
+			$this->request_planner = new SquareInventorySyncRequestPlanner();
+		}
+
+		return $this->request_planner;
 	}
 
 	/**

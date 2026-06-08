@@ -168,6 +168,10 @@ Before major database migrations:
   and Square inventory projection contracts after successful database writes;
   WooCommerce writes, Square writes, label printing, and network calls remain
   deferred.
+- Square projection execution audit payloads expose sandbox sync request
+  envelopes, idempotency keys, external IDs, and request-planner readiness for
+  staging review; production-context request planning rejects before any Square
+  writer callback can run.
 - Staged POS/payment transaction execution can wrap those explicit log writes
   in begin/commit/rollback handling for tests only. Route-connected writes,
   provider capture, provider inventory writes, webhook routes, POS

@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Sync Request Planner Wiring
+
+### What Changed
+
+- Wired `SquareInventorySyncRequestPlanner` into guarded Square projection
+  execution.
+- Added sync request status, request envelopes, idempotency keys, external IDs,
+  errors, and readiness flags to Square projection execution audit payloads.
+- Added production-context rejection before catalog or inventory writer
+  callbacks can run.
+- Exposed Square sync request planner readiness through inventory intake
+  dependencies, authenticated health/admin summaries, and the Inventory admin
+  workspace Square projection note.
+- Added unit assertions for execution audit metadata, production-context
+  rejection, dependency readiness, and admin workspace visibility.
+
+### Why
+
+The PHP Square request planner should be visible in the same WordPress staging
+surfaces reviewers already use for inventory route readiness and Square
+projection execution. This makes the next Square POS inventory-sync phase
+easier to verify while preserving the current no-network, no-provider-write,
+no-custom-payment-gateway boundary.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutor.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Projection execution coverage for sync request audit metadata.
+- Projection execution coverage proving production request context rejects
+  before Square writer callbacks can run.
+- Inventory dependency/admin readiness coverage for sync request planner
+  visibility.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventoryProjectionExecutionResult.php src\Square\SquareInventoryProjectionExecutor.php src\Api\V1\InventoryIntakeRouteHandlerFactory.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php src\Admin\InventoryWorkspacePresenter.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF alignment cleanup.
+- `php tests\run.php --filter SquareInventoryProjectionExecutorTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 791-test
+  suite.
+- `php tests\run.php --filter InventoryRouteDependencyFactoryTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 791-test
+  suite.
+- `php tests\run.php --filter InventoryWorkspacePresenterTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 791-test
+  suite.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove Square sync request planner visibility from
+  projection execution and inventory dependency/admin status.
+- No schema rollback or provider cleanup is required because no database
+  migrations, provider writes, or network calls were added.
+
 ## 2026-06-07 - Square Inventory PHP Request Planner
 
 ### What Changed
