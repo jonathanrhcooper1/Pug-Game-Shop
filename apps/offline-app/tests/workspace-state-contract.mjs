@@ -29,6 +29,9 @@ for (const requiredExport of [
   "ConnectorProfileStorageRestoreResult",
   "PreparedPairingStorageSnapshot",
   "PreparedPairingStorageRestoreResult",
+  "OfflineSessionStorageSnapshot",
+  "OfflineSessionStorageRestoreResult",
+  "OfflineSyncAttemptRecord",
   "offlineWorkspaceSeed",
   "offlineConnectorRoutePreview",
   "operationEnvelopeFields",
@@ -46,10 +49,13 @@ for (const requiredExport of [
   "validateConnectorManifest",
   "CONNECTOR_PROFILE_STORAGE_KEY",
   "PREPARED_PAIRING_STORAGE_KEY",
+  "OFFLINE_SESSION_STORAGE_KEY",
   "buildConnectorProfileStorageSnapshot",
   "restoreConnectorProfileStorageSnapshot",
   "buildPreparedPairingStorageSnapshot",
   "restorePreparedPairingStorageSnapshot",
+  "buildOfflineSessionStorageSnapshot",
+  "restoreOfflineSessionStorageSnapshot",
   "buildDevicePairingRequestPlan",
   "buildPreparedDevicePairingRequest",
   "connectorDisplayUrl",
@@ -107,11 +113,22 @@ for (const marker of [
   "offline_connector_profiles_local_storage",
   "tcg-store-offline-connector-profiles-v1",
   "tcg-store-offline-prepared-pairings-v1",
+  "tcg-store-offline-session-state-v1",
   "offline_prepared_pairings_local_storage",
+  "offline_session_state_local_storage",
   "connector_profile_storage_invalid",
   "connector_profile_storage_parse_failed",
   "prepared_pairing_storage_invalid",
   "prepared_pairing_storage_parse_failed",
+  "offline_session_storage_invalid",
+  "offline_session_storage_parse_failed",
+  "queued_operations",
+  "sync_attempts",
+  "sanitizeOfflineOperationEnvelopes",
+  "sanitizeOfflineSyncAttempts",
+  "networkRequestsDeferred: true",
+  "directMysqlAccess: false",
+  "hasCredentialMarker",
   "profile_manifest_ready",
   "manifest_public_safe",
   "buildConnectorManifestPreview",
@@ -141,6 +158,7 @@ for (const marker of [
 }
 
 assert.ok(appSource.includes("offlineWorkspaceSeed"))
+assert.ok(appSource.includes("loadOfflineSessionStorage"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
@@ -152,6 +170,10 @@ assert.ok(appSource.includes("stagedPushRequest.method"))
 assert.ok(appSource.includes("pushSummary.status"))
 assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
 assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
+assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)"))
+assert.ok(appSource.includes("restoreOfflineSessionStorageSnapshot("))
+assert.ok(appSource.includes("OFFLINE_SESSION_STORAGE_KEY"))
+assert.ok(appSource.includes("window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)"))
 assert.ok(appSource.includes("operationKind: \"scan\""))
 assert.ok(appSource.includes("operationKind: \"quantity\""))
 assert.ok(appSource.includes("syncIntent: \"staff_barcode_scan\""))

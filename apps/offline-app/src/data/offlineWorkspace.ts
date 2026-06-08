@@ -120,6 +120,7 @@ export type ConnectorProfileDraftResult = {
 
 export const CONNECTOR_PROFILE_STORAGE_KEY = "tcg-store-offline-connector-profiles-v1"
 export const PREPARED_PAIRING_STORAGE_KEY = "tcg-store-offline-prepared-pairings-v1"
+export const OFFLINE_SESSION_STORAGE_KEY = "tcg-store-offline-session-state-v1"
 
 export type ConnectorProfileStorageSnapshot = {
   action: "offline_connector_profiles_local_storage"
@@ -148,6 +149,34 @@ export type PreparedPairingStorageSnapshot = {
 
 export type PreparedPairingStorageRestoreResult = {
   requests: PreparedDevicePairingRequest[]
+  restored: boolean
+  issues: string[]
+}
+
+export type OfflineSyncAttemptRecord = {
+  id: string
+  companyName: string
+  siteUrl: string
+  operationCount: number
+  pairingStatus: string
+  createdAtLabel: string
+  networkStatus: "Deferred"
+}
+
+export type OfflineSessionStorageSnapshot = {
+  action: "offline_session_state_local_storage"
+  schema_version: 1
+  queued_operations: OfflineOperationEnvelope[]
+  sync_attempts: OfflineSyncAttemptRecord[]
+  saved_at_utc: string
+  networkRequestsDeferred: true
+  directMysqlAccess: false
+  credentialsSyncedToApp: false
+}
+
+export type OfflineSessionStorageRestoreResult = {
+  queuedOperations: OfflineOperationEnvelope[]
+  syncAttempts: OfflineSyncAttemptRecord[]
   restored: boolean
   issues: string[]
 }
@@ -829,6 +858,72 @@ export function restorePreparedPairingStorageSnapshot(
   }
 }
 
+export function buildOfflineSessionStorageSnapshot(
+  queuedOperations: OfflineOperationEnvelope[],
+  syncAttempts: OfflineSyncAttemptRecord[],
+  options: { savedAtUtc?: string } = {},
+): OfflineSessionStorageSnapshot {
+  return {
+    action: "offline_session_state_local_storage",
+    schema_version: 1,
+    queued_operations: sanitizeOfflineOperationEnvelopes(queuedOperations),
+    sync_attempts: sanitizeOfflineSyncAttempts(syncAttempts),
+    saved_at_utc: options.savedAtUtc ?? new Date().toISOString(),
+    networkRequestsDeferred: true,
+    directMysqlAccess: false,
+    credentialsSyncedToApp: false,
+  }
+}
+
+export function restoreOfflineSessionStorageSnapshot(
+  rawValue: string | null,
+): OfflineSessionStorageRestoreResult {
+  if (!rawValue) {
+    return {
+      queuedOperations: [],
+      syncAttempts: [],
+      restored: false,
+      issues: [],
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<OfflineSessionStorageSnapshot>
+    const queuedOperations = sanitizeOfflineOperationEnvelopes(parsed.queued_operations ?? [])
+    const syncAttempts = sanitizeOfflineSyncAttempts(parsed.sync_attempts ?? [])
+
+    if (
+      parsed.action !== "offline_session_state_local_storage" ||
+      parsed.schema_version !== 1 ||
+      parsed.networkRequestsDeferred !== true ||
+      parsed.directMysqlAccess !== false ||
+      parsed.credentialsSyncedToApp !== false ||
+      (queuedOperations.length === 0 && syncAttempts.length === 0)
+    ) {
+      return {
+        queuedOperations: [],
+        syncAttempts: [],
+        restored: false,
+        issues: ["offline_session_storage_invalid"],
+      }
+    }
+
+    return {
+      queuedOperations,
+      syncAttempts,
+      restored: true,
+      issues: [],
+    }
+  } catch {
+    return {
+      queuedOperations: [],
+      syncAttempts: [],
+      restored: false,
+      issues: ["offline_session_storage_parse_failed"],
+    }
+  }
+}
+
 export function connectorStatusLabel(status: ConnectorStatus) {
   return status === "ready"
     ? "Ready"
@@ -1305,6 +1400,115 @@ function sanitizePreparedPairingRequests(
       request.networkRequestDeferred === true
     )
     .slice(0, 12)
+}
+
+function sanitizeOfflineOperationEnvelopes(operations: unknown): OfflineOperationEnvelope[] {
+  if (!Array.isArray(operations)) {
+    return []
+  }
+
+  return operations
+    .map((operation) => objectValue(operation))
+    .filter((operation): operation is Record<string, unknown> => operation !== null)
+    .map((operation) => {
+      const payloadJson = stringValue(operation.payload_json)
+      const authorizationJson = stringValue(operation.authorization_context_json)
+      const locationId = numberValue(operation.location_id)
+      const actorId = numberValue(operation.actor_id)
+      const baseRowVersion = numberValue(operation.base_row_version)
+      const operationType = stringValue(operation.operation_type)
+      const entityType = stringValue(operation.entity_type)
+
+      if (
+        stringValue(operation.client_operation_id) === "" ||
+        stringValue(operation.device_id) === "" ||
+        stringValue(operation.entity_id) === "" ||
+        locationId === null ||
+        actorId === null ||
+        baseRowVersion === null ||
+        operation.schema_version !== 1 ||
+        !["inventory_update", "inventory_reservation", "event_reservation", "credit_redemption"].includes(operationType) ||
+        !["inventory", "event", "customer_credit"].includes(entityType) ||
+        !isJsonObjectString(payloadJson) ||
+        !isJsonObjectString(authorizationJson) ||
+        hasCredentialMarker(payloadJson) ||
+        hasCredentialMarker(authorizationJson)
+      ) {
+        return null
+      }
+
+      return {
+        client_operation_id: stringValue(operation.client_operation_id),
+        device_id: stringValue(operation.device_id),
+        location_id: locationId,
+        actor_id: actorId,
+        operation_type: operationType as OfflineOperationEnvelope["operation_type"],
+        entity_type: entityType as OfflineOperationEnvelope["entity_type"],
+        entity_id: stringValue(operation.entity_id),
+        base_row_version: baseRowVersion,
+        occurred_at_local: stringValue(operation.occurred_at_local),
+        queued_at_utc: stringValue(operation.queued_at_utc),
+        payload_json: payloadJson,
+        authorization_context_json: authorizationJson,
+        schema_version: 1,
+      }
+    })
+    .filter((operation): operation is OfflineOperationEnvelope => operation !== null)
+    .slice(0, 50)
+}
+
+function sanitizeOfflineSyncAttempts(attempts: unknown): OfflineSyncAttemptRecord[] {
+  if (!Array.isArray(attempts)) {
+    return []
+  }
+
+  return attempts
+    .map((attempt) => objectValue(attempt))
+    .filter((attempt): attempt is Record<string, unknown> => attempt !== null)
+    .map((attempt) => {
+      const operationCount = numberValue(attempt.operationCount)
+
+      if (
+        stringValue(attempt.id) === "" ||
+        stringValue(attempt.companyName) === "" ||
+        stringValue(attempt.siteUrl) === "" ||
+        operationCount === null ||
+        attempt.networkStatus !== "Deferred" ||
+        hasCredentialMarker(JSON.stringify(attempt))
+      ) {
+        return null
+      }
+
+      return {
+        id: stringValue(attempt.id),
+        companyName: stringValue(attempt.companyName),
+        siteUrl: stringValue(attempt.siteUrl),
+        operationCount: Math.max(0, operationCount),
+        pairingStatus: stringValue(attempt.pairingStatus) || "Pairing required",
+        createdAtLabel: stringValue(attempt.createdAtLabel) || "restored",
+        networkStatus: "Deferred" as const,
+      }
+    })
+    .filter((attempt): attempt is OfflineSyncAttemptRecord => attempt !== null)
+    .slice(0, 10)
+}
+
+function hasCredentialMarker(value: string): boolean {
+  const normalized = value.toLowerCase()
+
+  return ["password", "api_key", "private_key", "ssh_key", "bearer "].some((marker) =>
+    normalized.includes(marker),
+  )
+}
+
+function isJsonObjectString(value: string): boolean {
+  try {
+    const parsed = JSON.parse(value) as unknown
+
+    return Boolean(parsed && typeof parsed === "object" && !Array.isArray(parsed))
+  } catch {
+    return false
+  }
 }
 
 function pairingCodeFingerprint(pairingCode: string) {

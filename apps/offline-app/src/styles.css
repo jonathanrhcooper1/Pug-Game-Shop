@@ -613,6 +613,17 @@ h2 {
   gap: 7px;
 }
 
+.sync-attempt-panel {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 11px 12px;
+  color: #fffaf0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 250, 240, 0.12);
+  border-radius: 8px;
+}
+
 .sync-attempt-list article {
   display: grid;
   gap: 3px;
@@ -1250,6 +1261,14 @@ dd {
   color: #5d6d5d;
   font-size: 12px;
   font-weight: 900;
+}
+
+.queue-storage-note {
+  margin: -4px 0 2px;
+  color: #667466;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .queue-row,

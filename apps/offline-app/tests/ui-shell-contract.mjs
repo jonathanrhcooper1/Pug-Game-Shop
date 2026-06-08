@@ -21,6 +21,7 @@ for (const requiredText of [
   "Sync Now",
   "Website sync session plan",
   "Local sync attempts",
+  "Queue and sync attempts are saved locally on this device.",
   "Website connector",
   "Pull route",
   "Push route",
@@ -75,6 +76,7 @@ for (const className of [
   "filter-tray",
   "inventory-card-grid",
   "queued-operation-list",
+  "queue-storage-note",
   "connector-editor",
   "prepared-pairing-list",
   "ledger-preview",
@@ -83,6 +85,7 @@ for (const className of [
   "workflow-status",
   "sync-session-panel",
   "sync-attempt-list",
+  "sync-attempt-panel",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
 }
@@ -120,11 +123,14 @@ for (const interactionMarker of [
   "buildConnectorProfileFromDraft",
   "buildConnectorProfileStorageSnapshot",
   "buildPreparedPairingStorageSnapshot",
+  "buildOfflineSessionStorageSnapshot",
   "buildOfflineConnectorSyncSessionPlan",
   "restoreConnectorProfileStorageSnapshot",
   "restorePreparedPairingStorageSnapshot",
+  "restoreOfflineSessionStorageSnapshot",
   "CONNECTOR_PROFILE_STORAGE_KEY",
   "PREPARED_PAIRING_STORAGE_KEY",
+  "OFFLINE_SESSION_STORAGE_KEY",
   "window.localStorage",
   "upsertConnectorProfile",
   "setViewMode(\"grid\")",

@@ -10,6 +10,7 @@ import {
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
   buildPreparedDevicePairingRequest,
+  buildOfflineSessionStorageSnapshot,
   buildPreparedPairingStorageSnapshot,
   CONNECTOR_PROFILE_STORAGE_KEY,
   connectorDisplayUrl,
@@ -24,7 +25,9 @@ import {
   findInventoryItem,
   formatMoney,
   offlineWorkspaceSeed,
+  OFFLINE_SESSION_STORAGE_KEY,
   PREPARED_PAIRING_STORAGE_KEY,
+  restoreOfflineSessionStorageSnapshot,
   restorePreparedPairingStorageSnapshot,
   restoreConnectorProfileStorageSnapshot,
   statusLabel,
@@ -43,6 +46,8 @@ import {
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
   type OfflinePushResultSummary,
+  type OfflineSessionStorageRestoreResult,
+  type OfflineSyncAttemptRecord,
   type PreparedDevicePairingRequest,
   type PreparedPairingStorageRestoreResult,
 } from "./data/offlineWorkspace"
@@ -71,16 +76,6 @@ type ActivityMessage = {
   detail: string
 }
 
-type SyncAttemptRecord = {
-  id: string
-  companyName: string
-  siteUrl: string
-  operationCount: number
-  pairingStatus: string
-  createdAtLabel: string
-  networkStatus: "Deferred"
-}
-
 type InventoryUpdateOptions = Parameters<typeof buildInventoryUpdateOperation>[1]
 
 function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
@@ -104,6 +99,16 @@ function loadPreparedPairingStorage(
   return restorePreparedPairingStorageSnapshot(
     window.localStorage.getItem(PREPARED_PAIRING_STORAGE_KEY),
     profiles,
+  )
+}
+
+function loadOfflineSessionStorage(): OfflineSessionStorageRestoreResult {
+  if (typeof window === "undefined") {
+    return restoreOfflineSessionStorageSnapshot(null)
+  }
+
+  return restoreOfflineSessionStorageSnapshot(
+    window.localStorage.getItem(OFFLINE_SESSION_STORAGE_KEY),
   )
 }
 
@@ -157,11 +162,18 @@ export function App() {
     preparedPairingStorageRef.current = loadPreparedPairingStorage(connectorProfileStorage.profiles)
   }
   const preparedPairingStorage = preparedPairingStorageRef.current
+  const offlineSessionStorageRef = useRef<OfflineSessionStorageRestoreResult | null>(null)
+  if (offlineSessionStorageRef.current === null) {
+    offlineSessionStorageRef.current = loadOfflineSessionStorage()
+  }
+  const offlineSessionStorage = offlineSessionStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
   const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>([])
-  const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>([])
+  const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>(
+    offlineSessionStorage.queuedOperations,
+  )
   const [pendingCreditMinorUnits, setPendingCreditMinorUnits] = useState(0)
   const [showCreditLedger, setShowCreditLedger] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<string[]>([])
@@ -173,8 +185,10 @@ export function App() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [activityMessage, setActivityMessage] = useState<ActivityMessage>({
-    title: "Local workspace ready",
-    detail: "Choose a connector profile, scan inventory, or stage a queue update.",
+    title: offlineSessionStorage.restored ? "Local queue restored" : "Local workspace ready",
+    detail: offlineSessionStorage.restored
+      ? `${offlineSessionStorage.queuedOperations.length} queued operation(s) and ${offlineSessionStorage.syncAttempts.length} sync attempt(s) restored from this device.`
+      : "Choose a connector profile, scan inventory, or stage a queue update.",
   })
   const [selectedConflictTitle, setSelectedConflictTitle] = useState("")
   const [showConflictHistory, setShowConflictHistory] = useState(false)
@@ -183,7 +197,9 @@ export function App() {
   const [stagedPushRequest, setStagedPushRequest] = useState<OfflinePushRequestPlan | null>(null)
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
-  const [syncAttempts, setSyncAttempts] = useState<SyncAttemptRecord[]>([])
+  const [syncAttempts, setSyncAttempts] = useState<OfflineSyncAttemptRecord[]>(
+    offlineSessionStorage.syncAttempts,
+  )
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
@@ -247,6 +263,18 @@ export function App() {
       JSON.stringify(buildPreparedPairingStorageSnapshot(preparedPairingRequests, connectorProfiles)),
     )
   }, [preparedPairingRequests, connectorProfiles])
+
+  useEffect(() => {
+    if (queuedOperations.length === 0 && syncAttempts.length === 0) {
+      window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)
+      return
+    }
+
+    window.localStorage.setItem(
+      OFFLINE_SESSION_STORAGE_KEY,
+      JSON.stringify(buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)),
+    )
+  }, [queuedOperations, syncAttempts])
 
   function sectionTarget(label: string) {
     if (label === "Sync") {
@@ -731,22 +759,23 @@ export function App() {
                     : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
                 </small>
               </div>
-              {syncAttempts.length > 0 ? (
-                <div className="sync-attempt-list" aria-label="Local sync attempts">
-                  <span className="micro-label">Local sync attempts</span>
-                  {syncAttempts.map((attempt) => (
-                    <article key={attempt.id}>
-                      <strong>{attempt.companyName}</strong>
-                      <span>
-                        {attempt.operationCount} op(s) / {attempt.pairingStatus}
-                      </span>
-                      <small>
-                        {attempt.createdAtLabel}; {attempt.networkStatus}; {attempt.siteUrl}
-                      </small>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
+            </section>
+          ) : null}
+
+          {syncAttempts.length > 0 ? (
+            <section className="sync-attempt-list sync-attempt-panel" aria-label="Local sync attempts">
+              <span className="micro-label">Local sync attempts</span>
+              {syncAttempts.map((attempt) => (
+                <article key={attempt.id}>
+                  <strong>{attempt.companyName}</strong>
+                  <span>
+                    {attempt.operationCount} op(s) / {attempt.pairingStatus}
+                  </span>
+                  <small>
+                    {attempt.createdAtLabel}; {attempt.networkStatus}; {attempt.siteUrl}
+                  </small>
+                </article>
+              ))}
             </section>
           ) : null}
 
@@ -994,6 +1023,9 @@ export function App() {
                 <h2>Sync queue</h2>
                 <span>{queueBadgeCount} pending</span>
               </div>
+              <p className="queue-storage-note">
+                Queue and sync attempts are saved locally on this device.
+              </p>
               {workspace.queueItems.map((item) => (
                 <div className={`queue-row ${item.tone}`} key={item.label}>
                   <span>{item.label}</span>

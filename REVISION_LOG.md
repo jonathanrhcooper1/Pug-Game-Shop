@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Queue And Sync Attempt Local Persistence
+
+### What Changed
+
+- Added a versioned `tcg-store-offline-session-state-v1` local-storage
+  envelope for queued offline operations and local sync-attempt history.
+- Added snapshot and restore helpers that sanitize operation envelopes, reject
+  malformed or credential-looking payloads, preserve deferred-network metadata,
+  and cap restored rows.
+- Updated the offline app to restore queued operations and sync attempts at
+  startup, persist them after local changes, and show a visible local-save note
+  in the sync queue.
+- Moved sync-attempt history into a standalone visible panel so restored sync
+  attempts appear immediately after reload.
+- Updated offline app contract coverage and detailed changelog notes.
+
+### Why
+
+The standalone app needs to remain useful when disconnected or restarted.
+Connector profiles and prepared pairings already persisted; queued operations
+and sync-attempt history now survive reloads too, without storing WordPress,
+ScryDex, Square, SSH, or device-token secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract markers for `OfflineSessionStorageSnapshot`,
+  `OfflineSessionStorageRestoreResult`, `OfflineSyncAttemptRecord`,
+  `OFFLINE_SESSION_STORAGE_KEY`, snapshot/restore helpers, invalid/parse-failed
+  restore issues, credential-marker filtering, and deferred network/direct
+  MySQL metadata.
+- Offline UI shell contract markers for the visible local-save note and
+  standalone sync-attempt panel.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser QA at `http://127.0.0.1:1420/`: passed for stage-scan, sync-attempt,
+  reload, restored queue operation, restored sync-attempt panel, restored
+  status message, local-save note, and console health.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to make queued operations and sync-attempt history
+  session-only again.
+- Clear local-storage key `tcg-store-offline-session-state-v1` to discard
+  persisted offline session state.
+- No database migration, staging cleanup, or production rollback is required.
+
 ## 2026-06-08 - Gated Staging Inventory Search Benchmark Runner
 
 ### What Changed
