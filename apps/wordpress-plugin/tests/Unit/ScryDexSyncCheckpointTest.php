@@ -43,6 +43,26 @@ final class ScryDexSyncCheckpointTest extends TestCase {
 		$this->assert_true( 64 === strlen( $next->payload_hash() ) );
 	}
 
+	public function test_checkpoint_reads_nested_pagination_cursor_shapes(): void {
+		$checkpoint = ScryDexSyncCheckpoint::initial( 101, 'cards', 'pokemon' );
+		$next       = ( new ScryDexSyncPlanner() )->checkpoint_after_response(
+			$checkpoint,
+			array(
+				'pagination' => array(
+					'current_page'     => 3,
+					'next_page_cursor' => 'cursor-page-4',
+					'high_water_mark'  => '2026-06-08T18:00:00Z',
+				),
+				'cards'      => array(),
+			),
+			0
+		);
+
+		$this->assert_same( 3, $next->page_number() );
+		$this->assert_same( 'cursor-page-4', $next->cursor() );
+		$this->assert_same( '2026-06-08T18:00:00Z', $next->high_water_mark() );
+	}
+
 	public function test_resume_uses_mock_checkpoint_cursor_without_duplicate_count(): void {
 		$fixture    = $this->fixture( 'fixtures/mocks/scrydex/checkpoint-resume.json' );
 		$checkpoint = ScryDexSyncCheckpoint::from_row(

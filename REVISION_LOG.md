@@ -3,6 +3,68 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - ScryDex Paginated Worker Shell
+
+### What Changed
+
+- Added a gated ScryDex cards sync worker shell that can call the configured
+  provider for bounded paginated card pages.
+- Added worker continuation metadata so a scheduled refresh can stop at a
+  configured page limit and resume from the next checkpoint.
+- Expanded checkpoint parsing to support common nested pagination cursor,
+  current-page, and high-water-mark response shapes.
+- Kept raw provider response bodies, credentials, image downloads, checkpoint
+  upserts, reference-card writes, and price-observation writes out of worker
+  output.
+- Added unit coverage for blocked worker gates, paginated provider calls,
+  continuation checkpoints, and nested pagination metadata.
+
+### Why
+
+The website needs to become the source-owned ScryDex catalog mirror. This
+revision adds the first executable worker step: safely fetching staged pages
+only after explicit gates pass, then feeding those pages through the existing
+normalization and persistence-planning path. It stops short of database writes
+until the WordPress cron route and persistence execution boundary are accepted
+in staging.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncCheckpointTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex worker blocks before provider calls when execution gates are not
+  ready.
+- ScryDex worker runs two paginated mocked provider pages and exposes safe
+  resume/checkpoint state.
+- ScryDex worker respects the max-page cap and returns a continuation
+  checkpoint.
+- ScryDex checkpoint planner reads nested pagination cursor shapes.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex worker shell and return to
+  injected-result-only orchestration planning.
+- No ScryDex data, WordPress database rows, Square/POS data, customer credit,
+  inventory, payment, event, or production rollback is required because this
+  checkpoint still leaves database writes deferred.
+
 ## 2026-06-08 - Offline App Status Workspace
 
 ### What Changed

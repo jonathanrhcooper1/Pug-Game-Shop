@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex now has a gated cards sync worker shell that can call the configured
+  provider for bounded paginated pages in staging/tests, rehearse normalization
+  and persistence planning per page, expose continuation checkpoints, keep raw
+  provider bodies and credentials out of logs, and leave WordPress database
+  writes deferred behind the existing execution boundary.
 - Offline app now has a dedicated Status workspace for activity and sync status
   panels, keeping detailed workflow messages off the main Inventory, Kiosk,
   Queue, Events, Customers, Sync, and Settings workspaces.

@@ -21,15 +21,17 @@ now converts those plans into deferred reference-card insert/update templates,
 provider price observation inserts, and checkpoint upsert plans with repository
 audit metadata, but still performs no `wpdb` writes. Health output now includes a
 `scrydex_persistence_repository` readiness payload, and the execution gate uses
-that payload to derive the persistence repository gate. Scheduled ScryDex
-workers are not enabled yet, but the cards worker orchestration planner can now
-accept an injected/mock provider result and rehearse page processing,
-persistence planning, SQL template building, and repository audit staging.
-Database write workers, image workers, usage-budget enforcement, and webhook
-route handling remain disabled until staging acceptance. WordPress administrator
-settings now provide secret-preserving staging credential storage and redacted
-readiness output, but those settings do not execute provider network requests
-by themselves.
+that payload to derive the persistence repository gate. The cards worker
+orchestration planner can accept an injected/mock provider result and rehearse
+page processing, persistence planning, SQL template building, and repository
+audit staging. The gated cards worker shell can also call the configured
+provider for bounded paginated pages in staging/tests, expose continuation
+checkpoints, and then feed each page through that same orchestration planner.
+Database write workers, image workers, durable scheduled cron routing, and
+webhook route handling remain disabled until staging acceptance. WordPress
+administrator settings provide secret-preserving staging credential storage and
+redacted readiness output, but those settings do not execute provider network
+requests by themselves.
 
 Schema migration `0010_provider_price_observations` adds
 `tcg_provider_price_observations` for raw provider market-price snapshots. This
@@ -167,19 +169,22 @@ The gate embeds the dry-run request/checkpoint plan and readiness metadata, but
 it does not call ScryDex, write checkpoints, persist normalized rows, download
 images, register webhooks, or enqueue a scheduled worker by itself.
 
-The ScryDex cards worker orchestration planner sits after the execution gate
-and before any live worker enablement. It requires the provider result to be
-injected, then stages the page processor, persistence planner, query builder,
-and deferred repository result. It intentionally does not fetch ScryDex,
-persist reference cards, write provider price observations, upsert checkpoints,
-download images, or enqueue scheduled workers.
+The ScryDex cards worker orchestration planner sits after the execution gate.
+It stages the page processor, persistence planner, query builder, and deferred
+repository result for a provider page. The gated worker shell can call ScryDex
+only when the provider, network, usage-budget, checkpoint, persistence,
+database-write, and scheduler gates are all ready or explicitly overridden in a
+controlled staging/test context. It returns page summaries, continuation
+checkpoint rows, and secret-free audit metadata. It still intentionally does
+not persist reference cards, write provider price observations, upsert
+checkpoints, download images, or register webhooks.
 
 Next implementation step: replace the seeded development catalog with the
-WordPress-owned worker loop. That worker must iterate configured games, sets,
-and provider cursors/pages; respect usage budgets/rate limits; upsert
-reference-card rows and price observations; checkpoint after each committed
-page; and run a daily refresh without sending ScryDex credentials to offline
-clients.
+WordPress-owned persisted worker loop. That worker must iterate configured
+games, sets, and provider cursors/pages; enforce fresh usage budgets/rate
+limits; execute accepted reference-card and price-observation writes; checkpoint
+after each committed page; and run a daily refresh without sending ScryDex
+credentials to offline clients.
 
 Budget-specific blockers are:
 
@@ -278,11 +283,13 @@ webhook registration based only on marketing copy.
 8. Use the worker orchestration planner to rehearse the sync page processor,
    persistence planner, query builder, and repository boundary after each
    provider page.
-9. Queue image downloads separately.
-10. Queue optional price-history/population pulls only for supported scope.
-11. Rebuild affected search projections.
-12. Mark reference sync complete.
-13. Start inventory repricing as a separate job.
+9. Use the gated worker shell to fetch bounded provider pages and expose the
+   continuation checkpoint for the next scheduled pass.
+10. Queue image downloads separately.
+11. Queue optional price-history/population pulls only for supported scope.
+12. Rebuild affected search projections.
+13. Mark reference sync complete.
+14. Start inventory repricing as a separate job.
 
 Jobs never keep a database transaction open during an HTTP request.
 
