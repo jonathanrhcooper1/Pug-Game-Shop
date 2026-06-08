@@ -3,6 +3,70 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Square Inventory Sync Readiness Diagnostics
+
+### What Changed
+
+- Added `SquareInventorySyncReadinessPlanner` to run a sandbox inventory probe
+  through Square projection planning, Square Catalog/Inventory request planning,
+  and guarded execution audit output.
+- Exposed `square_inventory_sync` in authenticated health output so staging can
+  see inventory sync planning readiness, idempotency keys, external IDs,
+  deferred writer state, production-context rejection, and Square payment
+  delegation metadata.
+- Added unit coverage for the default sandbox probe, rejected production/live
+  credential contexts, supplied inventory rows, deferred network/provider
+  writes, and continued official WooCommerce Square payment ownership.
+
+### Why
+
+Square POS should pull inventory from the card-management platform, but payment
+authorization/capture/refunds should stay with the official WooCommerce Square
+extension. This checkpoint gives staging a safe, testable inventory-readiness
+probe without adding live Square network writes or a custom payment gateway.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncReadinessPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory sync readiness tests for sandbox probe planning,
+  production-context rejection, supplied inventory rows, deferred writer
+  metadata, Catalog/Inventory request envelopes, and official WooCommerce
+  Square payment delegation.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 849 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventorySyncReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 559 PHP files.
+- `npm.cmd run test`: passed, including 849 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove Square inventory sync readiness diagnostics
+  from health output and delete the planner/tests.
+- No migrations, Square network calls, Square inventory writes, payment
+  capture, refunds, or custom gateway behavior are introduced.
+- Existing Square projection planning, request planning, and official
+  WooCommerce Square extension diagnostics remain available after rollback.
+
 ## 2026-06-07 - ScryDex Cards Worker Orchestration Planning
 
 ### What Changed

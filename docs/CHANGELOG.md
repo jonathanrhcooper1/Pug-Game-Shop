@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Square inventory sync readiness diagnostics that run a sandbox probe through
+  projection planning, Square Catalog/Inventory request planning, and guarded
+  execution audit output while keeping Square network writes, production
+  inventory changes, payment capture, and custom gateway behavior deferred to
+  the official WooCommerce Square extension.
 - ScryDex cards sync worker orchestration planning that accepts injected/mock
   provider results and stages page processing, persistence planning, SQL
   building, and deferred repository audit output without live provider calls or
