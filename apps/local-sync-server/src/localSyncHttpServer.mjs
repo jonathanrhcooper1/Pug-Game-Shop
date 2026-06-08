@@ -10,6 +10,10 @@ export function createLocalSyncHttpServer(options = {}) {
       const url = new URL(request.url ?? "/", "http://local-sync-server")
       const token = bearerToken(request.headers.authorization)
 
+      if (request.method === "OPTIONS") {
+        return sendJson(response, 204, {})
+      }
+
       if (request.method === "GET" && url.pathname === "/health") {
         return sendJson(response, 200, {
           status: "ok",
@@ -120,6 +124,9 @@ function sendJson(response, statusCode, body) {
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+    "access-control-allow-headers": "authorization,content-type",
     "content-length": Buffer.byteLength(content),
   })
   response.end(content)

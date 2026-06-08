@@ -8,6 +8,13 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
 try {
   const { port } = server.address()
   const baseUrl = `http://127.0.0.1:${port}`
+  const preflight = await fetch(`${baseUrl}/auth/pin`, { method: "OPTIONS" })
+
+  assert.equal(preflight.status, 204)
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "*")
+  assert.ok(preflight.headers.get("access-control-allow-methods")?.includes("POST"))
+  assert.ok(preflight.headers.get("access-control-allow-headers")?.includes("authorization"))
+
   const health = await fetchJson(`${baseUrl}/health`)
 
   assert.equal(health.status, "ok")
@@ -59,7 +66,7 @@ try {
   assert.equal(cashierAuth.user.name, "Test Cashier")
   assert.deepEqual(cashierAuth.user.access, ["Inventory", "Kiosk", "Queue"])
 
-  const inventory = await fetchJson(`${baseUrl}/inventory/search?q=lotus`)
+  const inventory = await fetchJson(`${baseUrl}/inventory/search?q=charizard`)
   assert.equal(inventory.status, "ok")
   assert.equal(inventory.items.length, 1)
   assert.equal(inventory.items[0].status, "available")

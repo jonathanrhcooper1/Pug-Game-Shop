@@ -357,10 +357,10 @@ function buildSeedUser({ id, name, pin, role, access, salt }) {
 function seedInventoryItems() {
   return [
     {
-      public_id: "inv-black-lotus-001",
+      public_id: "inv-1001",
       row_version: 1,
-      card_name: "Black Lotus",
-      set_name: "Vintage Masters",
+      card_name: "Charizard",
+      set_name: "Base Set",
       condition: "LP",
       barcode: "PUG-000001",
       price_minor_units: 125000,
@@ -370,7 +370,7 @@ function seedInventoryItems() {
       source: "cached",
     },
     {
-      public_id: "inv-pikachu-002",
+      public_id: "inv-1002",
       row_version: 1,
       card_name: "Pikachu",
       set_name: "Base Set",

@@ -106,6 +106,7 @@ for (const requiredExport of [
   "buildDevicePairingRequestBody",
   "buildPreparedDevicePairingRequest",
   "connectorDisplayUrl",
+  "localSyncServerDisplayUrl",
   "findConnectorProfile",
   "connectorHealthSummary",
   "upsertConnectorProfile",
@@ -308,6 +309,11 @@ for (const marker of [
   "Production connectors require HTTPS before pairing.",
   "upsertConnectorProfile",
   "pug-game-shop-staging",
+  "localSyncServerUrl",
+  "localSync",
+  "lan_middleman_server",
+  "store-sync.sqlite",
+  "normalizeLocalSyncServerUrl",
   "offline_device_token",
   "desktop_secure_store",
   "official_woocommerce_square_extension",
@@ -405,7 +411,7 @@ assert.ok(appSource.includes("operationKind: \"quantity\""))
 assert.ok(appSource.includes("syncIntent: \"staff_barcode_scan\""))
 assert.ok(appSource.includes("syncIntent: \"staff_quantity_adjustment\""))
 
-for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "http://", "https://"]) {
+for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "https://"]) {
   assert.equal(workspaceSource.includes(forbidden), false, `Forbidden workspace marker found: ${forbidden}`)
 }
 

@@ -202,6 +202,12 @@ export type StoreConnectorProfile = {
     routeConnectedPushReady: boolean
     canonicalInventoryWritesEnabled: boolean
   }
+  localSync: {
+    topology: "lan_middleman_server"
+    serverUrl: string
+    localDatabase: "store-sync.sqlite"
+    credentialsSyncedToApp: false
+  }
   square: {
     inventoryAuthority: "tcg_store_platform"
     paymentAuthority: "official_woocommerce_square_extension"
@@ -220,6 +226,7 @@ export type ConnectorProfileDraft = {
   companyName: string
   companyShortName: string
   siteUrl: string
+  localSyncServerUrl: string
   environment: ConnectorEnvironment
   scrydexTeamLabel: string
   canonicalInventoryWritesEnabled: boolean
@@ -823,6 +830,12 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
         routeConnectedPushReady: true,
         canonicalInventoryWritesEnabled: false,
       },
+      localSync: {
+        topology: "lan_middleman_server",
+        serverUrl: "http://127.0.0.1:8787",
+        localDatabase: "store-sync.sqlite",
+        credentialsSyncedToApp: false,
+      },
       square: {
         inventoryAuthority: "tcg_store_platform",
         paymentAuthority: "official_woocommerce_square_extension",
@@ -851,6 +864,12 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
         networkRequestsDeferred: true,
         routeConnectedPushReady: true,
         canonicalInventoryWritesEnabled: true,
+      },
+      localSync: {
+        topology: "lan_middleman_server",
+        serverUrl: "http://127.0.0.1:8787",
+        localDatabase: "store-sync.sqlite",
+        credentialsSyncedToApp: false,
       },
       square: {
         inventoryAuthority: "tcg_store_platform",
@@ -1570,6 +1589,10 @@ export function connectorDisplayUrl(profile: StoreConnectorProfile) {
   return `${profile.wordpress.scheme}://${profile.wordpress.host}`
 }
 
+export function localSyncServerDisplayUrl(profile: StoreConnectorProfile) {
+  return profile.localSync.serverUrl
+}
+
 export function connectorManifestUrl(profile: StoreConnectorProfile) {
   return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}/offline/connector-manifest`
 }
@@ -1631,6 +1654,7 @@ export function createEmptyConnectorProfileDraft(): ConnectorProfileDraft {
     companyName: "",
     companyShortName: "",
     siteUrl: "",
+    localSyncServerUrl: "http://127.0.0.1:8787",
     environment: "staging",
     scrydexTeamLabel: "Configured in WordPress",
     canonicalInventoryWritesEnabled: false,
@@ -1645,6 +1669,7 @@ export function connectorProfileDraftFromProfile(
     companyName: profile.companyName,
     companyShortName: profile.companyShortName,
     siteUrl: connectorDisplayUrl(profile),
+    localSyncServerUrl: localSyncServerDisplayUrl(profile),
     environment: profile.environment,
     scrydexTeamLabel: profile.scrydex.teamLabel,
     canonicalInventoryWritesEnabled: profile.wordpress.canonicalInventoryWritesEnabled,
@@ -1662,6 +1687,7 @@ export function buildConnectorProfileFromDraft(
   const canonicalInventoryWritesEnabled =
     environment !== "production" && draft.canonicalInventoryWritesEnabled
   const site = parseConnectorSiteInput(draft.siteUrl)
+  const localSyncServerUrl = normalizeLocalSyncServerUrl(draft.localSyncServerUrl)
 
   if (!companyName) {
     issues.push("Company name is required.")
@@ -1703,6 +1729,12 @@ export function buildConnectorProfileFromDraft(
         networkRequestsDeferred: true,
         routeConnectedPushReady: true,
         canonicalInventoryWritesEnabled,
+      },
+      localSync: {
+        topology: "lan_middleman_server",
+        serverUrl: localSyncServerUrl,
+        localDatabase: "store-sync.sqlite",
+        credentialsSyncedToApp: false,
       },
       square: {
         inventoryAuthority: "tcg_store_platform",
@@ -2598,6 +2630,12 @@ function connectorProfileFromManifest(
         manifest.wordpress.route_connected_push_ready !== false &&
         manifest.wordpress.canonical_inventory_execution_enabled,
     },
+    localSync: {
+      topology: "lan_middleman_server",
+      serverUrl: "http://127.0.0.1:8787",
+      localDatabase: "store-sync.sqlite",
+      credentialsSyncedToApp: false,
+    },
     square: {
       inventoryAuthority: "tcg_store_platform",
       paymentAuthority: "official_woocommerce_square_extension",
@@ -2658,6 +2696,31 @@ function parseConnectorSiteInput(value: string): { scheme: ConnectorScheme; host
   }
 
   return site
+}
+
+function normalizeLocalSyncServerUrl(value: string): string {
+  const trimmed = value.trim()
+  const rawValue = trimmed
+    ? trimmed.includes("://")
+      ? trimmed
+      : `http://${trimmed}`
+    : "http://127.0.0.1:8787"
+
+  try {
+    const parsed = new URL(rawValue)
+
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.host || parsed.username || parsed.password) {
+      return "http://127.0.0.1:8787"
+    }
+
+    parsed.pathname = parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "")
+    parsed.search = ""
+    parsed.hash = ""
+
+    return parsed.toString().replace(/\/$/, "")
+  } catch {
+    return "http://127.0.0.1:8787"
+  }
 }
 
 function cleanConnectorEnvironment(value: string): ConnectorEnvironment {
@@ -2972,6 +3035,9 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
     const scheme = profile.wordpress.scheme === "http" ? "http" : "https"
     const environment = cleanConnectorEnvironment(profile.environment)
     const routeConnectedPushReady = true
+    const localSyncServerUrl = normalizeLocalSyncServerUrl(
+      profile.localSync?.serverUrl ?? "http://127.0.0.1:8787",
+    )
     const canonicalInventoryWritesEnabled =
       environment !== "production" &&
       routeConnectedPushReady &&
@@ -2992,6 +3058,12 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
         networkRequestsDeferred: true,
         routeConnectedPushReady,
         canonicalInventoryWritesEnabled,
+      },
+      localSync: {
+        topology: "lan_middleman_server",
+        serverUrl: localSyncServerUrl,
+        localDatabase: "store-sync.sqlite",
+        credentialsSyncedToApp: false,
       },
       square: {
         ...profile.square,

@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App LAN Sync Client Wiring
+
+### What Changed
+
+- Added a typed offline app local sync server client for PIN authentication,
+  access policy, user creation/access updates, inventory search, inventory
+  reservations, kiosk pickup orders, and sync status.
+- Extended saved website setup profiles with a configurable LAN sync server URL
+  while preserving WordPress as the global website authority.
+- Wired PIN login to verify against the LAN local sync server first, falling
+  back only to cached preview policy when the LAN server is unavailable.
+- Wired manager Users & Access creation and role/access edits through the LAN
+  server session instead of only mutating local React state.
+- Wired inventory holds and kiosk pickup orders to acquire local sync server
+  locks before staging app queue operations.
+- Added CORS/preflight support to the local sync HTTP server so browser-based
+  app clients can call the LAN server during development.
+
+### Why
+
+The offline app must behave as a client of the in-store middleman server, not
+as its own independent inventory authority. This revision moves critical flows
+toward that architecture while preserving current app queue previews and
+WordPress final acceptance boundaries.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/package.json`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app local sync client contract covering route paths, bearer-session
+  handoff, no-secret response markers, unavailable-server handling, and sync
+  status shape.
+- Local sync server CORS preflight assertion for browser client access.
+
+### Verification
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/offline-app run test:package-contract`
+- `npm run test:offline-app`
+- `npm run test:sync-engine`
+- `npm --prefix apps/local-sync-server run test`
+- `npm run test`
+- Browser smoke: LAN manager PIN login, LAN-backed user creation, LAN-backed
+  cashier PIN login, inventory hold lock through `127.0.0.1:8787`, and queue
+  count refresh in the offline app.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to local-only PIN/user
+  scaffolding and remove browser CORS support from the local sync server.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because this revision only affects local app
+  and LAN server development runtime behavior.
+
 ## 2026-06-08 - Local Sync Server Runtime Scaffold
 
 ### What Changed

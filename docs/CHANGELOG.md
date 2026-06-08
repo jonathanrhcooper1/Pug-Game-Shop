@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app setup profiles now include a configurable LAN sync server URL,
+  and the app has a typed local sync server client used for PIN auth,
+  manager user creation/access edits, inventory holds, kiosk pickup orders, and
+  sync status.
 - Local sync server now has a runnable Node HTTP scaffold with PIN session
   verification, manager-only user/access policy endpoints, inventory search,
   reservation locking, kiosk pickup orders, sync status, and runtime tests.

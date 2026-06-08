@@ -59,6 +59,7 @@ import {
   findPairedDeviceRecord,
   formatMoney,
   inventoryQuantityDeltaFromInput,
+  localSyncServerDisplayUrl,
   offlineWorkspaceSeed,
   OFFLINE_SESSION_STORAGE_KEY,
   offlineSessionStorageKey,
@@ -100,6 +101,11 @@ import {
   type PreparedPairingStorageRestoreResult,
   type StoreConnectorProfile,
 } from "./data/offlineWorkspace"
+import {
+  createLocalSyncServerClient,
+  type LocalSyncAuthResult,
+  type LocalSyncStatusResult,
+} from "./data/localSyncServerClient"
 import {
   markOfflineOperationsSynced,
   restoreDesktopQueuedOperations,
@@ -498,6 +504,8 @@ export function App() {
   const [activeSection, setActiveSection] = useState("Inventory")
   const [sessionRole, setSessionRole] = useState<AppSessionRole>("locked")
   const [sessionUserId, setSessionUserId] = useState("")
+  const [localSyncSessionToken, setLocalSyncSessionToken] = useState("")
+  const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
   const [loginPin, setLoginPin] = useState("")
   const [loginIssue, setLoginIssue] = useState("")
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30)
@@ -630,6 +638,10 @@ export function App() {
     pairedDeviceStorage.records,
   )
   const activeProfile = findConnectorProfile(connectorProfiles, activeProfileId)
+  const localSyncClient = useMemo(
+    () => createLocalSyncServerClient(localSyncServerDisplayUrl(activeProfile)),
+    [activeProfile],
+  )
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
   const activePreparedPairingRequests = useMemo(
     () => preparedPairingRequests.filter((request) => request.profileId === activeProfile.id),
@@ -1032,21 +1044,38 @@ export function App() {
   function handleLockSession() {
     setSessionRole("locked")
     setSessionUserId("")
+    setLocalSyncSessionToken("")
     setManagerSettingsLocked(true)
     setLoginPin("")
     setLoginIssue("")
   }
 
-  function handlePinLogin() {
-    const user = offlineUsers.find((item) => item.pin === loginPin)
-
-    if (!/^\d{4}$/.test(loginPin) || !user) {
-      setLoginIssue("Enter a valid 4-digit staff or manager PIN.")
-      setLoginPin("")
-      return
+  function upsertLocalSyncUser(authResult: Extract<LocalSyncAuthResult, { status: "ok" }>) {
+    const access = authResult.user.role === "manager"
+      ? [...ACCESS_SECTIONS]
+      : authResult.user.access.filter(isAccessSection)
+    const nextUser: OfflineAppUser = {
+      id: authResult.user.id,
+      name: authResult.user.name,
+      pin: "",
+      role: authResult.user.role,
+      access,
     }
 
+    setOfflineUsers((users) => {
+      if (users.some((user) => user.id === nextUser.id)) {
+        return users.map((user) => (user.id === nextUser.id ? { ...user, ...nextUser } : user))
+      }
+
+      return [...users, nextUser]
+    })
+
+    return nextUser
+  }
+
+  function startOfflineUserSession(user: OfflineAppUser, detail: string) {
     const firstAllowedSection = user.role === "manager" ? "Settings" : (user.access[0] ?? "Inventory")
+
     setSessionRole(user.role)
     setSessionUserId(user.id)
     setManagerSettingsLocked(user.role !== "manager")
@@ -1055,18 +1084,74 @@ export function App() {
     setLoginIssue("")
     setActivityMessage({
       title: `${user.name} signed in`,
-      detail:
-        user.role === "manager"
-          ? "Manager session started; website setup and user access can be unlocked."
-          : `${user.access.join(", ")} workspaces are available for this PIN.`,
+      detail,
     })
   }
 
-  function handleOfflineUserRoleChange(userId: string, role: Exclude<AppSessionRole, "locked">) {
+  async function refreshLocalSyncStatus() {
+    const nextStatus = await localSyncClient.getSyncStatus()
+
+    setLocalSyncStatus(nextStatus)
+
+    return nextStatus
+  }
+
+  async function handlePinLogin() {
+    if (!/^\d{4}$/.test(loginPin)) {
+      setLoginIssue("Enter a valid 4-digit staff or manager PIN.")
+      setLoginPin("")
+      return
+    }
+
+    const authResult = await localSyncClient.authWithPin(loginPin)
+
+    if (authResult.status === "ok") {
+      const user = upsertLocalSyncUser(authResult)
+      setLocalSyncSessionToken(authResult.session.token)
+      void refreshLocalSyncStatus()
+      startOfflineUserSession(
+        user,
+        user.role === "manager"
+          ? `Manager session verified by ${localSyncClient.serverUrl}; website setup and user access can be unlocked.`
+          : `${user.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl}.`,
+      )
+      return
+    }
+
+    if (authResult.status === "blocked") {
+      setLoginIssue(authResult.message)
+      setLoginPin("")
+      return
+    }
+
+    const cachedUser = offlineUsers.find((item) => item.pin === loginPin)
+
+    if (!cachedUser) {
+      setLoginIssue(authResult.message)
+      setLoginPin("")
+      return
+    }
+
+    setLocalSyncSessionToken("")
+    startOfflineUserSession(
+      cachedUser,
+      `${authResult.message} Cached preview policy unlocked ${cachedUser.access.join(", ")}; inventory holds and kiosk orders still require the LAN sync server.`,
+    )
+  }
+
+  async function handleOfflineUserRoleChange(userId: string, role: Exclude<AppSessionRole, "locked">) {
     if (!managerControlsUnlocked) {
       setActivityMessage({
         title: "Manager unlock required",
         detail: "Unlock settings before changing offline user roles.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in through the LAN local sync server before changing offline user roles.",
       })
       return
     }
@@ -1082,28 +1167,51 @@ export function App() {
       return
     }
 
+    const nextAccess = role === "manager" ? [...ACCESS_SECTIONS] : (targetUser?.access ?? [])
+    const serverResult = await localSyncClient.updateUserAccess(localSyncSessionToken, userId, {
+      role,
+      access: nextAccess,
+    })
+
+    if (serverResult.status !== "ok") {
+      setActivityMessage({
+        title: serverResult.status === "unavailable" ? "LAN server unavailable" : "Role update blocked",
+        detail: serverResult.message,
+      })
+      return
+    }
+
     setOfflineUsers((users) =>
       users.map((user) =>
         user.id === userId
           ? {
               ...user,
-              role,
-              access: role === "manager" ? [...ACCESS_SECTIONS] : user.access.filter(isAccessSection),
+              role: serverResult.user.role,
+              access: serverResult.user.access.filter(isAccessSection),
             }
           : user,
       ),
     )
+    await refreshLocalSyncStatus()
     setActivityMessage({
       title: "Offline user role updated",
       detail: `${targetUser?.name ?? "User"} is now ${role}.`,
     })
   }
 
-  function handleOfflineUserAccessToggle(userId: string, section: AccessSection) {
+  async function handleOfflineUserAccessToggle(userId: string, section: AccessSection) {
     if (!managerControlsUnlocked) {
       setActivityMessage({
         title: "Manager unlock required",
         detail: "Unlock settings before changing offline user access.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in through the LAN local sync server before changing offline user access.",
       })
       return
     }
@@ -1118,22 +1226,51 @@ export function App() {
       return
     }
 
+    if (!targetUser) {
+      setActivityMessage({
+        title: "User not found",
+        detail: "The selected offline user is not available in the local app state.",
+      })
+      return
+    }
+
+    const nextAccess = targetUser.access.includes(section)
+      ? targetUser.access.filter((item) => item !== section)
+      : [...targetUser.access, section]
+
+    if (nextAccess.length === 0) {
+      setActivityMessage({
+        title: "Access required",
+        detail: "Staff users need at least one allowed workspace.",
+      })
+      return
+    }
+
+    const serverResult = await localSyncClient.updateUserAccess(localSyncSessionToken, userId, {
+      role: targetUser.role,
+      access: nextAccess,
+    })
+
+    if (serverResult.status !== "ok") {
+      setActivityMessage({
+        title: serverResult.status === "unavailable" ? "LAN server unavailable" : "Access update blocked",
+        detail: serverResult.message,
+      })
+      return
+    }
+
     setOfflineUsers((users) =>
-      users.map((user) => {
-        if (user.id !== userId) {
-          return user
-        }
-
-        const nextAccess = user.access.includes(section)
-          ? user.access.filter((item) => item !== section)
-          : [...user.access, section]
-
-        return {
-          ...user,
-          access: nextAccess.length > 0 ? nextAccess : user.access,
-        }
-      }),
+      users.map((user) =>
+        user.id === userId
+          ? {
+              ...user,
+              role: serverResult.user.role,
+              access: serverResult.user.access.filter(isAccessSection),
+            }
+          : user,
+      ),
     )
+    await refreshLocalSyncStatus()
   }
 
   function toggleNewUserAccess(section: AccessSection) {
@@ -1146,7 +1283,7 @@ export function App() {
     })
   }
 
-  function handleAddOfflineUser() {
+  async function handleAddOfflineUser() {
     const cleanName = newUserName.trim()
     const cleanPin = newUserPin.trim()
     const access = newUserRole === "manager" ? [...ACCESS_SECTIONS] : newUserAccess
@@ -1155,6 +1292,14 @@ export function App() {
       setActivityMessage({
         title: "Manager unlock required",
         detail: "Unlock settings before adding or changing offline PIN users.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in through the LAN local sync server before adding or changing PIN users.",
       })
       return
     }
@@ -1175,21 +1320,37 @@ export function App() {
       return
     }
 
-    const nextUser: OfflineAppUser = {
-      id: `offline-user-${Date.now()}`,
+    const serverResult = await localSyncClient.addUser(localSyncSessionToken, {
       name: cleanName,
       pin: cleanPin,
       role: newUserRole,
       access,
+    })
+
+    if (serverResult.status !== "ok") {
+      setActivityMessage({
+        title: serverResult.status === "unavailable" ? "LAN server unavailable" : "User setup blocked",
+        detail: serverResult.message,
+      })
+      return
+    }
+
+    const nextUser: OfflineAppUser = {
+      id: serverResult.user.id,
+      name: serverResult.user.name,
+      pin: "",
+      role: serverResult.user.role,
+      access: serverResult.user.access.filter(isAccessSection),
     }
     setOfflineUsers((users) => [...users, nextUser])
+    void refreshLocalSyncStatus()
     setNewUserName("")
     setNewUserPin("")
     setNewUserRole("staff")
     setNewUserAccess(["Inventory", "Kiosk", "Queue"])
     setActivityMessage({
       title: "Offline user added",
-      detail: `${nextUser.name} can sign in with a 4-digit PIN and access ${nextUser.access.join(", ")}.`,
+      detail: `${nextUser.name} can sign in through ${localSyncClient.serverUrl} with a 4-digit PIN and access ${nextUser.access.join(", ")}.`,
     })
   }
 
@@ -1605,12 +1766,35 @@ export function App() {
       return
     }
 
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server required",
+        detail: "Sign in through the LAN local sync server before creating inventory holds.",
+      })
+      return
+    }
+
+    const localReservation = await localSyncClient.reserveInventory(localSyncSessionToken, {
+      inventoryPublicId: selectedItem.publicId,
+      holdReason: "staff counter hold",
+    })
+
+    if (localReservation.status !== "ok") {
+      setActivityMessage({
+        title: localReservation.status === "unavailable" ? "LAN server unavailable" : "Hold unavailable",
+        detail: localReservation.message,
+      })
+      return
+    }
+
+    void refreshLocalSyncStatus()
+
     await stageOfflineOperation(
       buildInventoryReservationOperation(selectedItem),
-      "Inventory hold staged",
+      "LAN inventory hold staged",
       activeProfile.wordpress.canonicalInventoryWritesEnabled
-        ? `${selectedItem.cardName} hold is queued for ${activeProfile.companyName}; guarded website inventory execution is enabled for this connector after pairing.`
-        : `${selectedItem.cardName} hold is queued for ${activeProfile.companyName}; canonical inventory execution remains deferred for this connector.`,
+        ? `${selectedItem.cardName} is locked by ${localSyncClient.serverUrl} and queued for ${activeProfile.companyName}; guarded website inventory execution is enabled for this connector after pairing.`
+        : `${selectedItem.cardName} is locked by ${localSyncClient.serverUrl} and queued for ${activeProfile.companyName}; canonical inventory execution remains deferred for this connector.`,
     )
     setInventoryItems((items) =>
       items.map((item) =>
@@ -1668,6 +1852,23 @@ export function App() {
       return
     }
 
+    const kioskOrder = await localSyncClient.createKioskOrder({
+      firstName: kioskFirstName,
+      lastName: kioskLastName,
+      inventoryPublicIds: availableItems.map((item) => item.publicId),
+    })
+
+    if (kioskOrder.status !== "ok") {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: kioskOrder.status === "unavailable" ? "LAN server unavailable" : "Kiosk order blocked",
+        detail: kioskOrder.message,
+      })
+      return
+    }
+
+    void refreshLocalSyncStatus()
+
     for (const item of availableItems) {
       await stageOfflineOperation(
         buildInventoryReservationOperation(item, {
@@ -1699,7 +1900,7 @@ export function App() {
     setActiveSection("Queue")
     setActivityMessage({
       title: "Kiosk order queued",
-      detail: `${availableItems.length} card(s) staged for ${kioskCustomerName}; the website remains the final inventory authority after sync acceptance.`,
+      detail: `${availableItems.length} card(s) locked by ${localSyncClient.serverUrl} for ${kioskCustomerName}; the website remains the final inventory authority after sync acceptance.`,
     })
   }
 
@@ -1913,7 +2114,7 @@ export function App() {
     setActiveSection("Settings")
     setActivityMessage({
       title: "Website setup opened",
-      detail: `${activeProfile.companyName} is connected to ${connectorDisplayUrl(activeProfile)}. Settings and pairing controls stay manager-gated for the installed website.`,
+      detail: `${activeProfile.companyName} is connected to ${connectorDisplayUrl(activeProfile)} and LAN sync server ${localSyncServerDisplayUrl(activeProfile)}. Settings and pairing controls stay manager-gated for the installed website.`,
     })
   }
 
@@ -1957,11 +2158,15 @@ export function App() {
     setActiveSection("Settings")
     setActivityMessage({
       title: validation.status === "rejected" ? "Website saved with issues" : "Website connection saved",
-      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} and is saved locally for this device. Guarded inventory holds are ${profile.wordpress.canonicalInventoryWritesEnabled ? "enabled" : "deferred"}; credentials are still server-side or desktop secure-store only.`,
+      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} with LAN sync at ${localSyncServerDisplayUrl(profile)}. Guarded inventory holds are ${profile.wordpress.canonicalInventoryWritesEnabled ? "enabled" : "deferred"}; credentials are still server-side or desktop secure-store only.`,
     })
   }
 
   async function handleSyncNowPreview() {
+    const nextLocalSyncStatus = await localSyncClient.getSyncStatus()
+
+    setLocalSyncStatus(nextLocalSyncStatus)
+
     const operationsForSync = queuedOperations.length > 0
       ? queuedOperations
       : stagedOperation
@@ -2978,7 +3183,7 @@ export function App() {
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault()
-                      handlePinLogin()
+                      void handlePinLogin()
                     }
                   }}
                   placeholder="----"
@@ -3007,14 +3212,14 @@ export function App() {
               <button type="button" onClick={() => handlePinDigit("0")}>
                 0
               </button>
-              <button type="button" onClick={handlePinLogin}>
+              <button type="button" onClick={() => void handlePinLogin()}>
                 Go
               </button>
             </div>
             <div className="login-actions">
               <button
                 type="button"
-                onClick={handlePinLogin}
+                onClick={() => void handlePinLogin()}
               >
                 <Icon name="check" />
                 <span>Unlock App</span>
@@ -3089,8 +3294,12 @@ export function App() {
           <div className="local-db-card">
             <Icon name="database" />
             <span>LAN Sync Server</span>
-            <strong>store-sync.sqlite</strong>
-            <small>Middleman online</small>
+            <strong>{localSyncClient.serverUrl}</strong>
+            <small>
+              {localSyncStatus?.status === "ok"
+                ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}`
+                : "store-sync.sqlite; check server"}
+            </small>
           </div>
         </aside>
 
@@ -4084,6 +4293,15 @@ export function App() {
                   <small>{connectorHealth.restBasePath}; setup saved locally for this device</small>
                 </div>
                 <div>
+                  <span className="micro-label">LAN sync</span>
+                  <strong>{localSyncClient.serverUrl}</strong>
+                  <small>
+                    {localSyncStatus?.status === "ok"
+                      ? `${localSyncStatus.local_database}; ${localSyncStatus.queue_depth} queued`
+                      : "Local middleman server; run npm start in apps/local-sync-server"}
+                  </small>
+                </div>
+                <div>
                   <span className="micro-label">Device token</span>
                   <strong>
                     {activePairedDevice
@@ -4250,7 +4468,8 @@ export function App() {
                       <div className="user-access-identity">
                         <strong>{user.name}</strong>
                         <small>
-                          {user.role === "manager" ? "Manager PIN" : "Staff PIN"} {"*".repeat(user.pin.length)}
+                          {user.role === "manager" ? "Manager PIN" : "Staff PIN"}{" "}
+                          {user.pin ? "*".repeat(user.pin.length) : "configured on LAN server"}
                         </small>
                       </div>
                       <label>
@@ -4259,7 +4478,7 @@ export function App() {
                           disabled={!managerControlsUnlocked}
                           value={user.role}
                           onChange={(event) =>
-                            handleOfflineUserRoleChange(
+                            void handleOfflineUserRoleChange(
                               user.id,
                               event.target.value as Exclude<AppSessionRole, "locked">,
                             )
@@ -4276,7 +4495,7 @@ export function App() {
                               type="checkbox"
                               disabled={!managerControlsUnlocked || user.role === "manager"}
                               checked={user.role === "manager" || user.access.includes(section)}
-                              onChange={() => handleOfflineUserAccessToggle(user.id, section)}
+                              onChange={() => void handleOfflineUserAccessToggle(user.id, section)}
                             />
                             <span>{section}</span>
                           </label>
@@ -4342,7 +4561,7 @@ export function App() {
                   <button
                     type="button"
                     disabled={!managerControlsUnlocked}
-                    onClick={handleAddOfflineUser}
+                    onClick={() => void handleAddOfflineUser()}
                   >
                     <Icon name="plus" />
                     <span>Add User</span>
@@ -4390,6 +4609,20 @@ export function App() {
                       }))
                     }
                     placeholder="company.example.com"
+                  />
+                </label>
+                <label>
+                  <span className="micro-label">Local sync server URL</span>
+                  <input
+                    disabled={!managerControlsUnlocked}
+                    value={connectorDraft.localSyncServerUrl}
+                    onChange={(event) =>
+                      setConnectorDraft((draft) => ({
+                        ...draft,
+                        localSyncServerUrl: event.target.value,
+                      }))
+                    }
+                    placeholder="http://127.0.0.1:8787"
                   />
                 </label>
                 <label>
