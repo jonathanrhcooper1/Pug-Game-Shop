@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress offline pairing readiness now exposes a secret-free app pairing
+  contract for `/offline/devices/register`, including redacted pairing-code
+  handling, requested offline scopes, desktop secure token storage, and
+  deferred token/network execution; the offline app route preview now mirrors
+  the plugin's conflict list/resolve route contracts.
 - Offline app pairing-code request preview for selected website connector
   profiles, including deferred `/offline/devices/register` planning, redacted
   pairing-code fingerprinting, scoped offline permissions, and desktop secure

@@ -97,6 +97,10 @@
   secure credential storage boundary, official WooCommerce Square payment
   authority, ScryDex server-side credential storage, and no credential sync to
   the offline app.
+- Local unit and WordPress smoke coverage now include the app pairing contract
+  inside offline pairing readiness, proving `/offline/devices/register`,
+  requested offline scopes, redacted pairing-code handling, desktop secure
+  token storage, network/token deferrals, and no credential sync to the app.
 - `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
   queue operations stay behind a Tauri command adapter boundary and do not use
   direct browser storage or network writes.

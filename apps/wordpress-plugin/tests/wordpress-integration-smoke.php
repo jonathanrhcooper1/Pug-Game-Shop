@@ -293,6 +293,10 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['push_canon
 $assert( false === ( $data['offline_registered_device_sync_handlers']['route_connected_writes_ready'] ?? null ), 'Offline sync handlers should keep writes deferred.' );
 $assert( 'blocked' === ( $data['offline_device_pairing_route_readiness']['status'] ?? null ), 'Offline pairing readiness should remain blocked.' );
 $assert( 'POST /offline/devices/register' === ( $data['offline_device_pairing_route_readiness']['route_key'] ?? null ), 'Offline pairing readiness should report the pairing route.' );
+$assert( 'offline_device_pairing_request' === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['action'] ?? null ), 'Offline pairing app contract should report the pairing request action.' );
+$assert( '/wp-json/tcg-store/v1/offline/devices/register' === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['rest_path'] ?? null ), 'Offline pairing app contract should report the device register route.' );
+$assert( 'desktop_secure_store' === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['device_token_storage'] ?? null ), 'Offline pairing app contract should require desktop secure token storage.' );
+$assert( false === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['credential_values_synced_to_app'] ?? null ), 'Offline pairing app contract should not sync credential values to the app.' );
 $assert( false === ( $data['offline_device_pairing_route_readiness']['handler_injected'] ?? null ), 'Offline pairing readiness should not report a default handler.' );
 $assert( false === ( $data['offline_device_pairing_route_readiness']['permission_callback_ready'] ?? null ), 'Offline pairing readiness permission should remain locked.' );
 $assert( true === ( $data['offline_device_pairing_route_readiness']['registration_deferred'] ?? null ), 'Offline pairing route registration should remain deferred.' );

@@ -47,6 +47,7 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 				&& $permission_callback->is_configured(),
 			'policy_configured'            => true === $policy_summary['configured'],
 			'policy_summary'               => $policy_summary,
+			'app_pairing_contract'         => $this->app_pairing_contract(),
 			'permission_callback_ready'    => true === ( $route_plan['permission_callback_ready'] ?? false ),
 			'controller_callback_ready'    => true === ( $route_plan['controller_callback_ready'] ?? false ),
 			'live_enabled_by_default'      => true === ( $route_plan['live_enabled_by_default'] ?? false ),
@@ -171,7 +172,35 @@ final class OfflineDevicePairingRouteReadinessPlanner {
 	}
 
 	/**
-	 * @param array<string, mixed> $bootstrap Bootstrap plan.
+		* @return array<string, mixed>
+		*/
+	private function app_pairing_contract(): array {
+
+		return array(
+			'action'                             => 'offline_device_pairing_request',
+			'method'                             => 'POST',
+			'path'                               => '/offline/devices/register',
+			'rest_namespace'                     => 'tcg-store/v1',
+			'rest_path'                          => '/wp-json/tcg-store/v1/offline/devices/register',
+			'permission_strategy'                => 'pairing_code_plus_manager_callback',
+			'pairing_code_transport'             => 'request_body',
+			'pairing_code_storage'               => 'hash_only_wordpress_settings',
+			'pairing_code_values_redacted'       => true,
+			'raw_pairing_codes_stored'           => false,
+			'manager_context_required'           => true,
+			'location_context_required'          => true,
+			'requested_scopes'                   => array( 'offline_pull', 'offline_push', 'conflicts' ),
+			'device_token_storage'               => 'desktop_secure_store',
+			'token_values_redacted'              => true,
+			'network_request_deferred'           => true,
+			'production_token_issuance_deferred' => true,
+			'route_registration_deferred'        => true,
+			'credential_values_synced_to_app'    => false,
+		);
+	}
+
+	/**
+		* @param array<string, mixed> $bootstrap Bootstrap plan.
 	 */
 	private function status_from_bootstrap( array $bootstrap ): string {
 		if ( true === ( $bootstrap['should_register_routes'] ?? false ) ) {

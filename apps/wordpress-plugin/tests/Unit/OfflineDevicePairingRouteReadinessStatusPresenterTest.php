@@ -41,6 +41,7 @@ final class OfflineDevicePairingRouteReadinessStatusPresenterTest extends TestCa
 		$this->assert_contains( 'handler ready', $summary['value'] );
 		$this->assert_contains( 'permission ready', $summary['value'] );
 		$this->assert_contains( 'policy ready', $summary['value'] );
+		$this->assert_contains( 'app token desktop_secure_store', $summary['value'] );
 		$this->assert_contains( 'route_disabled_by_default', $summary['value'] );
 	}
 }

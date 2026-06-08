@@ -95,6 +95,12 @@ back in visible UI. The preview shapes `POST /offline/devices/register`, the
 requested offline scopes, and desktop secure token storage while keeping live
 token issuance and network submission disabled.
 
+WordPress pairing readiness now exposes the matching app pairing contract in
+authenticated health and System Status. Staging can compare the offline app's
+selected connector route map with the plugin's planned device register, pull,
+push, conflict list, and conflict resolve contracts before enabling any live
+pairing route.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

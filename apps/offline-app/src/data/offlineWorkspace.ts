@@ -241,7 +241,7 @@ export type DevicePairingRequestPlan = {
   siteUrl: string
   pairingCodeProvided: boolean
   pairingCodeFingerprint: string
-  requestedScopes: ["offline_pull", "offline_push", "offline_conflict_review"]
+  requestedScopes: ["offline_pull", "offline_push", "conflicts"]
   bodyPreview: {
     pairing_code_redacted: boolean
     installation_id: string
@@ -525,8 +525,8 @@ export const offlineConnectorRoutePreview: OfflineConnectorRouteManifest[] = [
   {
     path: "/offline/devices/register",
     method: "POST",
-    required_scope: "offline_device_register",
-    permission_strategy: "manager_pairing_code",
+    required_scope: "",
+    permission_strategy: "pairing_code_plus_manager_callback",
     live_enabled_by_default: false,
   },
   {
@@ -546,15 +546,15 @@ export const offlineConnectorRoutePreview: OfflineConnectorRouteManifest[] = [
   {
     path: "/offline/conflicts",
     method: "GET",
-    required_scope: "offline_conflict_review",
-    permission_strategy: "offline_device_token",
+    required_scope: "",
+    permission_strategy: "manager_conflict_resolution_callback",
     live_enabled_by_default: false,
   },
   {
-    path: "/offline/devices/revoke",
+    path: "/offline/conflicts/(?P<conflict_id>[a-zA-Z0-9_-]+)/resolve",
     method: "POST",
-    required_scope: "offline_device_revoke",
-    permission_strategy: "manager_capability",
+    required_scope: "",
+    permission_strategy: "manager_conflict_resolution_callback",
     live_enabled_by_default: false,
   },
 ]
@@ -715,7 +715,7 @@ export function buildDevicePairingRequestPlan(
     siteUrl: connectorDisplayUrl(profile),
     pairingCodeProvided: normalizedPairingCode.length > 0,
     pairingCodeFingerprint: pairingCodeFingerprint(normalizedPairingCode),
-    requestedScopes: ["offline_pull", "offline_push", "offline_conflict_review"],
+    requestedScopes: ["offline_pull", "offline_push", "conflicts"],
     bodyPreview: {
       pairing_code_redacted: true,
       installation_id: "local-installation-preview",

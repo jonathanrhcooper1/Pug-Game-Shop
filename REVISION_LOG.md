@@ -3,6 +3,82 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress App Pairing Contract Diagnostics
+
+### What Changed
+
+- Added `app_pairing_contract` to offline device pairing route readiness
+  health output.
+- Included the planned `POST /offline/devices/register` REST path, permission
+  strategy, redacted pairing-code transport/storage, requested app scopes,
+  desktop secure token storage, and live execution deferrals.
+- Updated the pairing route readiness admin summary to surface app token
+  storage.
+- Aligned the offline app route preview with WordPress's staged offline route
+  contracts for device register, pull, push, conflict list, and conflict
+  resolve.
+- Extended unit and WordPress smoke tests for the app pairing contract.
+
+### Why
+
+The offline app now has a local pairing-code preview. WordPress needed to
+publish the same secret-free contract so staging can verify the app is
+pairing against the correct website route and scope model before live pairing
+or token issuance is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Pairing readiness planner assertions for app contract action, REST path,
+  requested scopes, desktop secure token storage, pairing-code redaction,
+  raw pairing-code storage blocking, network/token deferrals, and no
+  credential sync to the app.
+- Pairing readiness presenter assertion for admin summary token storage.
+- WordPress integration smoke assertions for authenticated health app pairing
+  contract output.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 862 tests and 0
+  failures.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Api\V1\OfflineDevicePairingRouteReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter.php`:
+  passed after formatting.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 565 PHP files checked
+  and 0 failures.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove app pairing contract diagnostics from
+  pairing readiness health/admin output and restore the prior offline app route
+  preview.
+- No database migrations, live pairing route registration, token issuance,
+  credential persistence, website network calls, provider calls, or production
+  mutations are introduced.
+- Existing pairing readiness, connector manifest diagnostics, and offline app
+  local pairing preview remain available if only this diagnostic alignment is
+  rolled back.
+
 ## 2026-06-08 - Offline App Pairing Request Preview
 
 ### What Changed
