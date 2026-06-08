@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app desktop pull responses now expose bounded sanitized conflict
+  snapshots and apply newer conflict rows into the local conflict panel with
+  visible inserted/updated/stale counts in Sync Now.
 - Offline app desktop pull responses now expose bounded sanitized event
   snapshots and apply newer event rows into the local event cache with visible
   inserted/updated/stale counts in Sync Now.

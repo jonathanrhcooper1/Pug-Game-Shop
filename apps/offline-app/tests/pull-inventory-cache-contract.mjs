@@ -24,6 +24,7 @@ try {
   await writeFile(modulePath, compiledWorkspace.outputText, "utf8")
 
   const {
+    applyOfflinePullConflictRecordsToCache,
     applyOfflinePullCustomerCreditRecordsToCache,
     applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
@@ -248,6 +249,86 @@ try {
   const insertedEvent = eventResult.events.find((event) => event.eventId === "event-200")
   assert.equal(insertedEvent.title, "Pokemon League Challenge")
   assert.equal(insertedEvent.locationLabel, "Main Tables")
+
+  const conflictResult = applyOfflinePullConflictRecordsToCache(
+    [
+      {
+        conflictId: "conflict-inv-1004-location",
+        rowVersion: 2,
+        title: "Mox Amber location mismatch",
+        detail: "Local scan says MTG Tray; website snapshot says Sold.",
+        action: "Review",
+        entityType: "inventory",
+        entityId: "inv-1004",
+        baseRowVersion: 17,
+        operationType: "inventory_update",
+        managerOverride: false,
+      },
+    ],
+    [
+      {
+        conflict_id: "conflict-inv-1004-location",
+        row_version: 1,
+        title: "Stale conflict",
+        detail: "Ignored stale conflict row.",
+        action: "Review",
+        entity_type: "inventory",
+        entity_id: "inv-1004",
+        base_row_version: 16,
+        operation_type: "inventory_update",
+        manager_override: false,
+        updated_at_utc: "2026-06-08T12:00:00Z",
+      },
+      {
+        conflict_id: "conflict-inv-1004-location",
+        row_version: 3,
+        title: "Mox Amber location mismatch",
+        detail: "Website snapshot says Sold.",
+        action: "Review",
+        entity_type: "inventory",
+        entity_id: "inv-1004",
+        base_row_version: 17,
+        operation_type: "inventory_update",
+        manager_override: false,
+        updated_at_utc: "2026-06-08T12:05:00Z",
+      },
+      {
+        conflict_id: "conflict-event-200-capacity",
+        row_version: 1,
+        title: "Event capacity conflict",
+        detail: "Offline registration exceeded website capacity.",
+        action: "Approve",
+        entity_type: "event",
+        entity_id: "event-200",
+        base_row_version: 1,
+        operation_type: "event_reservation",
+        manager_override: true,
+        updated_at_utc: "2026-06-08T12:10:00Z",
+      },
+    ],
+  )
+
+  assert.equal(conflictResult.appliedCount, 2)
+  assert.equal(conflictResult.insertedCount, 1)
+  assert.equal(conflictResult.updatedCount, 1)
+  assert.equal(conflictResult.ignoredCount, 1)
+  assert.deepEqual(conflictResult.changedConflictIds, [
+    "conflict-inv-1004-location",
+    "conflict-event-200-capacity",
+  ])
+
+  const updatedConflict = conflictResult.conflicts.find(
+    (conflict) => conflict.conflictId === "conflict-inv-1004-location",
+  )
+  assert.equal(updatedConflict.rowVersion, 3)
+  assert.equal(updatedConflict.detail, "Website snapshot says Sold.")
+
+  const insertedConflict = conflictResult.conflicts.find(
+    (conflict) => conflict.conflictId === "conflict-event-200-capacity",
+  )
+  assert.equal(insertedConflict.entityType, "event")
+  assert.equal(insertedConflict.operationType, "event_reservation")
+  assert.equal(insertedConflict.managerOverride, true)
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }

@@ -13,6 +13,7 @@ import {
   buildDevicePairingRequestBody,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
+  applyOfflinePullConflictRecordsToCache,
   applyOfflinePullCustomerCreditRecordsToCache,
   applyOfflinePullEventRecordsToCache,
   applyOfflinePullInventoryRecordsToCache,
@@ -148,6 +149,10 @@ type DesktopSyncExecutionState = {
   eventCacheInsertedCount: number
   eventCacheUpdatedCount: number
   eventCacheIgnoredCount: number
+  conflictCacheAppliedCount: number
+  conflictCacheInsertedCount: number
+  conflictCacheUpdatedCount: number
+  conflictCacheIgnoredCount: number
   rawTokenReturned: false
   rawResponseReturned: false
   credentialsSyncedToApp: false
@@ -312,6 +317,10 @@ export function App() {
     eventCacheInsertedCount: 0,
     eventCacheUpdatedCount: 0,
     eventCacheIgnoredCount: 0,
+    conflictCacheAppliedCount: 0,
+    conflictCacheInsertedCount: 0,
+    conflictCacheUpdatedCount: 0,
+    conflictCacheIgnoredCount: 0,
     rawTokenReturned: false,
     rawResponseReturned: false,
     credentialsSyncedToApp: false,
@@ -445,6 +454,10 @@ export function App() {
       eventCacheInsertedCount: 0,
       eventCacheUpdatedCount: 0,
       eventCacheIgnoredCount: 0,
+      conflictCacheAppliedCount: 0,
+      conflictCacheInsertedCount: 0,
+      conflictCacheUpdatedCount: 0,
+      conflictCacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -964,6 +977,10 @@ export function App() {
         eventCacheInsertedCount: 0,
         eventCacheUpdatedCount: 0,
         eventCacheIgnoredCount: 0,
+        conflictCacheAppliedCount: 0,
+        conflictCacheInsertedCount: 0,
+        conflictCacheUpdatedCount: 0,
+        conflictCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -986,6 +1003,10 @@ export function App() {
         eventCacheInsertedCount: 0,
         eventCacheUpdatedCount: 0,
         eventCacheIgnoredCount: 0,
+        conflictCacheAppliedCount: 0,
+        conflictCacheInsertedCount: 0,
+        conflictCacheUpdatedCount: 0,
+        conflictCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1008,6 +1029,10 @@ export function App() {
         eventCacheInsertedCount: 0,
         eventCacheUpdatedCount: 0,
         eventCacheIgnoredCount: 0,
+        conflictCacheAppliedCount: 0,
+        conflictCacheInsertedCount: 0,
+        conflictCacheUpdatedCount: 0,
+        conflictCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1030,6 +1055,10 @@ export function App() {
         eventCacheInsertedCount: 0,
         eventCacheUpdatedCount: 0,
         eventCacheIgnoredCount: 0,
+        conflictCacheAppliedCount: 0,
+        conflictCacheInsertedCount: 0,
+        conflictCacheUpdatedCount: 0,
+        conflictCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1051,6 +1080,10 @@ export function App() {
       eventCacheInsertedCount: 0,
       eventCacheUpdatedCount: 0,
       eventCacheIgnoredCount: 0,
+      conflictCacheAppliedCount: 0,
+      conflictCacheInsertedCount: 0,
+      conflictCacheUpdatedCount: 0,
+      conflictCacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -1089,6 +1122,10 @@ export function App() {
         eventSnapshots,
         completed ? pull.pull_event_records : [],
       )
+      const conflictCacheApplyResult = applyOfflinePullConflictRecordsToCache(
+        openConflicts,
+        completed ? pull.pull_conflict_records : [],
+      )
 
       if (cacheApplyResult.appliedCount > 0) {
         setInventoryItems(cacheApplyResult.items)
@@ -1102,11 +1139,14 @@ export function App() {
       if (eventCacheApplyResult.appliedCount > 0) {
         setEventSnapshots(eventCacheApplyResult.events)
       }
+      if (conflictCacheApplyResult.appliedCount > 0) {
+        setOpenConflicts(conflictCacheApplyResult.conflicts)
+      }
 
       setDesktopSyncExecution({
         status: completed ? "synced" : "blocked",
         detail: completed
-          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), and ${eventCacheApplyResult.appliedCount} event(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), ${eventCacheApplyResult.appliedCount} event(s), and ${conflictCacheApplyResult.appliedCount} conflict(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
           : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
         pull,
         push,
@@ -1121,6 +1161,10 @@ export function App() {
         eventCacheInsertedCount: eventCacheApplyResult.insertedCount,
         eventCacheUpdatedCount: eventCacheApplyResult.updatedCount,
         eventCacheIgnoredCount: eventCacheApplyResult.ignoredCount,
+        conflictCacheAppliedCount: conflictCacheApplyResult.appliedCount,
+        conflictCacheInsertedCount: conflictCacheApplyResult.insertedCount,
+        conflictCacheUpdatedCount: conflictCacheApplyResult.updatedCount,
+        conflictCacheIgnoredCount: conflictCacheApplyResult.ignoredCount,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1140,6 +1184,10 @@ export function App() {
         eventCacheInsertedCount: 0,
         eventCacheUpdatedCount: 0,
         eventCacheIgnoredCount: 0,
+        conflictCacheAppliedCount: 0,
+        conflictCacheInsertedCount: 0,
+        conflictCacheUpdatedCount: 0,
+        conflictCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1624,7 +1672,7 @@ export function App() {
       `${conflict.action} conflict staged`,
       `${conflict.title} is queued for staff review. Resolution writes stay deferred until manager approval and website sync acceptance.`,
     )
-    setOpenConflicts((conflicts) => conflicts.filter((item) => item.title !== conflict.title))
+    setOpenConflicts((conflicts) => conflicts.filter((item) => item.conflictId !== conflict.conflictId))
     setReviewedConflicts((conflicts) => [conflict, ...conflicts])
     setShowConflictHistory(true)
   }
@@ -1836,7 +1884,8 @@ export function App() {
                 <strong>
                   {desktopSyncExecution.cacheAppliedCount} inventory;
                   {desktopSyncExecution.creditCacheAppliedCount} credit;
-                  {desktopSyncExecution.eventCacheAppliedCount} event
+                  {desktopSyncExecution.eventCacheAppliedCount} event;
+                  {desktopSyncExecution.conflictCacheAppliedCount} conflict
                 </strong>
                 <small>
                   {desktopSyncExecution.cacheInsertedCount} inserted;
@@ -1851,6 +1900,11 @@ export function App() {
                   Events: {desktopSyncExecution.eventCacheInsertedCount} inserted;
                   {desktopSyncExecution.eventCacheUpdatedCount} updated;
                   {desktopSyncExecution.eventCacheIgnoredCount} ignored as stale.
+                </small>
+                <small>
+                  Conflicts: {desktopSyncExecution.conflictCacheInsertedCount} inserted;
+                  {desktopSyncExecution.conflictCacheUpdatedCount} updated;
+                  {desktopSyncExecution.conflictCacheIgnoredCount} ignored as stale.
                 </small>
               </div>
               <div>
@@ -2209,7 +2263,7 @@ export function App() {
                       ? "conflict-row is-selected"
                       : "conflict-row"
                   }
-                  key={item.title}
+                  key={item.conflictId}
                 >
                   <div>
                     <strong>{item.title}</strong>

@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pull Conflict Cache Apply
+
+### What Changed
+
+- Added bounded sanitized conflict snapshot extraction to the Tauri desktop
+  `run_offline_sync_request` pull response.
+- Added stable conflict IDs and row versions to local conflict items.
+- Added TypeScript conflict cache application for newer pulled conflict rows,
+  including inserted, updated, ignored-as-stale, and changed conflict ID counts.
+- Updated `Sync Now` to show separate conflict cache-apply counts alongside
+  inventory, customer credit, and events.
+- Updated conflict review payloads to include conflict ID and conflict row
+  version for future replay/writeback.
+
+### Why
+
+The offline app could stage local conflict reviews, but pulled website conflict
+snapshots did not refresh the visible conflict panel. This revision makes the
+conflict panel website-refreshable while preserving staged review behavior and
+leaving actual conflict resolution writeback gated for a later pass.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull conflict snapshot extraction.
+- Offline app behavior contract coverage for conflict cache updates, inserts,
+  stale row rejection, event conflict operation preservation, and manager
+  override preservation.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to stop applying pulled conflict rows into the local
+  conflict panel while keeping inventory, customer credit, and event cache
+  application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
 ## 2026-06-08 - Offline App Pull Event Cache Apply
 
 ### What Changed

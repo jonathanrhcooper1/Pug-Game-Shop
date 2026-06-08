@@ -227,6 +227,7 @@ struct OfflineSyncRequestResponse {
     pull_inventory_records: Vec<OfflineSyncInventoryRecord>,
     pull_customer_credit_records: Vec<OfflineSyncCustomerCreditRecord>,
     pull_event_records: Vec<OfflineSyncEventRecord>,
+    pull_conflict_records: Vec<OfflineSyncConflictRecord>,
     cursor_count: usize,
     network_request_completed: bool,
     authorization_header_attached: bool,
@@ -276,6 +277,21 @@ struct OfflineSyncEventRecord {
     registered_count: u64,
     location_label: String,
     note: String,
+    updated_at_utc: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OfflineSyncConflictRecord {
+    conflict_id: String,
+    row_version: u64,
+    title: String,
+    detail: String,
+    action: String,
+    entity_type: String,
+    entity_id: String,
+    base_row_version: u64,
+    operation_type: String,
+    manager_override: bool,
     updated_at_utc: String,
 }
 
@@ -842,6 +858,11 @@ fn summarize_offline_sync_response(
     } else {
         Vec::new()
     };
+    let pull_conflict_records = if route == "pull" {
+        sanitized_pull_conflict_records(data)
+    } else {
+        Vec::new()
+    };
 
     OfflineSyncRequestResponse {
         status,
@@ -863,6 +884,7 @@ fn summarize_offline_sync_response(
         pull_inventory_records,
         pull_customer_credit_records,
         pull_event_records,
+        pull_conflict_records,
         cursor_count,
         network_request_completed: true,
         authorization_header_attached: true,
@@ -1108,12 +1130,89 @@ fn sanitized_pull_event_record(record: &serde_json::Value) -> Option<OfflineSync
     })
 }
 
+fn sanitized_pull_conflict_records(data: &serde_json::Value) -> Vec<OfflineSyncConflictRecord> {
+    let records = data
+        .get("domains")
+        .and_then(|domains| domains.get("conflicts"))
+        .and_then(|conflicts| conflicts.get("data"))
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    records
+        .iter()
+        .filter_map(sanitized_pull_conflict_record)
+        .take(25)
+        .collect()
+}
+
+fn sanitized_pull_conflict_record(record: &serde_json::Value) -> Option<OfflineSyncConflictRecord> {
+    if json_path_string(record, &["entity_type"]).as_deref() != Some("sync_conflict") {
+        return None;
+    }
+
+    let payload = record.get("payload")?.as_object()?;
+    let conflict_id = first_non_empty_json_string(payload, &["conflict_id", "public_id", "id"])
+        .or_else(|| json_path_string(record, &["entity_id"]))?;
+    let row_version = record.get("row_version")?.as_u64()?;
+    let updated_at_utc = json_path_string(record, &["updated_at_utc"])?;
+    let entity_type = normalized_conflict_entity_type(
+        &first_non_empty_json_string(payload, &["entity_type", "entity"])
+            .unwrap_or_else(|| "inventory".to_string()),
+    );
+    let operation_type = normalized_conflict_operation_type(
+        &first_non_empty_json_string(payload, &["operation_type", "operation"])
+            .unwrap_or_else(|| "inventory_update".to_string()),
+    );
+
+    Some(OfflineSyncConflictRecord {
+        conflict_id,
+        row_version,
+        title: first_non_empty_json_string(payload, &["title", "conflict_title", "summary"])
+            .unwrap_or_else(|| "Offline conflict".to_string()),
+        detail: first_non_empty_json_string(payload, &["detail", "conflict_detail", "message"])
+            .unwrap_or_else(|| "Website conflict snapshot refreshed from offline pull.".to_string()),
+        action: first_non_empty_json_string(payload, &["action", "requested_action"])
+            .unwrap_or_else(|| "Review".to_string()),
+        entity_type,
+        entity_id: first_non_empty_json_string(payload, &["entity_id", "target_id"])
+            .unwrap_or_else(|| "unknown".to_string()),
+        base_row_version: payload
+            .get("base_row_version")
+            .or_else(|| payload.get("expected_row_version"))
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(row_version),
+        operation_type,
+        manager_override: payload
+            .get("manager_override")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+        updated_at_utc,
+    })
+}
+
 fn normalized_inventory_status(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "available" => "available".to_string(),
         "reserved" | "pending" | "hold" | "sold" => "reserved".to_string(),
         "conflict" | "needs_review" => "conflict".to_string(),
         _ => "available".to_string(),
+    }
+}
+
+fn normalized_conflict_entity_type(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "customer_credit" | "credit" => "customer_credit".to_string(),
+        "event" | "events" => "event".to_string(),
+        _ => "inventory".to_string(),
+    }
+}
+
+fn normalized_conflict_operation_type(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "credit_redemption" | "customer_credit_update" => "credit_redemption".to_string(),
+        "event_reservation" | "event_registration" => "event_reservation".to_string(),
+        _ => "inventory_update".to_string(),
     }
 }
 
@@ -2052,6 +2151,30 @@ mod tests {
                                 "deleted_at_utc": "2026-06-06T21:00:00Z"
                             }
                         ]
+                    },
+                    "conflicts": {
+                        "cursor": "conflict-cursor-01",
+                        "has_more": false,
+                        "data": [
+                            {
+                                "entity_type": "sync_conflict",
+                                "entity_id": "conflict-inv-1004-location",
+                                "row_version": 3,
+                                "updated_at_utc": "2026-06-07T19:00:00Z",
+                                "payload": {
+                                    "conflict_id": "conflict-inv-1004-location",
+                                    "title": "Mox Amber location mismatch",
+                                    "detail": "Website snapshot says Sold.",
+                                    "action": "Review",
+                                    "entity_type": "inventory",
+                                    "entity_id": "inv-1004",
+                                    "base_row_version": 17,
+                                    "operation_type": "inventory_update",
+                                    "manager_override": false
+                                }
+                            }
+                        ],
+                        "tombstones": []
                     }
                 }
             }
@@ -2063,8 +2186,8 @@ mod tests {
         assert_eq!(summary.route, "pull");
         assert_eq!(summary.wordpress_status, "ready");
         assert_eq!(summary.wordpress_code, "offline_pull_response_ready");
-        assert_eq!(summary.pull_domain_count, 3);
-        assert_eq!(summary.pull_record_count, 3);
+        assert_eq!(summary.pull_domain_count, 4);
+        assert_eq!(summary.pull_record_count, 4);
         assert_eq!(summary.pull_tombstone_count, 1);
         assert_eq!(summary.pull_inventory_records.len(), 1);
         assert_eq!(summary.pull_inventory_records[0].public_id, "inv-1001");
@@ -2087,7 +2210,15 @@ mod tests {
         assert_eq!(summary.pull_event_records[0].registration_status, "open");
         assert_eq!(summary.pull_event_records[0].capacity, 24);
         assert_eq!(summary.pull_event_records[0].registered_count, 11);
-        assert_eq!(summary.cursor_count, 3);
+        assert_eq!(summary.pull_conflict_records.len(), 1);
+        assert_eq!(
+            summary.pull_conflict_records[0].conflict_id,
+            "conflict-inv-1004-location"
+        );
+        assert_eq!(summary.pull_conflict_records[0].row_version, 3);
+        assert_eq!(summary.pull_conflict_records[0].entity_type, "inventory");
+        assert_eq!(summary.pull_conflict_records[0].operation_type, "inventory_update");
+        assert_eq!(summary.cursor_count, 4);
         assert!(summary.authorization_header_attached);
         assert!(!summary.raw_token_returned);
         assert!(!summary.raw_response_returned);

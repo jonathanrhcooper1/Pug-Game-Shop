@@ -51,13 +51,15 @@ export type QueueItem = {
 }
 
 export type ConflictItem = {
+  conflictId: string
+  rowVersion: number
   title: string
   detail: string
   action: string
-  entityType: "inventory" | "customer_credit"
+  entityType: "inventory" | "customer_credit" | "event"
   entityId: string
   baseRowVersion: number
-  operationType: "inventory_update" | "credit_redemption"
+  operationType: "inventory_update" | "credit_redemption" | "event_reservation"
   managerOverride: boolean
 }
 
@@ -450,6 +452,29 @@ export type OfflinePullEventCacheApplyResult = {
   changedEventIds: string[]
 }
 
+export type OfflinePullConflictCacheRecord = {
+  conflict_id: string
+  row_version: number
+  title: string
+  detail: string
+  action: string
+  entity_type: ConflictItem["entityType"]
+  entity_id: string
+  base_row_version: number
+  operation_type: ConflictItem["operationType"]
+  manager_override: boolean
+  updated_at_utc: string
+}
+
+export type OfflinePullConflictCacheApplyResult = {
+  conflicts: ConflictItem[]
+  appliedCount: number
+  insertedCount: number
+  updatedCount: number
+  ignoredCount: number
+  changedConflictIds: string[]
+}
+
 export type OfflinePushRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/push"
@@ -794,6 +819,8 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   ],
   conflicts: [
     {
+      conflictId: "conflict-inv-1004-location",
+      rowVersion: 2,
       title: "Mox Amber location mismatch",
       detail: "Local scan says MTG Tray; website snapshot says Sold.",
       action: "Review",
@@ -804,6 +831,8 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       managerOverride: false,
     },
     {
+      conflictId: "conflict-credit-91-redemption",
+      rowVersion: 1,
       title: "Credit redemption needs manager",
       detail: "$28.00 offline credit use awaits approval.",
       action: "Approve",
@@ -2022,6 +2051,58 @@ function sanitizeOfflinePullEventCacheRecords(
     .slice(0, 25)
 }
 
+function sanitizeOfflinePullConflictCacheRecords(
+  records: OfflinePullConflictCacheRecord[],
+): OfflinePullConflictCacheRecord[] {
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  return records
+    .filter((record) =>
+      record &&
+      typeof record.conflict_id === "string" &&
+      record.conflict_id.trim() !== "" &&
+      typeof record.row_version === "number" &&
+      Number.isFinite(record.row_version) &&
+      record.row_version > 0 &&
+      typeof record.title === "string" &&
+      record.title.trim() !== "" &&
+      typeof record.detail === "string" &&
+      record.detail.trim() !== "" &&
+      typeof record.action === "string" &&
+      record.action.trim() !== "" &&
+      (record.entity_type === "inventory" ||
+        record.entity_type === "customer_credit" ||
+        record.entity_type === "event") &&
+      typeof record.entity_id === "string" &&
+      record.entity_id.trim() !== "" &&
+      typeof record.base_row_version === "number" &&
+      Number.isFinite(record.base_row_version) &&
+      record.base_row_version > 0 &&
+      (record.operation_type === "inventory_update" ||
+        record.operation_type === "credit_redemption" ||
+        record.operation_type === "event_reservation") &&
+      typeof record.manager_override === "boolean" &&
+      typeof record.updated_at_utc === "string" &&
+      record.updated_at_utc.trim() !== "",
+    )
+    .map((record): OfflinePullConflictCacheRecord => ({
+      conflict_id: record.conflict_id.trim(),
+      row_version: Math.floor(record.row_version),
+      title: record.title.trim(),
+      detail: record.detail.trim(),
+      action: record.action.trim(),
+      entity_type: record.entity_type,
+      entity_id: record.entity_id.trim(),
+      base_row_version: Math.floor(record.base_row_version),
+      operation_type: record.operation_type,
+      manager_override: record.manager_override,
+      updated_at_utc: record.updated_at_utc.trim(),
+    }))
+    .slice(0, 25)
+}
+
 function safeRecordIdPart(value: unknown, fallback: string): string {
   const candidate = stringValue(value) || fallback
   const safeValue = candidate
@@ -2476,7 +2557,7 @@ export function buildConflictReviewOperation(
   const operationStamp = queuedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
 
   return {
-    client_operation_id: `offline-conflict-${conflict.entityId}-${operationStamp}`,
+    client_operation_id: `offline-conflict-${conflict.conflictId}-${operationStamp}`,
     device_id: options.deviceId ?? "local-device-preview",
     location_id: options.locationId ?? 1,
     actor_id: options.actorId ?? 1,
@@ -2487,6 +2568,8 @@ export function buildConflictReviewOperation(
     occurred_at_local: occurredAtLocal,
     queued_at_utc: queuedAtUtc,
     payload_json: JSON.stringify({
+      conflict_id: conflict.conflictId,
+      conflict_row_version: conflict.rowVersion,
       conflict_title: conflict.title,
       conflict_detail: conflict.detail,
       requested_action: conflict.action,
@@ -2695,6 +2778,59 @@ export function applyOfflinePullEventRecordsToCache(
     updatedCount,
     ignoredCount,
     changedEventIds,
+  }
+}
+
+export function applyOfflinePullConflictRecordsToCache(
+  conflicts: ConflictItem[],
+  records: OfflinePullConflictCacheRecord[],
+): OfflinePullConflictCacheApplyResult {
+  const conflictMap = new Map(conflicts.map((conflict) => [conflict.conflictId, conflict]))
+  const changedConflictIds: string[] = []
+  let insertedCount = 0
+  let updatedCount = 0
+  let ignoredCount = 0
+
+  for (const record of sanitizeOfflinePullConflictCacheRecords(records)) {
+    const existing = conflictMap.get(record.conflict_id)
+
+    if (existing && record.row_version <= existing.rowVersion) {
+      ignoredCount += 1
+      continue
+    }
+
+    const nextConflict: ConflictItem = {
+      conflictId: record.conflict_id,
+      rowVersion: record.row_version,
+      title: record.title,
+      detail: record.detail,
+      action: record.action,
+      entityType: record.entity_type,
+      entityId: record.entity_id,
+      baseRowVersion: record.base_row_version,
+      operationType: record.operation_type,
+      managerOverride: record.manager_override,
+    }
+
+    conflictMap.set(record.conflict_id, nextConflict)
+    changedConflictIds.push(record.conflict_id)
+
+    if (existing) {
+      updatedCount += 1
+    } else {
+      insertedCount += 1
+    }
+  }
+
+  return {
+    conflicts: Array.from(conflictMap.values()).sort((left, right) =>
+      left.conflictId.localeCompare(right.conflictId),
+    ),
+    appliedCount: insertedCount + updatedCount,
+    insertedCount,
+    updatedCount,
+    ignoredCount,
+    changedConflictIds,
   }
 }
 

@@ -26,6 +26,8 @@ for (const requiredExport of [
   "OfflinePullCustomerCreditCacheApplyResult",
   "OfflinePullEventCacheRecord",
   "OfflinePullEventCacheApplyResult",
+  "OfflinePullConflictCacheRecord",
+  "OfflinePullConflictCacheApplyResult",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
   "OfflinePullRefreshPreview",
@@ -62,6 +64,7 @@ for (const requiredExport of [
   "applyOfflinePullInventoryRecordsToCache",
   "applyOfflinePullCustomerCreditRecordsToCache",
   "applyOfflinePullEventRecordsToCache",
+  "applyOfflinePullConflictRecordsToCache",
   "buildOfflinePushRequestPlan",
   "buildOfflineConnectorSyncSessionPlan",
   "buildOfflinePullRefreshPreview",
@@ -148,10 +151,12 @@ for (const marker of [
   "sanitizeOfflinePullInventoryCacheRecords",
   "sanitizeOfflinePullCustomerCreditCacheRecords",
   "sanitizeOfflinePullEventCacheRecords",
+  "sanitizeOfflinePullConflictCacheRecords",
   "sale_price_minor_units",
   "location_label",
   "available_minor_units",
   "registered_count",
+  "conflict_id",
   "deviceAuthorizationHeaderDeferred: true",
   "offline_connector_test_report",
   "Manifest shape",
@@ -247,9 +252,11 @@ assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.dev
 assert.ok(appSource.includes("applyOfflinePullInventoryRecordsToCache("))
 assert.ok(appSource.includes("applyOfflinePullCustomerCreditRecordsToCache("))
 assert.ok(appSource.includes("applyOfflinePullEventRecordsToCache("))
+assert.ok(appSource.includes("applyOfflinePullConflictRecordsToCache("))
 assert.ok(appSource.includes("pull.pull_inventory_records"))
 assert.ok(appSource.includes("pull.pull_customer_credit_records"))
 assert.ok(appSource.includes("pull.pull_event_records"))
+assert.ok(appSource.includes("pull.pull_conflict_records"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
 assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))
