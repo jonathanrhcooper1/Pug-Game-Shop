@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app queue/session persistence is now scoped by connector profile, so
+  multiple company websites can share the same desktop app without mixing
+  locally queued operations or sync attempts. Legacy shared session storage is
+  still accepted as a one-time migration fallback for the active profile.
 - Offline event check-ins are now a first-class offline push operation:
   WordPress parses, resolves, persists, and plans deferred canonical
   `event_checkin` mutations, while the offline app can stage Check In actions

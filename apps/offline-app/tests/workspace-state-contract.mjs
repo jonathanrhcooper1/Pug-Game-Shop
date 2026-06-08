@@ -79,6 +79,8 @@ for (const requiredExport of [
   "PREPARED_PAIRING_STORAGE_KEY",
   "PAIRED_DEVICE_STORAGE_KEY",
   "OFFLINE_SESSION_STORAGE_KEY",
+  "OFFLINE_SESSION_STORAGE_KEY_PREFIX",
+  "offlineSessionStorageKey",
   "buildConnectorProfileStorageSnapshot",
   "restoreConnectorProfileStorageSnapshot",
   "buildPreparedPairingStorageSnapshot",
@@ -199,6 +201,8 @@ for (const marker of [
   "tcg-store-offline-prepared-pairings-v1",
   "tcg-store-offline-paired-devices-v1",
   "tcg-store-offline-session-state-v1",
+  "OFFLINE_SESSION_STORAGE_KEY_PREFIX",
+  "profile_id",
   "offline_prepared_pairings_local_storage",
   "offline_paired_devices_local_storage",
   "offline_session_state_local_storage",
@@ -289,14 +293,17 @@ assert.ok(appSource.includes("handleEventCheckin"))
 assert.ok(appSource.includes("handleEventRegistration"))
 assert.ok(appSource.includes("eventRegistrationStatusLabel("))
 assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
-assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)"))
+assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts,"))
+assert.ok(appSource.includes("profileId: activeProfile.id"))
 assert.ok(appSource.includes("buildPairedDeviceStorageSnapshot(pairedDevices, connectorProfiles)"))
 assert.ok(appSource.includes("restorePairedDeviceStorageSnapshot("))
 assert.ok(appSource.includes("findPairedDeviceRecord(pairedDevices, activeProfile.id)"))
 assert.ok(appSource.includes("restoreOfflineSessionStorageSnapshot("))
 assert.ok(appSource.includes("OFFLINE_SESSION_STORAGE_KEY"))
+assert.ok(appSource.includes("offlineSessionStorageKey(activeProfile.id)"))
 assert.ok(appSource.includes("PAIRED_DEVICE_STORAGE_KEY"))
 assert.ok(appSource.includes("window.localStorage.removeItem(PAIRED_DEVICE_STORAGE_KEY)"))
+assert.ok(appSource.includes("window.localStorage.removeItem(sessionStorageKey)"))
 assert.ok(appSource.includes("window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)"))
 assert.ok(appSource.includes("operationKind: \"scan\""))
 assert.ok(appSource.includes("operationKind: \"quantity\""))

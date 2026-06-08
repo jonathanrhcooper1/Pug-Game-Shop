@@ -30,6 +30,9 @@ try {
     applyOfflinePullInventoryRecordsToCache,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
+    buildOfflineSessionStorageSnapshot,
+    offlineSessionStorageKey,
+    restoreOfflineSessionStorageSnapshot,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
     {
@@ -404,6 +407,56 @@ try {
   assert.equal(eventCheckinPayload.sync_intent, "offline_event_checkin")
   assert.equal(eventCheckinAuthorization.manager_override, false)
   assert.equal(eventCheckinAuthorization.source, "offline_app")
+
+  const scopedSessionKey = offlineSessionStorageKey("Pug Game Shop Staging!")
+  assert.equal(scopedSessionKey, "tcg-store-offline-session-state-v1:pug-game-shop-staging")
+
+  const sessionSnapshot = buildOfflineSessionStorageSnapshot(
+    [eventCheckinOperation],
+    [
+      {
+        id: "pug-game-shop-staging-1780918200000",
+        companyName: "Pug Game Shop",
+        siteUrl: "https://vbf.2a7.myftpupload.com",
+        operationCount: 1,
+        pairingStatus: "Prepared locally",
+        createdAtLabel: "8:30 AM",
+        networkStatus: "Deferred",
+      },
+    ],
+    {
+      profileId: "pug-game-shop-staging",
+      savedAtUtc: "2026-06-08T12:30:00Z",
+    },
+  )
+
+  assert.equal(sessionSnapshot.profile_id, "pug-game-shop-staging")
+  assert.equal(sessionSnapshot.queued_operations.length, 1)
+  assert.equal(sessionSnapshot.sync_attempts.length, 1)
+
+  const restoredScopedSession = restoreOfflineSessionStorageSnapshot(
+    JSON.stringify(sessionSnapshot),
+    { profileId: "pug-game-shop-staging" },
+  )
+  assert.equal(restoredScopedSession.restored, true)
+  assert.equal(restoredScopedSession.queuedOperations[0].operation_type, "event_checkin")
+  assert.equal(restoredScopedSession.syncAttempts[0].companyName, "Pug Game Shop")
+
+  const rejectedOtherCompanySession = restoreOfflineSessionStorageSnapshot(
+    JSON.stringify(sessionSnapshot),
+    { profileId: "demo-company-development" },
+  )
+  assert.equal(rejectedOtherCompanySession.restored, false)
+  assert.deepEqual(rejectedOtherCompanySession.issues, ["offline_session_storage_invalid"])
+
+  const legacySessionSnapshot = { ...sessionSnapshot }
+  delete legacySessionSnapshot.profile_id
+  const restoredLegacySession = restoreOfflineSessionStorageSnapshot(
+    JSON.stringify(legacySessionSnapshot),
+    { profileId: "pug-game-shop-staging", allowLegacyProfile: true },
+  )
+  assert.equal(restoredLegacySession.restored, true)
+  assert.equal(restoredLegacySession.queuedOperations[0].client_operation_id, eventCheckinOperation.client_operation_id)
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }

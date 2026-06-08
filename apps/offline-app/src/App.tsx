@@ -41,6 +41,7 @@ import {
   formatMoney,
   offlineWorkspaceSeed,
   OFFLINE_SESSION_STORAGE_KEY,
+  offlineSessionStorageKey,
   PAIRED_DEVICE_STORAGE_KEY,
   PREPARED_PAIRING_STORAGE_KEY,
   restoreOfflineSessionStorageSnapshot,
@@ -201,13 +202,23 @@ function loadPairedDeviceStorage(
   )
 }
 
-function loadOfflineSessionStorage(): OfflineSessionStorageRestoreResult {
+function loadOfflineSessionStorage(profileId: string): OfflineSessionStorageRestoreResult {
   if (typeof window === "undefined") {
-    return restoreOfflineSessionStorageSnapshot(null)
+    return restoreOfflineSessionStorageSnapshot(null, { profileId })
+  }
+
+  const scopedSession = restoreOfflineSessionStorageSnapshot(
+    window.localStorage.getItem(offlineSessionStorageKey(profileId)),
+    { profileId },
+  )
+
+  if (scopedSession.restored) {
+    return scopedSession
   }
 
   return restoreOfflineSessionStorageSnapshot(
     window.localStorage.getItem(OFFLINE_SESSION_STORAGE_KEY),
+    { profileId, allowLegacyProfile: true },
   )
 }
 
@@ -273,7 +284,9 @@ export function App() {
   const pairedDeviceStorage = pairedDeviceStorageRef.current
   const offlineSessionStorageRef = useRef<OfflineSessionStorageRestoreResult | null>(null)
   if (offlineSessionStorageRef.current === null) {
-    offlineSessionStorageRef.current = loadOfflineSessionStorage()
+    offlineSessionStorageRef.current = loadOfflineSessionStorage(
+      connectorProfileStorage.activeProfileId,
+    )
   }
   const offlineSessionStorage = offlineSessionStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
@@ -296,6 +309,7 @@ export function App() {
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
   const [activeSection, setActiveSection] = useState("Inventory")
   const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
+  const activeSessionProfileRef = useRef(connectorProfileStorage.activeProfileId)
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
@@ -486,6 +500,29 @@ export function App() {
   }, [activeProfile.id])
 
   useEffect(() => {
+    if (activeSessionProfileRef.current === activeProfile.id) {
+      return
+    }
+
+    activeSessionProfileRef.current = activeProfile.id
+
+    const nextSession = loadOfflineSessionStorage(activeProfile.id)
+    setQueuedOperations(nextSession.queuedOperations)
+    setSyncAttempts(nextSession.syncAttempts)
+    setStagedOperation(null)
+    setStagedPushBatch(null)
+    setStagedPushRequest(null)
+    setPushSummary(null)
+    setQueueSubmission(null)
+    setActivityMessage({
+      title: nextSession.restored ? "Company queue restored" : "Company workspace ready",
+      detail: nextSession.restored
+        ? `${nextSession.queuedOperations.length} queued operation(s) and ${nextSession.syncAttempts.length} sync attempt(s) restored for ${activeProfile.companyName}.`
+        : `${activeProfile.companyName} has a separate local queue on this device.`,
+    })
+  }, [activeProfile.id, activeProfile.companyName])
+
+  useEffect(() => {
     window.localStorage.setItem(
       CONNECTOR_PROFILE_STORAGE_KEY,
       JSON.stringify(buildConnectorProfileStorageSnapshot(connectorProfiles, activeProfileId)),
@@ -574,16 +611,23 @@ export function App() {
   ])
 
   useEffect(() => {
+    const sessionStorageKey = offlineSessionStorageKey(activeProfile.id)
+
     if (queuedOperations.length === 0 && syncAttempts.length === 0) {
-      window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)
+      window.localStorage.removeItem(sessionStorageKey)
       return
     }
 
     window.localStorage.setItem(
-      OFFLINE_SESSION_STORAGE_KEY,
-      JSON.stringify(buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)),
+      sessionStorageKey,
+      JSON.stringify(
+        buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts, {
+          profileId: activeProfile.id,
+        }),
+      ),
     )
-  }, [queuedOperations, syncAttempts])
+    window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)
+  }, [queuedOperations, syncAttempts, activeProfile.id])
 
   useEffect(() => {
     if (!queueAdapter) {

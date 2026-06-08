@@ -19,8 +19,9 @@ future offline sync app.
   website profiles, local preview validation, pairing-code request preview,
   credential-free pairing route preflight, connector-aware guarded inventory
   hold staging, offline event registration/waitlist staging from cached event
-  snapshots, offline event check-in staging, event queue preview, per-company
-  connector test reports, visible local queue rows,
+  snapshots, offline event check-in staging, event queue preview, profile-scoped
+  local queue/session restore for multi-company use, per-company connector test
+  reports, visible local queue rows,
   desktop SQLite queue restore, secret-free paired-device metadata restore,
   desktop secure-store token status reporting, guarded desktop pull/push sync
   execution summaries, conflict-review history, print-label job
@@ -76,8 +77,10 @@ requests plus attendee check-ins can be queued locally from cached event
 snapshots, but full customer-directory cache mutation, live event check-in
 writeback, conflict resolution replay/writeback, printer/scanner adapters,
 kiosk lockdown, and signed updater behavior still need follow-on passes.
-Browser mode still previews queue persistence, while the desktop Tauri command
-now writes accepted operations to local SQLite and can run guarded authenticated
+Browser local session restore is isolated per connector profile, with a legacy
+shared-session migration fallback for existing local data. Browser mode still
+previews queue persistence, while the desktop Tauri command now writes accepted
+operations to local SQLite and can run guarded authenticated
 pull/push requests when a paired device token exists.
 Connector profiles, draft editing, and manifest handling remain secret-free.
 The app can now fetch the public WordPress connector manifest when the plugin

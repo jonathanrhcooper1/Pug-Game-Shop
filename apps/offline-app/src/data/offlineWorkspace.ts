@@ -152,6 +152,7 @@ export const CONNECTOR_PROFILE_STORAGE_KEY = "tcg-store-offline-connector-profil
 export const PREPARED_PAIRING_STORAGE_KEY = "tcg-store-offline-prepared-pairings-v1"
 export const PAIRED_DEVICE_STORAGE_KEY = "tcg-store-offline-paired-devices-v1"
 export const OFFLINE_SESSION_STORAGE_KEY = "tcg-store-offline-session-state-v1"
+export const OFFLINE_SESSION_STORAGE_KEY_PREFIX = `${OFFLINE_SESSION_STORAGE_KEY}:`
 
 export type ConnectorProfileStorageSnapshot = {
   action: "offline_connector_profiles_local_storage"
@@ -232,6 +233,7 @@ export type OfflineSyncAttemptRecord = {
 export type OfflineSessionStorageSnapshot = {
   action: "offline_session_state_local_storage"
   schema_version: 1
+  profile_id: string
   queued_operations: OfflineOperationEnvelope[]
   sync_attempts: OfflineSyncAttemptRecord[]
   saved_at_utc: string
@@ -1271,14 +1273,24 @@ export function findPairedDeviceRecord(
   return records.find((record) => record.profileId === profileId) ?? null
 }
 
+export function offlineSessionStorageKey(profileId: string): string {
+  const cleanProfileId = profileId
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return `${OFFLINE_SESSION_STORAGE_KEY_PREFIX}${cleanProfileId || "default"}`
+}
+
 export function buildOfflineSessionStorageSnapshot(
   queuedOperations: OfflineOperationEnvelope[],
   syncAttempts: OfflineSyncAttemptRecord[],
-  options: { savedAtUtc?: string } = {},
+  options: { savedAtUtc?: string; profileId?: string } = {},
 ): OfflineSessionStorageSnapshot {
   return {
     action: "offline_session_state_local_storage",
     schema_version: 1,
+    profile_id: options.profileId ?? "legacy",
     queued_operations: sanitizeOfflineOperationEnvelopes(queuedOperations),
     sync_attempts: sanitizeOfflineSyncAttempts(syncAttempts),
     saved_at_utc: options.savedAtUtc ?? new Date().toISOString(),
@@ -1290,6 +1302,7 @@ export function buildOfflineSessionStorageSnapshot(
 
 export function restoreOfflineSessionStorageSnapshot(
   rawValue: string | null,
+  options: { profileId?: string; allowLegacyProfile?: boolean } = {},
 ): OfflineSessionStorageRestoreResult {
   if (!rawValue) {
     return {
@@ -1304,10 +1317,17 @@ export function restoreOfflineSessionStorageSnapshot(
     const parsed = JSON.parse(rawValue) as Partial<OfflineSessionStorageSnapshot>
     const queuedOperations = sanitizeOfflineOperationEnvelopes(parsed.queued_operations ?? [])
     const syncAttempts = sanitizeOfflineSyncAttempts(parsed.sync_attempts ?? [])
+    const parsedProfileId = stringValue(parsed.profile_id)
+    const expectedProfileId = options.profileId ?? ""
+    const profileMatches =
+      expectedProfileId === "" ||
+      parsedProfileId === expectedProfileId ||
+      (parsedProfileId === "" && options.allowLegacyProfile === true)
 
     if (
       parsed.action !== "offline_session_state_local_storage" ||
       parsed.schema_version !== 1 ||
+      !profileMatches ||
       parsed.networkRequestsDeferred !== true ||
       parsed.directMysqlAccess !== false ||
       parsed.credentialsSyncedToApp !== false ||

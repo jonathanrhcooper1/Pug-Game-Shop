@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Profile-Scoped Offline Sessions
+
+### What Changed
+
+- Added profile-scoped offline app session storage keys for queued operations
+  and sync attempts.
+- Added `profile_id` to offline session snapshots so local session restore can
+  reject queue state saved for a different company connector.
+- Kept a legacy shared-session restore path so existing local browser data can
+  migrate into the active connector profile once.
+- Updated the offline app profile-switch behavior to restore the selected
+  company's queue/session state and clear staged push previews that belonged
+  to the previous profile.
+- Added behavior coverage for profile-specific restore, cross-profile
+  rejection, and legacy fallback.
+
+### Why
+
+The offline app can be reused across multiple company websites, but the local
+browser session key was shared. Profile-scoped sessions prevent one company's
+queued operations or sync attempts from appearing under another company's
+connector profile.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for WordPress or SQLite.
+- Browser/localStorage migration is automatic: the old shared
+  `tcg-store-offline-session-state-v1` snapshot is accepted only as a legacy
+  fallback for the active connector profile, then new saves use the scoped
+  `tcg-store-offline-session-state-v1:<profile-id>` key.
+
+### Tests Added
+
+- Offline app behavior coverage for profile-scoped session keys, matching
+  profile restore, mismatched profile rejection, and legacy shared-session
+  fallback.
+- Offline app shell/contract markers for profile-scoped session persistence.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 16
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Pug/Demo
+  connector profile switching, profile-specific visible queue messaging, and
+  no page-level horizontal overflow. The dev log surface retained an older
+  React hot-reload dependency-array warning from the live edit session; it did
+  not reproduce as a visible runtime failure after reload/build verification.
+
+### Rollback Notes
+
+- Revert this revision to return to the shared local session key.
+- No server, WordPress database, or SQLite rollback is required.
+- If staff created multiple company profiles after this revision, review
+  browser localStorage keys before rollback to avoid hiding queued work under
+  profile-specific keys.
+
 ## 2026-06-08 - Offline Event Check-In Staging
 
 ### What Changed

@@ -34,6 +34,9 @@
   waitlist UI markers plus `event_reservation` operation envelopes for offline
   walk-in registration, including payload sync intent, payment status, seat
   snapshot, and secret-free authorization context.
+- Offline app contract coverage now verifies profile-scoped local session
+  storage keys, active-profile restore/rejection behavior, and legacy shared
+  session migration fallback for multi-company use.
 - Local WordPress and offline app coverage now verifies `event_checkin`
   offline push parsing, stale event conflict handling, queue persistence,
   deferred canonical mutation planning/query templates, Tauri queue acceptance,

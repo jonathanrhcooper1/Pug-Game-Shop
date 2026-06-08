@@ -241,6 +241,7 @@ for (const interactionMarker of [
   "PREPARED_PAIRING_STORAGE_KEY",
   "PAIRED_DEVICE_STORAGE_KEY",
   "OFFLINE_SESSION_STORAGE_KEY",
+  "offlineSessionStorageKey(activeProfile.id)",
   "window.localStorage",
   "upsertConnectorProfile",
   "setViewMode(\"grid\")",
