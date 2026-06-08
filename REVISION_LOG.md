@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Live Connector Manifest Fetch
+
+### What Changed
+
+- Changed the offline app website connector test flow to fetch the public
+  WordPress `/offline/connector-manifest` endpoint with credential-free CORS
+  requests.
+- Added live manifest success, loading, and blocked states in the connector
+  profile panel.
+- Added accepted/warning live manifest import into the local multi-company
+  connector profile store.
+- Kept a separate local preview validation button for draft connector profiles
+  before a website endpoint is installed.
+- Reused a shared connector manifest URL helper so each company profile resolves
+  its own website endpoint.
+
+### Why
+
+The offline app needs to validate and import the correct company website
+connector instead of only validating a local mock preview. This moves the
+multi-company setup path closer to real use while keeping WordPress, ScryDex,
+Square, SSH, payment, and device secrets out of the desktop profile.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for live manifest fetch markers,
+  credential-free `fetch` options, timeout handling, local preview validation,
+  and reusable connector manifest URL modeling.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to return `Test Website Connector` to local preview-only
+  validation.
+- No database or local SQLite rollback is required.
+
 ## 2026-06-08 - Public Offline Connector Manifest Route
 
 ### What Changed

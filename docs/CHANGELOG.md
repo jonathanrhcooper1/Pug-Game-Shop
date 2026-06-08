@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app website connector testing now performs a live public
+  `/offline/connector-manifest` fetch with credential-free CORS requests,
+  imports accepted company/site profiles for reusable multi-company setup,
+  keeps a local preview validator for draft profiles, and reports blocked
+  manifest endpoints without syncing secrets.
 - Public-safe WordPress offline connector manifest route at
   `/wp-json/tcg-store/v1/offline/connector-manifest`, exposing the existing
   secret-free company/site route map for desktop connector validation without

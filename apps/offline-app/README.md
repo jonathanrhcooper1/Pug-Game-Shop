@@ -15,8 +15,10 @@ future offline sync app.
   snapshot with staged redemption/review actions, active sidebar navigation,
   status filters, list/grid inventory modes, connector profile controls,
   multi-company connector draft editing, WordPress connector manifest
-  validation, pairing-code request preview, connector-aware guarded inventory
-  hold staging, per-company connector test reports, visible local queue rows,
+  validation, live public manifest fetching/import for reusable company
+  website profiles, local preview validation, pairing-code request preview,
+  connector-aware guarded inventory hold staging, per-company connector test
+  reports, visible local queue rows,
   desktop SQLite queue restore, conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
@@ -50,8 +52,10 @@ The app does not yet implement live pairing, live push/pull sync execution,
 printer/scanner adapters, kiosk lockdown, or signed updater behavior. Browser
 mode still previews queue persistence, while the desktop Tauri command now
 writes accepted operations to local SQLite. Connector profiles, draft editing,
-and manifest validation are
-currently local, secret-free configuration models. Guarded inventory holds are
+and manifest handling remain secret-free. The app can now fetch the public
+WordPress connector manifest when the plugin endpoint is installed, but live
+pairing and push/pull sync execution remain disabled until the device token
+adapter is connected. Guarded inventory holds are
 staged locally and remain deferred unless a selected non-production connector
 explicitly enables canonical inventory writes; real device tokens must be
 stored in the desktop secure store and ScryDex/Square credentials must remain

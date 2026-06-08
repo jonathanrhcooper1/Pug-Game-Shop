@@ -136,6 +136,10 @@
   route contract at `/offline/connector-manifest`, proving it is read-only,
   exposes the expected manifest URL, and does not register device pairing,
   pull, push, or conflict routes.
+- Offline app contract coverage now verifies live connector manifest fetch
+  markers, credential-free `fetch` options, timeout handling, local preview
+  validation, and multi-company profile import state for website connector
+  testing.
 - Local unit and WordPress smoke coverage now include the app pairing contract
   inside offline pairing readiness, proving `/offline/devices/register`,
   requested offline scopes, redacted pairing-code handling, desktop secure

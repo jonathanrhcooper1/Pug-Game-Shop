@@ -676,6 +676,10 @@ export function connectorDisplayUrl(profile: StoreConnectorProfile) {
   return `${profile.wordpress.scheme}://${profile.wordpress.host}`
 }
 
+export function connectorManifestUrl(profile: StoreConnectorProfile) {
+  return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}/offline/connector-manifest`
+}
+
 function connectorRestUrl(profile: StoreConnectorProfile, path: "/offline/pull" | "/offline/push") {
   return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}${path}`
 }
@@ -1089,7 +1093,7 @@ export function buildConnectorManifestPreview(
       rest_namespace: "tcg-store/v1",
       rest_base_path: profile.wordpress.restBasePath,
       rest_base_url: `${siteUrl}${profile.wordpress.restBasePath}`,
-      connector_manifest_url: `${siteUrl}${profile.wordpress.restBasePath}/offline/connector-manifest`,
+      connector_manifest_url: connectorManifestUrl(profile),
       auth_mode: profile.wordpress.authMode,
       device_pairing_required: profile.wordpress.devicePairingRequired,
       credential_storage: profile.wordpress.credentialStorage,

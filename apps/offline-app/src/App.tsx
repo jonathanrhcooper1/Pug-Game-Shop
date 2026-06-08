@@ -15,6 +15,7 @@ import {
   buildOfflineSessionStorageSnapshot,
   buildPreparedPairingStorageSnapshot,
   CONNECTOR_PROFILE_STORAGE_KEY,
+  connectorManifestUrl,
   connectorDisplayUrl,
   connectorHealthSummary,
   connectorProfileDraftFromProfile,
@@ -45,6 +46,7 @@ import {
   type IconName,
   type InventoryStatus,
   type OfflineOperationEnvelope,
+  type OfflineConnectorManifest,
   type OfflineConnectorSyncSessionPlan,
   type OfflinePushBatchPayload,
   type OfflinePushRequestPlan,
@@ -83,6 +85,14 @@ type ViewMode = "list" | "grid"
 type ActivityMessage = {
   title: string
   detail: string
+}
+
+type ConnectorManifestFetchState = {
+  status: "idle" | "loading" | "success" | "error"
+  detail: string
+  sourceUrl: string
+  profileId?: string
+  importedAtLabel?: string
 }
 
 type InventoryUpdateOptions = Parameters<typeof buildInventoryUpdateOperation>[1]
@@ -215,6 +225,12 @@ export function App() {
     useState<ConnectorManifestValidation | null>(null)
   const [connectorTestReport, setConnectorTestReport] =
     useState<OfflineConnectorTestReport | null>(null)
+  const [connectorManifestFetch, setConnectorManifestFetch] =
+    useState<ConnectorManifestFetchState>({
+      status: "idle",
+      detail: "Live manifest fetch has not run for this profile.",
+      sourceUrl: "",
+    })
   const [connectorDraft, setConnectorDraft] = useState<ConnectorProfileDraft>(() =>
     workspace.connectorProfiles[0]
       ? connectorProfileDraftFromProfile(workspace.connectorProfiles[0])
@@ -256,7 +272,21 @@ export function App() {
   }, [filteredItems, selectedId])
 
   useEffect(() => {
-    setConnectorValidation(null)
+    setConnectorValidation((currentValidation) =>
+      currentValidation?.profile.id === activeProfile.id ? currentValidation : null,
+    )
+    setConnectorTestReport((currentReport) =>
+      currentReport?.profileId === activeProfile.id ? currentReport : null,
+    )
+    setConnectorManifestFetch((currentFetch) =>
+      currentFetch.profileId === activeProfile.id
+        ? currentFetch
+        : {
+            status: "idle",
+            detail: "Live manifest fetch has not run for this profile.",
+            sourceUrl: connectorManifestUrl(activeProfile),
+          },
+    )
     setPairingPlan(null)
     setConnectorDraft(connectorProfileDraftFromProfile(activeProfile))
     setConnectorDraftIssues([])
@@ -660,7 +690,140 @@ export function App() {
     })
   }
 
-  function handleTestWebsiteConnector() {
+  async function handleTestWebsiteConnector() {
+    const draftResult = buildConnectorProfileFromDraft(connectorDraft)
+
+    setConnectorDraftIssues(draftResult.issues)
+
+    if (!draftResult.profile) {
+      setActiveSection("Settings")
+      setConnectorManifestFetch({
+        status: "error",
+        detail: draftResult.issues.join(" "),
+        sourceUrl: "",
+      })
+      setActivityMessage({
+        title: "Connector draft needs details",
+        detail: draftResult.issues.join(" "),
+      })
+      return
+    }
+
+    const sourceUrl = connectorManifestUrl(draftResult.profile)
+
+    setConnectorManifestFetch({
+      status: "loading",
+      detail: "Fetching public connector manifest from WordPress.",
+      sourceUrl,
+      profileId: draftResult.profile.id,
+    })
+
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 10000)
+
+    try {
+      const response = await fetch(sourceUrl, {
+        headers: {
+          Accept: "application/json",
+        },
+        credentials: "omit",
+        mode: "cors",
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(
+          `Manifest endpoint returned HTTP ${response.status}. Confirm the plugin is installed and the public manifest route is active.`,
+        )
+      }
+
+      let liveManifest: OfflineConnectorManifest
+
+      try {
+        liveManifest = await response.json() as OfflineConnectorManifest
+      } catch {
+        throw new Error("Manifest endpoint did not return JSON.")
+      }
+
+      const validation = validateConnectorManifest(liveManifest)
+      const preparedRequest =
+        preparedPairingRequests.find((request) => request.profileId === validation.profile.id) ??
+        null
+      const report = buildConnectorTestReport(validation.profile, validation, preparedRequest)
+      const issueText =
+        validation.issues.length > 0
+          ? validation.issues.join(" ")
+          : "Manifest shape is valid and credential values are not synced to the app."
+      const importedAtLabel = new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date())
+
+      setConnectorValidation(validation)
+      setConnectorTestReport(report)
+      setConnectorManifestFetch({
+        status: validation.status === "rejected" ? "error" : "success",
+        detail:
+          validation.status === "rejected"
+            ? `Live manifest fetched but rejected. ${issueText}`
+            : `Live manifest fetched and imported at ${importedAtLabel}.`,
+        sourceUrl,
+        profileId: validation.profile.id,
+        importedAtLabel,
+      })
+
+      if (validation.status !== "rejected") {
+        setConnectorProfiles((profiles) => upsertConnectorProfile(profiles, validation.profile))
+        setActiveProfileId(validation.profile.id)
+        setConnectorDraft(connectorProfileDraftFromProfile(validation.profile))
+      }
+
+      setActiveSection("Settings")
+      setActivityMessage({
+        title:
+          validation.status === "accepted"
+            ? "Live connector manifest accepted"
+            : validation.status === "warning"
+              ? "Live connector manifest needs review"
+              : "Live connector manifest rejected",
+        detail: `${validation.profile.companyName} ${validation.profile.environment} exposes ${validation.routeCount} offline routes. Connector test report is ${report.status}; ${issueText}`,
+      })
+    } catch (error) {
+      const detail = connectorManifestFetchErrorMessage(error)
+      const previewValidation = validateConnectorManifest(buildConnectorManifestPreview(draftResult.profile))
+      const report = buildConnectorTestReport(draftResult.profile, previewValidation, null)
+
+      setConnectorValidation(previewValidation)
+      setConnectorTestReport(report)
+      setConnectorManifestFetch({
+        status: "error",
+        detail,
+        sourceUrl,
+        profileId: draftResult.profile.id,
+      })
+      setActiveSection("Settings")
+      setActivityMessage({
+        title: "Live connector manifest unavailable",
+        detail: `${detail} Local profile validation still passed with ${previewValidation.routeCount} planned offline route(s).`,
+      })
+    } finally {
+      window.clearTimeout(timeoutId)
+    }
+  }
+
+  function connectorManifestFetchErrorMessage(error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return "Connector manifest request timed out after 10 seconds."
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.slice(0, 220)
+    }
+
+    return "Connector manifest request failed before a public-safe response was received."
+  }
+
+  function handleValidateLocalConnectorPreview() {
     const validation = validateConnectorManifest(manifestPreview)
     const report = buildConnectorTestReport(
       activeProfile,
@@ -1350,6 +1513,15 @@ export function App() {
                       : `${manifestPreview.offline_route_count} planned routes; import validates before pairing`}
                   </small>
                   <small>{manifestPreview.wordpress.connector_manifest_url}</small>
+                  <small>
+                    {connectorManifestFetch.status === "loading"
+                      ? `Fetching ${connectorManifestFetch.sourceUrl || manifestPreview.wordpress.connector_manifest_url}`
+                      : connectorManifestFetch.status === "success"
+                        ? `Live manifest imported at ${connectorManifestFetch.importedAtLabel}; source ${connectorManifestFetch.sourceUrl}`
+                        : connectorManifestFetch.status === "error"
+                          ? `Live manifest blocked: ${connectorManifestFetch.detail}`
+                          : connectorManifestFetch.detail}
+                  </small>
                 </div>
                 {connectorValidation?.issues.length ? (
                   <ul>
@@ -1528,9 +1700,21 @@ export function App() {
                   <Icon name="plus" />
                   <span>New Connector</span>
                 </button>
-                <button type="button" onClick={handleTestWebsiteConnector}>
+                <button
+                  type="button"
+                  disabled={connectorManifestFetch.status === "loading"}
+                  onClick={() => void handleTestWebsiteConnector()}
+                >
                   <Icon name="link" />
-                  <span>Test Website Connector</span>
+                  <span>
+                    {connectorManifestFetch.status === "loading"
+                      ? "Testing Website"
+                      : "Test Website Connector"}
+                  </span>
+                </button>
+                <button type="button" onClick={handleValidateLocalConnectorPreview}>
+                  <Icon name="database" />
+                  <span>Validate Local Preview</span>
                 </button>
                 <button type="button" onClick={handleSaveConnectorDraft}>
                   <Icon name="check" />

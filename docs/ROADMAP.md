@@ -161,6 +161,8 @@ plus public-safe WordPress offline connector manifest route for app website
 validation without credential sync
 plus offline app manifest ingestion and validation for reusable multi-company
 website connector profiles without syncing credentials
+plus live public connector manifest fetching/import in the offline app for
+reusable company website profiles with local preview fallback
 plus offline app customer-credit and conflict-review controls that stage local
 queue operation envelopes
 plus offline app redacted pairing-code request preview for selected website
