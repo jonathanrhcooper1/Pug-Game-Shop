@@ -26,8 +26,8 @@ final class BrandingSettings {
 	public static function defaults(): array {
 		return array_merge(
 			array(
-				'company_name'       => 'TCG Store Platform',
-				'company_short_name' => 'TCG Store',
+				'company_name'       => 'Pug Game Shop',
+				'company_short_name' => 'Pug Cards',
 				'logo_url'           => '',
 				'support_url'        => '',
 				'receipt_footer'     => '',

@@ -91,9 +91,9 @@ credentials. It verifies the WordPress REST root, the `tcg-store/v1` namespace,
 the authenticated health route registration signal, the public offline
 connector manifest, and staging noindex controls. A `404 rest_no_route` result
 for `/wp-json/tcg-store/v1/health` or
-`/wp-json/tcg-store/v1/offline/connector-manifest` means the **TCG Store
-Platform** package is not installed/active on that staging site, or the active
-package is not registering this repo's routes.
+`/wp-json/tcg-store/v1/offline/connector-manifest` means the **Pug Game Shop
+Card Manager** package is not installed/active on that staging site, or the
+active package is not registering this repo's routes.
 
 ## ScryDex Staging Configuration
 

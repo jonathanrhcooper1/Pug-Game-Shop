@@ -3,6 +3,53 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress Admin Branding Visibility
+
+### What Changed
+
+- Renamed the human-facing WordPress plugin header from `TCG Store Platform` to
+  `Pug Game Shop Card Manager`.
+- Updated default branding settings to `Pug Game Shop` and `Pug Cards`.
+- Updated the WordPress admin menu, settings title, and system-status title to
+  read from configured branding so future company installs can override the
+  visible labels without changing source files.
+- Updated install docs and staging route-check guidance to point staff/admins
+  to the visible plugin name.
+
+### Why
+
+The staging plugin was already active, but the old internal label made it easy
+to miss in WP Admin. The project needs a visible Pug-branded default while
+still preserving the white-label company/profile model for future stores.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Settings/BrandingSettings.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `docs/BRANDING.md`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `scripts/staging-check-routes.mjs`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None. Existing PHP and packaging checks cover settings/admin syntax and the
+  package output.
+
+### Rollback Notes
+
+- Revert this revision to restore the old visible plugin/admin labels.
+- No database, inventory, Square, payment, ScryDex, offline SQLite, or staging
+  route rollback is required.
+
 ## 2026-06-08 - Staging Offline Pairing Configuration Helper
 
 ### What Changed

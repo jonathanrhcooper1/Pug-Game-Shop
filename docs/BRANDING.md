@@ -23,8 +23,9 @@ plugin:
   - `danger_color`
   - `staging_banner_color`
 
-The Settings API screen exposes these values under **TCG Store > Settings**.
-The dashboard and system status screens read the configured company profile.
+The Settings API screen exposes these values under the configured company
+short name, which defaults to **Pug Cards > Settings**. The dashboard and
+system status screens read the configured company profile.
 
 ## Shared Client Contract
 

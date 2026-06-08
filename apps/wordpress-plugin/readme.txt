@@ -1,4 +1,4 @@
-=== TCG Store Platform ===
+=== Pug Game Shop Card Manager ===
 Requires at least: 6.5
 Requires PHP: 8.1
 Stable tag: 0.156.0
@@ -384,8 +384,9 @@ Inventory and commerce modules remain disabled until their implementation phases
 
 1. Install and activate WooCommerce 8.2 or newer.
 2. Upload the complete `wordpress-plugin` directory.
-3. Activate TCG Store Platform.
-4. Open TCG Store > System Status and resolve any dependency warnings.
+3. Activate Pug Game Shop Card Manager.
+4. Open Pug Cards > System Status and resolve any dependency warnings, unless
+   the company short name has been changed in plugin settings.
 
 == Changelog ==
 

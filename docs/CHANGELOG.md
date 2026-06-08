@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress admin visibility now defaults the plugin list name to **Pug Game
+  Shop Card Manager** and the admin sidebar/settings/status labels to the
+  configured company branding, defaulting to **Pug Cards**.
 - Staging offline connector pairing now includes `npm run
   staging:configure-offline-pairing`, a stdin-fed WP-CLI helper that stores
   short-lived hashed pairing policy, can enable only the device-pairing route

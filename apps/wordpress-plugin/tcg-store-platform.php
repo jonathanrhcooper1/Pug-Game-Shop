@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name:       TCG Store Platform
- * Description:       Serialized trading-card inventory and store operations for WooCommerce.
+ * Plugin Name:       Pug Game Shop Card Manager
+ * Description:       White-label serialized trading-card inventory and store operations for WooCommerce.
  * Version:           0.156.0
  * Requires at least: 6.5
  * Requires PHP:      8.1

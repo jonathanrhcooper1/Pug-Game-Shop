@@ -47,7 +47,7 @@ const checks = [
     status: restRoot.status,
     detail: namespaceRegistered
       ? "tcg-store/v1 namespace is present in the REST index."
-      : "tcg-store/v1 namespace is missing from the REST index; install/activate TCG Store Platform.",
+      : "tcg-store/v1 namespace is missing from the REST index; install/activate Pug Game Shop Card Manager.",
   },
   {
     name: "authenticated_health_route_registered",
@@ -165,7 +165,7 @@ function headerIncludesNoindex(value) {
 
 function routeMissingGuidance(probe) {
   if (probe.status === 404 || probe.json?.code === "rest_no_route") {
-    return "Route is not registered. Confirm the TCG Store Platform package is installed and active on staging."
+    return "Route is not registered. Confirm the Pug Game Shop Card Manager package is installed and active on staging."
   }
 
   if (probe.status === 401 || probe.status === 403) {

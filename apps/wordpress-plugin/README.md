@@ -1,4 +1,4 @@
-# TCG Store Platform WordPress Plugin
+# Pug Game Shop Card Manager WordPress Plugin
 
 Version: `0.156.0`
 
@@ -518,8 +518,9 @@ versions.
 1. Use a staging WordPress site with WooCommerce 8.2 or newer.
 2. Copy this complete directory to
    `wp-content/plugins/tcg-store-platform`.
-3. Activate **TCG Store Platform**.
-4. Open **TCG Store > System Status**.
+3. Activate **Pug Game Shop Card Manager**.
+4. Open **Pug Cards > System Status** unless the company short name has been
+   changed in plugin settings.
 5. Confirm schema version `8 / 8`, WooCommerce, Action Scheduler, and the next
    daily UTC run.
 6. Authenticate as a manager/admin and request

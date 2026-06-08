@@ -54,9 +54,11 @@ final class AdminMenu {
 	}
 
 	public function register_menu(): void {
+		$branding = BrandingSettings::from_settings( Settings::all() );
+
 		add_menu_page(
-			__( 'TCG Store Platform', 'tcg-store-platform' ),
-			__( 'TCG Store', 'tcg-store-platform' ),
+			(string) $branding['company_name'],
+			(string) $branding['company_short_name'],
 			'view_inventory',
 			'tcg-store-platform',
 			array( $this, 'render_dashboard' ),
@@ -170,7 +172,13 @@ final class AdminMenu {
 		}
 
 		echo '<div class="wrap"><h1>';
-		echo esc_html__( 'TCG Store Platform Settings', 'tcg-store-platform' );
+		echo esc_html(
+			sprintf(
+				/* translators: %s: configured company name. */
+				__( '%s Settings', 'tcg-store-platform' ),
+				(string) BrandingSettings::from_settings( Settings::all() )['company_name']
+			)
+		);
 		echo '</h1><form action="options.php" method="post">';
 		settings_fields( 'tcg_store_platform' );
 		do_settings_sections( 'tcg-store-platform' );
@@ -241,7 +249,13 @@ final class AdminMenu {
 		$scrydex                    = ( new ScryDexProviderFactory( Settings::all() ) )->admin_summary();
 		$scrydex_budget             = ScryDexUsageBudgetSettings::admin_summary( Settings::all() );
 		echo '<div class="wrap"><h1>';
-		echo esc_html__( 'TCG Store Platform System Status', 'tcg-store-platform' );
+		echo esc_html(
+			sprintf(
+				/* translators: %s: configured company name. */
+				__( '%s System Status', 'tcg-store-platform' ),
+				(string) $branding['company']['name']
+			)
+		);
 		echo '</h1><table class="widefat striped"><tbody>';
 
 		$this->render_status_row( __( 'Plugin version', 'tcg-store-platform' ), Version::PLUGIN, 'ok' );
