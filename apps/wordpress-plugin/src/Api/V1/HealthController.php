@@ -25,6 +25,7 @@ use TCGStorePlatform\ScryDex\ScryDexUsageBudgetPlanner;
 use TCGStorePlatform\Square\SquareInventoryBatchSyncReadinessPlanner;
 use TCGStorePlatform\Square\SquareInventorySyncReadinessPlanner;
 use TCGStorePlatform\Square\WooCommerceSquareExtensionStatus;
+use TCGStorePlatform\Staging\StagingSafety;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
 
@@ -84,6 +85,7 @@ final class HealthController {
 		$dependencies                   = DependencyChecker::status();
 		$features                       = array();
 		$overall                        = 'ok';
+		$staging_safety                 = ( new StagingSafety() )->health_summary();
 		$offline_feature_enabled        = FeatureFlags::is_enabled( 'offline_sync' );
 		$pos_payments_enabled           = FeatureFlags::is_enabled( 'pos_payments' );
 		$device_permission_factory      = new OfflineRegisteredDevicePermissionResolverFactory();
@@ -219,6 +221,7 @@ final class HealthController {
 				'scheduler'                               => $this->scheduler->status(),
 				'hpos'                                    => Compatibility::hpos_status(),
 				'features'                                => $features,
+				'staging_safety'                          => $staging_safety,
 				'offline_route_bootstrap'                 => $offline,
 				'offline_connector_manifest'              => $offline_connector_manifest,
 				'offline_registered_device_permissions'   => $device_permissions,

@@ -23,6 +23,10 @@ manifest is available at `/offline/connector-manifest` and returns only the
 secret-free company/site route map used by the desktop app, including a
 public-safe `connector_identity` block for stable multi-company profile/site
 matching; it does not issue device tokens or register sync write routes.
+Authenticated health responses expose `staging_safety` so staff can verify
+whether staging mode is active, public indexing is blocked, real customer
+emails are disabled, payment capture stays deferred, provider inventory writes
+stay deferred, and the staff/admin banner is visible.
 Planned customer credit route
 contracts and posting payload validation and planned buylist route contracts
 plus intake payload validation are implemented but not registered live. Planned

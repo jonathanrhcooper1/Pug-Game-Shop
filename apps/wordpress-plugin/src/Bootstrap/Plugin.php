@@ -24,6 +24,7 @@ use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
+use TCGStorePlatform\Staging\StagingSafety;
 
 final class Plugin {
 	private static ?self $instance = null;
@@ -67,6 +68,7 @@ final class Plugin {
 		( new AdminAccess() )->register();
 		( new AdminMenu( $logger ) )->register();
 		( new SettingsPage( $audit_logger ) )->register();
+		( new StagingSafety() )->register();
 		( new HealthController( $scheduler ) )->register();
 		( new OfflineConnectorManifestController() )->register();
 		( new OfflineRouteBootstrapper() )->register();

@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- PHP unit coverage now verifies staging safety controls: staging blocks public
+  indexing, returns noindex robots/meta/header output, suppresses customer
+  emails by default, renders a staff/admin banner, and honors explicit sandbox
+  overrides for email/indexing tests.
 - PHP and offline app contract coverage now verifies public-safe connector
   identity: the WordPress manifest exposes stable company/site/environment
   identity fields, and the desktop app validates/imports that identity without

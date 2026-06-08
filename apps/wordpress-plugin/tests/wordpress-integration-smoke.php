@@ -167,6 +167,12 @@ $assert( 10 === (int) ( $data['database']['current'] ?? 0 ), 'Health response re
 $assert( 10 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
 $assert( false === ( $data['features']['inventory_pricing']['enabled'] ?? null ), 'Inventory feature flag should remain disabled.' );
+$assert( is_array( $data['staging_safety'] ?? null ), 'Health response should expose staging safety status.' );
+$assert( 'inactive' === ( $data['staging_safety']['status'] ?? null ), 'Default staging safety status should be inactive.' );
+$assert( false === ( $data['staging_safety']['public_indexing_blocked'] ?? null ), 'Default integration smoke should not block indexing outside staging.' );
+$assert( false === ( $data['staging_safety']['real_customer_emails_disabled'] ?? null ), 'Default integration smoke should not suppress email outside staging.' );
+$assert( true === ( $data['staging_safety']['payment_capture_deferred'] ?? null ), 'Health staging safety should keep payment capture deferred.' );
+$assert( true === ( $data['staging_safety']['provider_inventory_deferred'] ?? null ), 'Health staging safety should keep provider inventory writes deferred.' );
 $assert( 'blocked' === ( $data['offline_route_bootstrap']['status'] ?? null ), 'Offline route bootstrap should remain blocked.' );
 $assert( false === ( $data['offline_route_bootstrap']['feature_enabled'] ?? null ), 'Offline route feature should remain disabled.' );
 $assert( 5 === (int) ( $data['offline_route_bootstrap']['planned_route_count'] ?? 0 ), 'Offline route bootstrap should report planned routes.' );

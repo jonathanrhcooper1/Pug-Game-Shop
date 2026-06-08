@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - WordPress Staging Safety Controls
+
+### What Changed
+
+- Added a dedicated `StagingSafety` class for staging-only safeguards.
+- Registered staging noindex meta, `X-Robots-Tag` headers, robots.txt blocking,
+  staff/admin staging banner output, admin staging notices, and default
+  `wp_mail()` suppression.
+- Added authenticated health output under `staging_safety` for public indexing,
+  customer email, payment capture, provider inventory, banner, and override
+  status.
+- Added explicit sandbox overrides for staging email and indexing tests.
+
+### Why
+
+The staging requirements call for public indexing to be blocked, real customer
+emails to be disabled, real payment/POS side effects to stay disabled, and a
+visible `STAGING` banner for staff/admin users. Those safeguards were
+documented, but the plugin did not yet enforce or report them.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Staging/StagingSafety.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/StagingSafetyTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/API.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- PHP unit coverage for staging active behavior, noindex header/meta/robots
+  output, email suppression, staff/admin banner rendering, explicit sandbox
+  overrides, and inactive production behavior.
+- WordPress integration smoke coverage for the authenticated health
+  `staging_safety` payload.
+
+### Rollback Notes
+
+- Revert this revision to remove plugin-enforced staging safety controls and
+  return staging safeguards to documentation/configuration only.
+- No WordPress database, SQLite schema, staging data, or production rollback is
+  required.
+
 ## 2026-06-08 - Public Connector Identity
 
 ### What Changed

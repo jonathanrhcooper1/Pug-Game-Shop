@@ -29,11 +29,19 @@ Set these constants or environment variables in staging:
 ```php
 define( 'WP_ENVIRONMENT_TYPE', 'staging' );
 define( 'TCG_STORE_PLATFORM_ENVIRONMENT', 'staging' );
+define( 'TCG_STORE_PLATFORM_STAGING_MODE', true );
 define( 'TCG_STORE_PLATFORM_STAGING_BANNER', true );
-define( 'TCG_STORE_PLATFORM_DISABLE_REAL_EMAILS', true );
 define( 'TCG_STORE_PLATFORM_DISABLE_REAL_PAYMENTS', true );
 define( 'TCG_STORE_PLATFORM_DISABLE_REAL_POS_WRITES', true );
 ```
+
+When `wp_get_environment_type()` reports `staging`, or
+`TCG_STORE_PLATFORM_STAGING_MODE`/`TCG_STORE_PLATFORM_STAGING_BANNER` is true,
+the plugin adds `noindex,nofollow,noarchive` robots controls, renders a
+staff/admin staging banner, suppresses `wp_mail()` by default, and reports the
+state in authenticated `/wp-json/tcg-store/v1/health` under `staging_safety`.
+Use `TCG_STORE_PLATFORM_STAGING_ALLOW_EMAILS` or
+`TCG_STORE_PLATFORM_STAGING_ALLOW_INDEXING` only for explicit sandbox tests.
 
 ## Staging Plugin Support
 

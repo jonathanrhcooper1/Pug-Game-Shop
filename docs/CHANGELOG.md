@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress staging safety now enforces staging-only safeguards: noindex
+  headers/meta/robots output, a staff/admin `STAGING` banner, health status for
+  staging side-effect controls, and customer email suppression unless an
+  explicit sandbox override is enabled.
 - Public offline connector manifests now include a secret-free
   `connector_identity` block with stable profile, company, site host,
   environment, fingerprint, REST base, and manifest URL fields so the desktop
