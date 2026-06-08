@@ -144,6 +144,7 @@ plus route-connected deferred push canonical mutation repository metadata
 plus push canonical mutation repository execution gate
 plus push canonical mutation transaction preflight
 plus push canonical inventory mutation transaction execution
+plus route-connected push canonical inventory execution wiring
 plus polished offline inventory command workspace UI and shell contract
 plus functional offline app controls for sidebar navigation, filters, grid/list
 views, scan/quantity staging, print-label preview, conflict review/history,

@@ -28,6 +28,11 @@ All notable changes follow Semantic Versioning.
   transaction executor for preflight-ready guarded inventory updates, with
   begin/commit/rollback handling and zero-row guard failures for double-sell
   prevention while default route wiring remains gated.
+- Route-connected offline push handling can now execute preflight-ready
+  canonical inventory guarded updates when both the route handler and canonical
+  mutation execution gates are explicitly enabled, exposing execution status,
+  rows affected, operation IDs, and deferral state in responses, meta, and
+  audit payloads.
 - Gated live ScryDex smoke helper for read-only card-search verification,
   requiring explicit environment confirmation and reporting only sanitized
   status/count/first-card metadata without writing WordPress data or printing

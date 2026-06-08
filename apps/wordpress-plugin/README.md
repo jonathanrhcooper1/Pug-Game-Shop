@@ -220,6 +220,9 @@ Version: `0.156.0`
 - Explicit canonical inventory mutation transaction execution for
   preflight-ready guarded updates, including begin/commit/rollback handling and
   zero-row guard failures while route wiring remains gated by default.
+- Route-connected canonical inventory execution wiring for explicitly enabled
+  offline push handlers, with response/meta/audit execution status and
+  deferral fields while the default gate remains disabled.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,

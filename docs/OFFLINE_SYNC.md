@@ -361,6 +361,11 @@ transaction, runs the prepared inventory status update, commits only when
 exactly one row is affected, and rolls back when the row-version/status guard
 matches no rows. Default offline route wiring still keeps this executor
 deferred until staging enables the remaining route-connected write gates.
+Route-connected push handling now accepts a second explicit canonical mutation
+execution switch. When both switches are enabled, the route executes
+preflight-ready inventory guarded updates, reports execution rows and operation
+IDs in the response/meta/audit payloads, and rejects the push if the guarded
+update fails. Default route wiring keeps that switch disabled.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.

@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Route-Connected Offline Inventory Canonical Execution
+
+### What Changed
+
+- Wired `OfflinePushCanonicalMutationTransactionExecutor` into the staged
+  offline push route persistence provider behind an explicit canonical mutation
+  execution switch.
+- Route-connected push responses now report canonical transaction execution
+  status, rows affected, operation IDs, block reasons, errors, and deferral
+  state when the executor is configured.
+- The push handler rejects failed canonical inventory execution results instead
+  of returning an accepted offline response after a guarded update failure.
+- Factory readiness summaries now distinguish route-connected push readiness
+  from route-connected canonical write readiness for multi-site connector
+  configuration.
+
+### Why
+
+The offline app needs a tested reconnect path that updates website inventory
+only when the target site has explicitly enabled the canonical write gate. This
+revision connects the existing transaction executor to the route while keeping
+default and production-safe behavior deferred.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `OfflinePushRouteHandlerFactoryTest::test_factory_executes_inventory_canonical_mutation_when_explicitly_enabled`
+- `OfflinePushRouteHandlerFactoryTest::test_factory_does_not_fail_replayed_operation_when_canonical_execution_is_enabled`
+
+### Tests Run
+
+- `php tests/run.php`: passed, 875 PHP unit tests with 0 failures.
+- `php tests/lint.php`: passed, 571 PHP files checked with 0 failures.
+- `npm run test`: passed, including plugin bootstrap smoke, sync-engine,
+  POS/payment, API-client, offline-app, packaging, and required-matrix checks.
+- `npm run build`: passed for the offline app production build.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed with line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to disconnect route-level canonical inventory execution
+  and return the offline push route to queue/conflict persistence plus deferred
+  canonical write reporting.
+- No schema rollback is required.
+
 ## 2026-06-08 - Offline Inventory Canonical Mutation Transaction Executor
 
 ### What Changed

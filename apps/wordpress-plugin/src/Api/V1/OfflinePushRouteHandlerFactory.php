@@ -53,7 +53,8 @@ final class OfflinePushRouteHandlerFactory {
 		?callable $server_snapshots_provider = null,
 		?callable $operation_options_provider = null,
 		?callable $existing_operation_rows_provider = null,
-		private bool $route_connected_execution_enabled = false
+		private bool $route_connected_execution_enabled = false,
+		private bool $route_connected_canonical_mutation_execution_enabled = false
 	) {
 		$this->database_provider                = $database_provider;
 		$this->server_time_provider             = $server_time_provider;
@@ -88,8 +89,14 @@ final class OfflinePushRouteHandlerFactory {
 				null,
 				null,
 				null,
+				new OfflinePushCanonicalMutationRepositoryExecutionGate(
+					$this->route_connected_canonical_mutation_execution_enabled,
+					$this->route_connected_canonical_mutation_execution_enabled
+				),
 				null,
-				null,
+				$this->route_connected_canonical_mutation_execution_enabled
+					? new OfflinePushCanonicalMutationTransactionExecutor( $database )
+					: null,
 				$database->prefix
 			)
 		);
@@ -115,6 +122,8 @@ final class OfflinePushRouteHandlerFactory {
 			&& $table_prefix_ready
 			&& $permission_ready
 			&& $server_snapshot_provider_configured;
+		$canonical_execution_ready            = $route_dependencies_ready
+			&& $this->route_connected_canonical_mutation_execution_enabled;
 		$issues                               = array();
 
 		if ( $this->route_connected_execution_enabled ) {
@@ -142,6 +151,7 @@ final class OfflinePushRouteHandlerFactory {
 			'configured'                                   => true,
 			'handler_factory_ready'                        => true,
 			'route_connected_execution_enabled'            => $this->route_connected_execution_enabled,
+			'route_connected_canonical_mutation_execution_enabled' => $this->route_connected_canonical_mutation_execution_enabled,
 			'database_configured'                          => $database_ready,
 			'table_prefix_ready'                           => $table_prefix_ready,
 			'permission_resolver_configured'               => $permission_ready,
@@ -168,12 +178,12 @@ final class OfflinePushRouteHandlerFactory {
 			'route_connected_canonical_mutation_sql_execution_deferred' => true,
 			'route_connected_canonical_mutation_repository_planning_deferred' => ! $route_dependencies_ready,
 			'route_connected_canonical_mutation_repository_execution_deferred' => true,
-			'route_connected_canonical_mutation_repository_execution_gate_deferred' => true,
-			'route_connected_canonical_mutation_repository_transaction_deferred' => true,
-			'route_connected_canonical_mutation_transaction_preflight_deferred' => true,
-			'route_connected_canonical_mutation_transaction_executor_deferred' => true,
-			'route_connected_canonical_mutation_transaction_execution_deferred' => true,
-			'route_connected_canonical_repository_deferred' => true,
+			'route_connected_canonical_mutation_repository_execution_gate_deferred' => ! $canonical_execution_ready,
+			'route_connected_canonical_mutation_repository_transaction_deferred' => ! $canonical_execution_ready,
+			'route_connected_canonical_mutation_transaction_preflight_deferred' => ! $canonical_execution_ready,
+			'route_connected_canonical_mutation_transaction_executor_deferred' => ! $canonical_execution_ready,
+			'route_connected_canonical_mutation_transaction_execution_deferred' => ! $canonical_execution_ready,
+			'route_connected_canonical_repository_deferred' => ! $canonical_execution_ready,
 			'persistence_provider_configured'              => $route_dependencies_ready,
 			'route_connected_handler_ready'                => $route_dependencies_ready,
 			'route_connected_handler_deferred'             => ! $route_dependencies_ready,
@@ -183,8 +193,8 @@ final class OfflinePushRouteHandlerFactory {
 			'route_connected_queue_writes_deferred'        => ! $route_dependencies_ready,
 			'route_connected_conflict_writes_deferred'     => ! $route_dependencies_ready,
 			'route_connected_writes_ready'                 => $route_dependencies_ready,
-			'canonical_route_writes_deferred'              => true,
-			'route_connected_canonical_writes_deferred'    => true,
+			'canonical_route_writes_deferred'              => ! $canonical_execution_ready,
+			'route_connected_canonical_writes_deferred'    => ! $canonical_execution_ready,
 			'queue_replay_deferred'                        => true,
 			'default_route_registration_deferred'          => true,
 			'default_route_execution_deferred'             => ! $route_dependencies_ready,

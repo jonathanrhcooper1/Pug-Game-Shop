@@ -308,6 +308,126 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 1, $database->query_count );
 		}
 
+		public function test_factory_executes_inventory_canonical_mutation_when_explicitly_enabled(): void {
+			$database = new \OfflinePushRouteHandlerFactoryWpdb(
+				$this->database_row(),
+				array( 1, 1, 1, 1 )
+			);
+			$factory  = new OfflinePushRouteHandlerFactory(
+				static fn (): \wpdb => $database,
+				null,
+				$this->server_time_provider(),
+				$this->server_snapshots_provider(),
+				null,
+				null,
+				true,
+				true
+			);
+			$summary  = $factory->readiness_summary();
+			$response = $factory->handler()->handle( $this->push_request_data() );
+
+			$this->assert_true( $summary['route_connected_execution_enabled'] );
+			$this->assert_true( $summary['route_connected_canonical_mutation_execution_enabled'] );
+			$this->assert_false( $summary['route_connected_canonical_mutation_repository_execution_gate_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_mutation_transaction_preflight_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_mutation_transaction_executor_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_mutation_transaction_execution_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_repository_deferred'] );
+			$this->assert_false( $summary['route_connected_canonical_writes_deferred'] );
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'offline_push_response_ready', $response['code'] );
+			$this->assert_same( 'accepted', $response['data']['results'][0]['status'] );
+			$this->assert_same( 'inventory_reserved', $response['data']['results'][0]['code'] );
+			$this->assert_same( 'ready', $response['data']['canonical_mutation_repository_execution_status'] );
+			$this->assert_true( $response['data']['canonical_mutation_repository_execution_ready'] );
+			$this->assert_same( array(), $response['data']['canonical_mutation_repository_execution_block_reasons'] );
+			$this->assert_same( 'ready', $response['data']['canonical_mutation_transaction_preflight_status'] );
+			$this->assert_true( $response['data']['canonical_mutation_transaction_preflight_ready'] );
+			$this->assert_same( 'executed', $response['data']['canonical_mutation_transaction_execution_status'] );
+			$this->assert_true( $response['data']['canonical_mutation_transaction_execution_executed'] );
+			$this->assert_false( $response['data']['canonical_mutation_transaction_execution_blocked'] );
+			$this->assert_false( $response['data']['canonical_mutation_transaction_execution_rejected'] );
+			$this->assert_same( 1, $response['data']['canonical_mutation_transaction_execution_rows_affected'] );
+			$this->assert_same(
+				array( 'op-push-route-01' ),
+				$response['data']['canonical_mutation_transaction_execution_operation_ids']
+			);
+			$this->assert_false( $response['data']['canonical_mutation_sql_execution_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_repository_execution_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_transaction_execution_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_repository_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutations_deferred'] );
+
+			$this->assert_false( $response['meta']['push_canonical_mutation_sql_execution_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_repository_execution_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_repository_execution_gate_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_transaction_preflight_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_transaction_execution_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutation_repository_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutations_deferred'] );
+			$this->assert_same( 'executed', $response['meta']['canonical_mutation_transaction_execution_status'] );
+			$this->assert_same( 1, $response['meta']['canonical_mutation_transaction_execution_rows_affected'] );
+			$this->assert_same(
+				array( 'op-push-route-01' ),
+				$response['meta']['canonical_mutation_transaction_execution_operation_ids']
+			);
+			$this->assert_same(
+				'offline_push_canonical_mutation_transaction_execution',
+				$response['meta']['audit']['canonical_mutation_transaction_execution']['action']
+			);
+			$this->assert_same(
+				array( 'START TRANSACTION', 'COMMIT' ),
+				$response['meta']['audit']['canonical_mutation_transaction_execution']['transaction_commands']
+			);
+			$this->assert_false( $response['meta']['audit']['canonical_mutations_deferred'] );
+			$this->assert_same( 4, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
+			$this->assert_same( 1, $database->get_results_count );
+			$this->assert_same( 4, $database->query_count );
+		}
+
+		public function test_factory_does_not_fail_replayed_operation_when_canonical_execution_is_enabled(): void {
+			$database = new \OfflinePushRouteHandlerFactoryWpdb(
+				$this->database_row(),
+				array(),
+				array(),
+				array( $this->existing_operation_row() )
+			);
+			$factory  = new OfflinePushRouteHandlerFactory(
+				static fn (): \wpdb => $database,
+				null,
+				$this->server_time_provider(),
+				$this->server_snapshots_provider(),
+				null,
+				null,
+				true,
+				true
+			);
+			$response = $factory->handler()->handle( $this->push_request_data() );
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'offline_push_response_ready', $response['code'] );
+			$this->assert_same( 'replayed', $response['data']['results'][0]['persistence']['status'] );
+			$this->assert_same( 0, $response['data']['canonical_mutation_count'] );
+			$this->assert_same( 0, $response['data']['canonical_mutation_sql_query_count'] );
+			$this->assert_same( 'blocked', $response['data']['canonical_mutation_transaction_execution_status'] );
+			$this->assert_false( $response['data']['canonical_mutation_sql_execution_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_repository_execution_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_repository_transaction_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutation_repository_deferred'] );
+			$this->assert_false( $response['data']['canonical_mutations_deferred'] );
+			$this->assert_false( $response['meta']['push_canonical_mutations_deferred'] );
+			$this->assert_false( $response['meta']['audit']['canonical_mutations_deferred'] );
+			$this->assert_same( 2, $database->prepare_count );
+			$this->assert_same( 1, $database->get_row_count );
+			$this->assert_same( 1, $database->get_results_count );
+			$this->assert_same( 0, $database->query_count );
+		}
+
 		public function test_factory_replays_existing_operation_rows_without_second_queue_write(): void {
 			$database = new \OfflinePushRouteHandlerFactoryWpdb(
 				$this->database_row(),
