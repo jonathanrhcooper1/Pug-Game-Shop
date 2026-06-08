@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline conflict resolution now has guarded WordPress SQL planning and a
+  `$wpdb` repository adapter for applying manager decisions with
+  conflict-row version checks, mutable-status guards, redacted audits, and
+  applied/stale/rejected repository outcomes while live route registration
+  remains gated.
 - Tauri desktop queue restore now has a local `mark_offline_operations_synced`
   command so accepted website push IDs are marked `synced` in `offline.sqlite`
   and do not reappear as pending operations on the next restore.

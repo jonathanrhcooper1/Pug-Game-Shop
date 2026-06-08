@@ -992,6 +992,9 @@ corresponding modules are implemented:
 - Concurrent redemption cannot overspend.
 - Manager approval for adjustment/void/merge.
 - Offline conflict cannot create silent negative balance.
+- Offline conflict resolution SQL updates require the expected conflict row
+  version, a mutable current status, and a single affected row before the
+  repository reports the manager decision as applied.
 
 ### Buylist
 

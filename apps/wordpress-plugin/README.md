@@ -432,6 +432,10 @@ Version: `0.156.0`
 - Offline conflict resolution planning for future row updates, response
   payloads, stale-version guards, terminal-status guards, action availability
   checks, and redacted audit payloads.
+- Offline conflict resolution SQL planning and repository writeback foundation
+  for guarded manager decisions, including mutable-status filters, expected
+  row-version checks, single-row execution outcomes, and redacted query audits
+  while live route registration remains disabled by default.
 - Offline push operation resolution planning for future queue replay outcomes,
   response payloads, operation result rows, manager-reviewed conflict rows,
   deterministic conflict IDs, and redacted audit payloads.

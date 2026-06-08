@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline Conflict Resolution Writeback Foundation
+
+### What Changed
+
+- Added guarded SQL planning for offline conflict resolution updates against
+  `tcg_sync_conflicts`.
+- Added a `$wpdb` repository adapter that applies manager conflict decisions
+  with optimistic `conflict_id` and `row_version` guards.
+- Added applied, stale, and rejected repository result states with redacted
+  response and audit payloads.
+- Stored resolution metadata in `resolution_payload_json` without exposing the
+  raw payload in repository/query audits.
+- Added unit coverage for SQL template shape, row-version guards, payload JSON
+  shaping, stale updates, failed writes, unexpected row counts, and invalid
+  update plans.
+
+### Why
+
+Offline conflicts could be listed, staged, and planned, but the WordPress
+plugin did not yet have the writeback primitive needed to persist a
+manager-approved resolution. This adds the safe backend foundation while
+keeping live route registration disabled until staging activation is explicitly
+approved.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionQueryPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictResolutionQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictResolutionRepositoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses the existing `tcg_sync_conflicts` columns:
+  `status`, `resolution_action`, `resolution_payload_json`,
+  `manager_user_id`, `resolved_at`, `updated_at`, and `row_version`.
+
+### Tests Added
+
+- Query-builder tests for safe table prefixes, guarded update SQL, expected
+  row-version matching, mutable status guards, UTC timestamp conversion, and
+  redacted audit output.
+- Repository tests for applied, stale, failed, invalid-plan, and unexpected
+  row-count outcomes.
+
+### Tests Run
+
+- `php apps/wordpress-plugin/tests/run.php`: passed, 890 tests and 0 failures.
+- `npm run test`: passed, including 890 WordPress/PHP unit tests, plugin
+  bootstrap smoke, 579 PHP lint checks, sync-engine policies, POS/payment
+  policies, API client contracts, offline app TypeScript/contracts, 18
+  Rust/Tauri command tests, packaging contracts, staging contracts, ScryDex
+  live smoke contract, and required matrix validation.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove conflict-resolution writeback planning and
+  repository execution.
+- No schema rollback is required.
+- Rows already resolved in a future explicitly enabled staging route should be
+  reviewed before manual reversal; the guarded update increments `row_version`
+  and records the manager decision in `resolution_payload_json`.
+
 ## 2026-06-08 - Desktop Queue Accepted-State Persistence
 
 ### What Changed
