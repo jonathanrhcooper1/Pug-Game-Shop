@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Queue Management Actions
+
+### What Changed
+
+- Added selectable queued operation cards to the offline app queue panel.
+- Added a selected queue operation review card with entity, row-version, queued
+  timestamp, and payload summary details.
+- Added `Copy Operation JSON`, `Export Queue JSON`, and `Clear Session Queue`
+  controls for staff review and support handoff, including a manual JSON
+  preview fallback when browser clipboard permissions are unavailable.
+- Added secret-safe queue export payloads with `credentials_synced_to_app:
+  false` and no raw credential fields.
+- Added clear-session behavior that resets the current browser/session queue
+  and staged preview state without website, Square, ScryDex, payment, or
+  production writes.
+
+### Why
+
+The offline app had queue staging and sync preview behavior, but the queue panel
+still felt too passive. Staff need to inspect queued local work, hand off a safe
+operation payload when troubleshooting, and clear current-session preview rows
+after review.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app UI shell contract coverage for queue selection, review, copy,
+  export, clear controls, styling hooks, and secret-safe export markers.
+
+### Rollback Notes
+
+- Revert this revision to remove queue management actions and return the queue
+  panel to a passive pending-operation list.
+- No WordPress database, SQLite schema, staging, or production rollback is
+  required because this affects only React UI state and browser/session storage.
+
 ## 2026-06-08 - WordPress Staging Safety Controls
 
 ### What Changed

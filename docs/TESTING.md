@@ -18,6 +18,10 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract coverage now verifies queue management actions:
+  selectable queued operation cards, selected-operation review, secret-safe copy
+  and JSON export controls, session queue clearing, and explicit
+  `credentials_synced_to_app: false` payload boundaries.
 - PHP unit coverage now verifies staging safety controls: staging blocks public
   indexing, returns noindex robots/meta/header output, suppresses customer
   emails by default, renders a staff/admin banner, and honors explicit sandbox

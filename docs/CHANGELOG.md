@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app queue management now lets staff select queued operations, review
+  the selected operation payload summary, copy a single secret-safe operation
+  JSON payload with a manual preview fallback, export the current profile queue
+  as JSON, and clear the browser/session queue without website, Square,
+  ScryDex, payment, or production writes.
 - WordPress staging safety now enforces staging-only safeguards: noindex
   headers/meta/robots output, a staff/admin `STAGING` banner, health status for
   staging side-effect controls, and customer email suppression unless an

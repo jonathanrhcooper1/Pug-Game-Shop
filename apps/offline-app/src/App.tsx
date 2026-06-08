@@ -97,6 +97,7 @@ import {
   type PairedDeviceStorageRestoreResult,
   type PreparedDevicePairingRequest,
   type PreparedPairingStorageRestoreResult,
+  type StoreConnectorProfile,
 } from "./data/offlineWorkspace"
 import {
   markOfflineOperationsSynced,
@@ -126,12 +127,20 @@ type AppIconName =
   | "link"
   | "check"
   | "tag"
+  | "copy"
+  | "trash"
 
 type ViewMode = "list" | "grid"
 
 type ActivityMessage = {
   title: string
   detail: string
+}
+
+type QueueExportStatus = {
+  status: "idle" | "copied" | "downloaded" | "previewed" | "blocked" | "cleared"
+  detail: string
+  rawCredentialsCopied: false
 }
 
 type ConnectorManifestFetchState = {
@@ -268,6 +277,8 @@ function Icon({ name }: { name: AppIconName }) {
     link: "M10 13a5 5 0 0 0 7.1 0l1.4-1.4a5 5 0 0 0-7.1-7.1L10.6 5.3M14 11a5 5 0 0 0-7.1 0l-1.4 1.4a5 5 0 0 0 7.1 7.1l.8-.8",
     check: "m5 13 4 4L19 7",
     tag: "M20 13 13 20 4 11V4h7l9 9Zm-11-4h.01",
+    copy: "M8 8h10v12H8V8Zm-4 8V4h10",
+    trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
   }
 
   return (
@@ -275,6 +286,118 @@ function Icon({ name }: { name: AppIconName }) {
       <path d={paths[name]} />
     </svg>
   )
+}
+
+function formatQueueOperationType(value: string) {
+  return value.replaceAll("_", " ")
+}
+
+function queueOperationReviewSummary(operation: OfflineOperationEnvelope) {
+  const payload = safeJsonRecord(operation.payload_json)
+  const keys = Object.keys(payload).slice(0, 4)
+
+  if (keys.length === 0) {
+    return "Validated payload is queued locally as an empty object."
+  }
+
+  return keys
+    .map((key) => `${key}: ${safeSummaryValue(payload[key])}`)
+    .join("; ")
+}
+
+function buildQueueExportPayload(
+  profile: StoreConnectorProfile,
+  operations: OfflineOperationEnvelope[],
+) {
+  return {
+    exported_at_utc: new Date().toISOString(),
+    profile_id: profile.id,
+    company_name: profile.companyName,
+    site_url: connectorDisplayUrl(profile),
+    operation_count: operations.length,
+    credentials_synced_to_app: false,
+    operations: operations.map((operation) => ({
+      client_operation_id: operation.client_operation_id,
+      operation_type: operation.operation_type,
+      entity_type: operation.entity_type,
+      entity_id: operation.entity_id,
+      base_row_version: operation.base_row_version,
+      queued_at_utc: operation.queued_at_utc,
+      payload: safeJsonRecord(operation.payload_json),
+      authorization_context: safeJsonRecord(operation.authorization_context_json),
+      schema_version: operation.schema_version,
+    })),
+  }
+}
+
+async function copyTextToClipboard(value: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+  } catch {
+    // Fall back to a temporary textarea for browser previews that deny the
+    // async clipboard API.
+  }
+
+  if (typeof document === "undefined") {
+    return false
+  }
+
+  const textarea = document.createElement("textarea")
+  textarea.value = value
+  textarea.setAttribute("readonly", "true")
+  textarea.style.position = "fixed"
+  textarea.style.left = "-9999px"
+  document.body.appendChild(textarea)
+  textarea.select()
+
+  try {
+    return document.execCommand("copy")
+  } finally {
+    document.body.removeChild(textarea)
+  }
+}
+
+function queueExportFileName(profile: StoreConnectorProfile) {
+  return `${safeFileSegment(profile.companyName)}-${profile.environment}-queue-export.json`
+}
+
+function safeFileSegment(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "offline"
+}
+
+function safeJsonRecord(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown
+
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function safeSummaryValue(value: unknown) {
+  if (typeof value === "string") {
+    return value.length > 42 ? `${value.slice(0, 39)}...` : value
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+
+  if (Array.isArray(value)) {
+    return `${value.length} item(s)`
+  }
+
+  if (value && typeof value === "object") {
+    return `${Object.keys(value).length} field(s)`
+  }
+
+  return "empty"
 }
 
 export function App() {
@@ -390,6 +513,15 @@ export function App() {
     offlineSessionStorage.syncAttempts,
   )
   const [queueSubmission, setQueueSubmission] = useState<OfflineQueueSubmissionResult | null>(null)
+  const [selectedQueuedOperationId, setSelectedQueuedOperationId] = useState(
+    offlineSessionStorage.queuedOperations[0]?.client_operation_id ?? "",
+  )
+  const [queueExportStatus, setQueueExportStatus] = useState<QueueExportStatus>({
+    status: "idle",
+    detail: "No queue export has run for this profile.",
+    rawCredentialsCopied: false,
+  })
+  const [queueExportPreview, setQueueExportPreview] = useState("")
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
   const [connectorTestReport, setConnectorTestReport] =
@@ -471,6 +603,14 @@ export function App() {
     ...cachedCustomerCreditLedgerEntries,
   ].slice(0, 6)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
+  const selectedQueuedOperation = useMemo(() => {
+    return queuedOperations.find(
+      (operation) => operation.client_operation_id === selectedQueuedOperationId,
+    ) ?? queuedOperations[0] ?? null
+  }, [queuedOperations, selectedQueuedOperationId])
+  const selectedQueueOperationSummary = selectedQueuedOperation
+    ? queueOperationReviewSummary(selectedQueuedOperation)
+    : ""
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
   }, [query, statusFilter, inventoryItems])
@@ -517,6 +657,23 @@ export function App() {
     quantityDelta === null
       ? "Enter a whole-number quantity change from -99 to 99, excluding 0."
       : ""
+
+  useEffect(() => {
+    if (queuedOperations.length === 0) {
+      if (selectedQueuedOperationId !== "") {
+        setSelectedQueuedOperationId("")
+      }
+      return
+    }
+
+    if (
+      !queuedOperations.some(
+        (operation) => operation.client_operation_id === selectedQueuedOperationId,
+      )
+    ) {
+      setSelectedQueuedOperationId(queuedOperations[0].client_operation_id)
+    }
+  }, [queuedOperations, selectedQueuedOperationId])
 
   useEffect(() => {
     if (scannedInventoryItem && scannedInventoryItem.id !== selectedId) {
@@ -607,6 +764,13 @@ export function App() {
     setStagedPushRequest(null)
     setPushSummary(null)
     setQueueSubmission(null)
+    setSelectedQueuedOperationId(nextSession.queuedOperations[0]?.client_operation_id ?? "")
+    setQueueExportStatus({
+      status: "idle",
+      detail: "No queue export has run for this profile.",
+      rawCredentialsCopied: false,
+    })
+    setQueueExportPreview("")
     setActivityMessage({
       title: nextSession.restored ? "Company queue restored" : "Company workspace ready",
       detail: nextSession.restored
@@ -850,6 +1014,13 @@ export function App() {
     const submission = await submitOfflineOperation(operation, queueAdapter)
 
     setQueueSubmission(submission)
+    setSelectedQueuedOperationId(operation.client_operation_id)
+    setQueueExportStatus({
+      status: "idle",
+      detail: "Queue changed; export has not run for the latest local operations.",
+      rawCredentialsCopied: false,
+    })
+    setQueueExportPreview("")
     setQueuedOperations((currentOperations) => {
       if (
         currentOperations.some(
@@ -866,6 +1037,122 @@ export function App() {
     setActivityMessage({
       title: actionTitle,
       detail,
+    })
+  }
+
+  async function handleCopySelectedQueueOperation() {
+    if (!selectedQueuedOperation) {
+      setQueueExportStatus({
+        status: "blocked",
+        detail: "No queued operation is selected for copy.",
+        rawCredentialsCopied: false,
+      })
+      setActiveSection("Queue")
+      return
+    }
+
+    const payload = JSON.stringify(
+      buildQueueExportPayload(activeProfile, [selectedQueuedOperation]),
+      null,
+      2,
+    )
+    const copied = await copyTextToClipboard(payload)
+
+    setQueueExportPreview(payload)
+    setQueueExportStatus({
+      status: copied ? "copied" : "previewed",
+      detail: copied
+        ? `${selectedQueuedOperation.client_operation_id} copied as secret-safe JSON for staff review.`
+        : "Clipboard copy is unavailable in this browser preview; selected operation JSON is shown below for manual copy.",
+      rawCredentialsCopied: false,
+    })
+    setActiveSection("Queue")
+    setActivityMessage({
+      title: copied ? "Queue operation copied" : "Queue copy blocked",
+      detail: copied
+        ? "Selected operation JSON was copied without raw credentials or production secrets."
+        : "Clipboard access was blocked by the browser, so a secret-safe manual copy preview is visible in the queue panel.",
+    })
+  }
+
+  function handleExportQueueJson() {
+    if (queuedOperations.length === 0) {
+      setQueueExportStatus({
+        status: "blocked",
+        detail: "No queued operations are available to export.",
+        rawCredentialsCopied: false,
+      })
+      setActiveSection("Queue")
+      return
+    }
+
+    try {
+      const payload = JSON.stringify(buildQueueExportPayload(activeProfile, queuedOperations), null, 2)
+      const blob = new Blob([payload], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+
+      setQueueExportPreview(payload)
+      link.href = url
+      link.download = queueExportFileName(activeProfile)
+      link.click()
+      URL.revokeObjectURL(url)
+      setQueueExportStatus({
+        status: "downloaded",
+        detail: `${queuedOperations.length} queued operation(s) exported for ${activeProfile.companyName}.`,
+        rawCredentialsCopied: false,
+      })
+      setActivityMessage({
+        title: "Queue export prepared",
+        detail:
+          "Pending local operations were exported as secret-safe JSON for staff review or support handoff.",
+      })
+    } catch {
+      setQueueExportStatus({
+        status: "blocked",
+        detail: "Queue export is unavailable in this browser preview.",
+        rawCredentialsCopied: false,
+      })
+      setActivityMessage({
+        title: "Queue export blocked",
+        detail: "The pending local operations are still available in the queue panel.",
+      })
+    }
+
+    setActiveSection("Queue")
+  }
+
+  function handleClearSessionQueue() {
+    if (queuedOperations.length === 0) {
+      setQueueExportStatus({
+        status: "blocked",
+        detail: "The current profile session queue is already empty.",
+        rawCredentialsCopied: false,
+      })
+      setActiveSection("Queue")
+      return
+    }
+
+    const clearedCount = queuedOperations.length
+
+    setQueuedOperations([])
+    setSelectedQueuedOperationId("")
+    setStagedOperation(null)
+    setStagedPushBatch(null)
+    setStagedPushRequest(null)
+    setPushSummary(null)
+    setQueueSubmission(null)
+    setQueueExportStatus({
+      status: "cleared",
+      detail: `${clearedCount} current-session queue operation(s) cleared locally; desktop durable rows still clear only after accepted sync marking.`,
+      rawCredentialsCopied: false,
+    })
+    setQueueExportPreview("")
+    setActiveSection("Queue")
+    setActivityMessage({
+      title: "Session queue cleared",
+      detail:
+        "Current browser/session queue rows were cleared without website, Square, ScryDex, payment, or production writes.",
     })
   }
 
@@ -2761,16 +3048,96 @@ export function App() {
               ))}
               {queuedOperations.length > 0 ? (
                 <div className="queued-operation-list" aria-label="Queued local operations">
-                  {queuedOperations.slice(0, 4).map((operation) => (
-                    <div key={operation.client_operation_id}>
-                      <span>{operation.operation_type.replaceAll("_", " ")}</span>
+                  {queuedOperations.slice(0, 6).map((operation) => (
+                    <button
+                      className={
+                        operation.client_operation_id === selectedQueuedOperation?.client_operation_id
+                          ? "queued-operation-card is-selected"
+                          : "queued-operation-card"
+                      }
+                      type="button"
+                      onClick={() => {
+                        setSelectedQueuedOperationId(operation.client_operation_id)
+                        setActiveSection("Queue")
+                      }}
+                      key={operation.client_operation_id}
+                    >
+                      <span>{formatQueueOperationType(operation.operation_type)}</span>
                       <strong>{operation.client_operation_id}</strong>
-                    </div>
+                      <small>
+                        {operation.entity_type.replaceAll("_", " ")} {operation.entity_id}; row
+                        version {operation.base_row_version}
+                      </small>
+                    </button>
                   ))}
                 </div>
               ) : (
                 <p className="panel-empty">No new local operations staged this session.</p>
               )}
+              {selectedQueuedOperation ? (
+                <div className="queue-review-card" aria-label="Selected queue operation">
+                  <span>Selected queue operation</span>
+                  <strong>{selectedQueuedOperation.client_operation_id}</strong>
+                  <div className="queue-review-grid">
+                    <div>
+                      <span>Entity</span>
+                      <strong>
+                        {selectedQueuedOperation.entity_type.replaceAll("_", " ")} /{" "}
+                        {selectedQueuedOperation.entity_id}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Queued</span>
+                      <strong>{selectedQueuedOperation.queued_at_utc}</strong>
+                    </div>
+                  </div>
+                  <p>{selectedQueueOperationSummary}</p>
+                </div>
+              ) : null}
+              <div className="queue-action-row" aria-label="Queue management actions">
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={!selectedQueuedOperation}
+                  onClick={() => void handleCopySelectedQueueOperation()}
+                >
+                  <Icon name="copy" />
+                  <span>Copy Operation JSON</span>
+                </button>
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={queuedOperations.length === 0}
+                  onClick={handleExportQueueJson}
+                >
+                  <Icon name="upload" />
+                  <span>Export Queue JSON</span>
+                </button>
+                <button
+                  className="secondary-command danger-command"
+                  type="button"
+                  disabled={queuedOperations.length === 0}
+                  onClick={handleClearSessionQueue}
+                >
+                  <Icon name="trash" />
+                  <span>Clear Session Queue</span>
+                </button>
+              </div>
+              {queueExportStatus.status !== "idle" ? (
+                <div className={`queue-export-status ${queueExportStatus.status}`} aria-live="polite">
+                  <strong>{queueExportStatus.status}</strong>
+                  <span>{queueExportStatus.detail}</span>
+                  <small>raw credentials copied: no</small>
+                </div>
+              ) : null}
+              {queueExportPreview ? (
+                <textarea
+                  className="queue-export-preview"
+                  aria-label="Queue export JSON preview"
+                  readOnly
+                  value={queueExportPreview}
+                />
+              ) : null}
               <button
                 className="secondary-command"
                 type="button"

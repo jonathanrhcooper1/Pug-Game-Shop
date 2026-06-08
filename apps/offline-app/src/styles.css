@@ -1634,24 +1634,143 @@ dd {
   border-radius: 8px;
 }
 
-.queued-operation-list div {
+.queued-operation-card {
   display: grid;
   gap: 3px;
   min-width: 0;
+  padding: 8px 10px;
+  color: #172016;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(35, 100, 70, 0.14);
+  border-radius: 8px;
 }
 
-.queued-operation-list span {
+.queued-operation-card.is-selected {
+  border-color: rgba(121, 215, 143, 0.52);
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.queued-operation-card span {
   color: #2f5d3c;
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.queued-operation-list strong {
+.queued-operation-card strong {
   overflow-wrap: anywhere;
   color: #172016;
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
+}
+
+.queued-operation-card small {
+  overflow-wrap: anywhere;
+  color: #596a58;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.queue-review-card,
+.queue-export-status {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.64);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.queue-review-card > span,
+.queue-export-status > strong {
+  color: #2f5d3c;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.queue-review-card > strong {
+  overflow-wrap: anywhere;
+  color: #172016;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
+.queue-review-card p,
+.queue-export-status span,
+.queue-export-status small {
+  color: #536253;
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.queue-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.queue-review-grid div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  background: rgba(20, 23, 19, 0.045);
+  border-radius: 8px;
+}
+
+.queue-review-grid span {
+  color: #657565;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.queue-review-grid strong {
+  overflow-wrap: anywhere;
+  color: #172016;
+  font-size: 12px;
+}
+
+.queue-action-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.queue-action-row .secondary-command {
+  margin-top: 0;
+}
+
+.queue-export-status.copied,
+.queue-export-status.downloaded,
+.queue-export-status.previewed {
+  border-color: rgba(121, 215, 143, 0.28);
+  background: rgba(121, 215, 143, 0.1);
+}
+
+.queue-export-status.blocked,
+.queue-export-status.cleared {
+  border-color: rgba(240, 126, 103, 0.22);
+  background: rgba(240, 126, 103, 0.08);
+}
+
+.queue-export-preview {
+  width: 100%;
+  min-height: 116px;
+  max-height: 180px;
+  resize: vertical;
+  color: #172016;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(35, 100, 70, 0.18);
+  border-radius: 8px;
+  padding: 10px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre;
 }
 
 .event-list {
