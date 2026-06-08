@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Authenticated Sync Bridge
+
+### What Changed
+
+- Added a Tauri `run_offline_sync_request` command for authenticated offline
+  pull/push route calls.
+- Added Rust validation for route, HTTPS/localhost endpoint, schema version,
+  device public ID, push idempotency key, stored desktop token presence, and
+  request body shape.
+- Added sanitized Rust response summaries for WordPress pull/push responses:
+  HTTP status, WordPress status/code, operation counts, pull record/tombstone
+  counts, cursor counts, and credential-boundary flags.
+- Added a React Tauri offline sync adapter and wired `Sync Now` to attempt
+  desktop live sync only when a non-production connector has a stored paired
+  device token.
+- Added a visible Desktop sync execution panel for preview/running/completed/
+  blocked states.
+- Updated push batch body construction to use the paired registered device
+  public ID when available.
+
+### Why
+
+Pairing and secure-store token persistence were in place, but `Sync Now` still
+only previewed pull/push. This bridge creates the guarded path needed for real
+desktop sync execution while keeping browser previews safe and preventing raw
+tokens or raw WordPress responses from entering React state.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for missing-token blocking, invalid sync endpoint/body
+  rejection, sanitized pull response summaries, and sanitized push outcome
+  summaries.
+- Contract coverage for the Tauri command, TypeScript adapter, pull request
+  body builder, desktop sync execution panel, and no raw-token/raw-response UI
+  markers.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+- Browser sanity check against `http://127.0.0.1:1420/`: `Sync Now` displayed
+  the Desktop sync execution panel in preview mode; no console warnings/errors;
+  no horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to remove the desktop authenticated pull/push bridge and
+  return `Sync Now` to local preview-only behavior.
+- Existing stored device tokens and paired-device metadata can remain; this
+  revision does not change their storage schema.
+- No WordPress database or SQLite schema rollback is required.
+
 ## 2026-06-08 - Offline App Paired Device Metadata
 
 ### What Changed

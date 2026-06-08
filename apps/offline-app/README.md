@@ -20,7 +20,8 @@ future offline sync app.
   credential-free pairing route preflight, connector-aware guarded inventory
   hold staging, per-company connector test reports, visible local queue rows,
   desktop SQLite queue restore, secret-free paired-device metadata restore,
-  desktop secure-store token status reporting, conflict-review history, print-label job
+  desktop secure-store token status reporting, guarded desktop pull/push sync
+  execution summaries, conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
@@ -51,6 +52,11 @@ future offline sync app.
   pairing, restored across app reloads, and refreshed with secure-store token
   presence checks when the Tauri shell is available. Raw tokens stay out of
   browser storage and are not returned to React.
+- Tauri desktop sync requests can now attach the stored device token inside the
+  Rust command, POST pull/push bodies to the WordPress offline routes, and
+  return only sanitized status/count summaries. Browser mode remains preview
+  only, production sync stays manually blocked, and raw tokens/raw response
+  bodies are not returned to React.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,
@@ -60,16 +66,17 @@ future offline sync app.
   and secret safety. The root offline-app test script runs TypeScript
   typechecking before these contracts.
 
-The app does not yet implement live push/pull sync execution,
-printer/scanner adapters, kiosk lockdown, or signed updater behavior. Browser
-mode still previews queue persistence, while the desktop Tauri command now
-writes accepted operations to local SQLite. Connector profiles, draft editing,
-and manifest handling remain secret-free. The app can now fetch the public
-WordPress connector manifest when the plugin endpoint is installed, and the
-desktop shell can request pairing tokens only through the Tauri secure-store
-command when the staging plugin route is installed, active, and configured.
-Pairing route checks use the public WordPress REST index and never transmit raw
-manager codes.
+The app does not yet implement local cache mutation from live pull responses,
+conflict resolution replay, printer/scanner adapters, kiosk lockdown, or signed
+updater behavior. Browser mode still previews queue persistence, while the
+desktop Tauri command now writes accepted operations to local SQLite and can
+run guarded authenticated pull/push requests when a paired device token exists.
+Connector profiles, draft editing, and manifest handling remain secret-free.
+The app can now fetch the public WordPress connector manifest when the plugin
+endpoint is installed, and the desktop shell can request pairing tokens only
+through the Tauri secure-store command when the staging plugin route is
+installed, active, and configured. Pairing route checks use the public
+WordPress REST index and never transmit raw manager codes.
 Guarded inventory holds are
 staged locally and remain deferred unless a selected non-production connector
 explicitly enables canonical inventory writes; real device tokens must be

@@ -17,6 +17,7 @@ for (const requiredExport of [
   "OfflineOperationEnvelope",
   "OfflineConnectorSyncSessionPlan",
   "OfflinePushBatchPayload",
+  "OfflinePullRequestBody",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
   "OfflinePullRefreshPreview",
@@ -49,6 +50,7 @@ for (const requiredExport of [
   "buildCustomerCreditRedemptionOperation",
   "buildConflictReviewOperation",
   "buildOfflinePushBatchPayload",
+  "buildOfflinePullRequestBody",
   "buildOfflinePushRequestPlan",
   "buildOfflineConnectorSyncSessionPlan",
   "buildOfflinePullRefreshPreview",
@@ -124,6 +126,7 @@ for (const marker of [
   "authorization_context: parseJsonObject(operation.authorization_context_json)",
   "network_request_deferred: true",
   "device_authorization_header_deferred: true",
+  "include_tombstones",
   "provider_credentials_required: false",
   "offline_connector_sync_session_plan",
   "offline_pull_refresh_preview",
@@ -144,6 +147,7 @@ for (const marker of [
   "paired_device_public_id",
   "desktop_token_status",
   "desktop_token_available",
+  "sanitizePullCursors",
   "device_pairing_required",
   "push_queue_replay_deferred",
   "push_canonical_mutations_deferred",
@@ -220,7 +224,8 @@ assert.ok(appSource.includes("offlineWorkspaceSeed"))
 assert.ok(appSource.includes("loadOfflineSessionStorage"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(selectedItem, operationOptions)"))
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
-assert.ok(appSource.includes("buildOfflinePushBatchPayload([operation])"))
+assert.ok(appSource.includes("buildOfflinePushBatchPayload("))
+assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.devicePublicId)"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
 assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))

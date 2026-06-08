@@ -362,6 +362,15 @@ export type OfflinePushBatchPayload = {
   operations: OfflinePushOperationPayload[]
 }
 
+export type OfflinePullRequestBody = {
+  device_id: string
+  domains: ["inventory", "customer_credit", "events", "conflicts"]
+  cursors: Record<string, string>
+  page_size: number
+  include_tombstones: boolean
+  schema_version: 1
+}
+
 export type OfflinePushRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/push"
@@ -1751,6 +1760,25 @@ function sanitizeDevicePairingScopes(
     : ["offline_pull", "offline_push", "conflicts"]
 }
 
+function sanitizePullCursors(cursors: Record<string, string>): Record<string, string> {
+  const supportedDomains = ["inventory", "customer_credit", "events", "conflicts"]
+  const safeCursors: Record<string, string> = {}
+
+  for (const [domain, cursor] of Object.entries(cursors)) {
+    const safeDomain = domain.trim().toLowerCase()
+    const safeCursor = cursor.trim()
+
+    if (
+      supportedDomains.includes(safeDomain) &&
+      /^[a-zA-Z0-9._:-]{1,256}$/.test(safeCursor)
+    ) {
+      safeCursors[safeDomain] = safeCursor
+    }
+  }
+
+  return safeCursors
+}
+
 function safeRecordIdPart(value: unknown, fallback: string): string {
   const candidate = stringValue(value) || fallback
   const safeValue = candidate
@@ -2244,7 +2272,7 @@ export function buildOfflinePushBatchPayload(
     device_id: deviceId,
     operations: operations.map((operation) => ({
       client_operation_id: operation.client_operation_id,
-      device_id: operation.device_id,
+      device_id: deviceId,
       location_id: operation.location_id,
       actor_id: operation.actor_id,
       operation_type: operation.operation_type,
@@ -2257,6 +2285,26 @@ export function buildOfflinePushBatchPayload(
       authorization_context: parseJsonObject(operation.authorization_context_json),
       schema_version: operation.schema_version,
     })),
+  }
+}
+
+export function buildOfflinePullRequestBody(
+  devicePublicId: string,
+  options: {
+    cursors?: Record<string, string>
+    pageSize?: number
+    includeTombstones?: boolean
+  } = {},
+): OfflinePullRequestBody {
+  const pageSize = Math.max(1, Math.min(500, Math.trunc(options.pageSize ?? 100)))
+
+  return {
+    device_id: devicePublicId.trim(),
+    domains: ["inventory", "customer_credit", "events", "conflicts"],
+    cursors: sanitizePullCursors(options.cursors ?? {}),
+    page_size: pageSize,
+    include_tombstones: options.includeTombstones ?? true,
+    schema_version: 1,
   }
 }
 

@@ -21,6 +21,11 @@
 - Local verification now includes `cargo test` for the Tauri Rust command
   SQLite queue persistence path on Windows when Rust/Cargo and the MSVC linker
   are installed.
+- Tauri Rust command coverage now includes authenticated offline pull/push sync
+  request validation, missing-token blocking, sanitized WordPress response
+  summary extraction, and no raw-token/raw-response return guarantees. Browser
+  sanity verification also covers the `Sync Now` desktop sync execution panel
+  in preview mode with no console warnings/errors or horizontal overflow.
 - Offline app contract coverage now verifies secret-free paired-device metadata
   storage, local restore, desktop secure-store token status checks, Sync Now
   paired-token readiness fields, and UI markers proving raw tokens are not

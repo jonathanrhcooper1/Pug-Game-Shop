@@ -196,6 +196,44 @@ struct PairOfflineDeviceResponse {
     credentials_synced_to_app: bool,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+struct OfflineSyncRequest {
+    endpoint: String,
+    route: String,
+    profile_id: String,
+    device_public_id: String,
+    body: serde_json::Value,
+    idempotency_key: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct OfflineSyncRequestResponse {
+    status: &'static str,
+    route: String,
+    endpoint: String,
+    profile_id: String,
+    device_public_id: String,
+    http_status: u16,
+    wordpress_status: String,
+    wordpress_code: String,
+    batch_id: Option<String>,
+    operation_count: usize,
+    accepted_count: usize,
+    conflict_count: usize,
+    rejected_count: usize,
+    pull_domain_count: usize,
+    pull_record_count: usize,
+    pull_tombstone_count: usize,
+    cursor_count: usize,
+    network_request_completed: bool,
+    authorization_header_attached: bool,
+    raw_token_returned: bool,
+    raw_response_returned: bool,
+    credentials_synced_to_app: bool,
+    direct_mysql_access: bool,
+    schema_version: u8,
+}
+
 #[tauri::command]
 fn queue_offline_operation(
     app: tauri::AppHandle,
@@ -275,6 +313,49 @@ async fn pair_offline_device(
         status_code,
         &store,
     )
+}
+
+#[tauri::command]
+async fn run_offline_sync_request(
+    request: OfflineSyncRequest,
+) -> Result<OfflineSyncRequestResponse, String> {
+    validate_offline_sync_request(&request)?;
+
+    let store = KeyringDeviceTokenStore;
+    let device_token = offline_sync_device_token(&request, &store)?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|_| "offline_sync_client_failed".to_string())?;
+    let mut builder = client
+        .post(request.endpoint.trim())
+        .header("Accept", "application/json")
+        .header("Authorization", format!("Bearer {}", device_token))
+        .json(&request.body);
+
+    if request.route.trim() == "push" {
+        if let Some(idempotency_key) = normalized_optional_text(request.idempotency_key.as_deref()) {
+            builder = builder
+                .header("idempotency-key", idempotency_key)
+                .header("x-tcg-device-id", request.device_public_id.trim());
+        }
+    }
+
+    let response = builder
+        .send()
+        .await
+        .map_err(|_| "offline_sync_request_failed".to_string())?;
+    let http_status = response.status().as_u16();
+    let body = response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|_| "offline_sync_response_invalid".to_string())?;
+
+    Ok(summarize_offline_sync_response(
+        &request,
+        http_status,
+        &body,
+    ))
 }
 
 trait DeviceTokenStore {
@@ -591,6 +672,238 @@ fn validate_store_device_token_request(request: &StoreDeviceTokenRequest) -> Res
     Ok(())
 }
 
+fn validate_offline_sync_request(request: &OfflineSyncRequest) -> Result<(), String> {
+    let endpoint = request.endpoint.trim();
+    let route = request.route.trim();
+    let profile_id = request.profile_id.trim();
+    let device_public_id = request.device_public_id.trim();
+
+    if profile_id.is_empty() {
+        return Err("offline_sync_profile_id_required".to_string());
+    }
+
+    if device_public_id.is_empty() {
+        return Err("offline_sync_device_id_required".to_string());
+    }
+
+    if endpoint.is_empty() {
+        return Err("offline_sync_endpoint_required".to_string());
+    }
+
+    if !endpoint.starts_with("https://")
+        && !endpoint.starts_with("http://localhost")
+        && !endpoint.starts_with("http://127.0.0.1")
+    {
+        return Err("offline_sync_endpoint_https_required".to_string());
+    }
+
+    if route != "pull" && route != "push" {
+        return Err("offline_sync_route_unsupported".to_string());
+    }
+
+    let expected_suffix = if route == "pull" {
+        "/wp-json/tcg-store/v1/offline/pull"
+    } else {
+        "/wp-json/tcg-store/v1/offline/push"
+    };
+
+    if !endpoint.ends_with(expected_suffix) {
+        return Err("offline_sync_endpoint_invalid".to_string());
+    }
+
+    let Some(body) = request.body.as_object() else {
+        return Err("offline_sync_body_must_be_object".to_string());
+    };
+
+    if json_object_string(body, "device_id") != device_public_id {
+        return Err("offline_sync_device_id_mismatch".to_string());
+    }
+
+    if json_object_u64(body, "schema_version") != Some(1) {
+        return Err("offline_sync_schema_version_unsupported".to_string());
+    }
+
+    if route == "push" {
+        if normalized_optional_text(request.idempotency_key.as_deref()).is_none() {
+            return Err("offline_sync_push_idempotency_key_required".to_string());
+        }
+
+        let operations = body.get("operations").and_then(serde_json::Value::as_array);
+
+        if operations.is_none_or(Vec::is_empty) {
+            return Err("offline_sync_push_operations_required".to_string());
+        }
+    }
+
+    Ok(())
+}
+
+fn offline_sync_device_token(
+    request: &OfflineSyncRequest,
+    store: &impl DeviceTokenStore,
+) -> Result<String, String> {
+    validate_offline_sync_request(request)?;
+
+    let account = device_token_keyring_account(&request.profile_id, &request.device_public_id)?;
+
+    store
+        .get_token(&account)?
+        .filter(|token| !token.trim().is_empty())
+        .ok_or_else(|| "offline_sync_device_token_missing".to_string())
+}
+
+fn summarize_offline_sync_response(
+    request: &OfflineSyncRequest,
+    http_status: u16,
+    body: &serde_json::Value,
+) -> OfflineSyncRequestResponse {
+    let wordpress_status = json_path_string(body, &["status"]).unwrap_or_else(|| "unknown".to_string());
+    let wordpress_code = json_path_string(body, &["code"]).unwrap_or_else(|| "unknown".to_string());
+    let data = body.get("data").unwrap_or(&serde_json::Value::Null);
+    let status = if (200..300).contains(&http_status) {
+        "offline_sync_request_completed"
+    } else {
+        "offline_sync_request_rejected"
+    };
+    let route = request.route.trim().to_string();
+
+    let (
+        batch_id,
+        operation_count,
+        accepted_count,
+        conflict_count,
+        rejected_count,
+        pull_domain_count,
+        pull_record_count,
+        pull_tombstone_count,
+        cursor_count,
+    ) = if route == "push" {
+        summarize_push_sync_data(data)
+    } else {
+        summarize_pull_sync_data(data)
+    };
+
+    OfflineSyncRequestResponse {
+        status,
+        route,
+        endpoint: request.endpoint.trim().to_string(),
+        profile_id: request.profile_id.trim().to_string(),
+        device_public_id: request.device_public_id.trim().to_string(),
+        http_status,
+        wordpress_status,
+        wordpress_code,
+        batch_id,
+        operation_count,
+        accepted_count,
+        conflict_count,
+        rejected_count,
+        pull_domain_count,
+        pull_record_count,
+        pull_tombstone_count,
+        cursor_count,
+        network_request_completed: true,
+        authorization_header_attached: true,
+        raw_token_returned: false,
+        raw_response_returned: false,
+        credentials_synced_to_app: false,
+        direct_mysql_access: false,
+        schema_version: 1,
+    }
+}
+
+fn summarize_push_sync_data(
+    data: &serde_json::Value,
+) -> (
+    Option<String>,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+) {
+    let results = data
+        .get("results")
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let accepted_count = results
+        .iter()
+        .filter(|result| json_path_string(result, &["status"]).as_deref() == Some("accepted"))
+        .count();
+    let conflict_count = results
+        .iter()
+        .filter(|result| json_path_string(result, &["status"]).as_deref() == Some("conflict"))
+        .count();
+    let rejected_count = results
+        .iter()
+        .filter(|result| json_path_string(result, &["status"]).as_deref() == Some("rejected"))
+        .count();
+
+    (
+        json_path_string(data, &["batch_id"]),
+        json_path_usize(data, &["operation_count"]).unwrap_or(results.len()),
+        json_path_usize(data, &["counts", "accepted"]).unwrap_or(accepted_count),
+        json_path_usize(data, &["counts", "conflict"]).unwrap_or(conflict_count),
+        json_path_usize(data, &["counts", "rejected"]).unwrap_or(rejected_count),
+        0,
+        0,
+        0,
+        0,
+    )
+}
+
+fn summarize_pull_sync_data(
+    data: &serde_json::Value,
+) -> (
+    Option<String>,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+    usize,
+) {
+    let Some(domains) = data.get("domains").and_then(serde_json::Value::as_object) else {
+        return (None, 0, 0, 0, 0, 0, 0, 0, 0);
+    };
+
+    let mut record_count = 0;
+    let mut tombstone_count = 0;
+    let mut cursor_count = 0;
+
+    for domain in domains.values() {
+        record_count += domain
+            .get("data")
+            .and_then(serde_json::Value::as_array)
+            .map_or(0, Vec::len);
+        tombstone_count += domain
+            .get("tombstones")
+            .and_then(serde_json::Value::as_array)
+            .map_or(0, Vec::len);
+
+        if json_path_string(domain, &["cursor"]).is_some() {
+            cursor_count += 1;
+        }
+    }
+
+    (
+        None,
+        0,
+        0,
+        0,
+        0,
+        domains.len(),
+        record_count,
+        tombstone_count,
+        cursor_count,
+    )
+}
+
 fn normalized_token_scopes(scopes: &[String]) -> Vec<String> {
     let mut normalized = Vec::new();
 
@@ -612,6 +925,43 @@ fn normalized_optional_text(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
+}
+
+fn json_path_string(value: &serde_json::Value, path: &[&str]) -> Option<String> {
+    let mut current = value;
+
+    for key in path {
+        current = current.get(key)?;
+    }
+
+    current
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn json_path_usize(value: &serde_json::Value, path: &[&str]) -> Option<usize> {
+    let mut current = value;
+
+    for key in path {
+        current = current.get(key)?;
+    }
+
+    current.as_u64().and_then(|value| usize::try_from(value).ok())
+}
+
+fn json_object_string(object: &serde_json::Map<String, serde_json::Value>, key: &str) -> String {
+    object
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+fn json_object_u64(object: &serde_json::Map<String, serde_json::Value>, key: &str) -> Option<u64> {
+    object.get(key).and_then(serde_json::Value::as_u64)
 }
 
 fn device_token_keyring_account(
@@ -872,7 +1222,8 @@ pub fn run() {
             store_device_token,
             get_device_token_status,
             delete_device_token,
-            pair_offline_device
+            pair_offline_device,
+            run_offline_sync_request
         ])
         .run(tauri::generate_context!())
         .expect("error while running TCG Store Offline");
@@ -1002,6 +1353,62 @@ mod tests {
                 ]),
             }),
             errors: None,
+        }
+    }
+
+    fn valid_pull_sync_request() -> OfflineSyncRequest {
+        OfflineSyncRequest {
+            endpoint: "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/pull"
+                .to_string(),
+            route: "pull".to_string(),
+            profile_id: "pug-game-shop-staging".to_string(),
+            device_public_id: "device-public-123".to_string(),
+            body: serde_json::json!({
+                "device_id": "device-public-123",
+                "domains": ["inventory", "customer_credit", "events", "conflicts"],
+                "cursors": {},
+                "page_size": 100,
+                "include_tombstones": true,
+                "schema_version": 1
+            }),
+            idempotency_key: None,
+        }
+    }
+
+    fn valid_push_sync_request() -> OfflineSyncRequest {
+        OfflineSyncRequest {
+            endpoint: "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/push"
+                .to_string(),
+            route: "push".to_string(),
+            profile_id: "pug-game-shop-staging".to_string(),
+            device_public_id: "device-public-123".to_string(),
+            body: serde_json::json!({
+                "batch_id": "offline-batch-device-public-123-20260607120000",
+                "device_id": "device-public-123",
+                "operations": [
+                    {
+                        "client_operation_id": "op-push-route-01",
+                        "device_id": "device-public-123",
+                        "location_id": 2,
+                        "actor_id": 42,
+                        "operation_type": "inventory_reservation",
+                        "entity_type": "inventory",
+                        "entity_id": "inv-1001",
+                        "base_row_version": 4,
+                        "occurred_at_local": "2026-06-06T10:15:00-04:00",
+                        "queued_at_utc": "2026-06-06T14:15:05Z",
+                        "payload": {
+                            "localStatus": "offline_pending_sync"
+                        },
+                        "authorization_context": {
+                            "manager_user_id": 42
+                        },
+                        "schema_version": 1
+                    }
+                ],
+                "schema_version": 1
+            }),
+            idempotency_key: Some("offline-batch-device-public-123-20260607120000".to_string()),
         }
     }
 
@@ -1159,6 +1566,158 @@ mod tests {
             .expect_err("rejected pairing should fail"),
             "manager_not_allowed"
         );
+    }
+
+    #[test]
+    fn offline_sync_request_requires_stored_device_token() {
+        let store = MemoryDeviceTokenStore::default();
+        let request = valid_pull_sync_request();
+
+        assert_eq!(
+            offline_sync_device_token(&request, &store).expect_err("missing token should fail"),
+            "offline_sync_device_token_missing"
+        );
+
+        store
+            .set_token(
+                "tcg-store-offline:pug-game-shop-staging:device-public-123",
+                "offline-device-token-2026-abcdef",
+            )
+            .expect("memory token should store");
+
+        assert_eq!(
+            offline_sync_device_token(&request, &store).expect("token should load"),
+            "offline-device-token-2026-abcdef"
+        );
+    }
+
+    #[test]
+    fn offline_sync_request_rejects_invalid_endpoint_and_body_shape() {
+        let mut insecure = valid_pull_sync_request();
+        insecure.endpoint = "http://example.com/wp-json/tcg-store/v1/offline/pull".to_string();
+
+        assert_eq!(
+            validate_offline_sync_request(&insecure).expect_err("https required"),
+            "offline_sync_endpoint_https_required"
+        );
+
+        let mut mismatch = valid_pull_sync_request();
+        mismatch.body["device_id"] = serde_json::json!("other-device");
+
+        assert_eq!(
+            validate_offline_sync_request(&mismatch).expect_err("device mismatch"),
+            "offline_sync_device_id_mismatch"
+        );
+
+        let mut push_without_key = valid_push_sync_request();
+        push_without_key.idempotency_key = None;
+
+        assert_eq!(
+            validate_offline_sync_request(&push_without_key).expect_err("idempotency required"),
+            "offline_sync_push_idempotency_key_required"
+        );
+    }
+
+    #[test]
+    fn offline_sync_pull_summary_never_returns_raw_token_or_response_body() {
+        let request = valid_pull_sync_request();
+        let body = serde_json::json!({
+            "status": "ready",
+            "status_code": 200,
+            "code": "offline_pull_response_ready",
+            "data": {
+                "device_id": "device-public-123",
+                "schema_version": 1,
+                "domains": {
+                    "inventory": {
+                        "cursor": "inv-cursor-02",
+                        "has_more": true,
+                        "data": [
+                            {
+                                "entity_type": "inventory_item",
+                                "entity_id": "inv-1001",
+                                "row_version": 12,
+                                "updated_at_utc": "2026-06-06T20:00:00Z",
+                                "payload": {
+                                    "status": "available"
+                                }
+                            }
+                        ],
+                        "tombstones": []
+                    },
+                    "events": {
+                        "cursor": "evt-cursor-01",
+                        "has_more": false,
+                        "data": [],
+                        "tombstones": [
+                            {
+                                "entity_type": "event",
+                                "entity_id": "event-404",
+                                "row_version": 2,
+                                "deleted_at_utc": "2026-06-06T21:00:00Z"
+                            }
+                        ]
+                    }
+                }
+            }
+        });
+
+        let summary = summarize_offline_sync_response(&request, 200, &body);
+
+        assert_eq!(summary.status, "offline_sync_request_completed");
+        assert_eq!(summary.route, "pull");
+        assert_eq!(summary.wordpress_status, "ready");
+        assert_eq!(summary.wordpress_code, "offline_pull_response_ready");
+        assert_eq!(summary.pull_domain_count, 2);
+        assert_eq!(summary.pull_record_count, 1);
+        assert_eq!(summary.pull_tombstone_count, 1);
+        assert_eq!(summary.cursor_count, 2);
+        assert!(summary.authorization_header_attached);
+        assert!(!summary.raw_token_returned);
+        assert!(!summary.raw_response_returned);
+        assert!(!summary.credentials_synced_to_app);
+    }
+
+    #[test]
+    fn offline_sync_push_summary_counts_operation_outcomes_without_raw_payload() {
+        let request = valid_push_sync_request();
+        let body = serde_json::json!({
+            "status": "ready",
+            "status_code": 200,
+            "code": "offline_push_response_ready",
+            "data": {
+                "batch_id": "offline-batch-device-public-123-20260607120000",
+                "operation_count": 3,
+                "counts": {
+                    "accepted": 1,
+                    "conflict": 1,
+                    "rejected": 1
+                },
+                "results": [
+                    {"client_operation_id": "op-accepted", "status": "accepted"},
+                    {"client_operation_id": "op-conflict", "status": "conflict"},
+                    {"client_operation_id": "op-rejected", "status": "rejected"}
+                ]
+            }
+        });
+
+        let summary = summarize_offline_sync_response(&request, 200, &body);
+
+        assert_eq!(summary.status, "offline_sync_request_completed");
+        assert_eq!(summary.route, "push");
+        assert_eq!(
+            summary.batch_id,
+            Some("offline-batch-device-public-123-20260607120000".to_string())
+        );
+        assert_eq!(summary.operation_count, 3);
+        assert_eq!(summary.accepted_count, 1);
+        assert_eq!(summary.conflict_count, 1);
+        assert_eq!(summary.rejected_count, 1);
+        assert_eq!(summary.pull_record_count, 0);
+        assert!(summary.network_request_completed);
+        assert!(summary.authorization_header_attached);
+        assert!(!summary.raw_token_returned);
+        assert!(!summary.raw_response_returned);
     }
 
     #[test]

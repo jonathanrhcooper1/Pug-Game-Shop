@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app desktop sync now has a guarded Tauri `run_offline_sync_request`
+  command and React adapter that attach the stored device token inside Rust,
+  POST sanitized pull/push bodies to the WordPress offline routes, and return
+  only status/count summaries to the UI with browser mode remaining preview-only.
 - Offline app now persists secret-free paired-device metadata per connector
   profile, restores it across reloads, checks desktop secure-store token
   presence when the Tauri shell is available, and reports paired-token

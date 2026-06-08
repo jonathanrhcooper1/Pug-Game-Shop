@@ -12,6 +12,7 @@ import {
   buildDevicePairingRequestPlan,
   buildDevicePairingRequestBody,
   buildOfflinePullRefreshPreview,
+  buildOfflinePullRequestBody,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
   buildPreparedPairingStorageSnapshot,
@@ -72,6 +73,10 @@ import {
   type OfflineQueueSubmissionResult,
 } from "./data/offlineQueueBridge"
 import { createTauriDevicePairingAdapter } from "./data/tauriDevicePairingAdapter"
+import {
+  createTauriOfflineSyncAdapter,
+  type OfflineSyncCommandResponse,
+} from "./data/tauriOfflineSyncAdapter"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import { createTauriSecureStoreAdapter } from "./data/tauriSecureStoreAdapter"
 import pugGameShopCrest from "./assets/pug-game-shop-crest.png"
@@ -121,6 +126,16 @@ type PairingTokenRequestState = {
   detail: string
   rawPairingCodeTransmitted: boolean
   rawTokenReturned: false
+  credentialsSyncedToApp: false
+}
+
+type DesktopSyncExecutionState = {
+  status: "idle" | "loading" | "synced" | "preview" | "blocked"
+  detail: string
+  pull?: OfflineSyncCommandResponse
+  push?: OfflineSyncCommandResponse
+  rawTokenReturned: false
+  rawResponseReturned: false
   credentialsSyncedToApp: false
 }
 
@@ -208,6 +223,7 @@ export function App() {
   const workspace = offlineWorkspaceSeed
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
   const devicePairingAdapter = useMemo(() => createTauriDevicePairingAdapter(), [])
+  const offlineSyncAdapter = useMemo(() => createTauriOfflineSyncAdapter(), [])
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
@@ -266,6 +282,13 @@ export function App() {
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
   const [pullRefreshPreview, setPullRefreshPreview] = useState<OfflinePullRefreshPreview | null>(null)
+  const [desktopSyncExecution, setDesktopSyncExecution] = useState<DesktopSyncExecutionState>({
+    status: "idle",
+    detail: "Desktop live sync has not run for this connector.",
+    rawTokenReturned: false,
+    rawResponseReturned: false,
+    credentialsSyncedToApp: false,
+  })
   const [syncAttempts, setSyncAttempts] = useState<OfflineSyncAttemptRecord[]>(
     offlineSessionStorage.syncAttempts,
   )
@@ -379,6 +402,13 @@ export function App() {
       detail: "Live desktop pairing has not been requested.",
       rawPairingCodeTransmitted: false,
       rawTokenReturned: false,
+      credentialsSyncedToApp: false,
+    })
+    setDesktopSyncExecution({
+      status: "idle",
+      detail: "Desktop live sync has not run for this connector.",
+      rawTokenReturned: false,
+      rawResponseReturned: false,
       credentialsSyncedToApp: false,
     })
     setConnectorDraft(connectorProfileDraftFromProfile(activeProfile))
@@ -558,7 +588,10 @@ export function App() {
     actionTitle: string,
     detail: string,
   ) {
-    const batch = buildOfflinePushBatchPayload([operation])
+    const batch = buildOfflinePushBatchPayload(
+      [operation],
+      activePairedDevice ? { deviceId: activePairedDevice.devicePublicId } : {},
+    )
     const requestPlan = buildOfflinePushRequestPlan(batch)
     const canonicalInventoryWritesReady =
       activeProfile.wordpress.routeConnectedPushReady &&
@@ -778,16 +811,21 @@ export function App() {
     })
   }
 
-  function handleSyncNowPreview() {
+  async function handleSyncNowPreview() {
     const operationsForSync = queuedOperations.length > 0
       ? queuedOperations
       : stagedOperation
         ? [stagedOperation]
         : []
     let nextSyncSessionPlan: OfflineConnectorSyncSessionPlan
+    let syncBatchForExecution: OfflinePushBatchPayload | null = null
 
     if (operationsForSync.length > 0) {
-      const batch = buildOfflinePushBatchPayload(operationsForSync)
+      const batch = buildOfflinePushBatchPayload(
+        operationsForSync,
+        activePairedDevice ? { deviceId: activePairedDevice.devicePublicId } : {},
+      )
+      syncBatchForExecution = batch
       const canonicalInventoryOperationCount = batch.operations.filter(
         (operation) => operation.operation_type === "inventory_reservation",
       ).length
@@ -846,6 +884,7 @@ export function App() {
       operationsForSync,
     )
     setPullRefreshPreview(nextPullRefreshPreview)
+    await runDesktopSyncIfReady(nextSyncSessionPlan, syncBatchForExecution)
     setInventoryItems((items) =>
       items.map((item) =>
         item.source === "cached"
@@ -865,6 +904,118 @@ export function App() {
           ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
           : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; local cache refresh preview applied without network execution.`,
     })
+  }
+
+  async function runDesktopSyncIfReady(
+    plan: OfflineConnectorSyncSessionPlan,
+    batch: OfflinePushBatchPayload | null,
+  ) {
+    if (activeProfile.environment === "production") {
+      setDesktopSyncExecution({
+        status: "blocked",
+        detail: "Production live sync is blocked until the manual deployment approval checklist is complete.",
+        rawTokenReturned: false,
+        rawResponseReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      return
+    }
+
+    if (!activePairedDevice) {
+      setDesktopSyncExecution({
+        status: "preview",
+        detail: "Desktop live sync preview only; pair this company connector before network pull/push execution.",
+        rawTokenReturned: false,
+        rawResponseReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      return
+    }
+
+    if (activePairedDevice.tokenStatus !== "stored") {
+      setDesktopSyncExecution({
+        status: "preview",
+        detail: `Desktop live sync preview only; paired device ${activePairedDevice.devicePublicId} token status is ${activePairedDevice.tokenStatus}.`,
+        rawTokenReturned: false,
+        rawResponseReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      return
+    }
+
+    if (!offlineSyncAdapter) {
+      setDesktopSyncExecution({
+        status: "preview",
+        detail: "Desktop live sync preview only; open the Windows Tauri shell to attach the secure-store token.",
+        rawTokenReturned: false,
+        rawResponseReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      return
+    }
+
+    setDesktopSyncExecution({
+      status: "loading",
+      detail: "Running authenticated desktop pull/push sync through the Tauri command.",
+      rawTokenReturned: false,
+      rawResponseReturned: false,
+      credentialsSyncedToApp: false,
+    })
+
+    try {
+      const pull = await offlineSyncAdapter.runOfflineSyncRequest({
+        endpoint: plan.pull.url,
+        route: "pull",
+        profile_id: activeProfile.id,
+        device_public_id: activePairedDevice.devicePublicId,
+        body: buildOfflinePullRequestBody(activePairedDevice.devicePublicId),
+      })
+      const push = batch
+        ? await offlineSyncAdapter.runOfflineSyncRequest({
+            endpoint: plan.push.url,
+            route: "push",
+            profile_id: activeProfile.id,
+            device_public_id: activePairedDevice.devicePublicId,
+            body: batch,
+            idempotency_key: batch.batch_id,
+          })
+        : undefined
+      const completed =
+        pull.status === "offline_sync_request_completed" &&
+        (!push || push.status === "offline_sync_request_completed")
+
+      setDesktopSyncExecution({
+        status: completed ? "synced" : "blocked",
+        detail: completed
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
+          : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
+        pull,
+        push,
+        rawTokenReturned: false,
+        rawResponseReturned: false,
+        credentialsSyncedToApp: false,
+      })
+    } catch (error) {
+      setDesktopSyncExecution({
+        status: "blocked",
+        detail: `${desktopSyncErrorMessage(error)} Raw token and raw response body were not returned to the UI.`,
+        rawTokenReturned: false,
+        rawResponseReturned: false,
+        credentialsSyncedToApp: false,
+      })
+    }
+  }
+
+  function desktopSyncErrorMessage(error: unknown) {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.slice(0, 220)
+    }
+
+    if (typeof error === "string" && error.trim()) {
+      return error.slice(0, 220)
+    }
+
+    return "Desktop sync failed before a sanitized response summary was returned."
   }
 
   async function handleTestWebsiteConnector() {
@@ -1419,7 +1570,7 @@ export function App() {
                 <span>Last sync</span>
                 <strong>{workspace.device.lastSyncLabel}</strong>
               </div>
-              <button className="sync-now" type="button" onClick={handleSyncNowPreview}>
+              <button className="sync-now" type="button" onClick={() => void handleSyncNowPreview()}>
                 <Icon name="sync" />
                 <span>Sync Now</span>
               </button>
@@ -1493,6 +1644,57 @@ export function App() {
                     : syncSessionPlan.prepared_pairing_available
                       ? `Fingerprint ${syncSessionPlan.pairing_code_fingerprint}; token storage ${syncSessionPlan.device_token_storage}`
                       : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
+                </small>
+              </div>
+            </section>
+          ) : null}
+
+          {desktopSyncExecution.status !== "idle" ? (
+            <section className="desktop-sync-panel" aria-label="Desktop sync execution">
+              <div>
+                <span className="micro-label">Desktop sync execution</span>
+                <strong>
+                  {desktopSyncExecution.status === "loading"
+                    ? "Running"
+                    : desktopSyncExecution.status === "synced"
+                      ? "Completed"
+                      : desktopSyncExecution.status === "blocked"
+                        ? "Blocked"
+                        : "Preview only"}
+                </strong>
+                <small>{desktopSyncExecution.detail}</small>
+              </div>
+              <div>
+                <span className="micro-label">Pull summary</span>
+                <strong>
+                  {desktopSyncExecution.pull
+                    ? `${desktopSyncExecution.pull.pull_record_count} record(s)`
+                    : "Not executed"}
+                </strong>
+                <small>
+                  {desktopSyncExecution.pull
+                    ? `${desktopSyncExecution.pull.http_status} ${desktopSyncExecution.pull.wordpress_code}; ${desktopSyncExecution.pull.cursor_count} cursor(s)`
+                    : "Requires desktop shell and stored device token."}
+                </small>
+              </div>
+              <div>
+                <span className="micro-label">Push summary</span>
+                <strong>
+                  {desktopSyncExecution.push
+                    ? `${desktopSyncExecution.push.accepted_count} accepted`
+                    : "No push result"}
+                </strong>
+                <small>
+                  {desktopSyncExecution.push
+                    ? `${desktopSyncExecution.push.http_status} ${desktopSyncExecution.push.wordpress_code}; ${desktopSyncExecution.push.conflict_count} conflict(s), ${desktopSyncExecution.push.rejected_count} rejected`
+                    : "Runs only when local queued operations exist."}
+                </small>
+              </div>
+              <div>
+                <span className="micro-label">Credential boundary</span>
+                <strong>Raw secrets hidden</strong>
+                <small>
+                  raw token returned: no; raw response returned: no; credentials synced to app: no.
                 </small>
               </div>
             </section>
