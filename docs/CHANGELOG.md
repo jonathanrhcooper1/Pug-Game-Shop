@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app Inventory intake now promotes the selected ScryDex/website
+  reference image into the main selected-card preview, leaves the physical-copy
+  barcode blank by default for safe auto-generation, and was browser-verified
+  through the PIN `1420` search -> Use Card -> Add Inventory flow against the
+  running LAN sync server.
 - Staging tooling can now enable inventory runtime gates, run pending plugin
   migrations after creating a staging database export, and verify inventory
   intake plus `/reference/search` card photo/version/price payloads through a

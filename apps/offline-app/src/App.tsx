@@ -804,6 +804,7 @@ export function App() {
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
   const selectedScryDexCard = scryDexCards.find((card) => card.provider_card_id === selectedScryDexCardId) ?? null
+  const selectedPreviewImageUrl = selectedScryDexCard?.image_url || selectedItem.imageUrl || ""
   const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
   const customerCredit =
     findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
@@ -2136,11 +2137,11 @@ export function App() {
     setSelectedScryDexCardId(card.provider_card_id)
     setIntakeCardName(card.card_name)
     setIntakeSetName(card.set_name)
-    setIntakeBarcode(card.suggested_barcode)
+    setIntakeBarcode("")
     setIntakePriceInput(creditRedemptionInputFromMinorUnits(card.market_price_minor_units))
     setActivityMessage({
       title: "ScryDex reference selected",
-      detail: `${card.card_name} ${card.printed_number} is ready for local intake review.`,
+      detail: `${card.card_name} ${card.printed_number} is ready for local intake review; leave barcode blank to auto-generate a unique copy code.`,
     })
   }
 
@@ -4416,8 +4417,18 @@ export function App() {
                     <small>{selectedItem.condition}</small>
                   </div>
                   <div className="card-art">
-                    <Icon name="card" />
-                    <span className="foil-line" aria-hidden="true" />
+                    {selectedPreviewImageUrl ? (
+                      <img
+                        alt={`${selectedScryDexCard?.card_name ?? selectedItem.cardName} card art`}
+                        src={selectedPreviewImageUrl}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <>
+                        <Icon name="card" />
+                        <span className="foil-line" aria-hidden="true" />
+                      </>
+                    )}
                   </div>
                   <div className="card-frame-footer">
                     <span>{selectedItem.setName}</span>

@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline ScryDex Image Intake Preview
+
+### What Changed
+
+- Updated the offline app selected-card preview to render the selected
+  ScryDex/website reference image when available, falling back to the existing
+  placeholder art only when no image URL exists.
+- Adjusted the ScryDex Use Card action to keep the card reference attached but
+  leave the physical-copy barcode blank by default, allowing the LAN sync
+  server to auto-generate a unique barcode per inventory copy.
+- Added responsive image styling so live card photos fit inside the selected
+  card frame without cropping the title/footer.
+
+### Why
+
+Staff need the searched card photo, market price, condition, and quantity
+review visible before adding inventory. ScryDex provider IDs are reference
+identifiers, not unique physical-copy barcodes, so the intake flow should let
+the local server issue unique copy codes unless staff enter one manually.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None. This revision tightens an existing UI path and was verified through the
+  running browser preview.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- Browser smoke at `http://127.0.0.1:1420`: PIN `1420`, Inventory, ScryDex
+  lookup for `scrydex-stage-charizard-004`, verified the result and selected
+  card pane loaded `https://images.pokemontcg.io/base1/4_hires.png`.
+- Browser smoke continued through Use Card and Add Inventory, creating a
+  pending local Charizard inventory copy with an auto-generated `PUG-*` barcode,
+  `$250.00` price, queued sync source, and preserved card image.
+
+### Rollback Notes
+
+- Revert this revision to restore the placeholder-only selected-card preview
+  and the previous ScryDex suggested-barcode prefill behavior.
+- Remove any disposable pending-intake rows created in the local preview SQLite
+  database if a clean demo state is needed.
+
 ## 2026-06-08 - Local Sync WordPress Catalog Connector Auth
 
 ### What Changed
