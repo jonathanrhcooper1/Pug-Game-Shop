@@ -27,6 +27,8 @@ import {
   buildPairedDeviceRecord,
   buildPairedDeviceStorageSnapshot,
   CONNECTOR_PROFILE_STORAGE_KEY,
+  cleanOfflineEventAttendeeLabel,
+  cleanOfflineEventRegistrationPublicId,
   connectorManifestUrl,
   connectorDisplayUrl,
   connectorHealthSummary,
@@ -113,6 +115,7 @@ type AppIconName =
   | "tag"
 
 type ViewMode = "list" | "grid"
+type EventPaymentStatus = "not_required" | "pay_at_store"
 
 type ActivityMessage = {
   title: string
@@ -318,6 +321,10 @@ export function App() {
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState(42)
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
+  const [eventAttendeeLabel, setEventAttendeeLabel] = useState("Offline walk-in")
+  const [eventPaymentStatus, setEventPaymentStatus] =
+    useState<EventPaymentStatus>("not_required")
+  const [eventCheckinLookup, setEventCheckinLookup] = useState("")
   const [activeSection, setActiveSection] = useState("Inventory")
   const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
   const activeSessionProfileRef = useRef(connectorProfileStorage.activeProfileId)
@@ -911,16 +918,18 @@ export function App() {
     }
 
     const waitlistIntent = event.registrationStatus === "waitlist"
+    const attendeeLabel = cleanOfflineEventAttendeeLabel(eventAttendeeLabel)
 
     await stageOfflineOperation(
       buildEventRegistrationOperation(event, {
-        paymentStatus: "not_required",
+        attendeeLabel,
+        paymentStatus: eventPaymentStatus,
         registrationSource: "walk_in",
       }),
       waitlistIntent ? "Event waitlist staged" : "Event registration staged",
       waitlistIntent
-        ? `${event.title} waitlist request is queued for ${activeProfile.companyName}; website capacity remains authoritative after sync acceptance.`
-        : `${event.title} walk-in registration is queued for ${activeProfile.companyName}; website capacity guard runs when the paired sync accepts the push.`,
+        ? `${attendeeLabel} waitlist request for ${event.title} is queued for ${activeProfile.companyName}; website capacity remains authoritative after sync acceptance.`
+        : `${attendeeLabel} walk-in registration for ${event.title} is queued for ${activeProfile.companyName}; website capacity guard runs when the paired sync accepts the push.`,
     )
 
     setPendingEventRegistrationIds((eventIds) => [
@@ -973,12 +982,20 @@ export function App() {
       return
     }
 
+    const attendeeLabel = cleanOfflineEventAttendeeLabel(eventAttendeeLabel, "Offline attendee")
+    const registrationPublicId = cleanOfflineEventRegistrationPublicId(
+      eventCheckinLookup,
+      event.eventId,
+    )
+
     await stageOfflineOperation(
       buildEventCheckinOperation(event, {
+        attendeeLabel,
+        registrationPublicId,
         checkinMethod: "manual_lookup",
       }),
       "Event check-in staged",
-      `${event.title} attendee check-in is queued for ${activeProfile.companyName}; website registration matching remains authoritative after sync acceptance.`,
+      `${attendeeLabel} check-in (${registrationPublicId}) for ${event.title} is queued for ${activeProfile.companyName}; website registration matching remains authoritative after sync acceptance.`,
     )
 
     setPendingEventCheckinIds((eventIds) => [
@@ -2699,6 +2716,50 @@ export function App() {
                       {eventRegistrationStatusLabel(selectedEvent.registrationStatus)}; website row
                       version {selectedEvent.rowVersion}
                     </small>
+                  </div>
+                  <div className="event-offline-fields" aria-label="Offline event registration details">
+                    <label htmlFor="event-attendee-label">
+                      <span className="micro-label">Attendee</span>
+                      <input
+                        id="event-attendee-label"
+                        value={eventAttendeeLabel}
+                        onBlur={() =>
+                          setEventAttendeeLabel(cleanOfflineEventAttendeeLabel(eventAttendeeLabel))
+                        }
+                        onChange={(event) => setEventAttendeeLabel(event.target.value)}
+                        placeholder="Customer name or lookup"
+                      />
+                    </label>
+                    <label htmlFor="event-payment-status">
+                      <span className="micro-label">Payment</span>
+                      <select
+                        id="event-payment-status"
+                        value={eventPaymentStatus}
+                        onChange={(event) =>
+                          setEventPaymentStatus(event.target.value as EventPaymentStatus)
+                        }
+                      >
+                        <option value="not_required">Not required</option>
+                        <option value="pay_at_store">Pay at store</option>
+                      </select>
+                    </label>
+                    <label htmlFor="event-checkin-lookup">
+                      <span className="micro-label">Check-in ID</span>
+                      <input
+                        id="event-checkin-lookup"
+                        value={eventCheckinLookup}
+                        onBlur={() =>
+                          setEventCheckinLookup(
+                            cleanOfflineEventRegistrationPublicId(
+                              eventCheckinLookup,
+                              selectedEvent.eventId,
+                            ),
+                          )
+                        }
+                        onChange={(event) => setEventCheckinLookup(event.target.value)}
+                        placeholder={`registration-${selectedEvent.eventId}-walkin`}
+                      />
+                    </label>
                   </div>
                   <button
                     type="button"

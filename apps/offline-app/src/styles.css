@@ -1682,6 +1682,39 @@ dd {
   line-height: 1.35;
 }
 
+.event-offline-fields {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.7fr) minmax(180px, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.event-offline-fields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.event-offline-fields input,
+.event-offline-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(35, 100, 70, 0.18);
+  border-radius: 8px;
+}
+
+.event-offline-fields input:focus,
+.event-offline-fields select:focus {
+  outline: 2px solid rgba(92, 171, 119, 0.42);
+  outline-offset: 2px;
+}
+
 .event-queue-preview {
   display: grid;
   gap: 7px;
@@ -2223,6 +2256,7 @@ dd {
   .detail-actions,
   .event-row,
   .event-detail-card,
+  .event-offline-fields,
   .connector-grid,
   .connector-editor,
   .connector-actions,

@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app event staging now captures staff-entered attendee labels,
+  pay-at-store/not-required payment status, and sanitized check-in public IDs
+  before queuing event registration or check-in operations.
 - Offline app customer-credit staging now includes a staff-entered redemption
   amount, inline cached-balance validation, currency input normalization, and
   exact minor-unit payloads for queued credit redemption operations.

@@ -18,6 +18,9 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract and browser coverage now verifies event workflow inputs:
+  attendee labels, pay-at-store status, and sanitized check-in public IDs flow
+  into queued `event_reservation` and `event_checkin` operation payloads.
 - Offline app contract and browser coverage now verifies customer-credit
   redemption amount controls: valid staff-entered dollar amounts stage exact
   minor-unit payloads, while over-balance amounts are blocked against the

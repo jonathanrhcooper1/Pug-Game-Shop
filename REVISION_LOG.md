@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Event Detail Workflow
+
+### What Changed
+
+- Added reusable offline event sanitizers for attendee labels and check-in
+  registration public IDs.
+- Added event detail controls for attendee label, payment status, and check-in
+  lookup/public ID.
+- Updated offline event registration staging so queued `event_reservation`
+  payloads include staff-entered attendee and payment details.
+- Updated offline check-in staging so queued `event_checkin` payloads include a
+  sanitized registration public ID and attendee label.
+
+### Why
+
+The event buttons previously staged generic "Offline walk-in" and fallback
+check-in records. Staff need event operations queued with the real customer or
+lookup value collected while the device is offline.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for attendee label and check-in public ID
+  sanitization.
+- Event registration/check-in payload assertions for attendee label, payment
+  status, and registration public ID.
+- UI shell markers for the event detail controls and sanitized operation
+  wiring.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for attendee
+  registration, pay-at-store selection, check-in ID normalization, event badge
+  increments, and no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to return event registration/check-in staging to the
+  default generic attendee and fallback registration IDs.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Credit Amount Workflow
 
 ### What Changed

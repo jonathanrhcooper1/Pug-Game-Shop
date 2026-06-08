@@ -105,6 +105,8 @@ for (const requiredExport of [
   "upsertConnectorProfile",
   "filterInventoryItems",
   "findInventoryItemByScan",
+  "cleanOfflineEventAttendeeLabel",
+  "cleanOfflineEventRegistrationPublicId",
   "creditRedemptionInputFromMinorUnits",
   "creditRedemptionInputToMinorUnits",
   "customerCreditAvailableAfterPending",
@@ -283,6 +285,11 @@ assert.ok(appSource.includes("buildInventoryUpdateOperation(targetItem, operatio
 assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
 assert.ok(appSource.includes("buildEventCheckinOperation(event"))
 assert.ok(appSource.includes("buildEventRegistrationOperation(event"))
+assert.ok(appSource.includes("eventAttendeeLabel"))
+assert.ok(appSource.includes("eventPaymentStatus"))
+assert.ok(appSource.includes("eventCheckinLookup"))
+assert.ok(appSource.includes("attendeeLabel,"))
+assert.ok(appSource.includes("registrationPublicId,"))
 assert.ok(appSource.includes("creditRedemptionInputToMinorUnits(creditRedemptionInput)"))
 assert.ok(appSource.includes("buildCustomerCreditRedemptionOperation(customerCredit, {"))
 assert.ok(appSource.includes("amountMinorUnits: creditRedemptionMinorUnits"))

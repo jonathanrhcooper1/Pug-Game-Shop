@@ -943,6 +943,29 @@ export function eventRegistrationStatusLabel(status: EventRegistrationStatus) {
   return status === "open" ? "Open" : status === "waitlist" ? "Waitlist" : status === "full" ? "Full" : "Closed"
 }
 
+export function cleanOfflineEventAttendeeLabel(
+  value: string,
+  fallback = "Offline walk-in",
+) {
+  const cleaned = value.trim().replace(/\s+/g, " ")
+
+  return cleaned ? cleaned.slice(0, 80) : fallback
+}
+
+export function cleanOfflineEventRegistrationPublicId(
+  value: string,
+  eventId: string,
+) {
+  const cleaned = value
+    .trim()
+    .replace(/[^A-Za-z0-9_.:-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 96)
+
+  return cleaned || `registration-${eventId}-walkin`
+}
+
 export function formatMoney(minorUnits: number, currency: "USD") {
   return new Intl.NumberFormat("en-US", {
     currency,

@@ -34,6 +34,8 @@ try {
     buildEventRegistrationOperation,
     buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
+    cleanOfflineEventAttendeeLabel,
+    cleanOfflineEventRegistrationPublicId,
     creditRedemptionInputFromMinorUnits,
     creditRedemptionInputToMinorUnits,
     customerCreditAvailableAfterPending,
@@ -397,6 +399,17 @@ try {
     eventRegistrationOperation.authorization_context_json,
   )
 
+  assert.equal(cleanOfflineEventAttendeeLabel("  Jane   Pugfan  "), "Jane Pugfan")
+  assert.equal(cleanOfflineEventAttendeeLabel(""), "Offline walk-in")
+  assert.equal(
+    cleanOfflineEventRegistrationPublicId(" registration event 200 / Jane ", "event-200"),
+    "registration-event-200-Jane",
+  )
+  assert.equal(
+    cleanOfflineEventRegistrationPublicId("", "event-200"),
+    "registration-event-200-walkin",
+  )
+
   assert.equal(eventRegistrationOperation.client_operation_id, "offline-event-reservation-event-200-20260608120000")
   assert.equal(eventRegistrationOperation.operation_type, "event_reservation")
   assert.equal(eventRegistrationOperation.entity_type, "event")
@@ -404,6 +417,7 @@ try {
   assert.equal(eventRegistrationOperation.base_row_version, 4)
   assert.equal(eventRegistrationPayload.event_id, "event-200")
   assert.equal(eventRegistrationPayload.event_title, "Commander Night")
+  assert.equal(eventRegistrationPayload.attendee_label, "Offline walk-in")
   assert.equal(eventRegistrationPayload.registration_source, "walk_in")
   assert.equal(eventRegistrationPayload.seats_remaining_snapshot, 1)
   assert.equal(eventRegistrationPayload.payment_status, "pay_at_store")
@@ -439,6 +453,7 @@ try {
   assert.equal(eventCheckinOperation.entity_type, "event")
   assert.equal(eventCheckinOperation.entity_id, "event-200")
   assert.equal(eventCheckinPayload.registration_public_id, "registration-event-200-walkin")
+  assert.equal(eventCheckinPayload.attendee_label, "Offline attendee")
   assert.equal(eventCheckinPayload.checkin_method, "manual_lookup")
   assert.equal(eventCheckinPayload.checkin_status, "checked_in")
   assert.equal(eventCheckinPayload.sync_intent, "offline_event_checkin")
