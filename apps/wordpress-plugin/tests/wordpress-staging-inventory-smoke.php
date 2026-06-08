@@ -72,8 +72,13 @@ $now                 = '2026-06-07 12:00:00.000000';
 $locations_table     = $wpdb->prefix . 'tcg_inventory_locations';
 $inventory_table     = $wpdb->prefix . 'tcg_inventory_items';
 $price_log_table     = $wpdb->prefix . 'tcg_price_change_log';
+$reference_table     = $wpdb->prefix . 'tcg_reference_cards';
+$variants_table      = $wpdb->prefix . 'tcg_reference_variants';
+$observations_table  = $wpdb->prefix . 'tcg_provider_price_observations';
 $location_public_id  = '00000000-0000-4000-8000-000000000101';
 $inventory_public_id = '00000000-0000-4000-8000-000000000201';
+$reference_public_id = '00000000-0000-4000-8000-000000000301';
+$reference_provider_id = 'scrydex-stage-charizard-004';
 $seed_barcode        = 'PUG-STAGE-PKM-BASE-058';
 $seed_sku            = 'PUG-STAGE-PKM-BASE-058';
 $create_barcode      = 'PUG-STAGE-PKM-BULBA-001';
@@ -104,6 +109,27 @@ $wpdb->query(
 		"DELETE FROM {$locations_table} WHERE public_id = %s OR code = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$location_public_id,
 		'SHOWCASE-A'
+	)
+);
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$observations_table} WHERE provider_name = %s AND provider_card_id = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		'scrydex',
+		$reference_provider_id
+	)
+);
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$variants_table} WHERE reference_card_id IN (SELECT reference_card_id FROM {$reference_table} WHERE public_id = %s OR provider_card_id = %s)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$reference_public_id,
+		$reference_provider_id
+	)
+);
+$wpdb->query(
+	$wpdb->prepare(
+		"DELETE FROM {$reference_table} WHERE public_id = %s OR provider_card_id = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$reference_public_id,
+		$reference_provider_id
 	)
 );
 
@@ -179,10 +205,102 @@ $inventory_inserted = $wpdb->insert(
 );
 $assert( false !== $inventory_inserted, 'Staging smoke inventory seed insert failed.' );
 
+$reference_inserted = $wpdb->insert(
+	$reference_table,
+	array(
+		'public_id'           => $reference_public_id,
+		'provider_name'       => 'scrydex',
+		'provider_card_id'    => $reference_provider_id,
+		'game'                => 'pokemon',
+		'name'                => 'Charizard',
+		'normalized_name'     => 'charizard',
+		'set_name'            => 'Base Set',
+		'set_code'            => 'BASE',
+		'card_number'         => '4',
+		'printed_number'      => '4/102',
+		'year'                => 1999,
+		'rarity'              => 'Rare Holo',
+		'rarity_code'         => 'RH',
+		'language'            => 'English',
+		'language_code'       => 'EN',
+		'release_date'        => '1999-01-09',
+		'front_image_url'     => 'https://images.pokemontcg.io/base1/4_hires.png',
+		'back_image_url'      => 'https://images.pokemontcg.io/cardback.png',
+		'search_text'         => 'Charizard Base Set 4/102 holo unlimited shadowless pokemon',
+		'provider_updated_at' => $now,
+		'created_at'          => $now,
+		'updated_at'          => $now,
+		'row_version'         => 1,
+	)
+);
+$assert( false !== $reference_inserted, 'Staging smoke reference card seed insert failed.' );
+
+$reference_id = (int) $wpdb->insert_id;
+$assert( $reference_id > 0, 'Staging smoke reference card seed did not produce an ID.' );
+
+$variant_rows = array(
+	array(
+		'provider_variant_id'        => 'scrydex-stage-charizard-004-holo-unlimited',
+		'variant'                    => 'Unlimited',
+		'finish'                     => 'Holofoil',
+		'parallel_name'              => '',
+		'edition'                    => 'Base Set',
+		'language'                   => 'English',
+		'raw_or_graded_support'      => 'both',
+		'normalized_attributes_json' => '{"condition_support":["NM","LP","MP","HP","DMG"],"finish":"holofoil"}',
+	),
+	array(
+		'provider_variant_id'        => 'scrydex-stage-charizard-004-shadowless',
+		'variant'                    => 'Shadowless',
+		'finish'                     => 'Holofoil',
+		'parallel_name'              => 'Shadowless',
+		'edition'                    => 'Base Set',
+		'language'                   => 'English',
+		'raw_or_graded_support'      => 'both',
+		'normalized_attributes_json' => '{"condition_support":["NM","LP","MP","HP","DMG"],"finish":"holofoil","printing":"shadowless"}',
+	),
+);
+
+foreach ( $variant_rows as $variant_row ) {
+	$variant_inserted = $wpdb->insert(
+		$variants_table,
+		array_merge(
+			array(
+				'reference_card_id' => $reference_id,
+				'created_at'        => $now,
+				'updated_at'        => $now,
+			),
+			$variant_row
+		)
+	);
+	$assert( false !== $variant_inserted, 'Staging smoke reference variant seed insert failed.' );
+}
+
+$observation_inserted = $wpdb->insert(
+	$observations_table,
+	array(
+		'public_id'           => '00000000-0000-4000-8000-000000000401',
+		'reference_card_id'   => $reference_id,
+		'provider_name'       => 'scrydex',
+		'provider_card_id'    => $reference_provider_id,
+		'game'                => 'pokemon',
+		'market_price'        => '250.0000',
+		'currency'            => 'USD',
+		'source_observed_at'  => $now,
+		'provider_updated_at' => $now,
+		'observed_at'         => $now,
+		'sync_job_id'         => null,
+		'created_at'          => $now,
+	)
+);
+$assert( false !== $observation_inserted, 'Staging smoke price observation seed insert failed.' );
+
 wp_set_current_user( 1 );
 do_action( 'rest_api_init' );
 
 $routes = rest_get_server()->get_routes();
+$assert( isset( $routes['/tcg-store/v1/reference/search'] ), 'Reference card search route was not registered.' );
+$assert( $route_has_method( $routes, '/tcg-store/v1/reference/search', 'GET' ), 'Reference card search route should allow GET on staging smoke.' );
 $assert( isset( $routes['/tcg-store/v1/inventory/search'] ), 'Staging inventory search route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/inventory'] ), 'Inventory create route path should be registered on staging smoke.' );
 $assert( $route_has_method( $routes, '/tcg-store/v1/inventory', 'POST' ), 'Inventory create route should allow POST on staging smoke.' );
@@ -312,6 +430,37 @@ $assert( 'Bulbasaur' === ( $created_items[0]['card_name'] ?? null ), 'Created in
 $assert( 'PUG-STAGE-PKM-BULBA-001' === ( $created_items[0]['sku'] ?? null ), 'Created inventory search should expose the created SKU.' );
 $assert( '2.50' === ( $created_items[0]['sale_price'] ?? null ), 'Created inventory search should normalize created sale price.' );
 
+$reference_request = new WP_REST_Request( 'GET', '/tcg-store/v1/reference/search' );
+$reference_request->set_param( 'q', 'Charizard' );
+$reference_request->set_param( 'game', 'pokemon' );
+$reference_request->set_param( 'limit', '5' );
+
+$reference_response = rest_do_request( $reference_request );
+$assert( ! $reference_response->is_error(), 'Reference card search REST route returned an error.' );
+$assert( 200 === $reference_response->get_status(), 'Reference card search REST route did not return HTTP 200.' );
+
+$reference_data = $reference_response->get_data();
+$assert( is_array( $reference_data ), 'Reference card search response is not an array.' );
+$assert( 'reference_search_read_ready' === ( $reference_data['code'] ?? null ), 'Reference search should report ready status.' );
+$assert( 'wordpress_catalog_cache' === ( $reference_data['data']['source'] ?? null ), 'Reference search should read from the WordPress catalog cache.' );
+$assert( 1 === (int) ( $reference_data['data']['meta']['total'] ?? -1 ), 'Reference search should return the seeded card.' );
+$assert( false === ( $reference_data['data']['meta']['live_provider_request'] ?? null ), 'Reference search should not call the live provider in the route.' );
+$assert( false === ( $reference_data['data']['meta']['credentials_in_response'] ?? null ), 'Reference search should not expose credentials.' );
+
+$reference_cards = $reference_data['data']['cards'] ?? array();
+$assert( is_array( $reference_cards ) && isset( $reference_cards[0] ) && is_array( $reference_cards[0] ), 'Reference search should return a card row.' );
+$assert( 'Charizard' === ( $reference_cards[0]['card_name'] ?? null ), 'Reference search should return the seeded Charizard card.' );
+$assert( 'https://images.pokemontcg.io/base1/4_hires.png' === ( $reference_cards[0]['image_url'] ?? null ), 'Reference search should expose the card image URL.' );
+$assert( '250.0000' === ( $reference_cards[0]['market_price']['amount'] ?? null ), 'Reference search should expose the market price.' );
+$assert( 25000 === (int) ( $reference_cards[0]['market_price_minor_units'] ?? 0 ), 'Reference search should expose price minor units.' );
+$assert( 'USD' === ( $reference_cards[0]['currency'] ?? null ), 'Reference search should expose the price currency.' );
+$assert( false === ( $reference_cards[0]['live_provider_request'] ?? null ), 'Reference search card should not come from a live provider request.' );
+
+$reference_variants = $reference_cards[0]['variants'] ?? array();
+$assert( is_array( $reference_variants ) && 2 === count( $reference_variants ), 'Reference search should expose seeded variants.' );
+$assert( 'Holofoil' === ( $reference_variants[0]['finish'] ?? null ), 'Reference search should expose variant finish.' );
+$assert( '' !== ( $reference_variants[0]['provider_variant_id'] ?? '' ), 'Reference search should expose provider variant IDs.' );
+
 $health_response = rest_do_request( '/tcg-store/v1/health' );
 $assert( ! $health_response->is_error(), 'Health REST route returned an error during staging smoke.' );
 $assert( 200 === $health_response->get_status(), 'Health REST route did not return HTTP 200 during staging smoke.' );
@@ -322,12 +471,15 @@ $assert( true === ( $health['features']['inventory_pricing']['available'] ?? nul
 $assert( true === ( $health['features']['inventory_pricing']['enabled'] ?? null ), 'Health should report inventory staging enablement.' );
 $assert( 'ready' === ( $health['inventory_route_bootstrap']['status'] ?? null ), 'Inventory route bootstrap should be ready on staging smoke.' );
 $assert( true === ( $health['inventory_route_bootstrap']['feature_enabled'] ?? null ), 'Inventory route bootstrap feature should be enabled.' );
-$assert( 2 === (int) ( $health['inventory_route_bootstrap']['registerable_route_count'] ?? 0 ), 'Only staff inventory search and create should be registerable.' );
+$assert( 3 === (int) ( $health['inventory_route_bootstrap']['registerable_route_count'] ?? 0 ), 'Reference search, staff inventory search, and create should be registerable.' );
 $assert( true === ( $health['inventory_route_bootstrap']['should_register_routes'] ?? null ), 'Inventory route bootstrap should register staging search and create.' );
 $assert( false === ( $health['inventory_route_bootstrap']['registration_deferred'] ?? null ), 'Inventory route bootstrap should not be deferred.' );
 
 $inventory_routes = $health['inventory_route_bootstrap']['route_registration_summary'] ?? array();
 $assert( is_array( $inventory_routes ), 'Inventory route summary should be present during staging smoke.' );
+$assert( true === ( $inventory_routes['GET /reference/search']['should_register'] ?? null ), 'Reference card search should be registerable.' );
+$assert( false === ( $inventory_routes['GET /reference/search']['route_connected_reads_deferred'] ?? null ), 'Reference card search reads should not be deferred.' );
+$assert( true === ( $inventory_routes['GET /reference/search']['route_connected_writes_deferred'] ?? null ), 'Reference card search writes should remain deferred.' );
 $assert( true === ( $inventory_routes['GET /inventory/search']['should_register'] ?? null ), 'Staff inventory search should be registerable.' );
 $assert( false === ( $inventory_routes['GET /inventory/search']['route_connected_reads_deferred'] ?? null ), 'Staff inventory search reads should not be deferred.' );
 $assert( true === ( $inventory_routes['GET /inventory/search']['route_connected_writes_deferred'] ?? null ), 'Staff inventory search writes should remain deferred.' );
@@ -340,6 +492,7 @@ $assert( true === ( $inventory_routes['POST /inventory']['label_print_deferred']
 $dependencies = $health['inventory_route_dependencies'] ?? array();
 $assert( is_array( $dependencies ), 'Inventory route dependency summary should be present during staging smoke.' );
 $assert( false === ( $dependencies['public_read_routes_enabled'] ?? null ), 'Public inventory reads should remain disabled.' );
+$assert( true === ( $dependencies['reference_search_handler_ready'] ?? null ), 'Reference card search handler should be route-ready.' );
 $assert( true === ( $dependencies['inventory_search_route_handler_ready'] ?? null ), 'Inventory search handler should be route-ready.' );
 $assert( false === ( $dependencies['inventory_search_route_reads_deferred'] ?? null ), 'Inventory search handler reads should not be deferred.' );
 $assert( true === ( $dependencies['inventory_intake_route_handler_ready'] ?? null ), 'Inventory intake handler should be route-ready.' );

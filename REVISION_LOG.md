@@ -3,6 +3,70 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging Reference Search Runtime Verification
+
+### What Changed
+
+- Added a guarded staging inventory runtime configurator for the
+  `inventory_pricing` feature flag and staff inventory/reference search gates.
+- Added a guarded staging pending-migrations runner that exports a staging
+  database backup before applying plugin migrations.
+- Expanded the staging inventory smoke test to seed a disposable Charizard
+  reference card with image URL, market price, and variants, then verify
+  `/tcg-store/v1/reference/search` returns that payload.
+- Exposed `reference_search_handler_ready` in the inventory route dependency
+  health payload so staging/status screens can show the add-card lookup route.
+
+### Why
+
+The add-to-inventory preview needs proof that the website, database schema, and
+REST route are actually ready to provide card photos, prices, and versions to
+the LAN sync server/offline app path.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `scripts/staging-configure-inventory-runtime.mjs`
+- `scripts/staging-run-pending-migrations.mjs`
+- `scripts/tests/staging-inventory-runtime-config-contract.mjs`
+- `scripts/tests/staging-pending-migrations-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The staging runner applies existing pending migrations and confirmed
+  `Version0011ReferenceCardImages` on staging.
+
+### Tests Added
+
+- Staging inventory runtime configuration contract.
+- Staging pending migrations contract.
+- Expanded staging inventory smoke assertions for reference search image,
+  price, and variant response data.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/lint.php`
+- `php apps/wordpress-plugin/tests/run.php`
+- `node scripts/tests/staging-inventory-runtime-config-contract.mjs`
+- `node scripts/tests/staging-pending-migrations-contract.mjs`
+- `node scripts/tests/staging-inventory-smoke-contract.mjs`
+- `npm.cmd run staging:run-pending-migrations`
+- `npm.cmd run staging:configure-inventory-runtime`
+
+### Rollback Notes
+
+- Revert this revision to remove the staging helper scripts and smoke
+  assertions.
+- Staging migration rollback for the existing reference-image columns can use
+  `MigrationRunner::rollback_to(10)` after restoring or confirming the staging
+  backup export.
+- The staging runtime gates can be disabled from plugin settings or by rerunning
+  the configurator with the staff search/create env flags set to false.
+
 ## 2026-06-08 - ScryDex Variant Catalog Sync
 
 ### What Changed

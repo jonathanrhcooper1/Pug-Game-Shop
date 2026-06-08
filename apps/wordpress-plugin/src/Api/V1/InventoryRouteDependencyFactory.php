@@ -218,6 +218,7 @@ final class InventoryRouteDependencyFactory {
 			'registrar_ready'                              => method_exists( InventoryRouteRegistrar::class, 'register_enabled_routes' ),
 			'bootstrapper_ready'                           => method_exists( InventoryRouteBootstrapper::class, 'bootstrap_current_routes' ),
 			'inventory_search_route_handler_factory_ready' => true === ( $search_summary['handler_factory_ready'] ?? false ),
+			'reference_search_handler_ready'               => true === ( $search_summary['reference_search_handler_ready'] ?? false ),
 			'inventory_search_route_handler_ready'         => true === ( $search_summary['route_connected_handler_ready'] ?? false ),
 			'inventory_search_route_reads_deferred'        => true === ( $search_summary['route_connected_reads_deferred'] ?? true ),
 			'inventory_search_route_dependency_issues'     => $this->list_values( $search_summary['configuration_issues'] ?? array() ),
