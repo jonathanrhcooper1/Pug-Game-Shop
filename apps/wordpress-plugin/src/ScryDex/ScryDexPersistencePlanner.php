@@ -41,6 +41,7 @@ final class ScryDexPersistencePlanner {
 
 		$now                = $this->safe_timestamp( $now );
 		$existing_by_key    = $this->index_existing_reference_rows( $existing_reference_rows );
+		$planned_by_key     = array();
 		$planned_keys       = array();
 		$reference_inserts  = array();
 		$reference_updates  = array();
@@ -59,8 +60,9 @@ final class ScryDexPersistencePlanner {
 				continue;
 			}
 
-			$planned_keys[ $key ] = true;
-			$existing             = $existing_by_key[ $key ] ?? null;
+			$planned_keys[ $key ]   = true;
+			$planned_by_key[ $key ] = $row;
+			$existing               = $existing_by_key[ $key ] ?? null;
 
 			if ( null === $existing ) {
 				$reference_inserts[] = $this->insert_payload( $row, $key, $now );
@@ -98,7 +100,14 @@ final class ScryDexPersistencePlanner {
 				continue;
 			}
 
-			$price_observations[] = $this->price_observation_payload( $price_row, $key, $existing, $now );
+			$price_observations[] = $this->price_observation_payload(
+				$price_row,
+				$key,
+				$planned_by_key[ $key ] ?? null,
+				$existing,
+				$page_plan->next_checkpoint(),
+				$now
+			);
 		}
 
 		return ScryDexPersistencePlan::ready(
@@ -151,7 +160,7 @@ final class ScryDexPersistencePlanner {
 		return array_merge(
 			$this->card_fields( $row ),
 			array(
-				'public_id'   => $this->public_id_for_key( $key ),
+				'public_id'   => $this->stable_uuid( 'scrydex-reference-card:' . $key ),
 				'created_at'  => $now,
 				'updated_at'  => $now,
 				'row_version' => 1,
@@ -207,24 +216,49 @@ final class ScryDexPersistencePlanner {
 
 	/**
 	 * @param array<string, mixed> $price_row Normalized provider price row.
+	 * @param array<string, mixed>|null $planned_reference Planned reference-card row.
 	 * @param array<string, mixed>|null $existing Existing reference-card row.
 	 * @return array<string, mixed>
 	 */
 	private function price_observation_payload(
 		array $price_row,
 		string $key,
+		?array $planned_reference,
 		?array $existing,
+		?ScryDexSyncCheckpoint $checkpoint,
 		string $now
 	): array {
+		$market_price        = $price_row['market_price'] ?? null;
+		$currency            = $price_row['currency'] ?? null;
+		$source_observed_at  = $price_row['source_observed_at'] ?? null;
+		$provider_updated_at = $price_row['provider_updated_at'] ?? null;
+		$sync_job_id         = null === $checkpoint ? null : $this->positive_int( $checkpoint->job_id() );
+
 		return array(
+			'public_id'           => $this->stable_uuid(
+				'scrydex-price-observation:'
+					. implode(
+						':',
+						array(
+							$key,
+							(string) $market_price,
+							(string) $currency,
+							(string) $source_observed_at,
+							(string) $sync_job_id,
+						)
+					)
+			),
 			'provider_key'        => $key,
 			'provider_name'       => (string) $price_row['provider_name'],
 			'provider_card_id'    => (string) $price_row['provider_card_id'],
 			'reference_card_id'   => null === $existing ? null : $this->positive_int( $existing['reference_card_id'] ?? null ),
-			'market_price'        => $price_row['market_price'] ?? null,
-			'currency'            => $price_row['currency'] ?? null,
-			'source_observed_at'  => $price_row['source_observed_at'] ?? null,
-			'provider_updated_at' => $price_row['provider_updated_at'] ?? null,
+			'game'                => $this->reference_game( $planned_reference, $existing ),
+			'market_price'        => $market_price,
+			'currency'            => $currency,
+			'source_observed_at'  => $source_observed_at,
+			'provider_updated_at' => $provider_updated_at,
+			'observed_at'         => $now,
+			'sync_job_id'         => $sync_job_id,
 			'planned_at'          => $now,
 		);
 	}
@@ -259,14 +293,24 @@ final class ScryDexPersistencePlanner {
 		return null === $current ? 1 : $current + 1;
 	}
 
+	/**
+	 * @param array<string, mixed>|null $planned_reference Planned reference-card row.
+	 * @param array<string, mixed>|null $existing Existing reference-card row.
+	 */
+	private function reference_game( ?array $planned_reference, ?array $existing ): ?string {
+		$value = trim( (string) ( $planned_reference['game'] ?? $existing['game'] ?? '' ) );
+
+		return '' === $value ? null : $value;
+	}
+
 	private function safe_timestamp( ?string $now ): string {
 		$now = trim( (string) $now );
 
 		return '' === $now ? gmdate( 'Y-m-d H:i:s' ) : $now;
 	}
 
-	private function public_id_for_key( string $key ): string {
-		$hash = hash( 'sha256', 'scrydex-reference-card:' . $key );
+	private function stable_uuid( string $seed ): string {
+		$hash = hash( 'sha256', $seed );
 
 		return sprintf(
 			'%s-%s-%s-%s-%s',

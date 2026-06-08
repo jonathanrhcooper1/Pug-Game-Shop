@@ -141,9 +141,9 @@ final class MigrationRunner {
 			new Version0007Reservations(),
 			new Version0008OfflineSync(),
 			new Version0009PosPayments(),
+			new Version0010ProviderPriceObservations(),
 		);
 	}
-
 	/**
 	 * @return list<Migration>
 	 */

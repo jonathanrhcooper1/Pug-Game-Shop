@@ -23,11 +23,18 @@ settings now provide secret-preserving staging credential storage and redacted
 readiness output, but those settings do not execute provider network requests by
 themselves.
 
+Schema migration `0010_provider_price_observations` adds
+`tcg_provider_price_observations` for raw provider market-price snapshots. This
+keeps ScryDex price observations separate from inventory-item price change
+history, which requires an exact `inventory_id` and should only track store
+sale-price decisions.
+
 The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
 provider page response. The persistence planner turns those page plans into
-write payloads, but it does not execute `wpdb` writes or schedule follow-up jobs
-yet.
+write payloads with stable provider price observation IDs, game context,
+observed timestamps, and sync job IDs, but it does not execute `wpdb` writes or
+schedule follow-up jobs yet.
 
 ## Credential Handling
 

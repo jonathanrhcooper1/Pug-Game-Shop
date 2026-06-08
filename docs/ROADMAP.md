@@ -42,8 +42,8 @@ Status: In progress; generic sync schema, ScryDex checkpoint/resume helpers,
 mock-backed ScryDex provider adapter, secret-preserving staged settings,
 provider factory readiness, dry-run request/checkpoint planning, execution-gate
 readiness diagnostics, usage-budget settings/planning, checkpoint repository
-planning, card/price normalization, and sync page processing plus persistence
-planning implemented
+planning, provider price observation schema migration, card/price normalization,
+and sync page processing plus persistence planning implemented
 
 Deliver adapter, capability discovery, card/expansion/price/image sync,
 checkpoints, resume, usage tracking, webhook verification, live logs, and daily

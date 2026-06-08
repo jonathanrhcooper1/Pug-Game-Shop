@@ -10,6 +10,7 @@
 
 use TCGStorePlatform\Migrations\InventoryPricingSchema;
 use TCGStorePlatform\Migrations\MigrationRunner;
+use TCGStorePlatform\Migrations\ProviderPriceObservationSchema;
 use TCGStorePlatform\Version;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -58,26 +59,33 @@ $assert_table_state = static function ( bool $expected_exists, array $tables, st
 	}
 };
 
-$inventory_tables = InventoryPricingSchema::tables(
+$inventory_tables      = InventoryPricingSchema::tables(
+	$wpdb->prefix,
+	$wpdb->get_charset_collate()
+);
+$provider_price_tables = ProviderPriceObservationSchema::tables(
 	$wpdb->prefix,
 	$wpdb->get_charset_collate()
 );
 
 $assert( Version::DATABASE === $runner->current_version(), 'Rehearsal must start from the current database target.' );
 $assert_table_state( true, $inventory_tables, 'before rollback' );
+$assert_table_state( true, $provider_price_tables, 'before rollback' );
 
 $runner->rollback_to( 1 );
 
 $assert( 1 === $runner->current_version(), 'Rollback rehearsal did not reach schema version 1.' );
 $assert_table_state( false, $inventory_tables, 'after rollback' );
+$assert_table_state( false, $provider_price_tables, 'after rollback' );
 
 $applied_versions = $runner->migrate();
 
 $assert(
-	array( 2, 3, 4, 5, 6, 7, 8, 9 ) === $applied_versions,
-	'Migration restore did not apply versions 2 through 9.'
+	array( 2, 3, 4, 5, 6, 7, 8, 9, 10 ) === $applied_versions,
+	'Migration restore did not apply versions 2 through 10.'
 );
 $assert( Version::DATABASE === $runner->current_version(), 'Migration restore did not return to the current target.' );
 $assert_table_state( true, $inventory_tables, 'after restore' );
+$assert_table_state( true, $provider_price_tables, 'after restore' );
 
 echo "PASS migration rollback/restore rehearsal\n";

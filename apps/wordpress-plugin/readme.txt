@@ -1,7 +1,7 @@
 === TCG Store Platform ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.155.0
+Stable tag: 0.156.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -382,6 +382,13 @@ Inventory and commerce modules remain disabled until their implementation phases
 4. Open TCG Store > System Status and resolve any dependency warnings.
 
 == Changelog ==
+
+= 0.156.0 =
+
+* Added provider price observation schema migration for ScryDex market-price
+  snapshots with reversible rollback support.
+* Extended ScryDex persistence planning with stable observation IDs, game
+  context, sync job IDs, and observed timestamps.
 
 = 0.155.0 =
 

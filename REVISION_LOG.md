@@ -3,6 +3,88 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Provider Price Observation Schema
+
+### What Changed
+
+- Added migration `0010_provider_price_observations` and
+  `ProviderPriceObservationSchema` for `tcg_provider_price_observations`.
+- Bumped plugin/database metadata to `0.156.0` and database target `10`.
+- Extended ScryDex persistence planning so provider price observations include
+  stable public IDs, game context, observed timestamps, and sync job IDs.
+- Updated migration plan, WordPress integration smoke, migration rehearsal,
+  changelog, roadmap, and testing documentation for the new schema target.
+
+### Why
+
+ScryDex market-price observations are reference/provider data, not store
+inventory-item sale-price changes. A dedicated table prevents overloading the
+inventory price-change log, which correctly requires an exact `inventory_id`.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/ProviderPriceObservationSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0010ProviderPriceObservations.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/ProviderPriceObservationSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added reversible database migration `0010_provider_price_observations`.
+- Rollback drops `tcg_provider_price_observations` through the migration
+  runner.
+
+### Tests Added
+
+- Provider price observation schema tests for table presence, provider market
+  snapshot fields, indexes, dbDelta shape, and rollback order.
+- Migration runner plan assertions for database target `10`.
+- ScryDex persistence planner assertions for provider price observation public
+  IDs, game context, observed timestamps, and sync job IDs.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 836 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Migrations\ProviderPriceObservationSchema.php apps\wordpress-plugin\src\Migrations\Version0010ProviderPriceObservations.php apps\wordpress-plugin\src\Migrations\MigrationRunner.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistencePlanner.php apps\wordpress-plugin\src\Version.php apps\wordpress-plugin\tests\wordpress-integration-smoke.php apps\wordpress-plugin\tests\wordpress-migration-rehearsal.php apps\wordpress-plugin\tcg-store-platform.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 547 PHP files.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed, including 836 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Run `MigrationRunner::rollback_to( 9 )` in a backed-up, approved staging or
+  production rollback window to drop `tcg_provider_price_observations`.
+- Revert this revision to restore database target `9`, plugin metadata
+  `0.155.0`, ScryDex price observation planning without schema-backed public
+  IDs, and previous migration expectations.
+- No ScryDex network calls, scheduled workers, checkpoint writes, or provider
+  price inserts are executed by this revision.
+
 ## 2026-06-07 - ScryDex Checkpoint Repository Planning
 
 ### What Changed

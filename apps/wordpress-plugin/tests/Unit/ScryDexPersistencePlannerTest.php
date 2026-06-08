@@ -36,11 +36,14 @@ final class ScryDexPersistencePlannerTest extends TestCase {
 		$this->assert_same( 1, $insert['row_version'] );
 		$this->assert_true( 1 === preg_match( '/^[a-f0-9-]{36}$/', $insert['public_id'] ) );
 		$this->assert_same( 'scrydex:sdx-pkm-001', $price['provider_key'] );
+		$this->assert_true( 1 === preg_match( '/^[a-f0-9-]{36}$/', $price['public_id'] ) );
 		$this->assert_same( null, $price['reference_card_id'] );
+		$this->assert_same( 'pokemon', $price['game'] );
 		$this->assert_same( '120.0000', $price['market_price'] );
 		$this->assert_same( 'USD', $price['currency'] );
+		$this->assert_same( '2026-06-06 12:00:00', $price['observed_at'] );
+		$this->assert_same( 101, $price['sync_job_id'] );
 	}
-
 	public function test_planner_prepares_changed_reference_updates_with_row_version(): void {
 		$page_plan = $this->page_plan_from_fixture();
 		$existing  = array(
@@ -78,8 +81,8 @@ final class ScryDexPersistencePlannerTest extends TestCase {
 		$this->assert_same( '2026-06-06 12:00:00', $update['updated_at'] );
 		$this->assert_same( 4, $update['row_version'] );
 		$this->assert_same( 88, $price['reference_card_id'] );
+		$this->assert_same( 'pokemon', $price['game'] );
 	}
-
 	public function test_planner_marks_unchanged_reference_rows_without_update(): void {
 		$page_plan = $this->page_plan_from_cards(
 			array(

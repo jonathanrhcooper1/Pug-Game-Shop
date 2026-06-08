@@ -1,6 +1,6 @@
 # TCG Store Platform WordPress Plugin
 
-Version: `0.155.0`
+Version: `0.156.0`
 
 ## Implemented Features
 

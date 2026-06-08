@@ -41,8 +41,8 @@ identity, sync cursors, queued operations, sync logs, cached branding,
 inventory, customer credit, events, and conflict tables. The schema is local
 state only; WordPress remains authoritative once operations sync.
 
-Version `0.156.0` adds reconnect push request planning in the offline app
-workspace model. Queued operation batches can now be shaped into deferred
+The reconnect push planning checkpoint adds offline app workspace support for
+queued operation batches to be shaped into deferred
 `POST /wp-json/tcg-store/v1/offline/push` request plans and summarized from
 the WordPress push response shape. Live network execution, production API
 keys, queue replay, canonical mutations, and direct MySQL access remain

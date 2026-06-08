@@ -39,6 +39,10 @@
 - Local unit coverage now includes ScryDex checkpoint repository planning for
   read/upsert SQL templates, nullable resume fields, invalid table prefixes,
   invalid checkpoint identities, and execution-gate checkpoint readiness.
+- Local unit coverage now includes provider price observation schema migration
+  contracts for ScryDex market-price snapshots, migration plan/rollback target
+  updates, and persistence planner observation IDs, game context, timestamps,
+  and sync job IDs.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment
@@ -87,8 +91,9 @@
   row through REST, verifies its initial price-change log row, and asserts
   staff search returns both rows with staff SKU data. The workflow also runs an
   explicit destructive migration rehearsal in the disposable database, rolling
-  from the current target to schema version `1`, verifying Phase 2 tables are
-  dropped, migrating back to the target, and verifying those tables return. It
+  from the current target to schema version `1`, verifying Phase 2 and provider
+  price observation tables are dropped, migrating back to the target, and
+  verifying those tables return. It
   then runs an explicit non-production inventory search benchmark fixture that
   seeds 50,000 disposable rows and emits baselines for public visible search,
   staff deep pagination, and staff barcode lookup through the staged search

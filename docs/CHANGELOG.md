@@ -10,6 +10,10 @@ All notable changes follow Semantic Versioning.
   templates for `tcg_sync_checkpoints`, exposes checkpoint repository readiness
   in health/execution-gate diagnostics, and keeps checkpoint reads/writes
   disabled until worker staging acceptance.
+- Provider price observation schema migration `0010` with
+  `tcg_provider_price_observations`, giving ScryDex market-price pulls a
+  dedicated reversible persistence table instead of overloading inventory item
+  price-change history.
 - ScryDex usage-budget settings and cards-page budget planning, exposing
   daily credit limits, remaining-credit reserve, estimated page cost, and
   deferred `/account/v1/usage` checks through health/admin diagnostics before
