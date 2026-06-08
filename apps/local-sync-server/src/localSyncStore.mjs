@@ -11,6 +11,7 @@ export const ACCESS_SECTIONS = Object.freeze([
   "Events",
   "Customers",
   "Sync",
+  "Status",
   "Conflicts",
   "Settings",
 ])
@@ -1373,7 +1374,7 @@ function seedUsers() {
       name: "Front Counter Staff",
       pin: "1234",
       role: "staff",
-      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync"],
+      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
       salt: "seed-staff-front-counter",
     }),
     buildSeedUser({

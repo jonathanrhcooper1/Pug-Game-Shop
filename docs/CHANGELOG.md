@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app now has a dedicated Status workspace for activity and sync status
+  panels, keeping detailed workflow messages off the main Inventory, Kiosk,
+  Queue, Events, Customers, Sync, and Settings workspaces.
 - ScryDex catalog intake now carries provider image URLs into WordPress
   reference-card schema, persistence plans, local sync server catalog results,
   and offline app intake rows; the offline app shows card art, market price,

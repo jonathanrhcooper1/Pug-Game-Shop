@@ -5,6 +5,7 @@ export type LocalSyncAccessSection =
   | "Events"
   | "Customers"
   | "Sync"
+  | "Status"
   | "Conflicts"
   | "Settings"
 

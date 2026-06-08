@@ -9,6 +9,7 @@ export type IconName =
   | "scan"
   | "wifi"
   | "card"
+  | "history"
 
 export type InventoryStatus = "available" | "reserved" | "conflict" | "pending_intake"
 export type InventorySource = "cached" | "queued" | "accepted"
@@ -805,6 +806,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   navItems: [
     { label: "Inventory", icon: "box", active: true },
     { label: "Sync", icon: "sync" },
+    { label: "Status", icon: "history" },
     { label: "Kiosk", icon: "scan" },
     { label: "Queue", icon: "queue" },
     { label: "Events", icon: "event" },

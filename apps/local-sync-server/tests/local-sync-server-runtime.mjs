@@ -48,13 +48,13 @@ try {
       name: "Test Cashier",
       pin: "2468",
       role: "staff",
-      access: ["Inventory", "Kiosk", "Queue"],
+      access: ["Inventory", "Kiosk", "Queue", "Status"],
     },
   })
 
   assert.equal(createdUser.status, "ok")
   assert.equal(createdUser.user.name, "Test Cashier")
-  assert.deepEqual(createdUser.user.access, ["Inventory", "Kiosk", "Queue"])
+  assert.deepEqual(createdUser.user.access, ["Inventory", "Kiosk", "Queue", "Status"])
   assertNoSecrets(createdUser)
 
   const cashierAuth = await fetchJson(`${baseUrl}/auth/pin`, {
@@ -64,7 +64,7 @@ try {
 
   assert.equal(cashierAuth.status, "ok")
   assert.equal(cashierAuth.user.name, "Test Cashier")
-  assert.deepEqual(cashierAuth.user.access, ["Inventory", "Kiosk", "Queue"])
+  assert.deepEqual(cashierAuth.user.access, ["Inventory", "Kiosk", "Queue", "Status"])
 
   const scrydexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=charizard`, {
     token: cashierAuth.session.token,

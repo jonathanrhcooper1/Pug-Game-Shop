@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Status Workspace
+
+### What Changed
+
+- Added Status to the offline app navigation model.
+- Added Status to offline app and LAN local sync server access-section policy.
+- Added a compact active-workspace pill that remains visible across workspaces.
+- Moved detailed activity and sync status panels into a dedicated Status
+  workspace that is hidden from the other app sections.
+- Updated Status browser behavior so Inventory/Settings pages no longer show
+  the detailed workflow message block.
+
+### Why
+
+The app had been showing every workflow message globally, which crowded the
+main workspaces and made the operational surface feel noisy. Staff need a
+single place for activity/status review while keeping high-frequency sections
+like Inventory and Kiosk focused on the task at hand.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- Offline app UI shell contract markers for Status workspace text and CSS.
+- Local sync server runtime coverage updated for Status access grants.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- Browser smoke: PIN `1420` login, Status nav visible, activity/status block
+  hidden on Settings, Status page opens the activity block, Inventory content
+  stays hidden on Status, and zero recent browser console errors.
+
+### Rollback Notes
+
+- Revert this revision to return activity/status messages to the global app
+  header area.
+- If a staff access policy already includes Status, removing this revision
+  leaves that section ignored by older app builds.
+- No WordPress database, ScryDex, Square, payment, POS, inventory, customer,
+  event, or production rollback is required.
+
 ## 2026-06-08 - ScryDex Catalog Intake Images And Quantities
 
 ### What Changed

@@ -162,6 +162,7 @@ const ACCESS_SECTIONS = [
   "Events",
   "Customers",
   "Sync",
+  "Status",
   "Conflicts",
   "Settings",
 ] as const
@@ -547,6 +548,7 @@ export function App() {
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
+  const statusPanelRef = useRef<HTMLElement>(null)
   const kioskPanelRef = useRef<HTMLElement>(null)
   const queuePanelRef = useRef<HTMLElement>(null)
   const eventPanelRef = useRef<HTMLElement>(null)
@@ -641,7 +643,7 @@ export function App() {
       name: "Front Counter Staff",
       pin: "1234",
       role: "staff",
-      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync"],
+      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
     },
     {
       id: "manager-default",
@@ -658,6 +660,7 @@ export function App() {
     "Inventory",
     "Kiosk",
     "Queue",
+    "Status",
   ])
   const [kioskFirstName, setKioskFirstName] = useState("")
   const [kioskLastName, setKioskLastName] = useState("")
@@ -1535,7 +1538,11 @@ export function App() {
 
   function sectionTarget(label: string) {
     if (label === "Sync") {
-      return workflowPanelRef
+      return queuePanelRef
+    }
+
+    if (label === "Status") {
+      return statusPanelRef
     }
 
     if (label === "Kiosk") {
@@ -3848,6 +3855,16 @@ export function App() {
             ))}
           </section>
 
+          <section className="active-workspace-pill" aria-label="Active workspace">
+            <span className="micro-label">Active workspace</span>
+            <strong>{activeSection}</strong>
+          </section>
+
+          <section
+            className={activeSection === "Status" ? "status-workspace" : "status-workspace is-hidden"}
+            aria-label="Status activity"
+            ref={statusPanelRef}
+          >
           <section className="workflow-status" aria-live="polite" ref={workflowPanelRef}>
             <div>
               <span className="micro-label">Active workspace</span>
@@ -4037,6 +4054,7 @@ export function App() {
               ))}
             </section>
           ) : null}
+          </section>
 
           <section className={`content-grid is-paged page-${activeSection.toLowerCase()}`}>
             <section className="inventory-panel" aria-label="Offline inventory" ref={inventoryPanelRef}>

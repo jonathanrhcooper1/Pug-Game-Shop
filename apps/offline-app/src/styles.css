@@ -751,6 +751,35 @@ h2 {
   line-height: 1;
 }
 
+.active-workspace-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  color: #fffaf0;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 250, 240, 0.1);
+  border-radius: 8px;
+}
+
+.active-workspace-pill strong {
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.status-workspace {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.status-workspace.is-hidden {
+  display: none;
+}
+
 .workflow-status {
   display: grid;
   grid-template-columns: minmax(140px, auto) minmax(0, 1fr);
@@ -1297,7 +1326,8 @@ h2 {
 .content-grid.page-events,
 .content-grid.page-conflicts,
 .content-grid.page-customers,
-.content-grid.page-settings {
+.content-grid.page-settings,
+.content-grid.page-status {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -1330,6 +1360,10 @@ h2 {
     "queue"
     "connector";
   grid-template-columns: minmax(0, 1fr);
+}
+
+.content-grid.page-status {
+  grid-template-areas: "status";
 }
 
 .inventory-panel {
