@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex sync execution gate health diagnostics that report whether cards
+  worker execution is blocked, gated, or future-ready across provider,
+  network, usage-budget, checkpoint, persistence, database-write, and scheduler
+  dependencies while keeping live network calls and writes deferred by default.
 - Official WooCommerce Square extension status detection for health/system/POS
   diagnostics, keeping payment capture delegated to the official extension and
   Square network writes, platform payment capture, refunds, and custom gateway

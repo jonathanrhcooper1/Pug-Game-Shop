@@ -10,15 +10,18 @@ card-search/rate-limit tests. The ScryDex provider factory now consumes staged
 WordPress settings, exposes secret-free readiness, and can build the HTTP
 provider through injected transports for tests. The health payload also exposes
 a sync dry-run plan with the next cards-page request and checkpoint row while
-all execution remains deferred. Card and current market price normalization is
-implemented against sanitized fixtures. Persistence planning now prepares
-deterministic reference-card inserts, changed-row updates, unchanged row
-detection, and current price observations from normalized page plans. Scheduled
-ScryDex workers, database write workers, image workers, usage-budget
-enforcement, and webhook route handling remain disabled until staging
-acceptance. WordPress administrator settings now provide secret-preserving
-staging credential storage and redacted readiness output, but those settings do
-not execute provider network requests by themselves.
+all execution remains deferred. The health payload also includes a cards sync
+execution gate that reports provider, network, usage-budget, checkpoint,
+persistence, database-write, and scheduler readiness without running the worker.
+Card and current market price normalization is implemented against sanitized
+fixtures. Persistence planning now prepares deterministic reference-card
+inserts, changed-row updates, unchanged row detection, and current price
+observations from normalized page plans. Scheduled ScryDex workers, database
+write workers, image workers, usage-budget enforcement, and webhook route
+handling remain disabled until staging acceptance. WordPress administrator
+settings now provide secret-preserving staging credential storage and redacted
+readiness output, but those settings do not execute provider network requests by
+themselves.
 
 The sync page processor now plans normalized reference-card rows, current price
 rows, normalization errors, retryability, and next checkpoint state from a
@@ -59,6 +62,27 @@ SCRYDEX_BASE_URL
 
 Production credentials must not be used in local development or automated pull
 request checks.
+
+## Execution Gate
+
+The health endpoint includes `scrydex_sync_execution_gate` for staff and
+staging diagnostics. It reports the planned cards worker status as `blocked`
+when the provider is not configured, `gated` when the provider is configured
+but execution dependencies are still missing, and `ready` only when all
+required execution gates are explicitly enabled.
+
+Default blockers are:
+
+- `scrydex_network_requests_disabled`
+- `scrydex_usage_budget_not_configured`
+- `scrydex_checkpoint_repository_not_configured`
+- `scrydex_persistence_repository_not_configured`
+- `scrydex_database_writes_disabled`
+- `scrydex_scheduled_worker_not_configured`
+
+The gate embeds the dry-run request/checkpoint plan and readiness metadata, but
+it does not call ScryDex, write checkpoints, persist normalized rows, download
+images, register webhooks, or enqueue a scheduled worker by itself.
 
 ## Role
 

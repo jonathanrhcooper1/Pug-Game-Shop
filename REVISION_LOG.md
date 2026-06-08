@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - ScryDex Sync Execution Gate
+
+### What Changed
+
+- Added `ScryDexSyncExecutionGate` to report whether the planned ScryDex cards
+  sync worker is blocked, gated, or future-ready.
+- Exposed `scrydex_sync_execution_gate` through authenticated health output,
+  reusing the dry-run request/checkpoint plan while keeping worker execution,
+  provider network calls, database writes, image downloads, and webhook
+  registration deferred by default.
+- Added unit coverage for default blocked state, configured-provider gated
+  state, secret-free readiness metadata, and future-ready dependency reporting.
+
+### Why
+
+The project now has provider settings, provider factory readiness, dry-run
+planning, page processing, and persistence planning. Before any real ScryDex
+worker can run, staging needs a single health diagnostic that shows which
+execution dependencies are still missing and proves no live network or database
+write path has been enabled accidentally.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex sync execution gate unit tests for default blocked state,
+  configured-provider gated state, secret-free health payloads, and
+  future-ready dependency reporting.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 821 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 538 PHP files.
+- `npm.cmd run test`: passed, including 821 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex execution-gate health diagnostic
+  and associated tests.
+- No schema rollback, provider cleanup, checkpoint cleanup, image cleanup, or
+  worker cleanup is required because this revision does not run ScryDex network
+  calls, write database rows, enqueue workers, download images, or register
+  webhooks.
+
 ## 2026-06-07 - WooCommerce Square Extension Status Diagnostics
 
 ### What Changed

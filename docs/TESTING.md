@@ -28,6 +28,10 @@
 - Local unit coverage now includes ScryDex sync dry-run planning for first-page
   requests, checkpoint resume cursors, configured-state redaction, page-size
   clamping, invalid game fallback, and execution deferrals.
+- Local unit coverage now includes ScryDex sync execution gate diagnostics for
+  default blocked state, configured-provider gated state, secret-free health
+  output, and future-ready dependency reporting without live network calls or
+  database writes.
 - Local unit coverage now includes official WooCommerce Square extension
   status detection for inactive, active-plugin, installed-inactive, and loaded
   class-signal cases, plus POS/readiness/admin payload assertions that payment
