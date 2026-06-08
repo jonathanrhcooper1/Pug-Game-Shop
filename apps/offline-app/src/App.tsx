@@ -15,6 +15,8 @@ import {
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
   buildPreparedPairingStorageSnapshot,
+  buildPairedDeviceRecord,
+  buildPairedDeviceStorageSnapshot,
   CONNECTOR_PROFILE_STORAGE_KEY,
   connectorManifestUrl,
   connectorDisplayUrl,
@@ -28,11 +30,14 @@ import {
   filterInventoryItems,
   findConnectorProfile,
   findInventoryItem,
+  findPairedDeviceRecord,
   formatMoney,
   offlineWorkspaceSeed,
   OFFLINE_SESSION_STORAGE_KEY,
+  PAIRED_DEVICE_STORAGE_KEY,
   PREPARED_PAIRING_STORAGE_KEY,
   restoreOfflineSessionStorageSnapshot,
+  restorePairedDeviceStorageSnapshot,
   restorePreparedPairingStorageSnapshot,
   restoreConnectorProfileStorageSnapshot,
   statusLabel,
@@ -56,6 +61,8 @@ import {
   type OfflineConnectorTestReport,
   type OfflineSessionStorageRestoreResult,
   type OfflineSyncAttemptRecord,
+  type PairedDeviceRecord,
+  type PairedDeviceStorageRestoreResult,
   type PreparedDevicePairingRequest,
   type PreparedPairingStorageRestoreResult,
 } from "./data/offlineWorkspace"
@@ -143,6 +150,19 @@ function loadPreparedPairingStorage(
   )
 }
 
+function loadPairedDeviceStorage(
+  profiles: ReturnType<typeof loadConnectorProfileStorage>["profiles"],
+): PairedDeviceStorageRestoreResult {
+  if (typeof window === "undefined") {
+    return restorePairedDeviceStorageSnapshot(null, profiles)
+  }
+
+  return restorePairedDeviceStorageSnapshot(
+    window.localStorage.getItem(PAIRED_DEVICE_STORAGE_KEY),
+    profiles,
+  )
+}
+
 function loadOfflineSessionStorage(): OfflineSessionStorageRestoreResult {
   if (typeof window === "undefined") {
     return restoreOfflineSessionStorageSnapshot(null)
@@ -205,6 +225,11 @@ export function App() {
     preparedPairingStorageRef.current = loadPreparedPairingStorage(connectorProfileStorage.profiles)
   }
   const preparedPairingStorage = preparedPairingStorageRef.current
+  const pairedDeviceStorageRef = useRef<PairedDeviceStorageRestoreResult | null>(null)
+  if (pairedDeviceStorageRef.current === null) {
+    pairedDeviceStorageRef.current = loadPairedDeviceStorage(connectorProfileStorage.profiles)
+  }
+  const pairedDeviceStorage = pairedDeviceStorageRef.current
   const offlineSessionStorageRef = useRef<OfflineSessionStorageRestoreResult | null>(null)
   if (offlineSessionStorageRef.current === null) {
     offlineSessionStorageRef.current = loadOfflineSessionStorage()
@@ -283,11 +308,18 @@ export function App() {
   const [preparedPairingRequests, setPreparedPairingRequests] = useState<PreparedDevicePairingRequest[]>(
     preparedPairingStorage.requests,
   )
+  const [pairedDevices, setPairedDevices] = useState<PairedDeviceRecord[]>(
+    pairedDeviceStorage.records,
+  )
   const activeProfile = findConnectorProfile(connectorProfiles, activeProfileId)
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
   const activePreparedPairingRequests = useMemo(
     () => preparedPairingRequests.filter((request) => request.profileId === activeProfile.id),
     [preparedPairingRequests, activeProfile.id],
+  )
+  const activePairedDevice = useMemo(
+    () => findPairedDeviceRecord(pairedDevices, activeProfile.id),
+    [pairedDevices, activeProfile.id],
   )
   const connectorHealth = connectorHealthSummary(connectorValidation?.profile ?? activeProfile)
   const secureStoreSummary = secureStoreAdapter
@@ -366,6 +398,80 @@ export function App() {
       JSON.stringify(buildPreparedPairingStorageSnapshot(preparedPairingRequests, connectorProfiles)),
     )
   }, [preparedPairingRequests, connectorProfiles])
+
+  useEffect(() => {
+    if (pairedDevices.length === 0) {
+      window.localStorage.removeItem(PAIRED_DEVICE_STORAGE_KEY)
+      return
+    }
+
+    window.localStorage.setItem(
+      PAIRED_DEVICE_STORAGE_KEY,
+      JSON.stringify(buildPairedDeviceStorageSnapshot(pairedDevices, connectorProfiles)),
+    )
+  }, [pairedDevices, connectorProfiles])
+
+  useEffect(() => {
+    if (!secureStoreAdapter || !activePairedDevice) {
+      return
+    }
+
+    let cancelled = false
+
+    void secureStoreAdapter
+      .getDeviceTokenStatus({
+        profile_id: activePairedDevice.profileId,
+        device_public_id: activePairedDevice.devicePublicId,
+      })
+      .then((status) => {
+        if (cancelled) {
+          return
+        }
+
+        setPairedDevices((records) =>
+          records.map((record) =>
+            record.id === activePairedDevice.id
+              ? {
+                  ...record,
+                  tokenStatus: status.token_present ? "stored" : "missing",
+                  tokenLength: status.token_length,
+                  rawTokenStoredInBrowser: false,
+                  rawTokenReturnedToUi: false,
+                  credentialsSyncedToApp: false,
+                }
+              : record,
+          ),
+        )
+      })
+      .catch(() => {
+        if (cancelled) {
+          return
+        }
+
+        setPairedDevices((records) =>
+          records.map((record) =>
+            record.id === activePairedDevice.id
+              ? {
+                  ...record,
+                  tokenStatus: "unchecked",
+                  rawTokenStoredInBrowser: false,
+                  rawTokenReturnedToUi: false,
+                  credentialsSyncedToApp: false,
+                }
+              : record,
+          ),
+        )
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    secureStoreAdapter,
+    activePairedDevice?.id,
+    activePairedDevice?.profileId,
+    activePairedDevice?.devicePublicId,
+  ])
 
   useEffect(() => {
     if (queuedOperations.length === 0 && syncAttempts.length === 0) {
@@ -467,6 +573,7 @@ export function App() {
         activeProfile,
         batch,
         activePreparedPairingRequests[0] ?? null,
+        activePairedDevice,
       ),
     )
     setPushSummary(
@@ -525,7 +632,14 @@ export function App() {
         companyName: plan.companyName,
         siteUrl: plan.siteUrl,
         operationCount: plan.push.operation_count,
-        pairingStatus: plan.prepared_pairing_available ? "Prepared locally" : "Pairing required",
+        pairingStatus:
+          plan.paired_device_available && plan.desktop_token_available
+            ? "Paired token available"
+            : plan.paired_device_available
+              ? "Paired token missing"
+              : plan.prepared_pairing_available
+                ? "Prepared locally"
+                : "Pairing required",
         createdAtLabel: new Intl.DateTimeFormat("en-US", {
           hour: "numeric",
           minute: "2-digit",
@@ -688,6 +802,7 @@ export function App() {
         activeProfile,
         batch,
         activePreparedPairingRequests[0] ?? null,
+        activePairedDevice,
       )
       setSyncSessionPlan(nextSyncSessionPlan)
       setPushSummary(
@@ -717,6 +832,7 @@ export function App() {
         activeProfile,
         null,
         activePreparedPairingRequests[0] ?? null,
+        activePairedDevice,
       )
       setSyncSessionPlan(nextSyncSessionPlan)
     }
@@ -1115,6 +1231,13 @@ export function App() {
         ...activeProfile,
         status: "ready" as const,
       }
+      const pairedRecord = buildPairedDeviceRecord(pairedProfile, {
+        devicePublicId: result.device_public_id,
+        requestedScopes: plan.requestedScopes,
+        tokenStatus: result.token_persisted ? "stored" : "missing",
+        tokenLength: result.token_length,
+        expiresAtUtc: result.expires_at_utc,
+      })
 
       if (preparedRequest) {
         setPreparedPairingRequests((requests) => [
@@ -1124,6 +1247,10 @@ export function App() {
       }
 
       setConnectorProfiles((profiles) => upsertConnectorProfile(profiles, pairedProfile))
+      setPairedDevices((records) => [
+        pairedRecord,
+        ...records.filter((record) => record.profileId !== pairedRecord.profileId),
+      ].slice(0, 16))
       setConnectorTestReport(
         buildConnectorTestReport(
           pairedProfile,
@@ -1143,7 +1270,7 @@ export function App() {
       })
       setActivityMessage({
         title: "Device paired",
-        detail: `${activeProfile.companyName} returned a one-time device token that was stored by the desktop secure-store command; raw token returned to UI: no.`,
+        detail: `${activeProfile.companyName} returned a one-time device token that was stored by the desktop secure-store command; paired metadata saved locally and raw token returned to UI: no.`,
       })
     } catch (error) {
       const detail = pairingTokenRequestErrorMessage(error)
@@ -1352,12 +1479,20 @@ export function App() {
               <div>
                 <span className="micro-label">Pairing</span>
                 <strong>
-                  {syncSessionPlan.prepared_pairing_available ? "Prepared locally" : "Required"}
+                  {syncSessionPlan.paired_device_available
+                    ? syncSessionPlan.desktop_token_available
+                      ? "Paired token stored"
+                      : "Paired token missing"
+                    : syncSessionPlan.prepared_pairing_available
+                      ? "Prepared locally"
+                      : "Required"}
                 </strong>
                 <small>
-                  {syncSessionPlan.prepared_pairing_available
-                    ? `Fingerprint ${syncSessionPlan.pairing_code_fingerprint}; token storage ${syncSessionPlan.device_token_storage}`
-                    : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
+                  {syncSessionPlan.paired_device_available
+                    ? `Device ${syncSessionPlan.paired_device_public_id}; token ${syncSessionPlan.desktop_token_status}; storage ${syncSessionPlan.device_token_storage}`
+                    : syncSessionPlan.prepared_pairing_available
+                      ? `Fingerprint ${syncSessionPlan.pairing_code_fingerprint}; token storage ${syncSessionPlan.device_token_storage}`
+                      : `No token request yet; token storage ${syncSessionPlan.device_token_storage}`}
                 </small>
               </div>
             </section>
@@ -1769,6 +1904,23 @@ export function App() {
                   <small>{connectorHealth.restBasePath}; profiles saved locally</small>
                 </div>
                 <div>
+                  <span className="micro-label">Device token</span>
+                  <strong>
+                    {activePairedDevice
+                      ? activePairedDevice.tokenStatus === "stored"
+                        ? "Paired token stored"
+                        : activePairedDevice.tokenStatus === "missing"
+                          ? "Paired token missing"
+                          : "Token check pending"
+                      : "Pairing required"}
+                  </strong>
+                  <small>
+                    {activePairedDevice
+                      ? `${activePairedDevice.devicePublicId}; raw token stored in browser: no`
+                      : "No paired device metadata saved for this company."}
+                  </small>
+                </div>
+                <div>
                   <span className="micro-label">Offline push</span>
                   <strong>
                     {connectorHealth.canonicalInventoryWritesEnabled
@@ -2001,6 +2153,11 @@ export function App() {
                 </small>
                 <small>
                   Desktop secure store: {secureStoreSummary}; raw tokens returned to UI: no.
+                </small>
+                <small>
+                  Paired device: {activePairedDevice ? activePairedDevice.devicePublicId : "none"};
+                  token status {activePairedDevice?.tokenStatus ?? "missing"};
+                  raw token stored in browser: no.
                 </small>
                 <small>
                   Pairing route check: {pairingRouteCheck.status}; {pairingRouteCheck.detail}

@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app now persists secret-free paired-device metadata per connector
+  profile, restores it across reloads, checks desktop secure-store token
+  presence when the Tauri shell is available, and reports paired-token
+  readiness in Sync Now without storing raw tokens in browser storage.
 - WordPress settings now expose offline pairing authorization policy fields for
   pairing-code hashes, manager IDs, location IDs, per-mode scopes, and UTC
   expiry; raw pairing codes submitted through the settings form are hashed on

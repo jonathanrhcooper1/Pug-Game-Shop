@@ -21,6 +21,10 @@
 - Local verification now includes `cargo test` for the Tauri Rust command
   SQLite queue persistence path on Windows when Rust/Cargo and the MSVC linker
   are installed.
+- Offline app contract coverage now verifies secret-free paired-device metadata
+  storage, local restore, desktop secure-store token status checks, Sync Now
+  paired-token readiness fields, and UI markers proving raw tokens are not
+  stored in browser storage or returned to React.
 - Local unit coverage now includes offline route runtime settings, contract
   mutation, staging-only feature availability, runtime-aware bootstrap/health
   planning, and pairing-route registration readiness.

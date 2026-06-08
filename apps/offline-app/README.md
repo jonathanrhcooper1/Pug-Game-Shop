@@ -19,7 +19,8 @@ future offline sync app.
   website profiles, local preview validation, pairing-code request preview,
   credential-free pairing route preflight, connector-aware guarded inventory
   hold staging, per-company connector test reports, visible local queue rows,
-  desktop SQLite queue restore, conflict-review history, print-label job
+  desktop SQLite queue restore, secret-free paired-device metadata restore,
+  desktop secure-store token status reporting, conflict-review history, print-label job
   preparation, customer-credit pending holds, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
@@ -46,6 +47,10 @@ future offline sync app.
   `/offline/devices/register` route. The desktop command sends the one-time
   manager pairing request, stores the returned device token in Windows secure
   storage, and returns only secret-free device/token metadata to React.
+- Secret-free paired-device metadata is saved per company profile after desktop
+  pairing, restored across app reloads, and refreshed with secure-store token
+  presence checks when the Tauri shell is available. Raw tokens stay out of
+  browser storage and are not returned to React.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,

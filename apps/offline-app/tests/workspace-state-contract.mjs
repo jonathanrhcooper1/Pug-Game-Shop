@@ -32,6 +32,9 @@ for (const requiredExport of [
   "ConnectorProfileStorageRestoreResult",
   "PreparedPairingStorageSnapshot",
   "PreparedPairingStorageRestoreResult",
+  "PairedDeviceRecord",
+  "PairedDeviceStorageSnapshot",
+  "PairedDeviceStorageRestoreResult",
   "OfflineSessionStorageSnapshot",
   "OfflineSessionStorageRestoreResult",
   "OfflineSyncAttemptRecord",
@@ -56,11 +59,16 @@ for (const requiredExport of [
   "connectorManifestUrl",
   "CONNECTOR_PROFILE_STORAGE_KEY",
   "PREPARED_PAIRING_STORAGE_KEY",
+  "PAIRED_DEVICE_STORAGE_KEY",
   "OFFLINE_SESSION_STORAGE_KEY",
   "buildConnectorProfileStorageSnapshot",
   "restoreConnectorProfileStorageSnapshot",
   "buildPreparedPairingStorageSnapshot",
   "restorePreparedPairingStorageSnapshot",
+  "buildPairedDeviceRecord",
+  "buildPairedDeviceStorageSnapshot",
+  "restorePairedDeviceStorageSnapshot",
+  "findPairedDeviceRecord",
   "buildOfflineSessionStorageSnapshot",
   "restoreOfflineSessionStorageSnapshot",
   "buildDevicePairingRequestPlan",
@@ -132,6 +140,10 @@ for (const marker of [
   "networkRequestsDeferred: true",
   "no-local-operations",
   "prepared_pairing_available",
+  "paired_device_available",
+  "paired_device_public_id",
+  "desktop_token_status",
+  "desktop_token_available",
   "device_pairing_required",
   "push_queue_replay_deferred",
   "push_canonical_mutations_deferred",
@@ -146,13 +158,17 @@ for (const marker of [
   "offline_connector_profiles_local_storage",
   "tcg-store-offline-connector-profiles-v1",
   "tcg-store-offline-prepared-pairings-v1",
+  "tcg-store-offline-paired-devices-v1",
   "tcg-store-offline-session-state-v1",
   "offline_prepared_pairings_local_storage",
+  "offline_paired_devices_local_storage",
   "offline_session_state_local_storage",
   "connector_profile_storage_invalid",
   "connector_profile_storage_parse_failed",
   "prepared_pairing_storage_invalid",
   "prepared_pairing_storage_parse_failed",
+  "paired_device_storage_invalid",
+  "paired_device_storage_parse_failed",
   "offline_session_storage_invalid",
   "offline_session_storage_parse_failed",
   "queued_operations",
@@ -181,6 +197,8 @@ for (const marker of [
   "schema_version",
   "buildDevicePairingRequestBody",
   "rawPairingCodeStored: false",
+  "rawTokenStoredInBrowser: false",
+  "rawTokenReturnedToUi: false",
   "productionTokenIssuanceDeferred",
   "front-counter-install",
   "parseConnectorSiteInput",
@@ -219,8 +237,13 @@ assert.ok(appSource.includes("syncSessionPlan.push.canonical_inventory_writes_de
 assert.ok(appSource.includes("handleInventoryReservation"))
 assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
 assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts)"))
+assert.ok(appSource.includes("buildPairedDeviceStorageSnapshot(pairedDevices, connectorProfiles)"))
+assert.ok(appSource.includes("restorePairedDeviceStorageSnapshot("))
+assert.ok(appSource.includes("findPairedDeviceRecord(pairedDevices, activeProfile.id)"))
 assert.ok(appSource.includes("restoreOfflineSessionStorageSnapshot("))
 assert.ok(appSource.includes("OFFLINE_SESSION_STORAGE_KEY"))
+assert.ok(appSource.includes("PAIRED_DEVICE_STORAGE_KEY"))
+assert.ok(appSource.includes("window.localStorage.removeItem(PAIRED_DEVICE_STORAGE_KEY)"))
 assert.ok(appSource.includes("window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)"))
 assert.ok(appSource.includes("operationKind: \"scan\""))
 assert.ok(appSource.includes("operationKind: \"quantity\""))

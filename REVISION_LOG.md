@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Paired Device Metadata
+
+### What Changed
+
+- Added secret-free paired-device metadata storage for offline app connector
+  profiles.
+- Restored paired-device records from local storage across app reloads.
+- Queried the Tauri desktop secure store for token presence when a paired
+  device is active.
+- Updated Sync Now and local sync-attempt history to distinguish paired desktop
+  tokens from prepared local pairing requests.
+- Added connector settings and pairing-panel UI status for device public ID,
+  token status, and raw-token browser storage boundaries.
+
+### Why
+
+The desktop pairing command stores the real token in Windows Credential
+Manager, but the app still needed durable, non-secret readiness metadata so
+staff can tell whether a company connector is actually paired before live
+pull/push sync wiring is enabled.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Contract coverage for paired-device storage exports, storage keys, restore
+  markers, Sync Now token-readiness fields, UI status labels, secure-store
+  token status checks, and no raw-token browser/UI markers.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 12 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove paired-device metadata restore and token
+  status display from the offline app.
+- If local browser previews have saved metadata, remove
+  `tcg-store-offline-paired-devices-v1` from local storage.
+- No WordPress database or SQLite schema rollback is required.
+
 ## 2026-06-08 - WordPress Offline Pairing Authorization Settings
 
 ### What Changed

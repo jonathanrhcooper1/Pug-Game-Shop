@@ -132,6 +132,7 @@ export type ConnectorProfileDraftResult = {
 
 export const CONNECTOR_PROFILE_STORAGE_KEY = "tcg-store-offline-connector-profiles-v1"
 export const PREPARED_PAIRING_STORAGE_KEY = "tcg-store-offline-prepared-pairings-v1"
+export const PAIRED_DEVICE_STORAGE_KEY = "tcg-store-offline-paired-devices-v1"
 export const OFFLINE_SESSION_STORAGE_KEY = "tcg-store-offline-session-state-v1"
 
 export type ConnectorProfileStorageSnapshot = {
@@ -161,6 +162,41 @@ export type PreparedPairingStorageSnapshot = {
 
 export type PreparedPairingStorageRestoreResult = {
   requests: PreparedDevicePairingRequest[]
+  restored: boolean
+  issues: string[]
+}
+
+export type PairedDeviceTokenStatus = "stored" | "missing" | "unchecked"
+
+export type PairedDeviceRecord = {
+  id: string
+  profileId: string
+  companyName: string
+  siteUrl: string
+  devicePublicId: string
+  requestedScopes: DevicePairingRequestPlan["requestedScopes"]
+  tokenStorage: "desktop_secure_store"
+  tokenStatus: PairedDeviceTokenStatus
+  tokenLength: number
+  pairedAtUtc: string
+  expiresAtUtc: string
+  rawTokenStoredInBrowser: false
+  rawTokenReturnedToUi: false
+  credentialsSyncedToApp: false
+}
+
+export type PairedDeviceStorageSnapshot = {
+  action: "offline_paired_devices_local_storage"
+  schema_version: 1
+  records: PairedDeviceRecord[]
+  saved_at_utc: string
+  rawTokenStoredInBrowser: false
+  rawTokenReturnedToUi: false
+  credentialsSyncedToApp: false
+}
+
+export type PairedDeviceStorageRestoreResult = {
+  records: PairedDeviceRecord[]
   restored: boolean
   issues: string[]
 }
@@ -369,6 +405,10 @@ export type OfflineConnectorSyncSessionPlan = {
   }
   prepared_pairing_available: boolean
   pairing_code_fingerprint: string
+  paired_device_available: boolean
+  paired_device_public_id: string
+  desktop_token_status: PairedDeviceTokenStatus
+  desktop_token_available: boolean
   device_pairing_required: boolean
   device_token_storage: "desktop_secure_store"
   direct_mysql_access: false
@@ -973,6 +1013,111 @@ export function restorePreparedPairingStorageSnapshot(
       issues: ["prepared_pairing_storage_parse_failed"],
     }
   }
+}
+
+export function buildPairedDeviceRecord(
+  profile: StoreConnectorProfile,
+  input: {
+    devicePublicId: string
+    requestedScopes: DevicePairingRequestPlan["requestedScopes"] | string[]
+    tokenStatus?: PairedDeviceTokenStatus
+    tokenLength?: number
+    pairedAtUtc?: string
+    expiresAtUtc?: string
+  },
+): PairedDeviceRecord {
+  const pairedAtUtc = normalizeUtcDateString(input.pairedAtUtc, new Date().toISOString())
+  const expiresAtUtc = normalizeUtcDateString(
+    input.expiresAtUtc,
+    new Date(Date.parse(pairedAtUtc) + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  )
+  const devicePublicId = safeRecordIdPart(input.devicePublicId, `${profile.id}-desktop-device`)
+  const pairedStamp = pairedAtUtc.replace(/[^0-9]/g, "").slice(0, 14)
+
+  return {
+    id: `paired-device-${profile.id}-${devicePublicId}-${pairedStamp}`,
+    profileId: profile.id,
+    companyName: profile.companyName,
+    siteUrl: connectorDisplayUrl(profile),
+    devicePublicId,
+    requestedScopes: sanitizeDevicePairingScopes(input.requestedScopes),
+    tokenStorage: "desktop_secure_store",
+    tokenStatus: cleanPairedDeviceTokenStatus(input.tokenStatus ?? "unchecked"),
+    tokenLength: Math.max(0, Math.floor(input.tokenLength ?? 0)),
+    pairedAtUtc,
+    expiresAtUtc,
+    rawTokenStoredInBrowser: false,
+    rawTokenReturnedToUi: false,
+    credentialsSyncedToApp: false,
+  }
+}
+
+export function buildPairedDeviceStorageSnapshot(
+  records: PairedDeviceRecord[],
+  profiles: StoreConnectorProfile[],
+  options: { savedAtUtc?: string } = {},
+): PairedDeviceStorageSnapshot {
+  return {
+    action: "offline_paired_devices_local_storage",
+    schema_version: 1,
+    records: sanitizePairedDeviceRecords(records, profiles),
+    saved_at_utc: options.savedAtUtc ?? new Date().toISOString(),
+    rawTokenStoredInBrowser: false,
+    rawTokenReturnedToUi: false,
+    credentialsSyncedToApp: false,
+  }
+}
+
+export function restorePairedDeviceStorageSnapshot(
+  rawValue: string | null,
+  profiles: StoreConnectorProfile[],
+): PairedDeviceStorageRestoreResult {
+  if (!rawValue) {
+    return {
+      records: [],
+      restored: false,
+      issues: [],
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PairedDeviceStorageSnapshot>
+    const records = sanitizePairedDeviceRecords(parsed.records ?? [], profiles)
+
+    if (
+      parsed.action !== "offline_paired_devices_local_storage" ||
+      parsed.schema_version !== 1 ||
+      parsed.rawTokenStoredInBrowser !== false ||
+      parsed.rawTokenReturnedToUi !== false ||
+      parsed.credentialsSyncedToApp !== false ||
+      records.length === 0
+    ) {
+      return {
+        records: [],
+        restored: false,
+        issues: ["paired_device_storage_invalid"],
+      }
+    }
+
+    return {
+      records,
+      restored: true,
+      issues: [],
+    }
+  } catch {
+    return {
+      records: [],
+      restored: false,
+      issues: ["paired_device_storage_parse_failed"],
+    }
+  }
+}
+
+export function findPairedDeviceRecord(
+  records: PairedDeviceRecord[],
+  profileId: string,
+): PairedDeviceRecord | null {
+  return records.find((record) => record.profileId === profileId) ?? null
 }
 
 export function buildOfflineSessionStorageSnapshot(
@@ -1585,6 +1730,48 @@ function cleanConnectorEnvironment(value: string): ConnectorEnvironment {
     : "development"
 }
 
+function cleanPairedDeviceTokenStatus(value: unknown): PairedDeviceTokenStatus {
+  return value === "stored" || value === "missing" || value === "unchecked" ? value : "unchecked"
+}
+
+function hasRequiredDevicePairingScopes(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.includes("offline_pull") &&
+    value.includes("offline_push") &&
+    value.includes("conflicts")
+  )
+}
+
+function sanitizeDevicePairingScopes(
+  value: unknown,
+): DevicePairingRequestPlan["requestedScopes"] {
+  return hasRequiredDevicePairingScopes(value)
+    ? ["offline_pull", "offline_push", "conflicts"]
+    : ["offline_pull", "offline_push", "conflicts"]
+}
+
+function safeRecordIdPart(value: unknown, fallback: string): string {
+  const candidate = stringValue(value) || fallback
+  const safeValue = candidate
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return safeValue || fallback
+}
+
+function normalizeUtcDateString(value: unknown, fallback: string): string {
+  const candidate = stringValue(value)
+  const parsed = Date.parse(candidate)
+
+  if (Number.isFinite(parsed)) {
+    return new Date(parsed).toISOString()
+  }
+
+  return fallback
+}
+
 function safeConnectorId(
   profileId: string,
   companyName: string,
@@ -1684,6 +1871,71 @@ function sanitizePreparedPairingRequests(
       request.networkRequestDeferred === true
     )
     .slice(0, 12)
+}
+
+function sanitizePairedDeviceRecords(
+  records: unknown,
+  profiles: StoreConnectorProfile[],
+): PairedDeviceRecord[] {
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]))
+  const seenProfiles = new Set<string>()
+  const safeRecords: PairedDeviceRecord[] = []
+
+  for (const record of records) {
+    const value = objectValue(record)
+
+    if (!value) {
+      continue
+    }
+
+    const profileId = stringValue(value.profileId)
+    const profile = profileMap.get(profileId)
+
+    if (
+      !profile ||
+      seenProfiles.has(profileId) ||
+      value.tokenStorage !== "desktop_secure_store" ||
+      value.rawTokenStoredInBrowser !== false ||
+      value.rawTokenReturnedToUi !== false ||
+      value.credentialsSyncedToApp !== false ||
+      !hasRequiredDevicePairingScopes(value.requestedScopes)
+    ) {
+      continue
+    }
+
+    const devicePublicId = safeRecordIdPart(value.devicePublicId, `${profile.id}-desktop-device`)
+    const pairedAtUtc = normalizeUtcDateString(value.pairedAtUtc, new Date().toISOString())
+    const expiresAtUtc = normalizeUtcDateString(
+      value.expiresAtUtc,
+      new Date(Date.parse(pairedAtUtc) + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    )
+    const tokenLength = numberValue(value.tokenLength)
+
+    safeRecords.push({
+      id: safeRecordIdPart(value.id, `paired-device-${profile.id}-${devicePublicId}`),
+      profileId: profile.id,
+      companyName: profile.companyName,
+      siteUrl: connectorDisplayUrl(profile),
+      devicePublicId,
+      requestedScopes: sanitizeDevicePairingScopes(value.requestedScopes),
+      tokenStorage: "desktop_secure_store",
+      tokenStatus: cleanPairedDeviceTokenStatus(value.tokenStatus),
+      tokenLength: tokenLength === null ? 0 : Math.max(0, Math.floor(tokenLength)),
+      pairedAtUtc,
+      expiresAtUtc,
+      rawTokenStoredInBrowser: false,
+      rawTokenReturnedToUi: false,
+      credentialsSyncedToApp: false,
+    })
+
+    seenProfiles.add(profileId)
+  }
+
+  return safeRecords.slice(0, 16)
 }
 
 function sanitizeOfflineOperationEnvelopes(operations: unknown): OfflineOperationEnvelope[] {
@@ -2028,9 +2280,12 @@ export function buildOfflineConnectorSyncSessionPlan(
   profile: StoreConnectorProfile,
   batch: OfflinePushBatchPayload | null,
   preparedPairingRequest: PreparedDevicePairingRequest | null = null,
+  pairedDeviceRecord: PairedDeviceRecord | null = null,
 ): OfflineConnectorSyncSessionPlan {
   const pushBatchId = batch?.batch_id ?? "no-local-operations"
   const operationCount = batch?.operations.length ?? 0
+  const pairedDeviceAvailable = pairedDeviceRecord?.profileId === profile.id
+  const desktopTokenStatus = pairedDeviceAvailable ? pairedDeviceRecord.tokenStatus : "missing"
   const canonicalInventoryOperationCount =
     batch?.operations.filter((operation) => operation.operation_type === "inventory_reservation").length ?? 0
   const canonicalInventoryWritesReady =
@@ -2070,6 +2325,10 @@ export function buildOfflineConnectorSyncSessionPlan(
       preparedPairingRequest?.profileId === profile.id
         ? preparedPairingRequest.pairingCodeFingerprint
         : "missing",
+    paired_device_available: pairedDeviceAvailable,
+    paired_device_public_id: pairedDeviceAvailable ? pairedDeviceRecord.devicePublicId : "missing",
+    desktop_token_status: desktopTokenStatus,
+    desktop_token_available: desktopTokenStatus === "stored",
     device_pairing_required: profile.wordpress.devicePairingRequired,
     device_token_storage: profile.wordpress.credentialStorage,
     direct_mysql_access: false,
