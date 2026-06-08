@@ -12,11 +12,14 @@ const appSource = await readFile(path.join(appRoot, "src/App.tsx"), "utf8")
 for (const marker of [
   "queue_offline_operation",
   "list_offline_operations",
+  "mark_offline_operations_synced",
   "preview_only",
   "tauri_command",
   "submitOfflineOperation",
   "restoreDesktopQueuedOperations",
+  "markOfflineOperationsSynced",
   "previewOfflineOperation",
+  "sanitizeOperationIds",
   "sanitizeRestoredOperations",
   "buildOfflineQueueInsertPlan",
   "sqlitePlan",
@@ -29,6 +32,7 @@ for (const marker of [
 
 assert.ok(appSource.includes("submitOfflineOperation(operation, queueAdapter)"))
 assert.ok(appSource.includes("restoreDesktopQueuedOperations(queueAdapter)"))
+assert.ok(appSource.includes("markOfflineOperationsSynced(queueApplyResult.removedOperationIds, queueAdapter)"))
 assert.ok(appSource.includes("OfflineQueueSubmissionResult"))
 assert.ok(appSource.includes("queueSubmission?.message"))
 assert.ok(appSource.includes("createTauriQueueAdapter"))

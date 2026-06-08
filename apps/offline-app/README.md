@@ -43,8 +43,9 @@ future offline sync app.
   columns, parameter count, persistence result, and remaining replay deferrals.
 - Tauri command persistence for validating and writing staged inventory,
   reservation, event, and credit operation envelopes to `offline.sqlite`, with
-  a companion pending-operation restore command and local/CI Rust tests
-  available through `cargo test` when the Windows MSVC toolchain is installed.
+  companion pending-operation restore and accepted-operation mark-synced
+  commands plus local/CI Rust tests available through `cargo test` when the
+  Windows MSVC toolchain is installed.
 - Tauri desktop secure-store commands for offline device tokens, backed by the
   Windows-native `keyring` credential store in production and memory-backed
   Rust tests. The UI reports availability without returning raw tokens.
@@ -82,8 +83,9 @@ shared-session migration fallback for existing local data. Browser mode still
 previews queue persistence, while the desktop Tauri command now writes accepted
 operations to local SQLite, can run guarded authenticated pull/push requests
 when a paired device token exists, and can clear accepted push operations from
-the visible local queue while retaining conflict or rejected operation IDs for
-staff review.
+the visible local queue while marking those accepted SQLite queue rows `synced`
+so they do not restore as pending. Conflict or rejected operation IDs are
+retained for staff review.
 Connector profiles, draft editing, and manifest handling remain secret-free.
 The app can now fetch the public WordPress connector manifest when the plugin
 endpoint is installed, and the desktop shell can request pairing tokens only

@@ -78,6 +78,7 @@ import {
   type PreparedPairingStorageRestoreResult,
 } from "./data/offlineWorkspace"
 import {
+  markOfflineOperationsSynced,
   restoreDesktopQueuedOperations,
   submitOfflineOperation,
   type OfflineQueueSubmissionResult,
@@ -1341,6 +1342,10 @@ export function App() {
         pushSummaryResult && completed
           ? applyOfflinePushResultToQueue(queuedOperations, pushSummaryResult)
           : null
+      const queueMarkSyncedResult =
+        queueApplyResult?.queueReplayApplied
+          ? await markOfflineOperationsSynced(queueApplyResult.removedOperationIds, queueAdapter)
+          : null
 
       if (cacheApplyResult.appliedCount > 0) {
         setInventoryItems(cacheApplyResult.items)
@@ -1367,7 +1372,7 @@ export function App() {
       setDesktopSyncExecution({
         status: completed ? "synced" : "blocked",
         detail: completed
-          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), ${eventCacheApplyResult.appliedCount} event(s), and ${conflictCacheApplyResult.appliedCount} conflict(s) applied, ${push ? `${push.accepted_count} accepted push op(s); ${queueApplyResult?.removedOperationIds.length ?? 0} cleared from local queue; ${(queueApplyResult?.retainedConflictOperationIds.length ?? 0) + (queueApplyResult?.retainedRejectedOperationIds.length ?? 0)} kept for staff review` : "no push batch"}.`
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), ${eventCacheApplyResult.appliedCount} event(s), and ${conflictCacheApplyResult.appliedCount} conflict(s) applied, ${push ? `${push.accepted_count} accepted push op(s); ${queueApplyResult?.removedOperationIds.length ?? 0} cleared from local queue; ${(queueApplyResult?.retainedConflictOperationIds.length ?? 0) + (queueApplyResult?.retainedRejectedOperationIds.length ?? 0)} kept for staff review; desktop queue ${queueMarkSyncedResult?.status ?? "unchanged"}` : "no push batch"}.`
           : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
         pull,
         push,

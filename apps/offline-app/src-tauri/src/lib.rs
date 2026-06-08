@@ -40,6 +40,10 @@ const SQLITE_QUEUE_SELECT_PENDING_SQL: &str = concat!(
     "payload_json, authorization_context_json, schema_version ",
     "FROM operation_queue WHERE status = 'pending' ORDER BY queued_at_utc DESC LIMIT ?1"
 );
+const SQLITE_QUEUE_MARK_SYNCED_SQL: &str = concat!(
+    "UPDATE operation_queue SET status = 'synced' ",
+    "WHERE client_operation_id = ?1 AND status = 'pending'"
+);
 const SQLITE_QUEUE_PARAMETER_COUNT: u8 = 15;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -86,6 +90,27 @@ struct ListOfflineOperationsResponse {
     operation_count: usize,
     operations: Vec<OfflineOperationEnvelope>,
     queue_replay_deferred: bool,
+    canonical_mutations_deferred: bool,
+    direct_mysql_access: bool,
+    network_write: bool,
+    schema_version: u8,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct MarkOfflineOperationsSyncedRequest {
+    accepted_operation_ids: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct MarkOfflineOperationsSyncedResponse {
+    status: &'static str,
+    persistence_mode: &'static str,
+    sqlite_table: &'static str,
+    sqlite_database_file: &'static str,
+    sqlite_statement: &'static str,
+    accepted_operation_count: usize,
+    sqlite_rows_affected: usize,
+    queue_replay_applied: bool,
     canonical_mutations_deferred: bool,
     direct_mysql_access: bool,
     network_write: bool,
@@ -321,6 +346,17 @@ fn list_offline_operations(
 }
 
 #[tauri::command]
+fn mark_offline_operations_synced(
+    app: tauri::AppHandle,
+    request: MarkOfflineOperationsSyncedRequest,
+) -> Result<MarkOfflineOperationsSyncedResponse, String> {
+    let database_path = offline_database_path(&app)?;
+    let connection = open_offline_database(&database_path)?;
+
+    mark_offline_operations_synced_with_connection(request, &connection)
+}
+
+#[tauri::command]
 fn store_device_token(
     request: StoreDeviceTokenRequest,
 ) -> Result<StoreDeviceTokenResponse, String> {
@@ -504,6 +540,38 @@ fn list_offline_operations_with_connection(
         operation_count: operations.len(),
         operations,
         queue_replay_deferred: true,
+        canonical_mutations_deferred: true,
+        direct_mysql_access: false,
+        network_write: false,
+        schema_version: 1,
+    })
+}
+
+fn mark_offline_operations_synced_with_connection(
+    request: MarkOfflineOperationsSyncedRequest,
+    connection: &Connection,
+) -> Result<MarkOfflineOperationsSyncedResponse, String> {
+    let accepted_operation_ids = sanitized_operation_id_list(&request.accepted_operation_ids)?;
+
+    ensure_operation_queue_schema(connection)?;
+
+    let mut rows_affected = 0_usize;
+
+    for operation_id in &accepted_operation_ids {
+        rows_affected += connection
+            .execute(SQLITE_QUEUE_MARK_SYNCED_SQL, params![operation_id])
+            .map_err(|_| "offline_queue_mark_synced_failed".to_string())?;
+    }
+
+    Ok(MarkOfflineOperationsSyncedResponse {
+        status: "marked_local_queue_synced",
+        persistence_mode: "sqlite",
+        sqlite_table: SQLITE_QUEUE_TABLE,
+        sqlite_database_file: OFFLINE_DATABASE_FILE,
+        sqlite_statement: SQLITE_QUEUE_MARK_SYNCED_SQL,
+        accepted_operation_count: accepted_operation_ids.len(),
+        sqlite_rows_affected: rows_affected,
+        queue_replay_applied: rows_affected > 0,
         canonical_mutations_deferred: true,
         direct_mysql_access: false,
         network_write: false,
@@ -1606,6 +1674,46 @@ fn normalized_queue_limit(limit: Option<u16>) -> i64 {
     i64::from(limit.unwrap_or(50).clamp(1, 100))
 }
 
+fn sanitized_operation_id_list(values: &[String]) -> Result<Vec<String>, String> {
+    let mut operation_ids = Vec::new();
+
+    for value in values {
+        let operation_id = value.trim();
+
+        if operation_id.is_empty() {
+            continue;
+        }
+
+        let normalized = operation_id.to_ascii_lowercase();
+
+        if operation_id.len() > 160
+            || operation_id.chars().any(char::is_whitespace)
+            || normalized.contains("password")
+            || normalized.contains("api_key")
+            || normalized.contains("private_key")
+            || normalized.contains("bearer ")
+        {
+            return Err("offline_queue_operation_id_invalid".to_string());
+        }
+
+        if operation_ids.iter().any(|existing| existing == operation_id) {
+            continue;
+        }
+
+        operation_ids.push(operation_id.to_string());
+
+        if operation_ids.len() >= 100 {
+            break;
+        }
+    }
+
+    if operation_ids.is_empty() {
+        return Err("offline_queue_mark_synced_ids_required".to_string());
+    }
+
+    Ok(operation_ids)
+}
+
 fn ensure_operation_queue_schema(connection: &Connection) -> Result<(), String> {
     connection
         .execute_batch(SQLITE_QUEUE_CREATE_TABLE_SQL)
@@ -1715,6 +1823,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             queue_offline_operation,
             list_offline_operations,
+            mark_offline_operations_synced,
             store_device_token,
             get_device_token_status,
             delete_device_token,
@@ -2412,6 +2521,81 @@ mod tests {
         assert_eq!(first.sqlite_rows_affected, 1);
         assert_eq!(second.status, "already_queued_local_queue");
         assert_eq!(second.sqlite_rows_affected, 0);
+    }
+
+    #[test]
+    fn mark_synced_command_removes_accepted_operations_from_pending_restore() {
+        let connection = Connection::open_in_memory().expect("in-memory sqlite should open");
+        let first_operation = valid_operation();
+        let mut second_operation = valid_operation();
+        second_operation.client_operation_id = "offline-inventory-accepted-20260607120500".to_string();
+        second_operation.entity_id = "87".to_string();
+
+        queue_offline_operation_with_connection(first_operation.clone(), &connection)
+            .expect("first operation should queue");
+        queue_offline_operation_with_connection(second_operation.clone(), &connection)
+            .expect("second operation should queue");
+
+        let mark_result = mark_offline_operations_synced_with_connection(
+            MarkOfflineOperationsSyncedRequest {
+                accepted_operation_ids: vec![
+                    second_operation.client_operation_id.clone(),
+                    second_operation.client_operation_id.clone(),
+                    "not-in-local-queue".to_string(),
+                ],
+            },
+            &connection,
+        )
+        .expect("accepted operation ids should mark synced");
+
+        assert_eq!(mark_result.status, "marked_local_queue_synced");
+        assert_eq!(mark_result.persistence_mode, "sqlite");
+        assert_eq!(mark_result.accepted_operation_count, 2);
+        assert_eq!(mark_result.sqlite_rows_affected, 1);
+        assert!(mark_result.queue_replay_applied);
+        assert!(mark_result.canonical_mutations_deferred);
+        assert!(!mark_result.direct_mysql_access);
+        assert!(!mark_result.network_write);
+
+        let pending = list_offline_operations_with_connection(&connection, Some(10))
+            .expect("pending queue should load");
+        assert_eq!(pending.operation_count, 1);
+        assert_eq!(
+            pending.operations[0].client_operation_id,
+            first_operation.client_operation_id
+        );
+
+        let stored_status: String = connection
+            .query_row(
+                "SELECT status FROM operation_queue WHERE client_operation_id = ?1",
+                params![second_operation.client_operation_id],
+                |row| row.get(0),
+            )
+            .expect("accepted operation should remain with synced status");
+        assert_eq!(stored_status, "synced");
+    }
+
+    #[test]
+    fn mark_synced_command_rejects_empty_or_unsafe_operation_ids() {
+        let connection = Connection::open_in_memory().expect("in-memory sqlite should open");
+
+        let empty_error = mark_offline_operations_synced_with_connection(
+            MarkOfflineOperationsSyncedRequest {
+                accepted_operation_ids: vec![" ".to_string()],
+            },
+            &connection,
+        )
+        .expect_err("empty ids should be rejected");
+        assert_eq!(empty_error, "offline_queue_mark_synced_ids_required");
+
+        let unsafe_error = mark_offline_operations_synced_with_connection(
+            MarkOfflineOperationsSyncedRequest {
+                accepted_operation_ids: vec!["bearer secret".to_string()],
+            },
+            &connection,
+        )
+        .expect_err("unsafe ids should be rejected");
+        assert_eq!(unsafe_error, "offline_queue_operation_id_invalid");
     }
 
     #[test]

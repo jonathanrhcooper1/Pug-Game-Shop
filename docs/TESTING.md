@@ -29,6 +29,9 @@
 - Offline app contract and Rust coverage now verifies sanitized push outcome
   operation IDs and local queue replay application: accepted IDs are removed
   from the local queue while conflicts/rejections remain visible.
+- Offline app Rust coverage now verifies the desktop
+  `mark_offline_operations_synced` command updates accepted SQLite queue rows
+  to `synced`, keeps unresolved rows pending, and rejects empty/unsafe IDs.
 - Offline app contract coverage now verifies secret-free paired-device metadata
   storage, local restore, desktop secure-store token status checks, Sync Now
   paired-token readiness fields, and UI markers proving raw tokens are not

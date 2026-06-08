@@ -3,6 +3,76 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Desktop Queue Accepted-State Persistence
+
+### What Changed
+
+- Added a Tauri `mark_offline_operations_synced` command for accepted push
+  operation IDs.
+- Added SQLite update handling that marks matching pending `operation_queue`
+  rows as `synced` without deleting the audit row.
+- Added a browser-safe queue bridge function that calls the desktop command
+  when available and remains preview-only outside Tauri.
+- Wired Sync Now push-result handling to mark accepted desktop queue rows
+  synced after clearing them from React state.
+- Extended Rust and contract coverage for status updates, duplicate ID
+  handling, unsafe ID rejection, and pending-restore behavior.
+
+### Why
+
+Accepted push operations were cleared from the visible React queue, but the
+desktop SQLite queue still stored them as `pending`. Without a local status
+update, accepted operations could reappear the next time the desktop app
+restored pending queue rows.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The existing `operation_queue.status` column already supports a
+  non-pending state; this revision only adds the guarded update command.
+
+### Tests Added
+
+- Rust coverage for marking accepted IDs `synced`, deduplicating request IDs,
+  leaving unresolved rows pending, and rejecting empty/unsafe operation IDs.
+- Contract coverage for the new command, SQL template, bridge function, and
+  Sync Now wiring.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 18
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Sync Now
+  plan preparation, sync surface visibility, queue text readiness, and no
+  page-level horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to stop marking accepted SQLite queue rows as `synced`.
+- No database schema rollback is required.
+- Rows already marked `synced` remain in `operation_queue` and can be audited;
+  changing them back to `pending` should only be done manually if staff confirm
+  the website did not accept those operations.
+
 ## 2026-06-08 - Offline Push Queue Replay Application
 
 ### What Changed

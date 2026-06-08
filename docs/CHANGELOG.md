@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Tauri desktop queue restore now has a local `mark_offline_operations_synced`
+  command so accepted website push IDs are marked `synced` in `offline.sqlite`
+  and do not reappear as pending operations on the next restore.
 - Offline app desktop push summaries now carry sanitized accepted/conflict/
   rejected operation IDs, and successful sync applies them locally by clearing
   accepted operations from the visible queue while retaining conflict/rejected

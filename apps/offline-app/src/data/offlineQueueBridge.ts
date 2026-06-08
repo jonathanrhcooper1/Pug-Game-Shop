@@ -6,6 +6,7 @@ import {
 
 export const offlineQueueCommandName = "queue_offline_operation"
 export const offlineQueueListCommandName = "list_offline_operations"
+export const offlineQueueMarkSyncedCommandName = "mark_offline_operations_synced"
 
 export type OfflineQueuePersistenceMode = "preview_only" | "tauri_command"
 export type OfflineQueueStatus = "previewed" | "queued" | "deferred"
@@ -37,6 +38,19 @@ export type OfflineQueueRestoreResult = {
   status: "restored" | "previewed" | "deferred"
   message: string
   operations: OfflineOperationEnvelope[]
+  audit: {
+    directMysqlAccess: false
+    networkWrite: false
+    schemaVersion: 1
+  }
+}
+
+export type OfflineQueueMarkSyncedResult = {
+  commandName: typeof offlineQueueMarkSyncedCommandName
+  acceptedOperationIds: string[]
+  persistenceMode: OfflineQueuePersistenceMode
+  status: "marked" | "previewed" | "deferred"
+  message: string
   audit: {
     directMysqlAccess: false
     networkWrite: false
@@ -105,6 +119,77 @@ export async function submitOfflineOperation(
   }
 }
 
+export async function markOfflineOperationsSynced(
+  acceptedOperationIds: string[],
+  adapter?: OfflineQueueCommandAdapter,
+): Promise<OfflineQueueMarkSyncedResult> {
+  const safeAcceptedOperationIds = sanitizeOperationIds(acceptedOperationIds)
+
+  if (safeAcceptedOperationIds.length === 0) {
+    return {
+      commandName: offlineQueueMarkSyncedCommandName,
+      acceptedOperationIds: [],
+      persistenceMode: "preview_only",
+      status: "previewed",
+      message: "No accepted local queue rows to mark synced.",
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  }
+
+  if (!adapter) {
+    return {
+      commandName: offlineQueueMarkSyncedCommandName,
+      acceptedOperationIds: safeAcceptedOperationIds,
+      persistenceMode: "preview_only",
+      status: "previewed",
+      message: `${safeAcceptedOperationIds.length} accepted queue row(s) ready for desktop sync marking.`,
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  }
+
+  try {
+    await adapter.invoke(offlineQueueMarkSyncedCommandName, {
+      request: {
+        accepted_operation_ids: safeAcceptedOperationIds,
+      },
+    })
+
+    return {
+      commandName: offlineQueueMarkSyncedCommandName,
+      acceptedOperationIds: safeAcceptedOperationIds,
+      persistenceMode: "tauri_command",
+      status: "marked",
+      message: `${safeAcceptedOperationIds.length} accepted queue row(s) marked synced in the desktop queue.`,
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  } catch {
+    return {
+      commandName: offlineQueueMarkSyncedCommandName,
+      acceptedOperationIds: safeAcceptedOperationIds,
+      persistenceMode: "preview_only",
+      status: "deferred",
+      message: "Desktop queue sync marking is deferred.",
+      audit: {
+        directMysqlAccess: false,
+        networkWrite: false,
+        schemaVersion: 1,
+      },
+    }
+  }
+}
+
 export async function restoreDesktopQueuedOperations(
   adapter?: OfflineQueueCommandAdapter,
   limit = 50,
@@ -156,6 +241,35 @@ export async function restoreDesktopQueuedOperations(
       },
     }
   }
+}
+
+function sanitizeOperationIds(values: string[]): string[] {
+  const operationIds: string[] = []
+
+  for (const value of values) {
+    const operationId = value.trim()
+
+    if (
+      !operationId ||
+      operationId.length > 160 ||
+      /\s/.test(operationId) ||
+      hasCredentialMarker(operationId)
+    ) {
+      continue
+    }
+
+    if (operationIds.includes(operationId)) {
+      continue
+    }
+
+    operationIds.push(operationId)
+
+    if (operationIds.length >= 100) {
+      break
+    }
+  }
+
+  return operationIds
 }
 
 function sanitizeRestoredOperations(response: unknown): OfflineOperationEnvelope[] {
