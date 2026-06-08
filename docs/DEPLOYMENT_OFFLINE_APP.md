@@ -48,6 +48,13 @@ the WordPress push response shape. Live network execution, production API
 keys, queue replay, canonical mutations, and direct MySQL access remain
 disabled.
 
+The current visual checkpoint adds the project-local Pug Game Shop crest,
+desktop app-window chrome, queue/conflict badges, a fuller default cached
+inventory view, and selected-card action layout tightening. Local Chrome QA
+captures desktop and mobile screenshots, clicks `Stage Inventory Update`, and
+checks for no horizontal overflow or console warnings while live SQLite writes,
+push execution, and production network calls remain disabled.
+
 ## Device Enrollment
 
 1. Manager creates a short-lived pairing code in WordPress.

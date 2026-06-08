@@ -71,7 +71,11 @@
   inventory workspace keeps its scanner/search, sync queue, conflict center,
   customer credit, grouped sync controls, selected-card visual frame, detail
   action cluster, empty search state, responsive mobile title constraint, and
-  no-production-secret UI markers in place.
+  no-production-secret UI markers in place. The current visual checkpoint also
+  captures desktop `1440x1000` and mobile `390x844` Chrome screenshots against
+  the Vite dev server, clicks `Stage Inventory Update`, asserts four cached
+  rows render by default, and checks for zero horizontal overflow or console
+  warnings/errors.
 - `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
   app's typed local workspace state includes the planned sync routes,
   SQLite operation envelope fields, queued inventory operation markers,

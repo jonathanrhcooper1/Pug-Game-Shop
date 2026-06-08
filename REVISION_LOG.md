@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-07 - Offline App Visual Command Center Refresh
+
+### What Changed
+
+- Added a project-local Pug Game Shop crest asset for the standalone offline
+  app shell.
+- Refreshed the React inventory command workspace with desktop app-window
+  chrome, stronger brand rail, queue/conflict navigation badges, a fuller
+  default cached inventory table, selected-card inspection tightening, and
+  desktop/mobile responsive overflow controls.
+- Kept the existing offline queue staging interaction intact: `Stage Inventory
+  Update` still creates the deferred local operation preview without live
+  SQLite writes, network push execution, direct MySQL access, production API
+  keys, or canonical website mutations.
+
+### Why
+
+The standalone offline app is one of the three key project pillars and needs to
+feel like a premium staff tool, not just a contract scaffold. This checkpoint
+improves the visual system and first-use readability while preserving the
+offline-first safety boundary and test contracts.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/assets/pug-game-shop-crest.png`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- No new automated test files. Existing offline app shell, workspace, queue,
+  Tauri command, package, and SQLite contract tests cover the preserved
+  functional markers.
+- Added manual/automated screenshot QA evidence for desktop and mobile Chrome
+  rendering with queue-staging interaction verification.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed, including 854 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+- Headless Chrome desktop screenshot at `1440x1000`: passed visual inspection,
+  four cached rows rendered by default, no horizontal overflow, no console
+  warnings/errors.
+- Headless Chrome mobile screenshot at `390x844`: passed visual inspection,
+  four cached rows rendered by default, no horizontal overflow, no console
+  warnings/errors.
+- `Stage Inventory Update` click in both screenshot passes: passed, staged
+  local operation preview updates while push execution remains deferred.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the previous visual shell
+  and remove the generated crest asset.
+- No migrations, live SQLite writes, WordPress push execution, direct MySQL
+  access, production network calls, payment capture, or canonical inventory
+  mutations are introduced.
+- Existing offline operation planning, queue bridge, and Tauri command
+  scaffolds remain available if only the visual shell is rolled back.
+
 ## 2026-06-07 - Square Inventory Batch Sync Planning
 
 ### What Changed

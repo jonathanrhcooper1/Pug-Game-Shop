@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app visual command-center refresh with a project-local Pug Game Shop
+  crest asset, desktop app-window chrome, queue/conflict nav badges, fuller
+  default cached inventory state, tighter selected-card inspection actions,
+  and desktop/mobile screenshot QA proving no horizontal overflow while local
+  queue staging remains deferred.
 - Square inventory batch sync planning that accepts multiple staged inventory
   rows, aggregates sandbox Catalog/Inventory request plans, idempotency keys,
   Square object IDs, SKUs, ready/skipped/blocked counts, and deferral metadata
