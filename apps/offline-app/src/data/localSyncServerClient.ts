@@ -315,6 +315,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   wordpress_push_connected: boolean
   wordpress_inventory_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
+  wordpress_event_checkin_push_connected?: boolean
   wordpress_credit_push_connected?: boolean
   wordpress_customer_push_connected?: boolean
   wordpress_kiosk_order_push_connected?: boolean
@@ -361,6 +362,7 @@ export type LocalSyncPushResult = LocalSyncResult<{
   wordpress_push_connected: true
   wordpress_inventory_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
+  wordpress_event_checkin_push_connected?: boolean
   wordpress_credit_push_connected?: boolean
   wordpress_customer_push_connected?: boolean
   wordpress_kiosk_order_push_connected?: boolean

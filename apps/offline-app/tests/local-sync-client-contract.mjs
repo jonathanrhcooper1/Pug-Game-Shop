@@ -112,6 +112,7 @@ for (const marker of [
   "scrydex_fallback_connected",
   "wordpress_pull_connected",
   "wordpress_push_connected",
+  "wordpress_event_checkin_push_connected",
   "pulled_count",
   "applied_count",
   "inserted_count",

@@ -527,6 +527,8 @@ function buildOperationSyncVisibilityRows(options: {
     localStatus?.wordpress_inventory_push_connected ?? localStatus?.wordpress_push_connected ?? false
   const eventPushConnected =
     localStatus?.wordpress_event_registration_push_connected ?? localStatus?.wordpress_push_connected ?? false
+  const eventCheckinPushConnected =
+    localStatus?.wordpress_event_checkin_push_connected ?? localStatus?.wordpress_push_connected ?? false
   const creditPushConnected = localStatus?.wordpress_credit_push_connected ?? false
   const customerPushConnected = localStatus?.wordpress_customer_push_connected ?? false
   const kioskPushConnected = localStatus?.wordpress_kiosk_order_push_connected ?? false
@@ -536,6 +538,9 @@ function buildOperationSyncVisibilityRows(options: {
   const eventPushStatus = eventPushConnected
     ? "Push-capable through LAN sync"
     : "Push waits for LAN/WordPress connection"
+  const eventCheckinPushStatus = eventCheckinPushConnected
+    ? "Push-capable through LAN sync"
+    : "Push waits for LAN/WordPress event connection"
   const creditPushStatus = creditPushConnected
     ? "Push-capable through LAN sync for existing WordPress customers"
     : "Push waits for LAN/WordPress credit connection"
@@ -598,15 +603,15 @@ function buildOperationSyncVisibilityRows(options: {
       id: "event-checkin",
       label: "Event check-in",
       countLabel: countLabel(eventCheckinCount, "visible op"),
-      wordpressStatus: `${localOnlyStatus}: event_checkin`,
+      wordpressStatus: `${eventCheckinPushStatus}: event_checkin`,
       localStatus:
         `LAN event queue plus app review queue; ${countLabel(
           queuedOperationCount(options.queuedOperations, "event_checkin"),
           "app op",
         )}`,
       detail:
-        "Manual check-ins stay queued locally while WordPress remains the registration match authority.",
-      tone: "local",
+        "Manual check-ins push to WordPress through the LAN server while WordPress remains the registration match authority.",
+      tone: eventCheckinPushConnected ? "wordpress" : "local",
     },
     {
       id: "kiosk-order",

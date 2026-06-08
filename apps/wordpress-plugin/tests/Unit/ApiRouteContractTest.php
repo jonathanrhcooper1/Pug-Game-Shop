@@ -24,7 +24,7 @@ final class ApiRouteContractTest extends TestCase {
 			$seen[ $key ] = true;
 		}
 
-		$this->assert_same( 5, count( $seen ) );
+		$this->assert_same( 6, count( $seen ) );
 	}
 
 	public function test_health_route_requires_authenticated_access(): void {
@@ -59,6 +59,14 @@ final class ApiRouteContractTest extends TestCase {
 				'permission' => 'public',
 			),
 			$this->route_summary( '/events/(?P<slug>[a-zA-Z0-9_-]+)/register' )
+		);
+		$this->assert_same(
+			array(
+				'method'     => 'POST',
+				'callback'   => 'check_in_event_attendee',
+				'permission' => 'manage_events',
+			),
+			$this->route_summary( '/events/(?P<slug>[a-zA-Z0-9_-]+)/check-ins' )
 		);
 	}
 

@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Event Check-In Push to WordPress
+
+### What Changed
+
+- Added a staff-only WordPress `POST /tcg-store/v1/events/{slug}/check-ins`
+  route that records check-ins in `tcg_event_checkins` and updates the matching
+  event registration to `checked_in`.
+- Added matching by registration public ID, email, or attendee name, with
+  idempotent handling for duplicate local check-in operations.
+- Added a LAN sync server WordPress event check-in push adapter and wired
+  `/sync/status` plus `/sync/push` to report and process
+  `wordpress_event_checkin_push_connected`.
+- Updated the offline app sync visibility panel and local sync types so event
+  check-ins display as WordPress-capable when the LAN connector is configured.
+
+### Why
+
+Staff can already queue event check-ins locally from shared cached event data.
+Those check-ins must now reach WordPress so the website remains the event
+registration and attendance source of truth across employee stations.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `apps/wordpress-plugin/tests/Unit/ApiRouteContractTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/local-sync-server/src/wordpressEventCheckinPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-event-checkin-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The route uses the existing `tcg_event_registrations`,
+  `tcg_event_checkins`, and `tcg_event_registration_logs` tables.
+
+### Tests Added
+
+- WordPress route contract and integration-smoke coverage for the protected
+  event check-in route.
+- LAN event check-in push adapter coverage for request mapping, idempotency
+  headers, response parsing, invalid payload blocking, and secret-safe output.
+- LAN runtime coverage proving queued `event_checkin` operations are accepted
+  and removed from the local queue during `/sync/push`.
+- Offline local-sync client contract coverage for the event check-in push
+  status flag.
+
+### Verification
+
+- `php -l apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the WordPress check-in route and LAN
+  `event_checkin` push adapter; local check-ins will remain queued locally.
+- Check-ins already accepted on staging should be reviewed before rollback
+  because their registrations will have `status` and `checkin_status` set to
+  `checked_in`.
+- No payment capture, Square integration, or inventory movement is affected by
+  this revision.
+
 ## 2026-06-08 - Kiosk Pickup Order Reservation Push
 
 ### What Changed

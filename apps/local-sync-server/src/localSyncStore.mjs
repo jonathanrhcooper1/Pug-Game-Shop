@@ -29,6 +29,8 @@ export function createLocalSyncStore(options = {}) {
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
   const wordpressEventRegistrationPush =
     typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
+  const wordpressEventCheckinPush =
+    typeof options.wordpressEventCheckinPush === "function" ? options.wordpressEventCheckinPush : null
   const wordpressCreditPush = typeof options.wordpressCreditPush === "function" ? options.wordpressCreditPush : null
   const wordpressCustomerUpsertPush =
     typeof options.wordpressCustomerUpsertPush === "function" ? options.wordpressCustomerUpsertPush : null
@@ -831,12 +833,14 @@ export function createLocalSyncStore(options = {}) {
       wordpress_push_connected: Boolean(
         wordpressInventoryPush ||
           wordpressEventRegistrationPush ||
+          wordpressEventCheckinPush ||
           wordpressCreditPush ||
           wordpressCustomerUpsertPush ||
           wordpressKioskOrderPush,
       ),
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
+      wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
       wordpress_customer_push_connected: Boolean(wordpressCustomerUpsertPush),
       wordpress_kiosk_order_push_connected: Boolean(wordpressKioskOrderPush),
@@ -938,6 +942,7 @@ export function createLocalSyncStore(options = {}) {
     if (
       !wordpressInventoryPush &&
       !wordpressEventRegistrationPush &&
+      !wordpressEventCheckinPush &&
       !wordpressCreditPush &&
       !wordpressCustomerUpsertPush &&
       !wordpressKioskOrderPush
@@ -950,6 +955,7 @@ export function createLocalSyncStore(options = {}) {
     const eventRegistrationOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "event_registration",
     )
+    const eventCheckinOperations = pendingOperations.filter((operation) => operation.operation_type === "event_checkin")
     const customerOperations = pendingOperations.filter((operation) => operation.operation_type === "customer_upsert")
     const kioskOperations = pendingOperations.filter((operation) => operation.operation_type === "kiosk_order")
     const reservationOperations = pendingOperations.filter(
@@ -1073,6 +1079,57 @@ export function createLocalSyncStore(options = {}) {
         code: pushResult.code,
         wordpress_code: pushResult.wordpress_code,
         wordpress_registration: pushResult.registration,
+      })
+    }
+
+    for (const operation of eventCheckinOperations) {
+      if (!wordpressEventCheckinPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_event_checkin_push_unavailable",
+          message: "WordPress event check-in push is not configured on this LAN server.",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressEventCheckinPush({ operation })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
+
+      const event = findEvent(eventSnapshots, operation.payload?.checkin?.event_id ?? operation.payload?.event?.event_id)
+
+      if (event) {
+        event.source = "accepted"
+        event.note = "Check-in accepted by WordPress; next pull remains authoritative for attendance counts."
+        event.row_version += 1
+        saveEventSnapshot(database, event, now)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_checkin: pushResult.checkin,
       })
     }
 
@@ -1337,6 +1394,7 @@ export function createLocalSyncStore(options = {}) {
     const supportedOperationCount =
       inventoryOperations.length +
       eventRegistrationOperations.length +
+      eventCheckinOperations.length +
       kioskOperations.length +
       coveredKioskReservationOperationIds.size +
       customerOperations.length +
@@ -1353,6 +1411,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_push_connected: true,
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
+      wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
       wordpress_customer_push_connected: Boolean(wordpressCustomerUpsertPush),
       wordpress_kiosk_order_push_connected: Boolean(wordpressKioskOrderPush),

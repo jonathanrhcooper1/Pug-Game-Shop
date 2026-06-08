@@ -1,6 +1,7 @@
 import { listenLocalSyncHttpServer } from "./localSyncHttpServer.mjs"
 import { createWordPressCatalogFallback } from "./wordpressCatalogFallback.mjs"
 import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
+import { createWordPressEventCheckinPush } from "./wordpressEventCheckinPush.mjs"
 import { createWordPressCustomerUpsertPush } from "./wordpressCustomerUpsertPush.mjs"
 import { createWordPressEventRegistrationPush } from "./wordpressEventRegistrationPush.mjs"
 import { createWordPressInventoryPull } from "./wordpressInventoryPull.mjs"
@@ -46,6 +47,15 @@ const wordpressEventRegistrationPush = createWordPressEventRegistrationPush({
     process.env.PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD ??
     process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
 })
+const wordpressEventCheckinPush = createWordPressEventCheckinPush({
+  websiteUrl: process.env.PUG_WORDPRESS_URL,
+  restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
+  authHeader: process.env.PUG_WORDPRESS_EVENTS_AUTH_HEADER ?? process.env.PUG_WORDPRESS_CATALOG_AUTH_HEADER,
+  username: process.env.PUG_WORDPRESS_EVENTS_USERNAME ?? process.env.PUG_WORDPRESS_CATALOG_USERNAME,
+  applicationPassword:
+    process.env.PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD ??
+    process.env.PUG_WORDPRESS_CATALOG_APPLICATION_PASSWORD,
+})
 const wordpressCreditPush = createWordPressCreditPush({
   websiteUrl: process.env.PUG_WORDPRESS_URL,
   restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
@@ -80,6 +90,7 @@ const server = await listenLocalSyncHttpServer({
     wordpressInventoryPull,
     wordpressInventoryPush,
     wordpressEventRegistrationPush,
+    wordpressEventCheckinPush,
     wordpressCreditPush,
     wordpressCustomerUpsertPush,
     wordpressKioskOrderPush,

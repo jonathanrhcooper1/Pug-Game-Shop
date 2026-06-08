@@ -150,6 +150,7 @@ $assert( isset( $routes['/tcg-store/v1/health'] ), 'Health REST route was not re
 $assert( isset( $routes['/tcg-store/v1/events'] ), 'Events REST list route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)'] ), 'Events REST detail route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/register'] ), 'Events REST registration route was not registered.' );
+$assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/check-ins'] ), 'Events REST check-in route was not registered.' );
 $assert( ! isset( $routes['/tcg-store/v1/offline/pull'] ), 'Offline pull route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/offline/push'] ), 'Offline push route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/pos/events'] ), 'POS event route should remain unregistered.' );

@@ -6,6 +6,13 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- WordPress now exposes a staff-only event check-in route that records
+  check-ins against existing event registrations, updates registration check-in
+  state, and treats duplicate local check-ins idempotently.
+- LAN sync server can now push queued `event_checkin` operations to WordPress
+  after queued event registrations in the same sync attempt, and the offline
+  app sync visibility panel now marks event check-ins as WordPress-capable when
+  configured.
 - WordPress now exposes a staff/system kiosk pickup route that reserves exact
   inventory items for pickup without payment capture or WooCommerce order
   creation.
