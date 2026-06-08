@@ -169,6 +169,8 @@ plus offline app redacted pairing-code request preview for selected website
 connector profiles
 plus offline app credential-free pairing route index check and future WordPress
 pairing request body shaping without raw-code storage
+plus Tauri desktop secure-store command boundary for offline device-token
+storage, status checks, and deletion without raw-token UI return
 plus WordPress app pairing contract diagnostics aligned with offline app
 route-map preview
 plus typed local workspace state and staged operation envelope preview

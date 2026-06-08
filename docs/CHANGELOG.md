@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app Tauri commands can now store, check, and delete offline device
+  tokens through the desktop secure store using the Windows-native `keyring`
+  backend, returning only secret-free metadata to the UI and contract-tested
+  against browser storage or network fallback.
 - Offline app pairing controls now include a credential-free WordPress REST
   route-index check for `/offline/devices/register`, plus the exact future
   WordPress pairing POST body shape, so staff can verify the website route

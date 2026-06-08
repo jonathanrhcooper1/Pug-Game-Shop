@@ -116,6 +116,11 @@
 - Tauri Rust command coverage now also verifies pending-operation read-back
   from local SQLite, bounded restore limits, row validation, and startup bridge
   contract markers for hydrating the visible queue in the desktop app.
+- Tauri Rust command coverage now verifies desktop secure-store device-token
+  commands for storing, checking, deleting, scope validation, short-token
+  rejection, keyring account normalization, and no raw token return. Contract
+  tests verify the TypeScript adapter uses Tauri commands instead of browser
+  storage or network fallback.
 - Windows packaging verification now has a PATH-aware helper for
   `x86_64-pc-windows-msvc` NSIS builds; the latest local package build produced
   an unsigned installer successfully after Cargo was prepended to PATH.

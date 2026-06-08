@@ -3,6 +3,70 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Device Token Secure Store
+
+### What Changed
+
+- Added the Windows-native `keyring` crate to the Tauri app.
+- Added `store_device_token`, `get_device_token_status`, and
+  `delete_device_token` Tauri commands.
+- Added validation for device-token length, whitespace, profile/device
+  identity, and required `offline_pull`/`offline_push` scopes.
+- Added secret-free command responses that report keyring account metadata,
+  token length, scope count, and presence/deletion status without returning raw
+  tokens.
+- Added a TypeScript Tauri secure-store adapter and surfaced desktop secure
+  store availability in the pairing panel.
+
+### Why
+
+Live offline pairing cannot safely issue one-time device tokens until the
+desktop app has a secure place to store them. This creates the desktop secure
+store boundary needed before connecting live pairing POST responses to the app.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriSecureStoreAdapter.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for storing, checking, deleting, invalid short token
+  rejection, incomplete scope rejection, and missing device ID rejection.
+- Tauri command contract coverage for the keyring dependency, command names,
+  secret-free response markers, and no browser-storage/network fallback in the
+  TypeScript adapter.
+
+### Tests Run
+
+- `cd apps/offline-app/src-tauri && cargo fmt && cargo test`: passed, 10 Rust
+  tests.
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 10 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove device-token secure-store commands and the
+  TypeScript adapter.
+- If any staging desktop device stored a token during manual testing, remove it
+  from Windows Credential Manager under the `Pug Game Shop Offline Device
+  Tokens` service.
+- No database or local SQLite rollback is required.
+
 ## 2026-06-08 - Offline App Pairing Route Index Check
 
 ### What Changed

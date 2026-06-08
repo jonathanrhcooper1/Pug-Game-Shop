@@ -9,8 +9,13 @@ const appRoot = path.resolve(__dirname, "..")
 const cargoToml = await readFile(path.join(appRoot, "src-tauri/Cargo.toml"), "utf8")
 const libSource = await readFile(path.join(appRoot, "src-tauri/src/lib.rs"), "utf8")
 const adapterSource = await readFile(path.join(appRoot, "src/data/tauriQueueAdapter.ts"), "utf8")
+const secureStoreAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriSecureStoreAdapter.ts"),
+  "utf8",
+)
 
 for (const dependency of [
+  "keyring = { version = \"3\", features = [\"windows-native\"] }",
   "rusqlite = { version = \"0.32\", features = [\"bundled\"] }",
   "serde = { version = \"1\", features = [\"derive\"] }",
   "serde_json = \"1\"",
@@ -48,6 +53,22 @@ for (const marker of [
   "invalid_authorization_context_json",
   "unsupported_operation",
   "offline_queue_row_invalid",
+  "store_device_token",
+  "get_device_token_status",
+  "delete_device_token",
+  "DEVICE_TOKEN_KEYRING_SERVICE",
+  "desktop_secure_store",
+  "stored_in_desktop_secure_store",
+  "device_token_available",
+  "device_token_missing",
+  "device_token_deleted",
+  "token_persisted",
+  "raw_token_returned: false",
+  "credentials_synced_to_app: false",
+  "keyring_account",
+  "device_token_too_short",
+  "device_token_scopes_incomplete",
+  "device_token_secure_store_write_failed",
 ]) {
   assert.ok(libSource.includes(marker), `Missing Tauri command marker: ${marker}`)
 }
@@ -61,8 +82,22 @@ for (const marker of [
   assert.ok(adapterSource.includes(marker), `Missing Tauri adapter marker: ${marker}`)
 }
 
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriSecureStoreAdapter",
+  "store_device_token",
+  "get_device_token_status",
+  "delete_device_token",
+  "desktop_secure_store",
+  "raw_token_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(secureStoreAdapterSource.includes(marker), `Missing secure-store adapter marker: ${marker}`)
+}
+
 for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
   assert.equal(adapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(secureStoreAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(libSource.includes(forbidden), false, `Forbidden command marker: ${forbidden}`)
 }
 

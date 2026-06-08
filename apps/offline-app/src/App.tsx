@@ -65,6 +65,7 @@ import {
   type OfflineQueueSubmissionResult,
 } from "./data/offlineQueueBridge"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
+import { createTauriSecureStoreAdapter } from "./data/tauriSecureStoreAdapter"
 import pugGameShopCrest from "./assets/pug-game-shop-crest.png"
 import "./styles.css"
 
@@ -175,6 +176,7 @@ function Icon({ name }: { name: AppIconName }) {
 export function App() {
   const workspace = offlineWorkspaceSeed
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
+  const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
   const queuePanelRef = useRef<HTMLElement>(null)
@@ -267,6 +269,9 @@ export function App() {
     [preparedPairingRequests, activeProfile.id],
   )
   const connectorHealth = connectorHealthSummary(connectorValidation?.profile ?? activeProfile)
+  const secureStoreSummary = secureStoreAdapter
+    ? "available; device tokens can be persisted through the Tauri desktop secure-store commands"
+    : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
@@ -1810,6 +1815,9 @@ export function App() {
                   {pairingPlan
                     ? `${pairingPlan.pairingCodeProvided ? "Code present" : "Code missing"}; ${pairingPlan.requestedScopes.length} scopes; token storage ${pairingPlan.tokenStorage}; code fingerprint ${pairingPlan.pairingCodeFingerprint}.`
                     : "No token request is sent until live pairing is enabled."}
+                </small>
+                <small>
+                  Desktop secure store: {secureStoreSummary}; raw tokens returned to UI: no.
                 </small>
                 <small>
                   Pairing route check: {pairingRouteCheck.status}; {pairingRouteCheck.detail}

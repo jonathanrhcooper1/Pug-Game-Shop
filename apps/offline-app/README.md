@@ -39,6 +39,9 @@ future offline sync app.
   reservation, event, and credit operation envelopes to `offline.sqlite`, with
   a companion pending-operation restore command and local/CI Rust tests
   available through `cargo test` when the Windows MSVC toolchain is installed.
+- Tauri desktop secure-store commands for offline device tokens, backed by the
+  Windows-native `keyring` credential store in production and memory-backed
+  Rust tests. The UI reports availability without returning raw tokens.
 - Windows NSIS installer target for `.exe` artifacts.
 - Manual-only GitHub Actions Windows build workflow.
 - SQLite schema migration for device identity, cursors, queued operations,
@@ -55,8 +58,9 @@ writes accepted operations to local SQLite. Connector profiles, draft editing,
 and manifest handling remain secret-free. The app can now fetch the public
 WordPress connector manifest when the plugin endpoint is installed, but live
 pairing POST, device-token persistence, and push/pull sync execution remain
-disabled until the device token adapter is connected. Pairing route checks use
-the public WordPress REST index and never transmit raw manager codes. Guarded inventory holds are
+disabled until the live pairing POST adapter is connected. Pairing route checks
+use the public WordPress REST index and never transmit raw manager codes.
+Guarded inventory holds are
 staged locally and remain deferred unless a selected non-production connector
 explicitly enables canonical inventory writes; real device tokens must be
 stored in the desktop secure store and ScryDex/Square credentials must remain

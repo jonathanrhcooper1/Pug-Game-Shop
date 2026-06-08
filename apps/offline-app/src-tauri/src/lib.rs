@@ -1,9 +1,11 @@
+use keyring::{Entry, Error as KeyringError};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 const OFFLINE_DATABASE_FILE: &str = "offline.sqlite";
+const DEVICE_TOKEN_KEYRING_SERVICE: &str = "Pug Game Shop Offline Device Tokens";
 const SQLITE_QUEUE_TABLE: &str = "operation_queue";
 const SQLITE_QUEUE_CREATE_TABLE_SQL: &str = concat!(
     "CREATE TABLE IF NOT EXISTS operation_queue (",
@@ -89,6 +91,51 @@ struct ListOfflineOperationsResponse {
     schema_version: u8,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+struct StoreDeviceTokenRequest {
+    profile_id: String,
+    device_public_id: String,
+    device_token: String,
+    expires_at_utc: Option<String>,
+    scopes: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct DeviceTokenStatusRequest {
+    profile_id: String,
+    device_public_id: String,
+}
+
+#[derive(Debug, Serialize)]
+struct StoreDeviceTokenResponse {
+    status: &'static str,
+    persistence_mode: &'static str,
+    keyring_service: &'static str,
+    keyring_account: String,
+    profile_id: String,
+    device_public_id: String,
+    token_persisted: bool,
+    raw_token_returned: bool,
+    credentials_synced_to_app: bool,
+    token_length: usize,
+    scope_count: usize,
+    expires_at_utc: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct DeviceTokenStatusResponse {
+    status: &'static str,
+    persistence_mode: &'static str,
+    keyring_service: &'static str,
+    keyring_account: String,
+    profile_id: String,
+    device_public_id: String,
+    token_present: bool,
+    token_length: usize,
+    raw_token_returned: bool,
+    credentials_synced_to_app: bool,
+}
+
 #[tauri::command]
 fn queue_offline_operation(
     app: tauri::AppHandle,
@@ -109,6 +156,75 @@ fn list_offline_operations(
     let connection = open_offline_database(&database_path)?;
 
     list_offline_operations_with_connection(&connection, limit)
+}
+
+#[tauri::command]
+fn store_device_token(
+    request: StoreDeviceTokenRequest,
+) -> Result<StoreDeviceTokenResponse, String> {
+    let store = KeyringDeviceTokenStore;
+
+    store_device_token_with_store(request, &store)
+}
+
+#[tauri::command]
+fn get_device_token_status(
+    request: DeviceTokenStatusRequest,
+) -> Result<DeviceTokenStatusResponse, String> {
+    let store = KeyringDeviceTokenStore;
+
+    device_token_status_with_store(request, &store)
+}
+
+#[tauri::command]
+fn delete_device_token(
+    request: DeviceTokenStatusRequest,
+) -> Result<DeviceTokenStatusResponse, String> {
+    let store = KeyringDeviceTokenStore;
+
+    delete_device_token_with_store(request, &store)
+}
+
+trait DeviceTokenStore {
+    fn persistence_mode(&self) -> &'static str;
+    fn set_token(&self, account: &str, token: &str) -> Result<(), String>;
+    fn get_token(&self, account: &str) -> Result<Option<String>, String>;
+    fn delete_token(&self, account: &str) -> Result<bool, String>;
+}
+
+struct KeyringDeviceTokenStore;
+
+impl DeviceTokenStore for KeyringDeviceTokenStore {
+    fn persistence_mode(&self) -> &'static str {
+        "desktop_secure_store"
+    }
+
+    fn set_token(&self, account: &str, token: &str) -> Result<(), String> {
+        keyring_entry(account)?
+            .set_password(token)
+            .map_err(|_| "device_token_secure_store_write_failed".to_string())
+    }
+
+    fn get_token(&self, account: &str) -> Result<Option<String>, String> {
+        match keyring_entry(account)?.get_password() {
+            Ok(token) => Ok(Some(token)),
+            Err(KeyringError::NoEntry) => Ok(None),
+            Err(_) => Err("device_token_secure_store_read_failed".to_string()),
+        }
+    }
+
+    fn delete_token(&self, account: &str) -> Result<bool, String> {
+        match keyring_entry(account)?.delete_credential() {
+            Ok(()) => Ok(true),
+            Err(KeyringError::NoEntry) => Ok(false),
+            Err(_) => Err("device_token_secure_store_delete_failed".to_string()),
+        }
+    }
+}
+
+fn keyring_entry(account: &str) -> Result<Entry, String> {
+    Entry::new(DEVICE_TOKEN_KEYRING_SERVICE, account)
+        .map_err(|_| "device_token_secure_store_entry_failed".to_string())
 }
 
 fn queue_offline_operation_with_connection(
@@ -156,6 +272,173 @@ fn list_offline_operations_with_connection(
         network_write: false,
         schema_version: 1,
     })
+}
+
+fn store_device_token_with_store(
+    request: StoreDeviceTokenRequest,
+    store: &impl DeviceTokenStore,
+) -> Result<StoreDeviceTokenResponse, String> {
+    validate_store_device_token_request(&request)?;
+
+    let account = device_token_keyring_account(&request.profile_id, &request.device_public_id)?;
+    let token = request.device_token.trim();
+
+    store.set_token(&account, token)?;
+
+    Ok(StoreDeviceTokenResponse {
+        status: "stored_in_desktop_secure_store",
+        persistence_mode: store.persistence_mode(),
+        keyring_service: DEVICE_TOKEN_KEYRING_SERVICE,
+        keyring_account: account,
+        profile_id: request.profile_id.trim().to_string(),
+        device_public_id: request.device_public_id.trim().to_string(),
+        token_persisted: true,
+        raw_token_returned: false,
+        credentials_synced_to_app: false,
+        token_length: token.len(),
+        scope_count: normalized_token_scopes(&request.scopes).len(),
+        expires_at_utc: normalized_optional_text(request.expires_at_utc.as_deref()),
+    })
+}
+
+fn device_token_status_with_store(
+    request: DeviceTokenStatusRequest,
+    store: &impl DeviceTokenStore,
+) -> Result<DeviceTokenStatusResponse, String> {
+    let account = device_token_keyring_account(&request.profile_id, &request.device_public_id)?;
+    let token = store.get_token(&account)?;
+    let token_length = token.as_ref().map_or(0, |value| value.len());
+    let token_present = token.is_some();
+
+    Ok(DeviceTokenStatusResponse {
+        status: if token_present {
+            "device_token_available"
+        } else {
+            "device_token_missing"
+        },
+        persistence_mode: store.persistence_mode(),
+        keyring_service: DEVICE_TOKEN_KEYRING_SERVICE,
+        keyring_account: account,
+        profile_id: request.profile_id.trim().to_string(),
+        device_public_id: request.device_public_id.trim().to_string(),
+        token_present,
+        token_length,
+        raw_token_returned: false,
+        credentials_synced_to_app: false,
+    })
+}
+
+fn delete_device_token_with_store(
+    request: DeviceTokenStatusRequest,
+    store: &impl DeviceTokenStore,
+) -> Result<DeviceTokenStatusResponse, String> {
+    let account = device_token_keyring_account(&request.profile_id, &request.device_public_id)?;
+    let deleted = store.delete_token(&account)?;
+
+    Ok(DeviceTokenStatusResponse {
+        status: if deleted {
+            "device_token_deleted"
+        } else {
+            "device_token_missing"
+        },
+        persistence_mode: store.persistence_mode(),
+        keyring_service: DEVICE_TOKEN_KEYRING_SERVICE,
+        keyring_account: account,
+        profile_id: request.profile_id.trim().to_string(),
+        device_public_id: request.device_public_id.trim().to_string(),
+        token_present: false,
+        token_length: 0,
+        raw_token_returned: false,
+        credentials_synced_to_app: false,
+    })
+}
+
+fn validate_store_device_token_request(request: &StoreDeviceTokenRequest) -> Result<(), String> {
+    device_token_keyring_account(&request.profile_id, &request.device_public_id)?;
+
+    let token = request.device_token.trim();
+
+    if token.len() < 24 {
+        return Err("device_token_too_short".to_string());
+    }
+
+    if token.chars().any(char::is_whitespace) {
+        return Err("device_token_contains_whitespace".to_string());
+    }
+
+    let scopes = normalized_token_scopes(&request.scopes);
+
+    if !scopes.contains(&"offline_pull".to_string())
+        || !scopes.contains(&"offline_push".to_string())
+    {
+        return Err("device_token_scopes_incomplete".to_string());
+    }
+
+    Ok(())
+}
+
+fn normalized_token_scopes(scopes: &[String]) -> Vec<String> {
+    let mut normalized = Vec::new();
+
+    for scope in scopes {
+        let value = scope.trim().to_lowercase();
+
+        if value.is_empty() || normalized.contains(&value) {
+            continue;
+        }
+
+        normalized.push(value);
+    }
+
+    normalized
+}
+
+fn normalized_optional_text(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn device_token_keyring_account(
+    profile_id: &str,
+    device_public_id: &str,
+) -> Result<String, String> {
+    let profile = safe_key_component(profile_id);
+    let device = safe_key_component(device_public_id);
+
+    if profile.is_empty() {
+        return Err("device_token_profile_id_required".to_string());
+    }
+
+    if device.is_empty() {
+        return Err("device_token_device_id_required".to_string());
+    }
+
+    Ok(format!("tcg-store-offline:{}:{}", profile, device))
+}
+
+fn safe_key_component(value: &str) -> String {
+    let mut output = String::new();
+    let mut previous_dash = false;
+
+    for character in value.trim().chars() {
+        let next = if character.is_ascii_alphanumeric() || matches!(character, '_' | '.' | ':') {
+            previous_dash = false;
+            Some(character.to_ascii_lowercase())
+        } else if !previous_dash {
+            previous_dash = true;
+            Some('-')
+        } else {
+            None
+        };
+
+        if let Some(character) = next {
+            output.push(character);
+        }
+    }
+
+    output.trim_matches('-').to_string()
 }
 
 #[derive(Debug)]
@@ -371,7 +654,10 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             queue_offline_operation,
-            list_offline_operations
+            list_offline_operations,
+            store_device_token,
+            get_device_token_status,
+            delete_device_token
         ])
         .run(tauri::generate_context!())
         .expect("error while running TCG Store Offline");
@@ -380,6 +666,45 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    #[derive(Default)]
+    struct MemoryDeviceTokenStore {
+        tokens: Mutex<HashMap<String, String>>,
+    }
+
+    impl DeviceTokenStore for MemoryDeviceTokenStore {
+        fn persistence_mode(&self) -> &'static str {
+            "desktop_secure_store"
+        }
+
+        fn set_token(&self, account: &str, token: &str) -> Result<(), String> {
+            self.tokens
+                .lock()
+                .expect("memory token store lock")
+                .insert(account.to_string(), token.to_string());
+            Ok(())
+        }
+
+        fn get_token(&self, account: &str) -> Result<Option<String>, String> {
+            Ok(self
+                .tokens
+                .lock()
+                .expect("memory token store lock")
+                .get(account)
+                .cloned())
+        }
+
+        fn delete_token(&self, account: &str) -> Result<bool, String> {
+            Ok(self
+                .tokens
+                .lock()
+                .expect("memory token store lock")
+                .remove(account)
+                .is_some())
+        }
+    }
 
     fn valid_operation() -> OfflineOperationEnvelope {
         OfflineOperationEnvelope {
@@ -397,6 +722,117 @@ mod tests {
             authorization_context_json: "{\"manager_override\":false}".to_string(),
             schema_version: 1,
         }
+    }
+
+    fn valid_store_device_token_request() -> StoreDeviceTokenRequest {
+        StoreDeviceTokenRequest {
+            profile_id: "Pug Game Shop / staging".to_string(),
+            device_public_id: "device-public-123".to_string(),
+            device_token: "offline-device-token-2026-abcdef".to_string(),
+            expires_at_utc: Some("2026-06-08T12:00:00Z".to_string()),
+            scopes: vec![
+                "offline_pull".to_string(),
+                "offline_push".to_string(),
+                "conflicts".to_string(),
+                "offline_pull".to_string(),
+            ],
+        }
+    }
+
+    #[test]
+    fn secure_store_persists_device_token_without_returning_secret() {
+        let store = MemoryDeviceTokenStore::default();
+        let request = valid_store_device_token_request();
+
+        let result = store_device_token_with_store(request.clone(), &store)
+            .expect("device token should store");
+
+        assert_eq!(result.status, "stored_in_desktop_secure_store");
+        assert_eq!(result.persistence_mode, "desktop_secure_store");
+        assert_eq!(result.keyring_service, DEVICE_TOKEN_KEYRING_SERVICE);
+        assert_eq!(
+            result.keyring_account,
+            "tcg-store-offline:pug-game-shop-staging:device-public-123"
+        );
+        assert_eq!(result.profile_id, "Pug Game Shop / staging");
+        assert_eq!(result.device_public_id, "device-public-123");
+        assert!(result.token_persisted);
+        assert!(!result.raw_token_returned);
+        assert!(!result.credentials_synced_to_app);
+        assert_eq!(result.token_length, request.device_token.len());
+        assert_eq!(result.scope_count, 3);
+
+        let status = device_token_status_with_store(
+            DeviceTokenStatusRequest {
+                profile_id: request.profile_id,
+                device_public_id: request.device_public_id,
+            },
+            &store,
+        )
+        .expect("device token status should load");
+
+        assert_eq!(status.status, "device_token_available");
+        assert!(status.token_present);
+        assert_eq!(
+            status.token_length,
+            "offline-device-token-2026-abcdef".len()
+        );
+        assert!(!status.raw_token_returned);
+    }
+
+    #[test]
+    fn secure_store_delete_removes_device_token_metadata() {
+        let store = MemoryDeviceTokenStore::default();
+        let request = valid_store_device_token_request();
+        let status_request = DeviceTokenStatusRequest {
+            profile_id: request.profile_id.clone(),
+            device_public_id: request.device_public_id.clone(),
+        };
+
+        store_device_token_with_store(request, &store).expect("device token should store");
+
+        let deleted = delete_device_token_with_store(status_request.clone(), &store)
+            .expect("delete should succeed");
+
+        assert_eq!(deleted.status, "device_token_deleted");
+        assert!(!deleted.token_present);
+        assert_eq!(deleted.token_length, 0);
+        assert!(!deleted.raw_token_returned);
+
+        let status =
+            device_token_status_with_store(status_request, &store).expect("status should succeed");
+
+        assert_eq!(status.status, "device_token_missing");
+        assert!(!status.token_present);
+    }
+
+    #[test]
+    fn secure_store_rejects_invalid_device_token_requests() {
+        let store = MemoryDeviceTokenStore::default();
+        let mut short_token = valid_store_device_token_request();
+        short_token.device_token = "short".to_string();
+
+        assert_eq!(
+            store_device_token_with_store(short_token, &store).expect_err("short token fails"),
+            "device_token_too_short"
+        );
+
+        let mut missing_scope = valid_store_device_token_request();
+        missing_scope.scopes = vec!["offline_pull".to_string()];
+
+        assert_eq!(
+            store_device_token_with_store(missing_scope, &store).expect_err("missing scope fails"),
+            "device_token_scopes_incomplete"
+        );
+
+        let mut missing_device = valid_store_device_token_request();
+        missing_device.device_public_id = " ".to_string();
+
+        assert_eq!(
+            store_device_token_with_store(missing_device, &store)
+                .expect_err("missing device fails"),
+            "device_token_device_id_required"
+        );
     }
 
     #[test]
