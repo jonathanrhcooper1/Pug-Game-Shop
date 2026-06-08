@@ -14,6 +14,7 @@ import {
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
   applyOfflinePullCustomerCreditRecordsToCache,
+  applyOfflinePullEventRecordsToCache,
   applyOfflinePullInventoryRecordsToCache,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
@@ -143,6 +144,10 @@ type DesktopSyncExecutionState = {
   creditCacheAppliedCount: number
   creditCacheUpdatedCount: number
   creditCacheIgnoredCount: number
+  eventCacheAppliedCount: number
+  eventCacheInsertedCount: number
+  eventCacheUpdatedCount: number
+  eventCacheIgnoredCount: number
   rawTokenReturned: false
   rawResponseReturned: false
   credentialsSyncedToApp: false
@@ -262,6 +267,7 @@ export function App() {
   const offlineSessionStorage = offlineSessionStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
   const [customerCredit, setCustomerCredit] = useState(workspace.customerCredit)
+  const [eventSnapshots, setEventSnapshots] = useState(workspace.eventSnapshots)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
   const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>([])
@@ -302,6 +308,10 @@ export function App() {
     creditCacheAppliedCount: 0,
     creditCacheUpdatedCount: 0,
     creditCacheIgnoredCount: 0,
+    eventCacheAppliedCount: 0,
+    eventCacheInsertedCount: 0,
+    eventCacheUpdatedCount: 0,
+    eventCacheIgnoredCount: 0,
     rawTokenReturned: false,
     rawResponseReturned: false,
     credentialsSyncedToApp: false,
@@ -431,6 +441,10 @@ export function App() {
       creditCacheAppliedCount: 0,
       creditCacheUpdatedCount: 0,
       creditCacheIgnoredCount: 0,
+      eventCacheAppliedCount: 0,
+      eventCacheInsertedCount: 0,
+      eventCacheUpdatedCount: 0,
+      eventCacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -906,6 +920,7 @@ export function App() {
       customerCredit,
       openConflicts,
       operationsForSync,
+      { eventRowsRefreshed: eventSnapshots.length },
     )
     setPullRefreshPreview(nextPullRefreshPreview)
     setInventoryItems((items) =>
@@ -945,6 +960,10 @@ export function App() {
         creditCacheAppliedCount: 0,
         creditCacheUpdatedCount: 0,
         creditCacheIgnoredCount: 0,
+        eventCacheAppliedCount: 0,
+        eventCacheInsertedCount: 0,
+        eventCacheUpdatedCount: 0,
+        eventCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -963,6 +982,10 @@ export function App() {
         creditCacheAppliedCount: 0,
         creditCacheUpdatedCount: 0,
         creditCacheIgnoredCount: 0,
+        eventCacheAppliedCount: 0,
+        eventCacheInsertedCount: 0,
+        eventCacheUpdatedCount: 0,
+        eventCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -981,6 +1004,10 @@ export function App() {
         creditCacheAppliedCount: 0,
         creditCacheUpdatedCount: 0,
         creditCacheIgnoredCount: 0,
+        eventCacheAppliedCount: 0,
+        eventCacheInsertedCount: 0,
+        eventCacheUpdatedCount: 0,
+        eventCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -999,6 +1026,10 @@ export function App() {
         creditCacheAppliedCount: 0,
         creditCacheUpdatedCount: 0,
         creditCacheIgnoredCount: 0,
+        eventCacheAppliedCount: 0,
+        eventCacheInsertedCount: 0,
+        eventCacheUpdatedCount: 0,
+        eventCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1016,6 +1047,10 @@ export function App() {
       creditCacheAppliedCount: 0,
       creditCacheUpdatedCount: 0,
       creditCacheIgnoredCount: 0,
+      eventCacheAppliedCount: 0,
+      eventCacheInsertedCount: 0,
+      eventCacheUpdatedCount: 0,
+      eventCacheIgnoredCount: 0,
       rawTokenReturned: false,
       rawResponseReturned: false,
       credentialsSyncedToApp: false,
@@ -1050,6 +1085,10 @@ export function App() {
         customerCredit,
         completed ? pull.pull_customer_credit_records : [],
       )
+      const eventCacheApplyResult = applyOfflinePullEventRecordsToCache(
+        eventSnapshots,
+        completed ? pull.pull_event_records : [],
+      )
 
       if (cacheApplyResult.appliedCount > 0) {
         setInventoryItems(cacheApplyResult.items)
@@ -1060,11 +1099,14 @@ export function App() {
           Math.min(creditCacheApplyResult.customerCredit.availableMinorUnits, current),
         )
       }
+      if (eventCacheApplyResult.appliedCount > 0) {
+        setEventSnapshots(eventCacheApplyResult.events)
+      }
 
       setDesktopSyncExecution({
         status: completed ? "synced" : "blocked",
         detail: completed
-          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s) applied, ${creditCacheApplyResult.appliedCount} credit account(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
+          ? `Desktop sync completed: pull ${pull.pull_record_count} record(s), ${cacheApplyResult.appliedCount} inventory row(s), ${creditCacheApplyResult.appliedCount} credit account(s), and ${eventCacheApplyResult.appliedCount} event(s) applied, ${push ? `${push.accepted_count} accepted push op(s)` : "no push batch"}.`
           : `Desktop sync returned a WordPress rejection: pull ${pull.http_status}${push ? `, push ${push.http_status}` : ""}.`,
         pull,
         push,
@@ -1075,6 +1117,10 @@ export function App() {
         creditCacheAppliedCount: creditCacheApplyResult.appliedCount,
         creditCacheUpdatedCount: creditCacheApplyResult.updatedCount,
         creditCacheIgnoredCount: creditCacheApplyResult.ignoredCount,
+        eventCacheAppliedCount: eventCacheApplyResult.appliedCount,
+        eventCacheInsertedCount: eventCacheApplyResult.insertedCount,
+        eventCacheUpdatedCount: eventCacheApplyResult.updatedCount,
+        eventCacheIgnoredCount: eventCacheApplyResult.ignoredCount,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1090,6 +1136,10 @@ export function App() {
         creditCacheAppliedCount: 0,
         creditCacheUpdatedCount: 0,
         creditCacheIgnoredCount: 0,
+        eventCacheAppliedCount: 0,
+        eventCacheInsertedCount: 0,
+        eventCacheUpdatedCount: 0,
+        eventCacheIgnoredCount: 0,
         rawTokenReturned: false,
         rawResponseReturned: false,
         credentialsSyncedToApp: false,
@@ -1785,7 +1835,8 @@ export function App() {
                 <span className="micro-label">Cache apply</span>
                 <strong>
                   {desktopSyncExecution.cacheAppliedCount} inventory;
-                  {desktopSyncExecution.creditCacheAppliedCount} credit
+                  {desktopSyncExecution.creditCacheAppliedCount} credit;
+                  {desktopSyncExecution.eventCacheAppliedCount} event
                 </strong>
                 <small>
                   {desktopSyncExecution.cacheInsertedCount} inserted;
@@ -1795,6 +1846,11 @@ export function App() {
                 <small>
                   Credit: {desktopSyncExecution.creditCacheUpdatedCount} updated;
                   {desktopSyncExecution.creditCacheIgnoredCount} ignored as stale/unmatched.
+                </small>
+                <small>
+                  Events: {desktopSyncExecution.eventCacheInsertedCount} inserted;
+                  {desktopSyncExecution.eventCacheUpdatedCount} updated;
+                  {desktopSyncExecution.eventCacheIgnoredCount} ignored as stale.
                 </small>
               </div>
               <div>

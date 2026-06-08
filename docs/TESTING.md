@@ -496,11 +496,12 @@
   domain responses, request cursor carry-forward, normalized data rows,
   tombstone inclusion/exclusion, UTC timestamps, entity IDs, row versions, and
   invalid response contract inputs.
-- Offline app coverage now includes sanitized live pull inventory and active
-  customer credit record extraction in the Tauri command, TypeScript
-  pull-record cache application, stale row rejection, unmatched-customer
-  rejection, inserted/updated counts, credit redemption preview capping, and
-  visible Sync Now cache apply status markers.
+- Offline app coverage now includes sanitized live pull inventory, active
+  customer credit, and event snapshot extraction in the Tauri command,
+  TypeScript pull-record cache application, stale row rejection,
+  unmatched-customer rejection, inserted/updated counts, credit redemption
+  preview capping, event registration count capping, and visible Sync Now cache
+  apply status markers.
 - Local unit coverage now includes the staged offline pull route handler,
   proving valid requests return the presenter-shaped response contract,
   injected change-set providers are passed through without cursor advancement,

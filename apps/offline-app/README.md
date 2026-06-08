@@ -66,14 +66,14 @@ future offline sync app.
   and secret safety. The root offline-app test script runs TypeScript
   typechecking before these contracts.
 
-The app now applies sanitized inventory rows and the active customer credit
-account from successful live desktop pull responses into the local cache, but
-event cache mutation, full customer-directory cache mutation, conflict
-resolution replay, printer/scanner adapters, kiosk lockdown, and signed updater
-behavior still need follow-on passes. Browser mode still previews queue
-persistence, while the desktop Tauri command now writes accepted operations to
-local SQLite and can run guarded authenticated pull/push requests when a paired
-device token exists.
+The app now applies sanitized inventory rows, the active customer credit
+account, and event snapshots from successful live desktop pull responses into
+the local cache, but full customer-directory cache mutation, full event
+registration/check-in UI, conflict resolution replay, printer/scanner adapters,
+kiosk lockdown, and signed updater behavior still need follow-on passes.
+Browser mode still previews queue persistence, while the desktop Tauri command
+now writes accepted operations to local SQLite and can run guarded authenticated
+pull/push requests when a paired device token exists.
 Connector profiles, draft editing, and manifest handling remain secret-free.
 The app can now fetch the public WordPress connector manifest when the plugin
 endpoint is installed, and the desktop shell can request pairing tokens only

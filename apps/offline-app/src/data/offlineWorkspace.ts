@@ -71,6 +71,21 @@ export type CustomerCreditSnapshot = {
   note: string
 }
 
+export type EventRegistrationStatus = "open" | "waitlist" | "full" | "closed"
+
+export type EventSnapshot = {
+  eventId: string
+  rowVersion: number
+  title: string
+  startsAtUtc: string
+  startsAtLabel: string
+  registrationStatus: EventRegistrationStatus
+  capacity: number
+  registeredCount: number
+  locationLabel: string
+  note: string
+}
+
 export type OfflineDeviceProfile = {
   storeLabel: string
   modeLabel: string
@@ -412,6 +427,29 @@ export type OfflinePullCustomerCreditCacheApplyResult = {
   ignoredCount: number
 }
 
+export type OfflinePullEventCacheRecord = {
+  entity_id: string
+  row_version: number
+  title: string
+  starts_at_utc: string
+  starts_at_label: string
+  registration_status: EventRegistrationStatus
+  capacity: number
+  registered_count: number
+  location_label: string
+  note: string
+  updated_at_utc: string
+}
+
+export type OfflinePullEventCacheApplyResult = {
+  events: EventSnapshot[]
+  appliedCount: number
+  insertedCount: number
+  updatedCount: number
+  ignoredCount: number
+  changedEventIds: string[]
+}
+
 export type OfflinePushRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/push"
@@ -571,6 +609,7 @@ export type OfflineWorkspaceState = {
   queueItems: QueueItem[]
   conflicts: ConflictItem[]
   customerCredit: CustomerCreditSnapshot
+  eventSnapshots: EventSnapshot[]
 }
 
 export const operationEnvelopeFields = [
@@ -784,6 +823,32 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     currency: "USD",
     note: "Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.",
   },
+  eventSnapshots: [
+    {
+      eventId: "event-100",
+      rowVersion: 3,
+      title: "Friday Commander Night",
+      startsAtUtc: "2026-06-12T23:00:00Z",
+      startsAtLabel: "Fri Jun 12, 7:00 PM",
+      registrationStatus: "open",
+      capacity: 24,
+      registeredCount: 10,
+      locationLabel: "Event Room",
+      note: "Cached event ready for offline check-in and registration review.",
+    },
+    {
+      eventId: "event-101",
+      rowVersion: 2,
+      title: "Pokemon League Challenge",
+      startsAtUtc: "2026-06-14T17:00:00Z",
+      startsAtLabel: "Sun Jun 14, 1:00 PM",
+      registrationStatus: "waitlist",
+      capacity: 32,
+      registeredCount: 32,
+      locationLabel: "Main Tables",
+      note: "Waitlist state cached for offline staff review.",
+    },
+  ],
 }
 
 export function statusLabel(status: InventoryStatus) {
@@ -1905,6 +1970,58 @@ function sanitizeOfflinePullCustomerCreditCacheRecords(
     .slice(0, 25)
 }
 
+function sanitizeOfflinePullEventCacheRecords(
+  records: OfflinePullEventCacheRecord[],
+): OfflinePullEventCacheRecord[] {
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  return records
+    .filter((record) =>
+      record &&
+      typeof record.entity_id === "string" &&
+      record.entity_id.trim() !== "" &&
+      typeof record.row_version === "number" &&
+      Number.isFinite(record.row_version) &&
+      record.row_version > 0 &&
+      typeof record.title === "string" &&
+      record.title.trim() !== "" &&
+      typeof record.starts_at_utc === "string" &&
+      record.starts_at_utc.trim() !== "" &&
+      typeof record.starts_at_label === "string" &&
+      record.starts_at_label.trim() !== "" &&
+      (record.registration_status === "open" ||
+        record.registration_status === "waitlist" ||
+        record.registration_status === "full" ||
+        record.registration_status === "closed") &&
+      typeof record.capacity === "number" &&
+      Number.isFinite(record.capacity) &&
+      record.capacity >= 0 &&
+      typeof record.registered_count === "number" &&
+      Number.isFinite(record.registered_count) &&
+      record.registered_count >= 0 &&
+      typeof record.location_label === "string" &&
+      typeof record.note === "string" &&
+      typeof record.updated_at_utc === "string" &&
+      record.updated_at_utc.trim() !== "",
+    )
+    .map((record): OfflinePullEventCacheRecord => ({
+      entity_id: record.entity_id.trim(),
+      row_version: Math.floor(record.row_version),
+      title: record.title.trim(),
+      starts_at_utc: record.starts_at_utc.trim(),
+      starts_at_label: record.starts_at_label.trim(),
+      registration_status: record.registration_status,
+      capacity: Math.floor(record.capacity),
+      registered_count: Math.floor(record.registered_count),
+      location_label: record.location_label.trim() || "Unassigned",
+      note: record.note.trim() || "Website event snapshot refreshed from offline pull.",
+      updated_at_utc: record.updated_at_utc.trim(),
+    }))
+    .slice(0, 25)
+}
+
 function safeRecordIdPart(value: unknown, fallback: string): string {
   const candidate = stringValue(value) || fallback
   const safeValue = candidate
@@ -2525,6 +2642,59 @@ export function applyOfflinePullCustomerCreditRecordsToCache(
     appliedCount: updatedCount,
     updatedCount,
     ignoredCount,
+  }
+}
+
+export function applyOfflinePullEventRecordsToCache(
+  events: EventSnapshot[],
+  records: OfflinePullEventCacheRecord[],
+): OfflinePullEventCacheApplyResult {
+  const eventMap = new Map(events.map((event) => [event.eventId, event]))
+  const changedEventIds: string[] = []
+  let insertedCount = 0
+  let updatedCount = 0
+  let ignoredCount = 0
+
+  for (const record of sanitizeOfflinePullEventCacheRecords(records)) {
+    const existing = eventMap.get(record.entity_id)
+
+    if (existing && record.row_version <= existing.rowVersion) {
+      ignoredCount += 1
+      continue
+    }
+
+    const nextEvent: EventSnapshot = {
+      eventId: record.entity_id,
+      rowVersion: record.row_version,
+      title: record.title,
+      startsAtUtc: record.starts_at_utc,
+      startsAtLabel: record.starts_at_label,
+      registrationStatus: record.registration_status,
+      capacity: record.capacity,
+      registeredCount: Math.min(record.registered_count, record.capacity || record.registered_count),
+      locationLabel: record.location_label,
+      note: record.note,
+    }
+
+    eventMap.set(record.entity_id, nextEvent)
+    changedEventIds.push(record.entity_id)
+
+    if (existing) {
+      updatedCount += 1
+    } else {
+      insertedCount += 1
+    }
+  }
+
+  return {
+    events: Array.from(eventMap.values()).sort((left, right) =>
+      left.startsAtUtc.localeCompare(right.startsAtUtc),
+    ),
+    appliedCount: insertedCount + updatedCount,
+    insertedCount,
+    updatedCount,
+    ignoredCount,
+    changedEventIds,
   }
 }
 

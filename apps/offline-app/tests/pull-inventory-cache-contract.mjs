@@ -25,6 +25,7 @@ try {
 
   const {
     applyOfflinePullCustomerCreditRecordsToCache,
+    applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
@@ -173,6 +174,80 @@ try {
   assert.equal(creditResult.customerCredit.availableMinorUnits, 2100)
   assert.equal(creditResult.customerCredit.redemptionPreviewMinorUnits, 2100)
   assert.equal(creditResult.customerCredit.note, "Website credit balance refreshed.")
+
+  const eventResult = applyOfflinePullEventRecordsToCache(
+    [
+      {
+        eventId: "event-100",
+        rowVersion: 3,
+        title: "Friday Commander Night",
+        startsAtUtc: "2026-06-12T23:00:00Z",
+        startsAtLabel: "Fri Jun 12, 7:00 PM",
+        registrationStatus: "open",
+        capacity: 24,
+        registeredCount: 10,
+        locationLabel: "Event Room",
+        note: "Cached event ready for offline check-in.",
+      },
+    ],
+    [
+      {
+        entity_id: "event-100",
+        row_version: 2,
+        title: "Stale Commander Night",
+        starts_at_utc: "2026-06-12T23:00:00Z",
+        starts_at_label: "Fri Jun 12, 7:00 PM",
+        registration_status: "closed",
+        capacity: 1,
+        registered_count: 1,
+        location_label: "Old Room",
+        note: "Ignored stale event.",
+        updated_at_utc: "2026-06-08T12:00:00Z",
+      },
+      {
+        entity_id: "event-100",
+        row_version: 4,
+        title: "Friday Commander Night",
+        starts_at_utc: "2026-06-12T23:00:00Z",
+        starts_at_label: "Fri Jun 12, 7:00 PM",
+        registration_status: "waitlist",
+        capacity: 24,
+        registered_count: 25,
+        location_label: "Event Room",
+        note: "Website event snapshot refreshed.",
+        updated_at_utc: "2026-06-08T12:05:00Z",
+      },
+      {
+        entity_id: "event-200",
+        row_version: 1,
+        title: "Pokemon League Challenge",
+        starts_at_utc: "2026-06-14T17:00:00Z",
+        starts_at_label: "Sun Jun 14, 1:00 PM",
+        registration_status: "open",
+        capacity: 32,
+        registered_count: 12,
+        location_label: "Main Tables",
+        note: "New event from website pull.",
+        updated_at_utc: "2026-06-08T12:10:00Z",
+      },
+    ],
+  )
+
+  assert.equal(eventResult.appliedCount, 2)
+  assert.equal(eventResult.insertedCount, 1)
+  assert.equal(eventResult.updatedCount, 1)
+  assert.equal(eventResult.ignoredCount, 1)
+  assert.deepEqual(eventResult.changedEventIds, ["event-100", "event-200"])
+
+  const updatedEvent = eventResult.events.find((event) => event.eventId === "event-100")
+  assert.equal(updatedEvent.rowVersion, 4)
+  assert.equal(updatedEvent.registrationStatus, "waitlist")
+  assert.equal(updatedEvent.registeredCount, 24)
+  assert.equal(updatedEvent.note, "Website event snapshot refreshed.")
+
+  const insertedEvent = eventResult.events.find((event) => event.eventId === "event-200")
+  assert.equal(insertedEvent.title, "Pokemon League Challenge")
+  assert.equal(insertedEvent.locationLabel, "Main Tables")
 } finally {
   await rm(tempDir, { force: true, recursive: true })
 }

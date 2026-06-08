@@ -226,6 +226,7 @@ struct OfflineSyncRequestResponse {
     pull_tombstone_count: usize,
     pull_inventory_records: Vec<OfflineSyncInventoryRecord>,
     pull_customer_credit_records: Vec<OfflineSyncCustomerCreditRecord>,
+    pull_event_records: Vec<OfflineSyncEventRecord>,
     cursor_count: usize,
     network_request_completed: bool,
     authorization_header_attached: bool,
@@ -259,6 +260,21 @@ struct OfflineSyncCustomerCreditRecord {
     label: String,
     available_minor_units: u64,
     currency: String,
+    note: String,
+    updated_at_utc: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OfflineSyncEventRecord {
+    entity_id: String,
+    row_version: u64,
+    title: String,
+    starts_at_utc: String,
+    starts_at_label: String,
+    registration_status: String,
+    capacity: u64,
+    registered_count: u64,
+    location_label: String,
     note: String,
     updated_at_utc: String,
 }
@@ -821,6 +837,11 @@ fn summarize_offline_sync_response(
     } else {
         Vec::new()
     };
+    let pull_event_records = if route == "pull" {
+        sanitized_pull_event_records(data)
+    } else {
+        Vec::new()
+    };
 
     OfflineSyncRequestResponse {
         status,
@@ -841,6 +862,7 @@ fn summarize_offline_sync_response(
         pull_tombstone_count,
         pull_inventory_records,
         pull_customer_credit_records,
+        pull_event_records,
         cursor_count,
         network_request_completed: true,
         authorization_header_attached: true,
@@ -1018,12 +1040,90 @@ fn sanitized_pull_customer_credit_record(
     })
 }
 
+fn sanitized_pull_event_records(data: &serde_json::Value) -> Vec<OfflineSyncEventRecord> {
+    let records = data
+        .get("domains")
+        .and_then(|domains| domains.get("events"))
+        .and_then(|events| events.get("data"))
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+
+    records
+        .iter()
+        .filter_map(sanitized_pull_event_record)
+        .take(25)
+        .collect()
+}
+
+fn sanitized_pull_event_record(record: &serde_json::Value) -> Option<OfflineSyncEventRecord> {
+    if json_path_string(record, &["entity_type"]).as_deref() != Some("event") {
+        return None;
+    }
+
+    let payload = record.get("payload")?.as_object()?;
+    let entity_id = json_path_string(record, &["entity_id"])?;
+    let row_version = record.get("row_version")?.as_u64()?;
+    let updated_at_utc = json_path_string(record, &["updated_at_utc"])?;
+    let starts_at_utc = first_non_empty_json_string(
+        payload,
+        &["starts_at_utc", "start_at_utc", "start_time_utc", "event_start_utc"],
+    )
+    .unwrap_or_else(|| updated_at_utc.clone());
+    let starts_at_label = first_non_empty_json_string(
+        payload,
+        &["starts_at_label", "start_label", "event_date_label"],
+    )
+    .unwrap_or_else(|| starts_at_utc.clone());
+    let capacity = payload
+        .get("capacity")
+        .or_else(|| payload.get("max_players"))
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let registered_count = payload
+        .get("registered_count")
+        .or_else(|| payload.get("registration_count"))
+        .or_else(|| payload.get("players_registered"))
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+
+    Some(OfflineSyncEventRecord {
+        entity_id,
+        row_version,
+        title: first_non_empty_json_string(payload, &["title", "event_title", "name"])
+            .unwrap_or_else(|| "Untitled event".to_string()),
+        starts_at_utc,
+        starts_at_label,
+        registration_status: normalized_event_registration_status(
+            &first_non_empty_json_string(payload, &["registration_status", "status"])
+                .unwrap_or_default(),
+        ),
+        capacity,
+        registered_count,
+        location_label: first_non_empty_json_string(payload, &["location_label", "location"])
+            .unwrap_or_else(|| "Unassigned".to_string()),
+        note: first_non_empty_json_string(payload, &["note", "summary"])
+            .unwrap_or_else(|| "Website event snapshot refreshed from offline pull.".to_string()),
+        updated_at_utc,
+    })
+}
+
 fn normalized_inventory_status(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "available" => "available".to_string(),
         "reserved" | "pending" | "hold" | "sold" => "reserved".to_string(),
         "conflict" | "needs_review" => "conflict".to_string(),
         _ => "available".to_string(),
+    }
+}
+
+fn normalized_event_registration_status(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "open" | "registration_open" => "open".to_string(),
+        "waitlist" | "waitlisted" => "waitlist".to_string(),
+        "full" | "sold_out" => "full".to_string(),
+        "closed" | "cancelled" | "canceled" => "closed".to_string(),
+        _ => "open".to_string(),
     }
 }
 
@@ -1926,7 +2026,24 @@ mod tests {
                     "events": {
                         "cursor": "evt-cursor-01",
                         "has_more": false,
-                        "data": [],
+                        "data": [
+                            {
+                                "entity_type": "event",
+                                "entity_id": "event-100",
+                                "row_version": 4,
+                                "updated_at_utc": "2026-06-07T18:00:00Z",
+                                "payload": {
+                                    "title": "Friday Commander Night",
+                                    "starts_at_utc": "2026-06-12T23:00:00Z",
+                                    "starts_at_label": "Fri Jun 12, 7:00 PM",
+                                    "registration_status": "open",
+                                    "capacity": 24,
+                                    "registered_count": 11,
+                                    "location_label": "Event Room",
+                                    "note": "Website event snapshot refreshed."
+                                }
+                            }
+                        ],
                         "tombstones": [
                             {
                                 "entity_type": "event",
@@ -1947,7 +2064,7 @@ mod tests {
         assert_eq!(summary.wordpress_status, "ready");
         assert_eq!(summary.wordpress_code, "offline_pull_response_ready");
         assert_eq!(summary.pull_domain_count, 3);
-        assert_eq!(summary.pull_record_count, 2);
+        assert_eq!(summary.pull_record_count, 3);
         assert_eq!(summary.pull_tombstone_count, 1);
         assert_eq!(summary.pull_inventory_records.len(), 1);
         assert_eq!(summary.pull_inventory_records[0].public_id, "inv-1001");
@@ -1963,6 +2080,13 @@ mod tests {
             24650
         );
         assert_eq!(summary.pull_customer_credit_records[0].currency, "USD");
+        assert_eq!(summary.pull_event_records.len(), 1);
+        assert_eq!(summary.pull_event_records[0].entity_id, "event-100");
+        assert_eq!(summary.pull_event_records[0].row_version, 4);
+        assert_eq!(summary.pull_event_records[0].title, "Friday Commander Night");
+        assert_eq!(summary.pull_event_records[0].registration_status, "open");
+        assert_eq!(summary.pull_event_records[0].capacity, 24);
+        assert_eq!(summary.pull_event_records[0].registered_count, 11);
         assert_eq!(summary.cursor_count, 3);
         assert!(summary.authorization_header_attached);
         assert!(!summary.raw_token_returned);

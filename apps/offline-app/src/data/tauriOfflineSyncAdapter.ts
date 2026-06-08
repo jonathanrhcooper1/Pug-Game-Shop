@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core"
 
 import type {
   OfflinePullCustomerCreditCacheRecord,
+  OfflinePullEventCacheRecord,
   OfflinePullInventoryCacheRecord,
   OfflinePullRequestBody,
   OfflinePushBatchPayload,
@@ -40,6 +41,7 @@ export type OfflineSyncCommandResponse = {
   pull_tombstone_count: number
   pull_inventory_records: OfflinePullInventoryCacheRecord[]
   pull_customer_credit_records: OfflinePullCustomerCreditCacheRecord[]
+  pull_event_records: OfflinePullEventCacheRecord[]
   cursor_count: number
   network_request_completed: boolean
   authorization_header_attached: boolean

@@ -15,6 +15,8 @@ const manifest = JSON.parse(
 for (const requiredExport of [
   "OfflineWorkspaceState",
   "OfflineOperationEnvelope",
+  "EventRegistrationStatus",
+  "EventSnapshot",
   "OfflineConnectorSyncSessionPlan",
   "OfflinePushBatchPayload",
   "OfflinePullRequestBody",
@@ -22,6 +24,8 @@ for (const requiredExport of [
   "OfflinePullInventoryCacheApplyResult",
   "OfflinePullCustomerCreditCacheRecord",
   "OfflinePullCustomerCreditCacheApplyResult",
+  "OfflinePullEventCacheRecord",
+  "OfflinePullEventCacheApplyResult",
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
   "OfflinePullRefreshPreview",
@@ -57,6 +61,7 @@ for (const requiredExport of [
   "buildOfflinePullRequestBody",
   "applyOfflinePullInventoryRecordsToCache",
   "applyOfflinePullCustomerCreditRecordsToCache",
+  "applyOfflinePullEventRecordsToCache",
   "buildOfflinePushRequestPlan",
   "buildOfflineConnectorSyncSessionPlan",
   "buildOfflinePullRefreshPreview",
@@ -142,9 +147,11 @@ for (const marker of [
   "inventoryRowsRefreshed",
   "sanitizeOfflinePullInventoryCacheRecords",
   "sanitizeOfflinePullCustomerCreditCacheRecords",
+  "sanitizeOfflinePullEventCacheRecords",
   "sale_price_minor_units",
   "location_label",
   "available_minor_units",
+  "registered_count",
   "deviceAuthorizationHeaderDeferred: true",
   "offline_connector_test_report",
   "Manifest shape",
@@ -239,8 +246,10 @@ assert.ok(appSource.includes("buildOfflinePushBatchPayload("))
 assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.devicePublicId)"))
 assert.ok(appSource.includes("applyOfflinePullInventoryRecordsToCache("))
 assert.ok(appSource.includes("applyOfflinePullCustomerCreditRecordsToCache("))
+assert.ok(appSource.includes("applyOfflinePullEventRecordsToCache("))
 assert.ok(appSource.includes("pull.pull_inventory_records"))
 assert.ok(appSource.includes("pull.pull_customer_credit_records"))
+assert.ok(appSource.includes("pull.pull_event_records"))
 assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
 assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
 assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))

@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pull Event Cache Apply
+
+### What Changed
+
+- Added bounded sanitized event snapshot extraction to the Tauri desktop
+  `run_offline_sync_request` pull response.
+- Added TypeScript event snapshot cache state and cache application for newer
+  pulled event rows, including inserted, updated, ignored-as-stale, and changed
+  event ID counts.
+- Updated `Sync Now` to show separate event cache-apply counts alongside
+  inventory and customer credit.
+- Added seed event snapshots so local pull preview and event cache counts have
+  realistic offline state before live pull rows arrive.
+
+### Why
+
+Inventory and active customer credit pull rows could now update the local app,
+but events were still represented only by a static preview count. This revision
+adds the first event cache mutation layer needed for future offline event
+registration and check-in workflows while keeping raw WordPress payloads out of
+React state.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull event snapshot extraction.
+- Offline app behavior contract coverage for event cache updates, inserts,
+  stale row rejection, changed event IDs, and registered-count capping to event
+  capacity.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to stop applying pulled event rows into the local event
+  cache while keeping inventory and customer credit cache application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
 ## 2026-06-08 - Offline App Pull Customer Credit Cache Apply
 
 ### What Changed
