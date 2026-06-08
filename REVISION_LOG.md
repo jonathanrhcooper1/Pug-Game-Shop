@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Staging ScryDex Configuration Verification
+
+### What Changed
+
+- Configured the GoDaddy staging site's ScryDex provider settings through the
+  redacted staging helper.
+- Enabled the staging usage-budget settings used by ScryDex sync planning.
+- Verified the public offline connector manifest reports ScryDex as configured
+  while keeping credential values redacted and unsynced to the offline app.
+
+### Why
+
+The staging website needs ScryDex readiness before card-reference sync can move
+from mock planning to controlled live smoke testing. The offline app also needs
+to see that each company connector can advertise provider readiness without
+copying API keys into the app profile.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None. This was a staging configuration and verification checkpoint using
+  existing helper scripts.
+
+### Staging Verification
+
+- Ran `npm run staging:configure-scrydex -- --status` before configuration and
+  confirmed ScryDex was blocked because no team/key values were saved.
+- Ran `npm run staging:configure-scrydex` with the explicit staging
+  confirmation flag. The helper reported provider status `ready`, primary and
+  secondary keys configured, usage budget `ready`, `healthStatus = 200`,
+  `writesWordPressData = false`, `runsProviderNetworkRequest = false`, and
+  `credentialsPrinted = false`.
+- Verified the public connector manifest with a cache-busting request. It
+  reported ScryDex `configured = true`, `environment = staging`, active key slot
+  `primary`, `credential_values_redacted = true`, and
+  `credentials_synced_to_app = false`.
+- Ran the read-only live ScryDex smoke against a tiny card query. It returned
+  HTTP `200`, two summarized card records, `writesWordPressData = false`,
+  `credentialsPrinted = false`, and `rawResponsePrinted = false`.
+
+### Rollback Notes
+
+- Re-run `npm run staging:configure-scrydex -- --status` to confirm current
+  staging state before rollback.
+- Clear the ScryDex provider values from **Pug Cards -> Settings -> ScryDex**
+  in staging, or run a temporary WP-CLI settings update that disables
+  `scrydex_provider.enabled` and clears the saved team/key values.
+- No card-reference rows were imported and no database migrations were run, so
+  there is no data rollback for this checkpoint.
+
 ## 2026-06-08 - Staging Offline Pairing Smoke Runner
 
 ### What Changed
