@@ -43,12 +43,15 @@ try {
     creditRedemptionInputFromMinorUnits,
     creditRedemptionInputToMinorUnits,
     customerCreditAvailableAfterPending,
+    customerCreditDisplayName,
     findInventoryItemByScan,
+    findCustomerCreditSnapshot,
     inventoryQuantityDeltaFromInput,
     offlineWorkspaceSeed,
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
+    upsertCustomerCreditSnapshot,
   } = await import(pathToFileURL(modulePath))
   const existingItems = [
     {
@@ -196,6 +199,25 @@ try {
   assert.equal(creditResult.customerCredit.availableMinorUnits, 2100)
   assert.equal(creditResult.customerCredit.redemptionPreviewMinorUnits, 2100)
   assert.equal(creditResult.customerCredit.note, "Website credit balance refreshed.")
+  assert.equal(offlineWorkspaceSeed.customerCreditDirectory.length, 3)
+  assert.equal(
+    customerCreditDisplayName(offlineWorkspaceSeed.customerCreditDirectory[0]),
+    "Morgan Lee",
+  )
+  assert.equal(
+    findCustomerCreditSnapshot(offlineWorkspaceSeed.customerCreditDirectory, 104).customerName,
+    "Avery Chen",
+  )
+  assert.equal(
+    findCustomerCreditSnapshot(offlineWorkspaceSeed.customerCreditDirectory, 999).customerId,
+    91,
+  )
+  const updatedCreditDirectory = upsertCustomerCreditSnapshot(
+    offlineWorkspaceSeed.customerCreditDirectory,
+    creditResult.customerCredit,
+  )
+  assert.equal(updatedCreditDirectory.length, 3)
+  assert.equal(findCustomerCreditSnapshot(updatedCreditDirectory, 91).rowVersion, 7)
 
   const eventResult = applyOfflinePullEventRecordsToCache(
     [

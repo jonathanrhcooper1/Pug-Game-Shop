@@ -3,6 +3,53 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Customer Credit Directory
+
+### What Changed
+
+- Added a local customer credit directory to the offline workspace seed.
+- Added active customer account selection, lookup display, and customer display
+  helpers.
+- Changed pending credit holds from a single global value to a per-customer map.
+- Updated desktop pull credit refresh handling so refreshed selected credit rows
+  upsert into the local directory.
+
+### Why
+
+The offline app previously treated customer credit as a single cached sample
+account. Staff need to switch among cached customers while disconnected, and a
+redemption staged for one customer must not reduce another customer's visible
+credit balance.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for customer credit display names,
+  fallback selection, and directory upsert behavior.
+- UI/workspace contract markers proving the selector, lookup display, and
+  per-customer pending-hold state remain wired.
+
+### Rollback Notes
+
+- Revert this revision to return customer credit to a single cached account.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
 ## 2026-06-08 - Offline App Structured Label Jobs
 
 ### What Changed

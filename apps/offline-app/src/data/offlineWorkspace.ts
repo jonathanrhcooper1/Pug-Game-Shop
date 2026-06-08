@@ -97,6 +97,8 @@ export type CustomerCreditSnapshot = {
   customerId: number
   rowVersion: number
   label: string
+  customerName?: string
+  customerLookup?: string
   availableMinorUnits: number
   redemptionPreviewMinorUnits: number
   currency: "USD"
@@ -704,6 +706,7 @@ export type OfflineWorkspaceState = {
   queueItems: QueueItem[]
   conflicts: ConflictItem[]
   customerCredit: CustomerCreditSnapshot
+  customerCreditDirectory: CustomerCreditSnapshot[]
   eventSnapshots: EventSnapshot[]
 }
 
@@ -922,11 +925,48 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     customerId: 91,
     rowVersion: 6,
     label: "Customer credit",
+    customerName: "Morgan Lee",
+    customerLookup: "morgan@example.test",
     availableMinorUnits: 24600,
     redemptionPreviewMinorUnits: 2800,
     currency: "USD",
     note: "Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.",
   },
+  customerCreditDirectory: [
+    {
+      customerId: 91,
+      rowVersion: 6,
+      label: "Customer credit",
+      customerName: "Morgan Lee",
+      customerLookup: "morgan@example.test",
+      availableMinorUnits: 24600,
+      redemptionPreviewMinorUnits: 2800,
+      currency: "USD",
+      note: "Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.",
+    },
+    {
+      customerId: 104,
+      rowVersion: 3,
+      label: "Customer credit",
+      customerName: "Avery Chen",
+      customerLookup: "avery@example.test",
+      availableMinorUnits: 7250,
+      redemptionPreviewMinorUnits: 1250,
+      currency: "USD",
+      note: "Cached league-night credit available for offline redemption.",
+    },
+    {
+      customerId: 117,
+      rowVersion: 2,
+      label: "Customer credit",
+      customerName: "Riley Patel",
+      customerLookup: "riley@example.test",
+      availableMinorUnits: 0,
+      redemptionPreviewMinorUnits: 0,
+      currency: "USD",
+      note: "No cached credit remains; website ledger stays authoritative after reconnect.",
+    },
+  ],
   eventSnapshots: [
     {
       eventId: "event-100",
@@ -1108,6 +1148,30 @@ export function customerCreditAvailableAfterPending(
   pendingMinorUnits: number,
 ) {
   return Math.max(0, credit.availableMinorUnits - Math.max(0, pendingMinorUnits))
+}
+
+export function customerCreditDisplayName(credit: CustomerCreditSnapshot): string {
+  return credit.customerName?.trim() || credit.label
+}
+
+export function findCustomerCreditSnapshot(
+  credits: CustomerCreditSnapshot[],
+  customerId: number,
+): CustomerCreditSnapshot | null {
+  return credits.find((credit) => credit.customerId === customerId) ?? credits[0] ?? null
+}
+
+export function upsertCustomerCreditSnapshot(
+  credits: CustomerCreditSnapshot[],
+  snapshot: CustomerCreditSnapshot,
+): CustomerCreditSnapshot[] {
+  const hasExistingCredit = credits.some((credit) => credit.customerId === snapshot.customerId)
+
+  if (!hasExistingCredit) {
+    return [snapshot, ...credits]
+  }
+
+  return credits.map((credit) => (credit.customerId === snapshot.customerId ? snapshot : credit))
 }
 
 export function connectorDisplayUrl(profile: StoreConnectorProfile) {

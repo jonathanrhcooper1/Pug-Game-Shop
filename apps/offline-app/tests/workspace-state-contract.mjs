@@ -115,6 +115,9 @@ for (const requiredExport of [
   "creditRedemptionInputFromMinorUnits",
   "creditRedemptionInputToMinorUnits",
   "customerCreditAvailableAfterPending",
+  "customerCreditDisplayName",
+  "findCustomerCreditSnapshot",
+  "upsertCustomerCreditSnapshot",
   "findInventoryItem",
   "eventRegistrationStatusLabel",
 ]) {
@@ -306,6 +309,12 @@ assert.ok(appSource.includes("eventCheckinLookup"))
 assert.ok(appSource.includes("attendeeLabel,"))
 assert.ok(appSource.includes("registrationPublicId,"))
 assert.ok(appSource.includes("creditRedemptionInputToMinorUnits(creditRedemptionInput)"))
+assert.ok(appSource.includes("customerCreditDirectory"))
+assert.ok(appSource.includes("activeCustomerId"))
+assert.ok(appSource.includes("pendingCreditByCustomer"))
+assert.ok(appSource.includes("handleCustomerCreditSelection"))
+assert.ok(appSource.includes("customerCreditDisplayName(credit)"))
+assert.ok(appSource.includes("upsertCustomerCreditSnapshot(credits, creditCacheApplyResult.customerCredit)"))
 assert.ok(appSource.includes("buildCustomerCreditRedemptionOperation(customerCredit, {"))
 assert.ok(appSource.includes("amountMinorUnits: creditRedemptionMinorUnits"))
 assert.ok(appSource.includes("buildOfflinePushBatchPayload("))

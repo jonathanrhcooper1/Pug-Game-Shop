@@ -18,6 +18,9 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- Offline app contract and browser coverage now verifies customer credit
+  account selection: cached customer directory entries can be selected, lookup
+  details render, and pending credit holds remain scoped per customer.
 - Offline app contract and browser coverage now verifies label printing:
   `Print Label` creates a structured offline label job with barcode, card,
   price, location, company, and printable payload text.

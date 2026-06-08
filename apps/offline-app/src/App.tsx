@@ -40,6 +40,7 @@ import {
   creditRedemptionInputFromMinorUnits,
   creditRedemptionInputToMinorUnits,
   customerCreditAvailableAfterPending,
+  customerCreditDisplayName,
   createEmptyConnectorProfileDraft,
   buildInventoryUpdateOperation,
   buildInventoryReservationOperation,
@@ -47,6 +48,7 @@ import {
   connectorOfflineConflictResolutionUrl,
   filterInventoryItems,
   findInventoryItemByScan,
+  findCustomerCreditSnapshot,
   findConnectorProfile,
   findInventoryItem,
   findPairedDeviceRecord,
@@ -64,6 +66,7 @@ import {
   eventRegistrationStatusLabel,
   statusLabel,
   summarizeOfflinePushResult,
+  upsertCustomerCreditSnapshot,
   upsertConnectorProfile,
   validateConnectorManifest,
   type ConflictItem,
@@ -306,7 +309,9 @@ export function App() {
   }
   const offlineSessionStorage = offlineSessionStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
-  const [customerCredit, setCustomerCredit] = useState(workspace.customerCredit)
+  const [customerCreditDirectory, setCustomerCreditDirectory] = useState(
+    workspace.customerCreditDirectory,
+  )
   const [eventSnapshots, setEventSnapshots] = useState(workspace.eventSnapshots)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
   const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
@@ -314,7 +319,8 @@ export function App() {
   const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>(
     offlineSessionStorage.queuedOperations,
   )
-  const [pendingCreditMinorUnits, setPendingCreditMinorUnits] = useState(0)
+  const [activeCustomerId, setActiveCustomerId] = useState(workspace.customerCredit.customerId)
+  const [pendingCreditByCustomer, setPendingCreditByCustomer] = useState<Record<number, number>>({})
   const [creditRedemptionInput, setCreditRedemptionInput] = useState(() =>
     creditRedemptionInputFromMinorUnits(workspace.customerCredit.redemptionPreviewMinorUnits),
   )
@@ -436,6 +442,10 @@ export function App() {
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
   const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
+  const customerCredit =
+    findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
+  const activeCustomerName = customerCreditDisplayName(customerCredit)
+  const pendingCreditMinorUnits = pendingCreditByCustomer[customerCredit.customerId] ?? 0
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
@@ -1055,6 +1065,28 @@ export function App() {
     )
   }
 
+  function handleCustomerCreditSelection(customerIdValue: string) {
+    const nextCustomerId = Number(customerIdValue)
+    const nextCustomerCredit = findCustomerCreditSnapshot(customerCreditDirectory, nextCustomerId)
+
+    if (!nextCustomerCredit) {
+      return
+    }
+
+    setActiveCustomerId(nextCustomerCredit.customerId)
+    setCreditRedemptionInput(
+      creditRedemptionInputFromMinorUnits(nextCustomerCredit.redemptionPreviewMinorUnits),
+    )
+    setShowCreditLedger(true)
+    setActiveSection("Customers")
+    setActivityMessage({
+      title: "Customer credit selected",
+      detail:
+        `${customerCreditDisplayName(nextCustomerCredit)} cached balance is ready for offline review; ` +
+        "website ledger remains authoritative after sync acceptance.",
+    })
+  }
+
   async function handleCreditRedemption() {
     if (creditRedemptionIssue || creditRedemptionMinorUnits === null) {
       setActiveSection("Customers")
@@ -1073,14 +1105,15 @@ export function App() {
         reason: `offline customer credit redemption ${amount}`,
       }),
       "Credit redemption staged",
-      `${amount} customer credit redemption prepared from cached balance; ledger replay remains deferred until website sync acceptance.`,
+      `${amount} customer credit redemption prepared for ${activeCustomerName}; ledger replay remains deferred until website sync acceptance.`,
     )
-    setPendingCreditMinorUnits((current) =>
-      Math.min(
+    setPendingCreditByCustomer((holds) => ({
+      ...holds,
+      [customerCredit.customerId]: Math.min(
         customerCredit.availableMinorUnits,
-        current + creditRedemptionMinorUnits,
+        (holds[customerCredit.customerId] ?? 0) + creditRedemptionMinorUnits,
       ),
-    )
+    }))
     setShowCreditLedger(true)
   }
 
@@ -1454,10 +1487,16 @@ export function App() {
         setInventoryItems(cacheApplyResult.items)
       }
       if (creditCacheApplyResult.appliedCount > 0) {
-        setCustomerCredit(creditCacheApplyResult.customerCredit)
-        setPendingCreditMinorUnits((current) =>
-          Math.min(creditCacheApplyResult.customerCredit.availableMinorUnits, current),
+        setCustomerCreditDirectory((credits) =>
+          upsertCustomerCreditSnapshot(credits, creditCacheApplyResult.customerCredit),
         )
+        setPendingCreditByCustomer((holds) => ({
+          ...holds,
+          [creditCacheApplyResult.customerCredit.customerId]: Math.min(
+            creditCacheApplyResult.customerCredit.availableMinorUnits,
+            holds[creditCacheApplyResult.customerCredit.customerId] ?? 0,
+          ),
+        }))
       }
       if (eventCacheApplyResult.appliedCount > 0) {
         setEventSnapshots(eventCacheApplyResult.events)
@@ -3273,6 +3312,39 @@ export function App() {
                 </h2>
               </div>
               <p>{customerCredit.note}</p>
+              <div
+                className="customer-credit-selector"
+                aria-label="Offline customer credit account selector"
+              >
+                <label htmlFor="customer-credit-account">
+                  <span className="micro-label">Customer account</span>
+                  <select
+                    id="customer-credit-account"
+                    value={customerCredit.customerId}
+                    onChange={(event) => handleCustomerCreditSelection(event.target.value)}
+                  >
+                    {customerCreditDirectory.map((credit) => (
+                      <option key={credit.customerId} value={credit.customerId}>
+                        {customerCreditDisplayName(credit)} -{" "}
+                        {formatMoney(
+                          customerCreditAvailableAfterPending(
+                            credit,
+                            pendingCreditByCustomer[credit.customerId] ?? 0,
+                          ),
+                          credit.currency,
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <span className="micro-label">Lookup</span>
+                  <strong>
+                    {customerCredit.customerLookup ?? `Customer #${customerCredit.customerId}`}
+                  </strong>
+                  <small>{activeCustomerName}; holds are local until accepted sync.</small>
+                </div>
+              </div>
               <div className="credit-redemption-control" aria-label="Customer credit redemption amount">
                 <label htmlFor="credit-redemption-amount">
                   <span className="micro-label">Redemption amount</span>

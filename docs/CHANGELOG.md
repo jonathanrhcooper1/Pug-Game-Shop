@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app customer credit now supports a local multi-customer credit
+  directory, active account selection, lookup display, and per-customer pending
+  holds so one offline redemption does not reduce another customer's balance.
 - Offline app label printing now prepares structured offline label jobs with
   card, barcode, price, location, company, timestamp, and printable payload
   text for future desktop printer adapter handoff.

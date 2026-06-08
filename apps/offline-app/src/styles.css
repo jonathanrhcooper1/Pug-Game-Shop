@@ -918,6 +918,54 @@ h2 {
   border: 1px solid rgba(121, 215, 143, 0.26);
 }
 
+.customer-credit-selector {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(230px, 1fr) minmax(210px, 0.85fr);
+  gap: 8px;
+}
+
+.customer-credit-selector label,
+.customer-credit-selector div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.customer-credit-selector select {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  color: #172016;
+  font-size: 14px;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(35, 100, 70, 0.24);
+  border-radius: 8px;
+}
+
+.customer-credit-selector select:focus {
+  outline: 2px solid rgba(92, 171, 119, 0.45);
+  outline-offset: 2px;
+}
+
+.customer-credit-selector strong {
+  overflow-wrap: anywhere;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.customer-credit-selector small {
+  color: #596a58;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .credit-redemption-control {
   display: grid;
   grid-column: 1 / -1;
@@ -2331,6 +2379,7 @@ dd {
   .connector-editor,
   .connector-actions,
   .credit-actions,
+  .customer-credit-selector,
   .credit-redemption-control,
   .pairing-panel,
   .ledger-preview,

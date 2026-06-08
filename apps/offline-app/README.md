@@ -26,11 +26,11 @@ future offline sync app.
   desktop secure-store token status reporting, guarded desktop pull/push sync
   execution summaries, exact barcode/public-ID scan targeting with
   Enter-to-stage support, customer-credit amount entry with cached-balance
-  guards, quantity adjustment delta/reason controls, event
-  attendee/payment/check-in inputs, accepted push-result queue clearing,
-  route-missing connector guidance for staging plugin activation,
-  conflict-review history, structured offline label job payloads, print-label
-  preparation, customer-credit pending holds, and responsive desktop/mobile
+  guards, cached customer credit account selection, per-customer pending holds,
+  quantity adjustment delta/reason controls, event attendee/payment/check-in
+  inputs, accepted push-result queue clearing, route-missing connector guidance
+  for staging plugin activation, conflict-review history, structured offline
+  label job payloads, print-label preparation, and responsive desktop/mobile
   layout.
 - Typed local workspace state for cached inventory, queue/conflict summaries,
   customer credit, sync routes, reusable company/site connector profiles, and
@@ -109,6 +109,9 @@ in WordPress/server-side settings.
 Label printing now prepares structured local label jobs with printable payload
 text for staff review; direct hardware printing remains deferred until the
 desktop printer adapter is connected.
+Customer credit now uses a local cached account directory and keeps pending
+offline holds scoped to the selected customer while website ledger replay
+remains authoritative after sync acceptance.
 
 ## Local Commands
 
