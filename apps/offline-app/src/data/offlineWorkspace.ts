@@ -416,6 +416,7 @@ export type DevicePairingRequestPlan = {
     pairing_code_redacted: boolean
     installation_id: string
     device_label: string
+    device_mode: "staff"
     mode: "staff"
     platform: "windows"
     app_version: string
@@ -424,6 +425,16 @@ export type DevicePairingRequestPlan = {
   networkRequestDeferred: true
   productionTokenIssuanceDeferred: true
   credentialsSyncedToApp: false
+}
+
+export type DevicePairingRequestBody = {
+  pairing_code: string
+  installation_id: string
+  device_label: string
+  device_mode: "staff"
+  app_version: string
+  platform: "windows"
+  requested_scopes: DevicePairingRequestPlan["requestedScopes"]
 }
 
 export type PreparedDevicePairingRequest = {
@@ -1354,6 +1365,7 @@ export function buildDevicePairingRequestPlan(
       pairing_code_redacted: true,
       installation_id: "local-installation-preview",
       device_label: device.storeLabel,
+      device_mode: "staff",
       mode: "staff",
       platform: "windows",
       app_version: "0.156.0",
@@ -1362,6 +1374,27 @@ export function buildDevicePairingRequestPlan(
     networkRequestDeferred: true,
     productionTokenIssuanceDeferred: true,
     credentialsSyncedToApp: false,
+  }
+}
+
+export function buildDevicePairingRequestBody(
+  plan: DevicePairingRequestPlan,
+  pairingCode: string,
+): DevicePairingRequestBody | null {
+  const normalizedPairingCode = pairingCode.trim()
+
+  if (!plan.pairingCodeProvided || normalizedPairingCode.length === 0) {
+    return null
+  }
+
+  return {
+    pairing_code: normalizedPairingCode,
+    installation_id: plan.bodyPreview.installation_id,
+    device_label: plan.bodyPreview.device_label,
+    device_mode: plan.bodyPreview.device_mode,
+    app_version: plan.bodyPreview.app_version,
+    platform: plan.bodyPreview.platform,
+    requested_scopes: plan.requestedScopes,
   }
 }
 

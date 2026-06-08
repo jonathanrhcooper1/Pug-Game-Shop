@@ -140,6 +140,10 @@
   markers, credential-free `fetch` options, timeout handling, local preview
   validation, and multi-company profile import state for website connector
   testing.
+- Offline app contract coverage now verifies the pairing route REST-index
+  check, future WordPress pairing request body fields, explicit
+  no-raw-code/no-credential-sync UI text, and continued deferral of live token
+  issuance until secure-store support is connected.
 - Local unit and WordPress smoke coverage now include the app pairing contract
   inside offline pairing readiness, proving `/offline/devices/register`,
   requested offline scopes, redacted pairing-code handling, desktop secure

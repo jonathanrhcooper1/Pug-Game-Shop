@@ -10,6 +10,7 @@ import {
   buildConnectorProfileStorageSnapshot,
   buildCustomerCreditRedemptionOperation,
   buildDevicePairingRequestPlan,
+  buildDevicePairingRequestBody,
   buildOfflinePullRefreshPreview,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
@@ -93,6 +94,15 @@ type ConnectorManifestFetchState = {
   sourceUrl: string
   profileId?: string
   importedAtLabel?: string
+}
+
+type PairingRouteCheckState = {
+  status: "idle" | "loading" | "ready" | "blocked"
+  endpoint: string
+  method: "GET"
+  detail: string
+  rawPairingCodeTransmitted: false
+  credentialsSyncedToApp: false
 }
 
 type InventoryUpdateOptions = Parameters<typeof buildInventoryUpdateOperation>[1]
@@ -239,6 +249,14 @@ export function App() {
   const [connectorDraftIssues, setConnectorDraftIssues] = useState<string[]>([])
   const [pairingCode, setPairingCode] = useState("")
   const [pairingPlan, setPairingPlan] = useState<DevicePairingRequestPlan | null>(null)
+  const [pairingRouteCheck, setPairingRouteCheck] = useState<PairingRouteCheckState>({
+    status: "idle",
+    endpoint: "",
+    method: "GET",
+    detail: "Pairing route has not been checked for this connector.",
+    rawPairingCodeTransmitted: false,
+    credentialsSyncedToApp: false,
+  })
   const [preparedPairingRequests, setPreparedPairingRequests] = useState<PreparedDevicePairingRequest[]>(
     preparedPairingStorage.requests,
   )
@@ -288,6 +306,14 @@ export function App() {
           },
     )
     setPairingPlan(null)
+    setPairingRouteCheck({
+      status: "idle",
+      endpoint: `${connectorDisplayUrl(activeProfile)}/wp-json/`,
+      method: "GET",
+      detail: "Pairing route has not been checked for this connector.",
+      rawPairingCodeTransmitted: false,
+      credentialsSyncedToApp: false,
+    })
     setConnectorDraft(connectorProfileDraftFromProfile(activeProfile))
     setConnectorDraftIssues([])
   }, [activeProfile.id])
@@ -852,6 +878,7 @@ export function App() {
   function handlePairingPreview() {
     const plan = buildDevicePairingRequestPlan(activeProfile, workspace.device, pairingCode)
     const preparedRequest = buildPreparedDevicePairingRequest(plan)
+    const requestBody = buildDevicePairingRequestBody(plan, pairingCode)
 
     setPairingPlan(plan)
     if (preparedRequest) {
@@ -872,9 +899,103 @@ export function App() {
     setActivityMessage({
       title: plan.pairingCodeProvided ? "Pairing request prepared" : "Pairing code required",
       detail: plan.pairingCodeProvided
-        ? `${plan.companyName} device registration is shaped for ${plan.path}; the raw manager code was cleared and future tokens stay in ${plan.tokenStorage}.`
+        ? `${plan.companyName} device registration is shaped for ${plan.path} with ${requestBody?.requested_scopes.length ?? 0} requested scopes; the raw manager code was cleared and future tokens stay in ${plan.tokenStorage}.`
         : "Enter the manager-issued pairing code from WordPress before this device can request a scoped offline token.",
     })
+  }
+
+  async function handleCheckPairingRoute() {
+    const plan = buildDevicePairingRequestPlan(activeProfile, workspace.device, pairingCode)
+    const endpoint = `${plan.siteUrl}/wp-json/`
+    const routeKey = plan.path.replace("/wp-json", "")
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 10000)
+
+    setPairingPlan(plan)
+    setPairingRouteCheck({
+      status: "loading",
+      endpoint,
+      method: "GET",
+      detail: "Checking the WordPress REST route index without transmitting the raw manager code.",
+      rawPairingCodeTransmitted: false,
+      credentialsSyncedToApp: false,
+    })
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        credentials: "omit",
+        mode: "cors",
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(
+          `WordPress REST index returned HTTP ${response.status}. Confirm REST access is available for this site.`,
+        )
+      }
+
+      let routeIndex: { routes?: Record<string, unknown> }
+
+      try {
+        routeIndex = await response.json() as { routes?: Record<string, unknown> }
+      } catch {
+        throw new Error("WordPress REST index did not return JSON.")
+      }
+
+      if (!routeIndex.routes || typeof routeIndex.routes !== "object" || !routeIndex.routes[routeKey]) {
+        throw new Error(
+          `Pairing route ${routeKey} is not registered. Confirm the plugin is active and the staging pairing route gate is enabled.`,
+        )
+      }
+
+      setPairingRouteCheck({
+        status: "ready",
+        endpoint,
+        method: "GET",
+        detail:
+          "Pairing route is present in the WordPress REST index. Raw manager code was not transmitted; token request still waits for desktop secure-store support.",
+        rawPairingCodeTransmitted: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Pairing route reachable",
+        detail:
+          "The website pairing route is present in the credential-free REST index. Live token issuance remains gated until secure storage is connected.",
+      })
+    } catch (error) {
+      const detail = pairingRouteCheckErrorMessage(error)
+
+      setPairingRouteCheck({
+        status: "blocked",
+        endpoint,
+        method: "GET",
+        detail,
+        rawPairingCodeTransmitted: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Pairing route unavailable",
+        detail: `${detail} No raw pairing code or token was sent.`,
+      })
+    } finally {
+      window.clearTimeout(timeoutId)
+    }
+  }
+
+  function pairingRouteCheckErrorMessage(error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return "Pairing route index check timed out after 10 seconds."
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.slice(0, 220)
+    }
+
+    return "Pairing route check failed before a public route response was received."
   }
 
   function handleAddScan() {
@@ -1673,10 +1794,27 @@ export function App() {
                   <Icon name="check" />
                   <span>Prepare Pairing</span>
                 </button>
+                <button
+                  type="button"
+                  disabled={pairingRouteCheck.status === "loading"}
+                  onClick={() => void handleCheckPairingRoute()}
+                >
+                  <Icon name="link" />
+                  <span>
+                    {pairingRouteCheck.status === "loading"
+                      ? "Checking Route"
+                      : "Check Pairing Route"}
+                  </span>
+                </button>
                 <small>
                   {pairingPlan
                     ? `${pairingPlan.pairingCodeProvided ? "Code present" : "Code missing"}; ${pairingPlan.requestedScopes.length} scopes; token storage ${pairingPlan.tokenStorage}; code fingerprint ${pairingPlan.pairingCodeFingerprint}.`
                     : "No token request is sent until live pairing is enabled."}
+                </small>
+                <small>
+                  Pairing route check: {pairingRouteCheck.status}; {pairingRouteCheck.detail}
+                  {pairingRouteCheck.endpoint ? ` ${pairingRouteCheck.method} ${pairingRouteCheck.endpoint}` : ""}
+                  ; raw code sent: no; credentials synced to app: no.
                 </small>
                 {activePreparedPairingRequests.length > 0 ? (
                   <div className="prepared-pairing-list" aria-label="Prepared pairing requests">

@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app pairing controls now include a credential-free WordPress REST
+  route-index check for `/offline/devices/register`, plus the exact future
+  WordPress pairing POST body shape, so staff can verify the website route
+  without transmitting raw manager codes or storing device tokens before
+  secure-store support is connected.
 - Offline app website connector testing now performs a live public
   `/offline/connector-manifest` fetch with credential-free CORS requests,
   imports accepted company/site profiles for reusable multi-company setup,

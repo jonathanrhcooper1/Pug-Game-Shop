@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Offline App Pairing Route Index Check
+
+### What Changed
+
+- Added the exact future WordPress offline device pairing request body builder
+  for `pairing_code`, `installation_id`, `device_label`, `device_mode`,
+  `app_version`, `platform`, and `requested_scopes`.
+- Added a `Check Pairing Route` control that reads the credential-free
+  WordPress REST index and requires the active website connector's
+  `/tcg-store/v1/offline/devices/register` route key to exist.
+- Added loading, ready, and blocked pairing route status messaging that
+  explicitly reports raw pairing code transmission and credential sync as
+  disabled.
+- Kept live pairing POST, token issuance, and token persistence deferred until
+  desktop secure-store support is connected.
+
+### Why
+
+The offline app needs a real path toward website pairing, but it should not
+burn a manager pairing code or receive a one-time device token before the
+desktop secure-store adapter exists. The route-index check proves whether the
+website route is registered without sending secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for the pairing route REST-index check,
+  future POST body fields, no-raw-code status text, and continued credential
+  sync deferral.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the pairing route index-check control and
+  future POST body helper.
+- No database or local SQLite rollback is required.
+
 ## 2026-06-08 - Offline App Live Connector Manifest Fetch
 
 ### What Changed
