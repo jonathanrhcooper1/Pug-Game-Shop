@@ -1746,6 +1746,8 @@ dd {
 
 .queue-export-status.copied,
 .queue-export-status.downloaded,
+.queue-export-status.restored,
+.queue-export-status.voided,
 .queue-export-status.previewed {
   border-color: rgba(121, 215, 143, 0.28);
   background: rgba(121, 215, 143, 0.1);

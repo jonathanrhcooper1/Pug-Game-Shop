@@ -139,7 +139,15 @@ type ActivityMessage = {
 }
 
 type QueueExportStatus = {
-  status: "idle" | "copied" | "downloaded" | "previewed" | "blocked" | "cleared"
+  status:
+    | "idle"
+    | "copied"
+    | "downloaded"
+    | "previewed"
+    | "blocked"
+    | "cleared"
+    | "restored"
+    | "voided"
   detail: string
   rawCredentialsCopied: false
 }
@@ -523,6 +531,8 @@ export function App() {
     rawCredentialsCopied: false,
   })
   const [queueExportPreview, setQueueExportPreview] = useState("")
+  const [isDesktopQueueRefreshing, setIsDesktopQueueRefreshing] = useState(false)
+  const [isQueueVoidInFlight, setIsQueueVoidInFlight] = useState(false)
   const [connectorValidation, setConnectorValidation] =
     useState<ConnectorManifestValidation | null>(null)
   const [connectorTestReport, setConnectorTestReport] =
@@ -1121,6 +1131,108 @@ export function App() {
     }
 
     setActiveSection("Queue")
+  }
+
+  async function handleRefreshDesktopQueue() {
+    setActiveSection("Queue")
+    setQueueExportPreview("")
+    setIsDesktopQueueRefreshing(true)
+
+    try {
+      const restoreResult = await restoreDesktopQueuedOperations(queueAdapter)
+      const currentOperationIds = new Set(
+        queuedOperations.map((operation) => operation.client_operation_id),
+      )
+      const restoredOperations = restoreResult.operations.filter(
+        (operation) => !currentOperationIds.has(operation.client_operation_id),
+      )
+
+      if (restoredOperations.length > 0) {
+        setQueuedOperations([...restoredOperations, ...queuedOperations])
+        setSelectedQueuedOperationId(restoredOperations[0].client_operation_id)
+      }
+
+      const refreshDetail = restoreResult.status === "restored"
+        ? `${restoreResult.message} ${restoredOperations.length} new operation(s) merged into ${activeProfile.companyName}.`
+        : `${restoreResult.message} Current browser/session queue remains unchanged.`
+
+      setQueueExportStatus({
+        status:
+          restoreResult.status === "deferred"
+            ? "blocked"
+            : restoreResult.status === "restored"
+              ? "restored"
+              : "previewed",
+        detail: refreshDetail,
+        rawCredentialsCopied: false,
+      })
+      setActivityMessage({
+        title:
+          restoreResult.status === "restored"
+            ? "Desktop queue refreshed"
+            : "Desktop queue refresh previewed",
+        detail:
+          restoreResult.status === "restored"
+            ? `${restoredOperations.length} pending desktop queue row(s) were merged without website, Square, ScryDex, payment, or production writes.`
+            : restoreResult.message,
+      })
+    } finally {
+      setIsDesktopQueueRefreshing(false)
+    }
+  }
+
+  async function handleVoidSelectedQueueOperation() {
+    if (!selectedQueuedOperation) {
+      setQueueExportStatus({
+        status: "blocked",
+        detail: "No queued operation is selected for voiding.",
+        rawCredentialsCopied: false,
+      })
+      setActiveSection("Queue")
+      return
+    }
+
+    const operationId = selectedQueuedOperation.client_operation_id
+
+    setActiveSection("Queue")
+    setQueueExportPreview("")
+    setIsQueueVoidInFlight(true)
+
+    try {
+      const voidResult = await voidOfflineOperations([operationId], queueAdapter)
+      const remainingOperations = queuedOperations.filter(
+        (operation) => operation.client_operation_id !== operationId,
+      )
+
+      setQueuedOperations(remainingOperations)
+      setSelectedQueuedOperationId(remainingOperations[0]?.client_operation_id ?? "")
+
+      if (stagedOperation?.client_operation_id === operationId) {
+        setStagedOperation(null)
+        setStagedPushBatch(null)
+        setStagedPushRequest(null)
+        setPushSummary(null)
+      }
+
+      if (queueSubmission?.operation.client_operation_id === operationId) {
+        setQueueSubmission(null)
+      }
+
+      setQueueExportStatus({
+        status: voidResult.status === "deferred" ? "blocked" : "voided",
+        detail: `${operationId} removed from the current profile queue. ${voidResult.message}`,
+        rawCredentialsCopied: false,
+      })
+      setActivityMessage({
+        title:
+          voidResult.status === "voided"
+            ? "Queued operation voided"
+            : "Queued operation removed locally",
+        detail: `${voidResult.message} Website, Square, ScryDex, payment, and production systems were not touched.`,
+      })
+    } finally {
+      setIsQueueVoidInFlight(false)
+    }
   }
 
   async function handleClearSessionQueue() {
@@ -3106,7 +3218,18 @@ export function App() {
                 <button
                   className="secondary-command"
                   type="button"
-                  disabled={!selectedQueuedOperation}
+                  disabled={isDesktopQueueRefreshing}
+                  onClick={() => void handleRefreshDesktopQueue()}
+                >
+                  <Icon name="sync" />
+                  <span>
+                    {isDesktopQueueRefreshing ? "Refreshing Queue" : "Refresh Desktop Queue"}
+                  </span>
+                </button>
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={!selectedQueuedOperation || isQueueVoidInFlight}
                   onClick={() => void handleCopySelectedQueueOperation()}
                 >
                   <Icon name="copy" />
@@ -3115,7 +3238,7 @@ export function App() {
                 <button
                   className="secondary-command"
                   type="button"
-                  disabled={queuedOperations.length === 0}
+                  disabled={queuedOperations.length === 0 || isQueueVoidInFlight}
                   onClick={handleExportQueueJson}
                 >
                   <Icon name="upload" />
@@ -3124,7 +3247,18 @@ export function App() {
                 <button
                   className="secondary-command danger-command"
                   type="button"
-                  disabled={queuedOperations.length === 0}
+                  disabled={!selectedQueuedOperation || isQueueVoidInFlight}
+                  onClick={() => void handleVoidSelectedQueueOperation()}
+                >
+                  <Icon name="trash" />
+                  <span>
+                    {isQueueVoidInFlight ? "Voiding Selected" : "Void Selected Operation"}
+                  </span>
+                </button>
+                <button
+                  className="secondary-command danger-command"
+                  type="button"
+                  disabled={queuedOperations.length === 0 || isQueueVoidInFlight}
                   onClick={() => void handleClearSessionQueue()}
                 >
                   <Icon name="trash" />

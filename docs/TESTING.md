@@ -18,6 +18,19 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- `npm run staging:route-check` performs a public, credential-free staging
+  probe for the WordPress REST root, `tcg-store/v1` namespace, authenticated
+  health route registration signal, public connector manifest, and noindex
+  controls. On 2026-06-08 the live staging URL passed the REST root and
+  noindex checks but failed namespace, health, and connector-manifest checks
+  with `404 rest_no_route`. A follow-up read-only SSH/WP-CLI inspection showed
+  the package zips were in uploads but the plugin was not installed; the
+  current package was then installed into `wp-content/plugins` as inactive
+  version `0.156.0`, pending backup confirmation before activation/migrations.
+- Offline app contract coverage now verifies queue refresh and selective
+  voiding controls: `Refresh Desktop Queue` calls the Tauri list command when
+  available, and `Void Selected Operation` removes one selected operation while
+  avoiding website, Square, ScryDex, payment, or production writes.
 - Offline app Rust and contract coverage now verifies desktop queue voiding:
   selected pending operation IDs are sanitized, marked `rejected` in SQLite,
   removed from pending restore, and still avoid direct MySQL, network, website,

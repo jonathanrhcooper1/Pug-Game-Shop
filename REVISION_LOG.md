@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Queue Refresh And Staging Route Check
+
+### What Changed
+
+- Added `Refresh Desktop Queue` to the offline app queue panel so staff can
+  merge pending durable desktop SQLite queue rows on demand.
+- Added `Void Selected Operation` to remove one selected queued operation from
+  the current profile queue and mark the matching desktop row `rejected` when
+  the Tauri queue adapter is available.
+- Added `scripts/staging-check-routes.mjs` and `npm run staging:route-check`
+  for a credential-free staging probe covering the WordPress REST root,
+  `tcg-store/v1` namespace, authenticated health route registration signal,
+  public offline connector manifest, and staging noindex controls.
+- Ran the staging route check against the current GoDaddy staging URL. The
+  WordPress REST root and noindex checks passed, while the `tcg-store/v1`
+  namespace, `/health`, and `/offline/connector-manifest` checks failed with
+  `404 rest_no_route`.
+- Inspected staging through read-only SSH/SFTP/WP-CLI and confirmed the package
+  zips existed in uploads but **TCG Store Platform** was not installed under
+  `wp-content/plugins`.
+- Uploaded the current package and installed it into the staging plugins
+  directory without activation. WP-CLI now reports `tcg-store-platform` as
+  inactive version `0.156.0`; route checks remain blocked until backup-approved
+  activation runs the plugin activation hook.
+
+### Why
+
+The offline queue panel needed more operational controls for real staff review:
+refresh durable desktop rows without restarting the app, and remove one bad
+queued action without clearing every staged operation. The staging route check
+turns plugin activation verification into a repeatable test that proves whether
+the custom package is active before authenticated smoke tests or connector
+pairing.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `scripts/staging-check-routes.mjs`
+- `scripts/tests/staging-route-check-contract.mjs`
+- `package.json`
+- `scripts/README.md`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging route-check contract coverage for the npm script, public endpoints,
+  `rest_no_route` guidance, noindex checks, and secret-free behavior.
+- Offline app UI/queue bridge contract coverage for queue refresh and
+  selected-operation void controls.
+
+### Rollback Notes
+
+- Revert this revision to remove the new offline queue controls and staging
+  route-check script.
+- No WordPress database, staging data, Square, ScryDex, payment, POS, or
+  production rollback is required because the route check is read-only and the
+  UI changes operate on local queue state.
+
 ## 2026-06-08 - Offline Desktop Queue Void Command
 
 ### What Changed

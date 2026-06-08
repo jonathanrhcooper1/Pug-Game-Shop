@@ -76,6 +76,25 @@ Staging SSH/SFTP scripts use a shared OpenSSH-compatible algorithm set for
 GoDaddy Managed WordPress hosts that negotiate `ssh-ed25519` host keys and
 modern curve/AES ciphers.
 
+## Public Route Check
+
+After staging is created and the plugin package is expected to be active, run
+the public route checker before attempting authenticated smoke tests:
+
+```bash
+PUG_STAGING_SITE_URL=https://example-staging.test \
+npm run staging:route-check
+```
+
+The checker does not use WordPress, SSH, SFTP, Square, ScryDex, payment, or POS
+credentials. It verifies the WordPress REST root, the `tcg-store/v1` namespace,
+the authenticated health route registration signal, the public offline
+connector manifest, and staging noindex controls. A `404 rest_no_route` result
+for `/wp-json/tcg-store/v1/health` or
+`/wp-json/tcg-store/v1/offline/connector-manifest` means the **TCG Store
+Platform** package is not installed/active on that staging site, or the active
+package is not registering this repo's routes.
+
 ## Gated Inventory Smoke Runner
 
 Run the staged inventory route smoke test through WP-CLI after staging has the

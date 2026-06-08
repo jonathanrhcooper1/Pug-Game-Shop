@@ -6,6 +6,15 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Staging route checks now include a credential-free `npm run
+  staging:route-check` probe for the WordPress REST root, `tcg-store/v1`
+  namespace, authenticated health route registration, public offline connector
+  manifest, and public indexing controls.
+- Offline app queue management now adds a visible `Refresh Desktop Queue`
+  action for merging pending durable desktop SQLite rows and a
+  `Void Selected Operation` action for removing one queued operation while
+  marking the matching desktop row `rejected` when the Tauri queue adapter is
+  available.
 - Offline app desktop queue persistence now supports voiding selected pending
   SQLite queue rows by marking them `rejected` for audit, removing them from
   pending restore without deleting local history or touching website, Square,
