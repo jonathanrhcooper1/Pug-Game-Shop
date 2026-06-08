@@ -25,6 +25,7 @@ export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
 export function createLocalSyncStore(options = {}) {
   const now = options.now ?? (() => new Date())
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
+  const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
@@ -819,10 +820,93 @@ export function createLocalSyncStore(options = {}) {
       credit_ledger_entry_count: creditLedgerEntries.length,
       event_count: eventSnapshots.length,
       active_session_count: sessions.size,
+      wordpress_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_push_connected: Boolean(wordpressInventoryPush),
       scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       local_operations_preserved: true,
+    }
+  }
+
+  async function pullWebsiteInventory(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Sync")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    if (!wordpressInventoryPull) {
+      return blocked("wordpress_pull_unavailable", "WordPress inventory pull is not configured on this LAN server.")
+    }
+
+    const pullResult = await wordpressInventoryPull({
+      query: input.query,
+      page: input.page,
+      pageSize: input.page_size ?? input.pageSize,
+    })
+
+    if (pullResult.status !== "ok") {
+      return {
+        status: "blocked",
+        code: pullResult.code ?? "wordpress_pull_failed",
+        message: pullResult.message ?? "WordPress inventory pull did not complete.",
+        http_status: pullResult.http_status ?? 0,
+        credentials_synced_to_client: false,
+      }
+    }
+
+    const appliedItems = []
+    let insertedCount = 0
+    let updatedCount = 0
+    let ignoredCount = 0
+
+    for (const row of pullResult.items ?? []) {
+      const pulledItem = localInventoryItemFromWordPress(row)
+
+      if (!pulledItem) {
+        ignoredCount += 1
+        continue
+      }
+
+      const existingIndex = inventoryItems.findIndex((candidate) => candidate.public_id === pulledItem.public_id)
+      const existing = existingIndex >= 0 ? inventoryItems[existingIndex] : null
+
+      if (existing && (existing.source === "queued" || existing.status === "pending_intake")) {
+        ignoredCount += 1
+        continue
+      }
+
+      if (existing) {
+        inventoryItems[existingIndex] = {
+          ...existing,
+          ...pulledItem,
+          row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
+          source: "cached",
+        }
+        saveInventoryItem(database, inventoryItems[existingIndex], now)
+        appliedItems.push(publicInventoryItem(inventoryItems[existingIndex]))
+        updatedCount += 1
+      } else {
+        inventoryItems.push(pulledItem)
+        saveInventoryItem(database, pulledItem, now)
+        appliedItems.push(publicInventoryItem(pulledItem))
+        insertedCount += 1
+      }
+    }
+
+    return {
+      status: "ok",
+      pulled_count: (pullResult.items ?? []).length,
+      applied_count: appliedItems.length,
+      inserted_count: insertedCount,
+      updated_count: updatedCount,
+      ignored_count: ignoredCount,
+      items: appliedItems,
+      meta: pullResult.meta ?? null,
+      wordpress_pull_connected: true,
+      credentials_synced_to_client: false,
+      local_inventory_count: inventoryItems.length,
+      local_queue_depth: pendingQueueOperations(queue).length,
     }
   }
 
@@ -925,6 +1009,7 @@ export function createLocalSyncStore(options = {}) {
     createSession,
     listAccessPolicy,
     reserveInventory,
+    pullWebsiteInventory,
     searchCustomers,
     searchInventory,
     searchScryDexCards,
@@ -1822,6 +1907,42 @@ function publicInventoryItem(item) {
   }
 }
 
+function localInventoryItemFromWordPress(row) {
+  const publicId = cleanPublicId(row.public_id)
+  const cardName = cleanName(row.card_name)
+  const priceMinorUnits = minorUnitsFromDecimal(row.sale_price ?? row.suggested_price ?? row.market_price)
+  const status = localInventoryStatus(row.status)
+
+  if (!publicId || !cardName || priceMinorUnits <= 0 || !status) {
+    return null
+  }
+
+  const locationId = Number.parseInt(String(row.location_id ?? ""), 10)
+  const location = Number.isFinite(locationId) && locationId > 0
+    ? `WordPress Location ${locationId}`
+    : cleanName(row.location ?? row.location_label) || "Website Inventory"
+
+  return {
+    public_id: publicId,
+    row_version: boundedInt(row.row_version, 1, 999999999, 1),
+    provider_card_id: cleanPublicId(row.provider_card_id),
+    game: cleanGame(row.game),
+    card_name: cardName,
+    set_name: cleanName(row.set_name) || "Website Inventory",
+    set_code: cleanName(row.set_code).toUpperCase(),
+    card_number: cleanName(row.card_number),
+    printed_number: cleanName(row.printed_number),
+    condition: cleanCondition(row.condition_code ?? row.condition),
+    barcode: cleanBarcode(row.barcode ?? row.sku) || publicId,
+    price_minor_units: priceMinorUnits,
+    currency: cleanCurrency(row.sale_currency ?? row.currency),
+    location,
+    status,
+    image_url: cleanHttpUrl(row.front_image_url ?? row.front_image_remote_url ?? row.image_url),
+    source: "cached",
+  }
+}
+
 function publicCustomer(customer) {
   return {
     customer_public_id: customer.customer_public_id,
@@ -2340,6 +2461,12 @@ function minorUnits(value) {
   const parsed = Number(value)
 
   return Number.isFinite(parsed) ? Math.trunc(parsed) : 0
+}
+
+function minorUnitsFromDecimal(value) {
+  const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
+
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed * 100)) : 0
 }
 
 function formatMoney(minorUnitsValue, currency) {

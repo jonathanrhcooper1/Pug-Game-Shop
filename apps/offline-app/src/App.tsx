@@ -111,6 +111,7 @@ import {
   type LocalSyncCustomer,
   type LocalSyncEventSnapshot,
   type LocalSyncInventoryItem,
+  type LocalSyncPullResult,
   type LocalSyncPushResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexVariant,
@@ -181,6 +182,12 @@ type OfflineAppUser = {
 type ActivityMessage = {
   title: string
   detail: string
+}
+
+type LanSyncLastResult = {
+  generatedAtLabel: string
+  pullMessage: string
+  pushMessage: string
 }
 
 type QueueExportStatus = {
@@ -550,6 +557,18 @@ function lanSyncPushMessage(result: LocalSyncPushResult | null) {
   return `LAN inventory push accepted ${result.accepted_count} item(s), left ${result.retry_count} retry and ${result.unsupported_operation_count} non-inventory operation(s) queued.`
 }
 
+function lanSyncPullMessage(result: LocalSyncPullResult | null) {
+  if (!result) {
+    return "LAN inventory pull was not run because no PIN session is active."
+  }
+
+  if (result.status !== "ok") {
+    return `LAN inventory pull blocked: ${result.message}`
+  }
+
+  return `LAN inventory pull applied ${result.applied_count} website item(s), inserted ${result.inserted_count}, updated ${result.updated_count}, and preserved ${result.ignored_count} local row(s).`
+}
+
 function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapshot {
   return {
     eventId: event.event_id,
@@ -719,6 +738,7 @@ export function App() {
   const [pushSummary, setPushSummary] = useState<OfflinePushResultSummary | null>(null)
   const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
   const [pullRefreshPreview, setPullRefreshPreview] = useState<OfflinePullRefreshPreview | null>(null)
+  const [lanSyncLastResult, setLanSyncLastResult] = useState<LanSyncLastResult | null>(null)
   const [desktopSyncExecution, setDesktopSyncExecution] = useState<DesktopSyncExecutionState>({
     status: "idle",
     detail: "Desktop live sync has not run for this connector.",
@@ -2705,9 +2725,40 @@ export function App() {
   }
 
   async function handleSyncNowPreview() {
+    let lanPullResult: LocalSyncPullResult | null = null
     let lanPushResult: LocalSyncPushResult | null = null
 
     if (localSyncSessionToken) {
+      lanPullResult = await localSyncClient.pullWebsiteInventory(localSyncSessionToken)
+
+      if (lanPullResult.status === "ok" && lanPullResult.items.length > 0) {
+        const pulledItems = lanPullResult.items
+
+        setInventoryItems((items) => {
+          const merged = [...items]
+          let nextId = Math.max(0, ...merged.map((item) => item.id)) + 1
+
+          for (const pulledItem of pulledItems) {
+            const existingIndex = merged.findIndex((item) => item.publicId === pulledItem.public_id)
+            const mappedItem = inventoryItemFromLocalSync(
+              pulledItem,
+              existingIndex >= 0 ? merged[existingIndex].id : nextId++,
+            )
+
+            if (existingIndex >= 0) {
+              merged[existingIndex] = {
+                ...mappedItem,
+                id: merged[existingIndex].id,
+              }
+            } else {
+              merged.push(mappedItem)
+            }
+          }
+
+          return merged
+        })
+      }
+
       lanPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
 
       if (lanPushResult.status === "ok" && lanPushResult.accepted_count > 0) {
@@ -2822,12 +2873,23 @@ export function App() {
     )
     await runDesktopSyncIfReady(nextSyncSessionPlan, syncBatchForExecution)
     setActiveSection("Sync")
+    const pullMessage = lanSyncPullMessage(lanPullResult)
+    const pushMessage = lanSyncPushMessage(lanPushResult)
+
+    setLanSyncLastResult({
+      generatedAtLabel: new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date()),
+      pullMessage,
+      pushMessage,
+    })
     setActivityMessage({
       title: "Sync plan prepared",
       detail:
         operationsForSync.length > 0
-          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; ${lanSyncPushMessage(lanPushResult)} pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
-          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; ${lanSyncPushMessage(lanPushResult)} local cache refresh preview applied without network execution.`,
+          ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; ${pullMessage} ${pushMessage} pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
+          : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; ${pullMessage} ${pushMessage}`,
     })
   }
 
@@ -3866,7 +3928,7 @@ export function App() {
             <strong>{localSyncClient.serverUrl}</strong>
             <small>
               {localSyncStatus?.status === "ok"
-                ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}`
+                ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
                 : "store-sync.sqlite; check server"}
             </small>
           </div>
@@ -4693,6 +4755,14 @@ export function App() {
               <p className="queue-storage-note">
                 Queue and sync attempts are saved locally on this device.
               </p>
+              {lanSyncLastResult ? (
+                <div className="queue-review-card lan-sync-result" aria-label="Last LAN sync result">
+                  <span>Last LAN sync</span>
+                  <strong>{lanSyncLastResult.generatedAtLabel}</strong>
+                  <p>{lanSyncLastResult.pullMessage}</p>
+                  <p>{lanSyncLastResult.pushMessage}</p>
+                </div>
+              ) : null}
               {workspace.queueItems.map((item) => (
                 <div className={`queue-row ${item.tone}`} key={item.label}>
                   <span>{item.label}</span>
@@ -5090,7 +5160,7 @@ export function App() {
                   <strong>{localSyncClient.serverUrl}</strong>
                   <small>
                     {localSyncStatus?.status === "ok"
-                      ? `${localSyncStatus.local_database}; ${localSyncStatus.queue_depth} queued`
+                      ? `${localSyncStatus.local_database}; ${localSyncStatus.queue_depth} queued; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
                       : "Local middleman server; run npm start in apps/local-sync-server"}
                   </small>
                 </div>

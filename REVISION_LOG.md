@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Inventory Pull From WordPress
+
+### What Changed
+
+- Added a server-held WordPress inventory pull adapter for
+  `/wp-json/tcg-store/v1/inventory/search`.
+- Connected local `/sync/pull` to import available website inventory rows into
+  the LAN SQLite inventory cache.
+- Added pull connectivity metadata to `/sync/status`.
+- Updated offline app Sync Now to run LAN pull before LAN push and show the
+  last LAN sync result in the Sync workspace.
+
+### Why
+
+The website is the source of truth, but staff/kiosk stations need a fresh local
+copy for offline use. This revision opens the website-to-LAN direction so local
+stations can refresh available inventory, images, prices, and status before
+queued local work is pushed back to WordPress.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressInventoryPull.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/src/App.tsx`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Existing local SQLite inventory columns already store provider IDs,
+  prices, status, image URLs, source, and row versions.
+
+### Tests Added
+
+- WordPress inventory pull adapter coverage for authenticated request mapping,
+  response item/meta parsing, bounded page sizes, secret redaction, and
+  unavailable HTTP responses.
+- Local sync runtime coverage for `/sync/pull`, website row insertion,
+  price/image mapping, pull connectivity status, and preserving queued
+  local-only inventory rows.
+- Offline app local sync client contract coverage for `pullWebsiteInventory`
+  and `wordpress_pull_connected`.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- Restarted the running LAN sync server on `http://127.0.0.1:8787` with
+  staging WordPress pull/push credentials and default staging location.
+- Live `/sync/pull` smoke pulled 5 available staging inventory rows into the
+  LAN cache, including a Charizard row with image preserved.
+- Browser smoke at `http://127.0.0.1:1420`: PIN `1420`, Sync Now displayed
+  the Last LAN sync result with LAN pull and push summaries and no new console
+  errors.
+
+### Rollback Notes
+
+- Revert this revision to return `/sync/pull` to a deferred scaffold and
+  remove the Sync workspace LAN pull result card.
+- Pulled rows are local cache rows only; deleting the local preview SQLite file
+  or replacing it from backup resets them.
+- Revoke staging WordPress application passwords created for preview restarts
+  after the preview window if they are no longer needed.
+
 ## 2026-06-08 - Location-Aware LAN Inventory Acceptance
 
 ### What Changed

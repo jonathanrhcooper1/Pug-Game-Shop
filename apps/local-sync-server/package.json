@@ -6,11 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node src/cli.mjs",
-    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:wordpress-catalog && npm run test:wordpress-inventory-push",
+    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:wordpress-catalog && npm run test:wordpress-inventory-pull && npm run test:wordpress-inventory-push",
     "test:contract": "node tests/local-sync-server-contract.mjs",
     "test:persistence": "node tests/local-sync-server-persistence.mjs",
     "test:runtime": "node tests/local-sync-server-runtime.mjs",
     "test:wordpress-catalog": "node tests/wordpress-catalog-fallback.mjs",
+    "test:wordpress-inventory-pull": "node tests/wordpress-inventory-pull.mjs",
     "test:wordpress-inventory-push": "node tests/wordpress-inventory-push.mjs"
   }
 }

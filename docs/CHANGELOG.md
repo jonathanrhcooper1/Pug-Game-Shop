@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- LAN sync server `/sync/pull` now pulls available WordPress inventory search
+  rows into the shared local SQLite cache using server-held credentials, and
+  the offline app Sync Now action displays the latest LAN pull/push result in
+  the Sync workspace.
 - LAN sync server inventory pushes can now target a configured default
   WordPress location, making accepted local inventory immediately `available`
   on the website instead of staying in `pending_intake`, while WordPress intake

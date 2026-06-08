@@ -107,12 +107,7 @@ export function createLocalSyncHttpServer(options = {}) {
       }
 
       if (request.method === "POST" && url.pathname === "/sync/pull") {
-        return sendJson(response, 202, {
-          status: "deferred",
-          route: url.pathname,
-          message: "WordPress live sync worker is not connected in the local runtime scaffold yet.",
-          ...store.syncStatus(),
-        })
+        return sendStoreResult(response, await store.pullWebsiteInventory(token, await readJson(request)))
       }
 
       return sendJson(response, 404, {

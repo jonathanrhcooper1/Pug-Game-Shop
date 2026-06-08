@@ -312,9 +312,29 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   event_count: number
   active_session_count: number
   wordpress_push_connected: boolean
+  wordpress_pull_connected: boolean
   scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   scrydex_fallback_connected: boolean
   local_operations_preserved: true
+}>
+
+export type LocalSyncPullResult = LocalSyncResult<{
+  pulled_count: number
+  applied_count: number
+  inserted_count: number
+  updated_count: number
+  ignored_count: number
+  items: LocalSyncInventoryItem[]
+  meta: {
+    page: number
+    page_size: number
+    total: number
+    has_more: boolean
+  } | null
+  wordpress_pull_connected: true
+  credentials_synced_to_client: false
+  local_inventory_count: number
+  local_queue_depth: number
 }>
 
 export type LocalSyncPushResult = LocalSyncResult<{
@@ -431,6 +451,7 @@ export type LocalSyncServerClient = {
     },
   ) => Promise<LocalSyncEventCheckinResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
+  pullWebsiteInventory: (sessionToken: string) => Promise<LocalSyncPullResult>
   pushQueuedOperations: (sessionToken: string) => Promise<LocalSyncPushResult>
 }
 
@@ -580,6 +601,11 @@ export function createLocalSyncServerClient(
       }) as Promise<LocalSyncEventCheckinResult>,
     getSyncStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/sync/status") as Promise<LocalSyncStatusResult>,
+    pullWebsiteInventory: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/sync/pull", {
+        method: "POST",
+        sessionToken,
+      }) as Promise<LocalSyncPullResult>,
     pushQueuedOperations: (sessionToken) =>
       requestLocalSync(fetcher, baseUrl, "/sync/push", {
         method: "POST",

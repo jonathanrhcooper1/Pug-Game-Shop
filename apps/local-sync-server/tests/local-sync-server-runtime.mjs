@@ -3,7 +3,9 @@ import assert from "node:assert/strict"
 import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
 let websiteCatalogFallbackCalls = 0
+let wordpressInventoryPullCalls = 0
 let wordpressInventoryPushCalls = 0
+let wordpressInventoryPullRows = []
 
 const server = createLocalSyncHttpServer({
   storeOptions: {
@@ -41,6 +43,26 @@ const server = createLocalSyncHttpServer({
             observed_at: "2026-06-08T16:00:00.000Z",
           },
         ],
+      }
+    },
+    wordpressInventoryPull: async ({ query, page, pageSize }) => {
+      wordpressInventoryPullCalls += 1
+
+      assert.equal(query, "charizard")
+      assert.equal(page, 1)
+      assert.equal(pageSize, 10)
+
+      return {
+        status: "ok",
+        items: wordpressInventoryPullRows,
+        meta: {
+          page: 1,
+          page_size: 10,
+          total: wordpressInventoryPullRows.length,
+          has_more: false,
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
       }
     },
     wordpressInventoryPush: async ({ operation, item }) => {
@@ -270,10 +292,99 @@ try {
   assert.equal(acceptedIntakeInventory.items[0].source, "accepted")
   assert.equal(acceptedIntakeInventory.items[0].image_url, "https://images.example.test/mewtwo.png")
 
+  const pendingLocalOnlyIntake = await fetchJson(`${baseUrl}/inventory/intake`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    body: {
+      card_name: "Local Only Pull Guard",
+      set_name: "Preview Set",
+      condition: "NM",
+      barcode: "PUG-PULL-GUARD",
+      price_minor_units: 1200,
+      location: "Intake Bin",
+      quantity: 1,
+      provider_card_id: "scrydex-pokemon-pull-guard",
+      game: "pokemon",
+      set_code: "TEST",
+      card_number: "99",
+      printed_number: "99/100",
+      image_url: "https://images.example.test/pull-guard-local.png",
+    },
+  })
+  assert.equal(pendingLocalOnlyIntake.status, "ok")
+
+  wordpressInventoryPullRows = [
+    {
+      public_id: "wp-inventory-charizard",
+      row_version: 4,
+      provider_card_id: "scrydex-pokemon-base-004",
+      game: "pokemon",
+      card_name: "Charizard",
+      set_name: "Base Set",
+      set_code: "BASE1",
+      card_number: "4",
+      printed_number: "4/102",
+      condition_code: "LP",
+      barcode: "PUG-WP-CHARIZARD",
+      sale_price: "250.00",
+      sale_currency: "USD",
+      status: "available",
+      location_id: 7,
+      front_image_url: "https://images.pokemontcg.io/base1/4_hires.png",
+    },
+    {
+      public_id: pendingLocalOnlyIntake.item.public_id,
+      row_version: 9,
+      provider_card_id: "scrydex-pokemon-pull-guard",
+      game: "pokemon",
+      card_name: "Remote Should Not Overwrite",
+      set_name: "Remote Set",
+      condition_code: "HP",
+      barcode: "PUG-PULL-GUARD",
+      sale_price: "999.99",
+      sale_currency: "USD",
+      status: "available",
+      location_id: 7,
+      front_image_url: "https://images.example.test/pull-guard-remote.png",
+    },
+  ]
+
+  const pulledInventory = await fetchJson(`${baseUrl}/sync/pull`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      query: "charizard",
+      page: 1,
+      page_size: 10,
+    },
+  })
+  assert.equal(pulledInventory.status, "ok")
+  assert.equal(pulledInventory.pulled_count, 2)
+  assert.equal(pulledInventory.applied_count, 1)
+  assert.equal(pulledInventory.inserted_count, 1)
+  assert.equal(pulledInventory.ignored_count, 1)
+  assert.equal(pulledInventory.wordpress_pull_connected, true)
+  assert.equal(pulledInventory.credentials_synced_to_client, false)
+  assert.equal(wordpressInventoryPullCalls, 1)
+
+  const pulledCharizardInventory = await fetchJson(`${baseUrl}/inventory/search?q=PUG-WP-CHARIZARD`)
+  assert.equal(pulledCharizardInventory.status, "ok")
+  assert.equal(pulledCharizardInventory.items.length, 1)
+  assert.equal(pulledCharizardInventory.items[0].status, "available")
+  assert.equal(pulledCharizardInventory.items[0].source, "cached")
+  assert.equal(pulledCharizardInventory.items[0].price_minor_units, 25000)
+  assert.equal(pulledCharizardInventory.items[0].image_url, "https://images.pokemontcg.io/base1/4_hires.png")
+
+  const preservedPendingIntake = await fetchJson(`${baseUrl}/inventory/search?q=PUG-PULL-GUARD`)
+  assert.equal(preservedPendingIntake.items[0].status, "pending_intake")
+  assert.equal(preservedPendingIntake.items[0].source, "queued")
+  assert.equal(preservedPendingIntake.items[0].card_name, "Local Only Pull Guard")
+  assert.equal(preservedPendingIntake.items[0].image_url, "https://images.example.test/pull-guard-local.png")
+
   const inventory = await fetchJson(`${baseUrl}/inventory/search?q=charizard`)
   assert.equal(inventory.status, "ok")
-  assert.equal(inventory.items.length, 1)
-  assert.equal(inventory.items[0].status, "available")
+  assert.ok(inventory.items.length >= 2)
+  assert.ok(inventory.items.some((item) => item.barcode === "PUG-WP-CHARIZARD" && item.status === "available"))
 
   const reserve = await fetchJson(`${baseUrl}/inventory/reservations`, {
     method: "POST",
@@ -461,6 +572,7 @@ try {
   assert.ok(syncStatus.event_count >= 2)
   assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
   assert.equal(syncStatus.scrydex_fallback_connected, true)
+  assert.equal(syncStatus.wordpress_pull_connected, true)
   assert.equal(syncStatus.wordpress_push_connected, true)
 
   console.log("PASS local sync server runtime")
