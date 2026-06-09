@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The offline app queue now exposes a dedicated `Sync to Website` command,
+  prevents overlapping manual sync clicks, preserves the inventory status
+  returned by WordPress after LAN push acceptance, and keeps the status/queue
+  visibility panel resilient during app reloads.
 - WordPress reference-card search now ranks exact, prefix, and contains matches
   on card name ahead of identifier and set-name-only matches, so intake lookups
   like `Charizard` surface actual Charizard cards before set-only results.

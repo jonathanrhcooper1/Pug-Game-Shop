@@ -3101,6 +3101,59 @@ dd {
   font-size: 12px;
 }
 
+.queue-sync-command {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: linear-gradient(90deg, rgba(121, 215, 143, 0.16), rgba(73, 220, 244, 0.1));
+  border: 1px solid rgba(64, 144, 88, 0.2);
+  border-radius: 8px;
+}
+
+.queue-sync-command div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.queue-sync-command strong,
+.queue-sync-command small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.queue-sync-command strong {
+  color: #172016;
+  font-size: 15px;
+}
+
+.queue-sync-command small {
+  color: #52605a;
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.queue-sync-command button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  white-space: nowrap;
+  color: #102015;
+  background: var(--mint);
+  border: 1px solid rgba(64, 144, 88, 0.22);
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.queue-sync-command button:disabled {
+  opacity: 0.58;
+}
+
 .queue-action-row {
   display: grid;
   grid-template-columns: 1fr;

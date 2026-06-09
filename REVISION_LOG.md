@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Local App Website Sync Status Preservation
+
+### What Changed
+
+- Added a dedicated `Sync to Website` command on the offline app queue screen.
+- Disabled manual sync buttons while a sync attempt is already running.
+- Preserved the status returned by WordPress after a LAN inventory push instead
+  of forcing accepted local intake rows to `available`.
+- Extended the offline app local sync client type to include the accepted
+  WordPress inventory payload and price-change-log persistence flag.
+- Made the operation sync visibility panel defensive against early or restored
+  app state where collection props can be missing during reload.
+
+### Why
+
+The live LAN-to-WordPress smoke showed WordPress correctly accepting an intake
+row as `pending_intake` when location data is not configured. The local app was
+overriding that canonical status to `available`, which could mislead staff
+about whether new inventory was ready for sale.
+
+Staff also needed an obvious queue-level website sync action, not just the top
+bar `Sync Now` control.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- Browser smoke against `http://127.0.0.1:1420` verifying PIN unlock, queue
+  sync controls, Charizard catalog lookup from the local/WordPress cache, card
+  images, and no fresh browser console warnings or errors.
+
+### Rollback Notes
+
+- Revert this revision if the queue sync controls or WordPress status
+  preservation cause unexpected staff workflow issues. No database rollback is
+  required.
+
 ## 2026-06-09 - Reference Search Relevance Ranking
 
 ### What Changed

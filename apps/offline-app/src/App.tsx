@@ -625,6 +625,12 @@ function buildOperationSyncVisibilityRows(options: {
   customerCreditLedgerEntries: CustomerCreditLedgerEntry[]
   offlineUsers: OfflineAppUser[]
 }): OperationSyncVisibilityRow[] {
+  const queuedOperations = options.queuedOperations ?? []
+  const inventoryItems = options.inventoryItems ?? []
+  const localInventoryIntakeReceipts = options.localInventoryIntakeReceipts ?? []
+  const customerCreditDirectory = options.customerCreditDirectory ?? []
+  const customerCreditLedgerEntries = options.customerCreditLedgerEntries ?? []
+  const offlineUsers = options.offlineUsers ?? []
   const localStatus = options.localSyncStatus?.status === "ok" ? options.localSyncStatus : null
   const wordpressPushStatus = localStatus?.wordpress_push_connected
     ? "Push-capable through LAN sync"
@@ -660,23 +666,23 @@ function buildOperationSyncVisibilityRows(options: {
   const lanQueueStatus = localStatus
     ? countLabel(localStatus.queue_depth, "LAN queued op")
     : "LAN queue status not loaded"
-  const pendingIntakeCount = options.inventoryItems.filter(
+  const pendingIntakeCount = inventoryItems.filter(
     (item) => item.status === "pending_intake",
   ).length
-  const pendingIntakeReceiptCount = options.localInventoryIntakeReceipts.filter(
+  const pendingIntakeReceiptCount = localInventoryIntakeReceipts.filter(
     (receipt) => receipt.status === "pending_sync" || receipt.status === "retry",
   ).length
   const eventRegistrationCount = Math.max(
-    queuedOperationCount(options.queuedOperations, "event_reservation"),
+    queuedOperationCount(queuedOperations, "event_reservation"),
     options.pendingEventRegistrationCount,
   )
   const eventCheckinCount = Math.max(
-    queuedOperationCount(options.queuedOperations, "event_checkin"),
+    queuedOperationCount(queuedOperations, "event_checkin"),
     options.pendingEventCheckinCount,
   )
-  const kioskHoldCount = queuedKioskHoldCount(options.queuedOperations)
-  const creditRedemptionCount = queuedOperationCount(options.queuedOperations, "credit_redemption")
-  const pendingCreditLedgerCount = options.customerCreditLedgerEntries.filter(
+  const kioskHoldCount = queuedKioskHoldCount(queuedOperations)
+  const creditRedemptionCount = queuedOperationCount(queuedOperations, "credit_redemption")
+  const pendingCreditLedgerCount = customerCreditLedgerEntries.filter(
     (entry) => entry.status === "pending_sync",
   ).length
   const activeSessionCount = localStatus?.active_session_count ?? 0
@@ -687,7 +693,7 @@ function buildOperationSyncVisibilityRows(options: {
       label: "Inventory intake",
       countLabel: Math.max(pendingIntakeCount, pendingIntakeReceiptCount) > 0
         ? countLabel(Math.max(pendingIntakeCount, pendingIntakeReceiptCount), "pending intake")
-        : countLabel(localStatus?.inventory_count ?? options.inventoryItems.length, "local row"),
+        : countLabel(localStatus?.inventory_count ?? inventoryItems.length, "local row"),
       wordpressStatus: `${inventoryPushStatus}: inventory_intake`,
       localStatus: `LAN intake queue until accepted by WordPress; ${lanQueueStatus}; ${countLabel(pendingIntakeReceiptCount, "app receipt")}`,
       detail:
@@ -701,7 +707,7 @@ function buildOperationSyncVisibilityRows(options: {
       wordpressStatus: `${eventPushStatus}: event_registration`,
       localStatus:
         `LAN event queue plus app review queue; ${countLabel(
-          queuedOperationCount(options.queuedOperations, "event_reservation"),
+          queuedOperationCount(queuedOperations, "event_reservation"),
           "app op",
         )}`,
       detail:
@@ -715,7 +721,7 @@ function buildOperationSyncVisibilityRows(options: {
       wordpressStatus: `${eventCheckinPushStatus}: event_checkin`,
       localStatus:
         `LAN event queue plus app review queue; ${countLabel(
-          queuedOperationCount(options.queuedOperations, "event_checkin"),
+          queuedOperationCount(queuedOperations, "event_checkin"),
           "app op",
         )}`,
       detail:
@@ -739,7 +745,7 @@ function buildOperationSyncVisibilityRows(options: {
       id: "customer-upsert",
       label: "Customer upsert",
       countLabel: countLabel(
-        localStatus?.customer_count ?? options.customerCreditDirectory.length,
+        localStatus?.customer_count ?? customerCreditDirectory.length,
         "local customer",
       ),
       wordpressStatus: `${customerPushStatus}: customer_upsert`,
@@ -754,7 +760,7 @@ function buildOperationSyncVisibilityRows(options: {
       countLabel: pendingCreditLedgerCount > 0 || creditRedemptionCount > 0
         ? countLabel(Math.max(pendingCreditLedgerCount, creditRedemptionCount), "pending ledger op")
         : countLabel(
-          localStatus?.credit_ledger_entry_count ?? options.customerCreditLedgerEntries.length,
+          localStatus?.credit_ledger_entry_count ?? customerCreditLedgerEntries.length,
           "ledger row",
         ),
       wordpressStatus: `${creditPushStatus}: credit_adjustment and credit_redemption`,
@@ -769,7 +775,7 @@ function buildOperationSyncVisibilityRows(options: {
     {
       id: "user-access",
       label: "User access",
-      countLabel: countLabel(options.offlineUsers.length, "PIN user"),
+      countLabel: countLabel(offlineUsers.length, "PIN user"),
       wordpressStatus: "Not in the WordPress push batch: user_access_upsert",
       localStatus: `LAN access policy cache; ${countLabel(activeSessionCount, "active session")}`,
       detail:
@@ -898,6 +904,20 @@ function lanSyncPushMessage(result: LocalSyncPushResult | null) {
   }
 
   return `LAN push accepted ${result.accepted_count} operation(s), left ${result.retry_count} retry and ${result.unsupported_operation_count} unsupported operation(s) queued.`
+}
+
+function inventoryStatusFromWordPressPushResult(
+  result: Extract<LocalSyncPushResult, { status: "ok" }>,
+  publicId: string,
+): InventoryStatus | null {
+  const pushResult = result.results.find(
+    (candidate) => candidate.status === "accepted" && candidate.entity_id === publicId,
+  )
+  const wordpressStatus = String(pushResult?.wordpress_inventory?.status ?? "")
+
+  return INVENTORY_STATUS_FILTERS.includes(wordpressStatus as InventoryStatus)
+    ? wordpressStatus as InventoryStatus
+    : null
 }
 
 function lanSyncPullMessage(result: LocalSyncPullResult | null) {
@@ -1092,6 +1112,7 @@ export function App() {
   const [syncSessionPlan, setSyncSessionPlan] = useState<OfflineConnectorSyncSessionPlan | null>(null)
   const [pullRefreshPreview, setPullRefreshPreview] = useState<OfflinePullRefreshPreview | null>(null)
   const [lanSyncLastResult, setLanSyncLastResult] = useState<LanSyncLastResult | null>(null)
+  const [syncNowInFlight, setSyncNowInFlight] = useState(false)
   const [desktopSyncExecution, setDesktopSyncExecution] = useState<DesktopSyncExecutionState>({
     status: "idle",
     detail: "Desktop live sync has not run for this connector.",
@@ -3442,6 +3463,13 @@ export function App() {
   }
 
   async function handleSyncNowPreview() {
+    if (syncNowInFlight) {
+      return
+    }
+
+    setSyncNowInFlight(true)
+
+    try {
     let lanPullResult: LocalSyncPullResult | null = null
     let lanPushResult: LocalSyncPushResult | null = null
 
@@ -3492,7 +3520,10 @@ export function App() {
             acceptedPublicIds.has(item.publicId)
               ? {
                   ...item,
-                  status: "available",
+                  status: inventoryStatusFromWordPressPushResult(
+                    successfulLanPushResult,
+                    item.publicId,
+                  ) ?? item.status,
                   source: "accepted",
                   rowVersion: item.rowVersion + 1,
                 }
@@ -3610,12 +3641,18 @@ export function App() {
       pushMessage,
     })
     setActivityMessage({
-      title: "Sync plan prepared",
+      title:
+        lanPushResult?.status === "ok" && lanPushResult.accepted_count > 0
+          ? "Website sync accepted"
+          : "Sync plan prepared",
       detail:
         operationsForSync.length > 0
           ? `${operationsForSync.length} local operation(s) batched for ${activeProfile.companyName}; ${pullMessage} ${pushMessage} pull refresh preview preserved ${nextPullRefreshPreview.queuedOperationsPreserved} queued op(s), and guarded holds are ${nextSyncSessionPlan.push.canonical_inventory_writes_deferred ? "deferred" : "ready"}.`
           : `${connectorDisplayUrl(activeProfile)}${activeProfile.wordpress.restBasePath}/offline/pull and /offline/push are ready for this company profile; ${pullMessage} ${pushMessage}`,
     })
+    } finally {
+      setSyncNowInFlight(false)
+    }
   }
 
   async function runDesktopSyncIfReady(
@@ -4716,9 +4753,14 @@ export function App() {
                 <span>Last sync</span>
                 <strong>{workspace.device.lastSyncLabel}</strong>
               </div>
-              <button className="sync-now" type="button" onClick={() => void handleSyncNowPreview()}>
+              <button
+                className="sync-now"
+                type="button"
+                disabled={syncNowInFlight}
+                onClick={() => void handleSyncNowPreview()}
+              >
                 <Icon name="sync" />
-                <span>Sync Now</span>
+                <span>{syncNowInFlight ? "Syncing" : "Sync Now"}</span>
               </button>
               <button className="session-lock" type="button" onClick={handleLockSession}>
                 <Icon name="history" />
@@ -5588,6 +5630,28 @@ export function App() {
               <p className="queue-storage-note">
                 Queue and sync attempts are saved locally on this device.
               </p>
+              <div className="queue-sync-command" aria-label="Website sync command">
+                <div>
+                  <span className="micro-label">Website sync</span>
+                  <strong>
+                    {localSyncStatus?.status === "ok" && localSyncStatus.wordpress_push_connected
+                      ? "LAN push connected"
+                      : "LAN push waiting"}
+                  </strong>
+                  <small>
+                    Sync pulls latest website inventory, pushes accepted LAN queue rows, and keeps
+                    WordPress as the final inventory authority.
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  disabled={!localSyncSessionToken || syncNowInFlight}
+                  onClick={() => void handleSyncNowPreview()}
+                >
+                  <Icon name="sync" />
+                  <span>{syncNowInFlight ? "Syncing" : "Sync to Website"}</span>
+                </button>
+              </div>
               {renderOperationSyncVisibilityPanel()}
               {lanSyncLastResult ? (
                 <div className="queue-review-card lan-sync-result" aria-label="Last LAN sync result">

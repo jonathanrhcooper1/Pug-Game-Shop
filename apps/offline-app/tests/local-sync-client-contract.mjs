@@ -131,6 +131,8 @@ for (const marker of [
   "ignored_count",
   "accepted_count",
   "unsupported_operation_count",
+  "wordpress_inventory?:",
+  "price_change_log_persisted",
   "customer_public_id",
   "amount_minor_units",
   "sale_total_minor_units",

@@ -387,6 +387,13 @@ export type LocalSyncPushResult = LocalSyncResult<{
     code?: string
     wordpress_code?: string
     http_status?: number
+    wordpress_inventory?: {
+      public_id: string
+      sku: string
+      barcode: string
+      status: LocalSyncInventoryItem["status"]
+      price_change_log_persisted: boolean
+    }
   }>
   wordpress_push_connected: true
   wordpress_inventory_push_connected?: boolean
