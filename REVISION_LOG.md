@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Square Inventory Batch Endpoint Alignment
+
+### What Changed
+
+- Updated the WordPress Square sync request planner and shared API-client
+  adapter to prepare inventory count requests against
+  `/v2/inventory/changes/batch-create`.
+- Kept the internal `inventory_batch_change`/`inventoryBatchChange` request
+  keys stable so downstream audit payloads and UI consumers do not need a
+  broad contract rename.
+- Updated POS/Square documentation and tests to match the current request path.
+
+### Why
+
+Square inventory projection is still sandbox/deferred, but the staged request
+envelopes should match the current Square Inventory API before live inventory
+write plumbing is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncRequestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncRequestPlannerTest.php`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `docs/PAYMENTS_POS.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated existing Square request planner and adapter assertions for the
+  current inventory batch-create path.
+
+### Verification
+
+- `php -l apps\wordpress-plugin\src\Square\SquareInventorySyncRequestPlanner.php`
+- `node packages\api-client\tests\square-inventory-adapter.mjs`
+- `php tests\run.php` from `apps/wordpress-plugin`
+- `npm.cmd run verify:no-production-secrets`
+
+### Rollback Notes
+
+- Revert this revision to restore the prior staged Square inventory request
+  path.
+- No database rollback is required because this revision only changes deferred
+  request envelopes, tests, and documentation.
+
 ## 2026-06-08 - PIN Session Timeout Enforcement
 
 ### What Changed

@@ -47,7 +47,7 @@ final class SquareInventoryProjectionExecutorTest extends TestCase {
 			$audit['square_sync_request_idempotency_keys']
 		);
 		$this->assert_same( '/v2/catalog/batch-upsert', $audit['square_sync_request_plan']['catalog_batch_upsert']['path'] );
-		$this->assert_same( '/v2/inventory/batch-change', $audit['square_sync_request_plan']['inventory_batch_change']['path'] );
+		$this->assert_same( '/v2/inventory/changes/batch-create', $audit['square_sync_request_plan']['inventory_batch_change']['path'] );
 		$this->assert_true( $audit['payment_capture_deferred'] );
 		$this->assert_same( 'required_for_payments', $audit['official_square_payment_extension'] );
 		$this->assert_same( 'official_woocommerce_square_extension', $audit['payment_capture_authority'] );

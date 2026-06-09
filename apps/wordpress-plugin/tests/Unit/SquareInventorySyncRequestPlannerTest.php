@@ -47,7 +47,7 @@ final class SquareInventorySyncRequestPlannerTest extends TestCase {
 		$this->assert_same( 'POST', $requests['catalog_batch_upsert']['method'] );
 		$this->assert_same( '/v2/catalog/batch-upsert', $requests['catalog_batch_upsert']['path'] );
 		$this->assert_same( 'POST', $requests['inventory_batch_change']['method'] );
-		$this->assert_same( '/v2/inventory/batch-change', $requests['inventory_batch_change']['path'] );
+		$this->assert_same( '/v2/inventory/changes/batch-create', $requests['inventory_batch_change']['path'] );
 		$this->assert_same( 1, count( $requests['catalog_batch_upsert']['body']['batches'][0]['objects'] ) );
 		$this->assert_same( 1, count( $requests['inventory_batch_change']['body']['changes'] ) );
 		$this->assert_true( $audit['network_request_deferred'] );
@@ -76,7 +76,7 @@ final class SquareInventorySyncRequestPlannerTest extends TestCase {
 
 		$this->assert_same( SquareInventorySyncRequestPlan::READY, $plan->status() );
 		$this->assert_same( null, $requests['catalog_batch_upsert'] );
-		$this->assert_same( '/v2/inventory/batch-change', $requests['inventory_batch_change']['path'] );
+		$this->assert_same( '/v2/inventory/changes/batch-create', $requests['inventory_batch_change']['path'] );
 		$this->assert_same( 'SQUARE-VARIATION-1', $requests['inventory_batch_change']['body']['changes'][0]['physical_count']['catalog_object_id'] );
 		$this->assert_same( '0', $requests['inventory_batch_change']['body']['changes'][0]['physical_count']['quantity'] );
 		$this->assert_same( array( 'SQUARE-VARIATION-1' ), $plan->external_ids()['catalog_object_ids'] );

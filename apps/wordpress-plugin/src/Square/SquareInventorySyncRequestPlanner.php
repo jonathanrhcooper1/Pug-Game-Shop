@@ -9,7 +9,7 @@ namespace TCGStorePlatform\Square;
 
 final class SquareInventorySyncRequestPlanner {
 	private const CATALOG_BATCH_UPSERT_PATH   = '/v2/catalog/batch-upsert';
-	private const INVENTORY_BATCH_CHANGE_PATH = '/v2/inventory/batch-change';
+	private const INVENTORY_BATCH_CHANGE_PATH = '/v2/inventory/changes/batch-create';
 	private const SANDBOX_ENVIRONMENTS        = array( 'sandbox', 'test', 'local', 'staging' );
 
 	/**

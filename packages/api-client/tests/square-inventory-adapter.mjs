@@ -44,7 +44,7 @@ test("Square inventory adapter prepares sandbox catalog and inventory requests",
   );
   assert.equal(
     result.details.requestPlan.inventoryBatchChange.path,
-    "/v2/inventory/batch-change",
+    "/v2/inventory/changes/batch-create",
   );
   assert.deepEqual(result.details.externalIds.catalogObjectIds, [
     "#tcg-item-card-public-42",

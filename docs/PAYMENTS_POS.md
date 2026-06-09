@@ -113,7 +113,7 @@ contract. It accepts the plugin's Square projection contract and prepares
 sandbox-only request plans for:
 
 - `POST /v2/catalog/batch-upsert`
-- `POST /v2/inventory/batch-change`
+- `POST /v2/inventory/changes/batch-create`
 
 The adapter preserves idempotency keys, extracts Square object IDs and SKUs,
 rejects production environments, credentials declared as production, or
@@ -129,7 +129,7 @@ It converts side-effect-free Square projection plans into auditable
 sandbox-only request envelopes for:
 
 - `POST /v2/catalog/batch-upsert`
-- `POST /v2/inventory/batch-change`
+- `POST /v2/inventory/changes/batch-create`
 
 Ready plans preserve projection idempotency keys, derive the inventory-change
 idempotency key, expose Square catalog object IDs and SKUs for reconciliation

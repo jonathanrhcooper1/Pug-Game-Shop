@@ -10,7 +10,7 @@ const REJECTED = "rejected";
 const SKIPPED = "skipped";
 const SANDBOX_ENVIRONMENTS = new Set(["sandbox", "test", "local", "staging"]);
 const SQUARE_CATALOG_BATCH_UPSERT_PATH = "/v2/catalog/batch-upsert";
-const SQUARE_INVENTORY_BATCH_CHANGE_PATH = "/v2/inventory/batch-change";
+const SQUARE_INVENTORY_BATCH_CHANGE_PATH = "/v2/inventory/changes/batch-create";
 
 export function planSquareInventorySyncRequest(projectionContract, options = {}) {
   const contract = normalizeProjectionContract(projectionContract);

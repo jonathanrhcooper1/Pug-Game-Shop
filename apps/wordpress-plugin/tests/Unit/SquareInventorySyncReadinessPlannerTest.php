@@ -31,7 +31,7 @@ final class SquareInventorySyncReadinessPlannerTest extends TestCase {
 		$this->assert_false( $plan['inventory_writer_configured'] );
 		$this->assert_same( 2, $plan['projection_operation_count'] );
 		$this->assert_same( '/v2/catalog/batch-upsert', $plan['sync_request_plan']['catalog_batch_upsert']['path'] );
-		$this->assert_same( '/v2/inventory/batch-change', $plan['sync_request_plan']['inventory_batch_change']['path'] );
+		$this->assert_same( '/v2/inventory/changes/batch-create', $plan['sync_request_plan']['inventory_batch_change']['path'] );
 		$this->assert_true( in_array( 'square_inventory_projection_execution_disabled', $plan['block_reasons'], true ) );
 		$this->assert_true( in_array( 'square_catalog_writer_deferred', $plan['block_reasons'], true ) );
 		$this->assert_true( in_array( 'square_inventory_writer_deferred', $plan['block_reasons'], true ) );

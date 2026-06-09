@@ -4,6 +4,13 @@ All notable changes follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Square catalog/inventory request planners now use Square's current
+  inventory batch-create endpoint,
+  `/v2/inventory/changes/batch-create`, while keeping payment capture
+  delegated to the official WooCommerce Square extension.
+
 ### Added
 
 - Offline app PIN login now sends the configured session timeout to the LAN
