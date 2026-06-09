@@ -11,7 +11,7 @@ All notable changes follow Semantic Versioning.
   metadata, stock by condition/version, condition-specific price options, and
   exact inventory reservation during add-to-cart and checkout.
 - WordPress plugin package, offline app package, Tauri config, and Rust crate
-  metadata now align with workspace version `0.187.0`.
+  metadata now align with workspace version `0.188.0`.
 - WordPress inventory admin Square POS Mapping rows now include secure manager
   forms for saving Square catalog item and variation IDs back to the website
   inventory record, using the website as the source of truth and leaving

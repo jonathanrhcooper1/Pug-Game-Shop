@@ -3,6 +3,57 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Version 0.188.0 Package Preparation
+
+### What Changed
+
+- Bumped root workspace, WordPress plugin, offline app, Tauri config, and Rust
+  package metadata to `0.188.0`.
+- Prepared the next WordPress package version to carry grouped WooCommerce card
+  product publishing and exact inventory checkout reservation hooks.
+
+### Why
+
+The production plugin installer and verification scripts compare the deployed
+plugin version against repository metadata. A version bump keeps the live site
+deployment and rollback trail clear for the new WooCommerce checkout behavior.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None; version metadata is covered by packaging and bootstrap checks.
+
+### Verification
+
+- `npm.cmd run package:wordpress`: passed and produced
+  `dist/tcg-store-platform-0.188.0.zip`.
+- `npm.cmd run test`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+
+### Rollback Notes
+
+- Reinstall the prior plugin package if the `0.188.0` package fails live
+  verification.
+- No database schema migration is included in this package bump.
+
 ## 2026-06-09 - Grouped WooCommerce Card Product Checkout
 
 ### What Changed
