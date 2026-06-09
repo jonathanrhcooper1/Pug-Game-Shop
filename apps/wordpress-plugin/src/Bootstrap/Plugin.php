@@ -30,6 +30,7 @@ use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
 use TCGStorePlatform\Staging\StagingSafety;
 use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshRunner;
+use TCGStorePlatform\WooCommerce\CustomerAccountPortalController;
 
 final class Plugin {
 	private static ?self $instance = null;
@@ -82,6 +83,7 @@ final class Plugin {
 		InventoryRouteDependencyFactory::from_settings( Settings::all() )->bootstrapper()->register();
 		( new CustomerController() )->register();
 		( new CustomerCreditController() )->register();
+		( new CustomerAccountPortalController() )->register();
 		( new EventsController() )->register();
 		( new KioskOrderController() )->register();
 		( new ScryDexCatalogController() )->register();
