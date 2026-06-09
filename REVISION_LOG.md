@@ -3,6 +3,63 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Platform Package Version 0.185.0
+
+### What Changed
+
+- Bumped the workspace package metadata to `0.185.0`.
+- Bumped the WordPress plugin header and platform version constant to
+  `0.185.0`.
+- Bumped the offline app package, Tauri config, and Rust crate metadata to
+  `0.185.0`.
+- Updated the changelog so the current production package/cache-bust version
+  matches the built zip.
+
+### Why
+
+The ScryDex price point and offline intake updates need a fresh WordPress
+package and app build identifier so deployed assets and support checks can be
+verified against the correct release.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run test:packaging`
+- `php apps\wordpress-plugin\tests\lint.php`
+- `npm.cmd run test:offline-app`
+- `npm.cmd run local-sync:test`
+- `npm.cmd run build`
+- `npm.cmd run verify:no-production-secrets`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert the version metadata and rebuild the WordPress package from the
+  previous release tag/commit. No database rollback is required for this
+  version-only checkpoint.
+
 ## 2026-06-09 - ScryDex Price Points Through Local Intake
 
 ### What Changed

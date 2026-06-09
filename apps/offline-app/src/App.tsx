@@ -187,7 +187,7 @@ const ACCESS_SECTIONS = [
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
-const OFFLINE_APP_VERSION = "0.184.0"
+const OFFLINE_APP_VERSION = "0.185.0"
 
 type OfflineAppUser = {
   id: string
