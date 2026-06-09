@@ -11,6 +11,7 @@ use TCGStorePlatform\Inventory\InventoryStatus;
 use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
 
 final class InventoryWorkspacePresenter {
+	private const REFERENCE_SEARCH_ROUTE_KEY = 'GET /reference/search';
 	private const SEARCH_ROUTE_KEY = 'GET /inventory/search';
 	private const CREATE_ROUTE_KEY = 'POST /inventory';
 
@@ -142,6 +143,42 @@ final class InventoryWorkspacePresenter {
 			'status_options' => array_merge( array( '' ), InventoryStatus::all() ),
 			'sort_options'   => array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ),
 			'page_sizes'     => array( 10, 25, 50, 100 ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @param array<string, mixed> $query Submitted admin query values.
+	 * @return array<string, mixed>
+	 */
+	public function lookup_panel( array $bootstrap_payload, array $dependency_payload, array $query = array() ): array {
+		$routes          = is_array( $bootstrap_payload['route_registration_summary'] ?? null )
+			? $bootstrap_payload['route_registration_summary']
+			: array();
+		$reference_route = is_array( $routes[ self::REFERENCE_SEARCH_ROUTE_KEY ] ?? null )
+			? $routes[ self::REFERENCE_SEARCH_ROUTE_KEY ]
+			: array();
+		$ready           = true === ( $bootstrap_payload['feature_enabled'] ?? false )
+			&& true === ( $reference_route['should_register'] ?? false )
+			&& false === ( $reference_route['route_connected_reads_deferred'] ?? true )
+			&& true === ( $dependency_payload['reference_search_handler_ready'] ?? false );
+
+		return array(
+			'ready'             => $ready,
+			'status'            => $ready ? 'ready' : 'locked',
+			'status_label'      => $ready
+				? 'Ready for card lookup and intake drafts'
+				: 'Locked until staging card lookup gates are enabled',
+			'endpoint_path'     => '/tcg-store/v1/reference/search',
+			'method'            => 'GET',
+			'query'             => $this->lookup_query( $query ),
+			'notes'             => $ready
+				? 'Lookup reads the website reference catalog first and can hand selected cards into staff intake.'
+				: $this->lookup_lock_notes( $bootstrap_payload, $dependency_payload, $reference_route ),
+			'condition_options' => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
+			'quantity_options'  => array( 1, 2, 3, 4, 5, 10, 25 ),
+			'page_sizes'        => array( 12, 25, 50 ),
 		);
 	}
 
@@ -454,6 +491,10 @@ final class InventoryWorkspacePresenter {
 			'set_code'                       => strtoupper( $this->slug_value( $form['set_code'] ?? '', '' ) ),
 			'card_number'                    => $this->text_value( $form['card_number'] ?? '', 40 ),
 			'printed_number'                 => $this->text_value( $form['printed_number'] ?? '', 40 ),
+			'provider_name'                   => $this->slug_value( $form['provider_name'] ?? 'scrydex', 'scrydex' ),
+			'provider_card_id'                => $this->text_value( $form['provider_card_id'] ?? '', 120 ),
+			'reference_card_id'               => $this->positive_int_string( $form['reference_card_id'] ?? '' ),
+			'reference_variant_id'            => $this->positive_int_string( $form['reference_variant_id'] ?? '' ),
 			'variant'                        => $this->text_value( $form['variant'] ?? '', 80 ),
 			'finish'                         => $this->text_value( $form['finish'] ?? '', 80 ),
 			'language'                       => strtoupper( $this->slug_value( $form['language'] ?? 'EN', 'EN' ) ),
@@ -466,10 +507,64 @@ final class InventoryWorkspacePresenter {
 			'sale_currency'                  => $this->currency_code( $form['sale_currency'] ?? 'USD' ),
 			'minimum_sale_price_minor_units' => $this->non_negative_int( $form['minimum_sale_price_minor_units'] ?? 100 ),
 			'sale_price_minor_units'         => $this->non_negative_int( $form['sale_price_minor_units'] ?? 100 ),
+			'market_price_minor_units'       => $this->non_negative_int( $form['market_price_minor_units'] ?? 0 ),
+			'front_image_remote_url'         => $this->url_value( $form['front_image_remote_url'] ?? '' ),
+			'back_image_remote_url'          => $this->url_value( $form['back_image_remote_url'] ?? '' ),
+			'intake_quantity'                => $this->bounded_int( $form['intake_quantity'] ?? 1, 1, 100 ),
 			'online_visibility'              => $this->visibility_value( $form['online_visibility'] ?? 'visible' ),
 			'kiosk_visibility'               => $this->visibility_value( $form['kiosk_visibility'] ?? 'visible' ),
 			'pos_visibility'                 => $this->visibility_value( $form['pos_visibility'] ?? 'visible' ),
 		);
+	}
+
+	/**
+	 * @param array<string, mixed> $query Submitted admin query values.
+	 * @return array{q:string,game:string,page_size:int}
+	 */
+	private function lookup_query( array $query ): array {
+		$q         = substr( trim( (string) ( $query['q'] ?? '' ) ), 0, 120 );
+		$game      = strtolower( trim( (string) ( $query['game'] ?? 'pokemon' ) ) );
+		$page_size = (int) ( $query['page_size'] ?? 12 );
+
+		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
+			$game = 'pokemon';
+		}
+
+		if ( ! in_array( $page_size, array( 12, 25, 50 ), true ) ) {
+			$page_size = 12;
+		}
+
+		return array(
+			'q'         => $q,
+			'game'      => $game,
+			'page_size' => $page_size,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
+	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
+	 * @param array<string, mixed> $reference_route Reference route summary.
+	 */
+	private function lookup_lock_notes( array $bootstrap_payload, array $dependency_payload, array $reference_route ): string {
+		$notes = array();
+
+		if ( true !== ( $bootstrap_payload['feature_enabled'] ?? false ) ) {
+			$notes[] = 'inventory_pricing feature flag disabled';
+		}
+
+		if ( true !== ( $dependency_payload['reference_search_handler_ready'] ?? false ) ) {
+			$notes[] = 'reference search handler not ready';
+		}
+
+		$notes = array_merge(
+			$notes,
+			$this->list_values( $reference_route['registration_block_reasons'] ?? array() ),
+			$this->list_values( $dependency_payload['inventory_search_route_dependency_issues'] ?? array() ),
+			$this->list_values( $dependency_payload['configuration_issues'] ?? array() )
+		);
+
+		return array() === $notes ? 'reference search route not ready' : implode( '; ', array_values( array_unique( $notes ) ) );
 	}
 
 	/**
@@ -544,6 +639,12 @@ final class InventoryWorkspacePresenter {
 		return 1 === preg_match( '/^\d+$/', $value ) && (int) $value > 0 ? $value : '';
 	}
 
+	private function url_value( mixed $value ): string {
+		$value = $this->text_value( $value, 255 );
+
+		return 1 === preg_match( '#^https?://[^\s<>"\']+$#', $value ) ? $value : '';
+	}
+
 	private function non_negative_int( mixed $value ): int {
 		if ( is_int( $value ) && $value >= 0 ) {
 			return $value;
@@ -554,6 +655,18 @@ final class InventoryWorkspacePresenter {
 		}
 
 		return 0;
+	}
+
+	private function bounded_int( mixed $value, int $minimum, int $maximum ): int {
+		if ( is_int( $value ) ) {
+			$integer = $value;
+		} elseif ( is_string( $value ) && 1 === preg_match( '/^\d+$/', $value ) ) {
+			$integer = (int) $value;
+		} else {
+			return $minimum;
+		}
+
+		return min( $maximum, max( $minimum, $integer ) );
 	}
 
 	private function visibility_value( mixed $value ): string {

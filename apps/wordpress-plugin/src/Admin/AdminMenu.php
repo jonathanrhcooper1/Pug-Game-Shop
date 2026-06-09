@@ -150,6 +150,11 @@ final class AdminMenu {
 			$dependency_payload,
 			$this->inventory_search_query()
 		);
+		$lookup_panel       = $workspace->lookup_panel(
+			$bootstrap_payload,
+			$dependency_payload,
+			$this->inventory_lookup_query()
+		);
 		$intake_panel       = $workspace->intake_panel(
 			$bootstrap_payload,
 			$dependency_payload
@@ -161,6 +166,9 @@ final class AdminMenu {
 
 		echo '<h2>' . esc_html__( 'Staff Search', 'tcg-store-platform' ) . '</h2>';
 		$this->render_inventory_search_panel( $search_panel );
+
+		echo '<h2>' . esc_html__( 'Card Lookup', 'tcg-store-platform' ) . '</h2>';
+		$this->render_inventory_lookup_panel( $lookup_panel );
 
 		echo '<h2>' . esc_html__( 'Staff Intake', 'tcg-store-platform' ) . '</h2>';
 		$this->render_inventory_intake_panel( $intake_panel );
@@ -529,6 +537,16 @@ final class AdminMenu {
 		);
 	}
 
+	private function inventory_lookup_query(): array {
+		$source = is_array( $_GET ) ? wp_unslash( $_GET ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		return array(
+			'q'         => $source['lookup_q'] ?? '',
+			'game'      => $source['lookup_game'] ?? 'pokemon',
+			'page_size' => $source['lookup_page_size'] ?? 12,
+		);
+	}
+
 	/**
 	 * @param array<string, mixed> $panel Search panel model.
 	 */
@@ -602,6 +620,61 @@ final class AdminMenu {
 	}
 
 	/**
+	 * @param array<string, mixed> $panel Card lookup panel model.
+	 */
+	private function render_inventory_lookup_panel( array $panel ): void {
+		$query             = is_array( $panel['query'] ?? null ) ? $panel['query'] : array();
+		$ready             = true === ( $panel['ready'] ?? false );
+		$endpoint          = rest_url( ltrim( (string) ( $panel['endpoint_path'] ?? '' ), '/' ) );
+		$page_sizes        = is_array( $panel['page_sizes'] ?? null ) ? $panel['page_sizes'] : array();
+		$condition_options = is_array( $panel['condition_options'] ?? null ) ? $panel['condition_options'] : array();
+
+		echo '<div class="notice notice-' . esc_attr( $ready ? 'success' : 'warning' ) . ' inline"><p><strong>';
+		echo esc_html( (string) ( $panel['status_label'] ?? '' ) );
+		echo '</strong> ';
+		echo esc_html( (string) ( $panel['notes'] ?? '' ) );
+		echo '</p></div>';
+
+		echo '<form id="tcg-store-inventory-lookup-form" class="tcg-store-inventory-lookup" method="get" action="';
+		echo esc_url( admin_url( 'admin.php' ) );
+		echo '">';
+		echo '<input type="hidden" name="page" value="tcg-store-platform-inventory" />';
+		echo '<input type="hidden" name="card_lookup" value="1" />';
+		echo '<table class="form-table" role="presentation"><tbody><tr>';
+		echo '<th scope="row"><label for="tcg-store-lookup-q">' . esc_html__( 'Lookup card', 'tcg-store-platform' ) . '</label></th>';
+		echo '<td><input type="search" class="regular-text" id="tcg-store-lookup-q" name="lookup_q" value="';
+		echo esc_attr( (string) ( $query['q'] ?? '' ) );
+		echo '" placeholder="' . esc_attr__( 'Card name, set, or number', 'tcg-store-platform' ) . '" required="required" /></td></tr>';
+		echo '<tr><th scope="row"><label for="tcg-store-lookup-game">' . esc_html__( 'Game', 'tcg-store-platform' ) . '</label></th>';
+		echo '<td><input type="text" id="tcg-store-lookup-game" name="lookup_game" value="';
+		echo esc_attr( (string) ( $query['game'] ?? 'pokemon' ) );
+		echo '" placeholder="' . esc_attr__( 'pokemon, magic, lorcana', 'tcg-store-platform' ) . '" /></td></tr>';
+		echo '<tr><th scope="row"><label for="tcg-store-lookup-page-size">' . esc_html__( 'Results', 'tcg-store-platform' ) . '</label></th><td>';
+		echo '<select id="tcg-store-lookup-page-size" name="lookup_page_size">';
+		foreach ( $page_sizes as $page_size ) {
+			$page_size = (int) $page_size;
+			echo '<option value="' . esc_attr( (string) $page_size ) . '" ' . selected( (int) ( $query['page_size'] ?? 12 ), $page_size, false ) . '>';
+			/* translators: %d: number of lookup results to show. */
+			echo esc_html( sprintf( __( '%d cards', 'tcg-store-platform' ), $page_size ) );
+			echo '</option>';
+		}
+		echo '</select></td></tr></tbody></table>';
+		submit_button( __( 'Lookup Cards', 'tcg-store-platform' ), 'primary', 'submit', false, $ready ? array() : array( 'disabled' => 'disabled' ) );
+		echo '</form>';
+
+		echo '<div id="tcg-store-inventory-lookup-results" data-ready="' . esc_attr( $ready ? '1' : '0' ) . '" data-endpoint="';
+		echo esc_url( $endpoint );
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) );
+		echo '" data-condition-options="' . esc_attr( (string) wp_json_encode( array_values( $condition_options ) ) ) . '">';
+		echo '<p>' . esc_html__( 'Card lookup results will appear here with image, set, number, stock, and price context.', 'tcg-store-platform' ) . '</p>';
+		echo '</div>';
+
+		if ( $ready ) {
+			$this->render_inventory_lookup_script();
+		}
+	}
+
+	/**
 	 * @param array<string, mixed> $panel Intake panel model.
 	 */
 	private function render_inventory_intake_panel( array $panel ): void {
@@ -630,6 +703,11 @@ final class AdminMenu {
 		echo '">';
 		echo '<input type="hidden" name="source" value="staff" />';
 		echo '<input type="hidden" name="actor_user_id" value="' . esc_attr( (string) get_current_user_id() ) . '" />';
+		$this->render_inventory_intake_hidden_input( $form, 'provider_name' );
+		$this->render_inventory_intake_hidden_input( $form, 'provider_card_id' );
+		$this->render_inventory_intake_hidden_input( $form, 'reference_card_id' );
+		$this->render_inventory_intake_hidden_input( $form, 'reference_variant_id' );
+		$this->render_inventory_intake_hidden_input( $form, 'market_price_minor_units' );
 		echo '<table class="form-table" role="presentation"><tbody>';
 		$this->render_inventory_intake_text_input( $form, 'game', __( 'Game', 'tcg-store-platform' ), 'pokemon', true );
 		$this->render_inventory_intake_text_input( $form, 'card_name', __( 'Card name', 'tcg-store-platform' ), 'Bulbasaur', true );
@@ -637,12 +715,15 @@ final class AdminMenu {
 		$this->render_inventory_intake_text_input( $form, 'set_code', __( 'Set code', 'tcg-store-platform' ), 'BASE', false );
 		$this->render_inventory_intake_text_input( $form, 'card_number', __( 'Card number', 'tcg-store-platform' ), '44', false );
 		$this->render_inventory_intake_text_input( $form, 'printed_number', __( 'Printed number', 'tcg-store-platform' ), '44/102', false );
+		$this->render_inventory_intake_text_input( $form, 'front_image_remote_url', __( 'Front image URL', 'tcg-store-platform' ), 'https://images.example.test/card-front.png', false, 'url' );
+		$this->render_inventory_intake_text_input( $form, 'back_image_remote_url', __( 'Back image URL', 'tcg-store-platform' ), 'https://images.example.test/card-back.png', false, 'url' );
 		$this->render_inventory_intake_text_input( $form, 'barcode', __( 'Barcode', 'tcg-store-platform' ), 'PUG-PKM-BASE-044', true );
 		$this->render_inventory_intake_text_input( $form, 'sku', __( 'SKU', 'tcg-store-platform' ), 'PUG-PKM-BASE-044', false );
 		$this->render_inventory_intake_text_input( $form, 'location_id', __( 'Location ID', 'tcg-store-platform' ), '1', true, 'number' );
 		$this->render_inventory_intake_text_input( $form, 'sale_currency', __( 'Currency', 'tcg-store-platform' ), 'USD', true );
 		$this->render_inventory_intake_text_input( $form, 'minimum_sale_price_minor_units', __( 'Minimum price cents', 'tcg-store-platform' ), '100', true, 'number' );
 		$this->render_inventory_intake_text_input( $form, 'sale_price_minor_units', __( 'Sale price cents', 'tcg-store-platform' ), '250', true, 'number' );
+		$this->render_inventory_intake_text_input( $form, 'intake_quantity', __( 'Quantity to add', 'tcg-store-platform' ), '1', true, 'number' );
 		$this->render_inventory_intake_select( $form, 'status', __( 'Status', 'tcg-store-platform' ), $status_options );
 		$this->render_inventory_intake_select( $form, 'raw_or_graded', __( 'Raw or graded', 'tcg-store-platform' ), $raw_options );
 		$this->render_inventory_intake_select( $form, 'condition_code', __( 'Condition', 'tcg-store-platform' ), $condition_options );
@@ -682,6 +763,15 @@ final class AdminMenu {
 		echo '" placeholder="' . esc_attr( $placeholder ) . '"';
 		echo $required ? ' required="required"' : '';
 		echo ' /></td></tr>';
+	}
+
+	/**
+	 * @param array<string, mixed> $form Intake form values.
+	 */
+	private function render_inventory_intake_hidden_input( array $form, string $name ): void {
+		echo '<input type="hidden" id="tcg-store-intake-' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="';
+		echo esc_attr( (string) ( $form[ $name ] ?? '' ) );
+		echo '" />';
 	}
 
 	/**
@@ -755,6 +845,31 @@ final class AdminMenu {
 		echo '</script>';
 	}
 
+	private function render_inventory_lookup_script(): void {
+		echo '<script>';
+		echo '(function(){';
+		echo 'const form=document.getElementById("tcg-store-inventory-lookup-form");';
+		echo 'const target=document.getElementById("tcg-store-inventory-lookup-results");';
+		echo 'const intake=document.getElementById("tcg-store-inventory-intake-form");';
+		echo 'if(!form||!target||target.dataset.ready!=="1"){return;}';
+		echo 'let cards=[];';
+		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
+		echo 'const conditionOptions=function(){try{const parsed=JSON.parse(target.dataset.conditionOptions||"[]");return Array.isArray(parsed)&&parsed.length?parsed:["NM","LP","MP","HP","DMG"];}catch(error){return ["NM","LP","MP","HP","DMG"];}}();';
+		echo 'const conditionSelect=function(){return "<select class=\"tcg-store-lookup-condition\" aria-label=\"' . esc_js( __( 'Condition', 'tcg-store-platform' ) ) . '\">"+conditionOptions.map(function(option){return "<option value=\""+esc(option)+"\">"+esc(option)+"</option>";}).join("")+"</select>";};';
+		echo 'const imageUrl=function(card){return String(card.front_image_url||card.image_url||"");};';
+		echo 'const priceLabel=function(card){const price=card.market_price||{};const amount=price.amount||card.market_price_amount||"";const currency=card.currency||price.currency||"USD";return amount?amount+" "+currency:"";};';
+		echo 'const stockLabel=function(card){const available=Number(card.stock_available_count||0);const total=Number(card.stock_total_count||0);const byCondition=card.stock_by_condition||{};const conditionText=Object.keys(byCondition).map(function(key){return key+": "+byCondition[key];}).join(", ");return (available||total?available+"/"+total+" ' . esc_js( __( 'available', 'tcg-store-platform' ) ) . '":"0/0 ' . esc_js( __( 'in stock', 'tcg-store-platform' ) ) . '")+(conditionText?" ("+conditionText+")":"");};';
+		echo 'const variantLabel=function(card){const variants=Array.isArray(card.variants)?card.variants:[];if(!variants.length){return "";}return variants.slice(0,2).map(function(variant){return [variant.variant,variant.finish,variant.parallel_name].filter(Boolean).join(" / ");}).filter(Boolean).join("; ");};';
+		echo 'const render=function(payload){cards=(((payload.data||{}).cards)||[]);const meta=((payload.data||{}).meta)||{};const source=((payload.data||{}).source)||"";const providerNote=meta.live_provider_request?" + ' . esc_js( __( 'live provider fallback', 'tcg-store-platform' ) ) . '":"";if(!cards.length){target.innerHTML="<p>' . esc_js( __( 'No matching cards found in the website catalog or provider fallback.', 'tcg-store-platform' ) ) . '</p>";return;}target.innerHTML="<p>"+esc(cards.length)+" ' . esc_js( __( 'cards shown', 'tcg-store-platform' ) ) . ' <span class=\"description\">"+esc(source)+esc(providerNote)+"</span></p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Image URL', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set / Number', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Stock / Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Add', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+cards.map(function(card,index){const url=imageUrl(card);const image=url?"<img src=\""+esc(url)+"\" alt=\"\" style=\"max-width:72px;height:auto;display:block;margin-bottom:4px;\" /><code>"+esc(url)+"</code>":"<span class=\"description\">' . esc_js( __( 'No image URL', 'tcg-store-platform' ) ) . '</span>";return "<tr data-card-index=\""+index+"\"><td>"+image+"</td><td><strong>"+esc(card.card_name||card.name)+"</strong><br><span class=\"description\">"+esc(variantLabel(card))+"</span></td><td>"+esc(card.set_name||"")+"<br><code>"+esc(card.set_code||"")+" "+esc(card.printed_number||card.card_number||"")+"</code></td><td>"+esc(stockLabel(card))+"<br><strong>"+esc(priceLabel(card))+"</strong></td><td>"+conditionSelect()+" <input class=\"tcg-store-lookup-quantity\" type=\"number\" min=\"1\" max=\"100\" value=\"1\" style=\"width:72px\" aria-label=\"' . esc_js( __( 'Quantity', 'tcg-store-platform' ) ) . '\" /> <button type=\"button\" class=\"button tcg-store-lookup-use\">' . esc_js( __( 'Use for intake', 'tcg-store-platform' ) ) . '</button></td></tr>";}).join("")+"</tbody></table>";};';
+		echo 'const setIntakeValue=function(name,value){if(!intake){return;}const field=intake.querySelector("[name=\""+name+"\"]");if(field){field.value=String(value===null||value===undefined?"":value);field.dispatchEvent(new Event("change",{bubbles:true}));}};';
+		echo 'const fillIntake=function(card,row){const selectedCondition=row.querySelector(".tcg-store-lookup-condition");const selectedQuantity=row.querySelector(".tcg-store-lookup-quantity");const variants=Array.isArray(card.variants)?card.variants:[];const variant=variants.length?variants[0]:{};const price=card.market_price||{};const priceMinor=card.market_price_minor_units||"";setIntakeValue("game",card.game||"pokemon");setIntakeValue("card_name",card.card_name||card.name||"");setIntakeValue("set_name",card.set_name||"");setIntakeValue("set_code",card.set_code||"");setIntakeValue("card_number",card.card_number||"");setIntakeValue("printed_number",card.printed_number||card.card_number||"");setIntakeValue("provider_name",card.provider_name||"scrydex");setIntakeValue("provider_card_id",card.provider_card_id||"");setIntakeValue("variant",variant.variant||card.variant||"");setIntakeValue("finish",variant.finish||card.finish||"");setIntakeValue("language",variant.language||card.language||"EN");setIntakeValue("front_image_remote_url",imageUrl(card));setIntakeValue("back_image_remote_url",card.back_image_url||"");setIntakeValue("market_price_minor_units",priceMinor);if(priceMinor){setIntakeValue("sale_price_minor_units",priceMinor);setIntakeValue("minimum_sale_price_minor_units",priceMinor);}setIntakeValue("sale_currency",card.currency||price.currency||"USD");setIntakeValue("condition_code",selectedCondition?selectedCondition.value:"NM");setIntakeValue("raw_or_graded","raw");setIntakeValue("intake_quantity",selectedQuantity?selectedQuantity.value:"1");if(card.suggested_barcode||card.provider_card_id){setIntakeValue("barcode",card.suggested_barcode||card.provider_card_id);setIntakeValue("sku",card.suggested_barcode||card.provider_card_id);}const result=document.getElementById("tcg-store-inventory-intake-result");if(result){result.innerHTML="<p><strong>' . esc_js( __( 'Intake draft ready', 'tcg-store-platform' ) ) . ':</strong> "+esc(card.card_name||card.name||"")+" "+esc(card.set_code||"")+" "+esc(card.printed_number||card.card_number||"")+"</p>";}if(intake){intake.scrollIntoView({behavior:"smooth",block:"start"});}};';
+		echo 'target.addEventListener("click",function(event){const button=event.target.closest(".tcg-store-lookup-use");if(!button){return;}const row=button.closest("[data-card-index]");const index=row?Number(row.dataset.cardIndex):-1;if(!row||!cards[index]){return;}fillIntake(cards[index],row);});';
+		echo 'form.addEventListener("submit",function(event){event.preventDefault();const formData=new FormData(form);const params=new URLSearchParams();params.set("q",String(formData.get("lookup_q")||""));params.set("game",String(formData.get("lookup_game")||"pokemon"));params.set("page_size",String(formData.get("lookup_page_size")||"12"));target.innerHTML="<p>' . esc_js( __( 'Looking up cards...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint+"?"+params.toString(),{headers:{"X-WP-Nonce":target.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){target.innerHTML="<p>' . esc_js( __( 'Card lookup failed.', 'tcg-store-platform' ) ) . '</p>";return;}render(result.payload);}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Card lookup failed.', 'tcg-store-platform' ) ) . '</p>";});});';
+		echo 'if(new URLSearchParams(window.location.search).get("card_lookup")==="1"){form.dispatchEvent(new Event("submit",{cancelable:true}));}';
+		echo '})();';
+		echo '</script>';
+	}
+
 	private function render_inventory_intake_script(): void {
 		echo '<script>';
 		echo '(function(){';
@@ -762,8 +877,10 @@ final class AdminMenu {
 		echo 'const target=document.getElementById("tcg-store-inventory-intake-result");';
 		echo 'if(!form||!target||target.dataset.ready!=="1"){return;}';
 		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
-		echo 'const resultLine=function(payload){const data=payload.data||{};const meta=payload.meta||{};return "<p><strong>' . esc_js( __( 'Created', 'tcg-store-platform' ) ) . '</strong> #"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+" <span class=\"description\">' . esc_js( __( 'External projections deferred', 'tcg-store-platform' ) ) . ': "+esc(meta.woocommerce_projection_deferred&&meta.square_inventory_projection_deferred&&meta.label_print_deferred?"yes":"check")+"</span></p>";};';
-		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));const key="admin-intake-"+Date.now()+"-"+Math.random().toString(16).slice(2);target.innerHTML="<p>' . esc_js( __( 'Creating inventory item...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint,{method:"POST",headers:{"X-WP-Nonce":target.dataset.nonce,"Idempotency-Key":key},body:params}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok||result.payload.status!=="created"){const errors=(result.payload.errors||[]).join(", ");target.innerHTML="<p>' . esc_js( __( 'Inventory create failed.', 'tcg-store-platform' ) ) . ' "+esc(errors)+"</p>";return;}target.innerHTML=resultLine(result.payload);form.reset();}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory create failed.', 'tcg-store-platform' ) ) . '</p>";});});';
+		echo 'const quantityFrom=function(params){const raw=Number(params.get("intake_quantity")||1);if(!Number.isFinite(raw)){return 1;}return Math.min(100,Math.max(1,Math.floor(raw)));};';
+		echo 'const suffixed=function(value,index,total){if(total<2||!value){return value;}const suffix="-"+String(index+1).padStart(2,"0");return String(value).slice(0,72)+suffix;};';
+		echo 'const resultLine=function(results,total){const created=results.filter(function(result){return result.ok&&result.payload&&result.payload.status==="created";});const failed=results.length-created.length;const rows=created.map(function(result){const data=result.payload.data||{};return "<li>#"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+"</li>";}).join("");return "<p><strong>' . esc_js( __( 'Created inventory items', 'tcg-store-platform' ) ) . ':</strong> "+esc(created.length)+" / "+esc(total)+" <span class=\"description\">' . esc_js( __( 'External projections deferred', 'tcg-store-platform' ) ) . '</span></p>"+(failed?"<p>' . esc_js( __( 'Failed', 'tcg-store-platform' ) ) . ': "+esc(failed)+"</p>":"")+"<ul>"+rows+"</ul>";};';
+		echo 'form.addEventListener("submit",function(event){event.preventDefault();const baseParams=new URLSearchParams(new FormData(form));const quantity=quantityFrom(baseParams);baseParams.delete("intake_quantity");target.innerHTML="<p>' . esc_js( __( 'Creating inventory items...', 'tcg-store-platform' ) ) . '</p>";const batchId=Date.now()+"-"+Math.random().toString(16).slice(2);const requests=[];for(let index=0;index<quantity;index++){const params=new URLSearchParams(baseParams);params.set("barcode",suffixed(params.get("barcode")||"",index,quantity));params.set("sku",suffixed(params.get("sku")||"",index,quantity));const key="admin-intake-"+batchId+"-"+index;requests.push(fetch(target.dataset.endpoint,{method:"POST",headers:{"X-WP-Nonce":target.dataset.nonce,"Idempotency-Key":key},body:params}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).catch(function(){return {ok:false,payload:{errors:["network_error"]}};}));}Promise.all(requests).then(function(results){target.innerHTML=resultLine(results,quantity);if(results.every(function(result){return result.ok&&result.payload&&result.payload.status==="created";})){form.reset();}});});';
 		echo '})();';
 		echo '</script>';
 	}

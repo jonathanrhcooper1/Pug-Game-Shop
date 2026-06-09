@@ -190,6 +190,67 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_true( in_array( 100, $panel['page_sizes'], true ) );
 	}
 
+	public function test_lookup_panel_reports_locked_default_state_and_sanitizes_query(): void {
+		$presenter    = new InventoryWorkspacePresenter();
+		$bootstrap    = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload( false );
+		$dependencies = ( new InventoryRouteDependencyStatusPresenter(
+			new InventoryRouteDependencyFactory()
+		) )->health_payload();
+		$panel        = $presenter->lookup_panel(
+			$bootstrap,
+			$dependencies,
+			array(
+				'q'         => str_repeat( 'z', 140 ),
+				'game'      => '../bad',
+				'page_size' => 999,
+			)
+		);
+
+		$this->assert_false( $panel['ready'] );
+		$this->assert_same( 'locked', $panel['status'] );
+		$this->assert_same( '/tcg-store/v1/reference/search', $panel['endpoint_path'] );
+		$this->assert_contains( 'inventory_pricing feature flag disabled', $panel['notes'] );
+		$this->assert_same( 120, strlen( $panel['query']['q'] ) );
+		$this->assert_same( 'pokemon', $panel['query']['game'] );
+		$this->assert_same( 12, $panel['query']['page_size'] );
+		$this->assert_true( in_array( 'NM', $panel['condition_options'], true ) );
+		$this->assert_true( in_array( 25, $panel['quantity_options'], true ) );
+		$this->assert_true( in_array( 50, $panel['page_sizes'], true ) );
+	}
+
+	public function test_lookup_panel_reports_ready_staging_reference_route(): void {
+		$presenter = new InventoryWorkspacePresenter();
+		$panel     = $presenter->lookup_panel(
+			array(
+				'feature_enabled'            => true,
+				'route_registration_summary' => array(
+					'GET /reference/search' => array(
+						'should_register'                => true,
+						'route_connected_reads_deferred' => false,
+						'registration_block_reasons'     => array(),
+					),
+				),
+			),
+			array(
+				'reference_search_handler_ready'          => true,
+				'inventory_search_route_dependency_issues' => array(),
+				'configuration_issues'                    => array(),
+			),
+			array(
+				'q'         => 'charizard',
+				'game'      => 'pokemon',
+				'page_size' => 50,
+			)
+		);
+
+		$this->assert_true( $panel['ready'] );
+		$this->assert_same( 'ready', $panel['status'] );
+		$this->assert_contains( 'Lookup reads the website reference catalog first', $panel['notes'] );
+		$this->assert_same( 'charizard', $panel['query']['q'] );
+		$this->assert_same( 'pokemon', $panel['query']['game'] );
+		$this->assert_same( 50, $panel['query']['page_size'] );
+	}
+
 	public function test_intake_panel_reports_locked_default_state_and_sanitizes_form(): void {
 		$presenter    = new InventoryWorkspacePresenter();
 		$bootstrap    = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload( false );
@@ -203,6 +264,10 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 				'game'                           => '../bad',
 				'card_name'                      => str_repeat( 'a', 140 ),
 				'set_code'                       => 'base',
+				'provider_name'                   => '../bad',
+				'provider_card_id'                => str_repeat( 'p', 140 ),
+				'reference_card_id'               => 'bad',
+				'reference_variant_id'            => '9',
 				'status'                         => 'bad',
 				'raw_or_graded'                  => 'bad',
 				'condition_code'                 => 'bad',
@@ -210,6 +275,10 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 				'sale_currency'                  => 'b1d',
 				'minimum_sale_price_minor_units' => 'bad',
 				'sale_price_minor_units'         => '200',
+				'market_price_minor_units'       => '333',
+				'front_image_remote_url'         => 'javascript:alert(1)',
+				'back_image_remote_url'          => 'https://images.example.test/back.png',
+				'intake_quantity'                => '999',
 				'online_visibility'              => 'bad',
 			)
 		);
@@ -223,6 +292,10 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 'pokemon', $panel['form']['game'] );
 		$this->assert_same( 120, strlen( $panel['form']['card_name'] ) );
 		$this->assert_same( 'BASE', $panel['form']['set_code'] );
+		$this->assert_same( 'scrydex', $panel['form']['provider_name'] );
+		$this->assert_same( 120, strlen( $panel['form']['provider_card_id'] ) );
+		$this->assert_same( '', $panel['form']['reference_card_id'] );
+		$this->assert_same( '9', $panel['form']['reference_variant_id'] );
 		$this->assert_same( 'available', $panel['form']['status'] );
 		$this->assert_same( 'raw', $panel['form']['raw_or_graded'] );
 		$this->assert_same( 'NM', $panel['form']['condition_code'] );
@@ -230,6 +303,10 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 'USD', $panel['form']['sale_currency'] );
 		$this->assert_same( 0, $panel['form']['minimum_sale_price_minor_units'] );
 		$this->assert_same( 200, $panel['form']['sale_price_minor_units'] );
+		$this->assert_same( 333, $panel['form']['market_price_minor_units'] );
+		$this->assert_same( '', $panel['form']['front_image_remote_url'] );
+		$this->assert_same( 'https://images.example.test/back.png', $panel['form']['back_image_remote_url'] );
+		$this->assert_same( 100, $panel['form']['intake_quantity'] );
 		$this->assert_same( 'hidden', $panel['form']['online_visibility'] );
 	}
 
