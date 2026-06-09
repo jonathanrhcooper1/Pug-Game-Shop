@@ -87,12 +87,14 @@ if (!class_exists('TCGStorePlatform\\\\Version')) {
 	exit(1);
 }
 $inventory_shortcode = '[tcg_inventory_search query="' . esc_attr((string) ($payload['inventoryQuery'] ?? 'Charizard')) . '" game="' . esc_attr((string) ($payload['inventoryGame'] ?? 'pokemon')) . '" limit="' . (int) ($payload['inventoryLimit'] ?? 4) . '"]';
+$product_shelf_shortcode = '[tcg_product_shelf category="sealed-products" label="Sealed Products" limit="4"]';
 $events_shortcode = '[tcg_events limit="' . (int) ($payload['eventLimit'] ?? 2) . '"]';
 $event_detail_shortcode = '[tcg_event_detail slug="codex-production-shortcode-smoke-missing-event"]';
 $inventory_html = do_shortcode($inventory_shortcode);
+$product_shelf_html = do_shortcode($product_shelf_shortcode);
 $events_html = do_shortcode($events_shortcode);
 $event_detail_html = do_shortcode($event_detail_shortcode);
-$combined = $inventory_html . "\\n" . $events_html . "\\n" . $event_detail_html;
+$combined = $inventory_html . "\\n" . $product_shelf_html . "\\n" . $events_html . "\\n" . $event_detail_html;
 echo wp_json_encode(array(
 	'action' => 'production_public_shortcodes_verified',
 	'status' => 'ok',
@@ -100,6 +102,7 @@ echo wp_json_encode(array(
 	'database_version' => TCGStorePlatform\\Version::DATABASE,
 	'shortcodes' => array(
 		'inventory' => shortcode_exists('tcg_inventory_search'),
+		'product_shelf' => shortcode_exists('tcg_product_shelf'),
 		'events' => shortcode_exists('tcg_events'),
 		'event_detail' => shortcode_exists('tcg_event_detail'),
 	),
@@ -111,11 +114,14 @@ echo wp_json_encode(array(
 	),
 	'markup' => array(
 		'inventory_length' => strlen($inventory_html),
+		'product_shelf_length' => strlen($product_shelf_html),
 		'events_length' => strlen($events_html),
 		'event_detail_length' => strlen($event_detail_html),
 		'inventory_shell' => false !== strpos($inventory_html, 'tcg-public-inventory'),
 		'inventory_search_form' => false !== strpos($inventory_html, 'tcg-public-inventory__search'),
 		'inventory_query_reflected' => false !== stripos(wp_strip_all_tags($inventory_html), (string) ($payload['inventoryQuery'] ?? '')),
+		'product_shelf_shell' => false !== strpos($product_shelf_html, 'tcg-product-shelf'),
+		'product_shelf_connected_state' => false !== strpos($product_shelf_html, 'Shelf connected') || false !== strpos($product_shelf_html, 'tcg-product-shelf__grid'),
 		'events_shell' => false !== strpos($events_html, 'tcg-events'),
 		'event_detail_contract' => false !== strpos($event_detail_html, 'tcg-event-detail') || '' === trim($event_detail_html),
 		'raw_shortcode_left' => false !== strpos($combined, '[tcg_'),
@@ -198,6 +204,12 @@ function buildChecks(parsed, expected) {
       actual: parsed?.shortcodes?.events ?? null,
     },
     {
+      name: "product_shelf_shortcode_registered",
+      pass: parsed?.shortcodes?.product_shelf === true,
+      expected: true,
+      actual: parsed?.shortcodes?.product_shelf ?? null,
+    },
+    {
       name: "event_detail_shortcode_registered",
       pass: parsed?.shortcodes?.event_detail === true,
       expected: true,
@@ -217,6 +229,15 @@ function buildChecks(parsed, expected) {
       pass: parsed?.styles?.inventory_enqueued === true,
       expected: true,
       actual: parsed?.styles?.inventory_enqueued ?? null,
+    },
+    {
+      name: "product_shelf_markup_shell",
+      pass: parsed?.markup?.product_shelf_shell === true && parsed?.markup?.product_shelf_connected_state === true,
+      expected: true,
+      actual: {
+        shell: parsed?.markup?.product_shelf_shell ?? null,
+        connectedState: parsed?.markup?.product_shelf_connected_state ?? null,
+      },
     },
     {
       name: "events_markup_shell",

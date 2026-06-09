@@ -35,19 +35,19 @@ const pages = [
     slug: "shop-sealed-products",
     title: "Shop Sealed Products",
     content:
-      '<div class="tcg-storefront-shelf tcg-storefront-shelf--sealed"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Boxes, packs, bundles</p><h2>Sealed product</h2><p>Fresh sealed product, preorders, bundles, and display-ready drops grouped away from singles so shoppers can move fast.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]</div>',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--sealed"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Boxes, packs, bundles</p><h2>Sealed product</h2><p>Fresh sealed product, preorders, bundles, and display-ready drops grouped away from singles so shoppers can move fast.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[tcg_product_shelf category="sealed-products" label="Sealed Products" limit="24"]</div>',
   },
   {
     slug: "shop-graded-cards",
     title: "Shop Graded Cards",
     content:
-      '<div class="tcg-storefront-shelf tcg-storefront-shelf--graded"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Slabs and showcase cards</p><h2>Graded cards</h2><p>Certified cards added through intake publish here when they are made visible online, with grades and cert details preserved in inventory.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[products category="graded-cards" limit="24" columns="4" orderby="date" order="DESC"]</div>',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--graded"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Slabs and showcase cards</p><h2>Graded cards</h2><p>Certified cards added through intake publish here when they are made visible online, with grades and cert details preserved in inventory.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[tcg_product_shelf category="graded-cards" label="Graded Cards" limit="24"]</div>',
   },
   {
     slug: "shop-accessories",
     title: "Shop Accessories",
     content:
-      '<div class="tcg-storefront-shelf tcg-storefront-shelf--accessories"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Gear for play nights</p><h2>Accessories</h2><p>Sleeves, deck boxes, binders, dice, mats, and table gear live here once they are categorized for online sale.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]</div>',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--accessories"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Gear for play nights</p><h2>Accessories</h2><p>Sleeves, deck boxes, binders, dice, mats, and table gear live here once they are categorized for online sale.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[tcg_product_shelf category="accessories" label="Accessories" limit="24"]</div>',
   },
   {
     slug: "card-inventory",
@@ -231,6 +231,7 @@ foreach ($pages as $page) {
 		'content_sha1' => sha1((string) get_post_field('post_content', $id)),
 		'contains_inventory_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[tcg_inventory_search'),
 		'contains_events_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[tcg_events'),
+		'contains_product_shelf_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[tcg_product_shelf'),
 		'contains_woocommerce_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[products'),
 		'backup_meta_key' => 'updated' === $action ? $backup_key : '',
 	);
@@ -343,7 +344,9 @@ function buildChecks(parsed, expected) {
             ? "contains_inventory_shortcode"
             : page.content.includes("[tcg_events")
               ? "contains_events_shortcode"
-              : "contains_woocommerce_shortcode"
+              : page.content.includes("[tcg_product_shelf")
+                ? "contains_product_shelf_shortcode"
+                : "contains_woocommerce_shortcode"
 
       return {
         name: `page_${page.slug}`,

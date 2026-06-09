@@ -6,6 +6,14 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Sealed, Graded, and Accessories storefront pages now use a plugin-owned
+  `[tcg_product_shelf]` renderer that reads WooCommerce products from their
+  shelf categories and shows a branded connected-empty state when a category has
+  no published products yet.
+- Production public shortcode verification now checks the product shelf
+  shortcode alongside Singles inventory and Events, and production page setup
+  verifies Sealed, Graded, and Accessories use the shelf shortcode instead of
+  the bare WooCommerce products shortcode.
 - Production storefront pages now use the custom Pug commerce shelves only:
   Singles, Sealed, Graded, Accessories, Events, Buying, and Contact, with the
   legacy WooCommerce `/shop/` route redirected to Singles and theme footer shop

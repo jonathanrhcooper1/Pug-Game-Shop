@@ -3,6 +3,93 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Product Shelf Shortcode
+
+### What Changed
+
+- Added a public `[tcg_product_shelf]` shortcode that reads published
+  WooCommerce products from a supplied product category and renders a branded
+  Pug storefront product grid.
+- Added a polished connected-empty state for shelves with no published products
+  yet, so Sealed, Graded, and Accessories no longer render as visually blank
+  WooCommerce shortcode areas.
+- Rewired production page setup so Sealed, Graded, and Accessories use
+  `[tcg_product_shelf]` instead of the bare `[products]` shortcode.
+- Extended production public-shortcode verification to prove the product shelf
+  shortcode is registered and renders either a connected empty state or product
+  grid.
+
+### Why
+
+The live storefront pages were correctly routed and styled, but the non-singles
+shelves had zero WooCommerce products and rendered empty areas. The store needs
+those shelves to stay visually complete while remaining connected to real
+WooCommerce product data when sealed product, graded slabs, and accessories are
+published.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/PublicSite/ProductShelfShortcode.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/tests/Unit/ProductShelfShortcodeTest.php`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-verify-public-shortcodes.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `scripts/tests/production-public-shortcodes-contract.mjs`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added unit coverage for product shelf shortcode registration, empty-state
+  rendering, provider-backed product card rendering, and shelf CSS hooks.
+- Updated production public page and shortcode contract tests to require the
+  new product shelf shortcode markers.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1009 tests, 0 failures.
+- `php -l src/PublicSite/ProductShelfShortcode.php`: passed.
+- `php -l src/Bootstrap/Plugin.php`: passed.
+- `node --check scripts/production-configure-public-pages.mjs`: passed.
+- `node --check scripts/production-verify-public-shortcodes.mjs`: passed.
+- `node scripts/tests/production-public-pages-contract.mjs`: passed.
+- `node scripts/tests/production-public-shortcodes-contract.mjs`: passed.
+- `npm run package:wordpress`: built
+  `dist/tcg-store-platform-0.195.0.zip`.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed.
+- Production package install activated plugin `0.195.0` after backup:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T222201Z.sql`
+  and
+  `$HOME/tcg-production-backups/pug-production-wp-content-20260609T222201Z.tgz`.
+- `npm run production:configure-public-pages` with expected plugin `0.195.0`:
+  passed, with Sealed, Graded, and Accessories all reporting
+  `contains_product_shelf_shortcode: true`.
+- `npm run production:verify-public-shortcodes` with expected plugin
+  `0.195.0`: passed.
+- `npm run production:verify-reference-search` with expected plugin `0.195.0`:
+  passed, still cache-first with images and two-decimal prices.
+- Browser verification confirmed Sealed, Graded, and Accessories render the
+  storefront shell, product shelf connected-empty state, no raw shortcodes, no
+  console errors, and no mobile horizontal overflow on Sealed at 390px width.
+
+### Rollback Notes
+
+- Restore the production plugin and content backups created before the
+  `0.195.0` package install if the shelf renderer causes storefront issues.
+- Page content backups were also written to post meta key
+  `_tcg_store_public_pages_backup_20260609222429`.
+- No database migration rollback is required.
+- Actual Sealed, Graded, and Accessories product counts remain zero until real
+  WooCommerce products are added to those categories.
+
 ## 2026-06-09 - Production Storefront Click-Through And Singles Launch Polish
 
 ### What Changed
