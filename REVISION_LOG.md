@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Public Inventory Search Cache Safeguard
+
+### What Changed
+
+- Added a WordPress `wp` hook for the public inventory search shortcode that
+  marks inventory shortcode pages and inventory query requests as
+  uncacheable.
+- The shortcode now defines `DONOTCACHEPAGE`, sends WordPress no-cache
+  headers before rendering dynamic inventory search results, and repeats the
+  bypass at the final `send_headers` phase with explicit `no-store` and edge
+  cache headers for GoDaddy/Cloudflare.
+- Added a `wp_headers` filter that rewrites inventory search responses to
+  `no-store` before WordPress emits its header set.
+- Added a client-side timestamp cache-bust field to public inventory search
+  submissions so managed edge cache cannot replay old result URLs for normal
+  customer searches.
+- Bumped the WordPress plugin/package version to `0.184.0` for deployment and
+  asset/version cache separation.
+
+### Why
+
+Production GoDaddy/Cloudflare full-page cache was serving stale public
+inventory HTML after plugin deployment. Inventory search pages need live price,
+stock, search result, and stylesheet behavior instead of long-lived static-page
+cache.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `docs/CHANGELOG.md`
+- `package-lock.json`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the public inventory shortcode contract to require the new `wp`
+  cache-safeguard hook.
+- Added a unit check that inventory query parameters are recognized as dynamic
+  inventory page context.
+
+### Verification
+
+- `php tests\run.php --filter PublicInventorySearch`
+- `php tests\lint.php src\PublicSite\InventorySearchShortcode.php src\PublicSite\InventorySearchPresenter.php src\Version.php tcg-store-platform.php`
+- `node scripts\tests\wordpress-package-contract.mjs`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd run production:install-package`
+- `npm.cmd run production:verify-public-shortcodes` with
+  `PUG_PROD_EXPECT_PLUGIN_VERSION=0.184.0`
+- GoDaddy managed WordPress shutdown-path cache ban produced a fresh CDN
+  invalidation ID.
+- Live browser verification on `/card-inventory/` confirmed stylesheet
+  `public-inventory.css?ver=0.184.0`, styled grid/cards, no console warnings
+  or errors, no horizontal overflow, no four-decimal prices, and search form
+  submissions adding `tcg_inventory_cache_bust=<timestamp>`.
+
+### Rollback Notes
+
+- Revert the shortcode cache-safeguard hook and version bump.
+- No database changes are involved. If stale cache returns after rollback,
+  purge GoDaddy/Cloudflare full-page cache.
+
 ## 2026-06-09 - Public Inventory Display Case and Price Formatting
 
 ### What Changed

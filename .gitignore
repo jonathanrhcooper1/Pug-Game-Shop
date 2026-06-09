@@ -8,6 +8,7 @@ dist/
 wp-content/
 playwright-report/
 test-results/
+tmp/
 apps/offline-app/src-tauri/gen/
 *.log
 *.sqlite

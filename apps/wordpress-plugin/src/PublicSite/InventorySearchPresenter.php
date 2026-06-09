@@ -131,8 +131,10 @@ final class InventorySearchPresenter {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $sort === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
 		}
 		$html .= '</select></label>';
+		$html .= '<input type="hidden" name="tcg_inventory_cache_bust" value="" data-tcg-inventory-cache-bust="1" />';
 		$html .= '<button type="submit">' . $this->esc_html( 'Search Inventory' ) . '</button>';
 		$html .= '</form>';
+		$html .= '<script>(function(){var forms=document.querySelectorAll(".tcg-public-inventory__search");for(var i=0;i<forms.length;i++){forms[i].addEventListener("submit",function(){var field=this.querySelector("[data-tcg-inventory-cache-bust]");if(field){field.value=String(Date.now());}});}})();</script>';
 
 		return $html;
 	}

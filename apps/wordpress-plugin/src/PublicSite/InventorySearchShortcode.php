@@ -27,6 +27,9 @@ final class InventorySearchShortcode {
 	public function register(): void {
 		add_shortcode( self::SHORTCODE, array( $this, 'render_inventory_search' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp', array( $this, 'mark_inventory_pages_uncacheable' ) );
+		add_action( 'send_headers', array( $this, 'mark_inventory_pages_uncacheable' ), PHP_INT_MAX );
+		add_filter( 'wp_headers', array( $this, 'filter_inventory_no_cache_headers' ), PHP_INT_MAX );
 	}
 
 	/**
@@ -44,7 +47,53 @@ final class InventorySearchShortcode {
 				'hook'     => 'wp_enqueue_scripts',
 				'callback' => 'enqueue_assets',
 			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'wp',
+				'callback' => 'mark_inventory_pages_uncacheable',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'send_headers',
+				'callback' => 'mark_inventory_pages_uncacheable',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'wp_headers',
+				'callback' => 'filter_inventory_no_cache_headers',
+			),
 		);
+	}
+
+	/**
+	 * @param array<string, string> $headers Headers prepared by WordPress.
+	 * @return array<string, string>
+	 */
+	public function filter_inventory_no_cache_headers( array $headers ): array {
+		if ( ! $this->is_inventory_page_context() ) {
+			return $headers;
+		}
+
+		$headers['Cache-Control']         = 'no-store, no-cache, must-revalidate, max-age=0';
+		$headers['Pragma']                = 'no-cache';
+		$headers['Expires']               = 'Wed, 11 Jan 1984 05:00:00 GMT';
+		$headers['Surrogate-Control']     = 'no-store';
+		$headers['X-Accel-Expires']       = '0';
+		$headers['X-TCG-Inventory-Cache'] = 'bypass';
+
+		return $headers;
+	}
+
+	public function mark_inventory_pages_uncacheable(): void {
+		if ( ! $this->is_inventory_page_context() ) {
+			return;
+		}
+
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true );
+		}
+
+		$this->send_inventory_no_cache_headers();
 	}
 
 	/**
@@ -199,6 +248,43 @@ final class InventorySearchShortcode {
 		}
 
 		return is_scalar( $fallback ) ? $this->clean_request_value( (string) $fallback ) : '';
+	}
+
+	private function is_inventory_page_context(): bool {
+		if ( isset( $_GET['tcg_inventory_q'] ) || isset( $_GET['tcg_inventory_game'] ) || isset( $_GET['tcg_inventory_sort'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return true;
+		}
+
+		if ( ! function_exists( 'is_singular' ) || ! function_exists( 'get_queried_object' ) || ! function_exists( 'has_shortcode' ) ) {
+			return false;
+		}
+
+		if ( ! is_singular() ) {
+			return false;
+		}
+
+		$object = get_queried_object();
+
+		return is_object( $object )
+			&& isset( $object->post_content )
+			&& has_shortcode( (string) $object->post_content, self::SHORTCODE );
+	}
+
+	private function send_inventory_no_cache_headers(): void {
+		if ( function_exists( 'nocache_headers' ) ) {
+			nocache_headers();
+		}
+
+		if ( headers_sent() ) {
+			return;
+		}
+
+		header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0', true );
+		header( 'Pragma: no-cache', true );
+		header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT', true );
+		header( 'Surrogate-Control: no-store', true );
+		header( 'X-Accel-Expires: 0', true );
+		header( 'X-TCG-Inventory-Cache: bypass', true );
 	}
 
 	private function clean_request_value( string $value ): string {

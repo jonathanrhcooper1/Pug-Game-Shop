@@ -15,6 +15,23 @@ All notable changes follow Semantic Versioning.
   assert customer-account, public-events, and public-inventory CSS files in the
   package contract. Version `0.180.0` republishes the public UI fix with the
   actual stylesheet assets present.
+- Public inventory search pages now mark themselves as uncacheable when the
+  shortcode page or inventory query parameters are present, preventing
+  Cloudflare/GoDaddy full-page cache from serving stale card search, price,
+  stock, or stylesheet HTML. Version `0.181.0` publishes this production cache
+  safeguard.
+- Public inventory cache bypass now also runs at the final `send_headers`
+  phase and emits explicit `no-store`/edge-cache headers for GoDaddy-managed
+  production pages. Version `0.182.0` publishes the host-cache header ordering
+  fix.
+- Public inventory cache headers now also flow through WordPress'
+  `wp_headers` filter so dynamic search pages can override static public cache
+  headers before the response header set is emitted. Version `0.183.0`
+  publishes the header-source fix.
+- Public inventory search forms now add a timestamp cache-bust field on submit
+  so customer/staff search URLs stay fresh even when managed WordPress edge
+  cache forces static cache headers. Version `0.184.0` publishes the
+  customer-facing freshness fallback.
 - WordPress inventory rows can now persist Square catalog item/variation
   mappings after provider sync, and the LAN/offline cache keeps those mapping
   fields so staff can see POS mapping status while Square payment capture
