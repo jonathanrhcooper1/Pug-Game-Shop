@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WooCommerce grouped card product pages now show a clearer exact-copy selector
+  with selected condition/version, two-decimal price, copy count, and responsive
+  product-page styling before the cart reservation is created.
 - Customer credit REST responses now present balances, ledger amounts, and
   posting results as standard two-decimal currency strings so website, local
   app, and connector screens do not display database-precision `.0000`

@@ -90,20 +90,29 @@ final class GroupedInventoryProductHooks {
 
 		$line_token = $this->line_token();
 		echo '<div class="tcg-inventory-options" data-tcg-inventory-options="1">';
+		echo '<div class="tcg-inventory-options__header">';
+		echo '<p>' . esc_html__( 'Exact card copy', 'tcg-store-platform' ) . '</p>';
+		echo '<span>' . esc_html__( 'Condition, price, stock', 'tcg-store-platform' ) . '</span>';
+		echo '</div>';
 		echo '<label for="tcg-inventory-option-key"><span>' . esc_html__( 'Condition / version', 'tcg-store-platform' ) . '</span>';
 		echo '<select id="tcg-inventory-option-key" name="tcg_inventory_option_key" required="required">';
 
 		foreach ( $options as $option ) {
-			echo '<option value="' . esc_attr( (string) $option['option_key'] ) . '" data-price="' . esc_attr( (string) $option['price'] ) . '" data-currency="' . esc_attr( (string) $option['currency'] ) . '">';
-			echo esc_html( $this->option_label( $option ) );
+			$label = $this->option_label( $option );
+			echo '<option value="' . esc_attr( (string) $option['option_key'] ) . '" data-price="' . esc_attr( (string) $option['price'] ) . '" data-currency="' . esc_attr( (string) $option['currency'] ) . '" data-stock="' . esc_attr( (string) (int) $option['stock_quantity'] ) . '" data-label="' . esc_attr( $label ) . '">';
+			echo esc_html( $label );
 			echo '</option>';
 		}
 
 		echo '</select></label>';
 		echo '<input type="hidden" name="tcg_inventory_line_token" value="' . esc_attr( $line_token ) . '" />';
-		echo '<p class="tcg-inventory-options__price" data-tcg-selected-price="1"></p>';
+		echo '<div class="tcg-inventory-options__summary" aria-live="polite">';
+		echo '<span class="tcg-inventory-options__selected" data-tcg-selected-option="1"></span>';
+		echo '<strong class="tcg-inventory-options__price" data-tcg-selected-price="1"></strong>';
+		echo '<span class="tcg-inventory-options__stock" data-tcg-selected-stock="1"></span>';
 		echo '</div>';
-		echo '<script>(function(){var box=document.querySelector("[data-tcg-inventory-options]");if(!box){return;}var select=box.querySelector("select");var price=box.querySelector("[data-tcg-selected-price]");var update=function(){var option=select.options[select.selectedIndex];if(!option||!price){return;}price.textContent=option.getAttribute("data-price")+" "+option.getAttribute("data-currency");};select.addEventListener("change",update);update();})();</script>';
+		echo '</div>';
+		echo '<script>(function(){var box=document.querySelector("[data-tcg-inventory-options]");if(!box){return;}var select=box.querySelector("select");var price=box.querySelector("[data-tcg-selected-price]");var selected=box.querySelector("[data-tcg-selected-option]");var stock=box.querySelector("[data-tcg-selected-stock]");var cart=box.closest("form.cart");var quantity=cart?cart.querySelector("input.qty"):null;if(quantity){quantity.value="1";quantity.min="1";quantity.max="1";}var update=function(){var option=select.options[select.selectedIndex];if(!option){return;}var priceText=(option.getAttribute("data-price")||"0.00")+" "+(option.getAttribute("data-currency")||"USD");var stockCount=Number(option.getAttribute("data-stock")||0);if(price){price.textContent=priceText;}if(selected){selected.textContent=option.getAttribute("data-label")||option.textContent||"";}if(stock){stock.textContent=stockCount+" "+(stockCount===1?"' . esc_js( __( 'copy available', 'tcg-store-platform' ) ) . '":"' . esc_js( __( 'copies available', 'tcg-store-platform' ) ) . '");}};select.addEventListener("change",update);update();})();</script>';
 	}
 
 	public function validate_add_to_cart( mixed $passed, mixed $product_id, mixed $quantity, mixed $variation_id = 0, mixed $variations = array() ): bool {

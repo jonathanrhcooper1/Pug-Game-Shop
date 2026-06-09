@@ -3,6 +3,55 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - WooCommerce Exact Card Selector Polish
+
+### What Changed
+
+- Updated grouped card product pages to show a compact exact-copy selector
+  header.
+- Added selected condition/version, two-decimal selected price, and available
+  copy count beside the WooCommerce add-to-cart button.
+- Locked grouped card WooCommerce quantity inputs to one copy because serialized
+  inventory reservations must choose one exact row at a time.
+- Expanded the WooCommerce card product stylesheet for selected-option,
+  price, stock, and mobile layout polish.
+- Added unit/source coverage for the new selector and stylesheet markers.
+
+### Why
+
+Customers need to see the exact condition/version, price, and available stock
+before adding a card to cart. The backend already reserves exact inventory rows;
+this revision makes that behavior visible and clearer on the product page.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added grouped product hook coverage for the selected option, stock, and
+  stylesheet selectors.
+
+### Verification
+
+- `php -l apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`:
+  passed.
+- `php tests/run.php`: passed.
+
+### Rollback Notes
+
+- Revert this revision to return the grouped WooCommerce selector to its
+  previous simple dropdown plus selected-price label.
+- No database rollback is required.
+
 ## 2026-06-09 - Customer Credit Two-Decimal REST Money
 
 ### What Changed

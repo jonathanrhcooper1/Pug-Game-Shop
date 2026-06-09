@@ -31,6 +31,33 @@
   padding: 14px;
 }
 
+.tcg-inventory-options__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tcg-inventory-options__header p,
+.tcg-inventory-options__header span {
+  margin: 0;
+}
+
+.tcg-inventory-options__header p {
+  color: var(--tcg-text, #0b1116);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.tcg-inventory-options__header span {
+  color: color-mix(in srgb, var(--tcg-text, #0b1116) 66%, transparent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: right;
+  text-transform: uppercase;
+}
+
 .tcg-inventory-options label {
   display: grid;
   gap: 7px;
@@ -59,20 +86,50 @@
   outline-offset: 2px;
 }
 
-.tcg-inventory-options__price {
-  display: inline-flex;
+.tcg-inventory-options__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.tcg-inventory-options__selected {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: color-mix(in srgb, var(--tcg-text, #0b1116) 72%, transparent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tcg-inventory-options__price,
+.tcg-inventory-options__stock {
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: fit-content;
   min-height: 38px;
   margin: 0;
   padding: 0 12px;
+  border-radius: 8px;
+}
+
+.tcg-inventory-options__price {
   color: #111111;
   background: linear-gradient(180deg, #ffe376, var(--tcg-accent, #f6c635) 65%, #c78110);
   border: 1px solid rgba(16, 24, 32, 0.16);
-  border-radius: 8px;
   font-size: 17px;
   font-weight: 900;
+}
+
+.tcg-inventory-options__stock {
+  justify-self: start;
+  width: fit-content;
+  color: var(--tcg-primary, #0a2639);
+  background: color-mix(in srgb, var(--tcg-primary, #0a2639) 8%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--tcg-primary, #0a2639) 14%, transparent);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .tcg-inventory-options__empty {
@@ -100,7 +157,21 @@
     padding: 12px;
   }
 
-  .tcg-inventory-options__price {
+  .tcg-inventory-options__header,
+  .tcg-inventory-options__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-inventory-options__header {
+    display: grid;
+  }
+
+  .tcg-inventory-options__header span {
+    text-align: left;
+  }
+
+  .tcg-inventory-options__price,
+  .tcg-inventory-options__stock {
     width: 100%;
   }
 }

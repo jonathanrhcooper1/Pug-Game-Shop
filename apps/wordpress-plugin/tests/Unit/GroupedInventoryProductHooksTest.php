@@ -40,6 +40,10 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'grouped_card',
 				'tcg_inventory_option_key',
 				'Condition / version',
+				'Exact card copy',
+				'data-tcg-selected-option',
+				'data-tcg-selected-stock',
+				'data-stock',
 				'next_available_inventory_for_option',
 				'ReservationService',
 				'WpdbReservationStorage',
@@ -55,12 +59,42 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		}
 	}
 
+	public function test_product_styles_cover_selected_price_stock_and_mobile_layout(): void {
+		$source = $this->style_source();
+
+		foreach (
+			array(
+				'tcg-inventory-options__header',
+				'tcg-inventory-options__summary',
+				'tcg-inventory-options__selected',
+				'tcg-inventory-options__price',
+				'tcg-inventory-options__stock',
+				'grid-template-columns',
+				'overflow-wrap: anywhere',
+				'@media (max-width: 640px)',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
+	}
+
 	private function source(): string {
 		$path     = dirname( __DIR__, 2 ) . '/src/WooCommerce/GroupedInventoryProductHooks.php';
 		$contents = file_get_contents( $path );
 
 		if ( false === $contents ) {
 			throw new RuntimeException( 'Unable to read GroupedInventoryProductHooks.php.' );
+		}
+
+		return $contents;
+	}
+
+	private function style_source(): string {
+		$path     = dirname( __DIR__, 2 ) . '/assets/css/woocommerce-card-product.css';
+		$contents = file_get_contents( $path );
+
+		if ( false === $contents ) {
+			throw new RuntimeException( 'Unable to read woocommerce-card-product.css.' );
 		}
 
 		return $contents;
