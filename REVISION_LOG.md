@@ -3,6 +3,42 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Full Local Test Matrix Verification
+
+### What Changed
+
+- Ran the complete repository test matrix after production package deployment,
+  live catalog/storefront/local-sync verification, public page configuration,
+  and offline app Windows build verification.
+
+### Why
+
+The branch needed a fresh all-up local signal after the live verification work
+to catch regressions across WordPress, sync, POS policy, API-client, offline
+app, packaging, and required delivery-matrix checks.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd test`: passed. This includes `test:local`, `test:sync-engine`,
+  `test:pos-payments`, `test:api-client`, `test:offline-app`,
+  `test:packaging`, and `test:required-matrix`.
+
+### Rollback Notes
+
+- No rollback is required because this revision records verification only.
+
 ## 2026-06-09 - Production Public Inventory And Events Pages
 
 ### What Changed
