@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Deploy 0.187.0
+
+### What Changed
+
+- Installed and activated WordPress plugin package `tcg-store-platform-0.187.0.zip`
+  on production.
+- Confirmed production plugin status is active and database target/current
+  schema version remains `14`.
+- Updated local production smoke-test expected plugin version to `0.187.0`.
+
+### Why
+
+The live site needed the Square POS Mapping dashboard and Square mapping save
+workflow available in wp-admin so managers can review and correct Square item
+and variation IDs from website inventory search results.
+
+### Files Affected
+
+- Production WordPress plugin files under `wp-content/plugins/tcg-store-platform`
+- Local ignored deployment config `.env.production.local`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Production migration runner reported current `14`, target `14`.
+
+### Tests Added
+
+- None in this deployment-only revision.
+
+### Verification
+
+- `npm.cmd run production:install-package`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:verify-scrydex-catalog`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:verify-reference-search`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:verify-public-shortcodes`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:local-sync-inventory-smoke`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:local-sync-workflows-smoke`
+
+### Rollback Notes
+
+- Database backup: `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T145109Z.sql`
+- wp-content backup: `$HOME/tcg-production-backups/pug-production-wp-content-20260609T145109Z.tgz`
+- Reinstall the prior plugin zip or restore the wp-content backup to return
+  plugin files to the previous production state.
+- No database schema migration ran, so rollback is expected to be plugin-file
+  focused unless bad inventory mapping IDs were manually saved after deploy.
+
 ## 2026-06-09 - Version 0.187.0 Package Preparation
 
 ### What Changed
