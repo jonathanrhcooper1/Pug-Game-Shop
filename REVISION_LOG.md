@@ -3,6 +3,64 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline Kiosk Pickup Pull Workflow
+
+### What Changed
+
+- Offline kiosk pickup now filters customer-facing results to available,
+  kiosk-visible inventory only.
+- Added kiosk order readiness details for customer name, pickup total, and
+  website inventory authority.
+- Added richer pickup tickets with exact card summaries, barcodes, locations,
+  totals, reservation IDs, and staff statuses for queued, pulling, ready, and
+  completed pickup orders.
+- Added UI contract coverage for the new kiosk-visible inventory copy and staff
+  pull controls.
+
+### Why
+
+The local kiosk needs to behave like an in-store order queue: customers should
+only browse sellable kiosk inventory, while staff need the exact pull details
+and a clear pickup status workflow after the LAN server reserves the cards.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline app UI shell contract to require kiosk-visible inventory
+  messaging and staff pull workflow controls.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd run test:offline-app`: passed, including offline app contracts and
+  22 Rust/Tauri unit tests.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with line-ending normalization warnings only.
+- Playwright render smoke against `http://127.0.0.1:1420` after PIN unlock:
+  passed for visible kiosk panel, kiosk-visible inventory copy, pickup total,
+  two rendered kiosk inventory cards, and zero console errors.
+- A full pickup-submit browser smoke was not counted because the already-running
+  LAN dev server returned a `409 Conflict` for the demo inventory row, which
+  indicates the row was already held in the current local sync server state.
+
+### Rollback Notes
+
+- Revert this revision to return kiosk pickup to the prior simple cart/ticket
+  behavior.
+- No database rollback is required.
+
 ## 2026-06-09 - Production Deploy 0.189.0
 
 ### What Changed

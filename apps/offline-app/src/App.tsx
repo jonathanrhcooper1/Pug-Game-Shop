@@ -199,13 +199,28 @@ type OfflineAppUser = {
   access: AccessSection[]
 }
 
+type KioskTicketStatus = "queued" | "pulling" | "ready" | "completed"
+
+type KioskTicketItem = {
+  publicId: string
+  cardName: string
+  setName: string
+  condition: string
+  barcode: string
+  location: string
+  price: string
+}
+
 type KioskOrderTicket = {
   orderId: string
   customerName: string
   itemCount: number
+  totalMinorUnits: number
+  totalLabel: string
+  items: KioskTicketItem[]
   reservationIds: string[]
   createdAtUtc: string
-  status: "queued"
+  status: KioskTicketStatus
 }
 
 type ActivityMessage = {
@@ -1513,6 +1528,13 @@ export function App() {
   const filteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, query, statusFilter)
   }, [query, statusFilter, inventoryItems])
+  const kioskVisibleItems = useMemo(
+    () =>
+      filteredItems.filter(
+        (item) => item.status === "available" && (item.kioskVisibility ?? "visible") === "visible",
+      ),
+    [filteredItems],
+  )
   const kioskCartItems = useMemo(
     () =>
       kioskCartIds
@@ -1524,10 +1546,12 @@ export function App() {
     (total, item) => total + item.priceMinorUnits,
     0,
   )
+  const kioskCartTotalLabel = formatMoney(kioskCartTotalMinorUnits, "USD")
   const kioskCustomerName = [kioskFirstName, kioskLastName]
     .map((value) => value.trim())
     .filter(Boolean)
     .join(" ")
+  const kioskCustomerReady = kioskFirstName.trim() !== "" && kioskLastName.trim() !== ""
   const sessionIsUnlocked = sessionRole !== "locked"
   const managerControlsUnlocked = sessionRole === "manager" && !managerSettingsLocked
   const activeOfflineUser = offlineUsers.find((user) => user.id === sessionUserId) ?? null
@@ -3513,6 +3537,15 @@ export function App() {
       return
     }
 
+    if ((item.kioskVisibility ?? "visible") !== "visible") {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Kiosk item hidden",
+        detail: `${item.cardName} is marked ${inventoryVisibilityLabel(item.kioskVisibility).toLowerCase()} for kiosk browsing, so it stays staff-only until a manager changes visibility.`,
+      })
+      return
+    }
+
     setKioskCartIds((ids) => (ids.includes(item.id) ? ids : [...ids, item.id]))
     setActiveSection("Kiosk")
     setActivityMessage({
@@ -3525,6 +3558,31 @@ export function App() {
     setKioskCartIds((ids) => ids.filter((id) => id !== itemId))
   }
 
+  function handleKioskTicketStatus(orderId: string, nextStatus: KioskTicketStatus) {
+    const statusLabelMap: Record<KioskTicketStatus, string> = {
+      queued: "Queued",
+      pulling: "Pulling",
+      ready: "Ready for Pickup",
+      completed: "Completed",
+    }
+
+    setKioskOrderTickets((tickets) =>
+      tickets.map((ticket) =>
+        ticket.orderId === orderId
+          ? {
+              ...ticket,
+              status: nextStatus,
+            }
+          : ticket,
+      ),
+    )
+    setActiveSection("Kiosk")
+    setActivityMessage({
+      title: "Kiosk ticket updated",
+      detail: `${orderId} is now ${statusLabelMap[nextStatus].toLowerCase()}. The reservation remains tied to the website inventory row until sync or staff release completes.`,
+    })
+  }
+
   async function handleKioskSubmitOrder() {
     if (!kioskFirstName.trim() || !kioskLastName.trim()) {
       setActiveSection("Kiosk")
@@ -3535,7 +3593,9 @@ export function App() {
       return
     }
 
-    const availableItems = kioskCartItems.filter((item) => item.status === "available")
+    const availableItems = kioskCartItems.filter(
+      (item) => item.status === "available" && (item.kioskVisibility ?? "visible") === "visible",
+    )
 
     if (availableItems.length === 0) {
       setActiveSection("Kiosk")
@@ -3566,6 +3626,20 @@ export function App() {
       orderId: kioskOrder.order.order_id,
       customerName: kioskCustomerName,
       itemCount: availableItems.length,
+      totalMinorUnits: availableItems.reduce((total, item) => total + item.priceMinorUnits, 0),
+      totalLabel: formatMoney(
+        availableItems.reduce((total, item) => total + item.priceMinorUnits, 0),
+        "USD",
+      ),
+      items: availableItems.map((item) => ({
+        publicId: item.publicId,
+        cardName: item.cardName,
+        setName: item.setName,
+        condition: item.condition,
+        barcode: item.barcode,
+        location: item.location,
+        price: item.price,
+      })),
       reservationIds: kioskOrder.order.reservation_ids,
       createdAtUtc: kioskOrder.order.created_at_utc,
       status: kioskOrder.order.status,
@@ -6301,15 +6375,17 @@ export function App() {
             <section className="kiosk-panel" aria-label="Customer kiosk pickup order" ref={kioskPanelRef}>
               <div className="section-heading">
                 <h2>Kiosk Pickup</h2>
-                <span>{kioskCartItems.length} selected</span>
+                <span>
+                  {kioskCartItems.length} selected; {kioskCartTotalLabel}
+                </span>
               </div>
               <div className="kiosk-hero">
                 <div>
                   <span className="micro-label">Customer kiosk mode</span>
                   <strong>Browse inventory and request pickup</strong>
                   <small>
-                    Kiosk orders reserve through the LAN sync server first, then the website
-                    confirms final inventory status after sync acceptance.
+                    Kiosk-visible inventory only. Orders reserve through the LAN sync server first,
+                    then the website confirms final inventory status after sync acceptance.
                   </small>
                 </div>
                 <div>
@@ -6342,9 +6418,27 @@ export function App() {
                   <span>Submit Pickup Order</span>
                 </button>
               </div>
+              <div className="kiosk-summary-strip" aria-label="Kiosk order readiness">
+                <div>
+                  <span className="micro-label">Customer</span>
+                  <strong>{kioskCustomerReady ? kioskCustomerName : "Name required"}</strong>
+                </div>
+                <div>
+                  <span className="micro-label">Pickup total</span>
+                  <strong>{kioskCartTotalLabel}</strong>
+                </div>
+                <div>
+                  <span className="micro-label">Website inventory authority</span>
+                  <strong>
+                    {localSyncStatus?.status === "ok" && localSyncStatus.wordpress_push_connected
+                      ? "Connected"
+                      : "Pending sync"}
+                  </strong>
+                </div>
+              </div>
               <div className="kiosk-layout">
                 <div className="kiosk-inventory-list" aria-label="Kiosk inventory results">
-                  {filteredItems.slice(0, 12).map((item) => (
+                  {kioskVisibleItems.slice(0, 12).map((item) => (
                     <article className="kiosk-card" key={item.id}>
                       <div className="kiosk-card-art" aria-hidden="true">
                         {item.imageUrl ? (
@@ -6363,19 +6457,22 @@ export function App() {
                       <span>{item.price}</span>
                       <button
                         type="button"
-                        disabled={item.status !== "available" || kioskCartIds.includes(item.id)}
+                        disabled={kioskCartIds.includes(item.id)}
                         onClick={() => handleKioskAddItem(item)}
                       >
                         {kioskCartIds.includes(item.id) ? "Selected" : "Add"}
                       </button>
                     </article>
                   ))}
-                  {filteredItems.length === 0 ? (
+                  {kioskVisibleItems.length === 0 ? (
                     <p className="panel-empty">No kiosk inventory matches this search.</p>
                   ) : null}
                 </div>
                 <div className="kiosk-cart" aria-label="Kiosk selected cards">
-                  <span className="micro-label">Pickup cart</span>
+                  <div className="kiosk-cart-header">
+                    <span className="micro-label">Pickup cart</span>
+                    <strong>{kioskCartTotalLabel}</strong>
+                  </div>
                   {kioskCartItems.length > 0 ? (
                     kioskCartItems.map((item) => (
                       <div key={item.id}>
@@ -6401,13 +6498,53 @@ export function App() {
                       <div>
                         <strong>{ticket.orderId}</strong>
                         <small>
-                          {ticket.customerName}; {ticket.itemCount} card(s); {ticket.status}
+                          {ticket.customerName}; {ticket.itemCount} card(s); {ticket.totalLabel}
                         </small>
+                        <span className={`kiosk-ticket-status ${ticket.status}`}>
+                          Staff pull status: {ticket.status}
+                        </span>
                       </div>
-                      <small>
-                        Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
-                        {ticket.reservationIds.length > 3 ? "..." : ""}
-                      </small>
+                      <div className="kiosk-ticket-detail">
+                        <small>Queued {formatUtcLabel(ticket.createdAtUtc)}</small>
+                        <small>
+                          Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
+                          {ticket.reservationIds.length > 3 ? "..." : ""}
+                        </small>
+                        <div className="kiosk-ticket-items">
+                          {ticket.items.slice(0, 4).map((item) => (
+                            <small key={item.publicId}>
+                              {item.cardName}; {item.condition}; {item.location}; {item.barcode};{" "}
+                              {item.price}
+                            </small>
+                          ))}
+                          {ticket.items.length > 4 ? (
+                            <small>+{ticket.items.length - 4} more card(s)</small>
+                          ) : null}
+                        </div>
+                        <div className="kiosk-ticket-actions" aria-label="Kiosk pull controls">
+                          <button
+                            type="button"
+                            disabled={ticket.status !== "queued"}
+                            onClick={() => handleKioskTicketStatus(ticket.orderId, "pulling")}
+                          >
+                            Start Pull
+                          </button>
+                          <button
+                            type="button"
+                            disabled={ticket.status === "ready" || ticket.status === "completed"}
+                            onClick={() => handleKioskTicketStatus(ticket.orderId, "ready")}
+                          >
+                            Ready for Pickup
+                          </button>
+                          <button
+                            type="button"
+                            disabled={ticket.status === "completed"}
+                            onClick={() => handleKioskTicketStatus(ticket.orderId, "completed")}
+                          >
+                            Complete Pickup
+                          </button>
+                        </div>
+                      </div>
                     </article>
                   ))}
                 </div>

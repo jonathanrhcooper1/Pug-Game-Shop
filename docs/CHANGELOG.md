@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Offline kiosk pickup now lists only available kiosk-visible inventory, shows
+  customer/order readiness and pickup total, and gives staff a pull workflow for
+  queued, pulling, ready, and completed pickup tickets.
 - WooCommerce grouped card product pages now load a dedicated product UI
   stylesheet for remote card art, condition/version selector controls,
   selected-price display, and mobile layout polish.
