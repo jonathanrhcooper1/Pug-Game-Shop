@@ -32,6 +32,9 @@ assert.equal(body.barcode, "PUG-LOCAL-CHARIZARD")
 assert.equal(body.sku, "PUG-LOCAL-CHARIZARD")
 assert.equal(body.sale_price_minor_units, 25000)
 assert.equal(body.minimum_sale_price_minor_units, 25000)
+assert.equal(body.online_visibility, "visible")
+assert.equal(body.kiosk_visibility, "visible")
+assert.equal(body.pos_visibility, "visible")
 assert.equal(body.front_image_remote_url, "https://images.pokemontcg.io/base1/4_hires.png")
 assert.equal("location_id" in body, false)
 
@@ -40,12 +43,43 @@ const activeBody = inventoryIntakeBody(item, { defaultLocationId: "7" })
 assert.equal(activeBody.status, "available")
 assert.equal(activeBody.location_id, 7)
 
+const hiddenBody = inventoryIntakeBody(
+  {
+    ...item,
+    online_visibility: "hidden",
+    kiosk_visibility: "staff_only",
+    pos_visibility: "visible",
+  },
+  {
+    defaultOnlineVisibility: "visible",
+    defaultKioskVisibility: "visible",
+    defaultPosVisibility: "visible",
+  },
+)
+
+assert.equal(hiddenBody.online_visibility, "hidden")
+assert.equal(hiddenBody.kiosk_visibility, "staff_only")
+assert.equal(hiddenBody.pos_visibility, "visible")
+
+const defaultHiddenBody = inventoryIntakeBody(item, {
+  defaultOnlineVisibility: "hidden",
+  defaultKioskVisibility: "staff_only",
+  defaultPosVisibility: "hidden",
+})
+
+assert.equal(defaultHiddenBody.online_visibility, "hidden")
+assert.equal(defaultHiddenBody.kiosk_visibility, "staff_only")
+assert.equal(defaultHiddenBody.pos_visibility, "hidden")
+
 let observedRequest = null
 const push = createWordPressInventoryPush({
   websiteUrl: "https://example.test",
   username: "sync-user",
   applicationPassword: "secret app password",
   defaultLocationId: 7,
+  defaultOnlineVisibility: "hidden",
+  defaultKioskVisibility: "staff_only",
+  defaultPosVisibility: "visible",
   fetcher: async (url, init) => {
     observedRequest = {
       url: url.toString(),
@@ -88,6 +122,9 @@ assert.ok(observedRequest.headers.authorization.startsWith("Basic "))
 assert.equal(observedRequest.body.card_name, "Charizard")
 assert.equal(observedRequest.body.status, "available")
 assert.equal(observedRequest.body.location_id, 7)
+assert.equal(observedRequest.body.online_visibility, "hidden")
+assert.equal(observedRequest.body.kiosk_visibility, "staff_only")
+assert.equal(observedRequest.body.pos_visibility, "visible")
 
 const rejectedPush = createWordPressInventoryPush({
   websiteUrl: "https://example.test",

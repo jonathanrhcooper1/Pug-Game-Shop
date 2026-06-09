@@ -41,6 +41,12 @@ const inventoryApplicationPassword = firstEnv(
   "PUG_WORDPRESS_APP_PASSWORD",
 )
 const inventoryAuthHeader = firstEnv("PUG_WORDPRESS_INVENTORY_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
+const inventoryDefaultOnlineVisibility =
+  firstEnv("PUG_WORDPRESS_INVENTORY_ONLINE_VISIBILITY", "LOCAL_SYNC_INVENTORY_ONLINE_VISIBILITY") ?? "visible"
+const inventoryDefaultKioskVisibility =
+  firstEnv("PUG_WORDPRESS_INVENTORY_KIOSK_VISIBILITY", "LOCAL_SYNC_INVENTORY_KIOSK_VISIBILITY") ?? "visible"
+const inventoryDefaultPosVisibility =
+  firstEnv("PUG_WORDPRESS_INVENTORY_POS_VISIBILITY", "LOCAL_SYNC_INVENTORY_POS_VISIBILITY") ?? "visible"
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const eventsAuthHeader = firstEnv("PUG_WORDPRESS_EVENTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
@@ -71,6 +77,9 @@ const wordpressInventoryPush = wordpressPushEnabled
       username: inventoryUsername ?? catalogUsername,
       applicationPassword: inventoryApplicationPassword ?? catalogApplicationPassword,
       defaultLocationId: process.env.PUG_WORDPRESS_DEFAULT_LOCATION_ID,
+      defaultOnlineVisibility: inventoryDefaultOnlineVisibility,
+      defaultKioskVisibility: inventoryDefaultKioskVisibility,
+      defaultPosVisibility: inventoryDefaultPosVisibility,
     })
   : null
 const wordpressInventoryPull = createWordPressInventoryPull({

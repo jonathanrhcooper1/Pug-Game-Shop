@@ -24,6 +24,11 @@ instead of each keeping an isolated local authority.
   WordPress Application Password server-side. Credentials are never returned to
   clients.
 - WordPress writes are disabled unless `LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true`.
+- Set `PUG_WORDPRESS_INVENTORY_ONLINE_VISIBILITY`,
+  `PUG_WORDPRESS_INVENTORY_KIOSK_VISIBILITY`, and
+  `PUG_WORDPRESS_INVENTORY_POS_VISIBILITY` to choose default visibility for
+  accepted intake items. Staff can still override visibility per item from the
+  local app.
 - The production CLI removes the canned reference-card seed rows unless
   `LOCAL_SYNC_ALLOW_DEMO_REFERENCE_CARDS=true`, so live lookups prefer the
   WordPress catalog.

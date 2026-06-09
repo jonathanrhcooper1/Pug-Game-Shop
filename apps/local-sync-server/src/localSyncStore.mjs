@@ -374,6 +374,9 @@ export function createLocalSyncStore(options = {}) {
     const priceMinorUnits = Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units))
     const location = cleanName(input.location ?? input.location_label) || "Intake Queue"
     const imageUrl = cleanHttpUrl(input.image_url)
+    const onlineVisibility = cleanVisibility(input.online_visibility, "visible")
+    const kioskVisibility = cleanVisibility(input.kiosk_visibility, "visible")
+    const posVisibility = cleanVisibility(input.pos_visibility, "visible")
     const quantity = boundedInt(input.quantity ?? input.quantity_added, 1, 200, 1)
 
     if (!cardName || priceMinorUnits <= 0) {
@@ -408,6 +411,9 @@ export function createLocalSyncStore(options = {}) {
       location,
       status: "pending_intake",
       image_url: imageUrl,
+      online_visibility: onlineVisibility,
+      kiosk_visibility: kioskVisibility,
+      pos_visibility: posVisibility,
       source: "queued",
     }))
 
@@ -1607,6 +1613,9 @@ function migrateLocalSyncDatabase(database) {
       location TEXT NOT NULL,
       status TEXT NOT NULL,
       image_url TEXT NOT NULL DEFAULT '',
+      online_visibility TEXT NOT NULL DEFAULT 'visible',
+      kiosk_visibility TEXT NOT NULL DEFAULT 'visible',
+      pos_visibility TEXT NOT NULL DEFAULT 'visible',
       source TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
     );
@@ -1716,6 +1725,9 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "card_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "printed_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "image_url", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "online_visibility", "TEXT NOT NULL DEFAULT 'visible'")
+  ensureLocalSyncColumn(database, "inventory_items", "kiosk_visibility", "TEXT NOT NULL DEFAULT 'visible'")
+  ensureLocalSyncColumn(database, "inventory_items", "pos_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
 }
@@ -1798,7 +1810,8 @@ function loadInventoryItems(database) {
     .prepare(`
       SELECT public_id, row_version, provider_card_id, game, card_name, set_name,
         set_code, card_number, printed_number, condition, barcode, price_minor_units,
-        currency, location, status, image_url, source
+        currency, location, status, image_url, online_visibility, kiosk_visibility,
+        pos_visibility, source
       FROM inventory_items
       ORDER BY public_id
     `)
@@ -1820,6 +1833,9 @@ function loadInventoryItems(database) {
       location: row.location,
       status: row.status,
       image_url: row.image_url ?? "",
+      online_visibility: cleanVisibility(row.online_visibility, "visible"),
+      kiosk_visibility: cleanVisibility(row.kiosk_visibility, "visible"),
+      pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
       source: row.source,
     }))
 }
@@ -2007,9 +2023,10 @@ function saveInventoryItem(database, item, now) {
       INSERT INTO inventory_items (
         public_id, row_version, provider_card_id, game, card_name, set_name,
         set_code, card_number, printed_number, condition, barcode, price_minor_units,
-        currency, location, status, image_url, source, updated_at_utc
+        currency, location, status, image_url, online_visibility, kiosk_visibility,
+        pos_visibility, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         row_version = excluded.row_version,
         provider_card_id = excluded.provider_card_id,
@@ -2026,6 +2043,9 @@ function saveInventoryItem(database, item, now) {
         location = excluded.location,
         status = excluded.status,
         image_url = excluded.image_url,
+        online_visibility = excluded.online_visibility,
+        kiosk_visibility = excluded.kiosk_visibility,
+        pos_visibility = excluded.pos_visibility,
         source = excluded.source,
         updated_at_utc = excluded.updated_at_utc
     `)
@@ -2046,6 +2066,9 @@ function saveInventoryItem(database, item, now) {
       item.location,
       item.status,
       item.image_url ?? "",
+      cleanVisibility(item.online_visibility, "visible"),
+      cleanVisibility(item.kiosk_visibility, "visible"),
+      cleanVisibility(item.pos_visibility, "visible"),
       item.source,
       now().toISOString(),
     )
@@ -2536,6 +2559,9 @@ function publicInventoryItem(item) {
     location: item.location,
     status: item.status,
     image_url: item.image_url ?? "",
+    online_visibility: cleanVisibility(item.online_visibility, "visible"),
+    kiosk_visibility: cleanVisibility(item.kiosk_visibility, "visible"),
+    pos_visibility: cleanVisibility(item.pos_visibility, "visible"),
     source: item.source,
   }
 }
@@ -2572,6 +2598,9 @@ function localInventoryItemFromWordPress(row) {
     location,
     status,
     image_url: cleanHttpUrl(row.front_image_url ?? row.front_image_remote_url ?? row.image_url),
+    online_visibility: cleanVisibility(row.online_visibility, "visible"),
+    kiosk_visibility: cleanVisibility(row.kiosk_visibility, "visible"),
+    pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
     source: "cached",
   }
 }
@@ -2838,6 +2867,17 @@ function cleanCondition(value) {
   const condition = String(value ?? "").trim().toUpperCase().slice(0, 16)
 
   return condition || "RAW"
+}
+
+function cleanVisibility(value, fallback = "visible") {
+  const visibility = String(value ?? "").trim().toLowerCase()
+  const fallbackVisibility = String(fallback ?? "visible").trim().toLowerCase()
+
+  if (["hidden", "visible", "staff_only"].includes(visibility)) {
+    return visibility
+  }
+
+  return ["hidden", "visible", "staff_only"].includes(fallbackVisibility) ? fallbackVisibility : "visible"
 }
 
 function cleanBarcode(value) {

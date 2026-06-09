@@ -159,6 +159,9 @@ export type LocalSyncInventoryItem = {
   location: string
   status: "available" | "reserved" | "conflict" | "pending_intake"
   image_url: string
+  online_visibility: "hidden" | "visible" | "staff_only"
+  kiosk_visibility: "hidden" | "visible" | "staff_only"
+  pos_visibility: "hidden" | "visible" | "staff_only"
   source: "cached" | "queued" | "accepted"
 }
 
@@ -527,6 +530,9 @@ export type LocalSyncServerClient = {
       cardNumber?: string
       printedNumber?: string
       imageUrl?: string
+      onlineVisibility?: LocalSyncInventoryItem["online_visibility"]
+      kioskVisibility?: LocalSyncInventoryItem["kiosk_visibility"]
+      posVisibility?: LocalSyncInventoryItem["pos_visibility"]
     },
   ) => Promise<LocalSyncInventoryIntakeResult>
   searchScryDexCards: (
@@ -667,6 +673,9 @@ export function createLocalSyncServerClient(
           card_number: input.cardNumber ?? "",
           printed_number: input.printedNumber ?? "",
           image_url: input.imageUrl ?? "",
+          online_visibility: input.onlineVisibility ?? "visible",
+          kiosk_visibility: input.kioskVisibility ?? "visible",
+          pos_visibility: input.posVisibility ?? "visible",
         },
       }) as Promise<LocalSyncInventoryIntakeResult>,
     searchScryDexCards: (sessionToken, query, game = "pokemon") =>

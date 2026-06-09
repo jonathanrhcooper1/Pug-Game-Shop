@@ -9,6 +9,9 @@ export function createWordPressInventoryPush(options = {}) {
   const timeoutMs = boundedTimeout(options.timeoutMs)
   const authorizationHeader = catalogAuthorizationHeader(options)
   const defaultLocationId = positiveInt(options.defaultLocationId)
+  const defaultOnlineVisibility = cleanVisibility(options.defaultOnlineVisibility, "visible")
+  const defaultKioskVisibility = cleanVisibility(options.defaultKioskVisibility, "visible")
+  const defaultPosVisibility = cleanVisibility(options.defaultPosVisibility, "visible")
 
   if (!endpointBase || typeof fetcher !== "function" || !authorizationHeader) {
     return null
@@ -16,7 +19,12 @@ export function createWordPressInventoryPush(options = {}) {
 
   return async function wordpressInventoryPush({ operation, item } = {}) {
     const endpoint = new URL(`${endpointBase}/inventory`)
-    const body = inventoryIntakeBody(item, { defaultLocationId })
+    const body = inventoryIntakeBody(item, {
+      defaultLocationId,
+      defaultOnlineVisibility,
+      defaultKioskVisibility,
+      defaultPosVisibility,
+    })
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
@@ -99,9 +107,9 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     minimum_sale_price_minor_units: priceMinorUnits,
     sale_price_minor_units: priceMinorUnits,
     market_price_minor_units: priceMinorUnits,
-    online_visibility: "visible",
-    kiosk_visibility: "visible",
-    pos_visibility: "visible",
+    online_visibility: cleanVisibility(item.online_visibility, options.defaultOnlineVisibility ?? "visible"),
+    kiosk_visibility: cleanVisibility(item.kiosk_visibility, options.defaultKioskVisibility ?? "visible"),
+    pos_visibility: cleanVisibility(item.pos_visibility, options.defaultPosVisibility ?? "visible"),
     front_image_remote_url: cleanHttpUrl(item.image_url),
     staff_notes: cleanText(`Queued from LAN sync server location: ${item.location ?? "Intake Queue"}`),
   }
@@ -168,6 +176,17 @@ function cleanGame(value) {
 
 function cleanText(value) {
   return String(value ?? "").trim().slice(0, 255)
+}
+
+function cleanVisibility(value, fallback) {
+  const visibility = String(value ?? "").trim().toLowerCase()
+  const fallbackVisibility = String(fallback ?? "visible").trim().toLowerCase()
+
+  if (["hidden", "visible", "staff_only"].includes(visibility)) {
+    return visibility
+  }
+
+  return ["hidden", "visible", "staff_only"].includes(fallbackVisibility) ? fallbackVisibility : "visible"
 }
 
 function cleanBarcode(value) {

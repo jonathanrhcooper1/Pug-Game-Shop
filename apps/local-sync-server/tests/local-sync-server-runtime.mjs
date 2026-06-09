@@ -82,6 +82,11 @@ const server = createLocalSyncHttpServer({
       assert.equal(item.status, "pending_intake")
       assert.equal(item.source, "queued")
       assert.match(item.image_url, /mewtwo|pull-guard-local/)
+      if (item.card_name === "Mewtwo") {
+        assert.equal(item.online_visibility, "hidden")
+        assert.equal(item.kiosk_visibility, "visible")
+        assert.equal(item.pos_visibility, "staff_only")
+      }
 
       return {
         status: "ok",
@@ -479,6 +484,9 @@ try {
       card_number: "10",
       printed_number: "10/102",
       image_url: "https://images.example.test/mewtwo.png",
+      online_visibility: "hidden",
+      kiosk_visibility: "visible",
+      pos_visibility: "staff_only",
     },
   })
   assert.equal(intake.status, "ok")
@@ -488,6 +496,9 @@ try {
   assert.equal(intake.item.provider_card_id, "scrydex-pokemon-test-mewtwo")
   assert.equal(intake.item.printed_number, "10/102")
   assert.equal(intake.item.image_url, "https://images.example.test/mewtwo.png")
+  assert.equal(intake.item.online_visibility, "hidden")
+  assert.equal(intake.item.kiosk_visibility, "visible")
+  assert.equal(intake.item.pos_visibility, "staff_only")
   assert.equal(intake.item.barcode, "PUG-SMOKE-MEWTWO-01")
   assert.equal(intake.item.status, "pending_intake")
   assert.equal(intake.item.source, "queued")
@@ -536,6 +547,9 @@ try {
   assert.equal(acceptedIntakeInventory.items[0].status, "available")
   assert.equal(acceptedIntakeInventory.items[0].source, "accepted")
   assert.equal(acceptedIntakeInventory.items[0].image_url, "https://images.example.test/mewtwo.png")
+  assert.equal(acceptedIntakeInventory.items[0].online_visibility, "hidden")
+  assert.equal(acceptedIntakeInventory.items[0].kiosk_visibility, "visible")
+  assert.equal(acceptedIntakeInventory.items[0].pos_visibility, "staff_only")
 
   const pendingLocalOnlyIntake = await fetchJson(`${baseUrl}/inventory/intake`, {
     method: "POST",

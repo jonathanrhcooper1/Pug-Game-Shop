@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Local Sync Inventory Visibility and Production Smoke
+
+### What Changed
+
+- Added online, kiosk, and POS visibility fields to the LAN sync server
+  inventory cache with migration-safe SQLite columns.
+- Preserved visibility choices from offline app intake through local sync
+  client payloads, queued inventory rows, WordPress inventory push requests, and
+  public local sync item responses.
+- Added staff-facing visibility controls to the offline inventory intake form.
+- Added optional LAN server env defaults for WordPress inventory visibility.
+- Added a guarded production local-sync inventory smoke script that creates one
+  hidden test item, pushes it through the LAN server to WordPress, verifies it
+  through authenticated inventory search, and deletes the smoke row from
+  WordPress and local SQLite.
+
+### Why
+
+The local app needs to add real inventory through the website-backed source of
+truth while still giving staff control over whether newly accepted cards appear
+online, in the customer kiosk, or in POS-facing inventory.
+
+### Files Affected
+
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/tests/production-local-sync-inventory-smoke-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite only: `inventory_items.online_visibility`,
+  `inventory_items.kiosk_visibility`, and `inventory_items.pos_visibility`
+  default to `visible`.
+- No WordPress database migration was added.
+
+### Tests Added
+
+- Extended local sync runtime, persistence, and WordPress inventory push tests.
+- Added `node scripts/tests/production-local-sync-inventory-smoke-contract.mjs`.
+
+### Verification
+
+- `npm.cmd --prefix apps\local-sync-server run test`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `node scripts\tests\production-local-sync-inventory-smoke-contract.mjs`
+- `node scripts\production-run-local-sync-inventory-smoke.mjs --dry-run`
+- Browser smoke at `http://127.0.0.1:1420/` verified the visibility controls,
+  ready summary text, no horizontal overflow, and no console warnings/errors.
+- Guarded live production smoke pushed hidden barcode
+  `CODEX-LSYNC-20260609T094614Z`, verified it in authenticated WordPress
+  inventory search, then deleted one WordPress inventory row, one price-log row,
+  and one local SQLite row.
+
+### Rollback Notes
+
+- Revert the affected local sync server and offline app files.
+- If a future smoke aborts before cleanup, search WordPress inventory for
+  barcode prefix `CODEX-LSYNC-` and delete matching smoke rows plus related
+  price-log rows.
+- No customer, payment, Square, or public website data rollback is required.
+
 ## 2026-06-09 - Offline ScryDex Intake Preview
 
 ### What Changed

@@ -160,6 +160,7 @@ type AppIconName =
 
 type ViewMode = "list" | "grid"
 type AppSessionRole = "locked" | "staff" | "manager"
+type InventoryVisibility = LocalSyncInventoryItem["online_visibility"]
 const INVENTORY_STATUS_FILTERS = [
   "all",
   "available",
@@ -167,6 +168,11 @@ const INVENTORY_STATUS_FILTERS = [
   "reserved",
   "conflict",
 ] as const
+const INVENTORY_VISIBILITY_OPTIONS: Array<{ value: InventoryVisibility; label: string }> = [
+  { value: "visible", label: "Visible" },
+  { value: "staff_only", label: "Staff only" },
+  { value: "hidden", label: "Hidden" },
+]
 const ACCESS_SECTIONS = [
   "Inventory",
   "Kiosk",
@@ -1032,6 +1038,9 @@ export function App() {
   const [intakeBarcode, setIntakeBarcode] = useState("")
   const [intakePriceInput, setIntakePriceInput] = useState("0.00")
   const [intakeLocation, setIntakeLocation] = useState("Intake Queue")
+  const [intakeOnlineVisibility, setIntakeOnlineVisibility] = useState<InventoryVisibility>("visible")
+  const [intakeKioskVisibility, setIntakeKioskVisibility] = useState<InventoryVisibility>("visible")
+  const [intakePosVisibility, setIntakePosVisibility] = useState<InventoryVisibility>("visible")
   const [scryDexQuery, setScryDexQuery] = useState("")
   const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
   const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
@@ -1615,6 +1624,10 @@ export function App() {
         selectedScryDexCard.currency,
       )}`
     : ""
+  const intakeVisibilitySummary = `Online ${intakeOnlineVisibility.replace("_", " ")}, kiosk ${intakeKioskVisibility.replace(
+    "_",
+    " ",
+  )}, POS ${intakePosVisibility.replace("_", " ")}`
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -2930,6 +2943,9 @@ export function App() {
       cardNumber: selectedScryDexCard?.card_number,
       printedNumber: selectedScryDexCard?.printed_number,
       imageUrl: selectedScryDexCard?.image_url,
+      onlineVisibility: intakeOnlineVisibility,
+      kioskVisibility: intakeKioskVisibility,
+      posVisibility: intakePosVisibility,
     })
 
     if (intakeResult.status !== "ok") {
@@ -5471,10 +5487,52 @@ export function App() {
                     placeholder="Intake Queue"
                   />
                 </label>
+                <label htmlFor="intake-online-visibility">
+                  <span className="micro-label">Online shop</span>
+                  <select
+                    id="intake-online-visibility"
+                    value={intakeOnlineVisibility}
+                    onChange={(event) => setIntakeOnlineVisibility(event.target.value as InventoryVisibility)}
+                  >
+                    {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="intake-kiosk-visibility">
+                  <span className="micro-label">Kiosk</span>
+                  <select
+                    id="intake-kiosk-visibility"
+                    value={intakeKioskVisibility}
+                    onChange={(event) => setIntakeKioskVisibility(event.target.value as InventoryVisibility)}
+                  >
+                    {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="intake-pos-visibility">
+                  <span className="micro-label">POS</span>
+                  <select
+                    id="intake-pos-visibility"
+                    value={intakePosVisibility}
+                    onChange={(event) => setIntakePosVisibility(event.target.value as InventoryVisibility)}
+                  >
+                    {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <div>
                   <span className="micro-label">LAN inventory queue</span>
                   <strong>{intakeIssue ? "Needs details" : "Ready"}</strong>
-                  {intakeIssue ? <small>{intakeIssue}</small> : null}
+                  <small>{intakeIssue || intakeVisibilitySummary}</small>
                   <button type="button" onClick={() => void handleInventoryIntake()}>
                     <Icon name="plus" />
                     <span>Add Inventory</span>

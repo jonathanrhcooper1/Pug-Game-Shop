@@ -55,9 +55,15 @@ try {
     barcode: "PUG-PERSIST-DRAGONITE",
     price_minor_units: 8800,
     location: "Restart Bin",
+    online_visibility: "staff_only",
+    kiosk_visibility: "visible",
+    pos_visibility: "hidden",
   })
   assert.equal(intake.status, "ok")
   assert.equal(intake.item.status, "pending_intake")
+  assert.equal(intake.item.online_visibility, "staff_only")
+  assert.equal(intake.item.kiosk_visibility, "visible")
+  assert.equal(intake.item.pos_visibility, "hidden")
 
   const createdCustomer = firstStore.createCustomer(managerAuth.session.token, {
     first_name: "Persistent",
@@ -112,6 +118,9 @@ try {
   assert.equal(persistedIntake.items.length, 1)
   assert.equal(persistedIntake.items[0].status, "pending_intake")
   assert.equal(persistedIntake.items[0].source, "queued")
+  assert.equal(persistedIntake.items[0].online_visibility, "staff_only")
+  assert.equal(persistedIntake.items[0].kiosk_visibility, "visible")
+  assert.equal(persistedIntake.items[0].pos_visibility, "hidden")
 
   const persistedCustomers = restartedStore.searchCustomers({ query: "persistent.customer@example.test" })
   assert.equal(persistedCustomers.customers.length, 1)

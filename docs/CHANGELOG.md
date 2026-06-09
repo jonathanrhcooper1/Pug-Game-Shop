@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Local sync inventory intake now preserves online/kiosk/POS visibility from
+  the desktop app through SQLite, WordPress push mapping, and production smoke
+  verification, with a guarded hidden-row live smoke that cleans itself up.
 - The offline app ScryDex intake flow now shows a selected-card preview with
   card art, catalog source, condition stock, queued quantity/price, variants,
   and lookup path, including a responsive mobile layout for phone-sized
