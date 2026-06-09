@@ -60,6 +60,51 @@ database, exports, provider price history, and audit records.
 - No data migrations or price precision changes were made, so rollback only
   affects presentation.
 
+## 2026-06-09 - WordPress Package Includes Public Assets
+
+### What Changed
+
+- Added the plugin `assets/` directory to the WordPress package archive.
+- Extended the package contract test to require the customer account, public
+  event, and public inventory CSS assets.
+- Bumped the WordPress plugin/package version to `0.180.0` so the live site
+  receives a package with the CSS files included.
+
+### Why
+
+The live public inventory page linked the `0.179.0` stylesheet, but the
+stylesheet URL returned 404 because package creation only archived the plugin
+PHP/readme files and omitted the `assets/` directory.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/CHANGELOG.md`
+- `package-lock.json`
+- `package.json`
+- `scripts/package-wordpress-plugin.mjs`
+- `scripts/tests/wordpress-package-contract.mjs`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Package contract assertions for the three public/customer CSS assets.
+
+### Verification
+
+- Pending in this checkpoint: package contract, secret scan, production
+  reinstall, and live browser stylesheet check.
+
+### Rollback Notes
+
+- Revert the package script/test and version bump.
+- No database or runtime schema changes are involved.
+
 ## 2026-06-09 - Manager Square POS Inventory Pull Plan
 
 ### What Changed

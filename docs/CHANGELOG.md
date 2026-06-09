@@ -11,6 +11,10 @@ All notable changes follow Semantic Versioning.
   stock badges, and two-decimal staff inventory price display in admin search.
 - Prepared the production WordPress package as version `0.179.0` so public
   inventory CSS and price-display fixes bust deployed asset caches.
+- WordPress plugin packages now include the plugin `assets/` directory and
+  assert customer-account, public-events, and public-inventory CSS files in the
+  package contract. Version `0.180.0` republishes the public UI fix with the
+  actual stylesheet assets present.
 - WordPress inventory rows can now persist Square catalog item/variation
   mappings after provider sync, and the LAN/offline cache keeps those mapping
   fields so staff can see POS mapping status while Square payment capture

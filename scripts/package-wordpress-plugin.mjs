@@ -44,6 +44,7 @@ execFileSync(
     `--output=${outFile}`,
     `${tree}:apps/wordpress-plugin`,
     "README.md",
+    "assets",
     "readme.txt",
     "src",
     "tcg-store-platform.php",
