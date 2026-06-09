@@ -507,11 +507,18 @@ try {
       location: "Intake Bin",
       quantity: 2,
       provider_card_id: "scrydex-pokemon-test-mewtwo",
+      reference_variant_id: 42,
+      provider_variant_id: "scrydex-pokemon-test-mewtwo-reverse",
       game: "pokemon",
       set_code: "BASE",
       card_number: "10",
       printed_number: "10/102",
+      variant: "Reverse Holo",
+      finish: "Foil",
+      language: "English",
+      raw_or_graded: "raw",
       image_url: "https://images.example.test/mewtwo.png",
+      back_image_url: "https://images.example.test/mewtwo-back.png",
       online_visibility: "hidden",
       kiosk_visibility: "visible",
       pos_visibility: "staff_only",
@@ -522,8 +529,15 @@ try {
   assert.equal(intake.items.length, 2)
   assert.equal(intake.item.card_name, "Mewtwo")
   assert.equal(intake.item.provider_card_id, "scrydex-pokemon-test-mewtwo")
+  assert.equal(intake.item.reference_variant_id, 42)
+  assert.equal(intake.item.provider_variant_id, "scrydex-pokemon-test-mewtwo-reverse")
   assert.equal(intake.item.printed_number, "10/102")
+  assert.equal(intake.item.variant, "Reverse Holo")
+  assert.equal(intake.item.finish, "Foil")
+  assert.equal(intake.item.language, "English")
+  assert.equal(intake.item.raw_or_graded, "raw")
   assert.equal(intake.item.image_url, "https://images.example.test/mewtwo.png")
+  assert.equal(intake.item.back_image_url, "https://images.example.test/mewtwo-back.png")
   assert.equal(intake.item.online_visibility, "hidden")
   assert.equal(intake.item.kiosk_visibility, "visible")
   assert.equal(intake.item.pos_visibility, "staff_only")

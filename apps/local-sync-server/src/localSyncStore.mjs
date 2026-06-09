@@ -419,15 +419,22 @@ export function createLocalSyncStore(options = {}) {
     const cardName = cleanName(input.card_name)
     const setName = cleanName(input.set_name) || "Manual Intake"
     const providerCardId = cleanPublicId(input.provider_card_id)
+    const referenceVariantId = positiveInt(input.reference_variant_id)
+    const providerVariantId = cleanPublicId(input.provider_variant_id)
     const game = cleanGame(input.game)
     const setCode = cleanName(input.set_code).toUpperCase()
     const cardNumber = cleanName(input.card_number)
     const printedNumber = cleanName(input.printed_number)
+    const variant = cleanName(input.variant)
+    const finish = cleanName(input.finish)
+    const language = cleanName(input.language) || "EN"
+    const rawOrGraded = cleanRawOrGraded(input.raw_or_graded)
     const condition = cleanCondition(input.condition ?? input.condition_code)
     const barcodeBase = cleanBarcode(input.barcode) || `PUG-${randomUUID().slice(0, 8).toUpperCase()}`
     const priceMinorUnits = Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units))
     const location = cleanName(input.location ?? input.location_label) || "Intake Queue"
     const imageUrl = cleanHttpUrl(input.image_url)
+    const backImageUrl = cleanHttpUrl(input.back_image_url)
     const onlineVisibility = cleanVisibility(input.online_visibility, "visible")
     const kioskVisibility = cleanVisibility(input.kiosk_visibility, "visible")
     const posVisibility = cleanVisibility(input.pos_visibility, "visible")
@@ -453,12 +460,18 @@ export function createLocalSyncStore(options = {}) {
       wordpress_public_id: "",
       row_version: 1,
       provider_card_id: providerCardId,
+      reference_variant_id: referenceVariantId,
+      provider_variant_id: providerVariantId,
       game,
       card_name: cardName,
       set_name: setName,
       set_code: setCode,
       card_number: cardNumber,
       printed_number: printedNumber,
+      variant,
+      finish,
+      language,
+      raw_or_graded: rawOrGraded,
       condition,
       barcode,
       price_minor_units: priceMinorUnits,
@@ -466,6 +479,7 @@ export function createLocalSyncStore(options = {}) {
       location,
       status: "pending_intake",
       image_url: imageUrl,
+      back_image_url: backImageUrl,
       online_visibility: onlineVisibility,
       kiosk_visibility: kioskVisibility,
       pos_visibility: posVisibility,
@@ -1748,12 +1762,18 @@ function migrateLocalSyncDatabase(database) {
       wordpress_public_id TEXT NOT NULL DEFAULT '',
       row_version INTEGER NOT NULL,
       provider_card_id TEXT NOT NULL DEFAULT '',
+      reference_variant_id INTEGER NULL,
+      provider_variant_id TEXT NOT NULL DEFAULT '',
       game TEXT NOT NULL DEFAULT 'pokemon',
       card_name TEXT NOT NULL,
       set_name TEXT NOT NULL,
       set_code TEXT NOT NULL DEFAULT '',
       card_number TEXT NOT NULL DEFAULT '',
       printed_number TEXT NOT NULL DEFAULT '',
+      variant TEXT NOT NULL DEFAULT '',
+      finish TEXT NOT NULL DEFAULT '',
+      language TEXT NOT NULL DEFAULT 'EN',
+      raw_or_graded TEXT NOT NULL DEFAULT 'raw',
       condition TEXT NOT NULL,
       barcode TEXT NOT NULL,
       price_minor_units INTEGER NOT NULL,
@@ -1761,6 +1781,7 @@ function migrateLocalSyncDatabase(database) {
       location TEXT NOT NULL,
       status TEXT NOT NULL,
       image_url TEXT NOT NULL DEFAULT '',
+      back_image_url TEXT NOT NULL DEFAULT '',
       online_visibility TEXT NOT NULL DEFAULT 'visible',
       kiosk_visibility TEXT NOT NULL DEFAULT 'visible',
       pos_visibility TEXT NOT NULL DEFAULT 'visible',
@@ -1873,11 +1894,18 @@ function migrateLocalSyncDatabase(database) {
 
   ensureLocalSyncColumn(database, "inventory_items", "provider_card_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "wordpress_public_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "reference_variant_id", "INTEGER NULL")
+  ensureLocalSyncColumn(database, "inventory_items", "provider_variant_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "game", "TEXT NOT NULL DEFAULT 'pokemon'")
   ensureLocalSyncColumn(database, "inventory_items", "set_code", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "card_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "printed_number", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "variant", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "finish", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "language", "TEXT NOT NULL DEFAULT 'EN'")
+  ensureLocalSyncColumn(database, "inventory_items", "raw_or_graded", "TEXT NOT NULL DEFAULT 'raw'")
   ensureLocalSyncColumn(database, "inventory_items", "image_url", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "back_image_url", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "online_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "inventory_items", "kiosk_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "inventory_items", "pos_visibility", "TEXT NOT NULL DEFAULT 'visible'")
@@ -1971,8 +1999,9 @@ function loadInventoryItems(database) {
   return database
     .prepare(`
       SELECT public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
-        set_code, card_number, printed_number, condition, barcode, price_minor_units,
-        currency, location, status, image_url, online_visibility, kiosk_visibility,
+        reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
+        variant, finish, language, raw_or_graded, condition, barcode, price_minor_units,
+        currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, source
       FROM inventory_items
@@ -1984,12 +2013,18 @@ function loadInventoryItems(database) {
       wordpress_public_id: cleanPublicId(row.wordpress_public_id),
       row_version: Number(row.row_version),
       provider_card_id: row.provider_card_id ?? "",
+      reference_variant_id: positiveInt(row.reference_variant_id),
+      provider_variant_id: cleanPublicId(row.provider_variant_id),
       game: cleanGame(row.game),
       card_name: row.card_name,
       set_name: row.set_name,
       set_code: row.set_code ?? "",
       card_number: row.card_number ?? "",
       printed_number: row.printed_number ?? "",
+      variant: cleanName(row.variant),
+      finish: cleanName(row.finish),
+      language: cleanName(row.language) || "EN",
+      raw_or_graded: cleanRawOrGraded(row.raw_or_graded),
       condition: row.condition,
       barcode: row.barcode,
       price_minor_units: Number(row.price_minor_units),
@@ -1997,6 +2032,7 @@ function loadInventoryItems(database) {
       location: row.location,
       status: row.status,
       image_url: row.image_url ?? "",
+      back_image_url: row.back_image_url ?? "",
       online_visibility: cleanVisibility(row.online_visibility, "visible"),
       kiosk_visibility: cleanVisibility(row.kiosk_visibility, "visible"),
       pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
@@ -2190,22 +2226,29 @@ function saveInventoryItem(database, item, now) {
     .prepare(`
       INSERT INTO inventory_items (
         public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
-        set_code, card_number, printed_number, condition, barcode, price_minor_units,
-        currency, location, status, image_url, online_visibility, kiosk_visibility,
+        reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
+        variant, finish, language, raw_or_graded, condition, barcode, price_minor_units,
+        currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         wordpress_public_id = excluded.wordpress_public_id,
         row_version = excluded.row_version,
         provider_card_id = excluded.provider_card_id,
+        reference_variant_id = excluded.reference_variant_id,
+        provider_variant_id = excluded.provider_variant_id,
         game = excluded.game,
         card_name = excluded.card_name,
         set_name = excluded.set_name,
         set_code = excluded.set_code,
         card_number = excluded.card_number,
         printed_number = excluded.printed_number,
+        variant = excluded.variant,
+        finish = excluded.finish,
+        language = excluded.language,
+        raw_or_graded = excluded.raw_or_graded,
         condition = excluded.condition,
         barcode = excluded.barcode,
         price_minor_units = excluded.price_minor_units,
@@ -2213,6 +2256,7 @@ function saveInventoryItem(database, item, now) {
         location = excluded.location,
         status = excluded.status,
         image_url = excluded.image_url,
+        back_image_url = excluded.back_image_url,
         online_visibility = excluded.online_visibility,
         kiosk_visibility = excluded.kiosk_visibility,
         pos_visibility = excluded.pos_visibility,
@@ -2230,9 +2274,15 @@ function saveInventoryItem(database, item, now) {
       cleanGame(item.game),
       item.card_name,
       item.set_name,
+      positiveInt(item.reference_variant_id),
+      cleanPublicId(item.provider_variant_id),
       item.set_code ?? "",
       item.card_number ?? "",
       item.printed_number ?? "",
+      cleanName(item.variant),
+      cleanName(item.finish),
+      cleanName(item.language) || "EN",
+      cleanRawOrGraded(item.raw_or_graded),
       item.condition,
       item.barcode,
       item.price_minor_units,
@@ -2240,6 +2290,7 @@ function saveInventoryItem(database, item, now) {
       item.location,
       item.status,
       item.image_url ?? "",
+      item.back_image_url ?? "",
       cleanVisibility(item.online_visibility, "visible"),
       cleanVisibility(item.kiosk_visibility, "visible"),
       cleanVisibility(item.pos_visibility, "visible"),
@@ -2737,12 +2788,18 @@ function publicInventoryItem(item) {
     wordpress_public_id: cleanPublicId(item.wordpress_public_id),
     row_version: item.row_version,
     provider_card_id: item.provider_card_id ?? "",
+    reference_variant_id: positiveInt(item.reference_variant_id),
+    provider_variant_id: cleanPublicId(item.provider_variant_id),
     game: cleanGame(item.game),
     card_name: item.card_name,
     set_name: item.set_name,
     set_code: item.set_code ?? "",
     card_number: item.card_number ?? "",
     printed_number: item.printed_number ?? "",
+    variant: cleanName(item.variant),
+    finish: cleanName(item.finish),
+    language: cleanName(item.language) || "EN",
+    raw_or_graded: cleanRawOrGraded(item.raw_or_graded),
     condition: item.condition,
     barcode: item.barcode,
     price_minor_units: item.price_minor_units,
@@ -2750,6 +2807,7 @@ function publicInventoryItem(item) {
     location: item.location,
     status: item.status,
     image_url: item.image_url ?? "",
+    back_image_url: item.back_image_url ?? "",
     online_visibility: cleanVisibility(item.online_visibility, "visible"),
     kiosk_visibility: cleanVisibility(item.kiosk_visibility, "visible"),
     pos_visibility: cleanVisibility(item.pos_visibility, "visible"),
@@ -2780,12 +2838,18 @@ function localInventoryItemFromWordPress(row) {
     wordpress_public_id: publicId,
     row_version: boundedInt(row.row_version, 1, 999999999, 1),
     provider_card_id: cleanPublicId(row.provider_card_id),
+    reference_variant_id: positiveInt(row.reference_variant_id),
+    provider_variant_id: cleanPublicId(row.provider_variant_id),
     game: cleanGame(row.game),
     card_name: cardName,
     set_name: cleanName(row.set_name) || "Website Inventory",
     set_code: cleanName(row.set_code).toUpperCase(),
     card_number: cleanName(row.card_number),
     printed_number: cleanName(row.printed_number),
+    variant: cleanName(row.variant),
+    finish: cleanName(row.finish),
+    language: cleanName(row.language) || "EN",
+    raw_or_graded: cleanRawOrGraded(row.raw_or_graded),
     condition: cleanCondition(row.condition_code ?? row.condition),
     barcode: cleanBarcode(row.barcode ?? row.sku) || publicId,
     price_minor_units: priceMinorUnits,
@@ -2793,6 +2857,7 @@ function localInventoryItemFromWordPress(row) {
     location,
     status,
     image_url: cleanHttpUrl(row.front_image_url ?? row.front_image_remote_url ?? row.image_url),
+    back_image_url: cleanHttpUrl(row.back_image_url ?? row.back_image_remote_url),
     online_visibility: cleanVisibility(row.online_visibility, "visible"),
     kiosk_visibility: cleanVisibility(row.kiosk_visibility, "visible"),
     pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
@@ -3405,12 +3470,15 @@ function cleanReferenceVariants(value) {
   return value
     .filter((variant) => variant && typeof variant === "object")
     .map((variant) => ({
+      reference_variant_id: positiveInt(variant.reference_variant_id),
       provider_variant_id: cleanPublicId(variant.provider_variant_id ?? variant.id),
       variant: cleanName(variant.variant ?? variant.name),
       finish: cleanName(variant.finish),
       parallel_name: cleanName(variant.parallel_name ?? variant.parallel),
       edition: cleanName(variant.edition),
       language: cleanName(variant.language),
+      front_image_url: cleanHttpUrl(variant.front_image_url ?? variant.image_url),
+      back_image_url: cleanHttpUrl(variant.back_image_url),
       raw_or_graded_support: cleanRawOrGradedSupport(variant.raw_or_graded_support),
       attributes: variant.attributes && typeof variant.attributes === "object" ? variant.attributes : {},
     }))
@@ -3431,6 +3499,12 @@ function cleanRawOrGradedSupport(value) {
   const support = String(value ?? "").trim().toLowerCase()
 
   return ["raw", "graded", "both"].includes(support) ? support : "both"
+}
+
+function cleanRawOrGraded(value) {
+  const rawOrGraded = String(value ?? "").trim().toLowerCase()
+
+  return ["raw", "graded"].includes(rawOrGraded) ? rawOrGraded : "raw"
 }
 
 function upsertReferenceCard(referenceCards, card) {

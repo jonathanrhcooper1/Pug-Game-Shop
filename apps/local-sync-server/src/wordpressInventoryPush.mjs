@@ -98,8 +98,13 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     printed_number: cleanText(item.printed_number),
     provider_name: item.provider_card_id ? "scrydex" : "",
     provider_card_id: cleanText(item.provider_card_id),
+    reference_variant_id: positiveInt(item.reference_variant_id) ?? undefined,
+    provider_variant_id: cleanText(item.provider_variant_id),
+    variant: cleanText(item.variant),
+    finish: cleanText(item.finish),
+    language: cleanText(item.language || "EN"),
     status: activeLocationConfigured ? "available" : "pending_intake",
-    raw_or_graded: "raw",
+    raw_or_graded: cleanRawOrGraded(item.raw_or_graded),
     condition_code: cleanText(item.condition || "RAW"),
     barcode: cleanBarcode(item.barcode),
     sku: cleanBarcode(item.barcode),
@@ -111,6 +116,7 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     kiosk_visibility: cleanVisibility(item.kiosk_visibility, options.defaultKioskVisibility ?? "visible"),
     pos_visibility: cleanVisibility(item.pos_visibility, options.defaultPosVisibility ?? "visible"),
     front_image_remote_url: cleanHttpUrl(item.image_url),
+    back_image_remote_url: cleanHttpUrl(item.back_image_url),
     staff_notes: cleanText(`Queued from LAN sync server location: ${item.location ?? "Intake Queue"}`),
   }
 
@@ -160,6 +166,12 @@ function positiveInt(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10)
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function cleanRawOrGraded(value) {
+  const rawOrGraded = String(value ?? "").trim().toLowerCase()
+
+  return ["raw", "graded"].includes(rawOrGraded) ? rawOrGraded : "raw"
 }
 
 function boundedTimeout(value) {

@@ -3,6 +3,78 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Variant-Aware Offline Inventory Intake
+
+### What Changed
+
+- Added additive LAN SQLite inventory fields for selected ScryDex variant
+  identity, display metadata, raw/graded mode, and back image URL.
+- Updated LAN inventory intake, cache load/save, public API responses, and
+  WordPress inventory push mapping to preserve variant/reference metadata.
+- Updated the offline app ScryDex selected-card preview with a version selector
+  and variant-aware image handling.
+- Updated the offline app intake submission payload so selected variant data
+  reaches the website inventory create route.
+
+### Why
+
+Staff intake needs to distinguish card versions, finishes, and variant images,
+not just the base card name/set. WordPress already has variant-capable schema
+and intake parsing, so the local app and LAN middleman needed to carry those
+fields through the online-first/offline-capable workflow.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite additive columns only:
+  - `inventory_items.reference_variant_id`
+  - `inventory_items.provider_variant_id`
+  - `inventory_items.variant`
+  - `inventory_items.finish`
+  - `inventory_items.language`
+  - `inventory_items.raw_or_graded`
+  - `inventory_items.back_image_url`
+
+### Tests Added
+
+- Extended LAN runtime intake coverage to assert variant metadata round-trips.
+- Extended WordPress inventory push coverage to assert variant metadata is sent
+  to the website intake route.
+- Extended offline local sync client contract markers for variant fields.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- Restarted the LAN sync server and verified `/sync/status` reports healthy
+  WordPress inventory/event pull, push connected, and queue depth `0`.
+- Headless preview check against `http://127.0.0.1:1420/` unlocked with the
+  test PIN, searched ScryDex, confirmed the version selector rendered, and saw
+  no console or page errors.
+
+### Rollback Notes
+
+- Revert the local sync server and offline app files to return to base-card
+  intake only. The SQLite columns are additive and can remain unused.
+
 ## 2026-06-09 - Offline App Website Pull UI Integration
 
 ### What Changed

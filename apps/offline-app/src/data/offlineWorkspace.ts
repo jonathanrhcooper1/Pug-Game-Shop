@@ -29,11 +29,17 @@ export type InventoryItem = {
   publicId: string
   rowVersion: number
   providerCardId?: string
+  referenceVariantId?: number | null
+  providerVariantId?: string
   game?: string
   cardName: string
   setName: string
   number: string
   setCode?: string
+  variant?: string
+  finish?: string
+  language?: string
+  rawOrGraded?: "raw" | "graded"
   condition: string
   barcode: string
   price: string
@@ -42,6 +48,7 @@ export type InventoryItem = {
   location: string
   status: InventoryStatus
   imageUrl?: string
+  backImageUrl?: string
   squareCatalogItemId?: string
   squareCatalogVariationId?: string
   externalSyncState?: "pending" | "synced" | "square_synced" | "failed" | "conflict"

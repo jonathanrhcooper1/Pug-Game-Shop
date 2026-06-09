@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Inventory intake through the offline app and LAN server now preserves
+  selected ScryDex variant metadata, including provider/reference variant IDs,
+  finish, language, raw/graded mode, and variant-specific image URLs through
+  the WordPress inventory push body.
 - The offline app Sync Now flow now requests both website inventory and
   website events from the LAN middleman server, merges pulled event snapshots
   into the Events workspace, and shows separate inventory/event pull health in

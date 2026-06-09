@@ -851,11 +851,17 @@ function inventoryItemFromLocalSync(
     publicId: item.public_id,
     rowVersion: item.row_version,
     providerCardId: item.provider_card_id,
+    referenceVariantId: item.reference_variant_id,
+    providerVariantId: item.provider_variant_id,
     game: item.game,
     cardName: item.card_name,
     setName: item.set_name,
     number: item.printed_number || item.card_number || item.public_id,
     setCode: item.set_code,
+    variant: item.variant,
+    finish: item.finish,
+    language: item.language,
+    rawOrGraded: item.raw_or_graded,
     condition: item.condition,
     barcode: item.barcode,
     price: formatMoney(item.price_minor_units, item.currency),
@@ -864,6 +870,7 @@ function inventoryItemFromLocalSync(
     location: item.location,
     status: item.status,
     imageUrl: item.image_url,
+    backImageUrl: item.back_image_url,
     squareCatalogItemId: item.square_catalog_item_id,
     squareCatalogVariationId: item.square_catalog_variation_id,
     externalSyncState: item.external_sync_state,
@@ -905,6 +912,17 @@ function formatScryDexVariant(variant: LocalSyncScryDexVariant) {
   ]
     .filter(Boolean)
     .join(" / ")
+}
+
+function scryDexVariantId(cardId: string, variant: LocalSyncScryDexVariant, index: number) {
+  return variant.provider_variant_id || String(variant.reference_variant_id ?? "") || `${cardId}-variant-${index}`
+}
+
+function cardImageForSelectedVariant(
+  card: LocalSyncScryDexCard | null,
+  variant: LocalSyncScryDexVariant | null,
+) {
+  return variant?.front_image_url || card?.image_url || ""
 }
 
 function lanSyncPushMessage(result: LocalSyncPushResult | null) {
@@ -1073,6 +1091,7 @@ export function App() {
   const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
   const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
   const [selectedScryDexCardId, setSelectedScryDexCardId] = useState("")
+  const [selectedScryDexVariantId, setSelectedScryDexVariantId] = useState("")
   const [scryDexLookupStatus, setScryDexLookupStatus] = useState<
     "idle" | "searching" | "ready" | "blocked"
   >("idle")
@@ -1268,7 +1287,16 @@ export function App() {
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
   const selectedScryDexCard = scryDexCards.find((card) => card.provider_card_id === selectedScryDexCardId) ?? null
-  const selectedPreviewImageUrl = selectedScryDexCard?.image_url || selectedItem.imageUrl || ""
+  const selectedScryDexVariant =
+    selectedScryDexCard?.variants.find(
+      (variant, index) =>
+        scryDexVariantId(selectedScryDexCard.provider_card_id, variant, index) === selectedScryDexVariantId,
+    ) ?? null
+  const selectedScryDexVariantLabel = selectedScryDexVariant
+    ? formatScryDexVariant(selectedScryDexVariant) || "Selected version"
+    : "Default version"
+  const selectedScryDexImageUrl = cardImageForSelectedVariant(selectedScryDexCard, selectedScryDexVariant)
+  const selectedPreviewImageUrl = selectedScryDexImageUrl || selectedItem.imageUrl || ""
   const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
   const customerCredit =
     findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
@@ -3043,11 +3071,18 @@ export function App() {
       location: intakeLocation.trim() || "Intake Queue",
       quantity: intakeQuantity,
       providerCardId: selectedScryDexCard?.provider_card_id,
+      referenceVariantId: selectedScryDexVariant?.reference_variant_id,
+      providerVariantId: selectedScryDexVariant?.provider_variant_id,
       game: selectedScryDexCard?.game ?? scryDexGame,
       setCode: selectedScryDexCard?.set_code,
       cardNumber: selectedScryDexCard?.card_number,
       printedNumber: selectedScryDexCard?.printed_number,
-      imageUrl: selectedScryDexCard?.image_url,
+      variant: selectedScryDexVariant?.variant,
+      finish: selectedScryDexVariant?.finish,
+      language: selectedScryDexVariant?.language,
+      rawOrGraded: selectedScryDexVariant?.raw_or_graded_support === "graded" ? "graded" : "raw",
+      imageUrl: selectedScryDexImageUrl,
+      backImageUrl: selectedScryDexVariant?.back_image_url,
       onlineVisibility: intakeOnlineVisibility,
       kioskVisibility: intakeKioskVisibility,
       posVisibility: intakePosVisibility,
@@ -3105,6 +3140,7 @@ export function App() {
       setScryDexLookupDetail("Enter a card, set, or number.")
       setScryDexCards([])
       setSelectedScryDexCardId("")
+      setSelectedScryDexVariantId("")
       return
     }
 
@@ -3113,6 +3149,7 @@ export function App() {
       setScryDexLookupDetail("Staff PIN session required.")
       setScryDexCards([])
       setSelectedScryDexCardId("")
+      setSelectedScryDexVariantId("")
       return
     }
 
@@ -3130,11 +3167,20 @@ export function App() {
       setScryDexLookupDetail(result.message)
       setScryDexCards([])
       setSelectedScryDexCardId("")
+      setSelectedScryDexVariantId("")
       return
     }
 
+    const firstCard = result.cards[0] ?? null
+    const firstVariant = firstCard?.variants[0] ?? null
+
     setScryDexCards(result.cards)
-    setSelectedScryDexCardId(result.cards[0]?.provider_card_id ?? "")
+    setSelectedScryDexCardId(firstCard?.provider_card_id ?? "")
+    setSelectedScryDexVariantId(
+      firstCard && firstVariant
+        ? scryDexVariantId(firstCard.provider_card_id, firstVariant, 0)
+        : "",
+    )
     setScryDexLookupStatus("ready")
     setScryDexLookupDetail(
       `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} from ${result.source}.`,
@@ -3143,6 +3189,11 @@ export function App() {
 
   function handleUseScryDexCard(card: LocalSyncScryDexCard) {
     setSelectedScryDexCardId(card.provider_card_id)
+    const variantId = card.variants[0]
+      ? scryDexVariantId(card.provider_card_id, card.variants[0], 0)
+      : ""
+
+    setSelectedScryDexVariantId(variantId)
     setIntakeCardName(card.card_name)
     setIntakeSetName(card.set_name)
     setIntakeBarcode("")
@@ -5469,8 +5520,8 @@ export function App() {
                   {selectedScryDexCard ? (
                     <section className="selected-scrydex-preview" aria-label="Selected catalog card for intake">
                       <div className="selected-scrydex-preview__art" aria-hidden="true">
-                        {selectedScryDexCard.image_url ? (
-                          <img src={selectedScryDexCard.image_url} alt="" loading="lazy" />
+                        {selectedScryDexImageUrl ? (
+                          <img src={selectedScryDexImageUrl} alt="" loading="lazy" />
                         ) : (
                           <Icon name="card" />
                         )}
@@ -5497,6 +5548,32 @@ export function App() {
                             {selectedScryDexIntakeSummary}
                           </span>
                         </div>
+                        {selectedScryDexCard.variants.length > 0 ? (
+                          <label htmlFor="scrydex-variant-select" className="selected-scrydex-preview__variant-select">
+                            <span className="micro-label">Version</span>
+                            <select
+                              id="scrydex-variant-select"
+                              value={selectedScryDexVariantId}
+                              onChange={(event) => setSelectedScryDexVariantId(event.target.value)}
+                            >
+                              {selectedScryDexCard.variants.map((variant, index) => {
+                                const variantId = scryDexVariantId(
+                                  selectedScryDexCard.provider_card_id,
+                                  variant,
+                                  index,
+                                )
+                                const label = formatScryDexVariant(variant) || `Version ${index + 1}`
+
+                                return (
+                                  <option key={variantId} value={variantId}>
+                                    {label}
+                                  </option>
+                                )
+                              })}
+                            </select>
+                            <small>{selectedScryDexVariantLabel}</small>
+                          </label>
+                        ) : null}
                         <div className="selected-scrydex-preview__pill-row">
                           <span>{selectedScryDexCard.provider_card_id}</span>
                           {selectedScryDexVariantLabels.length > 0 ? (

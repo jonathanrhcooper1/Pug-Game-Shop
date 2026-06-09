@@ -147,12 +147,18 @@ export type LocalSyncInventoryItem = {
   wordpress_public_id?: string
   row_version: number
   provider_card_id: string
+  reference_variant_id?: number | null
+  provider_variant_id: string
   game: "pokemon" | "magic" | "lorcana" | "one-piece"
   card_name: string
   set_name: string
   set_code: string
   card_number: string
   printed_number: string
+  variant: string
+  finish: string
+  language: string
+  raw_or_graded: "raw" | "graded"
   condition: string
   barcode: string
   price_minor_units: number
@@ -160,6 +166,7 @@ export type LocalSyncInventoryItem = {
   location: string
   status: "available" | "reserved" | "conflict" | "pending_intake"
   image_url: string
+  back_image_url: string
   online_visibility: "hidden" | "visible" | "staff_only"
   kiosk_visibility: "hidden" | "visible" | "staff_only"
   pos_visibility: "hidden" | "visible" | "staff_only"
@@ -204,12 +211,15 @@ export type LocalSyncStockByCondition = {
 }
 
 export type LocalSyncScryDexVariant = {
+  reference_variant_id?: number | null
   provider_variant_id: string
   variant: string
   finish: string
   parallel_name: string
   edition: string
   language: string
+  front_image_url?: string
+  back_image_url?: string
   raw_or_graded_support: "raw" | "graded" | "both"
   attributes: Record<string, unknown>
 }
@@ -566,11 +576,18 @@ export type LocalSyncServerClient = {
       location: string
       quantity?: number
       providerCardId?: string
+      referenceVariantId?: number | null
+      providerVariantId?: string
       game?: LocalSyncScryDexCard["game"]
       setCode?: string
       cardNumber?: string
       printedNumber?: string
+      variant?: string
+      finish?: string
+      language?: string
+      rawOrGraded?: "raw" | "graded"
       imageUrl?: string
+      backImageUrl?: string
       onlineVisibility?: LocalSyncInventoryItem["online_visibility"]
       kioskVisibility?: LocalSyncInventoryItem["kiosk_visibility"]
       posVisibility?: LocalSyncInventoryItem["pos_visibility"]
@@ -713,11 +730,18 @@ export function createLocalSyncServerClient(
           location: input.location,
           quantity: input.quantity ?? 1,
           provider_card_id: input.providerCardId ?? "",
+          reference_variant_id: input.referenceVariantId ?? null,
+          provider_variant_id: input.providerVariantId ?? "",
           game: input.game ?? "pokemon",
           set_code: input.setCode ?? "",
           card_number: input.cardNumber ?? "",
           printed_number: input.printedNumber ?? "",
+          variant: input.variant ?? "",
+          finish: input.finish ?? "",
+          language: input.language ?? "EN",
+          raw_or_graded: input.rawOrGraded ?? "raw",
           image_url: input.imageUrl ?? "",
+          back_image_url: input.backImageUrl ?? "",
           online_visibility: input.onlineVisibility ?? "visible",
           kiosk_visibility: input.kioskVisibility ?? "visible",
           pos_visibility: input.posVisibility ?? "visible",

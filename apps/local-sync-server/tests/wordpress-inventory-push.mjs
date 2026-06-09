@@ -8,12 +8,18 @@ import {
 const item = {
   public_id: "local-inventory-001",
   provider_card_id: "scrydex-pokemon-base-004",
+  reference_variant_id: 123,
+  provider_variant_id: "scrydex-pokemon-base-004-holo-unlimited",
   game: "pokemon",
   card_name: "Charizard",
   set_name: "Base Set",
   set_code: "BASE",
   card_number: "4",
   printed_number: "4/102",
+  variant: "Unlimited Holo",
+  finish: "Holofoil",
+  language: "English",
+  raw_or_graded: "raw",
   condition: "LP",
   barcode: "PUG-LOCAL-CHARIZARD",
   price_minor_units: 25000,
@@ -21,6 +27,7 @@ const item = {
   location: "Intake Queue",
   status: "pending_intake",
   image_url: "https://images.pokemontcg.io/base1/4_hires.png",
+  back_image_url: "https://images.pokemontcg.io/cardback.png",
 }
 const body = inventoryIntakeBody(item)
 
@@ -28,6 +35,12 @@ assert.equal(body.source, "offline")
 assert.equal(body.status, "pending_intake")
 assert.equal(body.provider_name, "scrydex")
 assert.equal(body.provider_card_id, "scrydex-pokemon-base-004")
+assert.equal(body.reference_variant_id, 123)
+assert.equal(body.provider_variant_id, "scrydex-pokemon-base-004-holo-unlimited")
+assert.equal(body.variant, "Unlimited Holo")
+assert.equal(body.finish, "Holofoil")
+assert.equal(body.language, "English")
+assert.equal(body.raw_or_graded, "raw")
 assert.equal(body.barcode, "PUG-LOCAL-CHARIZARD")
 assert.equal(body.sku, "PUG-LOCAL-CHARIZARD")
 assert.equal(body.sale_price_minor_units, 25000)
@@ -36,6 +49,7 @@ assert.equal(body.online_visibility, "visible")
 assert.equal(body.kiosk_visibility, "visible")
 assert.equal(body.pos_visibility, "visible")
 assert.equal(body.front_image_remote_url, "https://images.pokemontcg.io/base1/4_hires.png")
+assert.equal(body.back_image_remote_url, "https://images.pokemontcg.io/cardback.png")
 assert.equal("location_id" in body, false)
 
 const activeBody = inventoryIntakeBody(item, { defaultLocationId: "7" })
@@ -125,6 +139,8 @@ assert.equal(observedRequest.body.location_id, 7)
 assert.equal(observedRequest.body.online_visibility, "hidden")
 assert.equal(observedRequest.body.kiosk_visibility, "staff_only")
 assert.equal(observedRequest.body.pos_visibility, "visible")
+assert.equal(observedRequest.body.provider_variant_id, "scrydex-pokemon-base-004-holo-unlimited")
+assert.equal(observedRequest.body.variant, "Unlimited Holo")
 
 const rejectedPush = createWordPressInventoryPush({
   websiteUrl: "https://example.test",

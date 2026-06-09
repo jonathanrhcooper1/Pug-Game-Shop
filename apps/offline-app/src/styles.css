@@ -2517,6 +2517,20 @@ h2 {
   text-transform: uppercase;
 }
 
+.selected-scrydex-preview__variant-select {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(73, 220, 244, 0.18);
+  border-radius: 7px;
+}
+
+.selected-scrydex-preview__variant-select select {
+  min-height: 38px;
+}
+
 .selected-scrydex-preview__pill-row {
   display: flex;
   flex-wrap: wrap;
