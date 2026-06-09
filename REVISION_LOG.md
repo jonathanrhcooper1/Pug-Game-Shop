@@ -3,6 +3,48 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Public Inventory and Events Pages
+
+### What Changed
+
+- Added an idempotent production page configurator for the public website.
+- The configurator publishes or updates `/card-inventory/` with
+  `[tcg_inventory_search limit="24"]`.
+- The configurator publishes or updates `/events/` with `[tcg_events limit="12"]`.
+- Existing page title/status/content summaries are backed up into post meta
+  before updates without printing page content.
+- The script intentionally leaves the homepage and navigation menus unchanged.
+
+### Why
+
+The customer-facing inventory and event shortcodes were deployed and verified,
+but they still needed real website pages so the live site has a usable preview
+surface.
+
+### Files Affected
+
+- `package.json`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `node scripts/tests/production-public-pages-contract.mjs`
+- `node scripts/production-configure-public-pages.mjs --dry-run`
+- `node scripts/production-configure-public-pages.mjs`
+
+### Rollback Notes
+
+- Restore the previous page content from each affected page's
+  `_tcg_store_public_pages_backup_*` post meta entry, or set the generated pages
+  back to draft if they did not previously exist.
+
 ## 2026-06-09 - Production Public Shortcode Hotfix 0.178.0
 
 ### What Changed

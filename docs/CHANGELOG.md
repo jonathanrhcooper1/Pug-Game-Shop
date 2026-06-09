@@ -22,6 +22,9 @@ All notable changes follow Semantic Versioning.
 - Added a production public-shortcode verifier and fixed the public inventory
   shortcode to use the real inventory parser contract, preventing fatal errors
   when invalid filters are rendered on the live website.
+- Added a production public-page configurator for publishing the Card Inventory
+  and Events pages with verified shortcodes while backing up prior page content
+  to post meta and avoiding homepage/menu changes.
 - WordPress reference-card search now ranks exact, prefix, and contains matches
   on card name ahead of identifier and set-name-only matches, so intake lookups
   like `Charizard` surface actual Charizard cards before set-only results.
