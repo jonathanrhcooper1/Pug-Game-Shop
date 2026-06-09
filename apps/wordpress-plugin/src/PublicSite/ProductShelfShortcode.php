@@ -175,7 +175,7 @@ final class ProductShelfShortcode {
 
 		$html  = '<article class="tcg-product-shelf__card">';
 		$html .= '<a class="tcg-product-shelf__media" href="' . $this->esc_url( $url ) . '" aria-label="' . $this->esc_attr( $name ) . '">';
-		$html .= '' !== $image_html ? $image_html : '<span class="tcg-product-shelf__image-placeholder">PUG</span>';
+		$html .= $this->has_real_product_image( $image_html ) ? $image_html : '<span class="tcg-product-shelf__image-placeholder"><strong>PUG</strong><small>Cards, games, and more</small></span>';
 		$html .= '</a>';
 		$html .= '<div class="tcg-product-shelf__body">';
 		$html .= '<p class="tcg-product-shelf__category">' . $this->esc_html( 'The Pug shelf' ) . '</p>';
@@ -257,6 +257,14 @@ final class ProductShelfShortcode {
 		$html = preg_replace( '#<script\\b[^>]*>.*?</script>#is', '', $html ) ?? '';
 
 		return function_exists( 'wp_kses_post' ) ? wp_kses_post( $html ) : $html;
+	}
+
+	private function has_real_product_image( string $image_html ): bool {
+		if ( '' === trim( $image_html ) ) {
+			return false;
+		}
+
+		return ! preg_match( '/woocommerce-placeholder|placeholder(?:-[0-9x]+)?\.(?:png|jpe?g|webp|gif)/i', $image_html );
 	}
 
 	private function esc_html( string $value ): string {

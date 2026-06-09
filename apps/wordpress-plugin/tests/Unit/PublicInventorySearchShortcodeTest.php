@@ -69,6 +69,26 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_same( 'bypass', $headers['X-TCG-Inventory-Cache'] );
 	}
 
+	public function test_storefront_pages_are_uncacheable_inventory_contexts(): void {
+		$source = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/PublicSite/InventorySearchShortcode.php' );
+
+		$this->assert_same(
+			array(
+				'shop-singles',
+				'shop-sealed-products',
+				'shop-graded-cards',
+				'shop-accessories',
+				'card-inventory',
+				'events',
+			),
+			InventorySearchShortcode::STOREFRONT_PAGE_SLUGS
+		);
+		$this->assert_contains( 'is_page( self::STOREFRONT_PAGE_SLUGS )', $source );
+		$this->assert_contains( "function_exists( 'is_front_page' ) && is_front_page()", $source );
+		$this->assert_contains( 'ProductShelfShortcode::SHORTCODE', $source );
+		$this->assert_contains( 'X-TCG-Inventory-Cache', $source );
+	}
+
 	public function test_invalid_filters_render_adjustment_notice_without_repository_lookup(): void {
 		global $wpdb;
 
@@ -112,14 +132,22 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_contains( '/shop-graded-cards/', $script );
 		$this->assert_contains( '/shop-accessories/', $script );
 		$this->assert_contains( 'rewriteFooterShopLinks', $script );
+		$this->assert_contains( 'rewriteHeaderShopLinks', $script );
+		$this->assert_contains( 'rewriteLegacyShopLinks', $script );
+		$this->assert_contains( 'isShopLink', $script );
+		$this->assert_contains( 'enter shop', $script );
 	}
 
 	public function test_public_inventory_css_matches_dark_storefront_theme(): void {
 		$css = (string) file_get_contents( dirname( __DIR__, 2 ) . '/assets/css/public-inventory.css' );
 
-		$this->assert_contains( 'radial-gradient(circle at 85% 20%', $css );
+		$this->assert_contains( 'body.page .site-main.content-shell:has(.tcg-public-inventory)', $css );
 		$this->assert_contains( '.tcg-public-inventory__empty-actions', $css );
 		$this->assert_contains( '.tcg-storefront-shelf__hero', $css );
+		$this->assert_contains( '.tcg-storefront-shelf__hero-copy', $css );
+		$this->assert_contains( '.tcg-storefront-shelf__badge', $css );
+		$this->assert_contains( 'width: 100%;', $css );
+		$this->assert_contains( 'max-width: 100%;', $css );
 		$this->assert_contains( 'body.page .content-card:has(.tcg-public-inventory)', $css );
 		$this->assert_contains( '.tcg-public-inventory__empty-actions a:visited', $css );
 		$this->assert_contains( 'color: #05080b !important', $css );

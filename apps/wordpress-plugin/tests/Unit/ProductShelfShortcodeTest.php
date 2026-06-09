@@ -78,12 +78,39 @@ final class ProductShelfShortcodeTest extends TestCase {
 		$this->assert_not_contains( 'No accessories are live online yet.', $html );
 	}
 
+	public function test_shelf_replaces_woocommerce_placeholder_images_with_branded_tile(): void {
+		$shortcode = new ProductShelfShortcode(
+			static fn (): array => array(
+				array(
+					'name'        => 'Pokemon Booster Bundle',
+					'url'         => '/product/pokemon-booster-bundle/',
+					'image_html'  => '<img src="/wp-content/plugins/woocommerce/assets/images/placeholder.png" class="woocommerce-placeholder" alt="Placeholder" />',
+					'price_html'  => '<span class="amount">$29.99</span>',
+					'stock_label' => '12 available',
+					'summary'     => 'Sealed Pokemon packs.',
+				),
+			)
+		);
+
+		$html = $shortcode->render_product_shelf(
+			array(
+				'category' => 'sealed-products',
+				'label'    => 'Sealed Products',
+				'limit'    => '12',
+			)
+		);
+
+		$this->assert_contains( 'tcg-product-shelf__image-placeholder', $html );
+		$this->assert_contains( 'Cards, games, and more', $html );
+		$this->assert_not_contains( 'woocommerce-placeholder', $html );
+	}
+
 	public function test_public_inventory_css_contains_product_shelf_layout(): void {
 		$css = (string) file_get_contents( dirname( __DIR__, 2 ) . '/assets/css/public-inventory.css' );
 
 		$this->assert_contains( '.tcg-product-shelf__grid', $css );
 		$this->assert_contains( '.tcg-product-shelf__empty', $css );
 		$this->assert_contains( '.tcg-product-shelf__button', $css );
-		$this->assert_contains( 'grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))', $css );
+		$this->assert_contains( 'grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr))', $css );
 	}
 }

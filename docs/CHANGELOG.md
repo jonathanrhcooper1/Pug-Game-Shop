@@ -6,6 +6,16 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Product shelf cards now replace WooCommerce's default gray placeholder image
+  with a branded PUG gradient tile when no real product image exists, keeping
+  Sealed, Graded, and Accessories visually aligned with the home page.
+- Production Sealed, Graded, and Accessories shelves were seeded with 18
+  visible WooCommerce products across their product categories so those pages
+  display live product grids instead of empty connected states during the site
+  preview.
+- Production browser click-through now covers the custom storefront pages,
+  legacy `/shop/` redirect, Singles search, product detail condition/price
+  display, link health, and desktop/mobile overflow checks.
 - Sealed, Graded, and Accessories storefront pages now use a plugin-owned
   `[tcg_product_shelf]` renderer that reads WooCommerce products from their
   shelf categories and shows a branded connected-empty state when a category has

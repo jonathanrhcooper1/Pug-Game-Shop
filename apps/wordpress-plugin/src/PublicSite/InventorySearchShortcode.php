@@ -18,6 +18,14 @@ final class InventorySearchShortcode {
 	public const SHORTCODE    = 'tcg_inventory_search';
 	public const STYLE_HANDLE = 'tcg-store-public-inventory';
 	public const SCRIPT_HANDLE = 'tcg-store-public-storefront-links';
+	public const STOREFRONT_PAGE_SLUGS = array(
+		'shop-singles',
+		'shop-sealed-products',
+		'shop-graded-cards',
+		'shop-accessories',
+		'card-inventory',
+		'events',
+	);
 
 	private InventorySearchPresenter $presenter;
 
@@ -341,6 +349,13 @@ final class InventorySearchShortcode {
 			return true;
 		}
 
+		if (
+			( function_exists( 'is_front_page' ) && is_front_page() )
+			|| ( function_exists( 'is_home' ) && is_home() )
+		) {
+			return true;
+		}
+
 		if ( ! function_exists( 'is_singular' ) || ! function_exists( 'get_queried_object' ) || ! function_exists( 'has_shortcode' ) ) {
 			return false;
 		}
@@ -349,11 +364,18 @@ final class InventorySearchShortcode {
 			return false;
 		}
 
+		if ( function_exists( 'is_page' ) && is_page( self::STOREFRONT_PAGE_SLUGS ) ) {
+			return true;
+		}
+
 		$object = get_queried_object();
 
 		return is_object( $object )
 			&& isset( $object->post_content )
-			&& has_shortcode( (string) $object->post_content, self::SHORTCODE );
+			&& (
+				has_shortcode( (string) $object->post_content, self::SHORTCODE )
+				|| has_shortcode( (string) $object->post_content, ProductShelfShortcode::SHORTCODE )
+			);
 	}
 
 	private function send_inventory_no_cache_headers(): void {

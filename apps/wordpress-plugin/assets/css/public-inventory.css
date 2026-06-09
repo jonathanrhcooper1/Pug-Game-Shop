@@ -17,10 +17,28 @@
   margin-top: 18px;
 }
 
+body:has(.tcg-public-inventory),
+body:has(.tcg-storefront-shelf) {
+  overflow-x: hidden;
+}
+
+body.page .site-main.content-shell:has(.tcg-public-inventory),
+body.page .site-main.content-shell:has(.tcg-storefront-shelf) {
+  width: min(1760px, calc(100vw - 24px));
+  max-width: min(1760px, calc(100vw - 24px));
+  margin-inline: auto;
+  padding-inline: clamp(10px, 2vw, 28px);
+}
+
 body.page .content-card:has(.tcg-public-inventory),
 body.page .content-card:has(.tcg-storefront-shelf) {
-  max-width: min(1560px, calc(100vw - 32px));
+  width: 100%;
+  max-width: none;
   padding: clamp(18px, 2.5vw, 34px);
+  background:
+    linear-gradient(135deg, rgba(6, 10, 18, 0.96), rgba(9, 25, 43, 0.94) 54%, rgba(6, 10, 18, 0.98)),
+    repeating-linear-gradient(90deg, rgba(96, 214, 255, 0.08) 0 1px, transparent 1px 54px);
+  border-color: rgba(96, 214, 255, 0.2);
 }
 
 body.page .entry-content:has(.tcg-public-inventory),
@@ -44,14 +62,16 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 .tcg-storefront-shelf__hero {
   position: relative;
   display: grid;
-  gap: 18px;
-  min-height: 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 320px);
+  gap: clamp(18px, 3vw, 34px);
+  min-height: 320px;
+  align-items: end;
   padding: clamp(24px, 4vw, 56px);
   overflow: hidden;
   background:
     linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 44px),
-    radial-gradient(circle at 72% 18%, rgba(255, 79, 216, 0.2), transparent 30%),
-    radial-gradient(circle at 86% 72%, rgba(38, 217, 240, 0.2), transparent 30%),
+    linear-gradient(162deg, transparent 0 58%, rgba(38, 217, 240, 0.14) 58% 61%, transparent 61%),
+    linear-gradient(24deg, transparent 0 66%, rgba(255, 79, 216, 0.12) 66% 69%, transparent 69%),
     linear-gradient(135deg, rgba(8, 13, 28, 0.98), rgba(17, 29, 58, 0.94) 58%, rgba(5, 8, 11, 0.98));
   border: 1px solid rgba(126, 212, 255, 0.24);
   border-radius: 8px;
@@ -61,6 +81,43 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 .tcg-storefront-shelf__hero > * {
   position: relative;
   z-index: 1;
+}
+
+.tcg-storefront-shelf__hero-copy {
+  display: grid;
+  gap: 18px;
+  max-width: 980px;
+}
+
+.tcg-storefront-shelf__badge {
+  display: grid;
+  gap: 10px;
+  justify-self: end;
+  width: min(100%, 300px);
+  padding: 20px;
+  color: #06101e;
+  background:
+    linear-gradient(135deg, #f6c635, #ffef88 48%, #2adde0),
+    repeating-linear-gradient(135deg, rgba(5, 8, 11, 0.12) 0 2px, transparent 2px 16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+  text-transform: uppercase;
+}
+
+.tcg-storefront-shelf__badge span {
+  color: #06101e;
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-size: clamp(36px, 5vw, 62px);
+  font-weight: 900;
+  line-height: 0.85;
+}
+
+.tcg-storefront-shelf__badge strong {
+  color: #06101e;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .tcg-storefront-shelf__kicker,
@@ -113,6 +170,15 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   border-radius: 8px;
   font-weight: 900;
   text-decoration: none;
+}
+
+.tcg-storefront-shelf--singles .tcg-storefront-shelf__nav a[href="/shop-singles/"],
+.tcg-storefront-shelf--sealed .tcg-storefront-shelf__nav a[href="/shop-sealed-products/"],
+.tcg-storefront-shelf--graded .tcg-storefront-shelf__nav a[href="/shop-graded-cards/"],
+.tcg-storefront-shelf--accessories .tcg-storefront-shelf__nav a[href="/shop-accessories/"] {
+  color: #06101e;
+  background: linear-gradient(135deg, var(--pug-gold), #ffef88 48%, var(--pug-cyan));
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .tcg-storefront-shelf__nav a:hover,
@@ -176,7 +242,7 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 
 .tcg-product-shelf__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 18px;
 }
 
@@ -191,14 +257,19 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.32);
 }
 
+.tcg-product-shelf__card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
 .tcg-product-shelf__media {
   display: grid;
   min-height: 230px;
   place-items: center;
   padding: 14px;
   background:
-    radial-gradient(circle at 30% 20%, rgba(246, 198, 53, 0.18), transparent 32%),
-    radial-gradient(circle at 75% 30%, rgba(42, 221, 224, 0.2), transparent 38%),
+    linear-gradient(148deg, rgba(246, 198, 53, 0.18) 0 18%, transparent 18% 100%),
+    linear-gradient(32deg, transparent 0 66%, rgba(42, 221, 224, 0.22) 66% 100%),
     linear-gradient(145deg, rgba(4, 9, 20, 0.88), rgba(15, 28, 51, 0.92));
   text-decoration: none;
 }
@@ -213,15 +284,35 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 
 .tcg-product-shelf__image-placeholder {
   display: grid;
-  width: min(168px, 70%);
-  aspect-ratio: 1;
+  width: min(190px, 78%);
+  min-height: 152px;
   place-items: center;
+  padding: 18px;
   border: 1px solid rgba(96, 214, 255, 0.24);
   border-radius: 8px;
-  background: rgba(5, 8, 15, 0.72);
-  color: #f6c635;
+  background:
+    linear-gradient(135deg, #ffe45f, #bdf684 46%, #28e0e7 100%),
+    #f6c635;
+  color: #05080b;
+  text-align: center;
   font-weight: 900;
   letter-spacing: 0;
+  text-transform: uppercase;
+  box-shadow: 0 18px 34px rgba(42, 221, 224, 0.16);
+}
+
+.tcg-product-shelf__image-placeholder strong {
+  display: block;
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  line-height: 0.9;
+}
+
+.tcg-product-shelf__image-placeholder small {
+  display: block;
+  max-width: 14ch;
+  color: rgba(5, 8, 11, 0.82);
+  font-size: 0.68rem;
+  line-height: 1.1;
 }
 
 .tcg-product-shelf__body {
@@ -335,7 +426,7 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   color: #ffffff;
   background:
     linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 42px),
-    radial-gradient(circle at 85% 20%, rgba(246, 198, 53, 0.18), transparent 34%),
+    linear-gradient(28deg, transparent 0 68%, rgba(246, 198, 53, 0.18) 68% 100%),
     linear-gradient(135deg, rgba(5, 8, 11, 0.96), rgba(10, 38, 57, 0.92) 58%, rgba(31, 20, 55, 0.86));
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
@@ -474,7 +565,7 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 
 .tcg-public-inventory__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
   gap: 16px;
 }
 
@@ -501,7 +592,7 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   min-width: 0;
   padding: 14px;
   background:
-    radial-gradient(circle at 70% 20%, rgba(246, 198, 53, 0.18), transparent 36%),
+    linear-gradient(22deg, transparent 0 66%, rgba(246, 198, 53, 0.18) 66% 100%),
     linear-gradient(135deg, rgba(38, 217, 240, 0.14), rgba(15, 38, 57, 0.64)),
     #071321;
 }
@@ -607,7 +698,7 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   padding: 18px;
   color: #f8fbff;
   background:
-    radial-gradient(circle at 80% 20%, rgba(246, 198, 53, 0.2), transparent 34%),
+    linear-gradient(27deg, transparent 0 68%, rgba(246, 198, 53, 0.2) 68% 100%),
     linear-gradient(135deg, rgba(15, 95, 143, 0.24), rgba(5, 8, 11, 0.92));
   border: 1px solid rgba(246, 198, 53, 0.34);
   border-radius: 8px;
@@ -710,15 +801,28 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 }
 
 @media (max-width: 760px) {
+  body.page .site-main.content-shell:has(.tcg-public-inventory),
+  body.page .site-main.content-shell:has(.tcg-storefront-shelf) {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 0;
+  }
+
   body.page .content-card:has(.tcg-public-inventory),
   body.page .content-card:has(.tcg-storefront-shelf) {
-    max-width: calc(100vw - 20px);
-    padding: 14px;
+    width: 100%;
+    max-width: none;
+    padding: 12px;
   }
 
   .tcg-storefront-shelf__hero {
+    grid-template-columns: 1fr;
     min-height: 0;
-    padding: 22px;
+    padding: 18px;
+  }
+
+  .tcg-storefront-shelf__badge {
+    justify-self: stretch;
   }
 
   .tcg-storefront-shelf__nav a,

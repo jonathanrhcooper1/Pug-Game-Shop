@@ -3,6 +3,98 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Storefront Click-Through And Shelf Polish
+
+### What Changed
+
+- Finished a production storefront click-through pass for Home, Singles, Sealed,
+  Graded, Accessories, Events, Buying, Contact, Cart, and the legacy `/shop/`
+  route.
+- Seeded 18 visible WooCommerce shelf products across Sealed, Graded, and
+  Accessories so those pages render populated product grids during preview.
+- Replaced WooCommerce default placeholder thumbnails in plugin-rendered product
+  shelves with branded PUG gradient tiles while preserving real product images.
+- Hardened public storefront link behavior so old theme-level Shop links point
+  shoppers to Singles, and `/shop/` redirects to `/shop-singles/`.
+- Kept the Pug theme files untouched; all storefront wiring and shelf rendering
+  changes are in the plugin and production setup scripts.
+
+### Why
+
+The custom pages were connected, but the live click-through showed empty
+non-singles shelves and plain WooCommerce placeholder thumbnails. Those made the
+site feel unfinished even though the data paths were live. The change keeps the
+preview visually aligned with the home page while still using WooCommerce
+products and plugin-owned storefront components.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/assets/js/public-storefront-links.js`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/PublicSite/ProductShelfShortcode.php`
+- `apps/wordpress-plugin/tests/Unit/ProductShelfShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-install-wordpress-package.mjs`
+- `scripts/production-seed-visible-card-inventory.mjs`
+- `scripts/staging-install-wordpress-package.mjs`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added unit coverage that WooCommerce placeholder images are replaced by the
+  branded product shelf tile.
+- Added/updated public storefront unit coverage for storefront page cache-bypass
+  context, header/footer legacy Shop link rewrites, and mobile full-width CSS.
+
+### Verification
+
+- `php apps\wordpress-plugin\tests\run.php`: 1011 tests, 0 failures.
+- `node scripts\tests\wordpress-package-contract.mjs`: passed, built
+  `dist\tcg-store-platform-0.200.0.zip`.
+- `node --check scripts\production-install-wordpress-package.mjs`: passed.
+- Production package install activated plugin `0.200.0` after backups:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T233742Z.sql`
+  and
+  `$HOME/tcg-production-backups/pug-production-wp-content-20260609T233742Z.tgz`.
+- `npm run production:verify-public-shortcodes` with expected plugin
+  `0.200.0`: passed.
+- `npm run production:verify-reference-search` with expected plugin `0.200.0`:
+  passed, still cache-first with images and two-decimal prices.
+- Browser click-through saved screenshots under
+  `.codex-logs/storefront-clickthrough-20260609T233417Z` and verified:
+  header navigation, all expected storefront links, no exact `/shop/` links on
+  cache-busted storefront pages, `/shop/` 301 to Singles, Singles search with
+  image result, product detail with image/condition/price/add-to-cart, populated
+  Sealed/Graded/Accessories shelves, no bad price precision, and no desktop or
+  mobile horizontal overflow.
+- Refreshed post-deploy shelf screenshot saved under
+  `.codex-logs/storefront-clickthrough-20260609T233936Z` and verified
+  6 branded placeholders, 0 WooCommerce placeholders, plugin asset `0.200.0`,
+  and no horizontal overflow.
+
+### Rollback Notes
+
+- Restore the production plugin and content backups created before the
+  `0.200.0` package install if the product shelf renderer causes storefront
+  issues.
+- The 18 seeded shelf products are idempotent WooCommerce products with SKUs
+  prefixed `pug-demo-`; they can be trashed or deleted from WooCommerce if the
+  preview products should be removed.
+- No database migration rollback is required.
+- If GoDaddy serves an older cached canonical homepage, `/shop/` still redirects
+  to Singles and cache-busted storefront pages show the current header. Clear
+  GoDaddy managed WordPress/CDN cache from hosting if the old homepage cache
+  persists in a visitor browser.
+
 ## 2026-06-09 - Production Product Shelf Shortcode
 
 ### What Changed

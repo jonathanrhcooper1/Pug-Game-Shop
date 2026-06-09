@@ -35,7 +35,8 @@ const requiredEnv = {
 }
 
 if (!customPackageZip && !dryRun) {
-  execFileSync(npmCommand(), ["run", "package:wordpress"], {
+  const npm = npmCommand()
+  execFileSync(npm.command, [...npm.args, "run", "package:wordpress"], {
     cwd: root,
     stdio: "inherit",
   })
@@ -258,13 +259,18 @@ function productionSshConnectConfig(env, options = {}) {
     host: env.PUG_PROD_SSH_HOST,
     username: env.PUG_PROD_SSH_USER,
     password: env.PUG_PROD_SSH_PASSWORD,
-    readyTimeout: options.readyTimeout ?? 20000,
+    readyTimeout: options.readyTimeout ?? Number.parseInt(String(process.env.PUG_PROD_SSH_READY_TIMEOUT_MS ?? "60000"), 10),
     algorithms: STAGING_SSH_ALGORITHMS,
   }
 }
 
 function npmCommand() {
-  return process.platform === "win32" ? "npm.cmd" : "npm"
+  const npmExecPath = String(process.env.npm_execpath ?? "").trim()
+  if (npmExecPath && existsSync(npmExecPath)) {
+    return { command: process.execPath, args: [npmExecPath] }
+  }
+
+  return { command: process.platform === "win32" ? "npm.cmd" : "npm", args: [] }
 }
 
 function uploadFile(connection, localPath, remotePathValue) {

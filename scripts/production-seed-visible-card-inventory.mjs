@@ -17,7 +17,9 @@ const wpPath = process.env.PUG_PROD_WP_PATH ?? "/html"
 const wpCli = process.env.PUG_PROD_WP_CLI ?? "wp"
 const confirmValue = "seed-visible-card-inventory"
 const perGame = boundedInt(process.env.PUG_PROD_VISIBLE_CARD_SEED_PER_GAME ?? "12", 10, 15)
-const games = normalizeGames(process.env.PUG_PROD_VISIBLE_CARD_SEED_GAMES ?? "pokemon,magicthegathering")
+const games = normalizeGames(
+  process.env.PUG_PROD_VISIBLE_CARD_SEED_GAMES ?? "pokemon,magicthegathering,lorcana,onepiece",
+)
 
 const requiredEnv = {
   PUG_PROD_SSH_HOST: process.env.PUG_PROD_SSH_HOST,
@@ -554,7 +556,7 @@ function normalizeGames(value) {
     .map((game) => game.trim().toLowerCase().replace(/[^a-z0-9-]/g, ""))
     .filter(Boolean)
 
-  return games.length > 0 ? Array.from(new Set(games)) : ["pokemon", "magicthegathering"]
+  return games.length > 0 ? Array.from(new Set(games)) : ["pokemon", "magicthegathering", "lorcana", "onepiece"]
 }
 
 function boundedInt(value, min, max) {

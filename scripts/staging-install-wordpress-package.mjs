@@ -26,7 +26,8 @@ const requiredEnv = {
 }
 
 if (!customPackageZip && !dryRun) {
-  execFileSync("npm", ["run", "package:wordpress"], {
+  const npm = npmCommand()
+  execFileSync(npm.command, [...npm.args, "run", "package:wordpress"], {
     cwd: root,
     stdio: "inherit",
   })
@@ -217,6 +218,15 @@ function normalizeRemoteDir(value) {
     .map((part) => part.trim())
     .filter(Boolean)
     .join("/")}`
+}
+
+function npmCommand() {
+  const npmExecPath = String(process.env.npm_execpath ?? "").trim()
+  if (npmExecPath && existsSync(npmExecPath)) {
+    return { command: process.execPath, args: [npmExecPath] }
+  }
+
+  return { command: process.platform === "win32" ? "npm.cmd" : "npm", args: [] }
 }
 
 function parseJson(value) {
