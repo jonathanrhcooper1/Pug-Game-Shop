@@ -116,6 +116,7 @@ final class ScryDexCardsSyncWorkerPlanner {
 			'status'              => $page_plan->status(),
 			'reference_row_count' => count( $page_plan->reference_rows() ),
 			'price_row_count'     => count( $page_plan->price_rows() ),
+			'price_point_row_count' => count( $page_plan->price_point_rows() ),
 			'variant_row_count'   => count( $page_plan->variant_rows() ),
 			'error_count'         => count( $page_plan->errors() ),
 			'retryable'           => $page_plan->retryable(),

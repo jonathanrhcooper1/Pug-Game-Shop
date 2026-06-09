@@ -133,7 +133,7 @@ final class InventoryWorkspacePresenter {
 			'status'         => $ready ? 'ready' : 'locked',
 			'status_label'   => $ready
 				? 'Ready for staff inventory search'
-				: 'Locked until staging inventory search gates are enabled',
+				: 'Locked until inventory search gates are enabled',
 			'endpoint_path'  => '/tcg-store/v1/inventory/search',
 			'method'         => 'GET',
 			'query'          => $this->search_query( $query ),
@@ -169,7 +169,7 @@ final class InventoryWorkspacePresenter {
 			'status'            => $ready ? 'ready' : 'locked',
 			'status_label'      => $ready
 				? 'Ready for card lookup and intake drafts'
-				: 'Locked until staging card lookup gates are enabled',
+				: 'Locked until card lookup gates are enabled',
 			'endpoint_path'     => '/tcg-store/v1/reference/search',
 			'method'            => 'GET',
 			'query'             => $this->lookup_query( $query ),
@@ -206,7 +206,7 @@ final class InventoryWorkspacePresenter {
 			'status'                => $ready ? 'ready' : 'locked',
 			'status_label'          => $ready
 				? 'Ready for staff inventory intake'
-				: 'Locked until staging inventory create gates are enabled',
+				: 'Locked until inventory create gates are enabled',
 			'endpoint_path'         => '/tcg-store/v1/inventory',
 			'method'                => 'POST',
 			'form'                  => $this->intake_form( $form ),
@@ -263,7 +263,7 @@ final class InventoryWorkspacePresenter {
 				'Route execution',
 				true === ( $dependency_payload['route_registration_deferred'] ?? true ) ? 'Deferred' : 'Ready',
 				true === ( $dependency_payload['route_registration_deferred'] ?? true ) ? 'pending' : 'ready',
-				'activate after staging route and permission verification'
+				'activate after route and permission verification'
 			),
 			$this->row(
 				'Repository writes',

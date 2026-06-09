@@ -160,7 +160,7 @@ final class SettingsPage {
 
 		add_settings_field(
 			'inventory_route_runtime',
-			__( 'Staging route gates', 'tcg-store-platform' ),
+			__( 'Inventory route gates', 'tcg-store-platform' ),
 			array( $this, 'render_inventory_route_runtime' ),
 			'tcg-store-platform',
 			'tcg_store_platform_inventory_routes'
@@ -175,7 +175,7 @@ final class SettingsPage {
 
 		add_settings_field(
 			'offline_route_runtime',
-			__( 'Staging offline gates', 'tcg-store-platform' ),
+			__( 'Offline route gates', 'tcg-store-platform' ),
 			array( $this, 'render_offline_route_runtime' ),
 			'tcg-store-platform',
 			'tcg_store_platform_offline_routes'
@@ -272,7 +272,7 @@ final class SettingsPage {
 
 	public function render_branding_description(): void {
 		echo '<p>';
-		echo esc_html__( 'White-label settings are shared by WordPress, kiosk, receipt, staging banner, and offline app surfaces so each company can use its own identity without code changes.', 'tcg-store-platform' );
+		echo esc_html__( 'White-label settings are shared by WordPress, kiosk, receipt, environment banner, and offline app surfaces so each company can use its own identity without code changes.', 'tcg-store-platform' );
 		echo '</p>';
 	}
 
@@ -316,7 +316,7 @@ final class SettingsPage {
 			'success_color'        => __( 'Success', 'tcg-store-platform' ),
 			'warning_color'        => __( 'Warning', 'tcg-store-platform' ),
 			'danger_color'         => __( 'Danger', 'tcg-store-platform' ),
-			'staging_banner_color' => __( 'Staging banner', 'tcg-store-platform' ),
+			'staging_banner_color' => __( 'Environment banner', 'tcg-store-platform' ),
 		);
 
 		echo '<fieldset>';
@@ -390,7 +390,7 @@ final class SettingsPage {
 
 	public function render_inventory_route_description(): void {
 		echo '<p>';
-		echo esc_html__( 'Route runtime gates are separate from feature flags. Keep writes and public reads disabled until staging acceptance passes.', 'tcg-store-platform' );
+		echo esc_html__( 'Route runtime gates are separate from feature flags. Enable write and public-read routes only after the current production checklist is accepted.', 'tcg-store-platform' );
 		echo '</p>';
 	}
 
@@ -405,7 +405,7 @@ final class SettingsPage {
 			. '][staff_search_route_enabled]" value="1" '
 			. checked( ! empty( $runtime['staff_search_route_enabled'] ), true, false )
 			. ' /> ';
-		echo esc_html__( 'Enable staff inventory search route in staging.', 'tcg-store-platform' );
+		echo esc_html__( 'Enable staff inventory search route.', 'tcg-store-platform' );
 		echo '</label><br />';
 
 		echo '<label>';
@@ -415,7 +415,7 @@ final class SettingsPage {
 			. '][staff_create_route_enabled]" value="1" '
 			. checked( ! empty( $runtime['staff_create_route_enabled'] ), true, false )
 			. ' /> ';
-		echo esc_html__( 'Enable staff inventory create route in staging.', 'tcg-store-platform' );
+		echo esc_html__( 'Enable staff inventory create route.', 'tcg-store-platform' );
 		echo '</label><br />';
 
 		echo '<label>';
@@ -435,7 +435,7 @@ final class SettingsPage {
 
 	public function render_offline_route_description(): void {
 		echo '<p>';
-		echo esc_html__( 'Offline route gates remain separate from feature flags and pairing-code policy. Enable only the device pairing route first, then verify staging before opening pull or push routes.', 'tcg-store-platform' );
+		echo esc_html__( 'Offline route gates remain separate from feature flags and pairing-code policy. Enable only the device pairing route first, then verify registered devices before opening pull or push routes.', 'tcg-store-platform' );
 		echo '</p>';
 	}
 
@@ -445,7 +445,7 @@ final class SettingsPage {
 		echo '<fieldset>';
 		$this->render_offline_route_checkbox(
 			'device_pairing_route_enabled',
-			__( 'Enable offline device pairing route in staging.', 'tcg-store-platform' ),
+			__( 'Enable offline device pairing route.', 'tcg-store-platform' ),
 			! empty( $runtime['device_pairing_route_enabled'] )
 		);
 		$this->render_offline_route_checkbox(
@@ -464,7 +464,7 @@ final class SettingsPage {
 			! empty( $runtime['conflict_routes_enabled'] )
 		);
 		echo '<p class="description">';
-		echo esc_html__( 'The offline feature flag must also be enabled and production remains unavailable. Pull, push, and conflict gates should stay off until device pairing, local SQLite persistence, and staging smoke tests pass.', 'tcg-store-platform' );
+		echo esc_html__( 'The offline feature flag must also be enabled. Pull, push, and conflict gates should stay off until device pairing, local SQLite persistence, and production smoke tests pass.', 'tcg-store-platform' );
 		echo '</p>';
 		echo '</fieldset>';
 	}
@@ -526,7 +526,7 @@ final class SettingsPage {
 		);
 
 		echo '<p class="description">';
-		echo esc_html__( 'For the current offline app, staff mode should include offline_pull, offline_push, and conflicts. Enable the offline_sync feature flag and device-pairing route gate only after staging backup confirmation.', 'tcg-store-platform' );
+		echo esc_html__( 'For the current offline app, staff mode should include offline_pull, offline_push, and conflicts. Enable the offline_sync feature flag and device-pairing route gate only after backup confirmation.', 'tcg-store-platform' );
 		echo '</p>';
 		echo '</fieldset>';
 	}
@@ -601,9 +601,9 @@ final class SettingsPage {
 
 		echo '<p class="description">';
 		echo esc_html(
-			sprintf(
+				sprintf(
 				/* translators: 1: status, 2: active key slot. */
-				__( 'Status: %1$s. Active key slot: %2$s. Network requests and webhook registration remain deferred until staging acceptance.', 'tcg-store-platform' ),
+				__( 'Status: %1$s. Active key slot: %2$s. Network requests are enabled only when the ScryDex provider is configured and catalog sync is started.', 'tcg-store-platform' ),
 				(string) $status['status'],
 				(string) $status['active_key_slot']
 			)
@@ -624,7 +624,7 @@ final class SettingsPage {
 			. '][enabled]" value="1" '
 			. checked( ! empty( $settings['enabled'] ), true, false )
 			. ' /> ';
-		echo esc_html__( 'Enable staged usage-budget gate.', 'tcg-store-platform' );
+		echo esc_html__( 'Enable usage-budget gate.', 'tcg-store-platform' );
 		echo '</label><br />';
 
 		$this->render_scrydex_budget_number_input(
@@ -650,9 +650,9 @@ final class SettingsPage {
 
 		echo '<p class="description">';
 		echo esc_html(
-			sprintf(
+				sprintf(
 				/* translators: 1: status. */
-				__( 'Status: %1$s. Usage endpoint requests remain deferred until the ScryDex worker is accepted in staging.', 'tcg-store-platform' ),
+				__( 'Status: %1$s. Usage endpoint requests are optional for manual enterprise indexing.', 'tcg-store-platform' ),
 				(string) $status['status']
 			)
 		);
@@ -703,9 +703,9 @@ final class SettingsPage {
 
 		echo '<p class="description">';
 		echo esc_html(
-			sprintf(
+				sprintf(
 				/* translators: 1: status. */
-				__( 'Status: %1$s. Production remains unavailable through feature flags even if these gates are enabled.', 'tcg-store-platform' ),
+				__( 'Status: %1$s. Scheduled sync runs when these gates and the ScryDex provider are enabled.', 'tcg-store-platform' ),
 				(string) $status['status']
 			)
 		);

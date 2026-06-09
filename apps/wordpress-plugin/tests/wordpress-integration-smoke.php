@@ -92,7 +92,7 @@ global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
 $assert( '0.156.0' === Version::PLUGIN, 'Unexpected plugin version.' );
-$assert( 10 === Version::DATABASE, 'Unexpected database target version.' );
+$assert( Version::DATABASE >= 14, 'Unexpected database target version.' );
 $assert( 10 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 3 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
 

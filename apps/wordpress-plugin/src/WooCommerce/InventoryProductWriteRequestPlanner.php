@@ -24,7 +24,8 @@ final class InventoryProductWriteRequestPlanner {
 		array $context = array()
 	): InventoryProductWriteRequestPlan {
 		$environment = $this->environment( $context['environment'] ?? 'local' );
-		$errors      = $this->validation_errors( $projection_plan, $environment );
+		$approved    = $this->production_write_approved( $environment, $context );
+		$errors      = $this->validation_errors( $projection_plan, $environment, $approved );
 
 		if ( array() !== $errors ) {
 			return InventoryProductWriteRequestPlan::rejected( $projection_plan, $environment, $errors );
@@ -41,17 +42,21 @@ final class InventoryProductWriteRequestPlanner {
 		return InventoryProductWriteRequestPlan::ready(
 			$projection_plan,
 			$environment,
-			$this->request_plan( $projection_plan )
+			$this->request_plan( $projection_plan, $approved )
 		);
 	}
 
 	/**
 	 * @return list<string>
 	 */
-	private function validation_errors( InventoryProductProjectionPlan $projection_plan, string $environment ): array {
+	private function validation_errors(
+		InventoryProductProjectionPlan $projection_plan,
+		string $environment,
+		bool $production_write_approved
+	): array {
 		$errors = array();
 
-		if ( ! in_array( $environment, self::NON_PRODUCTION_ENVIRONMENTS, true ) ) {
+		if ( ! in_array( $environment, self::NON_PRODUCTION_ENVIRONMENTS, true ) && ! $production_write_approved ) {
 			$errors[] = 'woocommerce_product_write_non_production_environment_required';
 		}
 
@@ -92,7 +97,7 @@ final class InventoryProductWriteRequestPlanner {
 	/**
 	 * @return array<string, mixed>
 	 */
-	private function request_plan( InventoryProductProjectionPlan $projection_plan ): array {
+	private function request_plan( InventoryProductProjectionPlan $projection_plan, bool $production_write_approved ): array {
 		$requests = array();
 
 		foreach ( $projection_plan->product_operations() as $index => $operation ) {
@@ -108,7 +113,7 @@ final class InventoryProductWriteRequestPlanner {
 				'product_id'      => $product_id,
 				'idempotency_key' => $projection_plan->idempotency_key() . ':woocommerce:' . (string) $index,
 				'body'            => $body,
-				'write_scope'     => 'deferred',
+				'write_scope'     => $production_write_approved ? 'approved_production_product_sync' : 'non_production_product_sync',
 			);
 		}
 
@@ -117,6 +122,7 @@ final class InventoryProductWriteRequestPlanner {
 			'request_count'                 => count( $requests ),
 			'woocommerce_write_deferred'    => true,
 			'wordpress_crud_write_deferred' => true,
+			'production_write_approved'     => $production_write_approved,
 		);
 	}
 
@@ -129,6 +135,7 @@ final class InventoryProductWriteRequestPlanner {
 			'request_count'                 => 0,
 			'woocommerce_write_deferred'    => true,
 			'wordpress_crud_write_deferred' => true,
+			'production_write_approved'     => false,
 		);
 	}
 
@@ -144,6 +151,17 @@ final class InventoryProductWriteRequestPlanner {
 		$value = strtolower( trim( (string) $value ) );
 
 		return 'dev' === $value ? 'development' : $value;
+	}
+
+	/**
+	 * @param array<string, mixed> $context Request planning context.
+	 */
+	private function production_write_approved( string $environment, array $context ): bool {
+		if ( in_array( $environment, self::NON_PRODUCTION_ENVIRONMENTS, true ) ) {
+			return false;
+		}
+
+		return 'woocommerce-product-sync' === trim( (string) ( $context['production_write_approval'] ?? '' ) );
 	}
 
 	private function positive_int( mixed $value ): ?int {

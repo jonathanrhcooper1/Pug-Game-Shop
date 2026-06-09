@@ -12,9 +12,12 @@ use TCGStorePlatform\Inventory\InventoryIntakePersistencePlanner;
 use TCGStorePlatform\Inventory\InventoryIntakePersistencePlan;
 use TCGStorePlatform\Inventory\InventoryIntakeRepositoryResult;
 use TCGStorePlatform\Inventory\InventoryIntakeRepository;
+use TCGStorePlatform\Inventory\InventoryExternalMappingRepository;
 use TCGStorePlatform\Square\SquareInventoryProjectionPlanner;
+use TCGStorePlatform\WooCommerce\InventoryProductProjectionExecutor;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
 use TCGStorePlatform\WooCommerce\InventoryProductWriteRequestPlanner;
+use TCGStorePlatform\WooCommerce\WooCommerceInventoryProductWriter;
 
 final class InventoryIntakeRouteHandler {
 	public function __construct(
@@ -25,7 +28,9 @@ final class InventoryIntakeRouteHandler {
 		private ?InventoryProductProjectionPlanner $woocommerce_projection_planner = null,
 		private ?SquareInventoryProjectionPlanner $square_projection_planner = null,
 		private ?InventoryProductWriteRequestPlanner $woocommerce_write_request_planner = null,
-		private array $woocommerce_write_request_context = array()
+		private array $woocommerce_write_request_context = array(),
+		private ?InventoryProductProjectionExecutor $woocommerce_projection_executor = null,
+		private ?InventoryExternalMappingRepository $external_mapping_repository = null
 	) {
 	}
 
@@ -86,7 +91,7 @@ final class InventoryIntakeRouteHandler {
 				array(
 					'persistence' => $plan->audit_payload(),
 					'repository'  => $result->audit_payload(),
-					'projections' => $this->projection_contracts( $plan, $result ),
+					'projections' => $this->projection_contracts( $plan, $result, $data ),
 				)
 			),
 		);
@@ -112,12 +117,22 @@ final class InventoryIntakeRouteHandler {
 		return $this->woocommerce_write_request_planner ?? new InventoryProductWriteRequestPlanner();
 	}
 
+	private function woocommerce_projection_executor( array $context ): InventoryProductProjectionExecutor {
+		return $this->woocommerce_projection_executor ?? new InventoryProductProjectionExecutor(
+			true,
+			new WooCommerceInventoryProductWriter(),
+			$this->woocommerce_write_request_planner(),
+			$context
+		);
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */
 	private function projection_contracts(
 		InventoryIntakePersistencePlan $plan,
-		InventoryIntakeRepositoryResult $result
+		InventoryIntakeRepositoryResult $result,
+		OfflineRestRequestData $data
 	): array {
 		$row = array_merge(
 			$plan->insert_row(),
@@ -126,6 +141,7 @@ final class InventoryIntakeRouteHandler {
 				'quantity'     => 1,
 			)
 		);
+		$execution_context = $this->woocommerce_projection_context( $row, $data );
 
 		$woocommerce = $this->woocommerce_projection_planner()->plan_row(
 			$row,
@@ -138,18 +154,103 @@ final class InventoryIntakeRouteHandler {
 			$woocommerce,
 			$this->woocommerce_write_request_context
 		);
+		$sync        = $this->woocommerce_sync_contract( $data, $woocommerce, $execution_context, $result->insert_id() );
 
 		return array(
 			'action'                                     => 'inventory_external_projection_plans',
-			'status'                                     => 'planned',
+			'status'                                     => true === ( $sync['synced'] ?? false ) ? 'synced' : 'planned',
 			'woocommerce_product_projection'             => $woocommerce->projection_contract(),
 			'woocommerce_product_write_request'          => $wc_request->audit_payload(),
+			'woocommerce_product_sync'                   => $sync,
 			'square_inventory_projection'                => $square->projection_contract(),
-			'woocommerce_projection_deferred'            => true,
-			'woocommerce_product_write_request_deferred' => true,
+			'woocommerce_projection_deferred'            => true !== ( $sync['synced'] ?? false ),
+			'woocommerce_product_write_request_deferred' => true !== ( $sync['synced'] ?? false ),
 			'square_inventory_projection_deferred'       => true,
 			'network_request_deferred'                   => true,
 			'operation_count'                            => $woocommerce->operation_count() + $square->operation_count(),
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function woocommerce_projection_context( array $row, OfflineRestRequestData $data ): array {
+		$body    = $data->body_params();
+		$context = array_merge(
+			$this->woocommerce_write_request_context,
+			array(
+				'environment'    => $this->environment_type(),
+				'store_currency' => (string) ( $row['sale_currency'] ?? 'USD' ),
+			)
+		);
+
+		$approval = trim( (string) ( $body['production_write_approval'] ?? $data->header( 'x-production-write-approval' ) ?? '' ) );
+		if ( '' !== $approval ) {
+			$context['production_write_approval'] = $approval;
+		}
+
+		return $context;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function woocommerce_sync_contract(
+		OfflineRestRequestData $data,
+		\TCGStorePlatform\WooCommerce\InventoryProductProjectionPlan $woocommerce,
+		array $context,
+		int $inventory_id
+	): array {
+		if ( ! $this->truthy( $data->body_params()['sync_woocommerce_product'] ?? false ) ) {
+			return array(
+				'action'                       => 'woocommerce_product_sync',
+				'status'                       => 'deferred',
+				'synced'                       => false,
+				'requested'                    => false,
+				'woocommerce_write_deferred'   => true,
+				'payment_capture_deferred'     => true,
+				'square_inventory_deferred'    => true,
+				'source_of_truth'              => 'tcg_store_platform',
+				'errors'                       => array(),
+			);
+		}
+
+		$execution = $this->woocommerce_projection_executor( $context )->execute( $woocommerce );
+		$audit     = $execution->audit_payload();
+		$mapping   = null;
+
+		if ( $execution->is_executed() && null !== $this->external_mapping_repository ) {
+			$product_ids = $execution->product_ids();
+			$product_id  = isset( $product_ids[0] ) ? (int) $product_ids[0] : 0;
+
+			if ( $product_id > 0 ) {
+				$mapping = $this->external_mapping_repository->mark_woocommerce_product_synced(
+					$inventory_id,
+					$product_id
+				);
+			}
+		}
+
+		return array(
+			'action'                    => 'woocommerce_product_sync',
+			'status'                    => $execution->status(),
+			'synced'                    => $execution->is_executed() && true === ( $mapping['synced'] ?? false ),
+			'requested'                 => true,
+			'execution'                 => $audit,
+			'mapping'                   => $mapping,
+			'woocommerce_write_deferred' => ! $execution->is_executed(),
+			'payment_capture_deferred'  => true,
+			'square_inventory_deferred' => true,
+			'source_of_truth'           => 'tcg_store_platform',
+			'errors'                    => array_values(
+				array_unique(
+					array_merge(
+						$execution->errors(),
+						$execution->block_reasons(),
+						is_array( $mapping ) ? ( $mapping['errors'] ?? array() ) : array()
+					)
+				)
+			),
 		);
 	}
 
@@ -166,6 +267,26 @@ final class InventoryIntakeRouteHandler {
 		}
 
 		return null;
+	}
+
+	private function truthy( mixed $value ): bool {
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		return in_array( strtolower( trim( (string) $value ) ), array( '1', 'true', 'yes', 'on' ), true );
+	}
+
+	private function environment_type(): string {
+		if ( function_exists( 'wp_get_environment_type' ) ) {
+			return (string) wp_get_environment_type();
+		}
+
+		$environment_type = getenv( 'WP_ENVIRONMENT_TYPE' );
+
+		return is_string( $environment_type ) && '' !== trim( $environment_type )
+			? strtolower( trim( $environment_type ) )
+			: 'production';
 	}
 
 	/**

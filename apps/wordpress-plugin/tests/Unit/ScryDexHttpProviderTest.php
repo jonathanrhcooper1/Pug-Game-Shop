@@ -144,6 +144,31 @@ final class ScryDexHttpProviderTest extends TestCase {
 		$this->assert_contains( 'include=prices', $urls[1] );
 	}
 
+	public function test_game_endpoint_aliases_map_to_official_scrydex_keys(): void {
+		$urls     = array();
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static function ( string $method, string $url, array $args ) use ( &$urls ): array {
+				unset( $method, $args );
+
+				$urls[] = $url;
+
+				return array(
+					'status' => 200,
+					'body'   => array( 'data' => array() ),
+				);
+			}
+		);
+
+		$provider->search_expansions( '', array( 'game' => 'magic-the-gathering' ), 1 );
+		$provider->search_expansions( '', array( 'game' => 'one-piece' ), 1 );
+
+		$this->assert_contains( '/magicthegathering/v1/expansions?', $urls[0] );
+		$this->assert_contains( '/onepiece/v1/expansions?', $urls[1] );
+	}
+
 	public function test_rate_limit_response_maps_to_retryable_status(): void {
 		$provider = new ScryDexHttpProvider(
 			'sandbox-scrydex-key',

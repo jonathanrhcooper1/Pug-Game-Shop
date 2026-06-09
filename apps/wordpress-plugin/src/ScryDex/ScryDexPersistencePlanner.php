@@ -215,6 +215,8 @@ final class ScryDexPersistencePlanner {
 			'parallel_name'              => $this->nullable_string( $variant_row['parallel_name'] ?? null ),
 			'edition'                    => $this->nullable_string( $variant_row['edition'] ?? null ),
 			'language'                   => $this->nullable_string( $variant_row['language'] ?? null ),
+			'front_image_url'            => $this->nullable_string( $variant_row['front_image_url'] ?? null ),
+			'back_image_url'             => $this->nullable_string( $variant_row['back_image_url'] ?? null ),
 			'raw_or_graded_support'      => $this->raw_or_graded_support( $variant_row['raw_or_graded_support'] ?? null ),
 			'normalized_attributes_json' => $this->nullable_string( $variant_row['normalized_attributes_json'] ?? null ),
 			'created_at'                 => $now,

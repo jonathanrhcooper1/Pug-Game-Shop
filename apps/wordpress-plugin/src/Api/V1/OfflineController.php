@@ -86,7 +86,7 @@ final class OfflineController {
 			'status_code' => 501,
 			'code'        => 'offline_route_disabled',
 			'callback'    => $callback,
-			'message'     => 'Offline route registration is disabled until staging verification passes.',
+			'message'     => 'Offline route registration is disabled until route verification passes.',
 		);
 	}
 }

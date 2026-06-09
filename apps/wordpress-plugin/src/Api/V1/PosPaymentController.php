@@ -107,7 +107,7 @@ final class PosPaymentController {
 			'status_code'                          => 501,
 			'code'                                 => 'pos_payment_route_disabled',
 			'callback'                             => $callback,
-			'message'                              => 'POS/payment route registration is disabled until staging verification passes.',
+			'message'                              => 'POS/payment route registration is disabled until route verification passes.',
 			'route_registration_deferred'          => true,
 			'route_connected_writes_deferred'      => true,
 			'transaction_execution_deferred'       => true,

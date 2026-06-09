@@ -194,6 +194,8 @@ final class AdminMenu {
 		$status_endpoint = rest_url( 'tcg-store/v1/scrydex/catalog/status' );
 		$index_endpoint  = rest_url( 'tcg-store/v1/scrydex/catalog/index' );
 		$export_endpoint = rest_url( 'tcg-store/v1/scrydex/catalog/export' );
+		$schedule        = ScryDexScheduleSettings::from_settings( Settings::all() );
+		$game_options    = $this->scrydex_catalog_game_options( $schedule['game_keys'] ?? array() );
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'ScryDex Catalog', 'tcg-store-platform' );
@@ -210,7 +212,7 @@ final class AdminMenu {
 		echo esc_url( $index_endpoint );
 		echo '">';
 		echo '<table class="form-table" role="presentation"><tbody>';
-		$this->render_scrydex_catalog_text_input( 'game', __( 'Game', 'tcg-store-platform' ), 'pokemon', 'pokemon' );
+		$this->render_scrydex_catalog_game_checkboxes( $game_options );
 		$this->render_scrydex_catalog_text_input( 'expansion_id', __( 'Expansion ID', 'tcg-store-platform' ), '', 'Optional single expansion; leave blank for full game' );
 		$this->render_scrydex_catalog_number_input( 'page_size', __( 'Page size', 'tcg-store-platform' ), 100, 1, 100 );
 		echo '<tr><th scope="row">' . esc_html__( 'Expansion index', 'tcg-store-platform' ) . '</th><td><label>';
@@ -241,6 +243,11 @@ final class AdminMenu {
 
 		echo '<h2>' . esc_html__( 'Catalog Export', 'tcg-store-platform' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Use the REST export endpoint for paginated JSON exports of reference sets, cards, variants, prices, and checkpoints.', 'tcg-store-platform' ) . '</p>';
+		echo '<div id="tcg-store-scrydex-catalog-browser" data-export-endpoint="';
+		echo esc_url( $export_endpoint );
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">';
+		echo '<p>' . esc_html__( 'Loading catalog browser...', 'tcg-store-platform' ) . '</p>';
+		echo '</div>';
 
 		$this->render_scrydex_catalog_script();
 		echo '</div>';
@@ -732,6 +739,12 @@ final class AdminMenu {
 		$this->render_inventory_intake_select( $form, 'online_visibility', __( 'Online visibility', 'tcg-store-platform' ), $visibility_options );
 		$this->render_inventory_intake_select( $form, 'kiosk_visibility', __( 'Kiosk visibility', 'tcg-store-platform' ), $visibility_options );
 		$this->render_inventory_intake_select( $form, 'pos_visibility', __( 'POS visibility', 'tcg-store-platform' ), $visibility_options );
+		echo '<tr><th scope="row">' . esc_html__( 'WooCommerce sync', 'tcg-store-platform' ) . '</th><td>';
+		echo '<label><input type="checkbox" id="tcg-store-intake-sync-woocommerce" name="sync_woocommerce_product" value="1" /> ';
+		echo esc_html__( 'Create or update the WooCommerce product now', 'tcg-store-platform' );
+		echo '</label><input type="hidden" name="production_write_approval" value="woocommerce-product-sync" />';
+		echo '<p class="description">' . esc_html__( 'Payments still stay with the official WooCommerce Square extension; this only syncs product and stock data.', 'tcg-store-platform' ) . '</p>';
+		echo '</td></tr>';
 		echo '</tbody></table>';
 		submit_button( __( 'Create Inventory Item', 'tcg-store-platform' ), 'primary', 'submit', false, $ready ? array() : array( 'disabled' => 'disabled' ) );
 		echo '</form>';
@@ -791,6 +804,63 @@ final class AdminMenu {
 			echo '</option>';
 		}
 		echo '</select></td></tr>';
+	}
+
+	/**
+	 * @param list<string> $configured_games Saved ScryDex game keys.
+	 * @return array<string, array{label:string,checked:bool}>
+	 */
+	private function scrydex_catalog_game_options( array $configured_games ): array {
+		$configured_games = array_values(
+			array_filter(
+				array_map(
+					static function ( mixed $game ): string {
+						$game = strtolower( trim( (string) $game ) );
+						$game = preg_replace( '/[^a-z0-9_-]+/', '-', $game ) ?? '';
+
+						return trim( $game, '-' );
+					},
+					$configured_games
+				),
+				static fn ( string $game ): bool => '' !== $game
+			)
+		);
+		$configured_games = array_values( array_unique( $configured_games ) );
+		$defaults         = array(
+			'pokemon'              => __( 'Pokemon', 'tcg-store-platform' ),
+			'magicthegathering'    => __( 'Magic: The Gathering', 'tcg-store-platform' ),
+			'lorcana'              => __( 'Lorcana', 'tcg-store-platform' ),
+			'onepiece'             => __( 'One Piece', 'tcg-store-platform' ),
+			'gundam'               => __( 'Gundam', 'tcg-store-platform' ),
+			'yugioh'               => __( 'Yu-Gi-Oh!', 'tcg-store-platform' ),
+			'riftbound'            => __( 'Riftbound', 'tcg-store-platform' ),
+		);
+		$options          = array();
+		$checked_games    = array() === $configured_games ? array( 'pokemon' ) : $configured_games;
+
+		foreach ( array_values( array_unique( array_merge( array_keys( $defaults ), $configured_games ) ) ) as $game ) {
+			$options[ $game ] = array(
+				'label'   => $defaults[ $game ] ?? ucwords( str_replace( '-', ' ', $game ) ),
+				'checked' => in_array( $game, $checked_games, true ),
+			);
+		}
+
+		return $options;
+	}
+
+	/**
+	 * @param array<string, array{label:string,checked:bool}> $options Game options.
+	 */
+	private function render_scrydex_catalog_game_checkboxes( array $options ): void {
+		echo '<tr><th scope="row">' . esc_html__( 'Games', 'tcg-store-platform' ) . '</th><td><fieldset>';
+		foreach ( $options as $game => $option ) {
+			echo '<label style="display:inline-block;margin:0 16px 8px 0;">';
+			echo '<input type="checkbox" name="games[]" value="' . esc_attr( $game ) . '" ' . checked( true, (bool) $option['checked'], false ) . ' /> ';
+			echo esc_html( $option['label'] );
+			echo '</label>';
+		}
+		echo '<p class="description">' . esc_html__( 'Selected games run in parallel. Add or remove game keys in ScryDex schedule settings.', 'tcg-store-platform' ) . '</p>';
+		echo '</fieldset></td></tr>';
 	}
 
 	private function render_scrydex_catalog_text_input( string $name, string $label, string $value, string $placeholder ): void {
@@ -881,7 +951,7 @@ final class AdminMenu {
 		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
 		echo 'const quantityFrom=function(params){const raw=Number(params.get("intake_quantity")||1);if(!Number.isFinite(raw)){return 1;}return Math.min(100,Math.max(1,Math.floor(raw)));};';
 		echo 'const suffixed=function(value,index,total){if(total<2||!value){return value;}const suffix="-"+String(index+1).padStart(2,"0");return String(value).slice(0,72)+suffix;};';
-		echo 'const resultLine=function(results,total){const created=results.filter(function(result){return result.ok&&result.payload&&result.payload.status==="created";});const failed=results.length-created.length;const rows=created.map(function(result){const data=result.payload.data||{};return "<li>#"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+"</li>";}).join("");return "<p><strong>' . esc_js( __( 'Created inventory items', 'tcg-store-platform' ) ) . ':</strong> "+esc(created.length)+" / "+esc(total)+" <span class=\"description\">' . esc_js( __( 'External projections deferred', 'tcg-store-platform' ) ) . '</span></p>"+(failed?"<p>' . esc_js( __( 'Failed', 'tcg-store-platform' ) ) . ': "+esc(failed)+"</p>":"")+"<ul>"+rows+"</ul>";};';
+		echo 'const resultLine=function(results,total){const created=results.filter(function(result){return result.ok&&result.payload&&result.payload.status==="created";});const failed=results.length-created.length;const synced=created.filter(function(result){const sync=(((result.payload.meta||{}).projections||{}).woocommerce_product_sync)||{};return sync.synced===true;}).length;const rows=created.map(function(result){const data=result.payload.data||{};const sync=(((result.payload.meta||{}).projections||{}).woocommerce_product_sync)||{};const label=sync.requested?(sync.synced?" WooCommerce synced":" WooCommerce "+esc(sync.status||"not synced")):" external projections deferred";return "<li>#"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+" <span class=\"description\">"+label+"</span></li>";}).join("");return "<p><strong>' . esc_js( __( 'Created inventory items', 'tcg-store-platform' ) ) . ':</strong> "+esc(created.length)+" / "+esc(total)+" <span class=\"description\">"+esc(synced)+" ' . esc_js( __( 'WooCommerce synced', 'tcg-store-platform' ) ) . '</span></p>"+(failed?"<p>' . esc_js( __( 'Failed', 'tcg-store-platform' ) ) . ': "+esc(failed)+"</p>":"")+"<ul>"+rows+"</ul>";};';
 		echo 'form.addEventListener("submit",function(event){event.preventDefault();const baseParams=new URLSearchParams(new FormData(form));const quantity=quantityFrom(baseParams);baseParams.delete("intake_quantity");target.innerHTML="<p>' . esc_js( __( 'Creating inventory items...', 'tcg-store-platform' ) ) . '</p>";const batchId=Date.now()+"-"+Math.random().toString(16).slice(2);const requests=[];for(let index=0;index<quantity;index++){const params=new URLSearchParams(baseParams);params.set("barcode",suffixed(params.get("barcode")||"",index,quantity));params.set("sku",suffixed(params.get("sku")||"",index,quantity));const key="admin-intake-"+batchId+"-"+index;requests.push(fetch(target.dataset.endpoint,{method:"POST",headers:{"X-WP-Nonce":target.dataset.nonce,"Idempotency-Key":key},body:params}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).catch(function(){return {ok:false,payload:{errors:["network_error"]}};}));}Promise.all(requests).then(function(results){target.innerHTML=resultLine(results,quantity);if(results.every(function(result){return result.ok&&result.payload&&result.payload.status==="created";})){form.reset();}});});';
 		echo '})();';
 		echo '</script>';
@@ -894,29 +964,37 @@ final class AdminMenu {
 const statusBox=document.getElementById("tcg-store-scrydex-catalog-status");
 const form=document.getElementById("tcg-store-scrydex-catalog-import-form");
 const resultBox=document.getElementById("tcg-store-scrydex-catalog-import-result");
+const browserBox=document.getElementById("tcg-store-scrydex-catalog-browser");
 if(!statusBox||!form||!resultBox){return;}
 const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[char];});};
 const title=function(value){return String(value||"").replace(/_/g," ").replace(/\b\w/g,function(char){return char.toUpperCase();});};
 const sleep=function(ms){return new Promise(function(resolve){window.setTimeout(resolve,ms);});};
+const tables=["reference_sets","reference_cards","reference_variants","provider_price_observations","provider_price_points","sync_checkpoints"];
 const countsTable=function(counts){const keys=Object.keys(counts||{});if(!keys.length){return "<p>Catalog count tables are not ready.</p>";}return "<table class=\"widefat striped\"><thead><tr><th>Table</th><th>Rows</th></tr></thead><tbody>"+keys.map(function(key){return "<tr><th scope=\"row\">"+esc(title(key))+"</th><td>"+esc(counts[key])+"</td></tr>";}).join("")+"</tbody></table>";};
 const checkpointsTable=function(rows){rows=Array.isArray(rows)?rows:[];if(!rows.length){return "<p>No ScryDex checkpoints yet.</p>";}return "<table class=\"widefat striped\"><thead><tr><th>Resource</th><th>Key</th><th>Page</th><th>Committed</th><th>Updated</th></tr></thead><tbody>"+rows.map(function(row){return "<tr><td>"+esc(row.resource_type)+"</td><td>"+esc(row.resource_key)+"</td><td>"+esc(row.page_number)+"</td><td>"+esc(row.committed_count)+"</td><td>"+esc(row.updated_at)+"</td></tr>";}).join("")+"</tbody></table>";};
-const exportLinks=function(){const endpoint=resultBox.dataset.exportEndpoint||"";if(!endpoint){return "";}const tables=["reference_sets","reference_cards","reference_variants","provider_price_observations","provider_price_points","sync_checkpoints"];return "<p><strong>Catalog export:</strong> "+tables.map(function(table){return "<a href=\""+esc(endpoint)+"?table="+esc(table)+"&page=1&page_size=1000\" target=\"_blank\" rel=\"noreferrer\">"+esc(title(table))+"</a>";}).join(" | ")+"</p>";};
+const exportLinks=function(){const endpoint=resultBox.dataset.exportEndpoint||"";if(!endpoint){return "";}return "<p><strong>Catalog export:</strong> "+tables.map(function(table){return "<a href=\""+esc(endpoint)+"?table="+esc(table)+"&page=1&page_size=1000\" target=\"_blank\" rel=\"noreferrer\">"+esc(title(table))+"</a>";}).join(" | ")+"</p>";};
 const renderStatus=function(payload){const data=(payload||{}).data||{};statusBox.innerHTML="<h2>Catalog Status</h2>"+countsTable(data.counts)+"<h2>Latest Checkpoints</h2>"+checkpointsTable(data.latest_checkpoints)+exportLinks();};
 const loadStatus=function(){return fetch(statusBox.dataset.endpoint,{headers:{"X-WP-Nonce":statusBox.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){statusBox.innerHTML="<p>Catalog status failed.</p>";return null;}renderStatus(result.payload);return result.payload;}).catch(function(){statusBox.innerHTML="<p>Catalog status failed.</p>";return null;});};
 const postIndex=function(payload){return fetch(resultBox.dataset.endpoint,{method:"POST",headers:{"Content-Type":"application/json","X-WP-Nonce":resultBox.dataset.nonce},body:JSON.stringify(payload)}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(result.ok){return result.payload;}const error=((result.payload||{}).error||{});throw new Error(error.code||"scrydex_catalog_request_failed");});};
-const cardPageRows=function(cards){const pages=Array.isArray(cards.pages)?cards.pages:[];const first=pages[0]||{};const plan=first.orchestration_plan||{};const pagePlan=plan.page_plan||{};return Number(pagePlan.reference_row_count||0);};
-const stateLine=function(state){return "<p><strong>Full index running</strong> Game: "+esc(state.game)+"; expansions "+esc(state.expansionPages)+" page(s), "+esc(state.expansionCount)+" set(s); cards "+esc(state.cardPages)+" page(s), "+esc(state.cardRows)+" row(s); current "+esc(state.current||"starting")+"</p><p><span class=\"description\">The indexer continues until each ScryDex response returns fewer than "+esc(state.pageSize)+" rows. Daily credit limits are not enforced by this plugin for enterprise indexing.</span></p>";};
-const setProgress=function(state){resultBox.innerHTML=stateLine(state)+"<p>"+esc(state.latest||"")+"</p>";};
-async function loadExpansionIds(state,indexExpansions){
-  const formData=new FormData(form);
-  const manual=String(formData.get("expansion_id")||"").trim();
-  if(manual){state.expansionCount=1;state.current="single expansion "+manual;setProgress(state);return [manual];}
-  if(!indexExpansions){state.current="game-level card endpoint";setProgress(state);return [""];}
+const firstCardPage=function(cards){const pages=Array.isArray(cards.pages)?cards.pages:[];return pages[0]||{};};
+const cardPageRows=function(cards){const page=firstCardPage(cards);const plan=page.orchestration_plan||{};const pagePlan=plan.page_plan||{};return Number(page.provider_row_count||pagePlan.reference_row_count||0);};
+const cardPageStoredRows=function(cards){const page=firstCardPage(cards);const plan=page.orchestration_plan||{};const pagePlan=plan.page_plan||{};return Number(pagePlan.reference_row_count||0);};
+const cardPageVariantRows=function(cards){const page=firstCardPage(cards);const plan=page.orchestration_plan||{};const pagePlan=plan.page_plan||{};return Number(pagePlan.variant_row_count||0);};
+const cardPagePriceRows=function(cards){const page=firstCardPage(cards);const plan=page.orchestration_plan||{};const pagePlan=plan.page_plan||{};return Number(pagePlan.price_row_count||0)+Number(pagePlan.price_point_row_count||0);};
+const selectedGames=function(){return Array.prototype.slice.call(form.querySelectorAll('input[name="games[]"]:checked')).map(function(input){return String(input.value||"").trim();}).filter(Boolean);};
+const stateRow=function(state){return "<tr><th scope=\"row\">"+esc(state.game)+"</th><td>"+esc(state.status)+"</td><td>"+esc(state.expansionPages)+"</td><td>"+esc(state.expansionCount)+"</td><td>"+esc(state.cardPages)+"</td><td>"+esc(state.cardRows)+"</td><td>"+esc(state.storedRows)+"</td><td>"+esc(state.variantRows)+"</td><td>"+esc(state.priceRows)+"</td><td>"+esc(state.current||"")+"</td><td>"+esc(state.latest||"")+"</td></tr>";};
+const progressTable=function(states){return "<p><strong>Full ScryDex index</strong> <span class=\"description\">Selected games run in parallel. Each game continues expansions and cards until ScryDex returns fewer than the page size.</span></p><table class=\"widefat striped\"><thead><tr><th>Game</th><th>Status</th><th>Expansion pages</th><th>Sets</th><th>Card pages</th><th>Provider cards</th><th>Stored cards</th><th>Variants</th><th>Prices</th><th>Current</th><th>Latest</th></tr></thead><tbody>"+states.map(stateRow).join("")+"</tbody></table>";};
+const setProgress=function(states){resultBox.innerHTML=progressTable(states);};
+const createState=function(game,pageSize){return {game:game,pageSize:pageSize,status:"queued",expansionPages:0,expansionCount:0,cardPages:0,cardRows:0,storedRows:0,variantRows:0,priceRows:0,current:"starting",latest:""};};
+async function loadExpansionIds(state,states,indexExpansions,manual){
+  if(manual){state.expansionCount=1;state.current="single expansion "+manual;setProgress(states);return [manual];}
+  if(!indexExpansions){state.current="game-level card endpoint";setProgress(states);return [""];}
   const ids=[];
   let page=1;
   while(true){
     state.current="expansion page "+page;
-    setProgress(state);
+    state.status="expansions";
+    setProgress(states);
     const payload={game:state.game,page_size:state.pageSize,expansions_page:page,max_expansion_pages:1,index_expansions:true,skip_cards:true,execute_database_writes:state.executeWrites};
     const response=await postIndex(payload);
     const data=(response||{}).data||{};
@@ -926,7 +1004,7 @@ async function loadExpansionIds(state,indexExpansions){
     state.expansionPages+=Number(expansions.provider_request_count||1);
     state.expansionCount=ids.length;
     state.latest="Expansion page "+page+" returned "+Number(expansions.row_count||0)+" row(s).";
-    setProgress(state);
+    setProgress(states);
     await loadStatus();
     if(Number(expansions.row_count||0)<state.pageSize||expansions.continuation_available===false){break;}
     page=Number(expansions.next_page||page+1);
@@ -934,12 +1012,13 @@ async function loadExpansionIds(state,indexExpansions){
   }
   return ids;
 }
-async function indexCardsForExpansion(state,expansionId){
+async function indexCardsForExpansion(state,states,expansionId){
   let checkpoint=null;
   let page=1;
   while(true){
     state.current=expansionId?("cards for "+expansionId+" page "+page):("game card page "+page);
-    setProgress(state);
+    state.status="cards";
+    setProgress(states);
     const payload={game:state.game,expansion_id:expansionId,page_size:state.pageSize,max_pages:1,index_expansions:false,skip_cards:false,execute_database_writes:state.executeWrites};
     if(checkpoint){payload.checkpoint=checkpoint;}
     const response=await postIndex(payload);
@@ -948,8 +1027,11 @@ async function indexCardsForExpansion(state,expansionId){
     const rows=cardPageRows(cards);
     state.cardPages+=Number(cards.provider_request_count||1);
     state.cardRows+=rows;
-    state.latest=(expansionId||state.game)+" page "+page+" returned "+rows+" card row(s).";
-    setProgress(state);
+    state.storedRows+=cardPageStoredRows(cards);
+    state.variantRows+=cardPageVariantRows(cards);
+    state.priceRows+=cardPagePriceRows(cards);
+    state.latest=(expansionId||state.game)+" page "+page+" returned "+rows+" provider card row(s).";
+    setProgress(states);
     await loadStatus();
     checkpoint=cards.continuation_checkpoint_row||null;
     if(rows<state.pageSize||cards.continuation_available===false){break;}
@@ -957,25 +1039,67 @@ async function indexCardsForExpansion(state,expansionId){
     await sleep(85);
   }
 }
+async function runGameIndex(state,states,indexExpansions,manual){
+  state.status="running";
+  setProgress(states);
+  const expansionIds=await loadExpansionIds(state,states,indexExpansions,manual);
+  if(!expansionIds.length){state.status="complete";state.latest="No expansions returned from ScryDex for "+state.game+".";setProgress(states);return;}
+  for(const expansionId of expansionIds){await indexCardsForExpansion(state,states,expansionId);}
+  state.status="complete";
+  state.current="complete";
+  state.latest="ScryDex index completed for "+state.game+".";
+  setProgress(states);
+}
 form.addEventListener("submit",function(event){
   event.preventDefault();
   if(resultBox.dataset.canIndex!=="1"){return;}
   const formData=new FormData(form);
-  const state={game:String(formData.get("game")||"pokemon"),pageSize:Math.min(100,Math.max(1,Number(formData.get("page_size")||100))),executeWrites:!!form.querySelector("[name=execute_database_writes]").checked,expansionPages:0,expansionCount:0,cardPages:0,cardRows:0,current:"starting",latest:""};
+  const games=selectedGames();
+  if(!games.length){resultBox.innerHTML="<p><strong>Select at least one game.</strong></p>";return;}
+  const pageSize=Math.min(100,Math.max(1,Number(formData.get("page_size")||100)));
+  const executeWrites=!!form.querySelector("[name=execute_database_writes]").checked;
+  const manual=String(formData.get("expansion_id")||"").trim();
   const indexExpansions=!!form.querySelector("[name=index_expansions]").checked;
-  resultBox.innerHTML="<p>Starting full ScryDex index...</p>";
-  loadExpansionIds(state,indexExpansions).then(async function(expansionIds){
-    if(!expansionIds.length){state.latest="No expansions returned from ScryDex for "+state.game+".";setProgress(state);return;}
-    for(const expansionId of expansionIds){await indexCardsForExpansion(state,expansionId);}
-    state.current="complete";
-    state.latest="Full ScryDex index completed. Export links are available in Catalog Status.";
-    setProgress(state);
+  const states=games.map(function(game){const state=createState(game,pageSize);state.executeWrites=executeWrites;return state;});
+  setProgress(states);
+  Promise.allSettled(states.map(function(state){return runGameIndex(state,states,indexExpansions,manual).catch(function(error){state.status="failed";state.latest=error&&error.message?error.message:String(error);setProgress(states);throw error;});})).then(async function(){
     await loadStatus();
-  }).catch(function(error){
-    resultBox.innerHTML="<p><strong>ScryDex full index failed:</strong> "+esc(error&&error.message?error.message:error)+"</p>"+stateLine(state);
+    setProgress(states);
   });
 });
+const fetchExport=function(table,page,pageSize){const endpoint=(browserBox&&browserBox.dataset.exportEndpoint)||resultBox.dataset.exportEndpoint||"";const url=endpoint+"?table="+encodeURIComponent(table)+"&page="+encodeURIComponent(page)+"&page_size="+encodeURIComponent(pageSize);return fetch(url,{headers:{"X-WP-Nonce":(browserBox&&browserBox.dataset.nonce)||resultBox.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(result.ok){return ((result.payload||{}).data)||{};}const error=((result.payload||{}).error||{});throw new Error(error.code||"scrydex_catalog_export_failed");});};
+const cell=function(value){if(value===null||value===undefined){return "";}if(typeof value==="string"&&/^https?:\/\//.test(value)){return "<a href=\""+esc(value)+"\" target=\"_blank\" rel=\"noreferrer\">"+esc(value.slice(0,72))+"</a>";}const text=typeof value==="object"?JSON.stringify(value):String(value);return esc(text.length>120?text.slice(0,117)+"...":text);};
+const tablePreview=function(data){const rows=Array.isArray(data.rows)?data.rows:[];const cols=rows.length?Object.keys(rows[0]).slice(0,12):[];const nav="<p><strong>"+esc(title(data.table||""))+"</strong> Page "+esc(data.page||1)+" of "+esc(Math.max(1,Math.ceil(Number(data.total||0)/Number(data.page_size||1))))+"; "+esc(data.total||0)+" total row(s).</p>";if(!rows.length){return nav+"<p>No rows returned.</p>";}return nav+"<table class=\"widefat striped\"><thead><tr>"+cols.map(function(col){return "<th>"+esc(col)+"</th>";}).join("")+"</tr></thead><tbody>"+rows.map(function(row){return "<tr>"+cols.map(function(col){return "<td>"+cell(row[col])+"</td>";}).join("")+"</tr>";}).join("")+"</tbody></table>";};
+const downloadJson=function(filename,payload){const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);};
+async function fetchAllRows(table,status){
+  const rows=[];
+  let page=1;
+  while(true){
+    status("Downloading "+title(table)+" page "+page+"...");
+    const data=await fetchExport(table,page,1000);
+    const pageRows=Array.isArray(data.rows)?data.rows:[];
+    rows.push.apply(rows,pageRows);
+    if(data.has_more!==true||pageRows.length<1000){break;}
+    page+=1;
+    await sleep(25);
+  }
+  return rows;
+}
+const renderBrowser=function(){
+  if(!browserBox){return;}
+  browserBox.innerHTML="<div class=\"tablenav top\"><label for=\"tcg-store-catalog-table\"><strong>Catalog table</strong></label> <select id=\"tcg-store-catalog-table\">"+tables.map(function(table){return "<option value=\""+esc(table)+"\">"+esc(title(table))+"</option>";}).join("")+"</select> <label for=\"tcg-store-catalog-page\">Page</label> <input id=\"tcg-store-catalog-page\" type=\"number\" min=\"1\" value=\"1\" style=\"width:80px\" /> <label for=\"tcg-store-catalog-page-size\">Rows</label> <input id=\"tcg-store-catalog-page-size\" type=\"number\" min=\"1\" max=\"1000\" value=\"25\" style=\"width:90px\" /> <button type=\"button\" class=\"button\" id=\"tcg-store-catalog-load\">View</button> <button type=\"button\" class=\"button\" id=\"tcg-store-catalog-download-table\">Download Table JSON</button> <button type=\"button\" class=\"button button-primary\" id=\"tcg-store-catalog-download-all\">Download Full Catalog JSON</button></div><div id=\"tcg-store-catalog-browser-output\"><p>Select a table to preview catalog rows.</p></div>";
+  const output=document.getElementById("tcg-store-catalog-browser-output");
+  const selected=function(){return String(document.getElementById("tcg-store-catalog-table").value||"reference_cards");};
+  const page=function(){return Math.max(1,Number(document.getElementById("tcg-store-catalog-page").value||1));};
+  const pageSize=function(){return Math.min(1000,Math.max(1,Number(document.getElementById("tcg-store-catalog-page-size").value||25)));};
+  const status=function(text){output.innerHTML="<p>"+esc(text)+"</p>";};
+  document.getElementById("tcg-store-catalog-load").addEventListener("click",function(){status("Loading catalog rows...");fetchExport(selected(),page(),pageSize()).then(function(data){output.innerHTML=tablePreview(data);}).catch(function(error){output.innerHTML="<p><strong>Catalog preview failed:</strong> "+esc(error.message||error)+"</p>";});});
+  document.getElementById("tcg-store-catalog-download-table").addEventListener("click",function(){const table=selected();fetchAllRows(table,status).then(function(rows){downloadJson("tcg-"+table+".json",{table:table,total:rows.length,rows:rows,exported_at:(new Date()).toISOString()});status("Downloaded "+rows.length+" row(s) from "+title(table)+".");}).catch(function(error){output.innerHTML="<p><strong>Catalog download failed:</strong> "+esc(error.message||error)+"</p>";});});
+  document.getElementById("tcg-store-catalog-download-all").addEventListener("click",async function(){const payload={resource:"scrydex_catalog_full_export",exported_at:(new Date()).toISOString(),tables:{}};try{for(const table of tables){payload.tables[table]=await fetchAllRows(table,status);}downloadJson("tcg-scrydex-catalog-full.json",payload);status("Downloaded full ScryDex catalog JSON.");}catch(error){output.innerHTML="<p><strong>Full catalog download failed:</strong> "+esc(error.message||error)+"</p>";}});
+  document.getElementById("tcg-store-catalog-load").click();
+};
 loadStatus();
+renderBrowser();
 })();
 </script>
 HTML;

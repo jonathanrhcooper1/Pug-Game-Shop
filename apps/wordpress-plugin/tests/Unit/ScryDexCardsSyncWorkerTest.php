@@ -119,6 +119,39 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 		$this->assert_same( 1, $result['continuation_checkpoint_row']['page_number'] );
 	}
 
+	public function test_worker_preserves_provider_expansion_id_when_fetching_scoped_cards(): void {
+		$urls   = array();
+		$worker = $this->worker(
+			function ( string $method, string $url, array $args ) use ( &$urls ): array {
+				unset( $method, $args );
+				$urls[] = $url;
+
+				return array(
+					'status' => 200,
+					'body'   => array(
+						'page'  => 1,
+						'cards' => array(),
+					),
+				);
+			}
+		);
+		$result = $worker->run_cards_pages(
+			array(
+				'game'         => 'riftbound',
+				'expansion_id' => 'OGN-001',
+				'page_size'    => 100,
+				'max_pages'    => 1,
+			),
+			array(),
+			$this->ready_gate_overrides()
+		);
+
+		$this->assert_same( 'completed', $result['status'] );
+		$this->assert_contains( '/riftbound/v1/expansions/OGN-001/cards?', $urls[0] ?? '' );
+		$this->assert_same( 'OGN-001', $result['pages'][0]['provider_request']['expansion_id'] );
+		$this->assert_same( 0, $result['pages'][0]['provider_row_count'] );
+	}
+
 	public function test_worker_continues_full_pages_until_short_page_without_provider_metadata(): void {
 		$urls   = array();
 		$worker = $this->worker(

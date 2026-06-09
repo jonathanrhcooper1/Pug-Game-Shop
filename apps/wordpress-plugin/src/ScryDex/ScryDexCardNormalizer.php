@@ -594,6 +594,7 @@ final class ScryDexCardNormalizer {
 		$parallel_name = $this->nullable_string( $source['parallel_name'] ?? $source['parallel'] ?? null );
 		$edition       = $this->nullable_string( $source['edition'] ?? $source['printing'] ?? null );
 		$language      = $this->nullable_string( $source['language'] ?? $source['lang'] ?? null );
+		$images        = is_array( $source['images'] ?? null ) ? $source['images'] : array();
 
 		if ( null === $variant && null === $finish && null === $parallel_name && null === $edition && null === $language ) {
 			return null;
@@ -632,6 +633,17 @@ final class ScryDexCardNormalizer {
 			'parallel_name'               => $parallel_name,
 			'edition'                     => $edition,
 			'language'                    => $language,
+			'front_image_url'             => $this->first_image_url(
+				$source['image_url'] ?? null,
+				$source['front_image_url'] ?? null,
+				$source['imageUrl'] ?? null,
+				$this->front_image_value( $images )
+			),
+			'back_image_url'              => $this->first_image_url(
+				$source['back_image_url'] ?? null,
+				$source['backImageUrl'] ?? null,
+				$this->back_image_value( $images )
+			),
 			'raw_or_graded_support'       => $attributes['raw_or_graded_support'],
 			'normalized_attributes_json'  => $this->attributes_json( $attributes ),
 		);

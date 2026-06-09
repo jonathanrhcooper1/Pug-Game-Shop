@@ -8,12 +8,14 @@
 namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Inventory\InventoryIntakeParser;
+use TCGStorePlatform\Inventory\InventoryExternalMappingRepository;
 use TCGStorePlatform\Inventory\InventoryIntakePersistencePlanner;
 use TCGStorePlatform\Inventory\InventoryIntakeRepository;
 use TCGStorePlatform\Square\SquareInventoryProjectionPlanner;
 use TCGStorePlatform\Square\SquareInventorySyncRequestPlanner;
 use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
 use TCGStorePlatform\WooCommerce\InventoryProductWriteRequestPlanner;
+use TCGStorePlatform\WooCommerce\WooCommerceInventoryProductWriter;
 use Throwable;
 
 final class InventoryIntakeRouteHandlerFactory {
@@ -45,7 +47,13 @@ final class InventoryIntakeRouteHandlerFactory {
 			new InventoryIntakeRepository( $database ),
 			null,
 			null,
-			(string) $database->prefix
+			(string) $database->prefix,
+			null,
+			null,
+			null,
+			array(),
+			null,
+			new InventoryExternalMappingRepository( $database )
 		);
 	}
 
@@ -98,6 +106,8 @@ final class InventoryIntakeRouteHandlerFactory {
 			'repository_adapter_ready'                    => method_exists( InventoryIntakeRepository::class, 'create' ),
 			'woocommerce_projection_planner_ready'        => method_exists( InventoryProductProjectionPlanner::class, 'plan_row' ),
 			'woocommerce_product_write_request_planner_ready' => method_exists( InventoryProductWriteRequestPlanner::class, 'plan' ),
+			'woocommerce_product_writer_ready'            => class_exists( WooCommerceInventoryProductWriter::class ),
+			'inventory_external_mapping_repository_ready' => method_exists( InventoryExternalMappingRepository::class, 'mark_woocommerce_product_synced' ),
 			'square_inventory_projection_planner_ready'   => method_exists( SquareInventoryProjectionPlanner::class, 'plan_row' ),
 			'square_inventory_sync_request_planner_ready' => method_exists( SquareInventorySyncRequestPlanner::class, 'plan' ),
 			'route_connected_writes_enabled'              => $this->route_connected_writes_enabled,

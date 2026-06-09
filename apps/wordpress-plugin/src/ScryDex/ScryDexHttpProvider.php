@@ -376,7 +376,16 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		$value = strtolower( trim( (string) $value ) );
 		$value = preg_replace( '/[^a-z0-9_-]+/', '-', $value ) ?? $value;
 		$value = trim( $value, '-' );
+		$aliases = array(
+			'magic'                => 'magicthegathering',
+			'mtg'                  => 'magicthegathering',
+			'magic-the-gathering'  => 'magicthegathering',
+			'one-piece'            => 'onepiece',
+			'one-piece-card-game'  => 'onepiece',
+			'yu-gi-oh'             => 'yugioh',
+			'yu-gi-oh-tcg'         => 'yugioh',
+		);
 
-		return '' === $value ? 'pokemon' : $value;
+		return '' === $value ? 'pokemon' : ( $aliases[ $value ] ?? $value );
 	}
 }

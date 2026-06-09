@@ -29,6 +29,28 @@ assert.ok(entries.includes("tcg-store-platform/src/Autoloader.php"))
 assert.ok(entries.includes("tcg-store-platform/src/Api/V1/OfflineRouteRuntimeConfigurator.php"))
 assert.ok(entries.includes("tcg-store-platform/src/Settings/OfflineRouteRuntimeSettings.php"))
 
+const pluginHeader = execFileSync("tar", ["-xOf", zipPath, "tcg-store-platform/tcg-store-platform.php"], {
+  cwd: root,
+  encoding: "utf8",
+})
+const versionPhp = execFileSync("tar", ["-xOf", zipPath, "tcg-store-platform/src/Version.php"], {
+  cwd: root,
+  encoding: "utf8",
+})
+const scrydexController = execFileSync(
+  "tar",
+  ["-xOf", zipPath, "tcg-store-platform/src/Api/V1/ScryDexCatalogController.php"],
+  {
+    cwd: root,
+    encoding: "utf8",
+  },
+)
+
+assert.match(pluginHeader, new RegExp(`Version:\\s+${packageJson.version.replaceAll(".", "\\.")}`))
+assert.match(versionPhp, new RegExp(`PLUGIN\\s+=\\s+'${packageJson.version.replaceAll(".", "\\.")}'`))
+assert.match(scrydexController, /\/scrydex\/catalog\/export/)
+assert.match(scrydexController, /daily_credit_budget_enforced'\s*=>\s*false/)
+
 for (const forbidden of [
   "tcg-store-platform/tests/",
   "tcg-store-platform/vendor/",

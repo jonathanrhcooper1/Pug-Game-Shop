@@ -100,6 +100,33 @@ final class ScryDexSyncDryRunPlannerTest extends TestCase {
 		$this->assert_same( 750, $plan['checkpoint_row']['committed_count'] );
 	}
 
+	public function test_dry_run_preserves_provider_expansion_ids_for_scoped_card_pages(): void {
+		$plan = ( new ScryDexSyncDryRunPlanner(
+			new ScryDexProviderFactory(
+				array(
+					'scrydex_provider' => array(
+						'enabled'         => true,
+						'environment'     => 'production',
+						'team_id'         => 'production-team-id',
+						'primary_api_key' => 'production-primary-key',
+					),
+				)
+			)
+		) )->plan_cards_sync(
+			array(
+				'game'         => 'riftbound',
+				'expansion_id' => 'OGN-001',
+				'page_size'    => 100,
+			)
+		);
+
+		$this->assert_same( 'ready', $plan['status'] );
+		$this->assert_same( 'search_expansion_cards', $plan['provider_method'] );
+		$this->assert_same( '/riftbound/v1/expansions/OGN-001/cards', $plan['provider_endpoint'] );
+		$this->assert_same( 'riftbound:OGN-001', $plan['checkpoint_row']['resource_key'] );
+		$this->assert_same( 'OGN-001', $plan['request']['expansion_id'] );
+	}
+
 	public function test_invalid_game_and_checkpoint_fall_back_to_safe_defaults(): void {
 		$plan = ( new ScryDexSyncDryRunPlanner(
 			new ScryDexProviderFactory( array() )

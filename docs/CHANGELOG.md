@@ -11,6 +11,12 @@ All notable changes follow Semantic Versioning.
   pagination continues until ScryDex returns fewer than the requested page size.
   The plugin no longer enforces an artificial daily credit ceiling for this
   manager-only catalog mirror flow.
+- ScryDex expansion-card indexing now preserves provider expansion IDs exactly
+  for card lookups and checkpoint resumes, and the HTTP provider maps friendly
+  game aliases such as `one-piece` and `magic-the-gathering` to official
+  ScryDex endpoint keys.
+- Production-facing admin copy no longer describes route or ScryDex gates as
+  staging-only workflow steps.
 - Offline app inventory search now hydrates from the central LAN sync server
   while preserving device-cache fallback, and the LAN inventory search now
   matches location, set code, card number, printed number, condition, provider
@@ -28,6 +34,14 @@ All notable changes follow Semantic Versioning.
   and local app surfaces.
 - ScryDex catalog admin now includes paginated JSON export links for reference
   sets, cards, variants, price observations, price points, and checkpoints.
+- ScryDex catalog admin now includes a database browser with paginated table
+  previews plus single-table and full-catalog JSON downloads.
+- ScryDex reference variants now store provider-specific front/back image URLs
+  through migration `0014`, preserving alternate-art or finish-specific images
+  when the provider includes them.
+- Staff inventory intake can optionally create/update the serialized
+  WooCommerce product immediately while still delegating payments to the
+  official WooCommerce Square extension.
 - Local sync setup now has a secret-free `GET /setup/status` probe, and the
   offline app stores one configurable website profile per installation while
   preserving and validating the configured LAN server URL.

@@ -144,6 +144,8 @@ final class MigrationRunner {
 			new Version0010ProviderPriceObservations(),
 			new Version0011ReferenceCardImages(),
 			new Version0012ScryDexCatalog(),
+			new Version0013ExternalInventoryMappings(),
+			new Version0014ReferenceVariantImages(),
 		);
 	}
 	/**

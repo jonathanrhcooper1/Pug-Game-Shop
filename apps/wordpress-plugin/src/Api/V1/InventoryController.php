@@ -163,7 +163,7 @@ final class InventoryController {
 			'status_code'                          => 501,
 			'code'                                 => 'inventory_route_disabled',
 			'callback'                             => $callback,
-			'message'                              => 'Inventory route registration is disabled until staging verification passes.',
+			'message'                              => 'Inventory route registration is disabled until route verification passes.',
 			'route_registration_deferred'          => true,
 			'route_connected_reads_deferred'       => true,
 			'route_connected_writes_deferred'      => true,

@@ -101,7 +101,7 @@ final class ScryDexCatalogController {
 	public function index( \WP_REST_Request $request ): \WP_REST_Response {
 		$payload                 = $this->payload( $request );
 		$game                    = $this->slug( $payload['game'] ?? 'pokemon', 'pokemon' );
-		$expansion_id            = $this->slug( $payload['expansion_id'] ?? '', '' );
+		$expansion_id            = $this->provider_resource_id( $payload['expansion_id'] ?? '' );
 		$page_size               = $this->bounded_int( $payload['page_size'] ?? self::MAX_PAGE_SIZE, 1, self::MAX_PAGE_SIZE );
 		$max_pages               = $this->unbounded_page_count( $payload['max_pages'] ?? 1 );
 		$expansions_page         = $this->bounded_int( $payload['expansions_page'] ?? 1, 1, PHP_INT_MAX );
@@ -786,6 +786,14 @@ final class ScryDexCatalogController {
 		$value = trim( $value, '-' );
 
 		return '' === $value ? $fallback : substr( $value, 0, 64 );
+	}
+
+	private function provider_resource_id( mixed $value ): string {
+		$value = trim( (string) $value );
+		$value = preg_replace( '/[^A-Za-z0-9_:-]+/', '-', $value ) ?? '';
+		$value = trim( $value, '-' );
+
+		return substr( $value, 0, 191 );
 	}
 
 	private function text( mixed $value ): string {

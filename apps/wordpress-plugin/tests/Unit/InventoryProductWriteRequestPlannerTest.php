@@ -89,6 +89,7 @@ final class InventoryProductWriteRequestPlannerTest extends TestCase {
 				'request_count'                 => 0,
 				'woocommerce_write_deferred'    => true,
 				'wordpress_crud_write_deferred' => true,
+				'production_write_approved'     => false,
 			),
 			$plan->request_plan()
 		);
@@ -116,6 +117,29 @@ final class InventoryProductWriteRequestPlannerTest extends TestCase {
 		);
 		$this->assert_same( array(), $plan->request_plan() );
 		$this->assert_true( $plan->audit_payload()['woocommerce_write_deferred'] );
+	}
+
+	public function test_planner_allows_approved_production_product_sync_without_payment_or_square_writes(): void {
+		$projection = ( new InventoryProductProjectionPlanner() )->plan_row(
+			$this->available_row(),
+			array( 'store_currency' => 'USD' )
+		);
+		$plan       = ( new InventoryProductWriteRequestPlanner() )->plan(
+			$projection,
+			array(
+				'environment'               => 'production',
+				'production_write_approval' => 'woocommerce-product-sync',
+			)
+		);
+		$audit      = $plan->audit_payload();
+
+		$this->assert_same( InventoryProductWriteRequestPlan::READY, $plan->status() );
+		$this->assert_true( $plan->is_ready() );
+		$this->assert_same( 'approved_production_product_sync', $plan->request_plan()['requests'][0]['write_scope'] );
+		$this->assert_true( $audit['production_write_approved'] );
+		$this->assert_false( $audit['production_woocommerce_write_deferred'] );
+		$this->assert_true( $audit['payment_capture_deferred'] );
+		$this->assert_true( $audit['square_inventory_write_deferred'] );
 	}
 
 	/**

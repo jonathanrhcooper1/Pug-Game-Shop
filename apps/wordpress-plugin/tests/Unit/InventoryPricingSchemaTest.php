@@ -34,6 +34,9 @@ final class InventoryPricingSchemaTest extends TestCase {
 		$this->assert_contains( 'UNIQUE KEY sku (sku)', $inventory );
 		$this->assert_contains( 'KEY status_location_visibility (status, location_id, online_visibility)', $inventory );
 		$this->assert_contains( 'minimum_sale_price decimal(19,4) NOT NULL', $inventory );
+		$this->assert_contains( 'woocommerce_product_id bigint(20) unsigned NULL', $inventory );
+		$this->assert_contains( 'square_catalog_variation_id varchar(191) NULL', $inventory );
+		$this->assert_contains( 'KEY external_sync_state (external_sync_state, last_external_sync_at)', $inventory );
 		$this->assert_contains( 'KEY floor_hit_created (floor_hit, created_at)', $prices );
 	}
 
@@ -43,6 +46,14 @@ final class InventoryPricingSchemaTest extends TestCase {
 
 		$this->assert_contains( 'front_image_url varchar(255) NULL', $reference );
 		$this->assert_contains( 'back_image_url varchar(255) NULL', $reference );
+	}
+
+	public function test_reference_variants_store_provider_image_urls(): void {
+		$tables   = InventoryPricingSchema::tables( 'wp_', 'DEFAULT CHARACTER SET utf8mb4' );
+		$variants = $tables['wp_tcg_reference_variants'];
+
+		$this->assert_contains( 'front_image_url varchar(255) NULL', $variants );
+		$this->assert_contains( 'back_image_url varchar(255) NULL', $variants );
 	}
 
 	public function test_dbdelta_statements_avoid_if_not_exists(): void {

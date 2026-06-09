@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Production Catalog Import Fixes
+
+### What Changed
+
+- Fixed ScryDex expansion-card indexing so provider expansion IDs are preserved
+  exactly when calling `/expansions/{id}/cards` and when resuming checkpoints.
+- Replaced the single-game import field with game checkboxes and parallel
+  per-game progress rows.
+- Added official ScryDex endpoint-key defaults and alias mapping for older
+  friendly keys such as `one-piece` and `magic-the-gathering`.
+- Added a ScryDex catalog database browser with paginated previews, single-table
+  JSON download, and full-catalog JSON download.
+- Added variant-specific front/back image URL storage for ScryDex variants.
+- Removed misleading production-facing staging copy from route/ScryDex admin
+  messages.
+- Continued the WooCommerce product-sync slice: staff intake can optionally
+  create/update WooCommerce product records while payments remain delegated to
+  the official WooCommerce Square extension.
+
+### Why
+
+Production imports were pulling expansions but not cards for some sets because
+provider IDs could be normalized before the card lookup. The catalog also needed
+a visible database inspection/export page and a way to preserve variant images,
+condition/grade price points, and official multi-game indexing behavior.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncDryRunPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0014ReferenceVariantImages.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryExternalMappingRepository.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- `0014_reference_variant_images`: adds nullable `front_image_url` and
+  `back_image_url` columns to `tcg_reference_variants`.
+
+### Tests Added
+
+- Added ScryDex worker/dry-run coverage for exact uppercase provider expansion
+  IDs.
+- Added ScryDex HTTP provider alias coverage for official endpoint keys.
+- Added ScryDex normalizer coverage for provider variant image URLs.
+- Added migration/schema coverage for reference variant image storage.
+- Expanded admin workspace coverage for checkbox imports, parallel runs, and
+  full catalog downloads.
+- Full PHP suite: `971 tests, 0 failures`.
+
+### Rollback Notes
+
+- Roll back to plugin/database version `0.165.0` / schema `13` to remove the
+  variant image migration.
+- Database rollback target: run migration rollback to version `13`, which drops
+  `tcg_reference_variants.front_image_url` and `back_image_url`.
+- ScryDex catalog rows, price observations, and checkpoints are cache data and
+  can remain in place if rolling back only the plugin files.
+- Before production rollback, export the ScryDex catalog from the admin browser
+  or REST export endpoint if the latest imported variant-image data should be
+  retained externally.
+
 ## 2026-06-09 - Enterprise ScryDex Full-Game Indexer
 
 ### What Changed

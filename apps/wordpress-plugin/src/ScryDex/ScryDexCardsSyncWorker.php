@@ -207,7 +207,7 @@ final class ScryDexCardsSyncWorker {
 		return array(
 			'resource_key'  => $this->resource_key( $request['resource_key'] ?? $game ),
 			'game'          => $game,
-			'expansion_id'  => $this->resource_key( $request['expansion_id'] ?? '' ),
+			'expansion_id'  => $this->provider_resource_id( $request['expansion_id'] ?? '' ),
 			'page'         => max( 1, (int) ( $request['page'] ?? 1 ) ),
 			'page_size'    => max( 1, min( self::MAX_PAGE_SIZE, (int) ( $request['page_size'] ?? 100 ) ) ),
 			'cursor'       => trim( (string) ( $request['cursor'] ?? '' ) ),
@@ -242,6 +242,7 @@ final class ScryDexCardsSyncWorker {
 			'provider_result_http_status'   => $provider_result->http_status(),
 			'provider_result_error_code'    => $provider_result->error_code(),
 			'provider_result_body_received' => array() !== $provider_result->body(),
+			'provider_row_count'            => $this->row_count_from_body( $provider_result->body() ),
 			'provider_result_body_logged'   => false,
 			'orchestration_plan'            => $page_plan,
 		);
@@ -351,6 +352,14 @@ final class ScryDexCardsSyncWorker {
 		$value = trim( $value, '-' );
 
 		return substr( $value, 0, 64 );
+	}
+
+	private function provider_resource_id( mixed $value ): string {
+		$value = trim( (string) $value );
+		$value = preg_replace( '/[^A-Za-z0-9_:-]+/', '-', $value ) ?? '';
+		$value = trim( $value, '-' );
+
+		return substr( $value, 0, 191 );
 	}
 
 	private function truthy( mixed $value ): bool {

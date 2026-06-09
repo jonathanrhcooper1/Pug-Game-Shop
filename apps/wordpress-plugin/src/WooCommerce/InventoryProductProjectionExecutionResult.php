@@ -224,7 +224,11 @@ final class InventoryProductProjectionExecutionResult {
 			'square_inventory_write_deferred'            => true,
 			'payment_capture_deferred'                   => true,
 			'external_network_request_deferred'          => true,
-			'production_woocommerce_write_deferred'      => true,
+			'production_woocommerce_write_deferred'      => ! (
+				$this->is_executed()
+				&& null !== $this->write_request_plan
+				&& true === ( $this->write_request_plan->request_plan()['production_write_approved'] ?? false )
+			),
 			'source_of_truth'                            => 'tcg_store_platform',
 			'errors'                                     => $this->errors,
 		);

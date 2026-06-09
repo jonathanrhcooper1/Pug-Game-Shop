@@ -109,6 +109,8 @@ final class ScryDexPersistenceQueryBuilder {
 		'parallel_name',
 		'edition',
 		'language',
+		'front_image_url',
+		'back_image_url',
 		'raw_or_graded_support',
 		'normalized_attributes_json',
 		'created_at',
@@ -602,7 +604,7 @@ final class ScryDexPersistenceQueryBuilder {
 			'provider_variant_id'                        => (string) $row['provider_variant_id'],
 			'reference_card_id'                          => $row['reference_card_id'] ?? null,
 			'sql_template'                               => sprintf(
-				'INSERT INTO `%s` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE variant = VALUES(variant), finish = VALUES(finish), parallel_name = VALUES(parallel_name), edition = VALUES(edition), language = VALUES(language), raw_or_graded_support = VALUES(raw_or_graded_support), normalized_attributes_json = VALUES(normalized_attributes_json), updated_at = VALUES(updated_at)',
+				'INSERT INTO `%s` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE variant = VALUES(variant), finish = VALUES(finish), parallel_name = VALUES(parallel_name), edition = VALUES(edition), language = VALUES(language), front_image_url = VALUES(front_image_url), back_image_url = VALUES(back_image_url), raw_or_graded_support = VALUES(raw_or_graded_support), normalized_attributes_json = VALUES(normalized_attributes_json), updated_at = VALUES(updated_at)',
 				$variant_table_name,
 				implode( ', ', array_map( array( $this, 'quote_identifier' ), $columns ) ),
 				implode( ', ', $placeholders )

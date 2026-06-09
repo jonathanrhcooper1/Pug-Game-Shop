@@ -124,6 +124,17 @@ final class ScryDexCardNormalizerTest extends TestCase {
 						'url'  => 'https://images.scrydex.com/pokemon/card-back',
 					),
 				),
+				'variants'     => array(
+					array(
+						'id'      => 'SV1-001-reverse-holo',
+						'variant' => 'Reverse Holo',
+						'finish'  => 'Foil',
+						'images'  => array(
+							'front' => 'https://images.scrydex.com/pokemon/sv1-1/reverse-front',
+							'back'  => 'https://images.scrydex.com/pokemon/card-back',
+						),
+					),
+				),
 				'prices'       => array(
 					array(
 						'market'   => '0.12',
@@ -135,6 +146,7 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		);
 		$card   = $result->card();
 		$price  = $result->price();
+		$variant = $result->variants()[0] ?? array();
 
 		$this->assert_true( $result->is_valid() );
 		$this->assert_same( 'Scarlet & Violet', $card['set_name'] );
@@ -147,6 +159,9 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( 'https://images.scrydex.com/pokemon/card-back', $card['back_image_url'] );
 		$this->assert_true( is_array( $price ) );
 		$this->assert_same( '0.1200', $price['market_price'] );
+		$this->assert_same( 'SV1-001-reverse-holo', $variant['provider_variant_id'] );
+		$this->assert_same( 'https://images.scrydex.com/pokemon/sv1-1/reverse-front', $variant['front_image_url'] );
+		$this->assert_same( 'https://images.scrydex.com/pokemon/card-back', $variant['back_image_url'] );
 	}
 
 	/**

@@ -36,17 +36,21 @@ final class ScryDexCatalogAdminWorkspaceTest extends TestCase {
 				'current_user_can( \'manage_settings\' )',
 				'data-can-index',
 				'page_size',
+				'games[]',
 				'execute_database_writes',
 				'index_expansions',
 				'Full Game Index',
 				'Start Full ScryDex Index',
+				'selectedGames',
 				'loadExpansionIds',
 				'indexCardsForExpansion',
+				'Promise.allSettled',
 				'continuation_checkpoint_row',
 				'returns fewer than',
-				'Daily credit limits are not enforced',
 				'Catalog Export',
+				'tcg-store-scrydex-catalog-browser',
 				'data-export-endpoint',
+				'Download Full Catalog JSON',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

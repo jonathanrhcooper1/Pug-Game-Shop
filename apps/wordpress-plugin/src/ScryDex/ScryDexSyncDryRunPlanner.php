@@ -75,20 +75,28 @@ final class ScryDexSyncDryRunPlanner {
 		return 1 === preg_match( '/^[a-z0-9_-]{1,64}$/', $value ) ? $value : $fallback;
 	}
 
+	private function provider_resource_id( mixed $value ): string {
+		$value = trim( (string) $value );
+		$value = preg_replace( '/[^A-Za-z0-9_:-]+/', '-', $value ) ?? '';
+		$value = trim( $value, '-' );
+
+		return 1 === preg_match( '/^[A-Za-z0-9_:-]{1,191}$/', $value ) ? $value : '';
+	}
+
 	/**
 	 * @param array<string, mixed> $request Request parameters.
 	 * @param array<string, mixed> $checkpoint_row Checkpoint row parameters.
 	 */
 	private function expansion_id_from_request( array $request, array $checkpoint_row, string $game ): string {
-		$expansion_id = $this->resource_key( $request['expansion_id'] ?? '', '' );
+		$expansion_id = $this->provider_resource_id( $request['expansion_id'] ?? '' );
 		if ( '' !== $expansion_id ) {
 			return $expansion_id;
 		}
 
-		$resource_key = strtolower( trim( (string) ( $checkpoint_row['resource_key'] ?? '' ) ) );
+		$resource_key = trim( (string) ( $checkpoint_row['resource_key'] ?? '' ) );
 		$prefix       = $game . ':';
 		if ( str_starts_with( $resource_key, $prefix ) ) {
-			return $this->resource_key( substr( $resource_key, strlen( $prefix ) ), '' );
+			return $this->provider_resource_id( substr( $resource_key, strlen( $prefix ) ) );
 		}
 
 		return '';
