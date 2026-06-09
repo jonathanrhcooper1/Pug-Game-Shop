@@ -6,6 +6,13 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Added a guarded production WooCommerce card smoke that creates a temporary
+  grouped card product, verifies remote card art, two-decimal condition prices,
+  exact inventory reservation release, paid-order conversion to sold, and full
+  cleanup.
+- Production is now verified on WordPress plugin `0.188.0` after backup-backed
+  package deployment, ScryDex catalog/search checks, public shortcode checks,
+  local sync smokes, and the WooCommerce exact-inventory smoke.
 - WooCommerce inventory publishing now supports grouped card products: existing
   inventory rows for the same card can sync to one product with remote card art
   metadata, stock by condition/version, condition-specific price options, and

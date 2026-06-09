@@ -3,6 +3,79 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Deploy 0.188.0 and WooCommerce Card Smoke
+
+### What Changed
+
+- Installed and activated WordPress plugin package `tcg-store-platform-0.188.0.zip`
+  on production with the guarded production installer.
+- Added `production:woocommerce-card-smoke`, a guarded live smoke that creates a
+  temporary grouped WooCommerce card product, verifies remote image metadata,
+  two-decimal condition prices, exact reservation release, paid-order conversion
+  to sold, and full cleanup.
+- Added a packaging contract for the new production WooCommerce card smoke.
+
+### Why
+
+Grouped WooCommerce card products are now the main online selling surface for
+card inventory. The live site needs proof that product creation, image display,
+condition-specific pricing, and exact physical-card reservation all work
+together before the remaining storefront and local-app polish builds on top.
+
+### Files Affected
+
+- `package.json`
+- `scripts/production-run-woocommerce-card-smoke.mjs`
+- `scripts/tests/production-woocommerce-card-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Production database target/current version remained `14`.
+
+### Tests Added
+
+- Production WooCommerce card smoke contract covering required confirmation,
+  temporary data cleanup, product metadata checks, image fallback checks,
+  exact reservation release, exact order conversion, and credential redaction
+  markers.
+
+### Verification
+
+- `npm.cmd run production:install-package`: passed; production plugin active at
+  `0.188.0`, database version `14`, database backup created, and `wp-content`
+  backup created.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:verify-scrydex-catalog`:
+  passed with 151,854 cards, 245,641 variants, 737,845 price points, 100%
+  image coverage, 100% variant coverage, and 86% price coverage.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:verify-reference-search`:
+  passed against cached WordPress catalog search for `Charizard`.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:verify-public-shortcodes`:
+  passed for public inventory, events, and event-detail shortcode contracts.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:local-sync-inventory-smoke`:
+  passed for local inventory intake, WordPress push/search, and cleanup.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:local-sync-workflows-smoke`:
+  passed for event pull/register/check-in, customer credit add/redeem, hidden
+  inventory, kiosk order, and cleanup.
+- `node scripts/tests/production-woocommerce-card-smoke-contract.mjs`: passed.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 PUG_PROD_CONFIRM_WOOCOMMERCE_CARD_SMOKE=run-production-woocommerce-card-smoke npm.cmd run production:woocommerce-card-smoke`:
+  passed; temporary WooCommerce product had two condition options (`0.99` and
+  `1.23`), ScryDex image URL metadata, exact reservation release to available,
+  exact order conversion to sold, and deleted temporary product/order/inventory
+  and reservation rows.
+
+### Rollback Notes
+
+- Reinstall `dist/tcg-store-platform-0.187.0.zip` if production behavior needs
+  to return to the prior active package.
+- The production installer created pre-deploy database and `wp-content` backups
+  under `$HOME/tcg-production-backups`.
+- The WooCommerce card smoke deletes its temporary product, order, inventory
+  rows, and reservations. If a future interrupted smoke leaves residue, remove
+  rows/products with the unique `CODEX-WOO-` prefix.
+- No schema rollback is required.
+
 ## 2026-06-09 - Version 0.188.0 Package Preparation
 
 ### What Changed
