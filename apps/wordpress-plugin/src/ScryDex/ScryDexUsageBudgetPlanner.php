@@ -27,9 +27,24 @@ final class ScryDexUsageBudgetPlanner {
 	 * @return array<string, mixed>
 	 */
 	public function plan_cards_page( array $request = array(), ?array $usage_snapshot = null ): array {
+		return $this->plan_provider_request_batch( $request, $usage_snapshot, 1 );
+	}
+
+	/**
+	 * @param array<string, mixed>      $request Planned ScryDex request.
+	 * @param array<string, mixed>|null $usage_snapshot Optional already-fetched usage data.
+	 * @return array<string, mixed>
+	 */
+	public function plan_provider_request_batch(
+		array $request = array(),
+		?array $usage_snapshot = null,
+		int $planned_provider_request_count = 1
+	): array {
 		$status        = ScryDexUsageBudgetSettings::public_status( $this->settings() );
 		$configured    = true === ( $status['configured'] ?? false );
-		$cost          = (int) $status['per_cards_page_credit_estimate'];
+		$request_count = $this->planned_request_count( $planned_provider_request_count );
+		$cost_each     = (int) $status['per_cards_page_credit_estimate'];
+		$cost          = $cost_each * $request_count;
 		$snapshot      = null === $usage_snapshot ? null : $this->normalize_snapshot( $usage_snapshot );
 		$block_reasons = $this->block_reasons( $status, $snapshot, $cost );
 		$allowed       = $configured && array() === $block_reasons;
@@ -47,6 +62,8 @@ final class ScryDexUsageBudgetPlanner {
 			'provider_usage_requests_deferred' => true,
 			'network_requests_deferred'        => true,
 			'estimated_credit_cost'            => $cost,
+			'estimated_credit_cost_per_request' => $cost_each,
+			'planned_provider_request_count'   => $request_count,
 			'daily_credit_budget'              => (int) $status['daily_credit_budget'],
 			'minimum_remaining_credits'        => (int) $status['minimum_remaining_credits'],
 			'remaining_after_estimate'         => null === $snapshot
@@ -111,11 +128,12 @@ final class ScryDexUsageBudgetPlanner {
 	 */
 	private function request_summary( array $request ): array {
 		return array(
-			'provider'      => $this->scalar_string( $request['provider'] ?? ScryDexSyncCheckpoint::PROVIDER ),
-			'resource_type' => $this->scalar_string( $request['resource_type'] ?? 'cards' ),
-			'resource_key'  => $this->scalar_string( $request['resource_key'] ?? 'pokemon' ),
-			'page'          => max( 1, (int) ( $request['page'] ?? 1 ) ),
-			'page_size'     => max( 1, min( self::MAX_PAGE_SIZE, (int) ( $request['page_size'] ?? 100 ) ) ),
+			'provider'                       => $this->scalar_string( $request['provider'] ?? ScryDexSyncCheckpoint::PROVIDER ),
+			'resource_type'                  => $this->scalar_string( $request['resource_type'] ?? 'cards' ),
+			'resource_key'                   => $this->scalar_string( $request['resource_key'] ?? 'pokemon' ),
+			'page'                           => max( 1, (int) ( $request['page'] ?? 1 ) ),
+			'page_size'                      => max( 1, min( self::MAX_PAGE_SIZE, (int) ( $request['page_size'] ?? 100 ) ) ),
+			'planned_provider_request_count' => $this->planned_request_count( $request['planned_provider_request_count'] ?? 1 ),
 		);
 	}
 
@@ -143,6 +161,10 @@ final class ScryDexUsageBudgetPlanner {
 
 	private function scalar_string( mixed $value ): string {
 		return is_scalar( $value ) ? trim( (string) $value ) : '';
+	}
+
+	private function planned_request_count( mixed $value ): int {
+		return max( 1, min( 1000, (int) $value ) );
 	}
 
 	/**

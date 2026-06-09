@@ -64,6 +64,32 @@ final class ScryDexUsageBudgetPlannerTest extends TestCase {
 		$this->assert_true( in_array( 'scrydex_remaining_credit_floor_reached', $plan['block_reasons'], true ) );
 	}
 
+	public function test_provider_request_batch_multiplies_estimated_credit_cost(): void {
+		$plan = ( new ScryDexUsageBudgetPlanner(
+			$this->configured_settings()
+		) )->plan_provider_request_batch(
+			array(
+				'resource_type'                  => 'catalog_import',
+				'resource_key'                   => 'pokemon',
+				'page_size'                      => 100,
+				'planned_provider_request_count' => 9,
+			),
+			array(
+				'used_today'        => 960,
+				'remaining_credits' => 500,
+			),
+			9
+		);
+
+		$this->assert_same( 'blocked', $plan['status'] );
+		$this->assert_same( 9, $plan['planned_provider_request_count'] );
+		$this->assert_same( 9, $plan['request']['planned_provider_request_count'] );
+		$this->assert_same( 5, $plan['estimated_credit_cost_per_request'] );
+		$this->assert_same( 45, $plan['estimated_credit_cost'] );
+		$this->assert_same( 455, $plan['remaining_after_estimate'] );
+		$this->assert_true( in_array( 'scrydex_daily_credit_budget_exceeded', $plan['block_reasons'], true ) );
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */

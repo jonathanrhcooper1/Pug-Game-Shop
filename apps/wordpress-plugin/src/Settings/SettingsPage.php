@@ -533,7 +533,7 @@ final class SettingsPage {
 
 	public function render_scrydex_description(): void {
 		echo '<p>';
-		echo esc_html__( 'Configure ScryDex for staging reference-card sync. Values are saved in WordPress settings, redacted from status output, and never used by local tests.', 'tcg-store-platform' );
+		echo esc_html__( 'Configure server-side ScryDex reference-card sync. Values are saved in WordPress settings, redacted from status output, and never sent to local apps.', 'tcg-store-platform' );
 		echo '</p>';
 	}
 
@@ -549,7 +549,7 @@ final class SettingsPage {
 			. '][enabled]" value="1" '
 			. checked( ! empty( $settings['enabled'] ), true, false )
 			. ' /> ';
-		echo esc_html__( 'Enable staged ScryDex sync planning.', 'tcg-store-platform' );
+		echo esc_html__( 'Enable ScryDex catalog sync.', 'tcg-store-platform' );
 		echo '</label><br />';
 
 		echo '<label for="tcg-store-scrydex-environment">';
@@ -559,7 +559,7 @@ final class SettingsPage {
 			. esc_attr( Settings::OPTION_NAME )
 			. '[' . esc_attr( ScryDexProviderSettings::KEY )
 			. '][environment]">';
-		foreach ( array( 'disabled', 'sandbox', 'staging' ) as $environment ) {
+		foreach ( array( 'disabled', 'sandbox', 'staging', 'production' ) as $environment ) {
 			echo '<option value="' . esc_attr( $environment ) . '" '
 				. selected( (string) $settings['environment'], $environment, false )
 				. '>';

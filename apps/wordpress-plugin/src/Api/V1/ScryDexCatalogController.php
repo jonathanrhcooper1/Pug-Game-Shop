@@ -23,6 +23,9 @@ final class ScryDexCatalogController {
 	private const NAMESPACE     = 'tcg-store/v1';
 	private const MAX_PAGE_SIZE = 100;
 	private const MAX_PAGES     = 25;
+	private const DOCUMENTED_REQUESTS_PER_SECOND_LIMIT = 100;
+	private const MAX_PROVIDER_REQUESTS_PER_CALL       = 90;
+	private const USAGE_REQUEST_CREDIT_ESTIMATE        = 1;
 
 	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ), 25 );
@@ -79,7 +82,42 @@ final class ScryDexCatalogController {
 	}
 
 	public function index( \WP_REST_Request $request ): \WP_REST_Response {
-		$payload  = $this->payload( $request );
+		$payload                 = $this->payload( $request );
+		$game                    = $this->slug( $payload['game'] ?? 'pokemon', 'pokemon' );
+		$expansion_id            = $this->slug( $payload['expansion_id'] ?? '', '' );
+		$page_size               = $this->bounded_int( $payload['page_size'] ?? self::MAX_PAGE_SIZE, 1, self::MAX_PAGE_SIZE );
+		$max_pages               = $this->bounded_int( $payload['max_pages'] ?? 1, 1, self::MAX_PAGES );
+		$expansions_page         = $this->bounded_int( $payload['expansions_page'] ?? 1, 1, PHP_INT_MAX );
+		$max_expansion_pages     = $this->bounded_int( $payload['max_expansion_pages'] ?? 1, 1, self::MAX_PAGES );
+		$execute_database_writes = $this->truthy( $payload['execute_database_writes'] ?? false );
+		$index_expansions        = $this->truthy( $payload['index_expansions'] ?? false );
+		$skip_cards              = $this->truthy( $payload['skip_cards'] ?? false );
+		$catalog_request_count   = $this->planned_catalog_request_count( $index_expansions, $max_expansion_pages, $skip_cards, $max_pages );
+		$provider_request_count  = $this->planned_provider_request_count( $catalog_request_count );
+		$rate_limit_plan         = $this->rate_limit_plan( $provider_request_count );
+		$provider                = $factory->provider();
+
+		if ( $execute_database_writes && ! $this->can_manage_catalog() ) {
+			return $this->blocked_response(
+				'scrydex_catalog_write_permission_denied',
+				array( 'scrydex_manager_capability_required' ),
+				array(
+					'write_permission_required' => 'manage_settings',
+					'rate_limit_plan'           => $rate_limit_plan,
+				)
+			);
+		}
+
+		if ( true !== ( $rate_limit_plan['allowed'] ?? false ) ) {
+			return $this->blocked_response(
+				'scrydex_provider_request_budget_exceeded',
+				array( 'scrydex_provider_request_batch_exceeds_safe_limit' ),
+				array(
+					'rate_limit_plan' => $rate_limit_plan,
+				)
+			);
+		}
+
 		$settings = Settings::all();
 		$database = $this->database();
 
@@ -96,20 +134,22 @@ final class ScryDexCatalogController {
 			);
 		}
 
-		$game                    = $this->slug( $payload['game'] ?? 'pokemon', 'pokemon' );
-		$expansion_id            = $this->slug( $payload['expansion_id'] ?? '', '' );
-		$page_size               = $this->bounded_int( $payload['page_size'] ?? self::MAX_PAGE_SIZE, 1, self::MAX_PAGE_SIZE );
-		$max_pages               = $this->bounded_int( $payload['max_pages'] ?? 1, 1, self::MAX_PAGES );
-		$expansions_page         = $this->bounded_int( $payload['expansions_page'] ?? 1, 1, PHP_INT_MAX );
-		$max_expansion_pages     = $this->bounded_int( $payload['max_expansion_pages'] ?? 1, 1, self::MAX_PAGES );
-		$execute_database_writes = $this->truthy( $payload['execute_database_writes'] ?? false );
-		$index_expansions        = $this->truthy( $payload['index_expansions'] ?? false );
-		$skip_cards              = $this->truthy( $payload['skip_cards'] ?? false );
-		$provider                = $factory->provider();
-		$usage                   = $this->usage_snapshot( $provider );
+		$usage = $provider_request_count > 0 ? $this->usage_snapshot( $provider ) : $this->skipped_usage_snapshot();
 
-		if ( 'ready' !== $usage['status'] ) {
-			return $this->blocked_response( 'scrydex_usage_unavailable', $usage['errors'] );
+		if ( 'ready' !== $usage['status'] && 'skipped' !== $usage['status'] ) {
+			return $this->blocked_response( 'scrydex_usage_unavailable', $usage['errors'], array( 'rate_limit_plan' => $rate_limit_plan ) );
+		}
+
+		$usage_budget_plan = $this->usage_budget_plan( $settings, $game, $page_size, $provider_request_count, $usage['snapshot'] );
+		if ( 'ready' !== ( $usage_budget_plan['status'] ?? '' ) && 'skipped' !== ( $usage_budget_plan['status'] ?? '' ) ) {
+			return $this->blocked_response(
+				'scrydex_usage_budget_blocked',
+				is_array( $usage_budget_plan['block_reasons'] ?? null ) ? $usage_budget_plan['block_reasons'] : array(),
+				array(
+					'usage_budget_plan' => $usage_budget_plan,
+					'rate_limit_plan'   => $rate_limit_plan,
+				)
+			);
 		}
 
 		$gate_overrides = array(
@@ -162,6 +202,8 @@ final class ScryDexCatalogController {
 					'max_expansion_pages'            => $max_expansion_pages,
 					'skip_cards'                     => $skip_cards,
 					'execute_database_writes'        => $execute_database_writes,
+					'usage_budget_plan'              => $usage_budget_plan,
+					'rate_limit_plan'                => $rate_limit_plan,
 					'usage_snapshot'                 => $usage['public_snapshot'],
 					'expansions'                     => $expansion_result,
 					'cards'                          => $cards,
@@ -247,6 +289,84 @@ final class ScryDexCatalogController {
 				'credentials_hidden' => true,
 			),
 			'errors'          => array(),
+		);
+	}
+
+	/**
+	 * @return array{status:string,snapshot:array<string,mixed>,public_snapshot:array<string,mixed>,errors:list<string>}
+	 */
+	private function skipped_usage_snapshot(): array {
+		return array(
+			'status'          => 'skipped',
+			'snapshot'        => array(),
+			'public_snapshot' => array(
+				'available'          => false,
+				'status'             => 'skipped',
+				'credentials_hidden' => true,
+			),
+			'errors'          => array(),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $settings Platform settings.
+	 * @param array<string, mixed> $usage_snapshot ScryDex usage snapshot.
+	 * @return array<string, mixed>
+	 */
+	private function usage_budget_plan(
+		array $settings,
+		string $game,
+		int $page_size,
+		int $provider_request_count,
+		array $usage_snapshot
+	): array {
+		if ( 0 === $provider_request_count ) {
+			return array(
+				'status'                         => 'skipped',
+				'action'                         => 'scrydex_catalog_usage_budget_plan',
+				'planned_provider_request_count' => 0,
+				'estimated_credit_cost'          => 0,
+				'block_reasons'                  => array(),
+			);
+		}
+
+		return ( new ScryDexUsageBudgetPlanner( $settings ) )->plan_provider_request_batch(
+			array(
+				'provider'                       => 'scrydex',
+				'resource_type'                  => 'catalog_import',
+				'resource_key'                   => $game,
+				'page_size'                      => $page_size,
+				'planned_provider_request_count' => $provider_request_count,
+			),
+			$usage_snapshot,
+			$provider_request_count
+		);
+	}
+
+	private function planned_catalog_request_count( bool $index_expansions, int $max_expansion_pages, bool $skip_cards, int $max_pages ): int {
+		return ( $index_expansions ? $max_expansion_pages : 0 ) + ( $skip_cards ? 0 : $max_pages );
+	}
+
+	private function planned_provider_request_count( int $catalog_request_count ): int {
+		return 0 === $catalog_request_count
+			? 0
+			: $catalog_request_count + self::USAGE_REQUEST_CREDIT_ESTIMATE;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function rate_limit_plan( int $provider_request_count ): array {
+		return array(
+			'status'                                => $provider_request_count <= self::MAX_PROVIDER_REQUESTS_PER_CALL ? 'ready' : 'blocked',
+			'allowed'                               => $provider_request_count <= self::MAX_PROVIDER_REQUESTS_PER_CALL,
+			'planned_provider_request_count'        => $provider_request_count,
+			'documented_requests_per_second_limit'  => self::DOCUMENTED_REQUESTS_PER_SECOND_LIMIT,
+			'max_provider_requests_per_rest_call'   => self::MAX_PROVIDER_REQUESTS_PER_CALL,
+			'usage_request_credit_estimate_included' => $provider_request_count > 0,
+			'block_reasons'                         => $provider_request_count <= self::MAX_PROVIDER_REQUESTS_PER_CALL
+				? array()
+				: array( 'scrydex_provider_request_batch_exceeds_safe_limit' ),
 		);
 	}
 
@@ -527,17 +647,21 @@ final class ScryDexCatalogController {
 
 	/**
 	 * @param list<string> $errors Blocking errors.
+	 * @param array<string, mixed> $extra_details Extra secret-free error details.
 	 */
-	private function blocked_response( string $code, array $errors ): \WP_REST_Response {
+	private function blocked_response( string $code, array $errors, array $extra_details = array() ): \WP_REST_Response {
 		return new \WP_REST_Response(
 			array(
 				'error' => array(
 					'code'    => $code,
 					'message' => __( 'ScryDex catalog indexing is not ready.', 'tcg-store-platform' ),
-					'details' => array(
-						'errors'                       => array_values( array_unique( array_map( 'strval', $errors ) ) ),
-						'credential_values_redacted'   => true,
-						'credentials_synced_to_client' => false,
+					'details' => array_merge(
+						array(
+							'errors'                       => array_values( array_unique( array_map( 'strval', $errors ) ) ),
+							'credential_values_redacted'   => true,
+							'credentials_synced_to_client' => false,
+						),
+						$extra_details
 					),
 				),
 			),
