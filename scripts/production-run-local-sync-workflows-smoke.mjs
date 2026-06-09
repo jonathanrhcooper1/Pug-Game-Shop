@@ -285,13 +285,25 @@ try {
     throw new Error(`Local kiosk inventory intake failed: ${kioskIntake.code ?? kioskIntake.status}`)
   }
 
-  const inventoryPush = await localSyncRequest("/sync/push", {
-    method: "POST",
-    token,
-    body: {},
-  })
-  const acceptedInventory = findAccepted(inventoryPush.results, "inventory_intake", hiddenIntake.item.public_id)
-  const acceptedKioskInventory = findAccepted(inventoryPush.results, "inventory_intake", kioskIntake.item.public_id)
+  const autoInventoryResults = [
+    ...autoSyncResults(hiddenIntake),
+    ...autoSyncResults(kioskIntake),
+  ]
+  let inventoryPush = pushSummaryFromAutoSync([hiddenIntake, kioskIntake], autoInventoryResults)
+  let acceptedInventory = findAccepted(autoInventoryResults, "inventory_intake", hiddenIntake.item.public_id)
+  let acceptedKioskInventory = findAccepted(autoInventoryResults, "inventory_intake", kioskIntake.item.public_id)
+
+  if (!acceptedInventory || !acceptedKioskInventory) {
+    inventoryPush = await localSyncRequest("/sync/push", {
+      method: "POST",
+      token,
+      body: {},
+    })
+    acceptedInventory =
+      acceptedInventory ?? findAccepted(inventoryPush.results, "inventory_intake", hiddenIntake.item.public_id)
+    acceptedKioskInventory =
+      acceptedKioskInventory ?? findAccepted(inventoryPush.results, "inventory_intake", kioskIntake.item.public_id)
+  }
 
   if (!acceptedInventory || !acceptedKioskInventory) {
     throw new Error("Workflow inventory intakes were not accepted by WordPress.")
@@ -602,6 +614,32 @@ function findAccepted(results, operationType, entityId = null) {
       result?.status === "accepted" &&
       (null === entityId || String(result?.entity_id ?? "") === String(entityId)),
   )
+}
+
+function autoSyncResults(result) {
+  return Array.isArray(result?.auto_sync_results) ? result.auto_sync_results : []
+}
+
+function pushSummaryFromAutoSync(resultsSource, results) {
+  const acceptedCount = results.filter((result) => result?.status === "accepted").length
+  const retryCount = results.filter((result) => result?.status === "retry").length
+  const rejectedCount = results.filter((result) => result?.status === "rejected").length
+  const queueDepth = resultsSource.reduce(
+    (total, result) => total + Number(result?.local_queue_depth ?? 0),
+    0,
+  )
+
+  return {
+    status: "ok",
+    operation_count: results.length,
+    accepted_count: acceptedCount,
+    retry_count: retryCount,
+    rejected_count: rejectedCount,
+    unsupported_operation_count: 0,
+    local_queue_depth: queueDepth,
+    wordpress_inventory_push_connected: resultsSource.some((result) => result?.wordpress_auto_sync_performed),
+    results,
+  }
 }
 
 function sanitizedPushResults(results) {

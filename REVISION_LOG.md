@@ -18,6 +18,8 @@ review, staging approval, deployment approval, and rollback planning.
 - Extended the offline app local-sync contract with auto-sync result counts and
   updated the Add Inventory UI to display WordPress/WooCommerce acceptance from
   the server response instead of requiring a separate manual Sync action.
+- Updated production local-sync smoke scripts to read auto-sync results before
+  falling back to manual `/sync/push`.
 
 ### Why
 
@@ -37,6 +39,8 @@ operation.
 - `apps/offline-app/src/App.tsx`
 - `apps/offline-app/src/data/localSyncServerClient.ts`
 - `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/production-run-local-sync-workflows-smoke.mjs`
 - `docs/CHANGELOG.md`
 - `REVISION_LOG.md`
 
@@ -57,6 +61,18 @@ operation.
 - `npm.cmd --prefix apps/offline-app run typecheck`: passed.
 - `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
 - `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `node scripts/tests/production-local-sync-inventory-smoke-contract.mjs`:
+  passed.
+- `node scripts/tests/production-local-sync-workflows-smoke-contract.mjs`:
+  passed.
+- `npm.cmd run production:local-sync-inventory-smoke` with visible inventory:
+  passed. Verified a temporary Add Inventory item auto-created a WordPress
+  inventory row, auto-published WooCommerce product `202`, matched the REST
+  inventory search, then deleted the inventory row, price row, and product.
+- `npm.cmd run production:local-sync-workflows-smoke`: passed. Verified event
+  pull/registration/check-in, customer creation, credit add/redemption, hidden
+  inventory intake, kiosk-visible inventory intake, kiosk order reservation,
+  WordPress cleanup, and local cleanup.
 
 ### Rollback Notes
 

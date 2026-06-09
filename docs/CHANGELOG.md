@@ -14,6 +14,9 @@ All notable changes follow Semantic Versioning.
 - The offline app Add Inventory flow now consumes the LAN server's auto-sync
   result directly, so staff see whether WordPress/WooCommerce accepted the item
   without needing a separate manual Sync action.
+- Production local-sync smoke scripts now recognize the LAN server auto-sync
+  response first and use manual `/sync/push` only as a fallback, keeping live
+  smoke verification compatible with online-first inventory intake.
 - Product shelf cards now replace WooCommerce's default gray placeholder image
   with a branded PUG gradient tile when no real product image exists, keeping
   Sealed, Graded, and Accessories visually aligned with the home page.

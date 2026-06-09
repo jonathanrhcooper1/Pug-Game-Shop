@@ -175,19 +175,23 @@ try {
     throw new Error(`Local sync intake failed: ${intake.code ?? intake.status}`)
   }
 
-  const push = await localSyncRequest("/sync/push", {
-    method: "POST",
-    token: auth.session.token,
-    body: {},
-  })
+  const autoSyncResults = Array.isArray(intake.auto_sync_results) ? intake.auto_sync_results : []
+  let push = pushSummaryFromAutoSync(intake, autoSyncResults)
+  let accepted = findAcceptedInventoryResult(autoSyncResults, intake.item.public_id)
 
-  if (push.status !== "ok") {
-    throw new Error(`Local sync push failed: ${push.code ?? push.status}`)
+  if (!accepted) {
+    push = await localSyncRequest("/sync/push", {
+      method: "POST",
+      token: auth.session.token,
+      body: {},
+    })
+
+    if (push.status !== "ok") {
+      throw new Error(`Local sync push failed: ${push.code ?? push.status}`)
+    }
+
+    accepted = findAcceptedInventoryResult(push.results, intake.item.public_id)
   }
-
-  const accepted = Array.isArray(push.results)
-    ? push.results.find((result) => result.entity_id === intake.item.public_id && result.status === "accepted")
-    : null
   const acceptedWooCommerceProductSync = safeWooCommerceProductSync(accepted?.woocommerce_product_sync)
   createdWooCommerceProductIds = acceptedWooCommerceProductSync.productIds
 
@@ -211,7 +215,8 @@ try {
       rejectedCount: Number(push.rejected_count ?? 0),
       unsupportedOperationCount: Number(push.unsupported_operation_count ?? 0),
       localQueueDepth: Number(push.local_queue_depth ?? 0),
-      wordpressInventoryPushConnected: Boolean(push.wordpress_inventory_push_connected),
+      wordpressInventoryPushConnected:
+        Boolean(push.wordpress_inventory_push_connected) || Boolean(intake.wordpress_auto_sync_performed),
       acceptedEntity: accepted?.entity_id ?? "",
       wordpressInventory: safeWordPressInventory(accepted?.wordpress_inventory),
       woocommerceProductSync: acceptedWooCommerceProductSync,
@@ -267,6 +272,33 @@ function buildSmokePayload() {
     id,
     barcode,
     cardName: `Codex ${smokeVisibility === "visible" ? "Visible" : "Hidden"} Local Sync Smoke`,
+  }
+}
+
+function findAcceptedInventoryResult(results, entityId) {
+  return (Array.isArray(results) ? results : []).find(
+    (result) =>
+      result?.operation_type === "inventory_intake" &&
+      result?.entity_id === entityId &&
+      result?.status === "accepted",
+  ) ?? null
+}
+
+function pushSummaryFromAutoSync(intake, results) {
+  const acceptedCount = results.filter((result) => result?.status === "accepted").length
+  const retryCount = results.filter((result) => result?.status === "retry").length
+  const rejectedCount = results.filter((result) => result?.status === "rejected").length
+
+  return {
+    status: "ok",
+    operation_count: results.length,
+    accepted_count: Number(intake.wordpress_accepted_count ?? acceptedCount),
+    retry_count: Number(intake.wordpress_retry_count ?? retryCount),
+    rejected_count: rejectedCount,
+    unsupported_operation_count: 0,
+    local_queue_depth: Number(intake.local_queue_depth ?? retryCount + rejectedCount),
+    wordpress_inventory_push_connected: Boolean(intake.wordpress_auto_sync_performed),
+    results,
   }
 }
 
