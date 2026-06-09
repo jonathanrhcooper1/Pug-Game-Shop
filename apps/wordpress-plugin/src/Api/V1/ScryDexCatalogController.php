@@ -748,7 +748,7 @@ final class ScryDexCatalogController {
 		);
 		$cards_with_variants = $this->count_query(
 			$database->prepare(
-				"SELECT COUNT(1) FROM {$cards_table} c WHERE c.provider_name = %s AND EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.provider_name = c.provider_name AND v.provider_card_id = c.provider_card_id)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(1) FROM {$cards_table} c WHERE c.provider_name = %s AND EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.provider_name = c.provider_name AND v.reference_card_id = c.reference_card_id)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'scrydex'
 			)
 		);
@@ -864,7 +864,7 @@ final class ScryDexCatalogController {
 		$rows = $database->get_results(
 			$database->prepare(
 				"SELECT c.provider_card_id, c.game, c.name, c.set_name, c.set_code, c.card_number, c.printed_number, c.front_image_url, c.updated_at,
-					EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.provider_name = c.provider_name AND v.provider_card_id = c.provider_card_id) AS has_variants,
+					EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.provider_name = c.provider_name AND v.reference_card_id = c.reference_card_id) AS has_variants,
 					EXISTS (SELECT 1 FROM {$prices_table} p WHERE p.provider_name = c.provider_name AND p.provider_card_id = c.provider_card_id) AS has_price_points
 				FROM {$cards_table} c
 				WHERE c.provider_name = %s

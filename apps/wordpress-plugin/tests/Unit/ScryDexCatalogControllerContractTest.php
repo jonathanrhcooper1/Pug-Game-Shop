@@ -101,6 +101,7 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 				'latest_catalog_cards',
 				'catalog_game_counts',
 				'has_price_points',
+				'v.reference_card_id = c.reference_card_id',
 				'credential_values_redacted',
 			) as $marker
 		) {

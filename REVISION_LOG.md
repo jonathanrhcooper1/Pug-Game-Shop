@@ -3,6 +3,48 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Catalog Integrity Variant Coverage Fix
+
+### What Changed
+
+- Updated ScryDex catalog status integrity queries to link reference cards to
+  reference variants through `reference_card_id`, matching the actual table
+  schema.
+- Updated the latest-card status preview to use the same variant relationship.
+- Bumped the plugin/package version to `0.172.0`.
+
+### Why
+
+Production imported variant rows successfully, but the status route reported
+zero variant coverage because it was checking a non-existent provider-card
+column on the variants table.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded the ScryDex catalog controller contract to require the status query
+  to use the `reference_card_id` variant relationship.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.171.0` to restore the prior status-query
+  behavior.
+- No database rollback is required.
+
 ## 2026-06-09 - Production ScryDex Usage Snapshot Deferral
 
 ### What Changed

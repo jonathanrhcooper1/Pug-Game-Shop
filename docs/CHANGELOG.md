@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- ScryDex catalog integrity and latest-card previews now calculate variant
+  coverage through the `reference_card_id` relationship used by the variants
+  table, so imported variants are visible in production status checks.
 - Empty ScryDex usage snapshots are now treated as deferred usage checks, and
   manager-triggered catalog indexing only forwards real usage snapshots into
   card workers. Production indexing diagnostics now include card block reasons.
