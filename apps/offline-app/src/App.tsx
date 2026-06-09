@@ -885,6 +885,7 @@ export function App() {
   const [sessionRole, setSessionRole] = useState<AppSessionRole>("locked")
   const [sessionUserId, setSessionUserId] = useState("")
   const [localSyncSessionToken, setLocalSyncSessionToken] = useState("")
+  const [localSyncSessionExpiresAtUtc, setLocalSyncSessionExpiresAtUtc] = useState("")
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
   const [loginPin, setLoginPin] = useState("")
   const [loginIssue, setLoginIssue] = useState("")
@@ -1470,6 +1471,39 @@ export function App() {
     }
   }, [queueAdapter])
 
+  useEffect(() => {
+    if (sessionRole === "locked" || !localSyncSessionExpiresAtUtc) {
+      return
+    }
+
+    const expiresAtMs = Date.parse(localSyncSessionExpiresAtUtc)
+
+    if (!Number.isFinite(expiresAtMs)) {
+      return
+    }
+
+    const delayMs = expiresAtMs - Date.now()
+
+    if (delayMs <= 0) {
+      handleLockSession()
+      setActivityMessage({
+        title: "Session expired",
+        detail: "Sign in again with a 4-digit PIN to continue.",
+      })
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      handleLockSession()
+      setActivityMessage({
+        title: "Session expired",
+        detail: "Sign in again with a 4-digit PIN to continue.",
+      })
+    }, Math.min(delayMs, 2_147_483_647))
+
+    return () => window.clearTimeout(timerId)
+  }, [localSyncSessionExpiresAtUtc, sessionRole])
+
   function isAccessSection(label: string): label is AccessSection {
     return ACCESS_SECTIONS.includes(label as AccessSection)
   }
@@ -1487,6 +1521,7 @@ export function App() {
     setSessionRole("locked")
     setSessionUserId("")
     setLocalSyncSessionToken("")
+    setLocalSyncSessionExpiresAtUtc("")
     setManagerSettingsLocked(true)
     setLoginPin("")
     setLoginIssue("")
@@ -1574,17 +1609,21 @@ export function App() {
       return
     }
 
-    const authResult = await localSyncClient.authWithPin(loginPin)
+    const requestedTtlMinutes = Math.min(240, Math.max(5, sessionTimeoutMinutes))
+    const authResult = await localSyncClient.authWithPin(loginPin, {
+      ttlMinutes: requestedTtlMinutes,
+    })
 
     if (authResult.status === "ok") {
       const user = upsertLocalSyncUser(authResult)
       setLocalSyncSessionToken(authResult.session.token)
+      setLocalSyncSessionExpiresAtUtc(authResult.session.expiresAtUtc)
       void refreshLocalSyncStatus()
       startOfflineUserSession(
         user,
         user.role === "manager"
-          ? `Manager session verified by ${localSyncClient.serverUrl}; website setup and user access can be unlocked.`
-          : `${user.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl}.`,
+          ? `Manager session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); website setup and user access can be unlocked.`
+          : `${user.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s).`,
       )
       return
     }
@@ -1604,6 +1643,7 @@ export function App() {
     }
 
     setLocalSyncSessionToken("")
+    setLocalSyncSessionExpiresAtUtc(new Date(Date.now() + Math.min(240, Math.max(5, sessionTimeoutMinutes)) * 60_000).toISOString())
     startOfflineUserSession(
       cachedUser,
       `${authResult.message} Cached preview policy unlocked ${cachedUser.access.join(", ")}; inventory holds and kiosk orders still require the LAN sync server.`,
@@ -5554,6 +5594,12 @@ export function App() {
                   <strong>{managerControlsUnlocked ? "Manager unlocked" : "Manager locked"}</strong>
                   <small>
                     Session role {sessionRole}; timeout is {sessionTimeoutMinutes} minute(s).
+                    {localSyncSessionExpiresAtUtc
+                      ? ` Auto-locks at ${new Date(localSyncSessionExpiresAtUtc).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}.`
+                      : ""}
                   </small>
                 </div>
                 <label htmlFor="session-timeout-minutes">

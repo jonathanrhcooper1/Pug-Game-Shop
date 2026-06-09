@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - PIN Session Timeout Enforcement
+
+### What Changed
+
+- Offline app PIN login now sends the configured timeout value as `ttlMinutes`
+  to the LAN local sync server.
+- Offline app stores the returned LAN session expiration, shows the auto-lock
+  time in the manager/session panel, and locks the app when the session
+  expires.
+- LAN runtime coverage now proves a requested short TTL is reflected in the
+  issued session expiration.
+
+### Why
+
+The setup/settings UI exposed a session timeout value, but the app was not
+using it when authenticating with the LAN server. Staff sessions now follow the
+admin-configured timeout instead of always using the LAN default.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline client contract coverage for `ttlMinutes`.
+- Offline app shell coverage for expiration state, auto-lock copy, and
+  requested TTL login call.
+- LAN runtime coverage for requested TTL expiration.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+
+### Rollback Notes
+
+- Revert this revision to return to fixed LAN-default session durations.
+- No data migration is required; existing in-memory LAN sessions will continue
+  until their already-issued expiration times.
+
 ## 2026-06-08 - Local Sync Secret Verification Contract Cleanup
 
 ### What Changed

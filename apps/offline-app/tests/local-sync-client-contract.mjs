@@ -73,6 +73,7 @@ for (const route of [
 
 for (const marker of [
   "Bearer ${options.sessionToken}",
+  "ttlMinutes",
   "raw_pin_returned: false",
   "pin_hash_returned: false",
   "pin_credentials_returned: false",

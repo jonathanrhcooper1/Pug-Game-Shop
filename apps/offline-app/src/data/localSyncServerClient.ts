@@ -377,7 +377,7 @@ export type LocalSyncFetch = (
 
 export type LocalSyncServerClient = {
   serverUrl: string
-  authWithPin: (pin: string) => Promise<LocalSyncAuthResult>
+  authWithPin: (pin: string, options?: { ttlMinutes?: number }) => Promise<LocalSyncAuthResult>
   getAccessPolicy: (sessionToken: string) => Promise<LocalSyncAccessPolicyResult>
   addUser: (
     sessionToken: string,
@@ -476,10 +476,10 @@ export function createLocalSyncServerClient(
 
   return {
     serverUrl: baseUrl,
-    authWithPin: (pin) =>
+    authWithPin: (pin, options = {}) =>
       requestLocalSync(fetcher, baseUrl, "/auth/pin", {
         method: "POST",
-        body: { pin },
+        body: { pin, ttlMinutes: options.ttlMinutes },
       }) as Promise<LocalSyncAuthResult>,
     getAccessPolicy: (sessionToken) =>
       requestLocalSync(fetcher, baseUrl, "/users/access-policy", {

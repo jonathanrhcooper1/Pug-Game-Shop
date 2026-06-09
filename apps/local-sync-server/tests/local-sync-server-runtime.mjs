@@ -291,12 +291,14 @@ try {
 
   const cashierAuth = await fetchJson(`${baseUrl}/auth/pin`, {
     method: "POST",
-    body: { pin: "2468" },
+    body: { pin: "2468", ttlMinutes: 5 },
   })
 
   assert.equal(cashierAuth.status, "ok")
   assert.equal(cashierAuth.user.name, "Test Cashier")
   assert.deepEqual(cashierAuth.user.access, ["Inventory", "Kiosk", "Queue", "Status"])
+  assert.ok(Date.parse(cashierAuth.session.expiresAtUtc) - Date.now() <= 5 * 60_000 + 10_000)
+  assert.ok(Date.parse(cashierAuth.session.expiresAtUtc) - Date.now() >= 4 * 60_000)
 
   const scrydexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=charizard`, {
     token: cashierAuth.session.token,

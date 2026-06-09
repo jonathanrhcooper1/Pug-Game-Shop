@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Offline app PIN login now sends the configured session timeout to the LAN
+  server, stores the returned expiration, displays the auto-lock time, and
+  locks the app when the session expires.
 - Local sync server safety contract now names live credential blocking without
   tripping the production-secret verifier, restoring the root no-secrets gate.
 - ScryDex reference-card persistence now uses provider-key idempotent upserts,
