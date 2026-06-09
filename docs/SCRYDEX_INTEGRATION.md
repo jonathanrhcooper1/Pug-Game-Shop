@@ -123,24 +123,33 @@ WordPress registers two authenticated ScryDex catalog endpoints:
   payload fields are `game` (default `pokemon`), `expansion_id`, `page_size`,
   `max_pages`, `index_expansions`, `expansions_page`,
   `max_expansion_pages`, `skip_cards`, and `execute_database_writes`. The
-  endpoint checks provider readiness and usage before importing, can index
-  bounded expansion pages, can skip card pages for expansion-only batches, runs
-  bounded card pages through the existing ScryDex worker, returns public usage
-  metadata, expansion/card summaries, `counts_after`, and `next_action`, and
-  does not return raw provider bodies or credentials.
+  endpoint checks provider readiness, planned request count, and usage before
+  importing, can index bounded expansion pages, can skip card pages for
+  expansion-only batches, runs bounded card pages through the existing ScryDex
+  worker, returns public usage metadata, usage/rate-limit budget summaries,
+  expansion/card summaries, `counts_after`, and `next_action`, and does not
+  return raw provider bodies or credentials.
 
 ScryDex documents a maximum page size of 100. The HTTP provider, dry-run
 planner, usage planner, worker, scheduled settings, and catalog import
 controller all clamp requested ScryDex page sizes to `1..100`; the catalog
 index endpoint additionally caps card `max_pages` and
 `max_expansion_pages` at 25 per request.
+ScryDex currently documents credit-based usage for every API request and a
+100-requests-per-second API limit. The catalog index endpoint therefore counts
+the worst-case provider requests for the batch before importing, includes the
+`/account/v1/usage` check in the credit estimate, blocks batches over the
+configured daily budget or remaining-credit reserve, and keeps a per-request
+provider-call ceiling below the documented per-second limit.
 The worker continues across documented `nextCursor`/`hasMore` style pagination
 and `page * pageSize < totalCount` pagination.
 
 Database writes stay explicit. `execute_database_writes` must be truthy before
 the catalog index route persists expansion rows or lets the cards worker use
-the persistence execution boundary. Without it, the route is suitable for
-readiness and dry-run style staging checks.
+the persistence execution boundary. The route itself is manager-only, and the
+controller also re-checks `manage_settings` before honoring write requests.
+Without `execute_database_writes`, the route is suitable for readiness and
+dry-run style staging checks.
 
 The WordPress admin menu includes **ScryDex Catalog** for staff and managers.
 Staff with inventory access can view catalog counts and latest checkpoints.
@@ -234,7 +243,8 @@ Use the live smoke only for a manual, read-only credential check. It is not
 part of CI and must not be run with production credentials in automated tests.
 The helper reads ignored local env files first, including
 `.env.production.local`, `.env.local`, and `.env`, so credentials do not need to
-be placed directly in shell history.
+be placed directly in shell history. The committed `.env.example` file contains
+placeholder-only keys for the production helpers and live smoke.
 
 ```text
 SCRYDEX_API_KEY=...
@@ -263,6 +273,13 @@ fresh usage snapshot is required before the worker runs. The usage provider
 request remains deferred by default; the plan can evaluate an already-fetched
 usage snapshot in tests or future worker code without making the request
 itself.
+The catalog import route uses the same budget settings in live mode, but it
+budgets the whole planned batch instead of a single card page. The returned
+`usage_budget_plan` reports planned provider request count, per-request credit
+estimate, total estimated credit cost, and remaining credits after the
+estimate. The returned `rate_limit_plan` reports the documented request-rate
+limit, the plugin's lower per-REST-call ceiling, and whether the usage check
+was included in the estimate.
 
 The health endpoint also includes `scrydex_checkpoint_repository`. This plan
 builds the read and upsert SQL templates for `tcg_sync_checkpoints`, validates
@@ -323,6 +340,7 @@ Budget-specific blockers are:
 - `scrydex_usage_budget_not_configured`
 - `scrydex_daily_credit_budget_exceeded`
 - `scrydex_remaining_credit_floor_reached`
+- `scrydex_provider_request_batch_exceeds_safe_limit`
 
 Checkpoint-specific blockers are:
 

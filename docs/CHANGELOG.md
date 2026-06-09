@@ -6,6 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- ScryDex catalog imports now preflight the whole planned provider request
+  batch against configured usage credits and a per-call ceiling below the
+  documented ScryDex request-rate limit before any expansion/card indexing
+  starts; database writes are also re-checked for `manage_settings` inside the
+  controller.
 - Offline app inventory search now hydrates from the central LAN sync server
   while preserving device-cache fallback, and the LAN inventory search now
   matches location, set code, card number, printed number, condition, provider
@@ -17,6 +22,12 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync setup now has a secret-free `GET /setup/status` probe, and the
+  offline app stores one configurable website profile per installation while
+  preserving and validating the configured LAN server URL.
+- WooCommerce My Account now includes a read-only **Pug Portal** endpoint that
+  shows logged-in customers their store credit balance, safe recent credit
+  activity, and card-focused purchase history from serialized order metadata.
 - WordPress admin now includes a **ScryDex Catalog** workspace with secret-free
   catalog counts, latest ScryDex checkpoints, and manager-only bounded import
   controls that call the authenticated catalog status/index REST endpoints.
@@ -28,6 +39,8 @@ All notable changes follow Semantic Versioning.
   date, so set/version searches keep the full provider context.
 - The read-only ScryDex live-smoke helper now loads ignored local env files
   before checking credentials, keeping API keys out of shell history.
+- Added a placeholder-only `.env.example` template for production deploy,
+  ScryDex configuration, live smoke, and bounded catalog indexing.
 - Production-safe WordPress deployment helpers now cover the real ScryDex
   catalog path: package install with production database/`wp-content` backup,
   ScryDex settings configuration through a redacted WP-CLI runner, and bounded

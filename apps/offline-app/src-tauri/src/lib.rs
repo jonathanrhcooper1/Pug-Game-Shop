@@ -2069,7 +2069,7 @@ mod tests {
                 device_mode: "staff".to_string(),
                 location_id: 2,
                 manager_id: 42,
-                app_version: "0.156.0".to_string(),
+                app_version: "0.162.0".to_string(),
                 platform: "windows".to_string(),
                 capabilities: serde_json::json!({
                     "barcode_scanner": true,

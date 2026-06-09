@@ -490,6 +490,13 @@ enable the pairing route gate separately from pull, push, and conflict route
 gates. This prepares multi-company connector pairing without issuing device
 tokens, exposing raw pairing codes, writing canonical website data, or running
 sync network requests by default.
+The local app setup model is now one configurable WordPress website per
+installation, backed by a LAN middleman server. The local server exposes
+`GET /setup/status` as a secret-free probe that reports the configured website
+origin, REST base, local database, pull/push wiring, and credential redaction.
+The offline app's Settings panel stores one active connector profile, preserves
+the configured LAN server URL during manifest import, and warns if the LAN
+server reports a different WordPress site before staff rely on local sync.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

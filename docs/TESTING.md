@@ -377,6 +377,9 @@
 - Local unit coverage now includes the staff Inventory admin intake panel,
   covering default lockout, staging-ready route state, safe form sanitization,
   and route metadata for the gated REST-backed create form.
+- Local unit coverage now includes the staff Inventory admin card lookup UI,
+  proving reference-search results expose image URL, set/number, stock/price
+  context, condition and quantity controls, and intake handoff markers.
 - Local unit coverage now includes Staff Inventory workspace projection
   planning readiness, proving WooCommerce/Square contracts can be marked ready
   while external writes remain deferred.

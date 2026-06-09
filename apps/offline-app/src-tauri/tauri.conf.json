@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "TCG Store Offline",
-  "version": "0.156.0",
+  "productName": "TCG Store Local",
+  "version": "0.162.0",
   "identifier": "com.tcgstoreplatform.offline",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "TCG Store Offline",
+        "title": "TCG Store Local",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
@@ -30,8 +30,8 @@
     "targets": ["nsis"],
     "publisher": "Configured per deployment",
     "category": "Business",
-    "shortDescription": "Offline sync app for trading-card store operations.",
-    "longDescription": "Offline sync app for inventory, kiosk, customer credit, buylist, event, and staff workflows.",
+    "shortDescription": "Local store app with live sync and offline fallback for trading-card store operations.",
+    "longDescription": "Local store app with live sync and offline fallback for inventory, kiosk, customer credit, buylist, event, and staff workflows.",
     "windows": {
       "nsis": {
         "installMode": "perMachine",

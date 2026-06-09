@@ -1,8 +1,8 @@
 {
   "name": "@pug-game-shop/offline-app",
-  "version": "0.156.0",
+  "version": "0.162.0",
   "private": true,
-  "description": "Windows offline sync app for the TCG Store Platform.",
+  "description": "Windows local store app with live sync and offline fallback for the TCG Store Platform.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",

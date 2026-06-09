@@ -99,6 +99,10 @@ staging database acceptance remains pending.
 - Staff Inventory Workspace intake form for gated staging card creation through
   `POST /inventory`, including card identity, barcode/SKU, location, pricing,
   status, condition, and visibility fields.
+- Staff Inventory Workspace card lookup for the website reference catalog,
+  showing image URL, set/number, stock/price context, condition and quantity
+  controls, and a handoff that prefills the existing intake form without
+  changing ScryDex importer internals.
 - Disposable WordPress staging smoke seed data for one Pokemon inventory item,
   proving staff inventory search returns real table data in CI.
 - Dependency-free inventory search parser with query, game, status, location,

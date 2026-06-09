@@ -3,6 +3,91 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Customer Account Portal
+
+### What Changed
+
+- Added a WooCommerce My Account `pug-portal` endpoint for logged-in customers.
+- Added a customer-safe account portal presenter for store credit visibility,
+  recent ledger activity, and card purchase history.
+- Wired the portal into plugin bootstrap and WooCommerce account menu hooks.
+- Documented the read-only portal behavior and hidden internal credit fields.
+
+### Why
+
+Customers need to see their available store credit and card purchase history on
+the website without exposing staff-only ledger metadata or enabling credit
+redemption before the checkout hook is ready.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalController.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/CUSTOMER_CREDIT.md`
+- `docs/UI_FLOWS.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `CustomerAccountPortalControllerTest`
+- `CustomerAccountPortalPresenterTest`
+
+### Rollback Notes
+
+- Remove the portal controller registration from plugin bootstrap and reinstall
+  the prior plugin package. No database rollback is required because this slice
+  is read-only.
+
+## 2026-06-09 - ScryDex Import Budget And Permission Guardrails
+
+### What Changed
+
+- Added whole-batch ScryDex provider request budgeting for catalog imports.
+- Added a controller rate-limit preflight below ScryDex's documented
+  requests-per-second limit.
+- Re-checked `manage_settings` inside the catalog controller before honoring
+  `execute_database_writes`.
+- Added focused source/unit coverage for budget multiplication, request-count
+  guardrails, and manager-only write markers.
+
+### Why
+
+The live catalog importer can request expansion pages and card pages in one
+bounded batch. Budgeting only one cards page could allow an import to exceed
+the store's configured ScryDex credit budget or remaining-credit reserve.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `ScryDexUsageBudgetPlannerTest::test_provider_request_batch_multiplies_estimated_credit_cost`
+- `ScryDexCatalogControllerContractTest::test_catalog_index_preflights_usage_and_rate_limit_budget`
+- `ScryDexCatalogControllerContractTest::test_catalog_index_keeps_database_writes_manager_only`
+
+### Rollback Notes
+
+- Revert these files to restore the prior single-page budget behavior.
+- No database rollback is required; this change only blocks unsafe import
+  requests earlier.
+
 ## 2026-06-09 - ScryDex Live Smoke Env Loading
 
 ### What Changed
@@ -11,6 +96,8 @@ review, staging approval, deployment approval, and rollback planning.
   files before reading ScryDex credentials.
 - Added contract coverage for the env-file loading behavior.
 - Documented the safe local env-file path for live ScryDex credential checks.
+- Added a placeholder-only `.env.example` template for production helpers,
+  ScryDex configuration, live smoke, and bounded catalog indexing.
 
 ### Why
 
@@ -21,6 +108,7 @@ shell history, commit history, or test output.
 
 - `scripts/scrydex-live-smoke.mjs`
 - `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `.env.example`
 - `docs/SCRYDEX_INTEGRATION.md`
 - `docs/CHANGELOG.md`
 

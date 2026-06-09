@@ -95,6 +95,14 @@ back in visible UI. The preview shapes `POST /offline/devices/register`, the
 requested offline scopes, and desktop secure token storage while keeping live
 token issuance and network submission disabled.
 
+Each installed local app is configured for one website at a time. Managers set
+the WordPress host and LAN sync server URL in Settings, then use the LAN setup
+probe to call `GET /setup/status` on the local middleman. That probe must
+report the same WordPress origin as the app profile before inventory pull,
+push, kiosk orders, customer credit, or event sync should be trusted on that
+machine. To reuse the app for another company, replace the saved website setup
+instead of selecting from multiple company profiles.
+
 WordPress pairing readiness now exposes the matching app pairing contract in
 authenticated health and System Status. Staging can compare the offline app's
 selected connector route map with the plugin's planned device register, pull,
