@@ -18,6 +18,8 @@ review, staging approval, deployment approval, and rollback planning.
   hidden test item, pushes it through the LAN server to WordPress, verifies it
   through authenticated inventory search, and deletes the smoke row from
   WordPress and local SQLite.
+- User/PIN access policy updates are now stored as `local_only` LAN audit
+  operations instead of pending WordPress push work.
 
 ### Why
 
@@ -50,6 +52,8 @@ online, in the customer kiosk, or in POS-facing inventory.
 - Local SQLite only: `inventory_items.online_visibility`,
   `inventory_items.kiosk_visibility`, and `inventory_items.pos_visibility`
   default to `visible`.
+- Existing local `user_access_upsert` queue rows migrate from `pending` to
+  `local_only`.
 - No WordPress database migration was added.
 
 ### Tests Added
@@ -71,6 +75,9 @@ online, in the customer kiosk, or in POS-facing inventory.
   `CODEX-LSYNC-20260609T094614Z`, verified it in authenticated WordPress
   inventory search, then deleted one WordPress inventory row, one price-log row,
   and one local SQLite row.
+- Restarted the LAN server after the `local_only` migration and verified
+  `queueDepth: 0` with the preserved `user_access_upsert` row no longer counted
+  as pending WordPress work.
 
 ### Rollback Notes
 

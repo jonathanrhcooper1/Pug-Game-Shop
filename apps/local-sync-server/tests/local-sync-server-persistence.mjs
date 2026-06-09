@@ -98,7 +98,7 @@ try {
 
   const firstStatus = firstStore.syncStatus()
   assert.equal(firstStatus.persistence_mode, "sqlite")
-  assert.equal(firstStatus.queue_depth, 7)
+  assert.equal(firstStatus.queue_depth, 6)
   assert.equal(firstStatus.client_device_count, 1)
   assert.equal(firstStatus.online_client_device_count, 1)
   assert.ok(firstStatus.reference_card_count >= 5)
@@ -158,7 +158,7 @@ try {
   assert.equal(duplicateReservation.code, "inventory_unavailable")
 
   const restartedStatus = restartedStore.syncStatus()
-  assert.equal(restartedStatus.queue_depth, 7)
+  assert.equal(restartedStatus.queue_depth, 6)
   assert.equal(restartedStatus.client_device_count, 1)
   assert.equal(restartedStatus.online_client_device_count, 1)
   assert.ok(restartedStatus.reference_card_count >= 5)

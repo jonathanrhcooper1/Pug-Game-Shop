@@ -201,7 +201,9 @@ export function createLocalSyncStore(options = {}) {
     user.pinHash = hashPin(pin, user.pinSalt)
     users.push(user)
     saveUser(database, user, now)
-    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now)
+    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now, {
+      syncStatus: "local_only",
+    })
 
     return {
       status: "ok",
@@ -239,7 +241,9 @@ export function createLocalSyncStore(options = {}) {
     }
 
     saveUser(database, user, now)
-    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now)
+    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now, {
+      syncStatus: "local_only",
+    })
 
     return {
       status: "ok",
@@ -1730,6 +1734,11 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "pos_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
+  database.exec(`
+    UPDATE operation_queue
+    SET sync_status = 'local_only'
+    WHERE operation_type = 'user_access_upsert' AND sync_status = 'pending'
+  `)
 }
 
 function seedLocalSyncDatabase(database, now) {
@@ -2286,8 +2295,9 @@ function saveEventSnapshot(database, event, now) {
     )
 }
 
-function appendQueueOperation(database, queue, type, entityId, payload, now) {
+function appendQueueOperation(database, queue, type, entityId, payload, now, options = {}) {
   const operation = queueOperation(type, entityId, payload, now)
+  operation.sync_status = cleanQueueSyncStatus(options.syncStatus ?? operation.sync_status)
 
   database
     .prepare(`
@@ -2321,6 +2331,12 @@ function deleteQueueOperation(database, queue, operationId) {
 
 function pendingQueueOperations(queue) {
   return queue.filter((operation) => operation.sync_status === "pending")
+}
+
+function cleanQueueSyncStatus(value) {
+  const status = String(value ?? "").trim().toLowerCase()
+
+  return ["pending", "local_only"].includes(status) ? status : "pending"
 }
 
 function localInventoryStatus(value) {

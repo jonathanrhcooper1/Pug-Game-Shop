@@ -9,6 +9,9 @@ All notable changes follow Semantic Versioning.
 - Local sync inventory intake now preserves online/kiosk/POS visibility from
   the desktop app through SQLite, WordPress push mapping, and production smoke
   verification, with a guarded hidden-row live smoke that cleans itself up.
+- LAN user/PIN access policy changes are now stored as `local_only` audit
+  operations instead of pending WordPress pushes, so Sync status reflects only
+  work that can actually be accepted by WordPress.
 - The offline app ScryDex intake flow now shows a selected-card preview with
   card art, catalog source, condition stock, queued quantity/price, variants,
   and lookup path, including a responsive mobile layout for phone-sized
