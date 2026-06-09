@@ -35,7 +35,7 @@ final class CustomerCreditRestPresenterTest extends TestCase {
 		$this->assert_same( 10, $data['customer_id'] );
 		$this->assert_same( 'cust-public-10', $data['public_id'] );
 		$this->assert_same( 'Jane Player', $data['display_name'] );
-		$this->assert_same( '12.5000', $data['credit']['balance'] );
+		$this->assert_same( '12.50', $data['credit']['balance'] );
 		$this->assert_same( 'USD', $data['credit']['currency'] );
 		$this->assert_same( 3, $data['credit']['version'] );
 		$this->assert_false( isset( $data['normalized_phone'] ) );
@@ -69,9 +69,9 @@ final class CustomerCreditRestPresenterTest extends TestCase {
 		$entry = $response['data'][0];
 
 		$this->assert_same( 99, $entry['ledger_entry_id'] );
-		$this->assert_same( '8.5000', $entry['amount'] );
+		$this->assert_same( '8.50', $entry['amount'] );
 		$this->assert_same( 'USD', $entry['currency'] );
-		$this->assert_same( '20.5000', $entry['balance_after'] );
+		$this->assert_same( '20.50', $entry['balance_after'] );
 		$this->assert_same( 'visible', $entry['metadata']['safe'] );
 		$this->assert_same( '[redacted]', $entry['metadata']['api_key'] );
 		$this->assert_same( '[redacted]', $entry['metadata']['nested']['manager_pin'] );
@@ -98,7 +98,7 @@ final class CustomerCreditRestPresenterTest extends TestCase {
 		$this->assert_true( $data['idempotent'] );
 		$this->assert_same( 'idempotent_replay', $data['code'] );
 		$this->assert_same( 99, $data['ledger_entry_id'] );
-		$this->assert_same( '20.5000', $data['balance_after']['amount'] );
+		$this->assert_same( '20.50', $data['balance_after']['amount'] );
 		$this->assert_same( 'USD', $data['balance_after']['currency'] );
 	}
 

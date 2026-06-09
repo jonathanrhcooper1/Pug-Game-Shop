@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Customer credit REST responses now present balances, ledger amounts, and
+  posting results as standard two-decimal currency strings so website, local
+  app, and connector screens do not display database-precision `.0000`
+  amounts.
 - Added a local sync operator smoke command for store workstations to verify a
   running LAN server, configured website binding, device presence, and
   secret-free heartbeat handling without mutating WordPress or Square.

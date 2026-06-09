@@ -3,6 +3,48 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Customer Credit Two-Decimal REST Money
+
+### What Changed
+
+- Updated customer credit REST response presentation to format balances,
+  ledger amounts, and posting-result balances as two-decimal currency strings.
+- Updated the customer credit REST presenter tests to lock the `.00` display
+  contract while leaving ledger storage/math precision untouched.
+
+### Why
+
+The store UI, local app, and connector screens should not show
+database-precision money such as `.0000` for customer-facing pricing or credit
+values. The API can still receive and store high-precision decimal values, but
+the presentation boundary should look like normal currency.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Credit/CustomerCreditRestPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRestPresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `CustomerCreditRestPresenterTest` expectations for two-decimal REST
+  money output.
+
+### Verification
+
+- `php tests/run.php`: passed.
+
+### Rollback Notes
+
+- Revert this revision to return REST credit money responses to four-decimal
+  database-style formatting.
+- No database rollback is required.
+
 ## 2026-06-09 - Local Sync Operator Smoke Command
 
 ### What Changed

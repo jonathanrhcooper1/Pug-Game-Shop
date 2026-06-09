@@ -176,10 +176,10 @@ final class CustomerCreditRestPresenter {
 		$value = self::clean_string( $value );
 
 		if ( 1 !== preg_match( '/^-?\d+(?:\.\d+)?$/', $value ) ) {
-			return '0.0000';
+			return '0.00';
 		}
 
-		return number_format( (float) $value, 4, '.', '' );
+		return number_format( (float) $value, 2, '.', '' );
 	}
 
 	private static function currency( mixed $value ): string {
