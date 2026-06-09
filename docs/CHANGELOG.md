@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The guarded production WooCommerce card smoke now verifies the rendered
+  customer condition selector UI, including selected option, stock, two-decimal
+  price data, and the serialized quantity lock.
 - WooCommerce grouped card product pages now show a clearer exact-copy selector
   with selected condition/version, two-decimal price, copy count, and responsive
   product-page styling before the cart reservation is created.

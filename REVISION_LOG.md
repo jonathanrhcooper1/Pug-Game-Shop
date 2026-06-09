@@ -3,6 +3,55 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - WooCommerce Selector Production Smoke Coverage
+
+### What Changed
+
+- Extended the guarded production WooCommerce card smoke to render the grouped
+  card condition selector.
+- Added smoke checks for:
+  - exact-copy selector header
+  - selected option target
+  - selected price target
+  - selected stock target
+  - option-level stock data
+  - two-decimal price data
+  - serialized quantity locked to one
+- Updated the smoke contract test to require those markers.
+
+### Why
+
+The production smoke already verified product metadata, remote image fallback,
+exact inventory reservation release, and paid-order conversion. It now also
+verifies the customer-visible selector UI that exposes condition, price, and
+available copies before checkout.
+
+### Files Affected
+
+- `scripts/production-run-woocommerce-card-smoke.mjs`
+- `scripts/tests/production-woocommerce-card-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `scripts/tests/production-woocommerce-card-smoke-contract.mjs`.
+
+### Verification
+
+- `node scripts/tests/production-woocommerce-card-smoke-contract.mjs`: passed.
+- `node scripts/production-run-woocommerce-card-smoke.mjs --dry-run`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove selector-HTML checks from the guarded
+  production smoke.
+- No database rollback is required.
+
 ## 2026-06-09 - WooCommerce Exact Card Selector Polish
 
 ### What Changed

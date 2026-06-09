@@ -58,6 +58,7 @@ if (dryRun) {
         createsTemporaryVisibleInventoryRows: true,
         verifiesGroupedCardProductMetadata: true,
         verifiesCardImageFallback: true,
+        verifiesSelectedConditionStockPriceUi: true,
         verifiesExactInventoryReservationRelease: true,
         verifiesExactInventoryOrderConversion: true,
         cleansTemporaryRowsAndProduct: true,
@@ -251,8 +252,12 @@ try {
 
 \t$options = json_decode((string) $product->get_meta('_tcg_inventory_options_json', true), true);
 \t$options = is_array($options) ? array_values(array_filter($options, 'is_array')) : array();
-\t$image_html = (new TCGStorePlatform\\WooCommerce\\GroupedInventoryProductHooks())->product_image('', $product, 'woocommerce_thumbnail', array(), false);
 \t$hooks = new TCGStorePlatform\\WooCommerce\\GroupedInventoryProductHooks();
+\t$image_html = $hooks->product_image('', $product, 'woocommerce_thumbnail', array(), false);
+\t$GLOBALS['product'] = $product;
+\tob_start();
+\t$hooks->render_condition_selector();
+\t$selector_html = (string) ob_get_clean();
 
 \t$release_option = $options[0]['option_key'] ?? '';
 \t$_POST['tcg_inventory_option_key'] = $release_option;
@@ -342,6 +347,15 @@ try {
 \t\t\t$options
 \t\t),
 \t\t'image_html_contains_remote_url' => false !== strpos($image_html, 'https://images.scrydex.com/pokemon/mcd24-1/large'),
+\t\t'selector_ui' => array(
+\t\t\t'contains_exact_copy_header' => false !== strpos($selector_html, 'Exact card copy'),
+\t\t\t'contains_selected_option_target' => false !== strpos($selector_html, 'data-tcg-selected-option'),
+\t\t\t'contains_selected_price_target' => false !== strpos($selector_html, 'data-tcg-selected-price'),
+\t\t\t'contains_selected_stock_target' => false !== strpos($selector_html, 'data-tcg-selected-stock'),
+\t\t\t'contains_option_stock_data' => false !== strpos($selector_html, 'data-stock="1"'),
+\t\t\t'contains_two_decimal_price_data' => false !== strpos($selector_html, 'data-price="0.99"') && false !== strpos($selector_html, 'data-price="1.23"'),
+\t\t\t'locks_quantity_to_one' => false !== strpos($selector_html, 'quantity.max="1"'),
+\t\t),
 \t\t'release_flow' => array(
 \t\t\t'validated' => (bool) $release_validated,
 \t\t\t'reservation_id' => $release_reservation_id,
@@ -408,6 +422,7 @@ const result = await withProductionConnection(async (connection) => {
       smokeId: parsed?.smoke_id ?? smokeId,
       product: parsed?.product ?? null,
       options: parsed?.options ?? [],
+      selectorUi: parsed?.selector_ui ?? null,
       releaseFlow: parsed?.release_flow ?? null,
       convertFlow: parsed?.convert_flow ?? null,
       cleanup: parsed?.cleanup ?? null,
@@ -443,6 +458,7 @@ function buildChecks(parsed, expected) {
   const release = parsed?.release_flow ?? {}
   const convert = parsed?.convert_flow ?? {}
   const cleanup = parsed?.cleanup ?? {}
+  const selector = parsed?.selector_ui ?? {}
 
   return [
     {
@@ -485,6 +501,19 @@ function buildChecks(parsed, expected) {
         parsed?.image_html_contains_remote_url === true,
       expected: true,
       actual: parsed?.image_html_contains_remote_url ?? null,
+    },
+    {
+      name: "condition_selector_ui",
+      pass:
+        selector.contains_exact_copy_header === true &&
+        selector.contains_selected_option_target === true &&
+        selector.contains_selected_price_target === true &&
+        selector.contains_selected_stock_target === true &&
+        selector.contains_option_stock_data === true &&
+        selector.contains_two_decimal_price_data === true &&
+        selector.locks_quantity_to_one === true,
+      expected: "exact-copy selector with selected option, price, stock, and quantity lock",
+      actual: selector,
     },
     {
       name: "reservation_release_flow",
