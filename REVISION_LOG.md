@@ -3,6 +3,55 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production ScryDex Usage Snapshot Deferral
+
+### What Changed
+
+- Treated an empty ScryDex usage snapshot as a deferred usage check rather than
+  a zero-credit account snapshot.
+- Updated the manager catalog indexing route to pass usage snapshots into the
+  card worker only when the usage endpoint was actually requested and returned
+  ready data.
+- Added live-run diagnostics for card worker block reasons so production proofs
+  show the exact readiness gate that stopped indexing.
+- Bumped the plugin/package version to `0.171.0`.
+
+### Why
+
+Production card indexing still stopped before network requests after the first
+gate fix because the enterprise route intentionally skipped usage lookup, then
+forwarded an empty snapshot into the worker. The worker normalized that empty
+array to zero remaining credits and blocked on the remaining-credit floor.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `scripts/production-run-scrydex-index.mjs`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added a usage-budget planner regression test proving an empty usage snapshot
+  stays ready and is treated as deferred usage data.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.170.0` to restore the prior usage snapshot
+  behavior.
+- No database rollback is required.
+
 ## 2026-06-09 - Production ScryDex Card Worker Gate Fix
 
 ### What Changed

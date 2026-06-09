@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Empty ScryDex usage snapshots are now treated as deferred usage checks, and
+  manager-triggered catalog indexing only forwards real usage snapshots into
+  card workers. Production indexing diagnostics now include card block reasons.
 - ScryDex manager-triggered catalog indexing now explicitly enables the
   repository readiness gates after validating the WordPress database and
   constructing the checkpoint/persistence repositories, allowing production

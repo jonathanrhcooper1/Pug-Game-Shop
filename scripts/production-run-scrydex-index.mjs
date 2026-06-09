@@ -166,6 +166,7 @@ function tcg_production_scrydex_catalog_request(array $payload, string $game, st
 	$counts_after = is_array($data['counts_after'] ?? null) ? $data['counts_after'] : array();
 	$expansion_continuation = !empty($expansions['continuation_available']);
 	$card_continuation = !empty($cards['continuation_available']);
+	$execution_gate = is_array($cards['execution_gate'] ?? null) ? $cards['execution_gate'] : array();
 
 	return array(
 		'http_status' => $response->get_status(),
@@ -174,6 +175,11 @@ function tcg_production_scrydex_catalog_request(array $payload, string $game, st
 		'cards_provider_request_count' => (int) ($cards['provider_request_count'] ?? 0),
 		'cards_continuation_available' => $card_continuation,
 		'cards_continuation_checkpoint_row' => is_array($cards['continuation_checkpoint_row'] ?? null) ? $cards['continuation_checkpoint_row'] : null,
+		'cards_block_reasons' => is_array($cards['block_reasons'] ?? null) ? $cards['block_reasons'] : array(),
+		'cards_configuration_issues' => is_array($cards['configuration_issues'] ?? null) ? $cards['configuration_issues'] : array(),
+		'cards_execution_gate_status' => (string) ($execution_gate['status'] ?? 'unknown'),
+		'cards_execution_gate_block_reasons' => is_array($execution_gate['block_reasons'] ?? null) ? $execution_gate['block_reasons'] : array(),
+		'cards_execution_gate_provider_status' => (string) ($execution_gate['provider_status'] ?? 'unknown'),
 		'expansions_status' => (string) ($expansions['status'] ?? 'skipped'),
 		'expansions_provider_request_count' => (int) ($expansions['provider_request_count'] ?? 0),
 		'expansions_row_count' => (int) ($expansions['row_count'] ?? 0),

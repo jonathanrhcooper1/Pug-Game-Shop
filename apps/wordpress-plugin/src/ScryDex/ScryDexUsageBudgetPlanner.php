@@ -45,7 +45,7 @@ final class ScryDexUsageBudgetPlanner {
 		$request_count = $this->planned_request_count( $planned_provider_request_count );
 		$cost_each     = (int) $status['per_cards_page_credit_estimate'];
 		$cost          = $cost_each * $request_count;
-		$snapshot      = null === $usage_snapshot ? null : $this->normalize_snapshot( $usage_snapshot );
+		$snapshot      = null === $usage_snapshot || array() === $usage_snapshot ? null : $this->normalize_snapshot( $usage_snapshot );
 		$block_reasons = $this->block_reasons( $status, $snapshot, $cost );
 		$allowed       = $configured && array() === $block_reasons;
 

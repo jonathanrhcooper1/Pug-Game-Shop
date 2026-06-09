@@ -53,6 +53,7 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 				'enterprise_usage_budget_plan',
 				'checkpoint_repository_configured',
 				'persistence_repository_configured',
+				'$gate_overrides[\'usage_snapshot\']',
 				'daily_credit_budget_enforced',
 				'enterprise_overage_allowed',
 			) as $marker

@@ -153,14 +153,16 @@ final class ScryDexCatalogController {
 		$usage_budget_plan = $this->enterprise_usage_budget_plan( $game, $page_size, $provider_request_count, $include_usage_snapshot );
 
 		$gate_overrides = array(
-			'network_requests_enabled'    => true,
-			'usage_budget_configured'     => true,
+			'network_requests_enabled'          => true,
+			'usage_budget_configured'           => true,
 			'checkpoint_repository_configured'  => true,
 			'persistence_repository_configured' => true,
-			'database_writes_enabled'     => true,
-			'scheduled_worker_configured' => true,
-			'usage_snapshot'              => $usage['snapshot'],
+			'database_writes_enabled'           => true,
+			'scheduled_worker_configured'       => true,
 		);
+		if ( 'ready' === $usage['status'] ) {
+			$gate_overrides['usage_snapshot'] = $usage['snapshot'];
+		}
 
 		$expansion_result = $index_expansions
 			? $this->index_expansions( $provider, $game, $page_size, $expansions_page, $max_expansion_pages, $execute_database_writes )

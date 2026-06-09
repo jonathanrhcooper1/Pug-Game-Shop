@@ -46,6 +46,23 @@ final class ScryDexUsageBudgetPlannerTest extends TestCase {
 		$this->assert_same( array(), $plan['block_reasons'] );
 	}
 
+	public function test_empty_usage_snapshot_is_treated_as_deferred_usage_check(): void {
+		$plan = ( new ScryDexUsageBudgetPlanner(
+			$this->configured_settings()
+		) )->plan_cards_page(
+			array(
+				'resource_key' => 'pokemon',
+				'page_size'    => 100,
+			),
+			array()
+		);
+
+		$this->assert_same( 'ready', $plan['status'] );
+		$this->assert_false( $plan['usage_snapshot_provided'] );
+		$this->assert_same( null, $plan['usage_snapshot'] );
+		$this->assert_same( array(), $plan['block_reasons'] );
+	}
+
 	public function test_usage_snapshot_blocks_when_budget_would_be_exceeded(): void {
 		$plan = ( new ScryDexUsageBudgetPlanner(
 			$this->configured_settings()
