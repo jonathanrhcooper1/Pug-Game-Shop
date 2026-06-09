@@ -111,6 +111,7 @@ final class InventorySearchShortcode {
 					array(),
 					0,
 					array(
+						'settings' => Settings::all(),
 						'status'  => 'blocked',
 						'message' => 'Inventory search is temporarily unavailable.',
 					)
@@ -128,6 +129,7 @@ final class InventorySearchShortcode {
 					array(),
 					0,
 					array(
+						'settings' => Settings::all(),
 						'status'  => 'blocked',
 						'message' => 'Search filters need to be adjusted.',
 					)
@@ -146,6 +148,7 @@ final class InventorySearchShortcode {
 					array(),
 					0,
 					array(
+						'settings' => Settings::all(),
 						'status'  => 'blocked',
 						'message' => 'Inventory search is temporarily unavailable.',
 					)
@@ -157,7 +160,10 @@ final class InventorySearchShortcode {
 			$this->presenter->present(
 				$request,
 				$result->rows(),
-				$result->total()
+				$result->total(),
+				array(
+					'settings' => Settings::all(),
+				)
 			)
 		);
 	}

@@ -1,17 +1,17 @@
 .tcg-public-inventory {
   --pug-midnight: #05080b;
-  --pug-vault: var(--tcg-brand-primary, #0a2639);
+  --pug-vault: var(--tcg-primary, #0a2639);
   --pug-sapphire: #103c5a;
-  --pug-cyan: var(--tcg-brand-secondary, #26d9f0);
+  --pug-cyan: #26d9f0;
   --pug-ice: #b9f4ff;
-  --pug-gold: var(--tcg-brand-accent, #f6c635);
+  --pug-gold: var(--tcg-accent, #f6c635);
   --pug-amber: #c78110;
-  --pug-paper: #f5f9fc;
-  --pug-ink: var(--tcg-brand-ink, #0b1116);
+  --pug-paper: var(--tcg-background, #f5f9fc);
+  --pug-ink: var(--tcg-text, #0b1116);
   --pug-muted: #5b6872;
-  --pug-panel: #ffffff;
+  --pug-panel: var(--tcg-surface, #ffffff);
   --pug-line: #d9e6ee;
-  --pug-success: #168a55;
+  --pug-success: var(--tcg-success, #168a55);
   color: var(--pug-ink);
   font-family: inherit;
 }
@@ -81,9 +81,10 @@
   align-items: end;
   margin: 16px 0;
   padding: 14px;
-  background: var(--pug-paper);
+  background: linear-gradient(180deg, #ffffff, var(--pug-paper));
   border: 1px solid var(--pug-line);
   border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(10, 38, 57, 0.06);
 }
 
 .tcg-public-inventory__search label {
@@ -145,13 +146,13 @@
 
 .tcg-public-inventory__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 16px;
 }
 
 .tcg-public-inventory__card {
   display: grid;
-  grid-template-rows: 282px minmax(0, 1fr);
+  grid-template-rows: 304px minmax(0, 1fr);
   min-width: 0;
   overflow: hidden;
   background: var(--pug-panel);
@@ -167,6 +168,7 @@
 
 .tcg-public-inventory__media {
   display: grid;
+  place-items: center;
   min-width: 0;
   padding: 14px;
   background:
@@ -176,7 +178,8 @@
 
 .tcg-public-inventory__card img,
 .tcg-public-inventory__image-placeholder {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: 100%;
   object-fit: contain;
   background: rgba(255, 255, 255, 0.62);
@@ -291,7 +294,7 @@
   }
 
   .tcg-public-inventory__card {
-    grid-template-rows: 250px minmax(0, 1fr);
+    grid-template-rows: 270px minmax(0, 1fr);
   }
 
   .tcg-public-inventory__card-meta {

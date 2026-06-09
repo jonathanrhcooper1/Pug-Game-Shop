@@ -36,7 +36,9 @@ final class Settings {
 	 * @return array<string, mixed>
 	 */
 	public static function all(): array {
-		$value = get_option( self::OPTION_NAME, self::defaults() );
+		$value = function_exists( 'get_option' )
+			? get_option( self::OPTION_NAME, self::defaults() )
+			: self::defaults();
 
 		$settings             = array_merge( self::defaults(), is_array( $value ) ? $value : array() );
 		$settings['branding'] = BrandingSettings::sanitize(

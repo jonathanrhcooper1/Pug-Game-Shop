@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Public inventory search now renders with saved website branding settings
+  across ready and blocked states, aligns the stylesheet with the active
+  `--tcg-*` brand variables, and gives card art a roomier display treatment.
 - WordPress reference card lookup now returns cached `reference_card_id` values
   and the admin card lookup handoff fills the hidden intake field, keeping
   ScryDex lookup-to-intake tied to the canonical website reference record when

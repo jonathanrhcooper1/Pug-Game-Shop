@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Public Inventory Brand Settings Polish
+
+### What Changed
+
+- Passed saved plugin settings into the public inventory shortcode presenter for
+  ready, blocked, and validation-error render paths.
+- Aligned public inventory CSS with the active `--tcg-*` branding variables
+  emitted by the plugin.
+- Improved the public card grid/card-art treatment with roomier cards, centered
+  art, and a more polished search surface.
+- Made `Settings::all()` fall back to defaults when the WordPress options API
+  is unavailable in dependency-free CLI tests.
+
+### Why
+
+The public inventory page should reflect the configured company branding for a
+multi-company install and production The Pug rebrand. The CLI fallback keeps
+unit tests and package checks stable outside a booted WordPress runtime.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added settings fallback coverage for CLI contexts without WordPress option
+  functions.
+- Added public inventory shortcode source coverage for passing saved settings
+  into the presenter and inline brand CSS.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php --filter PublicInventorySearchShortcodeTest`
+- `php apps/wordpress-plugin/tests/run.php --filter SettingsTest`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert the public inventory shortcode, settings fallback, CSS, and tests. The
+  search page will continue rendering inventory but may fall back to default
+  brand copy/colors instead of the configured website branding.
+
 ## 2026-06-09 - Reference Lookup to Intake Identity Handoff
 
 ### What Changed

@@ -54,6 +54,13 @@ final class SettingsTest extends TestCase {
 		$this->assert_same( ScryDexScheduleSettings::defaults(), $defaults['scrydex_schedule'] );
 	}
 
+	public function test_all_falls_back_to_defaults_without_wordpress_options_api(): void {
+		$settings = Settings::all();
+
+		$this->assert_same( Settings::defaults()['daily_run_time'], $settings['daily_run_time'] );
+		$this->assert_same( BrandingSettings::defaults()['company_name'], $settings['branding']['company_name'] );
+	}
+
 	public function test_scrydex_schedule_settings_are_sanitized(): void {
 		$result = Settings::sanitize(
 			array(
