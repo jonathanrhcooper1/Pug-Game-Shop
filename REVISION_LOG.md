@@ -3,6 +3,54 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Local Sync Smoke Verification
+
+### What Changed
+
+- Verified the LAN local sync server against production WordPress inventory,
+  event, customer, credit, and kiosk workflows.
+- The inventory smoke created a hidden local intake, pushed it to WordPress,
+  verified it through production inventory search, and cleaned up local and
+  WordPress rows.
+- The workflow smoke created a temporary production event and exercised event
+  pull, event registration, event check-in, customer creation, credit
+  add/redemption, hidden inventory push, kiosk order submission, and cleanup.
+
+### Why
+
+The website is the source of truth, while the LAN sync server must act as the
+middleman for local staff apps and kiosks. These smokes prove the current
+production connector path is working for the core local-online workflow set.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run production:local-sync-inventory-smoke`: passed. Verified local
+  hidden inventory intake, WordPress push, production REST search match, hidden
+  online/kiosk/POS visibility, WordPress cleanup, and local cleanup.
+- `npm.cmd run production:local-sync-workflows-smoke`: passed. Verified event
+  pull, event registration, event check-in, customer push, two credit ledger
+  operations, hidden inventory push, kiosk order push, WordPress cleanup, and
+  local cleanup.
+
+### Rollback Notes
+
+- No rollback is required because both production smokes cleaned up their
+  temporary WordPress rows and local SQLite rows.
+- If residual test rows are found, search for the `CODEX-LSYNC-` barcode or
+  `codex-lsync-` event slug prefix and delete those rows only.
+
 ## 2026-06-09 - Production Catalog And WooCommerce Smoke Verification
 
 ### What Changed
