@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- ScryDex variant integrity status now checks variants by `reference_card_id`
+  only, matching the production table schema and avoiding false zero-coverage
+  reports.
 - ScryDex catalog integrity and latest-card previews now calculate variant
   coverage through the `reference_card_id` relationship used by the variants
   table, so imported variants are visible in production status checks.

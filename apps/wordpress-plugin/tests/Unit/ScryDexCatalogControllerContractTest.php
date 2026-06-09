@@ -102,6 +102,7 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 				'catalog_game_counts',
 				'has_price_points',
 				'v.reference_card_id = c.reference_card_id',
+				'EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.reference_card_id = c.reference_card_id)',
 				'credential_values_redacted',
 			) as $marker
 		) {
