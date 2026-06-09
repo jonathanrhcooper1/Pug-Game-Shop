@@ -40,6 +40,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Added a read-only production ScryDex catalog verification runner that checks
+  the deployed plugin version, ScryDex catalog status route, card counts, image
+  coverage, variant coverage, price coverage, and price-point totals after a
+  production upload/index run.
 - ScryDex Catalog status now includes a secret-free integrity summary showing
   card image coverage, variant coverage, condition/variant price coverage, game
   card counts, and latest imported card samples so production imports can be

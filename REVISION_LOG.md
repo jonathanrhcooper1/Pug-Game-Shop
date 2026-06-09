@@ -3,6 +3,56 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production ScryDex Catalog Verification Runner
+
+### What Changed
+
+- Added `npm run production:verify-scrydex-catalog`, a read-only SSH/WP-CLI
+  verification runner for the production WordPress site.
+- The runner checks the deployed plugin version, registered ScryDex catalog
+  routes, catalog counts, image coverage, variant coverage, price coverage,
+  total price points, game counts, and latest imported card samples.
+- Added configurable verification thresholds in `.env.example`:
+  `SCRYDEX_VERIFY_MIN_CARDS`, `SCRYDEX_VERIFY_MIN_IMAGE_COVERAGE`,
+  `SCRYDEX_VERIFY_MIN_VARIANT_COVERAGE`,
+  `SCRYDEX_VERIFY_MIN_PRICE_COVERAGE`, and
+  `SCRYDEX_VERIFY_MIN_PRICE_POINTS`.
+
+### Why
+
+After the user uploads the fixed plugin and runs the ScryDex index, we need one
+repeatable command that proves the production website has the expected plugin
+build and a usable card catalog, without relying on screenshots or manual
+inspection.
+
+### Files Affected
+
+- `scripts/production-verify-scrydex-catalog.mjs`
+- `scripts/tests/production-scrydex-verify-contract.mjs`
+- `package.json`
+- `.env.example`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. This runner is read-only and does not change WordPress settings,
+  database rows, or files other than its temporary remote runner, which it
+  removes after execution.
+
+### Tests Added
+
+- Added a production ScryDex verification contract test that checks the command
+  is registered, reads only the status/integrity route, exposes no credential
+  values, and forbids destructive/write-oriented production operations.
+- Dry run passed: `node scripts/production-verify-scrydex-catalog.mjs --dry-run`.
+- Contract passed: `node scripts/tests/production-scrydex-verify-contract.mjs`.
+
+### Rollback Notes
+
+- Remove the `production:verify-scrydex-catalog` script and its contract test if
+  this read-only verification helper is not wanted.
+- No database rollback is required.
+
 ## 2026-06-09 - ScryDex Catalog Integrity Status
 
 ### What Changed
