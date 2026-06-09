@@ -23,6 +23,9 @@ All notable changes follow Semantic Versioning.
 - The production ScryDex index runner now supports the real catalog mirror
   flow: expansion metadata first, then bounded card imports per stored
   ScryDex set with checkpoint resume.
+- ScryDex reference-card persistence now keeps normalized expansion metadata
+  fields, including year, rarity code, language, language code, and release
+  date, so set/version searches keep the full provider context.
 - Production-safe WordPress deployment helpers now cover the real ScryDex
   catalog path: package install with production database/`wp-content` backup,
   ScryDex settings configuration through a redacted WP-CLI runner, and bounded

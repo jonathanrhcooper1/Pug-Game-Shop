@@ -50,6 +50,46 @@ final class ScryDexPersistencePlannerTest extends TestCase {
 		$this->assert_same( '2026-06-06 12:00:00', $price['observed_at'] );
 		$this->assert_same( 101, $price['sync_job_id'] );
 	}
+
+	public function test_planner_persists_scrydex_set_metadata_fields(): void {
+		$page_plan = $this->page_plan_from_cards(
+			array(
+				array(
+					'id'         => 'sdx-pkm-meta-001',
+					'game'       => 'pokemon',
+					'name'       => 'Metadata Pikachu',
+					'set'        => array(
+						'id'          => 'base1',
+						'code'        => 'BASE',
+						'name'        => 'Base Set',
+						'releaseDate' => '1999-01-09',
+						'language'    => 'English',
+					),
+					'number'     => '58',
+					'rarity'     => 'Common',
+					'rarityCode' => 'C',
+					'market_price' => array(
+						'amount'   => '1.25',
+						'currency' => 'USD',
+					),
+				),
+			)
+		);
+		$plan      = ( new ScryDexPersistencePlanner() )->plan_page(
+			$page_plan,
+			array(),
+			'2026-06-06 12:00:00'
+		);
+		$insert    = $plan->reference_inserts()[0];
+
+		$this->assert_same( ScryDexPersistencePlan::READY, $plan->status() );
+		$this->assert_same( 'base1', $insert['provider_set_id'] );
+		$this->assert_same( 1999, $insert['year'] );
+		$this->assert_same( 'C', $insert['rarity_code'] );
+		$this->assert_same( 'English', $insert['language'] );
+		$this->assert_same( '1999-01-09', $insert['release_date'] );
+	}
+
 	public function test_planner_prepares_changed_reference_updates_with_row_version(): void {
 		$page_plan = $this->page_plan_from_fixture();
 		$existing  = array(

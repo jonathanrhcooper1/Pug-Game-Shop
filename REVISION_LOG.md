@@ -3,6 +3,47 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Reference Metadata Persistence
+
+### What Changed
+
+- Included normalized ScryDex reference metadata in card persistence writes:
+  year, rarity code, language, language code, and release date.
+- Added a unit test proving ScryDex set metadata survives normalization and is
+  included in the reference-card insert payload.
+- Bumped the plugin/package version to `0.161.0`.
+
+### Why
+
+The website-owned ScryDex catalog needs complete set/version context for local
+search, inventory intake, condition/variant selection, and future filters. The
+normalizer already captured these fields, but the persistence planner omitted
+them from insert/update payloads.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `docs/CHANGELOG.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. The columns already exist in database version `12`.
+
+### Tests Added
+
+- `ScryDexPersistencePlannerTest::test_planner_persists_scrydex_set_metadata_fields`
+
+### Rollback Notes
+
+- Reinstall the prior plugin package to stop writing these metadata fields.
+- No data rollback is required for safe metadata values. If needed, restore the
+  database backup created before a production catalog import.
+
 ## 2026-06-09 - ScryDex By-Set Production Indexing
 
 ### What Changed
