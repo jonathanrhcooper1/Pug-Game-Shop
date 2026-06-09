@@ -3041,6 +3041,10 @@ function cleanScryDexQuery(value) {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 80)
 }
 
+function cleanScryDexSearchText(value) {
+  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 4000)
+}
+
 function cleanGame(value) {
   const game = String(value ?? "").trim().toLowerCase()
 
@@ -3048,29 +3052,18 @@ function cleanGame(value) {
 }
 
 function searchReferenceCards(referenceCards, needle, game) {
+  const includeVariantOnlyMatches = isVariantFocusedScryDexQuery(needle)
+
   return referenceCards
     .filter((card) => card.game === game)
-    .filter((card) =>
-      [
-        card.provider_card_id,
-        card.card_name,
-        card.set_name,
-        card.set_code,
-        card.card_number,
-        card.printed_number,
-        card.suggested_barcode,
-        ...(card.variants ?? []).flatMap((variant) => [
-          variant.provider_variant_id,
-          variant.variant,
-          variant.finish,
-          variant.parallel_name,
-          variant.edition,
-          variant.language,
-        ]),
-      ].some((value) => String(value).toLowerCase().includes(needle)),
-    )
-    .sort((left, right) => referenceSearchScore(right, needle) - referenceSearchScore(left, needle))
+    .map((card) => ({
+      card,
+      score: referenceSearchScore(card, needle, { includeVariantOnlyMatches }),
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score)
     .slice(0, 8)
+    .map((entry) => entry.card)
 }
 
 function normalizeReferenceCardsFromFallback(result, game, now, needle = "") {
@@ -3091,22 +3084,26 @@ function normalizeReferenceCardsFromFallback(result, game, now, needle = "") {
   return candidateCards
     .map((card) => normalizeReferenceCard(card, game, now, "wordpress_catalog_cache"))
     .filter((card) => card.provider_card_id && card.card_name)
-    .sort((left, right) => referenceSearchScore(right, needle) - referenceSearchScore(left, needle))
+    .sort(
+      (left, right) =>
+        referenceSearchScore(right, needle, { includeVariantOnlyMatches: true }) -
+        referenceSearchScore(left, needle, { includeVariantOnlyMatches: true }),
+    )
     .slice(0, 8)
 }
 
-function referenceSearchScore(card, needle) {
+function referenceSearchScore(card, needle, options = {}) {
   const normalizedNeedle = cleanScryDexQuery(needle)
-  const cardName = cleanScryDexQuery(card.card_name)
-  const setName = cleanScryDexQuery(card.set_name)
-  const identifiers = cleanScryDexQuery([
+  const cardName = cleanScryDexSearchText(card.card_name)
+  const setName = cleanScryDexSearchText(card.set_name)
+  const identifiers = cleanScryDexSearchText([
     card.provider_card_id,
     card.set_code,
     card.card_number,
     card.printed_number,
     card.suggested_barcode,
   ].join(" "))
-  const variants = cleanScryDexQuery(
+  const variants = cleanScryDexSearchText(
     (card.variants ?? [])
       .flatMap((variant) => [
         variant.provider_variant_id,
@@ -3139,7 +3136,7 @@ function referenceSearchScore(card, needle) {
     return 500
   }
 
-  if (variants.includes(normalizedNeedle)) {
+  if (options.includeVariantOnlyMatches === true && variants.includes(normalizedNeedle)) {
     return 350
   }
 
@@ -3148,6 +3145,25 @@ function referenceSearchScore(card, needle) {
   }
 
   return 0
+}
+
+function isVariantFocusedScryDexQuery(value) {
+  const query = cleanScryDexQuery(value)
+
+  return [
+    "stamp",
+    "foil",
+    "holo",
+    "reverse",
+    "parallel",
+    "edition",
+    "first edition",
+    "unlimited",
+    "normal",
+    "promo",
+    "graded",
+    "variant",
+  ].some((token) => query.includes(token))
 }
 
 function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new Date(), catalogSource = "wordpress_catalog_cache") {

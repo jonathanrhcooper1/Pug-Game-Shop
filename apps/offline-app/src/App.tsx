@@ -186,7 +186,7 @@ const ACCESS_SECTIONS = [
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
-const OFFLINE_APP_VERSION = "0.176.0"
+const OFFLINE_APP_VERSION = "0.184.0"
 
 type OfflineAppUser = {
   id: string
@@ -1306,8 +1306,48 @@ export function App() {
     query.trim() === ""
       ? selectedItem
       : scannedInventoryItem ?? (filteredItems.length === 1 ? filteredItems[0] : null)
+  const seededQueueCount = workspace.queueItems.reduce((total, item) => total + item.count, 0)
+  const liveLanQueueIsAuthoritative = localSyncStatus?.status === "ok"
   const queueBadgeCount =
-    workspace.queueItems.reduce((total, item) => total + item.count, 0) + queuedOperations.length
+    liveLanQueueIsAuthoritative ? localSyncStatus.queue_depth : seededQueueCount + queuedOperations.length
+  const queuePanelPendingLabel = liveLanQueueIsAuthoritative
+    ? `${countLabel(localSyncStatus.queue_depth, "LAN pending op")}; ${countLabel(
+        queuedOperations.length,
+        "device-only op",
+      )}`
+    : `${countLabel(queueBadgeCount, "pending op")}`
+  const queueSummaryRows = liveLanQueueIsAuthoritative
+    ? [
+        {
+          label: "LAN queued rows",
+          count: localSyncStatus.queue_depth,
+          tone: localSyncStatus.queue_depth > 0 ? "warning" : "success",
+        },
+        {
+          label: "Device-only queue",
+          count: queuedOperations.length,
+          tone: queuedOperations.length > 0 ? "warning" : "success",
+        },
+      ]
+    : workspace.queueItems
+  const syncSummaryItems = workspace.syncSummary.map((item) => {
+    if (liveLanQueueIsAuthoritative && item.label === "Queued writes") {
+      return {
+        ...item,
+        label: "LAN queued",
+        value: String(localSyncStatus.queue_depth),
+      }
+    }
+
+    if (liveLanQueueIsAuthoritative && item.label === "Cached cards") {
+      return {
+        ...item,
+        value: new Intl.NumberFormat("en-US").format(localSyncStatus.reference_card_count),
+      }
+    }
+
+    return item
+  })
   const conflictBadgeCount = openConflicts.length
   const eventQueuePreviewEntries = useMemo(
     () => buildOfflineEventQueuePreviewEntries(queuedOperations, eventSnapshots),
@@ -4961,7 +5001,7 @@ export function App() {
           </header>
 
           <section className="sync-strip" aria-label="Sync summary">
-            {workspace.syncSummary.map((item) => (
+            {syncSummaryItems.map((item) => (
               <div key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
@@ -5912,7 +5952,7 @@ export function App() {
             <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>
               <div className="section-heading">
                 <h2>Sync queue</h2>
-                <span>{queueBadgeCount} pending</span>
+                <span>{queuePanelPendingLabel}</span>
               </div>
               <p className="queue-storage-note">
                 Queue and sync attempts are saved locally on this device.
@@ -5948,7 +5988,7 @@ export function App() {
                   <p>{lanSyncLastResult.pushMessage}</p>
                 </div>
               ) : null}
-              {workspace.queueItems.map((item) => (
+              {queueSummaryRows.map((item) => (
                 <div className={`queue-row ${item.tone}`} key={item.label}>
                   <span>{item.label}</span>
                   <strong>{item.count}</strong>

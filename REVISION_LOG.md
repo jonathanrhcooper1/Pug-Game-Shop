@@ -3,6 +3,74 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - LAN ScryDex Lookup and Offline Queue Demo Stabilization
+
+### What Changed
+
+- Updated LAN ScryDex reference search relevance so ordinary card-name
+  searches require a card, set, number, barcode, or provider ID match before
+  using the local cache.
+- Kept explicit variant-style searches able to match variants, and expanded
+  variant search haystacks so long imported variant lists are not truncated
+  before later variants.
+- Added a ScryDex regression test for noisy stamp variants that mention
+  another card name.
+- Updated the offline app Queue badge, sync strip, and queue panel to show
+  live LAN queue depth when the local middleman server is connected, with
+  device-only queue counts shown as detail.
+- Aligned offline app package, Tauri config, and Rust crate metadata with
+  version `0.184.0`.
+
+### Why
+
+The local ScryDex cache could return a non-card-name result when a variant
+label contained the search term, causing searches like `Pikachu` to show a
+stamp variant on an unrelated card instead of falling back to WordPress for
+real Pikachu results. The app preview also displayed stale seeded/browser
+queue counts even when the LAN server queue was empty.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added `tests/scrydex-reference-search.mjs` for LAN ScryDex lookup relevance
+  and variant-only match behavior.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd run test:offline-app:rust`
+- `npm.cmd --prefix apps/offline-app run build`
+- Production hidden local-sync inventory smoke passed, including local intake,
+  WordPress push acceptance, hidden inventory verification, and cleanup.
+- Browser preview verified `Pikachu` lookup returns real Pikachu card results
+  with image, market price, stock/variant summary, and no console
+  warnings/errors.
+
+### Rollback Notes
+
+- Revert the ScryDex relevance helper changes and remove the regression test
+  script entry.
+- Revert the Queue badge/sync strip to seeded/device queue counts if needed.
+- No database migrations are involved.
+
 ## 2026-06-09 - Public Inventory Search Cache Safeguard
 
 ### What Changed

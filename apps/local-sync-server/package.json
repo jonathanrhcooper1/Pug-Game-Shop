@@ -6,10 +6,11 @@
   "type": "module",
   "scripts": {
     "start": "node src/cli.mjs",
-    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:wordpress-catalog && npm run test:wordpress-inventory-pull && npm run test:wordpress-inventory-push && npm run test:wordpress-events-push && npm run test:wordpress-event-checkin-push && npm run test:wordpress-credit-push && npm run test:wordpress-customer-push && npm run test:wordpress-kiosk-push",
+    "test": "npm run test:contract && npm run test:runtime && npm run test:persistence && npm run test:scrydex-reference-search && npm run test:wordpress-catalog && npm run test:wordpress-inventory-pull && npm run test:wordpress-inventory-push && npm run test:wordpress-events-push && npm run test:wordpress-event-checkin-push && npm run test:wordpress-credit-push && npm run test:wordpress-customer-push && npm run test:wordpress-kiosk-push",
     "test:contract": "node tests/local-sync-server-contract.mjs",
     "test:persistence": "node tests/local-sync-server-persistence.mjs",
     "test:runtime": "node tests/local-sync-server-runtime.mjs",
+    "test:scrydex-reference-search": "node tests/scrydex-reference-search.mjs",
     "test:wordpress-catalog": "node tests/wordpress-catalog-fallback.mjs",
     "test:wordpress-inventory-pull": "node tests/wordpress-inventory-pull.mjs",
     "test:wordpress-inventory-push": "node tests/wordpress-inventory-push.mjs",

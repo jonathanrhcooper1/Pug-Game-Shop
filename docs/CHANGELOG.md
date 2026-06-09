@@ -6,6 +6,14 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The LAN ScryDex reference search now ignores variant-only matches for normal
+  card-name searches, preventing noisy stamp variants from blocking a
+  WordPress catalog fallback for real card results such as `Pikachu`.
+- The offline app Queue badge and sync strip now prefer the live LAN
+  `store-sync.sqlite` queue depth when the middleman server is connected,
+  while keeping device-only queue counts as secondary detail for offline mode.
+- Offline app package, Tauri config, and Rust crate metadata now align with
+  workspace version `0.184.0`.
 - Public inventory cards now use a stronger The Pug display-case treatment
   with framed card art, detail chips for condition/variant/set/number, clearer
   stock badges, and two-decimal staff inventory price display in admin search.
