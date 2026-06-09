@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The LAN local sync server now supports a manager-only, secret-free
+  `/setup/config` route that persists the one-website binding in SQLite; the
+  offline app Settings save flow publishes website setup to the middleman when
+  a manager PIN session is active.
 - The offline app UI version badge now matches the packaged app version, and
   the UI shell contract asserts that alignment.
 - The production ScryDex index runner now returns secret-safe card page

@@ -5,13 +5,16 @@ import { buildLocalSyncSetupStatus } from "./localSyncServerContract.mjs"
 
 export function createLocalSyncHttpServer(options = {}) {
   const storeOptions = options.storeOptions ?? {}
-  const store = options.store ?? createLocalSyncStore(storeOptions)
-  const setupStatus = options.setupStatus ?? buildLocalSyncSetupStatus({
-    storeId: options.storeId,
-    serverUrl: options.serverUrl,
-    websiteUrl: options.websiteUrl,
-    restBasePath: options.restBasePath,
-    localDatabase: options.localDatabase,
+  const setupStoreOptions = {
+    ...storeOptions,
+    localDatabase: storeOptions.localDatabase ?? options.localDatabase,
+    restBasePath: storeOptions.restBasePath ?? options.restBasePath,
+    serverUrl: storeOptions.serverUrl ?? options.serverUrl,
+    storeId: storeOptions.storeId ?? options.storeId,
+    websiteUrl: storeOptions.websiteUrl ?? options.websiteUrl,
+  }
+  const store = options.store ?? createLocalSyncStore(setupStoreOptions)
+  const connectorStatus = {
     wordpressPullConfigured:
       typeof storeOptions.wordpressInventoryPull === "function" || typeof storeOptions.wordpressEventsPull === "function",
     wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
@@ -21,7 +24,30 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressCustomerPushConnected: typeof storeOptions.wordpressCustomerUpsertPush === "function",
     wordpressKioskOrderPushConnected: typeof storeOptions.wordpressKioskOrderPush === "function",
     scrydexCatalogProxyConfigured: typeof storeOptions.websiteCatalogFallback === "function",
-  })
+  }
+
+  const currentSetupStatus = () => {
+    if (options.setupStatus) {
+      return options.setupStatus
+    }
+
+    const storedConfig =
+      typeof store.getSetupConfig === "function"
+        ? store.getSetupConfig()
+        : {}
+
+    return buildLocalSyncSetupStatus({
+      storeId: storedConfig.store_id ?? options.storeId,
+      serverUrl: storedConfig.server_url ?? options.serverUrl,
+      websiteUrl: storedConfig.website_url ?? options.websiteUrl,
+      restBasePath: storedConfig.rest_base_path ?? options.restBasePath,
+      localDatabase: storedConfig.local_database ?? options.localDatabase,
+      configSource: storedConfig.config_source,
+      configuredAtUtc: storedConfig.configured_at_utc,
+      wordpressConnectorRestartRequired: storedConfig.wordpress_connector_restart_required,
+      ...connectorStatus,
+    })
+  }
 
   return createServer(async (request, response) => {
     try {
@@ -33,6 +59,8 @@ export function createLocalSyncHttpServer(options = {}) {
       }
 
       if (request.method === "GET" && url.pathname === "/health") {
+        const setupStatus = currentSetupStatus()
+
         return sendJson(response, 200, {
           status: "ok",
           service: "pug_local_sync_server",
@@ -49,7 +77,20 @@ export function createLocalSyncHttpServer(options = {}) {
       }
 
       if (request.method === "GET" && url.pathname === "/setup/status") {
-        return sendJson(response, 200, setupStatus)
+        return sendJson(response, 200, currentSetupStatus())
+      }
+
+      if (request.method === "POST" && url.pathname === "/setup/config") {
+        const result = store.updateSetupConfig(token, await readJson(request))
+
+        if (result.status !== "ok") {
+          return sendStoreResult(response, result)
+        }
+
+        return sendJson(response, 200, {
+          ...result,
+          setup_status: currentSetupStatus(),
+        })
       }
 
       if (request.method === "POST" && url.pathname === "/devices/heartbeat") {

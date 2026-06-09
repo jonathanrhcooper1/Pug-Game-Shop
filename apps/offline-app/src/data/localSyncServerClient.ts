@@ -63,7 +63,7 @@ export type LocalSyncAccessPolicyResult = LocalSyncResult<{
 
 export type LocalSyncSetupStatusResult = LocalSyncResult<{
   action: "local_sync_server_setup_status"
-  schema_version: 1
+  schema_version: 3
   topology: "lan_middleman_server"
   setup_screen_mode: "single_configurable_website"
   one_website_mode: true
@@ -76,6 +76,9 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   rest_base_path: "/wp-json/tcg-store/v1" | string
   wordpress_rest_base: string
   local_database: "store-sync.sqlite"
+  config_source: "server_environment" | "manager_app_settings" | string
+  configured_at_utc: string
+  wordpress_connector_restart_required: boolean
   wordpress_pull_configured: boolean
   wordpress_push_configured: boolean
   wordpress_inventory_push_configured: boolean
@@ -88,6 +91,36 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   credentials_synced_to_client: false
   raw_credentials_returned: false
   direct_mysql_access: false
+}>
+
+export type LocalSyncSetupConfigInput = {
+  storeId?: string
+  serverUrl?: string
+  websiteUrl: string
+  restBasePath?: string
+}
+
+export type LocalSyncSetupConfigResult = LocalSyncResult<{
+  action: "local_sync_server_setup_config_saved"
+  config: {
+    store_id: string
+    server_url: string
+    website_url: string
+    rest_base_path: string
+    wordpress_rest_base: string
+    local_database: "store-sync.sqlite" | string
+    config_source: "manager_app_settings" | string
+    configured_at_utc: string
+    wordpress_connector_restart_required: boolean
+    credentials_synced_to_client: false
+    raw_credentials_returned: false
+    raw_credentials_accepted: false
+  }
+  setup_status: Extract<LocalSyncSetupStatusResult, { status: "ok" }>
+  wordpress_connector_restart_required: boolean
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+  raw_credentials_accepted: false
 }>
 
 export type LocalSyncClientDevice = {
@@ -687,6 +720,10 @@ export type LocalSyncFetch = (
 export type LocalSyncServerClient = {
   serverUrl: string
   getSetupStatus: () => Promise<LocalSyncSetupStatusResult>
+  configureSetup: (
+    sessionToken: string,
+    input: LocalSyncSetupConfigInput,
+  ) => Promise<LocalSyncSetupConfigResult>
   recordDeviceHeartbeat: (input: {
     deviceId: string
     deviceLabel: string
@@ -842,6 +879,17 @@ export function createLocalSyncServerClient(
     serverUrl: baseUrl,
     getSetupStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/setup/status") as Promise<LocalSyncSetupStatusResult>,
+    configureSetup: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/setup/config", {
+        method: "POST",
+        sessionToken,
+        body: {
+          store_id: input.storeId ?? "",
+          server_url: input.serverUrl ?? baseUrl,
+          website_url: input.websiteUrl,
+          rest_base_path: input.restBasePath ?? "/wp-json/tcg-store/v1",
+        },
+      }) as Promise<LocalSyncSetupConfigResult>,
     recordDeviceHeartbeat: (input) =>
       requestLocalSync(fetcher, baseUrl, "/devices/heartbeat", {
         method: "POST",

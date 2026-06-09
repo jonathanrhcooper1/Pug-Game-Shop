@@ -15,6 +15,16 @@ try {
   const managerAuth = firstStore.createSession({ pin: "9999" })
   assert.equal(managerAuth.status, "ok")
 
+  const setupConfig = firstStore.updateSetupConfig(managerAuth.session.token, {
+    store_id: "the-pug",
+    server_url: "http://192.168.1.20:8787",
+    website_url: "https://cards.example.test/",
+    rest_base_path: "/wp-json/tcg-store/v1",
+  })
+  assert.equal(setupConfig.status, "ok")
+  assert.equal(setupConfig.config.website_url, "https://cards.example.test/")
+  assert.equal(setupConfig.config.wordpress_connector_restart_required, true)
+
   const createdUser = firstStore.addUser(managerAuth.session.token, {
     name: "Persistent Cashier",
     pin: "1357",
@@ -108,6 +118,12 @@ try {
 
   currentTime = new Date("2026-06-09T12:02:01.000Z")
   const restartedStore = createLocalSyncStore({ databasePath, now, heartbeatTimeoutSeconds: 90 })
+  const persistedSetupConfig = restartedStore.getSetupConfig()
+  assert.equal(persistedSetupConfig.website_url, "https://cards.example.test/")
+  assert.equal(persistedSetupConfig.wordpress_rest_base, "https://cards.example.test/wp-json/tcg-store/v1")
+  assert.equal(persistedSetupConfig.config_source, "manager_app_settings")
+  assert.equal(persistedSetupConfig.wordpress_connector_restart_required, true)
+
   const persistedCashierAuth = restartedStore.createSession({ pin: "1357" })
   assert.equal(persistedCashierAuth.status, "ok")
   assert.equal(persistedCashierAuth.user.name, "Persistent Cashier")

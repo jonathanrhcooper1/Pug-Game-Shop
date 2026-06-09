@@ -38,6 +38,8 @@ assert.equal(contract.safety.square_pos_inventory_count_reconciliation_mutates_i
 assert.equal(contract.safety.live_credentials_blocked_in_local_server, true)
 assert.equal(contract.safety.one_website_configuration_required, true)
 assert.equal(contract.safety.setup_status_returns_credentials, false)
+assert.equal(contract.safety.setup_config_manager_only, true)
+assert.equal(contract.safety.setup_config_accepts_credentials, false)
 assert.equal(contract.safety.device_status_returns_credentials, false)
 assert.equal(contract.safety.scrydex_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, true)
@@ -53,6 +55,7 @@ assert.ok(contract.responsibilities.includes("queue_kiosk_pickup_orders_with_fir
 assert.ok(contract.responsibilities.includes("share_kiosk_pickup_orders_across_employee_and_kiosk_clients"))
 assert.ok(contract.responsibilities.includes("allow_staff_to_update_kiosk_pickup_status_without_inventory_mutation"))
 assert.ok(contract.responsibilities.includes("publish_secret_free_one_website_setup_status"))
+assert.ok(contract.responsibilities.includes("allow_manager_to_update_secret_free_website_setup"))
 assert.ok(contract.responsibilities.includes("track_employee_and_kiosk_device_heartbeats"))
 assert.ok(contract.responsibilities.includes("publish_online_offline_client_presence"))
 assert.ok(contract.responsibilities.includes("report_client_setup_status_without_credentials"))
@@ -69,6 +72,7 @@ assert.ok(contract.responsibilities.includes("enforce_manager_required_user_acce
 for (const endpoint of [
   "GET /health",
   "GET /setup/status",
+  "POST /setup/config",
   "POST /devices/heartbeat",
   "GET /devices/status",
   "POST /auth/pin",
@@ -138,5 +142,7 @@ assert.equal(missingWebsiteSetup.website_url, "")
 assert.equal(missingWebsiteSetup.client_presence_enabled, true)
 assert.equal(missingWebsiteSetup.raw_credentials_returned, false)
 assert.equal(missingWebsiteSetup.direct_mysql_access, false)
+assert.equal(missingWebsiteSetup.config_source, "server_environment")
+assert.equal(missingWebsiteSetup.wordpress_connector_restart_required, false)
 
 console.log("PASS local sync server contract")

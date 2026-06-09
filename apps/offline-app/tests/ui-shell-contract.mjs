@@ -383,6 +383,8 @@ for (const interactionMarker of [
   "LAN setup blocked",
   "handleNewConnectorDraft",
   "handleSaveConnectorDraft",
+  "configureSetup",
+  "wordpress_connector_restart_required",
   "loadConnectorProfileStorage",
   "handleSyncNowPreview",
   "syncNowInFlight",

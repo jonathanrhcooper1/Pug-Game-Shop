@@ -3,6 +3,75 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Manager-Controlled LAN Website Setup
+
+### What Changed
+
+- Added a manager-only `POST /setup/config` route to the local sync server.
+- Persisted the one-website setup binding in the local SQLite
+  `server_settings` table.
+- Updated `/health` and `/setup/status` so employee/kiosk clients see the
+  current persisted website binding.
+- Wired the offline app Settings save flow to publish the public website setup
+  to the LAN middleman when a manager PIN session is active.
+- Updated the local sync server and offline app contract tests.
+- Updated the changelog.
+
+### Why
+
+The local employee app, local kiosk, and any additional workstations should all
+bind to one configurable website through the LAN middleman server instead of
+using a company dropdown or per-device-only setup. The setup route keeps
+credentials out of app responses while allowing a manager to publish the
+public website URL/rest path used by all local clients.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local sync server SQLite schema now creates `server_settings` for persistent
+  LAN setup configuration.
+- WordPress migrations: none.
+
+### Tests Added
+
+- Runtime coverage for blocked unauthenticated setup writes, manager setup
+  writes, secret-free responses, and updated `/setup/status`.
+- Persistence coverage proving setup survives a local sync server restart.
+- Client/UI contract coverage for the new setup config route.
+
+### Verification
+
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-persistence.mjs`: passed.
+- `npm.cmd --prefix apps/local-sync-server test`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the manager setup publish route and return to
+  environment/per-device-only local setup.
+- If a local `store-sync.sqlite` already contains the `server_settings` table,
+  no rollback is required; the old code ignores the table.
+- No WordPress database rollback is required.
+
 ## 2026-06-09 - Offline App UI Version Alignment
 
 ### What Changed

@@ -4282,7 +4282,7 @@ export function App() {
     })
   }
 
-  function handleSaveConnectorDraft() {
+  async function handleSaveConnectorDraft() {
     const result = buildConnectorProfileFromDraft(connectorDraft)
 
     setConnectorDraftIssues(result.issues)
@@ -4299,23 +4299,63 @@ export function App() {
     const profile = result.profile
     const validation = validateConnectorManifest(buildConnectorManifestPreview(profile))
     const report = buildConnectorTestReport(profile, validation, null)
+    let lanSetupDetail =
+      "LAN setup was saved on this device only; sign in with a manager PIN to publish it to the middleman server."
 
     setConnectorProfiles((profiles) => upsertConnectorProfile(profiles, profile))
     setActiveProfileId(profile.id)
     setConnectorValidation(validation)
     setConnectorTestReport(report)
     setPairingPlan(null)
-    setLanSetupProbe({
-      status: "idle",
-      endpoint: "",
-      detail: "LAN setup probe has not run for this website.",
-      oneWebsiteMode: true,
-      credentialsSyncedToApp: false,
-    })
+
+    if (localSyncSessionToken && sessionRole === "manager") {
+      const setupClient = createLocalSyncServerClient(localSyncServerDisplayUrl(profile))
+      const setupResult = await setupClient.configureSetup(localSyncSessionToken, {
+        storeId: profile.companyShortName,
+        serverUrl: localSyncServerDisplayUrl(profile),
+        websiteUrl: connectorDisplayUrl(profile),
+        restBasePath: profile.wordpress.restBasePath,
+      })
+
+      if (setupResult.status === "ok") {
+        lanSetupDetail =
+          `${setupResult.setup_status.server_url} now reports ${setupResult.setup_status.website_url}; ` +
+          `restart/reload connector workers after changing website bindings: ` +
+          `${setupResult.wordpress_connector_restart_required ? "yes" : "no"}.`
+        setLanSetupProbe({
+          status: "ready",
+          endpoint: `${setupClient.serverUrl}/setup/config`,
+          detail: lanSetupDetail,
+          oneWebsiteMode: setupResult.setup_status.one_website_mode,
+          credentialsSyncedToApp: setupResult.credentials_synced_to_client,
+        })
+      } else {
+        lanSetupDetail =
+          setupResult.status === "unavailable"
+            ? `${setupResult.message} Local website setup remains saved on this device.`
+            : `${setupResult.message} Local website setup remains saved on this device.`
+        setLanSetupProbe({
+          status: "blocked",
+          endpoint: `${setupClient.serverUrl}/setup/config`,
+          detail: lanSetupDetail,
+          oneWebsiteMode: true,
+          credentialsSyncedToApp: false,
+        })
+      }
+    } else {
+      setLanSetupProbe({
+        status: "idle",
+        endpoint: "",
+        detail: lanSetupDetail,
+        oneWebsiteMode: true,
+        credentialsSyncedToApp: false,
+      })
+    }
+
     setActiveSection("Settings")
     setActivityMessage({
       title: validation.status === "rejected" ? "Website saved with issues" : "Website connection saved",
-      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} with LAN sync at ${localSyncServerDisplayUrl(profile)}. Guarded inventory holds are ${profile.wordpress.canonicalInventoryWritesEnabled ? "enabled" : "deferred"}; credentials are still server-side or desktop secure-store only.`,
+      detail: `${profile.companyName} ${profile.environment} now points at ${connectorDisplayUrl(profile)} with LAN sync at ${localSyncServerDisplayUrl(profile)}. ${lanSetupDetail} Guarded inventory holds are ${profile.wordpress.canonicalInventoryWritesEnabled ? "enabled" : "deferred"}; credentials are still server-side or desktop secure-store only.`,
     })
   }
 
@@ -7872,7 +7912,7 @@ export function App() {
                   <Icon name="database" />
                   <span>{lanSetupProbe.status === "loading" ? "Probing LAN" : "Probe LAN Server"}</span>
                 </button>
-                <button type="button" disabled={!managerControlsUnlocked} onClick={handleSaveConnectorDraft}>
+                <button type="button" disabled={!managerControlsUnlocked} onClick={() => void handleSaveConnectorDraft()}>
                   <Icon name="check" />
                   <span>Save Website Connection</span>
                 </button>

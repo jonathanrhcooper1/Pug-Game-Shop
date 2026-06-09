@@ -420,6 +420,47 @@ try {
   assertNoSecrets(managerAuth)
 
   const managerToken = managerAuth.session.token
+  const blockedSetupConfig = await fetchJson(`${baseUrl}/setup/config`, {
+    method: "POST",
+    body: {
+      website_url: "https://example.invalid/",
+      rest_base_path: "/wp-json/tcg-store/v1",
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(blockedSetupConfig.status, "blocked")
+  assert.equal(blockedSetupConfig.code, "session_required")
+
+  const savedSetupConfig = await fetchJson(`${baseUrl}/setup/config`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      store_id: "the-pug",
+      server_url: baseUrl,
+      website_url: "https://cards.example.test/",
+      rest_base_path: "/wp-json/tcg-store/v1",
+      api_key: "must-not-be-accepted",
+      password: "must-not-be-returned",
+    },
+  })
+  assert.equal(savedSetupConfig.status, "ok")
+  assert.equal(savedSetupConfig.action, "local_sync_server_setup_config_saved")
+  assert.equal(savedSetupConfig.config.website_url, "https://cards.example.test/")
+  assert.equal(savedSetupConfig.config.wordpress_rest_base, "https://cards.example.test/wp-json/tcg-store/v1")
+  assert.equal(savedSetupConfig.config.config_source, "manager_app_settings")
+  assert.equal(savedSetupConfig.config.raw_credentials_accepted, false)
+  assert.equal(savedSetupConfig.wordpress_connector_restart_required, true)
+  assert.equal(savedSetupConfig.setup_status.website_url, "https://cards.example.test/")
+  assert.equal(savedSetupConfig.setup_status.wordpress_connector_restart_required, true)
+  assertNoSecrets(savedSetupConfig)
+
+  const updatedSetupStatus = await fetchJson(`${baseUrl}/setup/status`)
+  assert.equal(updatedSetupStatus.website_url, "https://cards.example.test/")
+  assert.equal(updatedSetupStatus.wordpress_rest_base, "https://cards.example.test/wp-json/tcg-store/v1")
+  assert.equal(updatedSetupStatus.config_source, "manager_app_settings")
+  assert.equal(updatedSetupStatus.wordpress_connector_restart_required, true)
+  assertNoSecrets(updatedSetupStatus)
+
   const policy = await fetchJson(`${baseUrl}/users/access-policy`, {
     token: managerToken,
   })

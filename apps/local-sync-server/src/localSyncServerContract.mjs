@@ -1,9 +1,10 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 2
-export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 2
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 3
+export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 3
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "GET", path: "/health", purpose: "LAN server health and version probe" },
   { method: "GET", path: "/setup/status", purpose: "Secret-free one-website setup and LAN binding probe" },
+  { method: "POST", path: "/setup/config", purpose: "Manager-updated secret-free one-website setup binding" },
   { method: "POST", path: "/devices/heartbeat", purpose: "Employee and kiosk client presence heartbeat" },
   { method: "GET", path: "/devices/status", purpose: "LAN client online/offline and setup status summary" },
   { method: "POST", path: "/auth/pin", purpose: "PIN session verification against cached access policy" },
@@ -70,6 +71,7 @@ export function buildLocalSyncServerContract(options = {}) {
     responsibilities: [
       "serve_shared_inventory_customer_credit_event_and_conflict_cache",
       "publish_secret_free_one_website_setup_status",
+      "allow_manager_to_update_secret_free_website_setup",
       "track_employee_and_kiosk_device_heartbeats",
       "publish_online_offline_client_presence",
       "report_client_setup_status_without_credentials",
@@ -107,6 +109,8 @@ export function buildLocalSyncServerContract(options = {}) {
       live_credentials_blocked_in_local_server: true,
       one_website_configuration_required: true,
       setup_status_returns_credentials: false,
+      setup_config_manager_only: true,
+      setup_config_accepts_credentials: false,
       device_status_returns_credentials: false,
       scrydex_credentials_synced_to_clients: false,
       scrydex_lookup_uses_server_side_credentials_only: true,
@@ -148,6 +152,9 @@ export function buildLocalSyncSetupStatus(options = {}) {
     rest_base_path: restBasePath,
     wordpress_rest_base: wordpressRestBase,
     local_database: options.localDatabase ?? "store-sync.sqlite",
+    config_source: options.configSource ?? "server_environment",
+    configured_at_utc: options.configuredAtUtc ?? "",
+    wordpress_connector_restart_required: Boolean(options.wordpressConnectorRestartRequired),
     wordpress_pull_configured: Boolean(options.wordpressPullConfigured),
     wordpress_push_configured: wordpressPushConfigured,
     wordpress_inventory_push_configured: Boolean(options.wordpressInventoryPushConnected),

@@ -65,6 +65,14 @@ export function createLocalSyncStore(options = {}) {
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
+  const setupConfig = loadSetupConfig(database, {
+    configuredAtUtc: now().toISOString(),
+    localDatabase: options.localDatabase ?? "store-sync.sqlite",
+    restBasePath: options.restBasePath,
+    serverUrl: options.serverUrl,
+    storeId: options.storeId,
+    websiteUrl: options.websiteUrl,
+  })
 
   if (options.removeSeedReferenceCards === true) {
     removeSeedReferenceCards(database)
@@ -175,6 +183,46 @@ export function createLocalSyncStore(options = {}) {
       users: users.map(publicUser),
       policy_source: "cached_wordpress_policy",
       pin_credentials_returned: false,
+    }
+  }
+
+  function getSetupConfig() {
+    return publicSetupConfig(setupConfig)
+  }
+
+  function updateSetupConfig(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const nextConfig = cleanSetupConfig({
+      storeId: input.storeId ?? input.store_id ?? setupConfig.storeId,
+      serverUrl: input.serverUrl ?? input.server_url ?? setupConfig.serverUrl,
+      websiteUrl: input.websiteUrl ?? input.website_url ?? setupConfig.websiteUrl,
+      restBasePath: input.restBasePath ?? input.rest_base_path ?? setupConfig.restBasePath,
+      localDatabase: input.localDatabase ?? input.local_database ?? setupConfig.localDatabase,
+      configuredAtUtc: now().toISOString(),
+      configSource: "manager_app_settings",
+      wordpressConnectorRestartRequired: true,
+    })
+
+    if (!nextConfig.websiteUrl) {
+      return blocked("website_url_required", "Enter a valid http(s) WordPress website URL before saving setup.")
+    }
+
+    Object.assign(setupConfig, nextConfig)
+    saveSetupConfig(database, setupConfig)
+
+    return {
+      status: "ok",
+      action: "local_sync_server_setup_config_saved",
+      config: publicSetupConfig(setupConfig),
+      wordpress_connector_restart_required: setupConfig.wordpressConnectorRestartRequired,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+      raw_credentials_accepted: false,
     }
   }
 
@@ -1908,6 +1956,7 @@ export function createLocalSyncStore(options = {}) {
     createInventoryIntake,
     createKioskOrder,
     deviceStatus,
+    getSetupConfig,
     listEvents,
     listKioskOrders,
     createSession,
@@ -1922,6 +1971,7 @@ export function createLocalSyncStore(options = {}) {
     searchScryDexCards,
     syncStatus,
     pushQueuedOperations,
+    updateSetupConfig,
     updateKioskOrderStatus,
     updateUserAccess,
   }
@@ -2091,6 +2141,12 @@ function migrateLocalSyncDatabase(database) {
       heartbeat_interval_seconds INTEGER NOT NULL,
       first_seen_at_utc TEXT NOT NULL,
       last_seen_at_utc TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS server_settings (
+      setting_key TEXT PRIMARY KEY,
+      setting_value_json TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
     );
   `)
 
@@ -2287,6 +2343,58 @@ function loadClientDevices(database) {
       last_seen_at_utc: cleanIsoTimestamp(row.last_seen_at_utc),
     }))
     .filter((device) => device.device_id)
+}
+
+function loadSetupConfig(database, defaults = {}) {
+  const row = database
+    .prepare("SELECT setting_value_json FROM server_settings WHERE setting_key = ?")
+    .get("one_website_setup")
+  const persisted = row ? parseJson(row.setting_value_json, {}) : {}
+  const config = cleanSetupConfig({
+    ...defaults,
+    ...persisted,
+    configSource: persisted.configSource ?? persisted.config_source ?? defaults.configSource ?? "server_environment",
+    configuredAtUtc:
+      persisted.configuredAtUtc ??
+      persisted.configured_at_utc ??
+      defaults.configuredAtUtc ??
+      defaults.configured_at_utc,
+  })
+
+  if (!row && config.websiteUrl) {
+    saveSetupConfig(database, config)
+  }
+
+  return config
+}
+
+function saveSetupConfig(database, config) {
+  database
+    .prepare(`
+      INSERT INTO server_settings (setting_key, setting_value_json, updated_at_utc)
+      VALUES (?, ?, ?)
+      ON CONFLICT(setting_key) DO UPDATE SET
+        setting_value_json = excluded.setting_value_json,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run("one_website_setup", JSON.stringify(config), config.configuredAtUtc || new Date().toISOString())
+}
+
+function publicSetupConfig(config) {
+  return {
+    store_id: config.storeId,
+    server_url: config.serverUrl.replace(/\/$/, ""),
+    website_url: config.websiteUrl,
+    rest_base_path: config.restBasePath,
+    wordpress_rest_base: config.websiteUrl ? `${config.websiteUrl.replace(/\/$/, "")}${config.restBasePath}` : "",
+    local_database: config.localDatabase,
+    config_source: config.configSource,
+    configured_at_utc: config.configuredAtUtc,
+    wordpress_connector_restart_required: config.wordpressConnectorRestartRequired,
+    credentials_synced_to_client: false,
+    raw_credentials_returned: false,
+    raw_credentials_accepted: false,
+  }
 }
 
 function loadQueue(database) {
@@ -3795,6 +3903,15 @@ function cleanPublicId(value) {
   return String(value ?? "").trim().replace(/[^a-zA-Z0-9-_:.]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 96)
 }
 
+function cleanStoreId(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 64) || "pug-game-shop"
+}
+
 function cleanSlug(value) {
   return String(value ?? "")
     .trim()
@@ -3817,6 +3934,41 @@ function cleanHttpUrl(value) {
     return ["http:", "https:"].includes(url.protocol) ? url.toString().slice(0, 255) : ""
   } catch {
     return ""
+  }
+}
+
+function cleanRestBasePath(value) {
+  const path = String(value ?? "").trim()
+
+  if (!path || !path.startsWith("/")) {
+    return "/wp-json/tcg-store/v1"
+  }
+
+  return path.replace(/\/+$/, "") || "/wp-json/tcg-store/v1"
+}
+
+function cleanSetupConfig(value = {}) {
+  const websiteUrl = cleanHttpUrl(value.websiteUrl ?? value.website_url)
+  const serverUrl = cleanHttpUrl(value.serverUrl ?? value.server_url) || "http://127.0.0.1:8787/"
+  const restBasePath = cleanRestBasePath(value.restBasePath ?? value.rest_base_path)
+  const configuredAtUtc = cleanIsoTimestamp(value.configuredAtUtc ?? value.configured_at_utc) || new Date().toISOString()
+
+  return {
+    storeId: cleanStoreId(value.storeId ?? value.store_id),
+    serverUrl,
+    websiteUrl,
+    restBasePath,
+    localDatabase: cleanName(value.localDatabase ?? value.local_database) || "store-sync.sqlite",
+    configSource: String(value.configSource ?? value.config_source ?? "server_environment")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, "_")
+      .replace(/(^_|_$)/g, "")
+      .slice(0, 64) || "server_environment",
+    configuredAtUtc,
+    wordpressConnectorRestartRequired: Boolean(
+      value.wordpressConnectorRestartRequired ?? value.wordpress_connector_restart_required,
+    ),
   }
 }
 
