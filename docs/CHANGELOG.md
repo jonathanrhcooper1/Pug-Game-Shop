@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The production ScryDex index runner now returns secret-safe card page
+  summaries for each set import, including scoped expansion ID, page number,
+  provider row count, normalized row counts, persistence status, and transaction
+  commit status.
 - The production ScryDex index runner now preserves case-sensitive provider
   expansion IDs when importing cards by set, matching ScryDex scoped card
   endpoints such as `/expansions/OGN/cards`.

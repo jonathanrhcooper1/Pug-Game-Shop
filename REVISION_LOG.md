@@ -3,6 +3,49 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Production Index Page Diagnostics
+
+### What Changed
+
+- Added secret-safe per-page summaries to the production ScryDex index runner.
+- The runner now reports scoped expansion ID, page number, provider HTTP/status,
+  provider row count, normalized reference/variant/price-point counts,
+  persistence status, transaction commit status, and block reasons for the last
+  pages in each set import.
+- Updated the production ScryDex index contract to require those diagnostics.
+
+### Why
+
+The live import needs to be able to answer exactly why an expansion did not
+produce cards without printing raw ScryDex response bodies or credentials.
+
+### Files Affected
+
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `scripts/tests/production-scrydex-index-contract.mjs`.
+
+### Verification
+
+- `node scripts/tests/production-scrydex-index-contract.mjs`: passed.
+- `node scripts/production-run-scrydex-index.mjs --dry-run`: passed.
+- `npm.cmd run test:packaging`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove per-page diagnostic summaries from production
+  index output.
+- No database rollback is required.
+
 ## 2026-06-09 - ScryDex Production Set Card Indexing ID Preservation
 
 ### What Changed

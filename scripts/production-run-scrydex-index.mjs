@@ -190,6 +190,7 @@ function tcg_production_scrydex_catalog_request(array $payload, string $game, st
 		'cards_execution_gate_status' => (string) ($execution_gate['status'] ?? 'unknown'),
 		'cards_execution_gate_block_reasons' => is_array($execution_gate['block_reasons'] ?? null) ? $execution_gate['block_reasons'] : array(),
 		'cards_execution_gate_provider_status' => (string) ($execution_gate['provider_status'] ?? 'unknown'),
+		'cards_page_summaries' => tcg_production_scrydex_page_summaries($cards),
 		'expansions_status' => (string) ($expansions['status'] ?? 'skipped'),
 		'expansions_provider_request_count' => (int) ($expansions['provider_request_count'] ?? 0),
 		'expansions_row_count' => (int) ($expansions['row_count'] ?? 0),
@@ -200,6 +201,44 @@ function tcg_production_scrydex_catalog_request(array $payload, string $game, st
 		'credential_values_redacted' => true,
 		'provider_result_bodies_not_logged' => true,
 	);
+}
+
+function tcg_production_scrydex_page_summaries(array $cards): array {
+	$pages = is_array($cards['pages'] ?? null) ? $cards['pages'] : array();
+	$summaries = array();
+
+	foreach (array_slice($pages, -3) as $page) {
+		if (!is_array($page)) {
+			continue;
+		}
+
+		$request = is_array($page['provider_request'] ?? null) ? $page['provider_request'] : array();
+		$plan = is_array($page['orchestration_plan'] ?? null) ? $page['orchestration_plan'] : array();
+		$page_plan = is_array($plan['page_plan'] ?? null) ? $plan['page_plan'] : array();
+		$repository_result = is_array($plan['persistence_repository_result'] ?? null) ? $plan['persistence_repository_result'] : array();
+
+		$summaries[] = array(
+			'index' => (int) ($page['index'] ?? 0),
+			'provider_request_game' => (string) ($request['game'] ?? ''),
+			'provider_request_expansion_id' => (string) ($request['expansion_id'] ?? ''),
+			'provider_request_page' => (int) ($request['page'] ?? 0),
+			'provider_request_page_size' => (int) ($request['page_size'] ?? 0),
+			'provider_result_status' => (string) ($page['provider_result_status'] ?? ''),
+			'provider_result_http_status' => (int) ($page['provider_result_http_status'] ?? 0),
+			'provider_result_error_code' => (string) ($page['provider_result_error_code'] ?? ''),
+			'provider_row_count' => (int) ($page['provider_row_count'] ?? 0),
+			'orchestration_status' => (string) ($plan['status'] ?? ''),
+			'reference_row_count' => (int) ($page_plan['reference_row_count'] ?? 0),
+			'variant_row_count' => (int) ($page_plan['variant_row_count'] ?? 0),
+			'price_point_row_count' => (int) ($page_plan['price_point_row_count'] ?? 0),
+			'persistence_status' => (string) ($repository_result['status'] ?? ''),
+			'transaction_committed' => !empty($repository_result['transaction_committed']),
+			'block_reasons' => is_array($plan['block_reasons'] ?? null) ? $plan['block_reasons'] : array(),
+			'provider_result_body_logged' => false,
+		);
+	}
+
+	return $summaries;
 }
 
 function tcg_production_scrydex_reference_sets(string $game, int $limit, int $offset): array {
