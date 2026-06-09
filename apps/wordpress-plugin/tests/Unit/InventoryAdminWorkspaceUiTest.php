@@ -71,6 +71,7 @@ final class InventoryAdminWorkspaceUiTest extends TestCase {
 				'provider_name',
 				'provider_card_id',
 				'reference_card_id',
+				'setIntakeValue("reference_card_id",card.reference_card_id||"")',
 				'reference_variant_id',
 				'intake_quantity',
 				'quantityFrom',

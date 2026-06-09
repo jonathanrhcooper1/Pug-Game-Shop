@@ -795,6 +795,7 @@ final class ReferenceCardSearchRouteHandler {
 			$front_image_url  = $this->url( $row['front_image_url'] ?? '' );
 
 			$presented[] = array(
+				'reference_card_id'       => 0,
 				'provider_card_id'          => $provider_card_id,
 				'public_id'                 => '',
 				'provider_name'             => $this->text( $row['provider_name'] ?? 'scrydex' ),
@@ -943,6 +944,7 @@ final class ReferenceCardSearchRouteHandler {
 		$stock_summary    = array_merge( $this->empty_stock_summary(), $stock_summary );
 
 		return array(
+			'reference_card_id'       => (int) ( $row['reference_card_id'] ?? 0 ),
 			'provider_card_id'          => $provider_card_id,
 			'public_id'                 => $this->text( $row['public_id'] ?? '' ),
 			'provider_name'             => $this->text( $row['provider_name'] ?? 'scrydex' ),

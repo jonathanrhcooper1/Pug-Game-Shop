@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WordPress reference card lookup now returns cached `reference_card_id` values
+  and the admin card lookup handoff fills the hidden intake field, keeping
+  ScryDex lookup-to-intake tied to the canonical website reference record when
+  available.
 - Offline app inventory search now matches more of the LAN/server search
   surface, including card number, set code, condition, provider IDs, selected
   variant metadata, and Square catalog mapping IDs, while website pull refreshes

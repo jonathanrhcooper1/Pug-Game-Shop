@@ -378,6 +378,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'ready', $response['data']['meta']['stock_summary_status'] );
 			$this->assert_same( 'ready', $response['data']['meta']['price_point_status'] );
 			$this->assert_same( 'wordpress_catalog_cache', $response['data']['source'] );
+			$this->assert_same( 215, $response['data']['cards'][0]['reference_card_id'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
 			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );
@@ -441,6 +442,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'completed', $response['data']['meta']['scrydex_fallback_status'] );
 			$this->assert_same( 'executed', $response['data']['meta']['scrydex_persistence_status'] );
 			$this->assert_same( array(), $response['data']['meta']['scrydex_persistence_errors'] );
+			$this->assert_same( 0, $response['data']['cards'][0]['reference_card_id'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
 			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );

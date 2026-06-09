@@ -3,6 +3,57 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Reference Lookup to Intake Identity Handoff
+
+### What Changed
+
+- Added `reference_card_id` to cached WordPress reference card search response
+  rows.
+- Kept live provider fallback rows explicit with `reference_card_id` set to
+  `0` until a cached/persisted row is available.
+- Updated the WordPress admin card lookup handoff to fill the hidden
+  `reference_card_id` intake field when staff selects a catalog result.
+
+### Why
+
+The website schema and intake parser already support canonical reference card
+identity, but lookup-to-intake only filled provider card and variant identity.
+Passing the cached `reference_card_id` keeps staff intake tied to the canonical
+website reference record whenever the catalog row is present.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended reference search unit coverage to assert cached rows expose
+  `reference_card_id` and live provider fallback rows do not pretend to have a
+  cached identity.
+- Extended admin workspace UI source coverage to assert lookup-to-intake fills
+  the hidden `reference_card_id` field.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php --filter InventorySearchRouteHandlerFactoryTest`
+- `php apps/wordpress-plugin/tests/run.php --filter InventoryAdminWorkspaceUiTest`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert the WordPress plugin lookup/admin files to return provider-only
+  lookup data. Intake will still work through provider IDs and variants, but
+  will lose direct canonical reference-card linkage from the admin handoff.
+
 ## 2026-06-09 - Offline Inventory Search Parity
 
 ### What Changed
