@@ -786,6 +786,25 @@ try {
   assert.equal(squarePlan.request_plan.path, "/v2/inventory/counts/batch-retrieve")
   assert.deepEqual(squarePlan.request_plan.body.catalog_object_ids, ["SQUARE-VARIATION-42"])
   assert.deepEqual(squarePlan.request_plan.body.location_ids, ["L-SANDBOX-1"])
+  assert.equal(squarePlan.mapping_summary.ready_for_square_pull_count, 1)
+  assert.equal(squarePlan.mapping_summary.ready_available_count, 1)
+  assert.ok(squarePlan.mapping_summary.review_count > 0)
+  assert.equal(squarePlan.mapping_summary.square_inventory_authority, "tcg_store_platform")
+  assert.equal(squarePlan.mapping_summary.square_counts_used_for, "pos_reconciliation_and_exception_detection")
+  assert.equal(squarePlan.square_pull_feed[0].card_name, "Charizard")
+  assert.equal(squarePlan.square_pull_feed[0].barcode, "PUG-WP-CHARIZARD")
+  assert.equal(squarePlan.square_pull_feed[0].expected_serialized_quantity, "1")
+  assert.ok(
+    squarePlan.review_items.some((item) =>
+      item.errors.includes("square_catalog_variation_id_required_for_inventory_pull"),
+    ),
+  )
+  assert.ok(
+    squarePlan.next_actions.some((action) =>
+      action.includes("Map POS-visible website inventory to Square catalog variations"),
+    ),
+  )
+  assert.match(squarePlan.generated_at_utc, /^\d{4}-\d{2}-\d{2}T/)
   assert.equal(squarePlan.plugin_square_payment_capture_supported, false)
   assert.equal(squarePlan.credentials_synced_to_client, false)
 

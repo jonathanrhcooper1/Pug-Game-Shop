@@ -3797,6 +3797,132 @@ dd {
   font-size: 12px;
 }
 
+.square-pos-plan {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  background: rgba(121, 215, 143, 0.08);
+  border: 1px solid rgba(121, 215, 143, 0.22);
+  border-radius: 8px;
+}
+
+.square-pos-plan.conflict {
+  background: rgba(246, 199, 96, 0.12);
+  border-color: rgba(246, 199, 96, 0.34);
+}
+
+.square-pos-plan.rejected,
+.square-pos-plan.skipped {
+  background: rgba(240, 126, 103, 0.1);
+  border-color: rgba(240, 126, 103, 0.28);
+}
+
+.square-pos-plan__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.square-pos-plan__heading div,
+.square-pos-plan__columns div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.square-pos-plan strong {
+  color: #172016;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.square-pos-plan small,
+.square-pos-plan span,
+.square-pos-plan li {
+  color: #607061;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 5px 8px;
+  color: #172016;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(20, 23, 19, 0.1);
+  border-radius: 999px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.square-pos-plan__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.square-pos-plan__metrics span {
+  display: grid;
+  gap: 2px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(20, 23, 19, 0.08);
+  border-radius: 8px;
+}
+
+.square-pos-plan__metrics strong {
+  font-size: 16px;
+}
+
+.square-pos-plan__columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.square-pos-feed-list,
+.square-pos-review-list,
+.square-pos-next-actions {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.square-pos-next-actions {
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.square-pos-feed-list li,
+.square-pos-review-list li {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(20, 23, 19, 0.08);
+  border-radius: 8px;
+}
+
+.square-pos-feed-list strong,
+.square-pos-review-list strong,
+.square-pos-feed-list span,
+.square-pos-review-list span,
+.square-pos-feed-list small,
+.square-pos-review-list small {
+  overflow-wrap: anywhere;
+}
+
+.square-pos-plan__footer {
+  overflow-wrap: anywhere;
+}
+
 .manifest-validation {
   display: grid;
   gap: 9px;
@@ -4324,6 +4450,8 @@ dd {
   .event-detail-card,
   .event-offline-fields,
   .connector-grid,
+  .square-pos-plan__metrics,
+  .square-pos-plan__columns,
   .connector-editor,
   .user-access-card,
   .user-access-editor,

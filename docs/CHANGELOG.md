@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- LAN Square POS inventory planning now returns a manager-readable readiness
+  summary with POS-visible counts, mapped Square pull feed rows, review items,
+  next actions, and reconciliation-only authority labels while keeping payment
+  capture delegated outside the app.
 - Version `0.186.0` adds operational checkout and browse polish across the
   connected systems: Square store-credit handoff now requires a ticket total,
   receipt/reference, and cashier confirmation; the LAN server returns and

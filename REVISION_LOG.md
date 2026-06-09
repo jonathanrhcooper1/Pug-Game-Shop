@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Square POS Inventory Readiness Panel
+
+### What Changed
+
+- Expanded the LAN sync server Square POS inventory pull plan with a
+  manager-readable mapping summary, ready Square pull feed rows, POS mapping
+  review items, generated timestamp, updated-after echo, and next-action
+  guidance.
+- Added a Settings screen Square POS inventory readiness panel to the offline
+  app showing ready/review counts, POS-visible inventory counts, duplicate scan
+  counts, mapped Square variation feed rows, and mapping-review next steps.
+- Kept Square payment capture explicitly unsupported in the local app and
+  delegated to the existing Square/WooCommerce Square path.
+
+### Why
+
+The store needs the website and local middleman to make Square/POS inventory
+readiness clear before live POS reconciliation. Managers should see exactly
+which website inventory rows are ready to compare with Square and which rows
+need barcode, location, or Square variation mapping work.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended local sync runtime coverage for Square POS readiness summaries,
+  ready feed rows, review items, and next actions.
+- Extended offline app client/UI contract coverage for the Square POS
+  readiness panel and response fields.
+
+### Verification
+
+- `npm.cmd run local-sync:test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+
+### Rollback Notes
+
+- Revert this revision to return the local Square POS planner to the simpler
+  mapped/unresolved count response and remove the Settings readiness panel.
+- No database migrations or production WordPress data changes are involved.
+
 ## 2026-06-09 - Connected Checkout, Kiosk, Account, and Catalog Polish
 
 ### What Changed

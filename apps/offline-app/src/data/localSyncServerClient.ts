@@ -525,6 +525,57 @@ export type LocalSyncSquarePosInventoryPullPlanResult = LocalSyncResult<{
   requires_manager_review: boolean
   mapped_count: number
   unresolved_count: number
+  mapping_summary?: {
+    total_inventory_count: number
+    pos_visible_count: number
+    pos_hidden_count: number
+    pos_staff_only_count: number
+    available_pos_visible_count: number
+    ready_for_square_pull_count: number
+    ready_available_count: number
+    ready_zero_count: number
+    review_count: number
+    unmapped_pos_visible_count: number
+    duplicate_scan_identity_count: number
+    square_inventory_authority: "tcg_store_platform"
+    square_counts_used_for: "pos_reconciliation_and_exception_detection"
+  }
+  square_pull_feed?: Array<{
+    public_id: string
+    card_name: string
+    set_name: string
+    condition: string
+    barcode: string
+    sku: string
+    square_catalog_item_id: string
+    square_catalog_variation_id: string
+    square_location_id: string
+    status: LocalSyncInventoryItem["status"]
+    pos_visibility: LocalSyncInventoryItem["pos_visibility"]
+    expected_serialized_quantity: string
+    price_minor_units: number
+    location: string
+    row_version: number
+    source: LocalSyncInventoryItem["source"]
+  }>
+  review_items?: Array<{
+    public_id: string
+    card_name: string
+    set_name: string
+    condition: string
+    barcode: string
+    sku: string
+    scan_identity: string
+    status: LocalSyncInventoryItem["status"]
+    pos_visibility: LocalSyncInventoryItem["pos_visibility"]
+    square_catalog_variation_id: string
+    errors: string[]
+    issue_labels: string[]
+    next_action: string
+  }>
+  next_actions?: string[]
+  generated_at_utc?: string
+  updated_after_utc?: string
   request_plan: Record<string, unknown> | null
   barcode_mappings: Record<string, unknown>[]
   unresolved_mappings: Record<string, unknown>[]

@@ -291,13 +291,16 @@ export function createLocalSyncStore(options = {}) {
       return manager
     }
 
+    const generatedAtUtc = now().toISOString()
+    const updatedAfterUtc = cleanIsoTimestamp(input.updated_after)
+    const plannerRows = inventoryItems.map(squareInventoryRowForPlanner)
     const plan = planSquareBarcodeSkuInventoryPull(
-      inventoryItems.map(squareInventoryRowForPlanner),
+      plannerRows,
       {
         environment: cleanSquareEnvironment(input.environment) || squareEnvironment,
         credentialEnvironment: "sandbox",
         squareLocationId: cleanExternalId(input.square_location_id) || squareLocationId,
-        updatedAfter: cleanIsoTimestamp(input.updated_after),
+        updatedAfter: updatedAfterUtc,
         limit: boundedInt(input.limit, 1, 1000, 1000),
       },
     )
@@ -307,6 +310,9 @@ export function createLocalSyncStore(options = {}) {
     const unresolvedMappings = Array.isArray(plan.details?.unresolvedMappings)
       ? plan.details.unresolvedMappings
       : []
+    const squarePullFeed = squarePosPullFeedRows(inventoryItems, barcodeMappings)
+    const reviewItems = squarePosReviewItems(inventoryItems, unresolvedMappings)
+    const mappingSummary = squarePosMappingSummary(inventoryItems, squarePullFeed, reviewItems)
 
     return {
       status: "ok",
@@ -317,6 +323,12 @@ export function createLocalSyncStore(options = {}) {
       requires_manager_review: plan.status === "conflict",
       mapped_count: barcodeMappings.length,
       unresolved_count: unresolvedMappings.length,
+      mapping_summary: mappingSummary,
+      square_pull_feed: squarePullFeed,
+      review_items: reviewItems,
+      next_actions: squarePosNextActions(plan.status, reviewItems, squarePullFeed),
+      generated_at_utc: generatedAtUtc,
+      updated_after_utc: updatedAfterUtc,
       request_plan: plan.details?.requestPlan ?? null,
       barcode_mappings: barcodeMappings,
       unresolved_mappings: unresolvedMappings,
@@ -2961,6 +2973,166 @@ function squareInventoryRowForPlanner(item) {
     pos_visibility: cleanVisibility(item.pos_visibility, "visible"),
     row_version: boundedInt(item.row_version, 1, 999999999, 1),
   }
+}
+
+function squarePosPullFeedRows(inventoryItems, barcodeMappings) {
+  return barcodeMappings.map((mapping) => {
+    const item = inventoryItemForSquareMapping(inventoryItems, mapping)
+    const expectedCount = String(mapping.expectedSquareCountPull?.expected_serialized_quantity ?? "")
+
+    return {
+      public_id: cleanPublicId(mapping.publicId ?? item?.public_id),
+      card_name: cleanName(item?.card_name) || "Mapped inventory item",
+      set_name: cleanName(item?.set_name),
+      condition: cleanCondition(item?.condition),
+      barcode: cleanBarcode(mapping.barcode ?? item?.barcode),
+      sku: cleanBarcode(mapping.sku ?? mapping.scanIdentity ?? item?.barcode),
+      square_catalog_item_id: cleanExternalId(mapping.squareCatalogItemId ?? item?.square_catalog_item_id),
+      square_catalog_variation_id: cleanExternalId(
+        mapping.squareCatalogVariationId ?? item?.square_catalog_variation_id,
+      ),
+      square_location_id: cleanExternalId(mapping.squareLocationId),
+      status: localInventoryStatus(item?.status) ?? "conflict",
+      pos_visibility: cleanVisibility(item?.pos_visibility, "hidden"),
+      expected_serialized_quantity: expectedCount || "0",
+      price_minor_units: Math.max(0, minorUnits(item?.price_minor_units)),
+      location: cleanName(item?.location),
+      row_version: boundedInt(item?.row_version, 1, 999999999, 1),
+      source: cleanName(item?.source) || "cached",
+    }
+  })
+}
+
+function squarePosReviewItems(inventoryItems, unresolvedMappings) {
+  return unresolvedMappings.map((mapping) => {
+    const item = inventoryItemForSquareMapping(inventoryItems, mapping)
+    const errors = Array.isArray(mapping.errors)
+      ? mapping.errors.map((error) => cleanName(error)).filter(Boolean)
+      : []
+
+    return {
+      public_id: cleanPublicId(mapping.publicId ?? item?.public_id),
+      card_name: cleanName(item?.card_name) || "Unmapped inventory item",
+      set_name: cleanName(item?.set_name),
+      condition: cleanCondition(item?.condition),
+      barcode: cleanBarcode(mapping.barcode ?? item?.barcode),
+      sku: cleanBarcode(mapping.sku ?? mapping.scanIdentity ?? item?.barcode),
+      scan_identity: cleanBarcode(mapping.scanIdentity ?? mapping.sku ?? mapping.barcode ?? item?.barcode),
+      status: localInventoryStatus(item?.status) ?? "conflict",
+      pos_visibility: cleanVisibility(item?.pos_visibility, "hidden"),
+      square_catalog_variation_id: cleanExternalId(item?.square_catalog_variation_id),
+      errors,
+      issue_labels: squarePosIssueLabels(errors),
+      next_action: squarePosReviewNextAction(errors),
+    }
+  })
+}
+
+function squarePosMappingSummary(inventoryItems, squarePullFeed, reviewItems) {
+  const posVisibleItems = inventoryItems.filter((item) => cleanVisibility(item.pos_visibility, "hidden") === "visible")
+  const mappedPublicIds = new Set(squarePullFeed.map((row) => row.public_id).filter(Boolean))
+  const duplicateScanIdentityCount = reviewItems.filter((item) => item.errors.includes("duplicate_barcode_or_sku")).length
+  const unmappedVisibleCount = posVisibleItems.filter((item) => !mappedPublicIds.has(cleanPublicId(item.public_id))).length
+
+  return {
+    total_inventory_count: inventoryItems.length,
+    pos_visible_count: posVisibleItems.length,
+    pos_hidden_count: inventoryItems.filter((item) => cleanVisibility(item.pos_visibility, "hidden") === "hidden").length,
+    pos_staff_only_count: inventoryItems.filter((item) => cleanVisibility(item.pos_visibility, "hidden") === "staff_only").length,
+    available_pos_visible_count: posVisibleItems.filter((item) => localInventoryStatus(item.status) === "available").length,
+    ready_for_square_pull_count: squarePullFeed.length,
+    ready_available_count: squarePullFeed.filter((row) => row.expected_serialized_quantity === "1").length,
+    ready_zero_count: squarePullFeed.filter((row) => row.expected_serialized_quantity === "0").length,
+    review_count: reviewItems.length,
+    unmapped_pos_visible_count: unmappedVisibleCount,
+    duplicate_scan_identity_count: duplicateScanIdentityCount,
+    square_inventory_authority: "tcg_store_platform",
+    square_counts_used_for: "pos_reconciliation_and_exception_detection",
+  }
+}
+
+function squarePosNextActions(plannerStatus, reviewItems, squarePullFeed) {
+  const actions = []
+  const errors = new Set(reviewItems.flatMap((item) => item.errors))
+
+  if (errors.has("duplicate_barcode_or_sku")) {
+    actions.push("Resolve duplicate barcode/SKU values before Square count comparison.")
+  }
+
+  if (errors.has("square_catalog_variation_id_required_for_inventory_pull")) {
+    actions.push("Map POS-visible website inventory to Square catalog variations or hide it from POS until mapped.")
+  }
+
+  if (errors.has("square_location_id_required_for_inventory_pull")) {
+    actions.push("Set the Square location ID in the local server or website connector settings.")
+  }
+
+  if (squarePullFeed.length === 0) {
+    actions.push("Pull website inventory into the LAN cache after Square mappings are available.")
+  }
+
+  if (plannerStatus === "ready" && actions.length === 0) {
+    actions.push("Ready to retrieve Square inventory counts for reconciliation; payment capture still stays in Square.")
+  }
+
+  if (plannerStatus === "conflict" && actions.length === 0) {
+    actions.push("Review unmapped POS rows before using the Square pull plan.")
+  }
+
+  return actions
+}
+
+function squarePosIssueLabels(errors) {
+  return errors.map((error) => {
+    if (error === "duplicate_barcode_or_sku") {
+      return "Duplicate barcode/SKU"
+    }
+
+    if (error === "square_catalog_variation_id_required_for_inventory_pull") {
+      return "Missing Square variation"
+    }
+
+    if (error === "square_location_id_required_for_inventory_pull") {
+      return "Missing Square location"
+    }
+
+    if (error === "barcode_or_sku_required") {
+      return "Missing barcode/SKU"
+    }
+
+    return error.replace(/_/g, " ")
+  })
+}
+
+function squarePosReviewNextAction(errors) {
+  if (errors.includes("duplicate_barcode_or_sku")) {
+    return "Assign a unique barcode/SKU before Square can match this row."
+  }
+
+  if (errors.includes("square_catalog_variation_id_required_for_inventory_pull")) {
+    return "Create or link a Square catalog variation for this website inventory row."
+  }
+
+  if (errors.includes("square_location_id_required_for_inventory_pull")) {
+    return "Configure the Square location ID before planning count pulls."
+  }
+
+  if (errors.includes("barcode_or_sku_required")) {
+    return "Add a barcode/SKU so Square POS can scan and reconcile the item."
+  }
+
+  return "Review this POS inventory row before enabling Square reconciliation."
+}
+
+function inventoryItemForSquareMapping(inventoryItems, mapping) {
+  const publicId = cleanPublicId(mapping.publicId ?? mapping.public_id)
+  const scanIdentity = cleanBarcode(mapping.scanIdentity ?? mapping.sku ?? mapping.barcode)
+  const squareVariationId = cleanExternalId(mapping.squareCatalogVariationId ?? mapping.square_catalog_variation_id)
+
+  return inventoryItems.find((item) => cleanPublicId(item.public_id) === publicId)
+    ?? inventoryItems.find((item) => cleanExternalId(item.square_catalog_variation_id) === squareVariationId)
+    ?? inventoryItems.find((item) => cleanBarcode(item.barcode) === scanIdentity)
+    ?? null
 }
 
 function publicCustomer(customer) {

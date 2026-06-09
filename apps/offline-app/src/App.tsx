@@ -854,6 +854,47 @@ function customerCreditLedgerEntryFromLocalSync(
   }
 }
 
+function formatUtcLabel(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return "unknown"
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  }).format(date)
+}
+
+function squarePosReviewItemFromLegacyMapping(mapping: Record<string, unknown>) {
+  const errors = Array.isArray(mapping.errors)
+    ? mapping.errors.map((error) => String(error)).filter(Boolean)
+    : []
+  const barcode = String(mapping.barcode ?? "")
+  const sku = String(mapping.sku ?? mapping.scanIdentity ?? barcode)
+
+  return {
+    public_id: String(mapping.publicId ?? mapping.public_id ?? ""),
+    card_name: "Unmapped POS inventory",
+    set_name: "",
+    condition: "",
+    barcode,
+    sku,
+    scan_identity: String(mapping.scanIdentity ?? sku ?? barcode),
+    status: "conflict" as const,
+    pos_visibility: "visible" as const,
+    square_catalog_variation_id: "",
+    errors,
+    issue_labels: errors.map((error) => error.replace(/_/g, " ")),
+    next_action: errors.includes("square_catalog_variation_id_required_for_inventory_pull")
+      ? "Create or link a Square catalog variation for this website inventory row."
+      : "Review this POS inventory row before enabling Square reconciliation.",
+  }
+}
+
 function inventoryItemFromLocalSync(
   item: LocalSyncInventoryItem,
   nextId: number,
@@ -1211,6 +1252,39 @@ export function App() {
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
   const [squarePosPlan, setSquarePosPlan] =
     useState<LocalSyncSquarePosInventoryPullPlanResult | null>(null)
+  const squarePosMappingSummary =
+    squarePosPlan?.status === "ok"
+      ? squarePosPlan.mapping_summary ?? {
+        total_inventory_count: inventoryItems.length,
+        pos_visible_count: inventoryItems.filter((item) => item.posVisibility === "visible").length,
+        pos_hidden_count: inventoryItems.filter((item) => item.posVisibility === "hidden").length,
+        pos_staff_only_count: inventoryItems.filter((item) => item.posVisibility === "staff_only").length,
+        available_pos_visible_count: inventoryItems.filter(
+          (item) => item.status === "available" && item.posVisibility === "visible",
+        ).length,
+        ready_for_square_pull_count: squarePosPlan.mapped_count,
+        ready_available_count: squarePosPlan.mapped_count,
+        ready_zero_count: 0,
+        review_count: squarePosPlan.unresolved_count,
+        unmapped_pos_visible_count: squarePosPlan.unresolved_count,
+        duplicate_scan_identity_count: 0,
+        square_inventory_authority: "tcg_store_platform" as const,
+        square_counts_used_for: "pos_reconciliation_and_exception_detection" as const,
+      }
+      : null
+  const squarePosPullFeed = squarePosPlan?.status === "ok" ? squarePosPlan.square_pull_feed ?? [] : []
+  const squarePosReviewItems =
+    squarePosPlan?.status === "ok"
+      ? squarePosPlan.review_items ??
+        squarePosPlan.unresolved_mappings.map(squarePosReviewItemFromLegacyMapping)
+      : []
+  const squarePosNextActions =
+    squarePosPlan?.status === "ok"
+      ? squarePosPlan.next_actions ??
+        (squarePosReviewItems.length
+          ? ["Map POS-visible website inventory to Square catalog variations or hide it from POS until mapped."]
+          : [])
+      : []
   const [localDeviceHeartbeat, setLocalDeviceHeartbeat] =
     useState<LocalSyncDeviceHeartbeatResult | null>(null)
   const [localDeviceStatus, setLocalDeviceStatus] =
@@ -6848,6 +6922,92 @@ export function App() {
                   <small>Secrets stay on WordPress/server settings</small>
                 </div>
               </div>
+              {squarePosPlan?.status === "ok" ? (
+                <div className={`square-pos-plan ${squarePosPlan.planner_status}`} aria-label="Square POS inventory readiness">
+                  <div className="square-pos-plan__heading">
+                    <div>
+                      <span className="micro-label">Square POS inventory readiness</span>
+                      <strong>
+                        {squarePosMappingSummary?.ready_for_square_pull_count ?? squarePosPlan.mapped_count} ready /{" "}
+                        {squarePosMappingSummary?.review_count ?? squarePosPlan.unresolved_count} review
+                      </strong>
+                      <small>
+                        Website inventory authority: {squarePosMappingSummary?.square_inventory_authority ?? "tcg_store_platform"};
+                        counts are for reconciliation only.
+                      </small>
+                    </div>
+                    <span className="status-pill">{squarePosPlan.planner_status}</span>
+                  </div>
+                  <div className="square-pos-plan__metrics">
+                    <span>
+                      <strong>{squarePosMappingSummary?.pos_visible_count ?? 0}</strong>
+                      POS visible
+                    </span>
+                    <span>
+                      <strong>{squarePosMappingSummary?.ready_available_count ?? squarePosPlan.mapped_count}</strong>
+                      expected in stock
+                    </span>
+                    <span>
+                      <strong>{squarePosMappingSummary?.unmapped_pos_visible_count ?? squarePosPlan.unresolved_count}</strong>
+                      unmapped visible
+                    </span>
+                    <span>
+                      <strong>{squarePosMappingSummary?.duplicate_scan_identity_count ?? 0}</strong>
+                      duplicate scans
+                    </span>
+                  </div>
+                  {squarePosNextActions.length ? (
+                    <ul className="square-pos-next-actions" aria-label="Square POS next actions">
+                      {squarePosNextActions.map((action) => (
+                        <li key={action}>{action}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="square-pos-plan__columns">
+                    <div>
+                      <span className="micro-label">Ready Square pull feed</span>
+                      {squarePosPullFeed.length ? (
+                        <ul className="square-pos-feed-list">
+                          {squarePosPullFeed.slice(0, 5).map((row) => (
+                            <li key={`${row.public_id}-${row.square_catalog_variation_id}`}>
+                              <strong>{row.card_name}</strong>
+                              <span>
+                                {row.condition} / {row.barcode || row.sku} / Square{" "}
+                                {row.square_catalog_variation_id}
+                              </span>
+                              <small>
+                                Expected qty {row.expected_serialized_quantity};{" "}
+                                {formatMoney(row.price_minor_units, "USD")}
+                              </small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <small>No mapped Square rows are ready yet.</small>
+                      )}
+                    </div>
+                    <div>
+                      <span className="micro-label">POS mapping review</span>
+                      {squarePosReviewItems.length ? (
+                        <ul className="square-pos-review-list">
+                          {squarePosReviewItems.slice(0, 5).map((item) => (
+                            <li key={`${item.public_id}-${item.scan_identity}`}>
+                              <strong>{item.card_name}</strong>
+                              <span>{item.issue_labels.join(", ") || "Review required"}</span>
+                              <small>{item.next_action}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <small>No POS-visible mapping issues in this plan.</small>
+                      )}
+                    </div>
+                  </div>
+                  <small className="square-pos-plan__footer">
+                    Generated {formatUtcLabel(squarePosPlan.generated_at_utc ?? "")}; Square payment capture supported here: no.
+                  </small>
+                </div>
+              ) : null}
               <div
                 className={`manifest-validation ${connectorValidation?.status ?? "idle"}`}
                 aria-live="polite"

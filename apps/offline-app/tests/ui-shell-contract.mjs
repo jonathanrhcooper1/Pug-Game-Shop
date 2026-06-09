@@ -183,6 +183,11 @@ for (const requiredText of [
   "Selected Card",
   "Kiosk Cart",
   "Square POS handoff",
+  "Square POS inventory readiness",
+  "Ready Square pull feed",
+  "POS mapping review",
+  "Website inventory authority:",
+  "counts are for reconciliation only.",
   "Square receipt/ref",
   "Cashier confirmed Pug Store Credit was applied in Square before staging.",
   "Pug Store Credit",
@@ -296,6 +301,11 @@ for (const className of [
   "toggle-field",
   "connector-test-report",
   "connector-test-checks",
+  "square-pos-plan",
+  "square-pos-plan__metrics",
+  "square-pos-feed-list",
+  "square-pos-review-list",
+  "square-pos-next-actions",
   "section-heading-actions",
 ]) {
   assert.ok(styles.includes(`.${className}`), `Missing UI class: ${className}`)
