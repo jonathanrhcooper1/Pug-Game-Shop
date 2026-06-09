@@ -66,15 +66,24 @@ final class InventoryAdminWorkspaceUiTest extends TestCase {
 
 		foreach (
 			array(
+				'admin_post_tcg_store_square_mapping_update',
+				'handle_square_mapping_update',
+				'mark_square_catalog_synced',
 				'Square POS Mapping',
 				'tcg-store-square-mapping-readiness',
+				'tcg_store_square_mapping_nonce',
+				'tcg-store-square-mapping-form',
 				'updateSquareMapping(items)',
+				'squareMappingForm',
+				'inventory_id',
+				'square_catalog_item_id',
 				'square_catalog_variation_id_required_for_inventory_pull',
 				'duplicate_barcode_or_sku',
 				'Square inventory authority:',
 				'Ready Square pull feed',
 				'POS mapping review',
 				'Square variation',
+				'Save mapping',
 				'payments remain delegated',
 			) as $marker
 		) {

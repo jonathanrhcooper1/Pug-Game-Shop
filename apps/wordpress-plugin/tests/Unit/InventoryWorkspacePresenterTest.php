@@ -200,6 +200,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$summary   = $presenter->square_mapping_summary(
 			array(
 				array(
+					'inventory_id'                 => 42,
 					'public_id'                   => 'inventory-ready',
 					'card_name'                   => 'Charizard',
 					'set_code'                    => 'BASE',
@@ -256,6 +257,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 1, $summary['ready_count'] );
 		$this->assert_same( 3, $summary['review_count'] );
 		$this->assert_same( 1, $summary['duplicate_scan_identity_count'] );
+		$this->assert_same( 42, $summary['ready_items'][0]['inventory_id'] );
 		$this->assert_same( 'Charizard', $summary['ready_items'][0]['card_name'] );
 		$this->assert_true(
 			in_array( 'square_catalog_variation_id_required_for_inventory_pull', $summary['review_items'][0]['errors'], true )

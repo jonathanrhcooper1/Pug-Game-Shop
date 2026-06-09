@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WordPress inventory admin Square POS Mapping rows now include secure manager
+  forms for saving Square catalog item and variation IDs back to the website
+  inventory record, using the website as the source of truth and leaving
+  payment capture delegated.
 - WordPress inventory admin now includes a Square POS Mapping dashboard fed by
   staff inventory search results, showing POS-visible counts, ready Square
   variation mappings, duplicate barcode/SKU issues, missing scan IDs, missing

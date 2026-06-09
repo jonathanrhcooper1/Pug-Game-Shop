@@ -210,6 +210,7 @@ final class InventoryWorkspacePresenter {
 			}
 
 			$item = array(
+				'inventory_id'                 => $this->non_negative_int( $row['inventory_id'] ?? 0 ),
 				'public_id'                   => $this->safe_text( $row['public_id'] ?? '' ),
 				'card_name'                   => $this->safe_text( $row['card_name'] ?? '' ),
 				'set_code'                    => $this->safe_text( $row['set_code'] ?? '' ),

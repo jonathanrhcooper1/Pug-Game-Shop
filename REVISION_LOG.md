@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Website Square Mapping Save Workflow
+
+### What Changed
+
+- Added an authenticated WordPress admin-post action for saving Square catalog
+  item and variation IDs onto inventory rows.
+- Added secure per-row Square mapping forms to the inventory admin Square POS
+  Mapping dashboard, fed by staff inventory search results.
+- Added update result notices for saved and failed mapping attempts.
+- Added `inventory_id` to the Square mapping presenter row model so the admin
+  form updates the exact inventory row flagged by the dashboard.
+
+### Why
+
+Managers need to do more than see POS mapping problems. They need a fast,
+website-native way to correct missing Square variation IDs so the inventory
+record becomes ready for Square/POS reconciliation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended admin UI source coverage for the mapping save hook, nonce, form,
+  persisted Square ID field names, and repository call.
+- Extended presenter coverage for inventory row identity in Square mapping
+  summary rows.
+
+### Verification
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert this revision to leave Square POS Mapping as read-only dashboard
+  guidance.
+- Saved mapping IDs are normal inventory metadata. If a bad ID is entered,
+  edit the same inventory row through this form or clear the Square catalog
+  fields directly from a database backup/recovery workflow.
+
 ## 2026-06-09 - Website Square POS Mapping Dashboard
 
 ### What Changed

@@ -27,6 +27,7 @@ use TCGStorePlatform\Api\V1\PosPaymentRouteReadinessStatusPresenter;
 use TCGStorePlatform\Bootstrap\DependencyChecker;
 use TCGStorePlatform\FeatureFlags\FeatureFlagRegistry;
 use TCGStorePlatform\FeatureFlags\FeatureFlags;
+use TCGStorePlatform\Inventory\InventoryExternalMappingRepository;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
@@ -53,6 +54,53 @@ final class AdminMenu {
 
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		add_action( 'admin_post_tcg_store_square_mapping_update', array( $this, 'handle_square_mapping_update' ) );
+	}
+
+	public function handle_square_mapping_update(): void {
+		if ( ! current_user_can( 'edit_inventory' ) ) {
+			wp_die( esc_html__( 'You do not have permission to update inventory mappings.', 'tcg-store-platform' ) );
+		}
+
+		check_admin_referer( 'tcg_store_square_mapping_update', 'tcg_store_square_mapping_nonce' );
+
+		global $wpdb;
+
+		$inventory_id         = absint( $this->posted_value( 'inventory_id' ) );
+		$square_item_id      = $this->posted_value( 'square_catalog_item_id' );
+		$square_variation_id = $this->posted_value( 'square_catalog_variation_id' );
+		$result              = ( new InventoryExternalMappingRepository( $wpdb ) )->mark_square_catalog_synced(
+			$inventory_id,
+			$square_item_id,
+			$square_variation_id
+		);
+		$status              = true === ( $result['synced'] ?? false ) ? 'square_mapping_saved' : 'square_mapping_failed';
+		$error               = implode( ',', array_map( 'sanitize_key', is_array( $result['errors'] ?? null ) ? $result['errors'] : array() ) );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array_filter(
+					array(
+						'page'                      => 'tcg-store-platform-inventory',
+						'tcg_square_mapping_status' => $status,
+						'tcg_square_mapping_error'  => $error,
+					),
+					static fn ( string $value ): bool => '' !== $value
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	private function posted_value( string $key ): string {
+		$value = $_POST[ $key ] ?? ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		if ( is_array( $value ) ) {
+			return '';
+		}
+
+		return sanitize_text_field( wp_unslash( (string) $value ) );
 	}
 
 	public function register_menu(): void {
@@ -639,6 +687,8 @@ final class AdminMenu {
 		$ready   = true === ( $panel['ready'] ?? false );
 		$summary = is_array( $panel['summary'] ?? null ) ? $panel['summary'] : array();
 
+		$this->render_square_mapping_update_notice();
+
 		echo '<div class="notice notice-' . esc_attr( $ready ? 'info' : 'warning' ) . ' inline"><p><strong>';
 		echo esc_html( (string) ( $panel['status_label'] ?? '' ) );
 		echo '</strong> ';
@@ -649,11 +699,38 @@ final class AdminMenu {
 		echo esc_attr( $ready ? '1' : '0' );
 		echo '" data-summary="';
 		echo esc_attr( wp_json_encode( $summary ) ?: '{}' );
+		echo '" data-update-action="';
+		echo esc_url( admin_url( 'admin-post.php' ) );
+		echo '" data-update-nonce="';
+		echo esc_attr( wp_create_nonce( 'tcg_store_square_mapping_update' ) );
 		echo '">';
 		echo '<p>';
 		echo esc_html__( 'Run a staff inventory search to review Square POS-visible mappings, duplicate barcode/SKU values, and rows that need Square variation IDs.', 'tcg-store-platform' );
 		echo '</p>';
 		echo '</div>';
+	}
+
+	private function render_square_mapping_update_notice(): void {
+		$status = sanitize_key( wp_unslash( (string) ( $_GET['tcg_square_mapping_status'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( '' === $status ) {
+			return;
+		}
+
+		if ( 'square_mapping_saved' === $status ) {
+			echo '<div class="notice notice-success is-dismissible"><p>';
+			echo esc_html__( 'Square POS mapping saved for the selected inventory row.', 'tcg-store-platform' );
+			echo '</p></div>';
+			return;
+		}
+
+		$error = sanitize_text_field( wp_unslash( (string) ( $_GET['tcg_square_mapping_error'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		echo '<div class="notice notice-error is-dismissible"><p>';
+		echo esc_html__( 'Square POS mapping could not be saved.', 'tcg-store-platform' );
+		if ( '' !== $error ) {
+			echo ' <code>' . esc_html( $error ) . '</code>';
+		}
+		echo '</p></div>';
 	}
 
 	/**
@@ -942,8 +1019,9 @@ final class AdminMenu {
 		echo 'const squareErrors=function(item,counts){const errors=[];const scan=scanIdentity(item);if(scan===""){errors.push("barcode_or_sku_required");}if(scan!==""&&counts[scan]>1){errors.push("duplicate_barcode_or_sku");}if(String(item.square_catalog_variation_id||"").trim()===""){errors.push("square_catalog_variation_id_required_for_inventory_pull");}return errors;};';
 		echo 'const squareNextAction=function(errors){if(errors.indexOf("duplicate_barcode_or_sku")!==-1){return "' . esc_js( __( 'Assign a unique barcode/SKU before Square can match this row.', 'tcg-store-platform' ) ) . '";}if(errors.indexOf("square_catalog_variation_id_required_for_inventory_pull")!==-1){return "' . esc_js( __( 'Create or link a Square catalog variation for this website inventory row.', 'tcg-store-platform' ) ) . '";}if(errors.indexOf("barcode_or_sku_required")!==-1){return "' . esc_js( __( 'Add a barcode/SKU so Square POS can scan and reconcile the item.', 'tcg-store-platform' ) ) . '";}return "' . esc_js( __( 'Ready for Square count reconciliation; payment capture remains delegated.', 'tcg-store-platform' ) ) . '";};';
 		echo 'const squareIssueLabels=function(errors){return errors.map(function(error){return error.replace(/_/g," ");}).join(", ");};';
-		echo 'const squareMappingItem=function(item,errors){return {card:item.card_name||"",set:item.set_code||item.set_name||"",condition:item.condition_code||"",scan:scanIdentity(item),variation:item.square_catalog_variation_id||"",status:item.status||"",errors:errors,next:squareNextAction(errors)};};';
-		echo 'const updateSquareMapping=function(items){if(!squareTarget||squareTarget.dataset.ready!=="1"){return;}const counts={};items.forEach(function(item){const scan=scanIdentity(item);if(scan!==""){counts[scan]=(counts[scan]||0)+1;}});const visible=items.filter(function(item){return String(item.pos_visibility||"hidden")==="visible";});const ready=[];const review=[];visible.forEach(function(item){const errors=squareErrors(item,counts);(errors.length?review:ready).push(squareMappingItem(item,errors));});const duplicateCount=Object.keys(counts).filter(function(key){return counts[key]>1;}).length;if(!items.length){squareTarget.innerHTML="<p>' . esc_js( __( 'Run a staff inventory search to review Square POS mappings.', 'tcg-store-platform' ) ) . '</p>";return;}const metrics="<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'POS visible', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Ready for Square', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Needs review', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Duplicate scans', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody><tr><td>"+esc(visible.length)+"</td><td>"+esc(ready.length)+"</td><td>"+esc(review.length)+"</td><td>"+esc(duplicateCount)+"</td></tr></tbody></table>";const readyRows=ready.slice(0,10).map(function(item){return "<tr><td>"+esc(item.card)+"<br><span class=\"description\">"+esc(item.set)+" "+esc(item.condition)+"</span></td><td>"+esc(item.scan)+"</td><td><code>"+esc(item.variation)+"</code></td><td>"+esc(item.next)+"</td></tr>";}).join("");const reviewRows=review.slice(0,10).map(function(item){return "<tr><td>"+esc(item.card)+"<br><span class=\"description\">"+esc(item.set)+" "+esc(item.condition)+"</span></td><td>"+esc(item.scan)+"</td><td>"+esc(squareIssueLabels(item.errors))+"</td><td>"+esc(item.next)+"</td></tr>";}).join("");squareTarget.innerHTML="<p><strong>' . esc_js( __( 'Square inventory authority:', 'tcg-store-platform' ) ) . '</strong> tcg_store_platform. ' . esc_js( __( 'Square counts are reconciliation inputs only; payments remain delegated.', 'tcg-store-platform' ) ) . '</p>"+metrics+"<h3>' . esc_js( __( 'Ready Square pull feed', 'tcg-store-platform' ) ) . '</h3>"+(readyRows?"<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Scan ID', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Square variation', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Action', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+readyRows+"</tbody></table>":"<p>' . esc_js( __( 'No mapped Square rows are ready in this search result.', 'tcg-store-platform' ) ) . '</p>")+"<h3>' . esc_js( __( 'POS mapping review', 'tcg-store-platform' ) ) . '</h3>"+(reviewRows?"<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Scan ID', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Issue', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Next action', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+reviewRows+"</tbody></table>":"<p>' . esc_js( __( 'No POS-visible mapping issues in this search result.', 'tcg-store-platform' ) ) . '</p>");};';
+		echo 'const squareMappingItem=function(item,errors){return {inventory_id:item.inventory_id||"",card:item.card_name||"",set:item.set_code||item.set_name||"",condition:item.condition_code||"",scan:scanIdentity(item),square_catalog_item_id:item.square_catalog_item_id||"",variation:item.square_catalog_variation_id||"",status:item.status||"",errors:errors,next:squareNextAction(errors)};};';
+		echo 'const squareMappingForm=function(item){const inventoryId=String(item.inventory_id||"");if(!inventoryId){return "<span class=\"description\">' . esc_js( __( 'Inventory ID unavailable', 'tcg-store-platform' ) ) . '</span>";}const action=squareTarget.dataset.updateAction||"";const nonce=squareTarget.dataset.updateNonce||"";return "<form method=\"post\" action=\""+esc(action)+"\" class=\"tcg-store-square-mapping-form\" style=\"display:grid;gap:4px;max-width:320px;\"><input type=\"hidden\" name=\"action\" value=\"tcg_store_square_mapping_update\" /><input type=\"hidden\" name=\"tcg_store_square_mapping_nonce\" value=\""+esc(nonce)+"\" /><input type=\"hidden\" name=\"inventory_id\" value=\""+esc(inventoryId)+"\" /><label><span class=\"screen-reader-text\">' . esc_js( __( 'Square item ID', 'tcg-store-platform' ) ) . '</span><input type=\"text\" name=\"square_catalog_item_id\" value=\""+esc(item.square_catalog_item_id||"")+"\" placeholder=\"' . esc_js( __( 'Square item ID', 'tcg-store-platform' ) ) . '\" required=\"required\" /></label><label><span class=\"screen-reader-text\">' . esc_js( __( 'Square variation ID', 'tcg-store-platform' ) ) . '</span><input type=\"text\" name=\"square_catalog_variation_id\" value=\""+esc(item.variation||"")+"\" placeholder=\"' . esc_js( __( 'Square variation ID', 'tcg-store-platform' ) ) . '\" required=\"required\" /></label><button type=\"submit\" class=\"button button-small\">' . esc_js( __( 'Save mapping', 'tcg-store-platform' ) ) . '</button></form>";};';
+		echo 'const updateSquareMapping=function(items){if(!squareTarget||squareTarget.dataset.ready!=="1"){return;}const counts={};items.forEach(function(item){const scan=scanIdentity(item);if(scan!==""){counts[scan]=(counts[scan]||0)+1;}});const visible=items.filter(function(item){return String(item.pos_visibility||"hidden")==="visible";});const ready=[];const review=[];visible.forEach(function(item){const errors=squareErrors(item,counts);(errors.length?review:ready).push(squareMappingItem(item,errors));});const duplicateCount=Object.keys(counts).filter(function(key){return counts[key]>1;}).length;if(!items.length){squareTarget.innerHTML="<p>' . esc_js( __( 'Run a staff inventory search to review Square POS mappings.', 'tcg-store-platform' ) ) . '</p>";return;}const metrics="<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'POS visible', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Ready for Square', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Needs review', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Duplicate scans', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody><tr><td>"+esc(visible.length)+"</td><td>"+esc(ready.length)+"</td><td>"+esc(review.length)+"</td><td>"+esc(duplicateCount)+"</td></tr></tbody></table>";const readyRows=ready.slice(0,10).map(function(item){return "<tr><td>"+esc(item.card)+"<br><span class=\"description\">"+esc(item.set)+" "+esc(item.condition)+"</span></td><td>"+esc(item.scan)+"</td><td><code>"+esc(item.square_catalog_item_id)+"</code><br><code>"+esc(item.variation)+"</code>"+squareMappingForm(item)+"</td><td>"+esc(item.next)+"</td></tr>";}).join("");const reviewRows=review.slice(0,10).map(function(item){return "<tr><td>"+esc(item.card)+"<br><span class=\"description\">"+esc(item.set)+" "+esc(item.condition)+"</span></td><td>"+esc(item.scan)+"</td><td>"+esc(squareIssueLabels(item.errors))+"</td><td>"+squareMappingForm(item)+"<p class=\"description\">"+esc(item.next)+"</p></td></tr>";}).join("");squareTarget.innerHTML="<p><strong>' . esc_js( __( 'Square inventory authority:', 'tcg-store-platform' ) ) . '</strong> tcg_store_platform. ' . esc_js( __( 'Square counts are reconciliation inputs only; payments remain delegated.', 'tcg-store-platform' ) ) . '</p>"+metrics+"<h3>' . esc_js( __( 'Ready Square pull feed', 'tcg-store-platform' ) ) . '</h3>"+(readyRows?"<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Scan ID', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Square variation', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Action', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+readyRows+"</tbody></table>":"<p>' . esc_js( __( 'No mapped Square rows are ready in this search result.', 'tcg-store-platform' ) ) . '</p>")+"<h3>' . esc_js( __( 'POS mapping review', 'tcg-store-platform' ) ) . '</h3>"+(reviewRows?"<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Scan ID', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Issue', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Next action', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+reviewRows+"</tbody></table>":"<p>' . esc_js( __( 'No POS-visible mapping issues in this search result.', 'tcg-store-platform' ) ) . '</p>");};';
 		echo 'const render=function(payload){const items=((payload.data||{}).items)||[];const meta=((payload.data||{}).meta)||{};';
 		echo 'updateSquareMapping(items);';
 		echo 'if(!items.length){target.innerHTML="<p>' . esc_js( __( 'No matching inventory found.', 'tcg-store-platform' ) ) . '</p>";return;}';
