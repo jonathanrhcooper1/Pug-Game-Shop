@@ -3,6 +3,177 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Menu And Square POS Sale Finalization
+
+### What Changed
+
+- Added a production commerce menu helper that assigns the primary header menu
+  to Home, Singles, Sealed Products, Graded Cards, Accessories, and Events while
+  removing the basic WooCommerce Shop link from navigation.
+- Added the WordPress inventory mark-sold route handler for exact serialized
+  inventory sale finalization by numeric inventory ID or public inventory ID.
+- Added runtime gating for the staff mark-sold route so sale finalization can
+  be enabled independently from inventory intake.
+- Added local sync server support for `POST /pos/square/sales/finalize`, which
+  records a Square receipt/order reference, marks scanned local inventory as
+  sold, queues `square_pos_sale` operations, and pushes those operations to
+  WordPress.
+- Extended the offline app/local sync client contracts to understand `sold`
+  inventory and the WordPress sale-push connector.
+- Kept Square payment capture delegated to the official WooCommerce Square /
+  Square POS workflow; Pug records exact inventory removal and customer credit
+  ledger entries against the Square receipt reference.
+
+### Why
+
+The site header needed to point shoppers directly at the branded commerce
+shelves instead of the generic Shop page, and in-store sales need a reliable
+way to remove the exact scanned card from WordPress, WooCommerce, kiosk search,
+and the local cache after Square completes the payment.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryMarkSoldRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteContracts.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Settings/InventoryRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-sale-push.mjs`
+- `apps/wordpress-plugin/tests/Unit/InventoryMarkSoldRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `scripts/production-configure-commerce-menu.mjs`
+- `scripts/tests/production-commerce-menu-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+
+### Tests Added
+
+- Added PHP coverage for inventory mark-sold validation, idempotent sold
+  handling, valid available-to-sold transition, and invalid transition blocking.
+- Added local sync runtime coverage for Square sale finalization and WordPress
+  sale-push acceptance.
+- Added local sync connector coverage for the WordPress mark-sold REST call.
+- Added production commerce menu contract coverage.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1004 tests, 0 failures.
+- `npm --prefix apps/local-sync-server test`: all local sync contract/runtime
+  and WordPress connector tests passed.
+- `npx tsc --noEmit --pretty false` from `apps/offline-app`: passed.
+
+### Rollback Notes
+
+- Disable `staff_mark_sold_route_enabled` to stop live mark-sold REST writes.
+- Revert the plugin package to the previous backup if production sale
+  finalization causes issues.
+- Restore the previous WordPress menu assignment from the
+  `_tcg_store_commerce_menu_backup_*` option if the header menu needs to be
+  rolled back.
+- No database migration rollback is required.
+
+## 2026-06-09 - Production Commerce Pages And Graded Shelf
+
+### What Changed
+
+- Restyled the public Singles inventory search from the plugin to better match
+  the live dark Pug storefront theme, including the search form, inventory
+  cards, pagination, and empty state.
+- Updated the empty Singles state to explain that cards appear only after
+  inventory rows are `available` and `visible`.
+- Added a fresh public inventory stylesheet cache key so the updated design is
+  served immediately after the plugin install.
+- Expanded the production public page setup to restore the Shop hub plus
+  dedicated Singles, Sealed Products, Graded Cards, Accessories, Card Inventory,
+  and Events pages without changing the active WordPress theme.
+- Added the `graded-cards` WooCommerce product category to the production page
+  setup.
+- Kept game categories top-level so the pushed storefront design links such as
+  `/product-category/pokemon/` continue to work.
+- Updated WooCommerce product projection/writing so graded inventory is tagged
+  with `graded-cards` in addition to `singles` and the matching game category.
+- Removed duplicate content headings from the generated shelf page content and
+  kept the Shop page as a category hub so WooCommerce does not render duplicate
+  product grids.
+- Improved the public Events empty-state styling for the dark Pug storefront
+  theme.
+
+### Why
+
+The live design from the secondary site should stay in place, but it still
+needs real commerce destinations for singles, sealed product, graded cards,
+accessories, and events. Graded cards also need their own product category so
+inventory added through intake can automatically land on the correct storefront
+shelf.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/assets/css/public-events.css`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Events/EventShortcodes.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/tests/Unit/EventShortcodesTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/WooCommerceInventoryProductWriterTest.php`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+
+### Tests Added
+
+- Added unit coverage for graded inventory category projection.
+- Updated WooCommerce writer coverage for creating the Graded Cards product
+  category.
+- Updated the production public pages contract for the Shop hub and Graded Cards
+  shelf.
+
+### Verification
+
+- Pending in this checkpoint: run focused PHP tests, public page contract,
+  package contract, production plugin install, live page configuration, and
+  browser screenshots.
+
+### Rollback Notes
+
+- Revert this revision to remove the dedicated Graded Cards shelf/category
+  behavior.
+- Restore page content from the `_tcg_store_public_pages_backup_*` post meta
+  created by the public page helper if a live page needs to be reverted.
+- No database migration rollback is required.
+
 ## 2026-06-09 - Visible Local Inventory WooCommerce Smoke Coverage
 
 ### What Changed

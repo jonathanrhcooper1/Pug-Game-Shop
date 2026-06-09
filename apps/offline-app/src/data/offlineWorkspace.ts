@@ -11,7 +11,7 @@ export type IconName =
   | "card"
   | "history"
 
-export type InventoryStatus = "available" | "reserved" | "conflict" | "pending_intake"
+export type InventoryStatus = "available" | "reserved" | "sold" | "conflict" | "pending_intake"
 export type InventorySource = "cached" | "queued" | "accepted"
 export type QueueTone = "success" | "warning" | "neutral"
 export type ConnectorEnvironment = "development" | "staging" | "production"
@@ -1186,6 +1186,9 @@ export function statusLabel(status: InventoryStatus) {
   }
   if (status === "reserved") {
     return "Reserved"
+  }
+  if (status === "sold") {
+    return "Sold"
   }
   if (status === "pending_intake") {
     return "Pending Intake"

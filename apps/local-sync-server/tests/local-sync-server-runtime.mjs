@@ -5,6 +5,7 @@ import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 let websiteCatalogFallbackCalls = 0
 let wordpressInventoryPullCalls = 0
 let wordpressInventoryPushCalls = 0
+let wordpressInventorySalePushCalls = 0
 let wordpressEventRegistrationPushCalls = 0
 let wordpressEventCheckinPushCalls = 0
 let wordpressCustomerUpsertPushCalls = 0
@@ -150,6 +151,45 @@ const server = createLocalSyncHttpServer({
           status: "available",
           price_change_log_persisted: true,
         },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressInventorySalePush: async ({ operation, item }) => {
+      wordpressInventorySalePushCalls += 1
+
+      assert.equal(operation.operation_type, "square_pos_sale")
+      assert.equal(item.status, "sold")
+      assert.equal(item.barcode, "PUG-WP-CHARIZARD")
+      assert.equal(operation.payload.square_receipt_reference, "SQ-SALE-CHARIZARD-25000")
+      assert.equal(operation.payload.inventory_public_id, "wp-inventory-charizard")
+
+      return {
+        status: "ok",
+        code: "wordpress_inventory_item_marked_sold",
+        http_status: 200,
+        wordpress_code: "inventory_item_marked_sold",
+        inventory: {
+          public_id: "wp-inventory-charizard",
+          sku: "PUG-WP-CHARIZARD",
+          barcode: "PUG-WP-CHARIZARD",
+          previous_status: "available",
+          status: "sold",
+          date_sold: "2026-06-09 20:30:00",
+          row_version: 5,
+          square_receipt_reference: "SQ-SALE-CHARIZARD-25000",
+        },
+        woocommerce_product_sync: {
+          requested: true,
+          synced: true,
+          status: "executed",
+          product_ids: [9401],
+          errors: [],
+          payment_capture_deferred: true,
+          square_inventory_deferred: true,
+        },
+        square_payment_capture_supported: false,
+        payment_capture_authority: "official_woocommerce_square_extension",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
       }
@@ -332,6 +372,7 @@ try {
   assert.equal(setupStatus.local_database, "store-sync.sqlite")
   assert.equal(setupStatus.wordpress_pull_configured, true)
   assert.equal(setupStatus.wordpress_push_configured, true)
+  assert.equal(setupStatus.wordpress_inventory_sale_push_configured, true)
   assert.equal(setupStatus.scrydex_catalog_proxy_configured, true)
   assert.equal(setupStatus.client_presence_enabled, true)
   assert.equal(setupStatus.device_heartbeat_path, "/devices/heartbeat")
@@ -1094,6 +1135,53 @@ try {
   const acceptedEvent = acceptedEvents.events.find((event) => event.event_id === "event-100")
   assert.equal(acceptedEvent.source, "accepted")
 
+  const squareSale = await fetchJson(`${baseUrl}/pos/square/sales/finalize`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      barcodes: ["PUG-WP-CHARIZARD"],
+      square_receipt_reference: "SQ-SALE-CHARIZARD-25000",
+      square_order_id: "SQ-ORDER-CHARIZARD",
+      sale_total_minor_units: 25000,
+    },
+  })
+  assert.equal(squareSale.status, "ok")
+  assert.equal(squareSale.action, "square_pos_sale_finalized")
+  assert.equal(squareSale.finalized_count, 1)
+  assert.equal(squareSale.items[0].barcode, "PUG-WP-CHARIZARD")
+  assert.equal(squareSale.items[0].status, "sold")
+  assert.equal(squareSale.items[0].source, "queued")
+  assert.equal(squareSale.operations[0].operation_type, "square_pos_sale")
+  assert.equal(squareSale.square_receipt_reference, "SQ-SALE-CHARIZARD-25000")
+  assert.equal(squareSale.wordpress_acceptance_required, true)
+  assert.equal(squareSale.square_payment_capture_supported, false)
+  assert.equal(squareSale.payment_capture_authority, "official_woocommerce_square_extension")
+
+  const pushedSquareSale = await fetchJson(`${baseUrl}/sync/push`, {
+    method: "POST",
+    token: managerToken,
+  })
+  assert.equal(pushedSquareSale.status, "ok")
+  assert.equal(pushedSquareSale.operation_count, 1)
+  assert.equal(pushedSquareSale.accepted_count, 1)
+  assert.equal(pushedSquareSale.unsupported_operation_count, 1)
+  assert.equal(pushedSquareSale.wordpress_inventory_sale_push_connected, true)
+  assert.equal(wordpressInventorySalePushCalls, 1)
+  assert.ok(
+    pushedSquareSale.results.some(
+      (result) =>
+        result.operation_type === "square_pos_sale" &&
+        result.status === "accepted" &&
+        result.wordpress_inventory.status === "sold",
+    ),
+  )
+
+  const soldInventory = await fetchJson(`${baseUrl}/inventory/search?q=PUG-WP-CHARIZARD`)
+  assert.equal(soldInventory.status, "ok")
+  assert.equal(soldInventory.items[0].status, "sold")
+  assert.equal(soldInventory.items[0].source, "accepted")
+  assert.equal(soldInventory.items[0].external_sync_state, "synced")
+
   const customerSearch = await fetchJson(`${baseUrl}/customers/search?q=morgan`)
   assert.equal(customerSearch.status, "ok")
   assert.equal(customerSearch.wordpress_ledger_authority, true)
@@ -1236,6 +1324,7 @@ try {
   assert.equal(syncStatus.wordpress_events_pull_connected, true)
   assert.equal(syncStatus.wordpress_push_connected, true)
   assert.equal(syncStatus.wordpress_inventory_push_connected, true)
+  assert.equal(syncStatus.wordpress_inventory_sale_push_connected, true)
   assert.equal(syncStatus.wordpress_event_registration_push_connected, true)
   assert.equal(syncStatus.wordpress_event_checkin_push_connected, true)
   assert.equal(syncStatus.wordpress_customer_push_connected, true)

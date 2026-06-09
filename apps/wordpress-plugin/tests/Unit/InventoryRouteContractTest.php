@@ -31,7 +31,7 @@ final class InventoryRouteContractTest extends TestCase {
 				'PUT /inventory/(?P<inventory_id>\d+)'                    => 'edit_inventory',
 				'POST /inventory/(?P<inventory_id>\d+)/reserve'           => 'source_authenticated_principal',
 				'POST /inventory/(?P<inventory_id>\d+)/release'           => 'reservation_owner_or_staff',
-				'POST /inventory/(?P<inventory_id>\d+)/mark-sold'         => 'staff_or_pos_device',
+				'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold' => 'staff_or_pos_device',
 				'POST /inventory/(?P<inventory_id>\d+)/move'              => 'edit_inventory',
 				'POST /inventory/(?P<inventory_id>\d+)/price-lock'        => 'edit_prices',
 				'POST /inventory/bulk-intake'                              => 'create_inventory',

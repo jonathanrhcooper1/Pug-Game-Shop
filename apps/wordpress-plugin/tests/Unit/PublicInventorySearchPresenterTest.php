@@ -91,6 +91,21 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 		$this->assert_not_contains( 'secret-barcode', $html );
 	}
 
+	public function test_empty_inventory_state_explains_visible_available_requirement(): void {
+		$request   = new InventorySearchRequest( '', '', array( 'available' ), null, 'public', 'relevance', 1, 24 );
+		$presenter = new InventorySearchPresenter();
+		$payload   = $presenter->present( $request, array(), 0 );
+
+		$html = $presenter->render_html( $payload );
+
+		$this->assert_contains( 'tcg-public-inventory__empty', $html );
+		$this->assert_contains( 'No singles are live online yet.', $html );
+		$this->assert_contains( 'online visibility set to visible', $html );
+		$this->assert_contains( 'status set to available', $html );
+		$this->assert_contains( '/shop/', $html );
+		$this->assert_contains( '/contact/', $html );
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */

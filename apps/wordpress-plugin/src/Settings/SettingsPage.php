@@ -422,6 +422,16 @@ final class SettingsPage {
 		echo '<input type="checkbox" name="'
 			. esc_attr( Settings::OPTION_NAME )
 			. '[' . esc_attr( InventoryRouteRuntimeSettings::KEY )
+			. '][staff_mark_sold_route_enabled]" value="1" '
+			. checked( ! empty( $runtime['staff_mark_sold_route_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Enable staff/Square POS mark-sold route.', 'tcg-store-platform' );
+		echo '</label><br />';
+
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( InventoryRouteRuntimeSettings::KEY )
 			. '][public_search_route_enabled]" value="1" '
 			. checked( ! empty( $runtime['public_search_route_enabled'] ), true, false )
 			. ' /> ';

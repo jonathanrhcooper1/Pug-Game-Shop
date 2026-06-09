@@ -97,5 +97,17 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_contains( "tcg_inventory_page_size", $source );
 		$this->assert_contains( '.tcg-public-inventory {', $source );
 		$this->assert_contains( 'BrandingSettings::css_variable_string( Settings::all() )', $source );
+		$this->assert_contains( 'dark-storefront', $source );
+	}
+
+	public function test_public_inventory_css_matches_dark_storefront_theme(): void {
+		$css = (string) file_get_contents( dirname( __DIR__, 2 ) . '/assets/css/public-inventory.css' );
+
+		$this->assert_contains( 'radial-gradient(circle at 85% 20%', $css );
+		$this->assert_contains( '.tcg-public-inventory__empty-actions', $css );
+		$this->assert_contains( '.tcg-public-inventory__empty-actions a:visited', $css );
+		$this->assert_contains( 'color: #05080b !important', $css );
+		$this->assert_contains( 'color: #f8fbff', $css );
+		$this->assert_contains( 'rgba(246, 198, 53, 0.34)', $css );
 	}
 }

@@ -82,6 +82,7 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   wordpress_pull_configured: boolean
   wordpress_push_configured: boolean
   wordpress_inventory_push_configured: boolean
+  wordpress_inventory_sale_push_configured?: boolean
   wordpress_event_registration_push_configured: boolean
   wordpress_event_checkin_push_configured: boolean
   wordpress_customer_push_configured: boolean
@@ -197,7 +198,7 @@ export type LocalSyncInventoryItem = {
   price_minor_units: number
   currency: "USD"
   location: string
-  status: "available" | "reserved" | "conflict" | "pending_intake"
+  status: "available" | "reserved" | "sold" | "conflict" | "pending_intake"
   image_url: string
   back_image_url: string
   online_visibility: "hidden" | "visible" | "staff_only"
@@ -507,6 +508,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   active_session_count: number
   wordpress_push_connected: boolean
   wordpress_inventory_push_connected?: boolean
+  wordpress_inventory_sale_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
   wordpress_event_checkin_push_connected?: boolean
   wordpress_credit_push_connected?: boolean
@@ -587,6 +589,7 @@ export type LocalSyncPushResult = LocalSyncResult<{
   }>
   wordpress_push_connected: true
   wordpress_inventory_push_connected?: boolean
+  wordpress_inventory_sale_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
   wordpress_event_checkin_push_connected?: boolean
   wordpress_credit_push_connected?: boolean
@@ -719,6 +722,27 @@ export type LocalSyncSquarePosInventoryCountReconciliationResult = LocalSyncResu
   credentials_synced_to_client: false
   raw_credentials_returned: false
   next_actions: string[]
+}>
+
+export type LocalSyncSquarePosSaleFinalizeResult = LocalSyncResult<{
+  action: "square_pos_sale_finalized"
+  finalized_count: number
+  items: LocalSyncInventoryItem[]
+  operations: Array<{
+    operation_id: string
+    operation_type: "square_pos_sale"
+    entity_id: string
+    sync_status: "pending"
+  }>
+  square_receipt_reference: string
+  square_order_id: string
+  wordpress_acceptance_required: true
+  source_of_truth: "tcg_store_platform"
+  square_payment_capture_supported: false
+  plugin_square_payment_capture_supported: false
+  payment_capture_authority: "official_woocommerce_square_extension"
+  provider_inventory_write_deferred: true
+  credentials_synced_to_client: false
 }>
 
 export type LocalSyncFetch = (
@@ -875,6 +899,17 @@ export type LocalSyncServerClient = {
       squareCountsResponse?: Record<string, unknown>
     },
   ) => Promise<LocalSyncSquarePosInventoryCountReconciliationResult>
+  finalizeSquarePosSale: (
+    sessionToken: string,
+    input: {
+      inventoryPublicIds?: string[]
+      barcodes?: string[]
+      items?: Array<string | Record<string, unknown>>
+      squareReceiptReference: string
+      squareOrderId?: string
+      saleTotalMinorUnits?: number
+    },
+  ) => Promise<LocalSyncSquarePosSaleFinalizeResult>
   pushQueuedOperations: (sessionToken: string) => Promise<LocalSyncPushResult>
 }
 
@@ -1122,6 +1157,19 @@ export function createLocalSyncServerClient(
           square_counts_response: input.squareCountsResponse ?? undefined,
         },
       }) as Promise<LocalSyncSquarePosInventoryCountReconciliationResult>,
+    finalizeSquarePosSale: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/pos/square/sales/finalize", {
+        method: "POST",
+        sessionToken,
+        body: {
+          inventory_public_ids: input.inventoryPublicIds ?? [],
+          barcodes: input.barcodes ?? [],
+          items: input.items ?? [],
+          square_receipt_reference: input.squareReceiptReference,
+          square_order_id: input.squareOrderId ?? "",
+          sale_total_minor_units: input.saleTotalMinorUnits ?? 0,
+        },
+      }) as Promise<LocalSyncSquarePosSaleFinalizeResult>,
     pushQueuedOperations: (sessionToken) =>
       requestLocalSync(fetcher, baseUrl, "/sync/push", {
         method: "POST",

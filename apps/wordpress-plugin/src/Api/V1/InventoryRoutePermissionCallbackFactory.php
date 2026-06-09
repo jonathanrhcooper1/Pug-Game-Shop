@@ -15,6 +15,7 @@ final class InventoryRoutePermissionCallbackFactory {
 		'view_inventory'           => 'view_inventory',
 		'create_inventory'         => 'create_inventory',
 		'edit_inventory'           => 'edit_inventory',
+		'staff_or_pos_device'      => 'edit_inventory',
 		'edit_prices'              => 'edit_prices',
 		'view_reports'             => 'view_reports',
 		'manage_inventory_imports' => 'manage_settings',

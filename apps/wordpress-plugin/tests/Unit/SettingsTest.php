@@ -49,6 +49,7 @@ final class SettingsTest extends TestCase {
 		$this->assert_same( OfflineRouteRuntimeSettings::defaults(), $defaults['offline_route_runtime'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_create_route_enabled'] );
+		$this->assert_false( $defaults['inventory_route_runtime']['staff_mark_sold_route_enabled'] );
 		$this->assert_same( ScryDexProviderSettings::defaults(), $defaults['scrydex_provider'] );
 		$this->assert_same( ScryDexUsageBudgetSettings::defaults(), $defaults['scrydex_usage_budget'] );
 		$this->assert_same( ScryDexScheduleSettings::defaults(), $defaults['scrydex_schedule'] );
@@ -92,6 +93,7 @@ final class SettingsTest extends TestCase {
 				'inventory_route_runtime' => array(
 					'staff_search_route_enabled'  => true,
 					'staff_create_route_enabled'  => true,
+					'staff_mark_sold_route_enabled' => true,
 					'public_search_route_enabled' => true,
 				),
 			)
@@ -99,12 +101,14 @@ final class SettingsTest extends TestCase {
 
 		$this->assert_true( $result['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_true( $result['inventory_route_runtime']['staff_create_route_enabled'] );
+		$this->assert_true( $result['inventory_route_runtime']['staff_mark_sold_route_enabled'] );
 		$this->assert_true( $result['inventory_route_runtime']['public_search_route_enabled'] );
 
 		$result = Settings::sanitize(
 			array(
 				'inventory_route_runtime' => array(
 					'staff_create_route_enabled'  => true,
+					'staff_mark_sold_route_enabled' => true,
 					'public_search_route_enabled' => true,
 				),
 			)
@@ -112,6 +116,7 @@ final class SettingsTest extends TestCase {
 
 		$this->assert_false( $result['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_true( $result['inventory_route_runtime']['staff_create_route_enabled'] );
+		$this->assert_true( $result['inventory_route_runtime']['staff_mark_sold_route_enabled'] );
 		$this->assert_false( $result['inventory_route_runtime']['public_search_route_enabled'] );
 	}
 

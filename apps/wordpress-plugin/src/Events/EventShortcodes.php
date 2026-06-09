@@ -167,7 +167,7 @@ final class EventShortcodes {
 			self::STYLE_HANDLE,
 			$this->asset_url( 'assets/css/public-events.css' ),
 			array(),
-			Version::PLUGIN
+			Version::PLUGIN . '-events-empty-state'
 		);
 
 		if ( function_exists( 'wp_add_inline_style' ) ) {

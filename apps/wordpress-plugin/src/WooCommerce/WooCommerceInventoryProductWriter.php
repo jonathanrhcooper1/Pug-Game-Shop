@@ -174,6 +174,7 @@ final class WooCommerceInventoryProductWriter {
 		return match ( $slug ) {
 			'singles' => 'Singles',
 			'sealed-products' => 'Sealed Products',
+			'graded-cards' => 'Graded Cards',
 			'accessories' => 'Accessories',
 			'magic-the-gathering' => 'Magic: The Gathering',
 			'pokemon' => 'Pokemon',

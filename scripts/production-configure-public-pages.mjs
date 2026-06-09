@@ -26,22 +26,35 @@ const requiredEnv = {
 
 const pages = [
   {
+    slug: "shop",
+    title: "Shop",
+    expectedShortcode: null,
+    content:
+      '<!-- wp:heading -->\n<h2>Shop The Pug</h2>\n<!-- /wp:heading -->\n<!-- wp:paragraph -->\n<p>Browse singles, sealed product, graded cards, accessories, and fresh arrivals.</p>\n<!-- /wp:paragraph -->\n<!-- wp:buttons -->\n<div class="wp-block-buttons"><!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-singles/">Singles</a></div>\n<!-- /wp:button -->\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-sealed-products/">Sealed</a></div>\n<!-- /wp:button -->\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-graded-cards/">Graded</a></div>\n<!-- /wp:button -->\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-accessories/">Accessories</a></div>\n<!-- /wp:button --></div>\n<!-- /wp:buttons -->',
+  },
+  {
     slug: "shop-singles",
     title: "Shop Singles",
     content:
-      '<!-- wp:heading -->\n<h2>Shop Singles</h2>\n<!-- /wp:heading -->\n<!-- wp:shortcode -->\n[tcg_inventory_search limit="24"]\n<!-- /wp:shortcode -->',
+      '<!-- wp:paragraph -->\n<p>Search live singles inventory by game, set, card name, condition, and price.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[tcg_inventory_search limit="24"]\n<!-- /wp:shortcode -->',
   },
   {
     slug: "shop-sealed-products",
     title: "Shop Sealed Products",
     content:
-      '<!-- wp:heading -->\n<h2>Shop Sealed Products</h2>\n<!-- /wp:heading -->\n<!-- wp:shortcode -->\n[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+      '<!-- wp:paragraph -->\n<p>Sealed boxes, packs, and bundles appear here once products are categorized for online sale.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+  },
+  {
+    slug: "shop-graded-cards",
+    title: "Shop Graded Cards",
+    content:
+      '<!-- wp:paragraph -->\n<p>Graded cards added through intake publish here automatically when they are made visible online.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[products category="graded-cards" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
   },
   {
     slug: "shop-accessories",
     title: "Shop Accessories",
     content:
-      '<!-- wp:heading -->\n<h2>Shop Accessories</h2>\n<!-- /wp:heading -->\n<!-- wp:shortcode -->\n[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+      '<!-- wp:paragraph -->\n<p>Sleeves, deck boxes, binders, and play gear appear here once accessories are categorized for online sale.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
   },
   {
     slug: "card-inventory",
@@ -59,13 +72,14 @@ const pages = [
 const productCategories = [
   { slug: "singles", name: "Singles", parent: "" },
   { slug: "sealed-products", name: "Sealed Products", parent: "" },
+  { slug: "graded-cards", name: "Graded Cards", parent: "" },
   { slug: "accessories", name: "Accessories", parent: "" },
-  { slug: "magic-the-gathering", name: "Magic: The Gathering", parent: "singles" },
-  { slug: "pokemon", name: "Pokemon", parent: "singles" },
-  { slug: "lorcana", name: "Lorcana", parent: "singles" },
-  { slug: "one-piece", name: "One Piece", parent: "singles" },
-  { slug: "riftbound", name: "Riftbound", parent: "singles" },
-  { slug: "gundam", name: "Gundam", parent: "singles" },
+  { slug: "magic-the-gathering", name: "Magic: The Gathering", parent: "" },
+  { slug: "pokemon", name: "Pokemon", parent: "" },
+  { slug: "lorcana", name: "Lorcana", parent: "" },
+  { slug: "one-piece", name: "One Piece", parent: "" },
+  { slug: "riftbound", name: "Riftbound", parent: "" },
+  { slug: "gundam", name: "Gundam", parent: "" },
 ]
 
 const expectations = {
@@ -329,22 +343,28 @@ function buildChecks(parsed, expected) {
     },
     ...expected.pages.map((page) => {
       const actual = bySlug.get(page.slug)
-      const expectedShortcode = page.content.includes("[tcg_inventory_search")
-        ? "contains_inventory_shortcode"
-        : page.content.includes("[tcg_events")
-          ? "contains_events_shortcode"
-          : "contains_woocommerce_shortcode"
+      const expectedShortcode =
+        page.expectedShortcode === null
+          ? null
+          : page.content.includes("[tcg_inventory_search")
+            ? "contains_inventory_shortcode"
+            : page.content.includes("[tcg_events")
+              ? "contains_events_shortcode"
+              : "contains_woocommerce_shortcode"
 
       return {
         name: `page_${page.slug}`,
-        pass: Boolean(actual?.id) && actual?.status === "publish" && actual?.[expectedShortcode] === true,
+        pass:
+          Boolean(actual?.id) &&
+          actual?.status === "publish" &&
+          (expectedShortcode === null || actual?.[expectedShortcode] === true),
         expected: { slug: page.slug, status: "publish", shortcode: expectedShortcode },
         actual: actual
           ? {
               id: actual.id ?? null,
               status: actual.status ?? null,
               action: actual.action ?? null,
-              shortcodePresent: actual[expectedShortcode] ?? null,
+              shortcodePresent: expectedShortcode === null ? null : (actual[expectedShortcode] ?? null),
             }
           : null,
       }

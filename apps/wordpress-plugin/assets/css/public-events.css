@@ -13,6 +13,18 @@
   gap: 14px;
 }
 
+.tcg-events-empty,
+.tcg-event-detail-empty {
+  display: block;
+  padding: 18px;
+  color: #f8fbff;
+  background: linear-gradient(135deg, rgba(15, 95, 143, 0.28), rgba(255, 208, 68, 0.14));
+  border: 1px solid rgba(255, 208, 68, 0.34);
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+  font-weight: 800;
+}
+
 .tcg-event-card,
 .tcg-event-detail {
   overflow: hidden;

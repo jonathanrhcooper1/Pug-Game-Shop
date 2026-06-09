@@ -65,7 +65,15 @@ final class InventorySearchPresenter {
 		if ( 'blocked' === (string) ( $payload['status'] ?? '' ) ) {
 			$html .= '<p class="tcg-public-inventory__notice">' . $this->esc_html( (string) ( $payload['message'] ?? 'Inventory search is temporarily unavailable.' ) ) . '</p>';
 		} elseif ( array() === $groups ) {
-			$html .= '<p class="tcg-public-inventory__empty">' . $this->esc_html( 'No visible inventory matched this search.' ) . '</p>';
+			$html .= '<section class="tcg-public-inventory__empty" aria-live="polite">';
+			$html .= '<p class="tcg-public-inventory__empty-kicker">' . $this->esc_html( 'Inventory syncing' ) . '</p>';
+			$html .= '<h3>' . $this->esc_html( 'No singles are live online yet.' ) . '</h3>';
+			$html .= '<p>' . $this->esc_html( 'Cards will appear here after inventory is added with online visibility set to visible and status set to available.' ) . '</p>';
+			$html .= '<div class="tcg-public-inventory__empty-actions">';
+			$html .= '<a href="/shop/">' . $this->esc_html( 'Browse all products' ) . '</a>';
+			$html .= '<a href="/contact/">' . $this->esc_html( 'Ask about a card' ) . '</a>';
+			$html .= '</div>';
+			$html .= '</section>';
 		} else {
 			$html .= '<div class="tcg-public-inventory__toolbar"><span>' . $this->esc_html( $this->result_range_label( $payload ) ) . '</span></div>';
 			$html .= '<div class="tcg-public-inventory__grid">';

@@ -13,6 +13,7 @@ final class InventoryRouteRuntimeConfigurator {
 	private const STAFF_SEARCH_ROUTE_KEY = 'GET /inventory/search';
 	private const REFERENCE_SEARCH_ROUTE_KEY = 'GET /reference/search';
 	private const STAFF_CREATE_ROUTE_KEY = 'POST /inventory';
+	private const STAFF_MARK_SOLD_ROUTE_KEY = 'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold';
 
 	/**
 	 * @param array<string, mixed>             $runtime_settings Runtime settings.
@@ -46,13 +47,14 @@ final class InventoryRouteRuntimeConfigurator {
 				self::STAFF_CREATE_ROUTE_KEY === InventoryRoutePermissionCallbackFactory::route_key( $route_contract )
 				&& true === $settings['staff_create_route_enabled']
 			) {
-				$route_contract['live_enabled_by_default']              = true;
-				$route_contract['route_registration_deferred']          = false;
-				$route_contract['route_connected_reads_deferred']       = true;
-				$route_contract['route_connected_writes_deferred']      = false;
-				$route_contract['woocommerce_projection_deferred']      = true;
-				$route_contract['square_inventory_projection_deferred'] = true;
-				$route_contract['label_print_deferred']                 = true;
+				$route_contract = $this->enable_write_route( $route_contract );
+			}
+
+			if (
+				self::STAFF_MARK_SOLD_ROUTE_KEY === InventoryRoutePermissionCallbackFactory::route_key( $route_contract )
+				&& true === $settings['staff_mark_sold_route_enabled']
+			) {
+				$route_contract = $this->enable_write_route( $route_contract );
 			}
 
 			$contracts[] = $route_contract;
@@ -85,6 +87,23 @@ final class InventoryRouteRuntimeConfigurator {
 	public function route_connected_writes_enabled( array $runtime_settings ): bool {
 		$settings = InventoryRouteRuntimeSettings::sanitize( $runtime_settings );
 
-		return true === $settings['staff_create_route_enabled'];
+		return true === $settings['staff_create_route_enabled']
+			|| true === $settings['staff_mark_sold_route_enabled'];
+	}
+
+	/**
+	 * @param array<string, mixed> $route_contract Route contract.
+	 * @return array<string, mixed>
+	 */
+	private function enable_write_route( array $route_contract ): array {
+		$route_contract['live_enabled_by_default']              = true;
+		$route_contract['route_registration_deferred']          = false;
+		$route_contract['route_connected_reads_deferred']       = true;
+		$route_contract['route_connected_writes_deferred']      = false;
+		$route_contract['woocommerce_projection_deferred']      = true;
+		$route_contract['square_inventory_projection_deferred'] = true;
+		$route_contract['label_print_deferred']                 = true;
+
+		return $route_contract;
 	}
 }

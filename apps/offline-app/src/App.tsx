@@ -172,6 +172,7 @@ const INVENTORY_STATUS_FILTERS = [
   "available",
   "pending_intake",
   "reserved",
+  "sold",
   "conflict",
 ] as const
 const INVENTORY_VISIBILITY_OPTIONS: Array<{ value: InventoryVisibility; label: string }> = [

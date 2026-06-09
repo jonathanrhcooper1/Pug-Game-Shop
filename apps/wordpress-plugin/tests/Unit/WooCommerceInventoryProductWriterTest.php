@@ -100,9 +100,10 @@ namespace {
 
 	if ( ! function_exists( 'wp_insert_term' ) ) {
 		function wp_insert_term( string $name, string $taxonomy, array $args = array() ): array {
-			unset( $name, $taxonomy );
+			unset( $taxonomy );
 
 			$slug = (string) ( $args['slug'] ?? '' );
+			$GLOBALS['tcg_test_inserted_terms'][ $slug ] = $name;
 
 			return array(
 				'term_id' => 'pokemon' === $slug ? 102 : 199,
@@ -130,7 +131,7 @@ namespace TCGStorePlatform\Tests\Unit {
 						'manage_stock'   => true,
 						'stock_quantity' => 1,
 						'stock_status'   => 'instock',
-						'category_slugs' => array( 'singles', 'pokemon' ),
+						'category_slugs' => array( 'singles', 'graded-cards', 'pokemon' ),
 						'meta_data'      => array(
 							array(
 								'key'   => '_tcg_inventory_public_id',
@@ -149,7 +150,8 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'Pokemon - Charizard', $product->values['name'] );
 			$this->assert_same( 'PKM-BASE-004', $product->values['sku'] );
 			$this->assert_same( 1, $product->values['stock_quantity'] );
-			$this->assert_same( array( 101, 102 ), $product->values['category_ids'] );
+			$this->assert_same( array( 101, 199, 102 ), $product->values['category_ids'] );
+			$this->assert_same( 'Graded Cards', $GLOBALS['tcg_test_inserted_terms']['graded-cards'] );
 			$this->assert_same( 'card-public-42', $product->meta['_tcg_inventory_public_id'] );
 		}
 	}

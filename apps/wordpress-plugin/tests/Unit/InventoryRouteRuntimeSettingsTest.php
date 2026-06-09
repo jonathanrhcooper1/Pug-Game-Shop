@@ -16,6 +16,7 @@ final class InventoryRouteRuntimeSettingsTest extends TestCase {
 
 		$this->assert_false( $defaults['staff_search_route_enabled'] );
 		$this->assert_false( $defaults['staff_create_route_enabled'] );
+		$this->assert_false( $defaults['staff_mark_sold_route_enabled'] );
 		$this->assert_false( $defaults['public_search_route_enabled'] );
 	}
 
@@ -28,6 +29,7 @@ final class InventoryRouteRuntimeSettingsTest extends TestCase {
 
 		$this->assert_false( $result['staff_search_route_enabled'] );
 		$this->assert_false( $result['staff_create_route_enabled'] );
+		$this->assert_false( $result['staff_mark_sold_route_enabled'] );
 		$this->assert_false( $result['public_search_route_enabled'] );
 
 		$result = InventoryRouteRuntimeSettings::sanitize(
@@ -39,6 +41,7 @@ final class InventoryRouteRuntimeSettingsTest extends TestCase {
 
 		$this->assert_true( $result['staff_search_route_enabled'] );
 		$this->assert_false( $result['staff_create_route_enabled'] );
+		$this->assert_false( $result['staff_mark_sold_route_enabled'] );
 		$this->assert_true( $result['public_search_route_enabled'] );
 	}
 
@@ -52,6 +55,7 @@ final class InventoryRouteRuntimeSettingsTest extends TestCase {
 
 		$this->assert_false( $result['staff_search_route_enabled'] );
 		$this->assert_true( $result['staff_create_route_enabled'] );
+		$this->assert_false( $result['staff_mark_sold_route_enabled'] );
 		$this->assert_false( $result['public_search_route_enabled'] );
 	}
 
@@ -61,12 +65,14 @@ final class InventoryRouteRuntimeSettingsTest extends TestCase {
 				InventoryRouteRuntimeSettings::KEY => array(
 					'staff_search_route_enabled' => true,
 					'staff_create_route_enabled' => true,
+					'staff_mark_sold_route_enabled' => true,
 				),
 			)
 		);
 
 		$this->assert_true( $result['staff_search_route_enabled'] );
 		$this->assert_true( $result['staff_create_route_enabled'] );
+		$this->assert_true( $result['staff_mark_sold_route_enabled'] );
 		$this->assert_false( $result['public_search_route_enabled'] );
 	}
 }

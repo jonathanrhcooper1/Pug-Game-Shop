@@ -45,6 +45,19 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_meta_value( 'USD', '_tcg_sale_currency', $product['meta_data'] );
 	}
 
+	public function test_graded_item_projects_to_graded_cards_category(): void {
+		$row                   = $this->available_row();
+		$row['raw_or_graded']  = 'graded';
+		$row['condition_code'] = 'PSA 10';
+
+		$plan    = ( new InventoryProductProjectionPlanner() )->plan_row( $row );
+		$product = $plan->product_operations()[0]['product'];
+
+		$this->assert_same( InventoryProductProjectionPlan::READY, $plan->status() );
+		$this->assert_same( array( 'singles', 'graded-cards', 'pokemon' ), $product['category_slugs'] );
+		$this->assert_same( 'PSA 10 / Holo / graded', $product['short_description'] );
+	}
+
 	public function test_available_card_group_projects_one_product_with_condition_price_options(): void {
 		$near_mint                       = $this->available_row();
 		$near_mint['reference_card_id']  = 777;

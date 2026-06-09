@@ -10,7 +10,7 @@ import { createWordPressCustomerUpsertPush } from "./wordpressCustomerUpsertPush
 import { createWordPressEventRegistrationPush } from "./wordpressEventRegistrationPush.mjs"
 import { createWordPressEventsPull } from "./wordpressEventsPull.mjs"
 import { createWordPressInventoryPull } from "./wordpressInventoryPull.mjs"
-import { createWordPressInventoryPush } from "./wordpressInventoryPush.mjs"
+import { createWordPressInventoryPush, createWordPressInventorySalePush } from "./wordpressInventoryPush.mjs"
 import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -83,6 +83,15 @@ const wordpressInventoryPush = wordpressPushEnabled
       defaultOnlineVisibility: inventoryDefaultOnlineVisibility,
       defaultKioskVisibility: inventoryDefaultKioskVisibility,
       defaultPosVisibility: inventoryDefaultPosVisibility,
+    })
+  : null
+const wordpressInventorySalePush = wordpressPushEnabled
+  ? createWordPressInventorySalePush({
+      websiteUrl,
+      restBasePath,
+      authHeader: inventoryAuthHeader ?? catalogAuthHeader,
+      username: inventoryUsername ?? catalogUsername,
+      applicationPassword: inventoryApplicationPassword ?? catalogApplicationPassword,
     })
   : null
 const wordpressInventoryPull = createWordPressInventoryPull({
@@ -160,6 +169,7 @@ const server = await listenLocalSyncHttpServer({
     wordpressInventoryPull,
     wordpressEventsPull,
     wordpressInventoryPush,
+    wordpressInventorySalePush,
     wordpressEventRegistrationPush,
     wordpressEventCheckinPush,
     wordpressCreditPush,

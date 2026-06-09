@@ -86,6 +86,92 @@ export function createWordPressInventoryPush(options = {}) {
   }
 }
 
+export function createWordPressInventorySalePush(options = {}) {
+  const endpointBase = normalizeWordPressCatalogBaseUrl(options.websiteUrl, options.restBasePath)
+  const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
+  const timeoutMs = boundedTimeout(options.timeoutMs)
+  const authorizationHeader = catalogAuthorizationHeader(options)
+
+  if (!endpointBase || typeof fetcher !== "function" || !authorizationHeader) {
+    return null
+  }
+
+  return async function wordpressInventorySalePush({ operation, item } = {}) {
+    const identity = inventorySaleIdentity(item, operation)
+
+    if (!identity) {
+      return {
+        status: "blocked",
+        code: "wordpress_inventory_sale_identity_required",
+        message: "WordPress public inventory ID is required before marking a Square POS sale sold.",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    }
+
+    const endpoint = new URL(`${endpointBase}/inventory/${encodeURIComponent(identity)}/mark-sold`)
+    const body = inventorySaleBody(operation, item)
+    const controller = typeof AbortController === "function" ? new AbortController() : null
+    const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
+
+    try {
+      const response = await fetcher(endpoint, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          authorization: authorizationHeader,
+          "content-type": "application/json",
+          "idempotency-key": String(operation?.operation_id ?? item?.public_id ?? ""),
+        },
+        body: JSON.stringify(body),
+        signal: controller?.signal,
+      })
+      const responseBody = await safeJson(response)
+
+      if (!response?.ok || responseBody?.status !== "sold") {
+        return {
+          status: "blocked",
+          code: "wordpress_inventory_sale_rejected",
+          http_status: Number(response?.status ?? 0),
+          wordpress_code: String(responseBody?.code ?? ""),
+          message: "WordPress rejected this Square POS sale inventory finalization.",
+          errors: Array.isArray(responseBody?.errors) ? responseBody.errors : [],
+          credentials_synced_to_client: false,
+          authorization_header_printed: false,
+          endpoint: secretSafeEndpoint(endpoint),
+        }
+      }
+
+      return {
+        status: "ok",
+        code: "wordpress_inventory_item_marked_sold",
+        http_status: Number(response.status ?? 200),
+        wordpress_code: String(responseBody.code ?? "inventory_item_marked_sold"),
+        inventory: inventorySaleResponseData(responseBody),
+        woocommerce_product_sync: woocommerceProductSyncResponse(responseBody),
+        square_payment_capture_supported: false,
+        payment_capture_authority: "official_woocommerce_square_extension",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+        endpoint: secretSafeEndpoint(endpoint),
+      }
+    } catch (error) {
+      return {
+        status: "blocked",
+        code: "wordpress_inventory_sale_unavailable",
+        message: error instanceof Error ? error.message : "WordPress inventory sale push unavailable.",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+        endpoint: secretSafeEndpoint(endpoint),
+      }
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+    }
+  }
+}
+
 export function inventoryIntakeBody(item = {}, options = {}) {
   const priceMinorUnits = boundedMinorUnits(item.price_minor_units)
   const locationId = positiveInt(item.location_id ?? options.defaultLocationId)
@@ -153,9 +239,12 @@ function inventoryCreateResponseData(body) {
 function woocommerceProductSyncResponse(body) {
   const meta = body?.meta && typeof body.meta === "object" ? body.meta : {}
   const projections = meta.projections && typeof meta.projections === "object" ? meta.projections : {}
-  const sync = projections.woocommerce_product_sync && typeof projections.woocommerce_product_sync === "object"
-    ? projections.woocommerce_product_sync
-    : {}
+  const sync =
+    projections.woocommerce_product_sync && typeof projections.woocommerce_product_sync === "object"
+      ? projections.woocommerce_product_sync
+      : meta.woocommerce_product_sync && typeof meta.woocommerce_product_sync === "object"
+        ? meta.woocommerce_product_sync
+        : {}
 
   return {
     requested: Boolean(sync.requested),
@@ -169,6 +258,55 @@ function woocommerceProductSyncResponse(body) {
     errors: Array.isArray(sync.errors) ? sync.errors.map((value) => String(value)) : [],
     payment_capture_deferred: sync.payment_capture_deferred !== false,
     square_inventory_deferred: sync.square_inventory_deferred !== false,
+  }
+}
+
+function inventorySaleIdentity(item = {}, operation = {}) {
+  return cleanBarcode(
+    item.wordpress_public_id ??
+      operation.payload?.wordpress_public_id ??
+      operation.payload?.inventory_public_id ??
+      item.public_id ??
+      operation.entity_id,
+  )
+}
+
+function inventorySaleBody(operation = {}, item = {}) {
+  const payload = operation.payload && typeof operation.payload === "object" ? operation.payload : {}
+
+  return {
+    source: "square_pos",
+    barcode: cleanBarcode(item.barcode ?? payload.barcode),
+    square_receipt_reference: cleanText(
+      payload.square_receipt_reference ??
+        payload.square_ticket_reference ??
+        payload.square_order_id ??
+        payload.external_order_id,
+    ),
+    square_order_id: cleanText(payload.square_order_id ?? payload.external_order_id),
+    square_cashier_confirmed: true,
+    sale_total_minor_units: boundedMinorUnits(payload.sale_total_minor_units),
+    sale_price_minor_units: boundedMinorUnits(payload.sale_price_minor_units ?? item.price_minor_units),
+    sold_by_user_id: cleanText(payload.actor_id ?? payload.sold_by_user_id),
+    sync_woocommerce_product: true,
+    production_write_approval: "woocommerce-product-sync",
+  }
+}
+
+function inventorySaleResponseData(body) {
+  const data = body?.data && typeof body.data === "object" ? body.data : {}
+
+  return {
+    inventory_id: positiveInt(data.inventory_id),
+    public_id: String(data.public_id ?? ""),
+    sku: String(data.sku ?? ""),
+    barcode: String(data.barcode ?? ""),
+    previous_status: String(data.previous_status ?? ""),
+    status: String(data.status ?? ""),
+    date_sold: String(data.date_sold ?? ""),
+    row_version: positiveInt(data.row_version),
+    woocommerce_product_id: positiveInt(data.woocommerce_product_id),
+    square_receipt_reference: String(data.square_receipt_reference ?? ""),
   }
 }
 

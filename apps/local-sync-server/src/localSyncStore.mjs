@@ -51,6 +51,8 @@ export function createLocalSyncStore(options = {}) {
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressEventsPull = typeof options.wordpressEventsPull === "function" ? options.wordpressEventsPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
+  const wordpressInventorySalePush =
+    typeof options.wordpressInventorySalePush === "function" ? options.wordpressInventorySalePush : null
   const wordpressEventRegistrationPush =
     typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
   const wordpressEventCheckinPush =
@@ -652,6 +654,110 @@ export function createLocalSyncStore(options = {}) {
       quantity_added: items.length,
       wordpress_acceptance_required: true,
       label_print_deferred: true,
+    }
+  }
+
+  function finalizeSquarePosSale(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const squareReceiptReference = cleanExternalId(
+      input.square_receipt_reference ??
+        input.squareReceiptReference ??
+        input.square_ticket_reference ??
+        input.squareTicketReference ??
+        input.square_order_id ??
+        input.squareOrderId ??
+        input.external_order_id ??
+        input.externalOrderId,
+    )
+    const squareOrderId = cleanExternalId(input.square_order_id ?? input.squareOrderId ?? input.external_order_id ?? "")
+    const saleTotalMinorUnits = Math.max(0, minorUnits(input.sale_total_minor_units ?? input.saleTotalMinorUnits))
+    const scanInputs = normalizeSquareSaleScanInputs(input)
+
+    if (!squareReceiptReference) {
+      return blocked("square_reference_required", "A Square receipt, ticket, or order reference is required before removing inventory.")
+    }
+
+    if (scanInputs.length === 0) {
+      return blocked("square_sale_inventory_required", "Scan or select at least one inventory barcode before finalizing a Square sale.")
+    }
+
+    const matchedItems = []
+    const seenPublicIds = new Set()
+
+    for (const scan of scanInputs) {
+      const item = findInventoryItemBySaleScan(inventoryItems, scan)
+
+      if (!item) {
+        return blocked("inventory_item_not_found", `No cached inventory item matched scan ${scan}.`)
+      }
+
+      if (seenPublicIds.has(item.public_id)) {
+        continue
+      }
+
+      const status = localInventoryStatus(item.status)
+
+      if (!["available", "reserved"].includes(status)) {
+        return blocked(
+          "inventory_unavailable_for_square_sale",
+          `${item.card_name} is ${item.status || "not available"} and cannot be finalized as sold.`,
+        )
+      }
+
+      seenPublicIds.add(item.public_id)
+      matchedItems.push(item)
+    }
+
+    const soldAtUtc = now().toISOString()
+    const operations = []
+
+    for (const item of matchedItems) {
+      item.status = "sold"
+      item.source = "queued"
+      item.external_sync_state = "pending"
+      item.row_version += 1
+      saveInventoryItem(database, item, now)
+
+      const operation = appendQueueOperation(database, queue, "square_pos_sale", item.public_id, {
+        inventory_public_id: cleanPublicId(item.wordpress_public_id) || item.public_id,
+        local_inventory_public_id: item.public_id,
+        barcode: item.barcode,
+        square_receipt_reference: squareReceiptReference,
+        square_order_id: squareOrderId,
+        sale_total_minor_units: saleTotalMinorUnits,
+        sale_price_minor_units: Math.max(0, minorUnits(item.price_minor_units)),
+        actor_id: session.user.id,
+        sold_at_utc: soldAtUtc,
+        sync_intent: "square_pos_exact_inventory_sale",
+      }, now)
+      operations.push(operation)
+    }
+
+    return {
+      status: "ok",
+      action: "square_pos_sale_finalized",
+      finalized_count: matchedItems.length,
+      items: matchedItems.map(publicInventoryItem),
+      operations: operations.map((operation) => ({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        sync_status: operation.sync_status,
+      })),
+      square_receipt_reference: squareReceiptReference,
+      square_order_id: squareOrderId,
+      wordpress_acceptance_required: true,
+      source_of_truth: "tcg_store_platform",
+      square_payment_capture_supported: false,
+      plugin_square_payment_capture_supported: false,
+      payment_capture_authority: "official_woocommerce_square_extension",
+      provider_inventory_write_deferred: true,
+      credentials_synced_to_client: false,
     }
   }
 
@@ -1268,6 +1374,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_events_pull_connected: Boolean(wordpressEventsPull),
       wordpress_push_connected: Boolean(
         wordpressInventoryPush ||
+          wordpressInventorySalePush ||
           wordpressEventRegistrationPush ||
           wordpressEventCheckinPush ||
           wordpressCreditPush ||
@@ -1275,6 +1382,7 @@ export function createLocalSyncStore(options = {}) {
           wordpressKioskOrderPush,
       ),
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
+      wordpress_inventory_sale_push_connected: Boolean(wordpressInventorySalePush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
@@ -1457,6 +1565,7 @@ export function createLocalSyncStore(options = {}) {
 
     if (
       !wordpressInventoryPush &&
+      !wordpressInventorySalePush &&
       !wordpressEventRegistrationPush &&
       !wordpressEventCheckinPush &&
       !wordpressCreditPush &&
@@ -1468,6 +1577,7 @@ export function createLocalSyncStore(options = {}) {
 
     const pendingOperations = pendingQueueOperations(queue)
     const inventoryOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_intake")
+    const squareSaleOperations = pendingOperations.filter((operation) => operation.operation_type === "square_pos_sale")
     const eventRegistrationOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "event_registration",
     )
@@ -1546,6 +1656,75 @@ export function createLocalSyncStore(options = {}) {
         wordpress_code: pushResult.wordpress_code,
         wordpress_inventory: pushResult.inventory,
         woocommerce_product_sync: pushResult.woocommerce_product_sync,
+      })
+    }
+
+    for (const operation of squareSaleOperations) {
+      if (!wordpressInventorySalePush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_inventory_sale_push_unavailable",
+          message: "WordPress inventory sale push is not configured on this LAN server.",
+        })
+        continue
+      }
+
+      const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
+
+      if (!item) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "rejected",
+          code: "local_inventory_item_missing",
+        })
+        continue
+      }
+
+      const pushResult = await wordpressInventorySalePush({ operation, item })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+        })
+        continue
+      }
+
+      const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+
+      if (localItem) {
+        localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "sold"
+        localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id) || localItem.wordpress_public_id
+        localItem.source = "accepted"
+        localItem.external_sync_state = "synced"
+        localItem.row_version += 1
+        saveInventoryItem(database, localItem, now)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_inventory: pushResult.inventory,
+        woocommerce_product_sync: pushResult.woocommerce_product_sync,
+        square_payment_capture_supported: false,
+        payment_capture_authority: "official_woocommerce_square_extension",
       })
     }
 
@@ -1919,6 +2098,7 @@ export function createLocalSyncStore(options = {}) {
     const rejectedCount = results.filter((result) => result.status === "rejected").length
     const supportedOperationCount =
       inventoryOperations.length +
+      squareSaleOperations.length +
       eventRegistrationOperations.length +
       eventCheckinOperations.length +
       kioskOperations.length +
@@ -1936,6 +2116,7 @@ export function createLocalSyncStore(options = {}) {
       results,
       wordpress_push_connected: true,
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
+      wordpress_inventory_sale_push_connected: Boolean(wordpressInventorySalePush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
@@ -1956,6 +2137,7 @@ export function createLocalSyncStore(options = {}) {
     createEventRegistration,
     createInventoryIntake,
     createKioskOrder,
+    finalizeSquarePosSale,
     deviceStatus,
     getSetupConfig,
     listEvents,
@@ -2887,7 +3069,7 @@ function cleanQueueSyncStatus(value) {
 function localInventoryStatus(value) {
   const status = String(value ?? "").trim()
 
-  return ["available", "reserved", "conflict", "pending_intake"].includes(status) ? status : null
+  return ["available", "reserved", "sold", "conflict", "pending_intake"].includes(status) ? status : null
 }
 
 function seedUsers() {
@@ -3384,6 +3566,74 @@ function squarePosReviewNextAction(errors) {
   }
 
   return "Review this POS inventory row before enabling Square reconciliation."
+}
+
+function normalizeSquareSaleScanInputs(input = {}) {
+  const rawScans = []
+
+  if (Array.isArray(input.inventory_public_ids)) {
+    rawScans.push(...input.inventory_public_ids)
+  }
+
+  if (Array.isArray(input.inventoryPublicIds)) {
+    rawScans.push(...input.inventoryPublicIds)
+  }
+
+  if (Array.isArray(input.barcodes)) {
+    rawScans.push(...input.barcodes)
+  }
+
+  if (Array.isArray(input.scans)) {
+    rawScans.push(...input.scans)
+  }
+
+  if (Array.isArray(input.items)) {
+    for (const item of input.items) {
+      if (typeof item === "string") {
+        rawScans.push(item)
+        continue
+      }
+
+      if (item && typeof item === "object") {
+        rawScans.push(
+          item.inventory_public_id ??
+            item.inventoryPublicId ??
+            item.wordpress_public_id ??
+            item.wordpressPublicId ??
+            item.public_id ??
+            item.publicId ??
+            item.barcode ??
+            item.sku ??
+            item.scan_identity ??
+            item.scanIdentity,
+        )
+      }
+    }
+  }
+
+  const seen = new Set()
+  const scans = []
+
+  for (const rawScan of rawScans) {
+    const scan = cleanPublicId(rawScan) || cleanBarcode(rawScan)
+
+    if (scan && !seen.has(scan)) {
+      seen.add(scan)
+      scans.push(scan)
+    }
+  }
+
+  return scans
+}
+
+function findInventoryItemBySaleScan(inventoryItems, scan) {
+  const publicId = cleanPublicId(scan)
+  const barcode = cleanBarcode(scan)
+
+  return inventoryItems.find((item) => cleanPublicId(item.public_id) === publicId)
+    ?? inventoryItems.find((item) => cleanPublicId(item.wordpress_public_id) === publicId)
+    ?? inventoryItems.find((item) => cleanBarcode(item.barcode) === barcode)
+    ?? null
 }
 
 function squareCountsPayloadFromInput(input = {}) {

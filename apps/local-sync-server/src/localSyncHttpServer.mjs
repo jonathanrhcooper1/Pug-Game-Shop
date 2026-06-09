@@ -18,6 +18,7 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressPullConfigured:
       typeof storeOptions.wordpressInventoryPull === "function" || typeof storeOptions.wordpressEventsPull === "function",
     wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
+    wordpressInventorySalePushConnected: typeof storeOptions.wordpressInventorySalePush === "function",
     wordpressEventRegistrationPushConnected: typeof storeOptions.wordpressEventRegistrationPush === "function",
     wordpressEventCheckinPushConnected: typeof storeOptions.wordpressEventCheckinPush === "function",
     wordpressCreditPushConnected: typeof storeOptions.wordpressCreditPush === "function",
@@ -142,6 +143,10 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "POST" && url.pathname === "/pos/square/inventory-counts/reconcile") {
         return sendStoreResult(response, store.reconcileSquarePosInventoryCounts(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/pos/square/sales/finalize") {
+        return sendStoreResult(response, store.finalizeSquarePosSale(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/inventory/intake") {

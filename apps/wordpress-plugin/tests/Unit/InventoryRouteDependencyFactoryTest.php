@@ -24,11 +24,11 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_false( $summary['configured'] );
 		$this->assert_true( $summary['route_dependency_factory_ready'] );
 		$this->assert_same( 16, $summary['route_contract_count'] );
-		$this->assert_same( 3, $summary['staged_handler_route_count'] );
+		$this->assert_same( 4, $summary['staged_handler_route_count'] );
 		$this->assert_same( 0, $summary['controller_handler_count'] );
 		$this->assert_false( $summary['controller_handlers_configured'] );
 		$this->assert_same( 0, $summary['permission_callback_count'] );
-		$this->assert_same( 8, $summary['capability_permission_route_count'] );
+		$this->assert_same( 9, $summary['capability_permission_route_count'] );
 		$this->assert_false( $summary['capability_permission_callbacks_configured'] );
 		$this->assert_same( 5, $summary['public_read_route_count'] );
 		$this->assert_same( 1, $summary['public_rate_limited_route_count'] );
@@ -79,9 +79,9 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 
 		$this->assert_true( $factory->is_configured() );
 		$this->assert_true( $summary['configured'] );
-		$this->assert_same( 3, $summary['controller_handler_count'] );
+		$this->assert_same( 4, $summary['controller_handler_count'] );
 		$this->assert_true( $summary['controller_handlers_configured'] );
-		$this->assert_same( 13, $summary['permission_callback_count'] );
+		$this->assert_same( 14, $summary['permission_callback_count'] );
 		$this->assert_true( $summary['capability_permission_callbacks_configured'] );
 		$this->assert_true( $summary['public_read_permission_callbacks_configured'] );
 		$this->assert_true( $summary['public_rate_limiter_configured'] );
@@ -91,6 +91,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $factory->controller()->has_handler( 'search_inventory_items' ) );
 		$this->assert_true( $factory->controller()->has_handler( 'search_reference_cards' ) );
 		$this->assert_true( $factory->controller()->has_handler( 'create_inventory_item' ) );
+		$this->assert_true( $factory->controller()->has_handler( 'mark_inventory_item_sold' ) );
 		$this->assert_false( $factory->controller()->has_handler( 'reserve_inventory_item' ) );
 		$this->assert_same( 0, $factory->registrar()->register_enabled_routes() );
 		$this->assert_same( 'gated', $factory->bootstrapper()->bootstrap( true )['status'] );
@@ -116,6 +117,16 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 				),
 			)
 		);
+		$mark_sold = $controller->mark_inventory_item_sold(
+			array(
+				'route'   => array(
+					'inventory_id' => 'wp-inventory-001',
+				),
+				'headers' => array(
+					'idempotency-key' => 'route-dependency-sale-test',
+				),
+			)
+		);
 		$locked = $controller->reserve_inventory_item( array() );
 		$reference = $controller->search_reference_cards(
 			array(
@@ -131,6 +142,9 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_same( 'charizard', $reference['query'] );
 		$this->assert_same( 'ready', $create['status'] );
 		$this->assert_same( 'route-dependency-test', $create['idempotency_key'] );
+		$this->assert_same( 'ready', $mark_sold['status'] );
+		$this->assert_same( 'wp-inventory-001', $mark_sold['inventory_id'] );
+		$this->assert_same( 'route-dependency-sale-test', $mark_sold['idempotency_key'] );
 		$this->assert_same( 'disabled', $locked['status'] );
 		$this->assert_true( $locked['route_connected_writes_deferred'] );
 	}
@@ -298,7 +312,7 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 		$this->assert_true( $blocked['square_inventory_sync_request_planner_ready'] );
 		$this->assert_true( $blocked['external_projection_planning_deferred'] );
 		$this->assert_same( 'ready', $ready['status'] );
-		$this->assert_contains( 'handlers 3 / 3', $ready['value'] );
+		$this->assert_contains( 'handlers 4 / 4', $ready['value'] );
 		$this->assert_contains( 'public reads enabled', $ready['value'] );
 		$this->assert_contains( 'projection planning deferred', $ready['value'] );
 		$this->assert_contains( 'WooCommerce write request ready', $ready['value'] );
@@ -325,6 +339,13 @@ final class InventoryRouteDependencyFactoryTest extends TestCase {
 			'create_inventory_item'  => static function ( OfflineRestRequestData $data ): array {
 				return array(
 					'status'          => 'ready',
+					'idempotency_key' => (string) $data->idempotency_key(),
+				);
+			},
+			'mark_inventory_item_sold' => static function ( OfflineRestRequestData $data ): array {
+				return array(
+					'status'          => 'ready',
+					'inventory_id'    => (string) $data->route_param( 'inventory_id' ),
 					'idempotency_key' => (string) $data->idempotency_key(),
 				);
 			},

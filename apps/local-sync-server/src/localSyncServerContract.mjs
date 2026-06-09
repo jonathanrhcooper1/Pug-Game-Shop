@@ -15,6 +15,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "GET", path: "/scrydex/cards/search", purpose: "Server-side ScryDex reference lookup for inventory intake" },
   { method: "POST", path: "/pos/square/inventory-pull-plan", purpose: "Manager Square POS barcode/SKU inventory-readiness plan" },
   { method: "POST", path: "/pos/square/inventory-counts/reconcile", purpose: "Manager Square POS count comparison against serialized website inventory" },
+  { method: "POST", path: "/pos/square/sales/finalize", purpose: "Staff Square receipt handoff that marks exact scanned inventory sold" },
   { method: "POST", path: "/inventory/intake", purpose: "Employee inventory intake queue" },
   { method: "POST", path: "/inventory/reservations", purpose: "Local reservation lock request" },
   { method: "GET", path: "/kiosk/orders", purpose: "Shared LAN kiosk pickup queue list" },
@@ -80,6 +81,7 @@ export function buildLocalSyncServerContract(options = {}) {
       "serve_scrydex_lookup_from_local_cache_before_wordpress_proxy",
       "serve_square_pos_barcode_inventory_plan_without_square_payment_capture",
       "compare_square_pos_inventory_counts_without_square_payment_capture",
+      "finalize_exact_square_pos_sales_by_scanned_inventory",
       "serve_cached_staff_pin_and_access_policy",
       "store_pin_credentials_as_hashes_not_cleartext",
       "coordinate_local_reservation_locks_before_website_sync",
@@ -106,6 +108,8 @@ export function buildLocalSyncServerContract(options = {}) {
       square_pos_inventory_pull_plan_manager_only: true,
       square_pos_inventory_count_reconciliation_manager_only: true,
       square_pos_inventory_count_reconciliation_mutates_inventory: false,
+      square_pos_sale_finalize_captures_payment: false,
+      square_pos_sale_finalize_marks_exact_inventory_sold: true,
       live_credentials_blocked_in_local_server: true,
       one_website_configuration_required: true,
       setup_status_returns_credentials: false,
@@ -124,9 +128,10 @@ export function buildLocalSyncSetupStatus(options = {}) {
   const restBasePath = cleanRestBasePath(options.restBasePath ?? "/wp-json/tcg-store/v1")
   const wordpressRestBase = websiteUrl ? `${websiteUrl.replace(/\/$/, "")}${restBasePath}` : ""
   const wordpressPushConfigured = Boolean(
-    options.wordpressPushConfigured ??
-      options.wordpressInventoryPushConnected ??
-      options.wordpressEventRegistrationPushConnected ??
+      options.wordpressPushConfigured ??
+        options.wordpressInventoryPushConnected ??
+        options.wordpressInventorySalePushConnected ??
+        options.wordpressEventRegistrationPushConnected ??
       options.wordpressEventCheckinPushConnected ??
       options.wordpressCreditPushConnected ??
       options.wordpressCustomerPushConnected ??
@@ -158,6 +163,7 @@ export function buildLocalSyncSetupStatus(options = {}) {
     wordpress_pull_configured: Boolean(options.wordpressPullConfigured),
     wordpress_push_configured: wordpressPushConfigured,
     wordpress_inventory_push_configured: Boolean(options.wordpressInventoryPushConnected),
+    wordpress_inventory_sale_push_configured: Boolean(options.wordpressInventorySalePushConnected),
     wordpress_event_registration_push_configured: Boolean(options.wordpressEventRegistrationPushConnected),
     wordpress_event_checkin_push_configured: Boolean(options.wordpressEventCheckinPushConnected),
     wordpress_customer_push_configured: Boolean(options.wordpressCustomerPushConnected),
@@ -195,6 +201,7 @@ export function planLocalClientConnection({ mode, serverUrl, websiteUrl }) {
         : [
             "/inventory/intake",
             "/inventory/reservations",
+            "/pos/square/sales/finalize",
             "/customers",
             "/credit/redemptions",
             "/events/registrations",

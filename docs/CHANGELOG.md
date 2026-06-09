@@ -6,13 +6,31 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Production commerce navigation can now be configured to use the Pug storefront
+  shelves directly: Home, Singles, Sealed Products, Graded Cards, Accessories,
+  and Events, while removing the basic WooCommerce Shop link from the header.
+- The LAN local sync server now supports exact Square POS sale finalization:
+  staff can finalize scanned inventory against a Square receipt/order reference,
+  queue the exact serialized cards as sold, and push that status to WordPress so
+  WooCommerce product stock/options update without the Pug plugin capturing
+  Square payments.
+- The offline app and local sync contracts now treat `sold` as a first-class
+  inventory status and expose the WordPress sale-push connector status.
 - Imported the Pug arcade WooCommerce storefront theme into source control,
   added a package/install path for the theme, and wired local `wp-env` to load
   the same storefront experience.
-- Production public page setup now creates shop shelves for Singles, Sealed
-  Products, and Accessories, plus matching WooCommerce product categories.
+- Production public page setup now restores the Shop hub plus Singles, Sealed
+  Products, Graded Cards, and Accessories shelves, plus matching WooCommerce
+  product categories that preserve the live storefront theme.
+- WooCommerce card product projections now tag graded inventory with the
+  `graded-cards` category so graded cards can appear on their own storefront
+  shelf.
+- Public event empty states now remain readable on the dark Pug storefront
+  theme while the event calendar is empty.
 - Public inventory search now includes a set/expansion filter that searches set
   name and set code while preserving the filter in pagination URLs.
+- Public Singles inventory now uses a dark Pug storefront design and explains
+  when no `available` and `visible` card inventory exists yet.
 - Visible local inventory intake now asks WordPress to publish/update the
   WooCommerce card product during the LAN inventory push, including the explicit
   production WooCommerce product-sync approval and without enabling payment or

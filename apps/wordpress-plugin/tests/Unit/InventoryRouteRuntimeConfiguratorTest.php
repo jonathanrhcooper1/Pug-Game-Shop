@@ -86,6 +86,36 @@ final class InventoryRouteRuntimeConfiguratorTest extends TestCase {
 		$this->assert_false( $configurator->route_connected_reads_enabled( array( 'staff_create_route_enabled' => true ) ) );
 	}
 
+	public function test_staff_mark_sold_runtime_settings_clear_write_route_deferrals_only_for_sale_finalization(): void {
+		$configurator = new InventoryRouteRuntimeConfigurator();
+		$contracts    = $configurator->route_contracts(
+			array(
+				'staff_mark_sold_route_enabled' => true,
+			)
+		);
+		$mark_sold   = $this->find_route( $contracts, 'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold' );
+		$create      = $this->find_route( $contracts, 'POST /inventory' );
+		$search      = $this->find_route( $contracts, 'GET /inventory/search' );
+		$reference   = $this->find_route( $contracts, 'GET /reference/search' );
+
+		$this->assert_true( $mark_sold['live_enabled_by_default'] );
+		$this->assert_false( $mark_sold['route_registration_deferred'] );
+		$this->assert_true( $mark_sold['route_connected_reads_deferred'] );
+		$this->assert_false( $mark_sold['route_connected_writes_deferred'] );
+		$this->assert_true( $mark_sold['woocommerce_projection_deferred'] );
+		$this->assert_true( $mark_sold['square_inventory_projection_deferred'] );
+		$this->assert_true( $mark_sold['label_print_deferred'] );
+		$this->assert_false( $create['live_enabled_by_default'] );
+		$this->assert_false( $search['live_enabled_by_default'] );
+		$this->assert_false( $reference['live_enabled_by_default'] );
+		$this->assert_true(
+			$configurator->route_connected_writes_enabled( array( 'staff_mark_sold_route_enabled' => true ) )
+		);
+		$this->assert_false(
+			$configurator->route_connected_reads_enabled( array( 'staff_mark_sold_route_enabled' => true ) )
+		);
+	}
+
 	/**
 	 * @param list<array<string, mixed>> $routes Route contracts.
 	 * @return array<string, mixed>

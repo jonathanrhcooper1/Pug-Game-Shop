@@ -177,7 +177,7 @@ final class InventorySearchShortcode {
 			self::STYLE_HANDLE,
 			$this->asset_url( 'assets/css/public-inventory.css' ),
 			array(),
-			Version::PLUGIN
+			Version::PLUGIN . '-dark-storefront'
 		);
 
 		if ( function_exists( 'wp_add_inline_style' ) ) {
