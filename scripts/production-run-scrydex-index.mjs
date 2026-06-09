@@ -37,6 +37,7 @@ const payload = {
   index_by_set: envFlag(process.env.SCRYDEX_INDEX_BY_SET, true),
   set_limit: unboundedInt(process.env.SCRYDEX_INDEX_SET_LIMIT, 0, 1000000, 0),
   set_offset: clampInt(process.env.SCRYDEX_INDEX_SET_OFFSET, 0, 1000000, 0),
+  summary_only: envFlag(process.env.SCRYDEX_INDEX_SUMMARY_ONLY, false),
 }
 
 const missingEnv = Object.entries(requiredEnv)
@@ -82,6 +83,7 @@ if (dryRun) {
           "SCRYDEX_INDEX_BY_SET",
           "SCRYDEX_INDEX_SET_LIMIT",
           "SCRYDEX_INDEX_SET_OFFSET",
+          "SCRYDEX_INDEX_SUMMARY_ONLY",
         ],
         readsIgnoredEnvFile: ".env.production.local",
         createsProductionDatabaseBackup: true,
@@ -280,6 +282,22 @@ if ($index_by_set) {
 }
 $status_response = rest_do_request(new WP_REST_Request('GET', '/tcg-store/v1/scrydex/catalog/status'));
 $status_data = $status_response->get_data();
+$run_summary = array(
+	'run_count' => count($runs),
+	'sets_attempted' => count($sets),
+	'card_page_count' => 0,
+	'card_provider_request_count' => 0,
+	'blocked_runs' => array(),
+	'last_runs' => array_slice($runs, -5),
+);
+foreach ($runs as $run) {
+	$run_summary['card_page_count'] += (int) ($run['cards_page_count'] ?? 0);
+	$run_summary['card_provider_request_count'] += (int) ($run['cards_provider_request_count'] ?? 0);
+	if ('blocked' === (string) ($run['cards_status'] ?? '')) {
+		$run_summary['blocked_runs'][] = $run;
+	}
+}
+$summary_only = !empty($payload['summary_only']);
 echo wp_json_encode(array(
 	'action' => 'production_scrydex_index_ran',
 	'status' => $status_response->get_status() === 200 ? $last_status : 'status_route_failed',
@@ -299,7 +317,8 @@ echo wp_json_encode(array(
 	),
 	'rounds_requested' => $rounds,
 	'rounds_ran' => count($runs),
-	'runs' => $runs,
+	'run_summary' => $run_summary,
+	'runs' => $summary_only ? array() : $runs,
 	'catalog_status_http_status' => $status_response->get_status(),
 	'catalog_counts' => is_array($status_data['data']['counts'] ?? null) ? $status_data['data']['counts'] : array(),
 	'backup_required_before_run' => true,
@@ -347,6 +366,7 @@ const result = await withProductionConnection(async (connection) => {
       setsSelected: parsed?.sets_selected ?? [],
       roundsRequested: parsed?.rounds_requested ?? payload.rounds,
       roundsRan: parsed?.rounds_ran ?? null,
+      runSummary: parsed?.run_summary ?? null,
       runs: parsed?.runs ?? [],
       catalogStatusHttpStatus: parsed?.catalog_status_http_status ?? null,
       catalogCounts: parsed?.catalog_counts ?? null,

@@ -3,6 +3,48 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Provider ID Punctuation Compatibility
+
+### What Changed
+
+- Expanded ScryDex provider card/variant ID validation to accept observed `?`
+  and `!` characters from legitimate card IDs.
+- Added a persistence query-builder regression test for Unseen Forces-style
+  provider IDs such as `ex10-?`.
+- Bumped the plugin/package version to `0.174.0`.
+
+### Why
+
+Production batch indexing reached the Pokémon Unseen Forces expansion and
+blocked on two valid ScryDex rows whose provider card/variant IDs contain
+question/bang punctuation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added a persistence query-builder regression test covering ScryDex provider
+  IDs with `?` and `!`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.173.0` to restore the previous provider-ID
+  validation behavior.
+- No database rollback is required.
+
 ## 2026-06-09 - ScryDex Catalog Variant Status Predicate Fix
 
 ### What Changed

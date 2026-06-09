@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- ScryDex persistence now accepts observed provider card/variant IDs containing
+  `?` and `!`, allowing legitimate cards such as Unseen Forces Unown variants
+  to import instead of blocking the batch.
 - ScryDex variant integrity status now checks variants by `reference_card_id`
   only, matching the production table schema and avoiding false zero-coverage
   reports.

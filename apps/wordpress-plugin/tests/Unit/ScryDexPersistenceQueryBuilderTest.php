@@ -113,6 +113,40 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_true( in_array( 88, $price['prepare_args'], true ) );
 	}
 
+	public function test_builder_accepts_scrydex_provider_ids_with_question_and_bang_marks(): void {
+		$fixture = $this->fixture( 'fixtures/mocks/scrydex/cards-page-1.json' );
+		$cards   = array( $fixture['cards'][0] );
+
+		$cards[0]['id']                   = 'ex10-?';
+		$cards[0]['name']                 = 'Unown ?';
+		$cards[0]['variants'][0]['id']    = 'ex10-?:normal';
+		$cards[0]['variants'][0]['variant'] = 'Normal ?';
+		$cards[0]['variants'][1]['id']    = 'ex10-!:reverse';
+		$cards[0]['variants'][1]['variant'] = 'Reverse !';
+
+		$page_plan = ( new ScryDexSyncPageProcessor() )->process_cards_page(
+			ScryDexSyncCheckpoint::initial( 101, 'cards', 'pokemon:ex10' ),
+			new ScryDexResult(
+				ScryDexResult::SUCCESS,
+				200,
+				array(
+					'page'  => 1,
+					'cards' => $cards,
+				)
+			)
+		);
+		$query_plan = ( new ScryDexPersistenceQueryBuilder() )->build(
+			( new ScryDexPersistencePlanner() )->plan_page( $page_plan ),
+			'wp_'
+		);
+
+		$this->assert_true( $query_plan->is_valid() );
+		$this->assert_same( array(), $query_plan->errors() );
+		$this->assert_same( 'ex10-?', $query_plan->reference_insert_queries()[0]['provider_card_id'] );
+		$this->assert_same( 'ex10-?:normal', $query_plan->reference_variant_upsert_queries()[0]['provider_variant_id'] );
+		$this->assert_same( 'ex10-!', substr( $query_plan->reference_variant_upsert_queries()[1]['provider_variant_id'], 0, 6 ) );
+	}
+
 	public function test_builder_rejects_failed_source_plan_and_invalid_prefix(): void {
 		$failed = ScryDexPersistencePlan::failed(
 			'scrydex_rate_limited',

@@ -705,7 +705,7 @@ final class ScryDexPersistenceQueryBuilder {
 	private function is_identifier( string $value, int $minimum, int $maximum ): bool {
 		$value = trim( $value );
 
-		return 1 === preg_match( '/^[a-zA-Z0-9._:-]{' . $minimum . ',' . $maximum . '}$/', $value );
+		return 1 === preg_match( '/^[a-zA-Z0-9._:!?-]{' . $minimum . ',' . $maximum . '}$/', $value );
 	}
 
 	private function is_slugish( string $value, int $minimum, int $maximum ): bool {
