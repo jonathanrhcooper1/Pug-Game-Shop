@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Local Sync Customer And Credit Workflow Fix
+
+### What Changed
+
+- Fixed WordPress customer upserts so missing customer barcodes are written as
+  `NULL` instead of an empty string, avoiding unique-barcode insert collisions.
+- Rebuilt and reinstalled the production plugin package after confirming the
+  stale versioned zip had not included the working-tree fix.
+- Expanded the production local-sync workflow smoke to use separate hidden and
+  kiosk-visible inventory fixtures, verify customer creation and two credit
+  ledger posts, and clean up both inventory rows.
+- Added sanitized push-result diagnostics to the workflow smoke output so
+  future connector failures show operation status, local code, WordPress code,
+  and HTTP status without credentials or raw payloads.
+
+### Why
+
+The production workflow smoke showed events, inventory, and kiosk order sync
+were communicating, but customer creation failed with
+`tcg_customer_insert_failed`; credit posts then correctly waited for a
+WordPress customer ID. The root cause was the unique `barcode` column rejecting
+multiple empty-string customer barcodes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/CustomerController.php`
+- `scripts/production-run-local-sync-workflows-smoke.mjs`
+- `scripts/tests/production-local-sync-workflows-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated the production local-sync workflows smoke contract to require both
+  hidden inventory and kiosk-visible inventory coverage.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1004 tests, 0 failures.
+- `php tests/lint.php` from `apps/wordpress-plugin`: 632 PHP files checked,
+  0 failures.
+- `npm run production:install-package`: installed fresh package on production
+  after creating database and `wp-content` backups.
+- `npm run production:local-sync-workflows-smoke`: passed with event,
+  customer, credit, hidden inventory, kiosk inventory, kiosk order, and cleanup
+  checks all green.
+- `npm run test:packaging`: passed.
+
+### Rollback Notes
+
+- Restore the production plugin from the backup created before
+  `pug-production-before-plugin-20260609T210203Z.sql` and the paired
+  `wp-content` backup if the customer route change causes unexpected behavior.
+- No database migration rollback is required.
+- Reverting this change may reintroduce customer creation failures for local
+  app customers without barcode values.
+
 ## 2026-06-09 - Production Menu And Square POS Sale Finalization
 
 ### What Changed

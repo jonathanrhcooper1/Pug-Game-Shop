@@ -210,6 +210,8 @@ try {
       customer_public_id: customer.customer.customer_public_id,
       amount_minor_units: 500,
       sale_total_minor_units: 3000,
+      square_receipt_reference: `SQ-CODEX-WORKFLOW-${smoke.id}`,
+      square_cashier_confirmed: true,
       reason: `Codex production smoke credit redemption ${smoke.id}`,
     },
   })
@@ -229,7 +231,7 @@ try {
       ["credit_adjustment", "credit_redemption"].includes(result.operation_type) && result.status === "accepted",
   ).length
 
-  const intake = await localSyncRequest("/inventory/intake", {
+  const hiddenIntake = await localSyncRequest("/inventory/intake", {
     method: "POST",
     token,
     body: {
@@ -252,8 +254,35 @@ try {
     },
   })
 
-  if (intake.status !== "ok" || !intake.item?.public_id) {
-    throw new Error(`Local inventory intake failed: ${intake.code ?? intake.status}`)
+  if (hiddenIntake.status !== "ok" || !hiddenIntake.item?.public_id) {
+    throw new Error(`Local hidden inventory intake failed: ${hiddenIntake.code ?? hiddenIntake.status}`)
+  }
+
+  const kioskIntake = await localSyncRequest("/inventory/intake", {
+    method: "POST",
+    token,
+    body: {
+      card_name: smoke.kioskCardName,
+      set_name: "Codex Production Workflow Smoke",
+      condition: "RAW",
+      barcode: smoke.kioskBarcode,
+      price_minor_units: 321,
+      location: "Production Workflow Smoke Kiosk",
+      quantity: 1,
+      provider_card_id: "codex-local-sync-workflows-kiosk-smoke",
+      game: "pokemon",
+      set_code: "SMOKE",
+      card_number: "003",
+      printed_number: "003/003",
+      image_url: "https://images.scrydex.com/pokemon/mcd24-1/large",
+      online_visibility: "hidden",
+      kiosk_visibility: "visible",
+      pos_visibility: "hidden",
+    },
+  })
+
+  if (kioskIntake.status !== "ok" || !kioskIntake.item?.public_id) {
+    throw new Error(`Local kiosk inventory intake failed: ${kioskIntake.code ?? kioskIntake.status}`)
   }
 
   const inventoryPush = await localSyncRequest("/sync/push", {
@@ -261,10 +290,11 @@ try {
     token,
     body: {},
   })
-  const acceptedInventory = findAccepted(inventoryPush.results, "inventory_intake")
+  const acceptedInventory = findAccepted(inventoryPush.results, "inventory_intake", hiddenIntake.item.public_id)
+  const acceptedKioskInventory = findAccepted(inventoryPush.results, "inventory_intake", kioskIntake.item.public_id)
 
-  if (!acceptedInventory) {
-    throw new Error("Hidden inventory intake was not accepted by WordPress.")
+  if (!acceptedInventory || !acceptedKioskInventory) {
+    throw new Error("Workflow inventory intakes were not accepted by WordPress.")
   }
 
   const kioskOrder = await localSyncRequest("/kiosk/orders", {
@@ -272,7 +302,7 @@ try {
     body: {
       first_name: "Codex",
       last_name: `Smoke${smoke.id}`,
-      inventory_public_ids: [intake.item.public_id],
+      inventory_public_ids: [kioskIntake.item.public_id],
     },
   })
 
@@ -300,6 +330,7 @@ try {
       acceptedCustomer,
       acceptedCreditCount,
       acceptedInventory,
+      acceptedKioskInventory,
       acceptedKiosk,
     }),
     summary: {
@@ -308,7 +339,9 @@ try {
       eventAppliedCount: Number(eventPull.events_applied_count ?? 0),
       customerAccepted: Boolean(acceptedCustomer),
       creditAcceptedCount: acceptedCreditCount,
+      customerCreditPushResults: sanitizedPushResults(customerCreditPush.results),
       inventoryAccepted: Boolean(acceptedInventory),
+      kioskInventoryAccepted: Boolean(acceptedKioskInventory),
       kioskAccepted: Boolean(acceptedKiosk),
       queueDepthAfterKiosk: Number(kioskPush.local_queue_depth ?? 0),
       credentialsPrinted: false,
@@ -341,8 +374,8 @@ if (smokeResult) {
     },
     {
       name: "wordpress_cleanup_deleted_inventory",
-      pass: Number(cleanupSummary.wordpress?.inventoryRowsDeleted ?? 0) >= 1,
-      expected: ">=1",
+      pass: Number(cleanupSummary.wordpress?.inventoryRowsDeleted ?? 0) >= 2,
+      expected: ">=2",
       actual: cleanupSummary.wordpress?.inventoryRowsDeleted ?? null,
     },
   )
@@ -364,7 +397,9 @@ function buildSmokePayload() {
     eventAttendeeLabel: `Codex Event Smoke ${id}`,
     customerEmail: `codex-lsync-${id.toLowerCase()}@example.invalid`,
     barcode: `CODEX-LSYNC-WF-${id}`.slice(0, 64),
+    kioskBarcode: `CODEX-LSYNC-KIOSK-${id}`.slice(0, 64),
     cardName: "Codex Hidden Workflow Smoke",
+    kioskCardName: "Codex Kiosk Workflow Smoke",
   }
 }
 
@@ -510,7 +545,10 @@ function cleanupLocalSmoke(smokePayload) {
     }
 
     const customerRowsDeleted = Number(database.prepare("DELETE FROM customers WHERE email = ?").run(smokePayload.customerEmail).changes ?? 0)
-    const inventoryRows = database.prepare("SELECT public_id FROM inventory_items WHERE barcode = ?").all(smokePayload.barcode)
+    const inventoryBarcodes = [smokePayload.barcode, smokePayload.kioskBarcode].filter(Boolean)
+    const inventoryRows = inventoryBarcodes.flatMap((barcode) =>
+      database.prepare("SELECT public_id FROM inventory_items WHERE barcode = ?").all(barcode),
+    )
     const inventoryPublicIds = inventoryRows.map((row) => String(row.public_id ?? "")).filter(Boolean)
 
     for (const publicId of inventoryPublicIds) {
@@ -520,9 +558,10 @@ function cleanupLocalSmoke(smokePayload) {
       )
     }
 
-    const inventoryRowsDeleted = Number(
-      database.prepare("DELETE FROM inventory_items WHERE barcode = ?").run(smokePayload.barcode).changes ?? 0,
-    )
+    let inventoryRowsDeleted = 0
+    for (const barcode of inventoryBarcodes) {
+      inventoryRowsDeleted += Number(database.prepare("DELETE FROM inventory_items WHERE barcode = ?").run(barcode).changes ?? 0)
+    }
     const kioskRowsDeleted = Number(
       database.prepare("DELETE FROM kiosk_orders WHERE first_name = ? AND last_name = ?").run("Codex", `Smoke${smokePayload.id}`)
         .changes ?? 0,
@@ -556,10 +595,23 @@ function findEventBySlug(events, slug) {
   return (Array.isArray(events) ? events : []).find((event) => event?.slug === slug) ?? null
 }
 
-function findAccepted(results, operationType) {
+function findAccepted(results, operationType, entityId = null) {
   return (Array.isArray(results) ? results : []).find(
-    (result) => result?.operation_type === operationType && result?.status === "accepted",
+    (result) =>
+      result?.operation_type === operationType &&
+      result?.status === "accepted" &&
+      (null === entityId || String(result?.entity_id ?? "") === String(entityId)),
   )
+}
+
+function sanitizedPushResults(results) {
+  return (Array.isArray(results) ? results : []).map((result) => ({
+    operation_type: String(result?.operation_type ?? ""),
+    status: String(result?.status ?? ""),
+    code: String(result?.code ?? ""),
+    wordpress_code: String(result?.wordpress_code ?? ""),
+    http_status: Number(result?.http_status ?? 0),
+  }))
 }
 
 function buildChecks({
@@ -571,6 +623,7 @@ function buildChecks({
   acceptedCustomer,
   acceptedCreditCount,
   acceptedInventory,
+  acceptedKioskInventory,
   acceptedKiosk,
 }) {
   return [
@@ -623,6 +676,12 @@ function buildChecks({
       actual: Boolean(acceptedInventory),
     },
     {
+      name: "kiosk_inventory_accepted",
+      pass: Boolean(acceptedKioskInventory),
+      expected: true,
+      actual: Boolean(acceptedKioskInventory),
+    },
+    {
       name: "kiosk_order_accepted",
       pass: Boolean(acceptedKiosk),
       expected: true,
@@ -650,8 +709,17 @@ $slug = strtolower(trim((string) ($smoke['eventSlug'] ?? '')));
 $title = trim((string) ($smoke['eventTitle'] ?? ''));
 $email = strtolower(trim((string) ($smoke['customerEmail'] ?? '')));
 $barcode = strtoupper(trim((string) ($smoke['barcode'] ?? '')));
+$kiosk_barcode = strtoupper(trim((string) ($smoke['kioskBarcode'] ?? '')));
 $card_name = trim((string) ($smoke['cardName'] ?? ''));
-if (!preg_match('/^[0-9A-Z]{8,64}$/', $id) || !preg_match('/^codex-lsync-[a-z0-9]{8,64}$/', $slug) || '' === $title || !is_email($email) || !preg_match('/^CODEX-LSYNC-WF-[A-Z0-9]{8,64}$/', $barcode)) {
+$kiosk_card_name = trim((string) ($smoke['kioskCardName'] ?? ''));
+if (
+	!preg_match('/^[0-9A-Z]{8,64}$/', $id) ||
+	!preg_match('/^codex-lsync-[a-z0-9]{8,64}$/', $slug) ||
+	'' === $title ||
+	!is_email($email) ||
+	!preg_match('/^CODEX-LSYNC-WF-[A-Z0-9]{8,64}$/', $barcode) ||
+	!preg_match('/^CODEX-LSYNC-KIOSK-[A-Z0-9]{8,64}$/', $kiosk_barcode)
+) {
 	echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_payload_invalid'));
 	exit(1);
 }
@@ -757,12 +825,22 @@ if (!empty($customer_ids)) {
 	$customer_rows_deleted = (int) $wpdb->query($wpdb->prepare("DELETE FROM {$tables['customers']} WHERE customer_id IN ({$customer_placeholders})", $customer_ids));
 }
 $inventory_rows = (array) $wpdb->get_results(
-	$wpdb->prepare("SELECT inventory_id, card_name FROM {$tables['inventory']} WHERE barcode = %s OR sku = %s", array($barcode, $barcode)),
+	$wpdb->prepare(
+		"SELECT inventory_id, card_name, barcode, sku FROM {$tables['inventory']} WHERE barcode IN (%s, %s) OR sku IN (%s, %s)",
+		array($barcode, $kiosk_barcode, $barcode, $kiosk_barcode)
+	),
 	ARRAY_A
 );
 $inventory_ids = array();
+$expected_inventory_names = array(
+	$barcode => $card_name,
+	$kiosk_barcode => $kiosk_card_name,
+);
 foreach ($inventory_rows as $row) {
-	if ($card_name === (string) ($row['card_name'] ?? '')) {
+	$row_barcode = strtoupper((string) ($row['barcode'] ?? ''));
+	$row_sku = strtoupper((string) ($row['sku'] ?? ''));
+	$expected_name = $expected_inventory_names[$row_barcode] ?? $expected_inventory_names[$row_sku] ?? '';
+	if ($expected_name === (string) ($row['card_name'] ?? '')) {
 		$inventory_ids[] = (int) ($row['inventory_id'] ?? 0);
 	}
 }

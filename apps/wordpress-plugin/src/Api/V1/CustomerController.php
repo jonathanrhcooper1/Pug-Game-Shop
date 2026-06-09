@@ -175,25 +175,24 @@ final class CustomerController {
 		}
 
 		if ( is_array( $row ) ) {
-			$updated = $wpdb->query(
-				$wpdb->prepare(
-					"UPDATE {$table}
-					SET first_name = %s, last_name = %s, display_name = %s, normalized_phone = %s,
-						display_phone = %s, normalized_email = %s, barcode = %s, status = %s,
-						updated_by = %d, updated_at = %s, row_version = row_version + 1
-					WHERE customer_id = %d",
-					$customer['first_name'],
-					$customer['last_name'],
-					$customer['display_name'],
-					$customer['normalized_phone'],
-					$customer['display_phone'],
-					$customer['normalized_email'],
-					$customer['barcode'],
-					$customer['status'],
-					$customer['current_user_id'],
-					$this->now(),
-					(int) $row['customer_id']
-				)
+			$updated = $wpdb->update(
+				$table,
+				array(
+					'first_name'       => $customer['first_name'],
+					'last_name'        => $customer['last_name'],
+					'display_name'     => $customer['display_name'],
+					'normalized_phone' => $customer['normalized_phone'],
+					'display_phone'    => $customer['display_phone'],
+					'normalized_email' => $customer['normalized_email'],
+					'barcode'          => $this->nullable_barcode( $customer['barcode'] ),
+					'status'           => $customer['status'],
+					'updated_by'       => $customer['current_user_id'],
+					'updated_at'       => $this->now(),
+					'row_version'      => max( 1, (int) ( $row['row_version'] ?? 1 ) ) + 1,
+				),
+				array( 'customer_id' => (int) $row['customer_id'] ),
+				array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d' ),
+				array( '%d' )
 			);
 
 			if ( false === $updated ) {
@@ -219,7 +218,7 @@ final class CustomerController {
 				'normalized_phone' => $customer['normalized_phone'],
 				'display_phone'    => $customer['display_phone'],
 				'normalized_email' => $customer['normalized_email'],
-				'barcode'          => $customer['barcode'],
+				'barcode'          => $this->nullable_barcode( $customer['barcode'] ),
 				'credit_balance'   => '0.0000',
 				'credit_currency'  => $customer['credit_currency'],
 				'credit_version'   => 0,
@@ -349,6 +348,12 @@ final class CustomerController {
 
 	private function clean_barcode( mixed $value ): string {
 		return substr( preg_replace( '/[^a-zA-Z0-9._:-]+/', '-', trim( (string) $value ) ) ?? '', 0, 100 );
+	}
+
+	private function nullable_barcode( mixed $value ): ?string {
+		$barcode = $this->clean_barcode( $value );
+
+		return '' === $barcode ? null : $barcode;
 	}
 
 	private function clean_currency( mixed $value ): string {

@@ -6,6 +6,13 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Production customer upserts now store missing customer barcodes as `NULL`
+  instead of an empty string, preventing unique-barcode collisions when the LAN
+  app creates multiple customers without barcode assignments.
+- The production local-sync workflow smoke now verifies event pull/push,
+  customer creation, credit add/redemption, hidden inventory intake,
+  kiosk-visible inventory intake, kiosk pickup ordering, and production cleanup
+  in one run.
 - Production commerce navigation can now be configured to use the Pug storefront
   shelves directly: Home, Singles, Sealed Products, Graded Cards, Accessories,
   and Events, while removing the basic WooCommerce Shop link from the header.
