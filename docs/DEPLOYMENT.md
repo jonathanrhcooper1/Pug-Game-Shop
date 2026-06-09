@@ -62,10 +62,11 @@ npm run production:run-scrydex-index
 
 The configuration helper stores ScryDex credentials server-side and returns
 redacted readiness only. The index helper creates a database backup before
-writing catalog rows, then calls
-`/wp-json/tcg-store/v1/scrydex/catalog/index` in bounded rounds. Increase
-`SCRYDEX_INDEX_ROUNDS`, `SCRYDEX_INDEX_MAX_PAGES`, and expansion page controls
-gradually while watching usage and catalog counts.
+writing catalog rows, refreshes expansion metadata, then calls
+`/wp-json/tcg-store/v1/scrydex/catalog/index` in bounded per-set rounds by
+default. Increase `SCRYDEX_INDEX_SET_LIMIT`, `SCRYDEX_INDEX_ROUNDS`,
+`SCRYDEX_INDEX_MAX_PAGES`, and expansion page controls gradually while
+watching usage and catalog counts.
 
 ## Rollback Checklist
 

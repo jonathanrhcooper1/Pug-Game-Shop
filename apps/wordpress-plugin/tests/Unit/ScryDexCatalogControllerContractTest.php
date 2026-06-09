@@ -17,6 +17,8 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 			array(
 				'expansions_page',
 				'max_expansion_pages',
+				'skip_cards',
+				'cards_index_requested',
 				'continuation_available',
 				'next_page',
 				'has_more_pages',

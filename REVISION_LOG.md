@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex By-Set Production Indexing
+
+### What Changed
+
+- Added `skip_cards` support to the authenticated ScryDex catalog index
+  endpoint so production tooling can refresh expansion metadata without also
+  importing a global card page.
+- Extended the production ScryDex index runner to follow the requested
+  game-to-set-to-card flow: refresh expansion metadata, read stored ScryDex set
+  IDs from WordPress, then run bounded card imports per set with checkpoint
+  resume.
+- Added bounded controls for by-set indexing:
+  `SCRYDEX_INDEX_BY_SET`, `SCRYDEX_INDEX_SET_LIMIT`, and
+  `SCRYDEX_INDEX_SET_OFFSET`.
+- Bumped the plugin/package version to `0.160.0`.
+
+### Why
+
+The website catalog mirror should be built by game and set so card versions,
+set membership, images, and prices can be synchronized predictably instead of
+depending only on broad provider search pages.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This release uses the existing database target version `12`.
+
+### Tests Added
+
+- Production ScryDex index contract coverage for by-set controls, WordPress
+  reference-set lookup, expansion-only `skip_cards` batches, and redacted
+  output.
+- Catalog controller contract coverage for `skip_cards` and skipped-card
+  summary output.
+
+### Rollback Notes
+
+- Reinstall the prior plugin package to remove `skip_cards` endpoint behavior.
+- Disable by-set production indexing by setting `SCRYDEX_INDEX_BY_SET=false`
+  before running the production helper.
+- If by-set imports wrote unwanted rows, restore the database backup created by
+  the production index runner before the batch.
+
 ## 2026-06-09 - ScryDex Catalog Admin Workspace
 
 ### What Changed

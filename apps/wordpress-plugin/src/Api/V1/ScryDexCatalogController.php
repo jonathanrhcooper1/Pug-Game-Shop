@@ -104,6 +104,7 @@ final class ScryDexCatalogController {
 		$max_expansion_pages     = $this->bounded_int( $payload['max_expansion_pages'] ?? 1, 1, self::MAX_PAGES );
 		$execute_database_writes = $this->truthy( $payload['execute_database_writes'] ?? false );
 		$index_expansions        = $this->truthy( $payload['index_expansions'] ?? false );
+		$skip_cards              = $this->truthy( $payload['skip_cards'] ?? false );
 		$provider                = $factory->provider();
 		$usage                   = $this->usage_snapshot( $provider );
 
@@ -126,18 +127,27 @@ final class ScryDexCatalogController {
 				'expansion_index_requested' => false,
 			);
 
-		$worker = $this->worker( $settings, $factory, $gate_overrides );
-		$cards  = $worker->run_cards_pages(
-			array(
-				'game'                    => $game,
-				'expansion_id'            => $expansion_id,
-				'page_size'               => $page_size,
-				'max_pages'               => $max_pages,
-				'execute_database_writes' => $execute_database_writes,
-			),
-			array(),
-			$gate_overrides
-		);
+		$cards = $skip_cards
+			? array(
+				'status'                    => 'skipped',
+				'page_count'                => 0,
+				'provider_request_count'    => 0,
+				'continuation_available'    => false,
+				'cards_index_requested'     => false,
+				'database_writes_deferred'  => ! $execute_database_writes,
+				'provider_result_logged'    => false,
+			)
+			: $this->worker( $settings, $factory, $gate_overrides )->run_cards_pages(
+				array(
+					'game'                    => $game,
+					'expansion_id'            => $expansion_id,
+					'page_size'               => $page_size,
+					'max_pages'               => $max_pages,
+					'execute_database_writes' => $execute_database_writes,
+				),
+				array(),
+				$gate_overrides
+			);
 
 		return new \WP_REST_Response(
 			array(
@@ -150,6 +160,7 @@ final class ScryDexCatalogController {
 					'max_pages'                      => $max_pages,
 					'expansions_page'                => $expansions_page,
 					'max_expansion_pages'            => $max_expansion_pages,
+					'skip_cards'                     => $skip_cards,
 					'execute_database_writes'        => $execute_database_writes,
 					'usage_snapshot'                 => $usage['public_snapshot'],
 					'expansions'                     => $expansion_result,
@@ -541,6 +552,10 @@ final class ScryDexCatalogController {
 
 		if ( 'completed' === (string) ( $cards['status'] ?? '' ) ) {
 			return 'Catalog batch completed for this scope.';
+		}
+
+		if ( 'skipped' === (string) ( $cards['status'] ?? '' ) ) {
+			return 'Card import skipped for this request.';
 		}
 
 		return 'Review block reasons before continuing.';

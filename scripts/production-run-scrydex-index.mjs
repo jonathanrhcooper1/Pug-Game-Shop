@@ -34,6 +34,9 @@ const payload = {
   index_expansions: envFlag(process.env.SCRYDEX_INDEX_EXPANSIONS, true),
   expansions_page: clampInt(process.env.SCRYDEX_INDEX_EXPANSIONS_PAGE, 1, 1000000, 1),
   max_expansion_pages: clampInt(process.env.SCRYDEX_INDEX_MAX_EXPANSION_PAGES, 1, 25, 25),
+  index_by_set: envFlag(process.env.SCRYDEX_INDEX_BY_SET, true),
+  set_limit: clampInt(process.env.SCRYDEX_INDEX_SET_LIMIT, 1, 100, 5),
+  set_offset: clampInt(process.env.SCRYDEX_INDEX_SET_OFFSET, 0, 1000000, 0),
 }
 
 const missingEnv = Object.entries(requiredEnv)
@@ -58,6 +61,9 @@ if (dryRun) {
           index_expansions: payload.index_expansions,
           expansions_page: payload.expansions_page,
           max_expansion_pages: payload.max_expansion_pages,
+          index_by_set: payload.index_by_set,
+          set_limit: payload.set_limit,
+          set_offset: payload.set_offset,
         },
         requiresEnv: [
           "PUG_PROD_SSH_HOST",
@@ -72,6 +78,9 @@ if (dryRun) {
           "SCRYDEX_INDEX_MAX_PAGES",
           "SCRYDEX_INDEX_ROUNDS",
           "SCRYDEX_INDEX_EXPANSIONS",
+          "SCRYDEX_INDEX_BY_SET",
+          "SCRYDEX_INDEX_SET_LIMIT",
+          "SCRYDEX_INDEX_SET_OFFSET",
         ],
         readsIgnoredEnvFile: ".env.production.local",
         createsProductionDatabaseBackup: true,
@@ -119,21 +128,29 @@ if ($admin_id <= 0) {
 }
 wp_set_current_user($admin_id);
 $rounds = max(1, min(20, (int) ($payload['rounds'] ?? 1)));
+$game = sanitize_key($payload['game'] ?? 'pokemon');
+$explicit_expansion_id = sanitize_key($payload['expansion_id'] ?? '');
 $expansions_page = max(1, (int) ($payload['expansions_page'] ?? 1));
 $index_expansions = !empty($payload['index_expansions']);
+$index_by_set = !empty($payload['index_by_set']) && '' === $explicit_expansion_id;
+$set_limit = max(1, min(100, (int) ($payload['set_limit'] ?? 5)));
+$set_offset = max(0, (int) ($payload['set_offset'] ?? 0));
 $runs = array();
+$sets = array();
 $last_status = 'unknown';
-for ($round = 1; $round <= $rounds; ++$round) {
+
+function tcg_production_scrydex_catalog_request(array $payload, string $game, string $expansion_id, bool $index_expansions, int $expansions_page, bool $skip_cards): array {
 	$request = new WP_REST_Request('POST', '/tcg-store/v1/scrydex/catalog/index');
 	$request->set_body_params(array(
-		'game' => sanitize_key($payload['game'] ?? 'pokemon'),
-		'expansion_id' => sanitize_key($payload['expansion_id'] ?? ''),
+		'game' => $game,
+		'expansion_id' => $expansion_id,
 		'page_size' => max(1, min(100, (int) ($payload['page_size'] ?? 100))),
 		'max_pages' => max(1, min(25, (int) ($payload['max_pages'] ?? 10))),
 		'execute_database_writes' => true,
 		'index_expansions' => $index_expansions,
 		'expansions_page' => $expansions_page,
 		'max_expansion_pages' => max(1, min(25, (int) ($payload['max_expansion_pages'] ?? 25))),
+		'skip_cards' => $skip_cards,
 	));
 	$response = rest_do_request($request);
 	$response_data = $response->get_data();
@@ -141,11 +158,10 @@ for ($round = 1; $round <= $rounds; ++$round) {
 	$cards = is_array($data['cards'] ?? null) ? $data['cards'] : array();
 	$expansions = is_array($data['expansions'] ?? null) ? $data['expansions'] : array();
 	$counts_after = is_array($data['counts_after'] ?? null) ? $data['counts_after'] : array();
-	$last_status = (string) ($cards['status'] ?? ($response->get_status() === 200 ? 'completed' : 'blocked'));
 	$expansion_continuation = !empty($expansions['continuation_available']);
 	$card_continuation = !empty($cards['continuation_available']);
-	$runs[] = array(
-		'round' => $round,
+
+	return array(
 		'http_status' => $response->get_status(),
 		'cards_status' => (string) ($cards['status'] ?? 'unknown'),
 		'cards_page_count' => (int) ($cards['page_count'] ?? 0),
@@ -161,16 +177,80 @@ for ($round = 1; $round <= $rounds; ++$round) {
 		'credential_values_redacted' => true,
 		'provider_result_bodies_not_logged' => true,
 	);
-	if ($response->get_status() !== 200) {
-		break;
+}
+
+function tcg_production_scrydex_reference_sets(string $game, int $limit, int $offset): array {
+	global $wpdb;
+	$table = $wpdb->prefix . 'tcg_reference_sets';
+	$found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+	if ($found !== $table) {
+		return array();
 	}
-	if ($expansion_continuation) {
-		$expansions_page = max($expansions_page + 1, (int) ($expansions['next_page'] ?? ($expansions_page + 1)));
-	} else {
-		$index_expansions = false;
+
+	$rows = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT provider_set_id, name FROM {$table} WHERE provider_name = %s AND game = %s ORDER BY COALESCE(release_date, '1900-01-01') ASC, provider_set_id ASC LIMIT %d OFFSET %d",
+			'scrydex',
+			$game,
+			$limit,
+			$offset
+		),
+		ARRAY_A
+	);
+
+	return is_array($rows) ? $rows : array();
+}
+
+if ($index_by_set && $index_expansions) {
+	$expansion_run = tcg_production_scrydex_catalog_request($payload, $game, '', true, $expansions_page, true);
+	$runs[] = array_merge(array('scope' => 'expansions'), $expansion_run);
+	$last_status = (string) ($expansion_run['cards_status'] ?? 'skipped');
+	if (!empty($expansion_run['expansions_next_page'])) {
+		$expansions_page = max($expansions_page + 1, (int) $expansion_run['expansions_next_page']);
 	}
-	if (!$card_continuation && !$expansion_continuation) {
-		break;
+}
+
+if ($index_by_set) {
+	$sets = tcg_production_scrydex_reference_sets($game, $set_limit, $set_offset);
+	foreach ($sets as $set) {
+		$set_id = sanitize_key($set['provider_set_id'] ?? '');
+		if ('' === $set_id) {
+			continue;
+		}
+		for ($round = 1; $round <= $rounds; ++$round) {
+			$set_run = tcg_production_scrydex_catalog_request($payload, $game, $set_id, false, $expansions_page, false);
+			$set_run['scope'] = 'set_cards';
+			$set_run['round'] = $round;
+			$set_run['expansion_id'] = $set_id;
+			$set_run['expansion_name'] = (string) ($set['name'] ?? '');
+			$runs[] = $set_run;
+			$last_status = (string) ($set_run['cards_status'] ?? ($set_run['http_status'] === 200 ? 'completed' : 'blocked'));
+			if ($set_run['http_status'] !== 200 || empty($set_run['cards_continuation_available'])) {
+				break;
+			}
+		}
+	}
+} else {
+	for ($round = 1; $round <= $rounds; ++$round) {
+		$run = tcg_production_scrydex_catalog_request($payload, $game, $explicit_expansion_id, $index_expansions, $expansions_page, false);
+		$run['scope'] = '' === $explicit_expansion_id ? 'global_cards' : 'set_cards';
+		$run['round'] = $round;
+		$run['expansion_id'] = $explicit_expansion_id;
+		$runs[] = $run;
+		$last_status = (string) ($run['cards_status'] ?? ($run['http_status'] === 200 ? 'completed' : 'blocked'));
+		$expansion_continuation = !empty($run['expansions_continuation_available']);
+		$card_continuation = !empty($run['cards_continuation_available']);
+		if ($run['http_status'] !== 200) {
+			break;
+		}
+		if ($expansion_continuation) {
+			$expansions_page = max($expansions_page + 1, (int) ($run['expansions_next_page'] ?? ($expansions_page + 1)));
+		} else {
+			$index_expansions = false;
+		}
+		if (!$card_continuation && !$expansion_continuation) {
+			break;
+		}
 	}
 }
 $status_response = rest_do_request(new WP_REST_Request('GET', '/tcg-store/v1/scrydex/catalog/status'));
@@ -178,8 +258,20 @@ $status_data = $status_response->get_data();
 echo wp_json_encode(array(
 	'action' => 'production_scrydex_index_ran',
 	'status' => $status_response->get_status() === 200 ? $last_status : 'status_route_failed',
-	'game' => sanitize_key($payload['game'] ?? 'pokemon'),
-	'expansion_id' => sanitize_key($payload['expansion_id'] ?? ''),
+	'game' => $game,
+	'expansion_id' => $explicit_expansion_id,
+	'index_by_set' => $index_by_set,
+	'set_limit' => $set_limit,
+	'set_offset' => $set_offset,
+	'sets_selected' => array_map(
+		static function ($set) {
+			return array(
+				'provider_set_id' => (string) ($set['provider_set_id'] ?? ''),
+				'name' => (string) ($set['name'] ?? ''),
+			);
+		},
+		$sets
+	),
 	'rounds_requested' => $rounds,
 	'rounds_ran' => count($runs),
 	'runs' => $runs,
@@ -224,6 +316,10 @@ const result = await withProductionConnection(async (connection) => {
       status: parsed?.status ?? "unknown",
       game: parsed?.game ?? payload.game,
       expansionId: parsed?.expansion_id ?? payload.expansion_id,
+      indexBySet: parsed?.index_by_set ?? payload.index_by_set,
+      setLimit: parsed?.set_limit ?? payload.set_limit,
+      setOffset: parsed?.set_offset ?? payload.set_offset,
+      setsSelected: parsed?.sets_selected ?? [],
       roundsRequested: parsed?.rounds_requested ?? payload.rounds,
       roundsRan: parsed?.rounds_ran ?? null,
       runs: parsed?.runs ?? [],

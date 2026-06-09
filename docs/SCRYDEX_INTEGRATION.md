@@ -122,11 +122,12 @@ WordPress registers two authenticated ScryDex catalog endpoints:
   import batch and is limited to users who can manage settings. Supported
   payload fields are `game` (default `pokemon`), `expansion_id`, `page_size`,
   `max_pages`, `index_expansions`, `expansions_page`,
-  `max_expansion_pages`, and `execute_database_writes`. The endpoint checks
-  provider readiness and usage before importing, can index bounded expansion
-  pages, runs bounded card pages through the existing ScryDex worker, returns
-  public usage metadata, expansion/card summaries, `counts_after`, and
-  `next_action`, and does not return raw provider bodies or credentials.
+  `max_expansion_pages`, `skip_cards`, and `execute_database_writes`. The
+  endpoint checks provider readiness and usage before importing, can index
+  bounded expansion pages, can skip card pages for expansion-only batches, runs
+  bounded card pages through the existing ScryDex worker, returns public usage
+  metadata, expansion/card summaries, `counts_after`, and `next_action`, and
+  does not return raw provider bodies or credentials.
 
 ScryDex documents a maximum page size of 100. The HTTP provider, dry-run
 planner, usage planner, worker, scheduled settings, and catalog import
@@ -217,12 +218,15 @@ npm run production:run-scrydex-index
 backs up `wp-content`, installs and activates the packaged plugin, runs pending
 migrations, and verifies the catalog routes. `production:configure-scrydex`
 stores ScryDex settings and prints only redacted status. `production:run-scrydex-index`
-creates a database backup, then calls the authenticated catalog index endpoint
-in bounded rounds. Useful controls are `SCRYDEX_INDEX_GAME`,
+creates a database backup, refreshes expansion metadata, reads stored
+ScryDex sets from WordPress, then calls the authenticated catalog index
+endpoint in bounded per-set rounds by default. Useful controls are
+`SCRYDEX_INDEX_GAME`,
 `SCRYDEX_INDEX_PAGE_SIZE`, `SCRYDEX_INDEX_MAX_PAGES`,
 `SCRYDEX_INDEX_ROUNDS`, `SCRYDEX_INDEX_EXPANSIONS`,
-`SCRYDEX_INDEX_EXPANSIONS_PAGE`, and
-`SCRYDEX_INDEX_MAX_EXPANSION_PAGES`.
+`SCRYDEX_INDEX_EXPANSIONS_PAGE`,
+`SCRYDEX_INDEX_MAX_EXPANSION_PAGES`, `SCRYDEX_INDEX_BY_SET`,
+`SCRYDEX_INDEX_SET_LIMIT`, and `SCRYDEX_INDEX_SET_OFFSET`.
 
 ## Live Smoke Verification
 

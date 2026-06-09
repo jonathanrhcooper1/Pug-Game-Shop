@@ -20,6 +20,9 @@ All notable changes follow Semantic Versioning.
 - WordPress admin now includes a **ScryDex Catalog** workspace with secret-free
   catalog counts, latest ScryDex checkpoints, and manager-only bounded import
   controls that call the authenticated catalog status/index REST endpoints.
+- The production ScryDex index runner now supports the real catalog mirror
+  flow: expansion metadata first, then bounded card imports per stored
+  ScryDex set with checkpoint resume.
 - Production-safe WordPress deployment helpers now cover the real ScryDex
   catalog path: package install with production database/`wp-content` backup,
   ScryDex settings configuration through a redacted WP-CLI runner, and bounded
