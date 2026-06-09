@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Public inventory cards now use a stronger The Pug display-case treatment
+  with framed card art, detail chips for condition/variant/set/number, clearer
+  stock badges, and two-decimal staff inventory price display in admin search.
 - WordPress inventory rows can now persist Square catalog item/variation
   mappings after provider sync, and the LAN/offline cache keeps those mapping
   fields so staff can see POS mapping status while Square payment capture

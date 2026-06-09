@@ -53,6 +53,14 @@ final class InventoryAdminWorkspaceUiTest extends TestCase {
 		}
 	}
 
+	public function test_inventory_search_formats_staff_price_display_to_two_decimals(): void {
+		$source = $this->source();
+
+		$this->assert_contains( 'const formatMoney=function(amount)', $source );
+		$this->assert_contains( 'formatMoney(item.sale_price)', $source );
+		$this->assert_contains( 'toFixed(2)', $source );
+	}
+
 	public function test_intake_form_keeps_lookup_context_fields_and_quantity_batching(): void {
 		$source = $this->source();
 

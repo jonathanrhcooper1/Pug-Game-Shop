@@ -67,6 +67,8 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 		$this->assert_contains( 'Browse The Pug inventory', $html );
 		$this->assert_contains( 'Search Inventory', $html );
 		$this->assert_contains( 'Charizard', $html );
+		$this->assert_contains( 'tcg-public-inventory__media', $html );
+		$this->assert_contains( 'tcg-public-inventory__chips', $html );
 		$this->assert_contains( 'Base Set / 4/102 / NM / Holo', $html );
 		$this->assert_contains( '125.00 USD', $html );
 		$this->assert_contains( '2 in stock', $html );

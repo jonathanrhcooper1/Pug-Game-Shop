@@ -151,6 +151,7 @@ final class InventorySearchPresenter {
 		);
 		$price   = $this->display_money( $group['price'] ?? '0.00', $group['currency'] ?? 'USD' );
 		$html    = '<article class="tcg-public-inventory__card">';
+		$html   .= '<div class="tcg-public-inventory__media">';
 
 		if ( '' !== (string) ( $group['image_url'] ?? '' ) ) {
 			$html .= '<img src="' . $this->esc_url( (string) $group['image_url'] ) . '" alt="" loading="lazy" />';
@@ -158,9 +159,12 @@ final class InventorySearchPresenter {
 			$html .= '<div class="tcg-public-inventory__image-placeholder"></div>';
 		}
 
+		$html .= '</div>';
 		$html .= '<div class="tcg-public-inventory__card-body">';
+		$html .= '<p class="tcg-public-inventory__game">' . $this->esc_html( (string) ( $group['game'] ?? '' ) ) . '</p>';
 		$html .= '<h3>' . $this->esc_html( (string) ( $group['name'] ?? '' ) ) . '</h3>';
 		$html .= '<p>' . $this->esc_html( implode( ' / ', $details ) ) . '</p>';
+		$html .= $this->render_attribute_chips( $group );
 		$html .= '<div class="tcg-public-inventory__card-meta">';
 		$html .= '<strong>' . $this->esc_html( $price ) . '</strong>';
 		$html .= '<span>' . $this->esc_html( (int) ( $group['quantity'] ?? 0 ) . ' in stock' ) . '</span>';
@@ -171,6 +175,34 @@ final class InventorySearchPresenter {
 		}
 
 		$html .= '</div></article>';
+
+		return $html;
+	}
+
+	/**
+	 * @param array<string, mixed> $group Inventory group.
+	 */
+	private function render_attribute_chips( array $group ): string {
+		$chips = array_filter(
+			array(
+				$this->clean_string( $group['condition'] ?? '' ),
+				$this->clean_string( $group['variant'] ?? '' ),
+				$this->clean_string( $group['set_code'] ?? '' ),
+				$this->clean_string( $group['printed_number'] ?? '' ),
+			)
+		);
+
+		if ( array() === $chips ) {
+			return '';
+		}
+
+		$html = '<ul class="tcg-public-inventory__chips" aria-label="' . $this->esc_attr( 'Card details' ) . '">';
+
+		foreach ( array_slice( $chips, 0, 4 ) as $chip ) {
+			$html .= '<li>' . $this->esc_html( $chip ) . '</li>';
+		}
+
+		$html .= '</ul>';
 
 		return $html;
 	}

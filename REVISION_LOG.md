@@ -3,6 +3,57 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Public Inventory Display Case and Price Formatting
+
+### What Changed
+
+- Updated the customer-facing public inventory shortcode markup to wrap card
+  art in a stable media frame and add detail chips for condition, variant, set,
+  and printed card number.
+- Restyled public inventory cards with The Pug brand colors, stronger card art
+  framing, clearer price/stock hierarchy, and responsive mobile behavior.
+- Added staff admin inventory-search money formatting so raw four-decimal
+  database prices display as two-decimal money values.
+
+### Why
+
+The live site inventory needs to look customer-ready and card prices should
+read as normal retail money while preserving four-decimal precision in the
+database, exports, provider price history, and audit records.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the public inventory presenter test to lock the new media/chip
+  markup.
+- Added an admin workspace UI contract check for two-decimal staff price
+  presentation.
+
+### Verification
+
+- `php tests\run.php --filter PublicInventorySearchPresenterTest`
+- `php tests\run.php --filter InventoryAdminWorkspaceUiTest`
+- `php tests\lint.php src\Admin\AdminMenu.php src\PublicSite\InventorySearchPresenter.php`
+
+### Rollback Notes
+
+- Revert the public inventory presenter/CSS and admin display formatter.
+- No data migrations or price precision changes were made, so rollback only
+  affects presentation.
+
 ## 2026-06-09 - Manager Square POS Inventory Pull Plan
 
 ### What Changed
