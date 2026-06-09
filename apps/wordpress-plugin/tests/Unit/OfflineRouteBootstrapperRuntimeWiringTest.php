@@ -199,7 +199,7 @@ namespace TCGStorePlatform\Tests\Unit {
 				'device_label'      => 'Runtime Test Device',
 				'device_mode'       => 'staff',
 				'token_hash'        => OfflineDeviceTokenAuthenticator::token_hash( self::DEVICE_TOKEN ),
-				'token_expires_at'  => '2026-06-09 16:00:00.000000',
+				'token_expires_at'  => '2036-06-09 16:00:00.000000',
 				'scopes_json'       => '["offline_pull","offline_push","conflicts"]',
 				'capabilities_json' => '{"barcode_scanner":true}',
 				'app_version'       => '0.156.0',

@@ -616,6 +616,8 @@ export function createLocalSyncStore(options = {}) {
       return blocked("invalid_kiosk_order", "First name, last name, and at least one item are required.")
     }
 
+    const selectedItems = []
+
     for (const publicId of publicIds) {
       const item = inventoryItems.find((candidate) => candidate.public_id === publicId)
 
@@ -628,6 +630,14 @@ export function createLocalSyncStore(options = {}) {
           item: publicInventoryItem(item),
         })
       }
+
+      if (cleanVisibility(item.kiosk_visibility, "visible") !== "visible") {
+        return blocked("inventory_hidden_from_kiosk", "That inventory item is not visible to kiosk pickup ordering.", {
+          item: publicInventoryItem(item),
+        })
+      }
+
+      selectedItems.push(item)
     }
 
     const reservations = []
@@ -653,7 +663,9 @@ export function createLocalSyncStore(options = {}) {
       last_name: lastName,
       status: "queued",
       reservation_ids: reservations.map((reservation) => reservation.reservation_id),
+      items: selectedItems.map(kioskOrderItemSnapshot),
       created_at_utc: now().toISOString(),
+      updated_at_utc: now().toISOString(),
     }
 
     kioskOrders.push(order)
@@ -662,8 +674,69 @@ export function createLocalSyncStore(options = {}) {
 
     return {
       status: "ok",
-      order,
+      order: publicKioskOrder(order),
       reservations,
+    }
+  }
+
+  function listKioskOrders(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const limit = boundedInt(input.limit, 1, 100, 25)
+    const statuses = Array.isArray(input.statuses)
+      ? input.statuses.map(cleanKioskOrderStatus).filter(Boolean)
+      : []
+    const orders = kioskOrders
+      .filter((order) => statuses.length === 0 || statuses.includes(cleanKioskOrderStatus(order.status)))
+      .sort((a, b) => String(b.created_at_utc).localeCompare(String(a.created_at_utc)))
+      .slice(0, limit)
+      .map(publicKioskOrder)
+
+    return {
+      status: "ok",
+      orders,
+      order_count: orders.length,
+      total_order_count: kioskOrders.length,
+      shared_queue_source: "local_sync_server",
+      wordpress_acceptance_required: true,
+      credentials_synced_to_client: false,
+    }
+  }
+
+  function updateKioskOrderStatus(token, orderId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const order = kioskOrders.find((candidate) => candidate.order_id === cleanPublicId(orderId))
+
+    if (!order) {
+      return blocked("kiosk_order_not_found", "No shared kiosk pickup order matched that order ID.")
+    }
+
+    const requestedStatus = kioskOrderStatusSlug(input.status)
+    const nextStatus = cleanKioskOrderStatus(requestedStatus)
+
+    if (!["queued", "accepted", "pulling", "ready", "completed"].includes(requestedStatus)) {
+      return blocked("invalid_kiosk_order_status", "Use queued, accepted, pulling, ready, or completed for kiosk pickup status.")
+    }
+
+    order.status = nextStatus
+    order.updated_at_utc = now().toISOString()
+    saveKioskOrder(database, order)
+
+    return {
+      status: "ok",
+      order: publicKioskOrder(order),
+      shared_queue_source: "local_sync_server",
+      wordpress_status_sync_deferred: true,
+      inventory_mutation_performed: false,
     }
   }
 
@@ -1587,7 +1660,10 @@ export function createLocalSyncStore(options = {}) {
       const order = kioskOrders.find((candidate) => candidate.order_id === operation.entity_id)
 
       if (order) {
-        order.status = "accepted"
+        if (cleanKioskOrderStatus(order.status) === "queued") {
+          order.status = "accepted"
+        }
+        order.updated_at_utc = now().toISOString()
         saveKioskOrder(database, order)
       }
 
@@ -1833,6 +1909,7 @@ export function createLocalSyncStore(options = {}) {
     createKioskOrder,
     deviceStatus,
     listEvents,
+    listKioskOrders,
     createSession,
     listAccessPolicy,
     planSquarePosInventoryPull,
@@ -1845,6 +1922,7 @@ export function createLocalSyncStore(options = {}) {
     searchScryDexCards,
     syncStatus,
     pushQueuedOperations,
+    updateKioskOrderStatus,
     updateUserAccess,
   }
 }
@@ -1928,7 +2006,9 @@ function migrateLocalSyncDatabase(database) {
       last_name TEXT NOT NULL,
       status TEXT NOT NULL,
       reservation_ids_json TEXT NOT NULL,
-      created_at_utc TEXT NOT NULL
+      items_json TEXT NOT NULL DEFAULT '[]',
+      created_at_utc TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS customers (
@@ -2034,6 +2114,8 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "square_catalog_item_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "square_catalog_variation_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
+  ensureLocalSyncColumn(database, "kiosk_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "kiosk_orders", "updated_at_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "reference_cards", "price_points_json", "TEXT NOT NULL DEFAULT '[]'")
@@ -2228,18 +2310,20 @@ function loadQueue(database) {
 function loadKioskOrders(database) {
   return database
     .prepare(`
-      SELECT order_id, first_name, last_name, status, reservation_ids_json, created_at_utc
+      SELECT order_id, first_name, last_name, status, reservation_ids_json, items_json, created_at_utc, updated_at_utc
       FROM kiosk_orders
-      ORDER BY created_at_utc, order_id
+      ORDER BY created_at_utc DESC, order_id
     `)
     .all()
     .map((row) => ({
       order_id: row.order_id,
       first_name: row.first_name,
       last_name: row.last_name,
-      status: row.status,
+      status: cleanKioskOrderStatus(row.status),
       reservation_ids: parseJson(row.reservation_ids_json, []),
+      items: cleanKioskOrderItems(parseJson(row.items_json, [])),
       created_at_utc: row.created_at_utc,
+      updated_at_utc: row.updated_at_utc || row.created_at_utc,
     }))
 }
 
@@ -2516,21 +2600,27 @@ function saveClientDevice(database, device) {
 function saveKioskOrder(database, order) {
   database
     .prepare(`
-      INSERT INTO kiosk_orders (order_id, first_name, last_name, status, reservation_ids_json, created_at_utc)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO kiosk_orders (
+        order_id, first_name, last_name, status, reservation_ids_json, items_json, created_at_utc, updated_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_id) DO UPDATE SET
         first_name = excluded.first_name,
         last_name = excluded.last_name,
         status = excluded.status,
-        reservation_ids_json = excluded.reservation_ids_json
+        reservation_ids_json = excluded.reservation_ids_json,
+        items_json = excluded.items_json,
+        updated_at_utc = excluded.updated_at_utc
     `)
     .run(
       order.order_id,
       order.first_name,
       order.last_name,
-      order.status,
+      cleanKioskOrderStatus(order.status),
       JSON.stringify(order.reservation_ids),
+      JSON.stringify(cleanKioskOrderItems(order.items)),
       order.created_at_utc,
+      order.updated_at_utc || order.created_at_utc,
     )
 }
 
@@ -3314,6 +3404,85 @@ function inventoryItemForSquareMapping(inventoryItems, mapping) {
     ?? inventoryItems.find((item) => cleanExternalId(item.square_catalog_variation_id) === squareVariationId)
     ?? inventoryItems.find((item) => cleanBarcode(item.barcode) === scanIdentity)
     ?? null
+}
+
+function kioskOrderItemSnapshot(item) {
+  return {
+    public_id: cleanPublicId(item.public_id),
+    card_name: cleanName(item.card_name),
+    set_name: cleanName(item.set_name),
+    condition: cleanCondition(item.condition),
+    barcode: cleanBarcode(item.barcode),
+    location: cleanName(item.location),
+    price_minor_units: Math.max(0, minorUnits(item.price_minor_units)),
+    currency: cleanCurrency(item.currency),
+    status: localInventoryStatus(item.status) ?? "conflict",
+    row_version: boundedInt(item.row_version, 1, 999999999, 1),
+  }
+}
+
+function cleanKioskOrderItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => ({
+      public_id: cleanPublicId(item.public_id ?? item.publicId),
+      card_name: cleanName(item.card_name ?? item.cardName),
+      set_name: cleanName(item.set_name ?? item.setName),
+      condition: cleanCondition(item.condition),
+      barcode: cleanBarcode(item.barcode),
+      location: cleanName(item.location),
+      price_minor_units: Math.max(0, minorUnits(item.price_minor_units ?? item.priceMinorUnits)),
+      currency: cleanCurrency(item.currency),
+      status: localInventoryStatus(item.status) ?? "conflict",
+      row_version: boundedInt(item.row_version ?? item.rowVersion, 1, 999999999, 1),
+    }))
+    .filter((item) => item.public_id || item.card_name)
+}
+
+function cleanKioskOrderStatus(value) {
+  const status = kioskOrderStatusSlug(value)
+
+  if (["queued", "accepted", "pulling", "ready", "completed"].includes(status)) {
+    return status
+  }
+
+  if (status === "reserved_for_pickup" || status === "reserved") {
+    return "accepted"
+  }
+
+  return "queued"
+}
+
+function kioskOrderStatusSlug(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+}
+
+function publicKioskOrder(order) {
+  const items = cleanKioskOrderItems(order.items)
+  const totalMinorUnits = items.reduce((total, item) => total + item.price_minor_units, 0)
+
+  return {
+    order_id: cleanPublicId(order.order_id),
+    first_name: cleanName(order.first_name),
+    last_name: cleanName(order.last_name),
+    customer_name: cleanName(`${order.first_name ?? ""} ${order.last_name ?? ""}`),
+    status: cleanKioskOrderStatus(order.status),
+    reservation_ids: Array.isArray(order.reservation_ids) ? order.reservation_ids.map(cleanPublicId).filter(Boolean) : [],
+    items,
+    item_count: items.length,
+    total_minor_units: totalMinorUnits,
+    currency: "USD",
+    created_at_utc: cleanIsoTimestamp(order.created_at_utc) || "",
+    updated_at_utc: cleanIsoTimestamp(order.updated_at_utc) || cleanIsoTimestamp(order.created_at_utc) || "",
+  }
 }
 
 function publicCustomer(customer) {

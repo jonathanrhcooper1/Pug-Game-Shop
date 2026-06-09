@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- LAN kiosk pickup orders now have a shared queue across employee and kiosk
+  clients: the local sync server stores item snapshots, exposes staff list/status
+  endpoints, and the offline app can refresh and update pickup status without
+  mutating inventory.
 - Square POS inventory support now includes a manager-only count reconciliation
   path: the LAN server can compare returned Square inventory counts to
   serialized website inventory, report mismatches/missing/unexpected counts, and

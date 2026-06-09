@@ -926,8 +926,39 @@ try {
     body: { pin: "1234" },
   })
   assert.equal(staffAuth.status, "ok")
+  assert.ok(staffAuth.user.access.includes("Kiosk"))
   assert.ok(staffAuth.user.access.includes("Customers"))
   assert.ok(staffAuth.user.access.includes("Events"))
+
+  const sharedKioskQueue = await fetchJson(`${baseUrl}/kiosk/orders?limit=10`, {
+    token: staffAuth.session.token,
+  })
+  assert.equal(sharedKioskQueue.status, "ok")
+  assert.equal(sharedKioskQueue.shared_queue_source, "local_sync_server")
+  assert.equal(sharedKioskQueue.order_count, 1)
+  assert.equal(sharedKioskQueue.orders[0].order_id, kioskOrder.order.order_id)
+  assert.equal(sharedKioskQueue.orders[0].customer_name, "Ada Lovelace")
+  assert.equal(sharedKioskQueue.orders[0].item_count, 1)
+  assert.equal(sharedKioskQueue.orders[0].items[0].card_name, "Pikachu")
+  assert.equal(sharedKioskQueue.orders[0].items[0].barcode, "PUG-000002")
+  assert.equal(sharedKioskQueue.credentials_synced_to_client, false)
+
+  const kioskStatusUpdate = await fetchJson(`${baseUrl}/kiosk/orders/${kioskOrder.order.order_id}/status`, {
+    method: "PATCH",
+    token: staffAuth.session.token,
+    body: {
+      status: "pulling",
+    },
+  })
+  assert.equal(kioskStatusUpdate.status, "ok")
+  assert.equal(kioskStatusUpdate.order.status, "pulling")
+  assert.equal(kioskStatusUpdate.inventory_mutation_performed, false)
+  assert.equal(kioskStatusUpdate.wordpress_status_sync_deferred, true)
+
+  const refreshedKioskQueue = await fetchJson(`${baseUrl}/kiosk/orders`, {
+    token: staffAuth.session.token,
+  })
+  assert.equal(refreshedKioskQueue.orders[0].status, "pulling")
 
   const eventList = await fetchJson(`${baseUrl}/events`)
   assert.equal(eventList.status, "ok")

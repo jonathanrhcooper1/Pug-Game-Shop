@@ -3,6 +3,83 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Shared LAN Kiosk Pickup Queue
+
+### What Changed
+
+- Added shared LAN server APIs for staff to list kiosk pickup orders and update
+  pickup status:
+  - `GET /kiosk/orders`
+  - `PATCH /kiosk/orders/:order_id/status`
+- Kiosk orders now persist card item snapshots, updated timestamps, totals, and
+  customer-safe order summaries in the local sync SQLite database.
+- Kiosk order creation now rejects unavailable or kiosk-hidden inventory before
+  reserving items.
+- WordPress kiosk acceptance no longer overwrites staff pull states such as
+  `pulling`, `ready`, or `completed` when the local order is pushed later.
+- The offline app now refreshes a shared pickup queue after PIN login, lets staff
+  refresh manually, and updates ticket statuses through the LAN server without
+  changing inventory counts.
+
+### Why
+
+Multiple employee stations and customer kiosks need one shared in-store pickup
+queue. The website remains the source of truth for inventory, while the LAN
+server coordinates local staff workflow and survives temporary website/network
+interruptions.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteBootstrapperRuntimeWiringTest.php`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local sync SQLite `kiosk_orders.items_json`.
+- Local sync SQLite `kiosk_orders.updated_at_utc`.
+
+### Tests Added
+
+- LAN server contract coverage for shared kiosk queue endpoints,
+  responsibilities, and non-mutating status updates.
+- LAN runtime coverage proving staff can list shared kiosk tickets, see exact
+  item snapshots, and move a ticket to `pulling` without inventory mutation.
+- Offline app client contract coverage for shared kiosk list/status methods.
+- Offline app UI shell coverage for the shared pickup queue, refresh control,
+  and empty queue state.
+- Hardened the offline route runtime wiring fixture with a far-future device
+  token expiry so the full matrix does not fail on June 9, 2026.
+
+### Verification
+
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:offline-app`: passed, including offline app contracts and
+  22 Rust/Tauri unit tests.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the shared kiosk queue endpoints, client
+  methods, and offline app shared queue UI.
+- Existing local sync SQLite databases may retain the added nullable/defaulted
+  columns; no production WordPress database rollback is required.
+
 ## 2026-06-09 - Square POS Count Reconciliation Slice
 
 ### What Changed

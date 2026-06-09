@@ -30,6 +30,7 @@ assert.equal(contract.local_database, "store-sync.sqlite")
 assert.equal(contract.safety.wordpress_acceptance_required_for_final_inventory_status, true)
 assert.equal(contract.safety.pin_credentials_stored_as_hashes, true)
 assert.equal(contract.safety.manager_required_for_user_access_changes, true)
+assert.equal(contract.safety.kiosk_status_updates_mutate_inventory, false)
 assert.equal(contract.safety.square_payment_capture_supported, false)
 assert.equal(contract.safety.square_pos_inventory_pull_plan_manager_only, true)
 assert.equal(contract.safety.square_pos_inventory_count_reconciliation_manager_only, true)
@@ -49,6 +50,8 @@ assert.equal(contract.setup_status.device_heartbeat_path, "/devices/heartbeat")
 assert.equal(contract.setup_status.device_status_path, "/devices/status")
 assert.ok(contract.responsibilities.includes("prevent_local_double_sell_between_employee_and_kiosk_clients"))
 assert.ok(contract.responsibilities.includes("queue_kiosk_pickup_orders_with_first_and_last_name"))
+assert.ok(contract.responsibilities.includes("share_kiosk_pickup_orders_across_employee_and_kiosk_clients"))
+assert.ok(contract.responsibilities.includes("allow_staff_to_update_kiosk_pickup_status_without_inventory_mutation"))
 assert.ok(contract.responsibilities.includes("publish_secret_free_one_website_setup_status"))
 assert.ok(contract.responsibilities.includes("track_employee_and_kiosk_device_heartbeats"))
 assert.ok(contract.responsibilities.includes("publish_online_offline_client_presence"))
@@ -80,7 +83,9 @@ for (const endpoint of [
   "GET /customers/search",
   "POST /customers",
   "POST /inventory/reservations",
+  "GET /kiosk/orders",
   "POST /credit/adjustments",
+  "PATCH /kiosk/orders/:order_id/status",
   "POST /credit/redemptions",
   "GET /events",
   "POST /events/registrations",
@@ -119,6 +124,7 @@ assert.ok(employee.allowed_write_paths.includes("/inventory/intake"))
 assert.ok(employee.allowed_write_paths.includes("/customers"))
 assert.ok(employee.allowed_write_paths.includes("/events/registrations"))
 assert.ok(employee.allowed_write_paths.includes("/events/check-ins"))
+assert.ok(employee.allowed_write_paths.includes("/kiosk/orders/:order_id/status"))
 assert.equal(employee.local_cache_source, "local_sync_server")
 assert.equal(employee.device_heartbeat_path, "/devices/heartbeat")
 

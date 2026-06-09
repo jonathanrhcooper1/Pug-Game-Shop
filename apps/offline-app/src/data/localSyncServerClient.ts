@@ -273,16 +273,53 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   live_provider_request_performed: boolean
 }>
 
+export type LocalSyncKioskOrderStatus = "queued" | "accepted" | "pulling" | "ready" | "completed"
+
+export type LocalSyncKioskOrder = {
+  order_id: string
+  first_name: string
+  last_name: string
+  customer_name: string
+  status: LocalSyncKioskOrderStatus
+  reservation_ids: string[]
+  items: Array<{
+    public_id: string
+    card_name: string
+    set_name: string
+    condition: string
+    barcode: string
+    location: string
+    price_minor_units: number
+    currency: "USD"
+    status: LocalSyncInventoryItem["status"]
+    row_version: number
+  }>
+  item_count: number
+  total_minor_units: number
+  currency: "USD"
+  created_at_utc: string
+  updated_at_utc: string
+}
+
 export type LocalSyncKioskOrderResult = LocalSyncResult<{
-  order: {
-    order_id: string
-    first_name: string
-    last_name: string
-    status: "queued"
-    reservation_ids: string[]
-    created_at_utc: string
-  }
+  order: LocalSyncKioskOrder
   reservations: LocalSyncReservation[]
+}>
+
+export type LocalSyncKioskOrderListResult = LocalSyncResult<{
+  orders: LocalSyncKioskOrder[]
+  order_count: number
+  total_order_count: number
+  shared_queue_source: "local_sync_server"
+  wordpress_acceptance_required: true
+  credentials_synced_to_client: false
+}>
+
+export type LocalSyncKioskOrderStatusUpdateResult = LocalSyncResult<{
+  order: LocalSyncKioskOrder
+  shared_queue_source: "local_sync_server"
+  wordpress_status_sync_deferred: true
+  inventory_mutation_performed: false
 }>
 
 export type LocalSyncCustomer = {
@@ -729,6 +766,15 @@ export type LocalSyncServerClient = {
   createKioskOrder: (
     input: { firstName: string; lastName: string; inventoryPublicIds: string[] },
   ) => Promise<LocalSyncKioskOrderResult>
+  listKioskOrders: (
+    sessionToken: string,
+    input?: { limit?: number; statuses?: LocalSyncKioskOrderStatus[] },
+  ) => Promise<LocalSyncKioskOrderListResult>
+  updateKioskOrderStatus: (
+    sessionToken: string,
+    orderId: string,
+    status: LocalSyncKioskOrderStatus,
+  ) => Promise<LocalSyncKioskOrderStatusUpdateResult>
   searchCustomers: (query: string) => Promise<LocalSyncCustomerSearchResult>
   createCustomer: (
     sessionToken: string,
@@ -908,6 +954,25 @@ export function createLocalSyncServerClient(
           inventory_public_ids: input.inventoryPublicIds,
         },
       }) as Promise<LocalSyncKioskOrderResult>,
+    listKioskOrders: (sessionToken, input = {}) => {
+      const statuses = (input.statuses ?? [])
+        .map((status) => `status=${encodeURIComponent(status)}`)
+        .join("&")
+      const params = [
+        `limit=${encodeURIComponent(String(input.limit ?? 25))}`,
+        statuses,
+      ].filter(Boolean).join("&")
+
+      return requestLocalSync(fetcher, baseUrl, `/kiosk/orders?${params}`, {
+        sessionToken,
+      }) as Promise<LocalSyncKioskOrderListResult>
+    },
+    updateKioskOrderStatus: (sessionToken, orderId, status) =>
+      requestLocalSync(fetcher, baseUrl, `/kiosk/orders/${encodeURIComponent(orderId)}/status`, {
+        method: "PATCH",
+        sessionToken,
+        body: { status },
+      }) as Promise<LocalSyncKioskOrderStatusUpdateResult>,
     searchCustomers: (query) =>
       requestLocalSync(fetcher, baseUrl, `/customers/search?q=${encodeURIComponent(query)}`) as Promise<
         LocalSyncCustomerSearchResult

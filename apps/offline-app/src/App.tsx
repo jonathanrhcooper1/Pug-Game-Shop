@@ -119,6 +119,8 @@ import {
   type LocalSyncDeviceStatusResult,
   type LocalSyncEventSnapshot,
   type LocalSyncInventoryItem,
+  type LocalSyncKioskOrder,
+  type LocalSyncKioskOrderStatus,
   type LocalSyncPullResult,
   type LocalSyncPushResult,
   type LocalSyncSetupStatusResult,
@@ -200,7 +202,7 @@ type OfflineAppUser = {
   access: AccessSection[]
 }
 
-type KioskTicketStatus = "queued" | "pulling" | "ready" | "completed"
+type KioskTicketStatus = LocalSyncKioskOrderStatus
 
 type KioskTicketItem = {
   publicId: string
@@ -1073,6 +1075,28 @@ function inventoryVisibilitySummary(item: InventoryItem) {
   return `Online ${inventoryVisibilityLabel(item.onlineVisibility)}, kiosk ${inventoryVisibilityLabel(
     item.kioskVisibility,
   )}, POS ${inventoryVisibilityLabel(item.posVisibility)}`
+}
+
+function kioskTicketFromLocalSyncOrder(order: LocalSyncKioskOrder): KioskOrderTicket {
+  return {
+    orderId: order.order_id,
+    customerName: order.customer_name || [order.first_name, order.last_name].filter(Boolean).join(" "),
+    itemCount: order.item_count,
+    totalMinorUnits: order.total_minor_units,
+    totalLabel: formatMoney(order.total_minor_units, order.currency),
+    items: order.items.map((item) => ({
+      publicId: item.public_id,
+      cardName: item.card_name,
+      setName: item.set_name,
+      condition: item.condition,
+      barcode: item.barcode,
+      location: item.location,
+      price: formatMoney(item.price_minor_units, item.currency),
+    })),
+    reservationIds: order.reservation_ids,
+    createdAtUtc: order.created_at_utc,
+    status: order.status,
+  }
 }
 
 function lanSyncPushMessage(result: LocalSyncPushResult | null) {
@@ -2394,6 +2418,7 @@ export function App() {
     setManagerSettingsLocked(true)
     setLoginPin("")
     setLoginIssue("")
+    setKioskOrderTickets([])
   }
 
   function upsertLocalSyncUser(authResult: Extract<LocalSyncAuthResult, { status: "ok" }>) {
@@ -2447,6 +2472,44 @@ export function App() {
     setLocalSyncStatus(nextStatus)
 
     return nextStatus
+  }
+
+  async function refreshKioskOrderTickets(showMessage = false) {
+    if (!localSyncSessionToken) {
+      if (showMessage) {
+        setActiveSection("Kiosk")
+        setActivityMessage({
+          title: "Kiosk queue needs login",
+          detail: "Unlock with a staff or manager PIN before loading the shared LAN pickup queue.",
+        })
+      }
+      return null
+    }
+
+    const result = await localSyncClient.listKioskOrders(localSyncSessionToken, { limit: 25 })
+
+    if (result.status !== "ok") {
+      if (showMessage) {
+        setActiveSection("Kiosk")
+        setActivityMessage({
+          title: result.status === "unavailable" ? "LAN server unavailable" : "Kiosk queue blocked",
+          detail: result.message,
+        })
+      }
+      return result
+    }
+
+    setKioskOrderTickets(result.orders.map(kioskTicketFromLocalSyncOrder))
+
+    if (showMessage) {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Shared pickup queue loaded",
+        detail: `${result.order_count} pickup order(s) loaded from ${localSyncClient.serverUrl}; credentials copied to client: no.`,
+      })
+    }
+
+    return result
   }
 
   async function handlePlanSquarePosInventoryPull() {
@@ -2670,6 +2733,15 @@ export function App() {
       setLocalSyncSessionToken(authResult.session.token)
       setLocalSyncSessionExpiresAtUtc(authResult.session.expiresAtUtc)
       void refreshLocalSyncStatus()
+      if (sessionUser.access.includes("Kiosk")) {
+        void localSyncClient
+          .listKioskOrders(authResult.session.token, { limit: 25 })
+          .then((result) => {
+            if (result.status === "ok") {
+              setKioskOrderTickets(result.orders.map(kioskTicketFromLocalSyncOrder))
+            }
+          })
+      }
       startOfflineUserSession(
         sessionUser,
         sessionUser.role === "manager"
@@ -3627,28 +3699,43 @@ export function App() {
     setKioskCartIds((ids) => ids.filter((id) => id !== itemId))
   }
 
-  function handleKioskTicketStatus(orderId: string, nextStatus: KioskTicketStatus) {
+  async function handleKioskTicketStatus(orderId: string, nextStatus: KioskTicketStatus) {
     const statusLabelMap: Record<KioskTicketStatus, string> = {
       queued: "Queued",
+      accepted: "Accepted",
       pulling: "Pulling",
       ready: "Ready for Pickup",
       completed: "Completed",
     }
 
+    if (!localSyncSessionToken) {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Kiosk queue needs login",
+        detail: "Unlock with a staff or manager PIN before updating the shared pickup queue.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.updateKioskOrderStatus(localSyncSessionToken, orderId, nextStatus)
+
+    if (result.status !== "ok") {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Kiosk ticket blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    const updatedTicket = kioskTicketFromLocalSyncOrder(result.order)
     setKioskOrderTickets((tickets) =>
-      tickets.map((ticket) =>
-        ticket.orderId === orderId
-          ? {
-              ...ticket,
-              status: nextStatus,
-            }
-          : ticket,
-      ),
+      tickets.map((ticket) => (ticket.orderId === orderId ? updatedTicket : ticket)),
     )
     setActiveSection("Kiosk")
     setActivityMessage({
       title: "Kiosk ticket updated",
-      detail: `${orderId} is now ${statusLabelMap[nextStatus].toLowerCase()}. The reservation remains tied to the website inventory row until sync or staff release completes.`,
+      detail: `${orderId} is now ${statusLabelMap[nextStatus].toLowerCase()} in the shared LAN pickup queue. Inventory was not mutated by this status update.`,
     })
   }
 
@@ -3739,7 +3826,8 @@ export function App() {
           : item,
       ),
     )
-    setKioskOrderTickets((tickets) => [kioskTicket, ...tickets].slice(0, 8))
+    setKioskOrderTickets((tickets) => [kioskTicket, ...tickets].slice(0, 25))
+    void refreshKioskOrderTickets(false)
     setKioskCartIds([])
     setKioskFirstName("")
     setKioskLastName("")
@@ -6559,65 +6647,77 @@ export function App() {
                   )}
                 </div>
               </div>
-              {kioskOrderTickets.length > 0 ? (
-                <div className="kiosk-ticket-list" aria-label="Recent kiosk pickup tickets">
-                  <span className="micro-label">Recent pickup tickets</span>
-                  {kioskOrderTickets.map((ticket) => (
-                    <article key={ticket.orderId}>
-                      <div>
-                        <strong>{ticket.orderId}</strong>
-                        <small>
-                          {ticket.customerName}; {ticket.itemCount} card(s); {ticket.totalLabel}
-                        </small>
-                        <span className={`kiosk-ticket-status ${ticket.status}`}>
-                          Staff pull status: {ticket.status}
-                        </span>
-                      </div>
-                      <div className="kiosk-ticket-detail">
-                        <small>Queued {formatUtcLabel(ticket.createdAtUtc)}</small>
-                        <small>
-                          Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
-                          {ticket.reservationIds.length > 3 ? "..." : ""}
-                        </small>
-                        <div className="kiosk-ticket-items">
-                          {ticket.items.slice(0, 4).map((item) => (
-                            <small key={item.publicId}>
-                              {item.cardName}; {item.condition}; {item.location}; {item.barcode};{" "}
-                              {item.price}
-                            </small>
-                          ))}
-                          {ticket.items.length > 4 ? (
-                            <small>+{ticket.items.length - 4} more card(s)</small>
-                          ) : null}
-                        </div>
-                        <div className="kiosk-ticket-actions" aria-label="Kiosk pull controls">
-                          <button
-                            type="button"
-                            disabled={ticket.status !== "queued"}
-                            onClick={() => handleKioskTicketStatus(ticket.orderId, "pulling")}
-                          >
-                            Start Pull
-                          </button>
-                          <button
-                            type="button"
-                            disabled={ticket.status === "ready" || ticket.status === "completed"}
-                            onClick={() => handleKioskTicketStatus(ticket.orderId, "ready")}
-                          >
-                            Ready for Pickup
-                          </button>
-                          <button
-                            type="button"
-                            disabled={ticket.status === "completed"}
-                            onClick={() => handleKioskTicketStatus(ticket.orderId, "completed")}
-                          >
-                            Complete Pickup
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+              <div className="kiosk-ticket-list" aria-label="Recent kiosk pickup tickets">
+                <div className="kiosk-ticket-toolbar">
+                  <div>
+                    <span className="micro-label">Recent pickup tickets</span>
+                    <strong>Shared pickup queue</strong>
+                  </div>
+                  <button type="button" onClick={() => void refreshKioskOrderTickets(true)}>
+                    Refresh Pickup Queue
+                  </button>
                 </div>
-              ) : null}
+                {kioskOrderTickets.length > 0 ? (
+                  <>
+                    {kioskOrderTickets.map((ticket) => (
+                      <article key={ticket.orderId}>
+                        <div>
+                          <strong>{ticket.orderId}</strong>
+                          <small>
+                            {ticket.customerName}; {ticket.itemCount} card(s); {ticket.totalLabel}
+                          </small>
+                          <span className={`kiosk-ticket-status ${ticket.status}`}>
+                            Staff pull status: {ticket.status}
+                          </span>
+                        </div>
+                        <div className="kiosk-ticket-detail">
+                          <small>Queued {formatUtcLabel(ticket.createdAtUtc)}</small>
+                          <small>
+                            Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
+                            {ticket.reservationIds.length > 3 ? "..." : ""}
+                          </small>
+                          <div className="kiosk-ticket-items">
+                            {ticket.items.slice(0, 4).map((item) => (
+                              <small key={item.publicId}>
+                                {item.cardName}; {item.condition}; {item.location}; {item.barcode};{" "}
+                                {item.price}
+                              </small>
+                            ))}
+                            {ticket.items.length > 4 ? (
+                              <small>+{ticket.items.length - 4} more card(s)</small>
+                            ) : null}
+                          </div>
+                          <div className="kiosk-ticket-actions" aria-label="Kiosk pull controls">
+                            <button
+                              type="button"
+                              disabled={!["queued", "accepted"].includes(ticket.status)}
+                              onClick={() => void handleKioskTicketStatus(ticket.orderId, "pulling")}
+                            >
+                              Start Pull
+                            </button>
+                            <button
+                              type="button"
+                              disabled={ticket.status === "ready" || ticket.status === "completed"}
+                              onClick={() => void handleKioskTicketStatus(ticket.orderId, "ready")}
+                            >
+                              Ready for Pickup
+                            </button>
+                            <button
+                              type="button"
+                              disabled={ticket.status === "completed"}
+                              onClick={() => void handleKioskTicketStatus(ticket.orderId, "completed")}
+                            >
+                              Complete Pickup
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </>
+                ) : (
+                  <p className="panel-empty">No shared pickup tickets loaded from the LAN server.</p>
+                )}
+              </div>
             </section>
 
             <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>

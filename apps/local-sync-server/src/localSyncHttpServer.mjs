@@ -111,8 +111,24 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.reserveInventory(token, await readJson(request)))
       }
 
+      if (request.method === "GET" && url.pathname === "/kiosk/orders") {
+        return sendStoreResult(response, store.listKioskOrders(token, {
+          limit: url.searchParams.get("limit") ?? "",
+          statuses: url.searchParams.getAll("status"),
+        }))
+      }
+
       if (request.method === "POST" && url.pathname === "/kiosk/orders") {
         return sendStoreResult(response, store.createKioskOrder(await readJson(request)))
+      }
+
+      const kioskStatusMatch = url.pathname.match(/^\/kiosk\/orders\/([^/]+)\/status$/)
+
+      if (request.method === "PATCH" && kioskStatusMatch) {
+        return sendStoreResult(
+          response,
+          store.updateKioskOrderStatus(token, decodeURIComponent(kioskStatusMatch[1]), await readJson(request)),
+        )
       }
 
       if (request.method === "GET" && url.pathname === "/customers/search") {
