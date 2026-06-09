@@ -122,6 +122,17 @@ reconciliation-only Square POS event mapping from provider line items back to
 serialized inventory IDs. Unmapped lines become staff-review conflicts, and all
 WordPress inventory mutation remains deferred.
 
+The API-client adapter now also plans the barcode/SKU inventory-read side of
+that bridge. Given WordPress inventory rows, it treats the store barcode/SKU as
+the Square POS scan identity, expects the mirrored Square item variation to
+carry that value in its `sku`, and uses the stored
+`square_catalog_variation_id` plus Square location ID to shape a deferred
+`POST /v2/inventory/counts/batch-retrieve` request. Missing Square variation
+IDs, missing Square locations, or duplicate scan identities become mapping
+conflicts for staff review. Square counts are reconciliation inputs only;
+WordPress serialized inventory remains authoritative, and payments continue to
+belong to the official WooCommerce Square extension.
+
 ## Square Inventory Sync Request Planning
 
 The WordPress plugin mirrors the API-client adapter with a PHP request planner.
@@ -590,6 +601,8 @@ production credentials remain disabled until staging acceptance.
 ## Sources
 
 - https://developer.squareup.com/docs/catalog-api/what-it-does
+- https://developer.squareup.com/reference/square/objects/CatalogItemVariation
+- https://developer.squareup.com/reference/square/inventory-api/batch-retrieve-inventory-counts
 - https://developer.squareup.com/docs/orders-api/what-it-does
 - https://developer.squareup.com/docs/inventory-api/webhooks
 - https://developer.godaddy.com/getstarted

@@ -6,6 +6,29 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The WooCommerce customer account portal now renders a branded The Pug-style
+  “Collector Vault” dashboard with store-credit metrics, recent-order cards,
+  quick shop/order actions, responsive styling, and account-page-only CSS
+  loaded from the plugin.
+- The offline app shell now uses The Pug brand mark, displays card art in
+  inventory and kiosk search results, constrains money inputs to two decimal
+  places, and tracks app-to-LAN inventory intake receipts until WordPress
+  accepts, retries, or rejects them.
+- The local sync server contract now includes employee/kiosk client heartbeat
+  and status endpoints so the future status screen can show online/offline
+  client presence without returning credentials.
+- ScryDex catalog admin imports now surface card-worker failures directly in
+  the progress table instead of treating a blocked card batch as a completed
+  zero-row page. Block reasons, configuration issues, and provider error codes
+  are shown without exposing credentials.
+- The production ScryDex index runner now defaults to the full enterprise
+  mirror flow: all expansion pages, all stored sets, and card pagination until
+  ScryDex returns a short page. Explicit small limits remain opt-in for smoke
+  tests, and repeated bounded runs now carry the ScryDex continuation
+  checkpoint forward.
+- Staff lookup/intake and customer account money displays now format prices
+  with two decimal places for human-facing UI while preserving four-decimal
+  database precision for provider/import data.
 - ScryDex card imports now normalize the live API shape where prices are nested
   under each `variants[].prices[]` entry. The importer now stores those
   condition/variant price points, ties them to the generated provider variant
@@ -40,6 +63,16 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Added a Square barcode/SKU inventory-pull planner to the API client. It maps
+  WordPress serialized inventory rows to Square catalog variation IDs and
+  location IDs for deferred inventory-count reads while keeping payments
+  delegated to the official WooCommerce Square extension.
+- Added a contained The Pug rebrand plan and customer UI CSS foundation under
+  `docs/branding/` for the broader website/theme pass.
+- The read-only ScryDex live-smoke helper now exercises the real expansion-card
+  API path by fetching expansions, selecting an expansion, then pulling cards
+  with `include=prices` and reporting image, variant, and nested price-point
+  coverage without logging raw provider bodies.
 - Added a read-only production ScryDex catalog verification runner that checks
   the deployed plugin version, ScryDex catalog status route, card counts, image
   coverage, variant coverage, price coverage, and price-point totals after a

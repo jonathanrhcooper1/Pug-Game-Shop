@@ -208,6 +208,8 @@ for (const className of [
   "connector-panel",
   "filter-tray",
   "inventory-card-grid",
+  "inventory-card-art",
+  "inventory-card-price",
   "queued-operation-list",
   "queued-operation-card",
   "queue-review-card",
@@ -261,6 +263,7 @@ for (const className of [
   "kiosk-customer-fields",
   "kiosk-layout",
   "kiosk-card",
+  "kiosk-card-art",
   "kiosk-cart",
   "manager-session-panel",
   "session-lock",
@@ -531,7 +534,7 @@ for (const responsiveMarker of ["@media (max-width: 760px)", "max-width: 12em"])
   assert.ok(styles.includes(responsiveMarker), `Missing responsive marker: ${responsiveMarker}`)
 }
 
-for (const color of ["#f6c760", "#79d78f", "#f07e67"]) {
+for (const color of ["#ffd044", "#79d78f", "#f07e67"]) {
   assert.ok(styles.includes(color), `Missing status/accent color: ${color}`)
 }
 

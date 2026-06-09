@@ -260,6 +260,8 @@ try {
   assert.equal(health.one_website_mode, true)
   assert.equal(health.website_configured, true)
   assert.equal(health.setup_status_path, "/setup/status")
+  assert.equal(health.device_heartbeat_path, "/devices/heartbeat")
+  assert.equal(health.device_status_path, "/devices/status")
 
   const setupStatus = await fetchJson(`${baseUrl}/setup/status`)
 
@@ -275,10 +277,80 @@ try {
   assert.equal(setupStatus.wordpress_pull_configured, true)
   assert.equal(setupStatus.wordpress_push_configured, true)
   assert.equal(setupStatus.scrydex_catalog_proxy_configured, true)
+  assert.equal(setupStatus.client_presence_enabled, true)
+  assert.equal(setupStatus.device_heartbeat_path, "/devices/heartbeat")
+  assert.equal(setupStatus.device_status_path, "/devices/status")
   assert.equal(setupStatus.credentials_synced_to_client, false)
   assert.equal(setupStatus.raw_credentials_returned, false)
   assert.equal(setupStatus.direct_mysql_access, false)
   assertNoSecrets(setupStatus)
+
+  const employeeHeartbeat = await fetchJson(`${baseUrl}/devices/heartbeat`, {
+    method: "POST",
+    body: {
+      device_id: "front-counter-01",
+      device_label: "Front Counter 01",
+      mode: "employee",
+      app_version: "0.2.0",
+      platform: "windows",
+      network_status: "online",
+      setup_status: "ready",
+      server_url: baseUrl,
+      website_url: "https://vbf.2a7.myftpupload.com/",
+      capabilities: ["Inventory", "Kiosk", "Customers", "Sync", "Status", "Settings"],
+      heartbeat_interval_seconds: 20,
+    },
+  })
+  assert.equal(employeeHeartbeat.status, "ok")
+  assert.equal(employeeHeartbeat.action, "local_client_device_heartbeat")
+  assert.equal(employeeHeartbeat.device.device_id, "front-counter-01")
+  assert.equal(employeeHeartbeat.device.mode, "employee")
+  assert.equal(employeeHeartbeat.device.connection_status, "online")
+  assert.equal(employeeHeartbeat.device.setup_status, "ready")
+  assert.equal(employeeHeartbeat.device.credentials_synced_to_client, false)
+  assert.equal(employeeHeartbeat.credentials_synced_to_client, false)
+  assertNoSecrets(employeeHeartbeat)
+
+  const kioskHeartbeat = await fetchJson(`${baseUrl}/devices/heartbeat`, {
+    method: "POST",
+    body: {
+      device_id: "kiosk-01",
+      device_label: "Kiosk 01",
+      mode: "kiosk",
+      app_version: "0.2.0",
+      platform: "windows",
+      network_status: "offline",
+      setup_status: "setup_required",
+      capabilities: ["Kiosk", "Status"],
+    },
+  })
+  assert.equal(kioskHeartbeat.status, "ok")
+  assert.equal(kioskHeartbeat.device.device_id, "kiosk-01")
+  assert.equal(kioskHeartbeat.device.mode, "kiosk")
+  assert.equal(kioskHeartbeat.device.connection_status, "offline")
+  assert.equal(kioskHeartbeat.device.setup_status, "setup_required")
+  assert.equal(kioskHeartbeat.device_count, 2)
+  assert.equal(kioskHeartbeat.online_count, 1)
+  assert.equal(kioskHeartbeat.offline_count, 1)
+  assert.equal(kioskHeartbeat.setup_ready_count, 1)
+  assert.equal(kioskHeartbeat.setup_required_count, 1)
+  assertNoSecrets(kioskHeartbeat)
+
+  const deviceStatus = await fetchJson(`${baseUrl}/devices/status`)
+  assert.equal(deviceStatus.status, "ok")
+  assert.equal(deviceStatus.action, "local_client_device_status")
+  assert.equal(deviceStatus.topology, "lan_middleman_server")
+  assert.equal(deviceStatus.device_count, 2)
+  assert.equal(deviceStatus.online_count, 1)
+  assert.equal(deviceStatus.offline_count, 1)
+  assert.equal(deviceStatus.employee_count, 1)
+  assert.equal(deviceStatus.kiosk_count, 1)
+  assert.equal(deviceStatus.setup_ready_count, 1)
+  assert.equal(deviceStatus.setup_required_count, 1)
+  assert.equal(deviceStatus.credentials_synced_to_client, false)
+  assert.ok(deviceStatus.devices.some((device) => device.device_id === "front-counter-01"))
+  assert.ok(deviceStatus.devices.some((device) => device.device_id === "kiosk-01"))
+  assertNoSecrets(deviceStatus)
 
   const managerAuth = await fetchJson(`${baseUrl}/auth/pin`, {
     method: "POST",
@@ -831,6 +903,12 @@ try {
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
   assert.ok(syncStatus.event_count >= 2)
+  assert.equal(syncStatus.client_presence_enabled, true)
+  assert.equal(syncStatus.client_device_count, 2)
+  assert.equal(syncStatus.online_client_device_count, 1)
+  assert.equal(syncStatus.offline_client_device_count, 1)
+  assert.equal(syncStatus.setup_ready_client_device_count, 1)
+  assert.equal(syncStatus.setup_required_client_device_count, 1)
   assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
   assert.equal(syncStatus.scrydex_fallback_connected, true)
   assert.equal(syncStatus.wordpress_pull_connected, true)

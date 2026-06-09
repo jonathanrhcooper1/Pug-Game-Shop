@@ -45,6 +45,8 @@ final class InventoryAdminWorkspaceUiTest extends TestCase {
 				'stock_total_count',
 				'stock_by_condition',
 				'market_price_minor_units',
+				'formatMoney',
+				'toFixed(2)',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

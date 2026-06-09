@@ -3,6 +3,162 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Pug Demo UI, Local Presence, Intake Receipts, and Square Barcode Planning
+
+### What Changed
+
+- Added a branded WooCommerce customer account portal presentation with
+  Collector Vault summary metrics, shop/order links, styled order cards, and
+  account-page-only CSS.
+- Updated the offline app to use The Pug logo, show card art in inventory and
+  kiosk search rows, constrain money inputs to two decimals, and track local
+  inventory intake sync receipts through LAN push acceptance/retry/rejection.
+- Added local sync server client presence support with `POST /devices/heartbeat`
+  and `GET /devices/status`, persisted client devices, and online/offline
+  counts in sync status responses.
+- Added a Square barcode/SKU inventory pull planner that maps WordPress
+  inventory scan identities to Square catalog variation IDs/location IDs for
+  deferred inventory count reads while leaving payment capture to the official
+  WooCommerce Square extension.
+- Aligned offline Windows/Tauri package metadata to release `0.169.0`.
+- Added a contained The Pug website/customer UI rebrand package under
+  `docs/branding/` for the broader theme pass.
+
+### Why
+
+The live demo needs the visible customer/local app surfaces to feel like The
+Pug, and the operational architecture needs to show how multiple local app and
+kiosk clients stay coordinated through the LAN middleman while WordPress remains
+the source of truth. Square inventory/barcode planning also needed a concrete
+bridge that does not confuse POS inventory reads with payment processing.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalController.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/assets/css/customer-account-portal.css`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/assets/the-pug-brand-logo.webp`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/README.md`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/api-client/README.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/branding/the-pug-rebrand-plan.md`
+- `docs/branding/the-pug-customer-ui.css`
+- `docs/branding/assets/the-pug-logo-reference.webp`
+
+### Migrations Added
+
+- Local sync SQLite creates a `client_devices` table for LAN client heartbeat
+  presence. The WordPress database schema is unchanged.
+
+### Tests Added
+
+- Added local sync server contract, runtime, and persistence coverage for
+  heartbeat/status endpoints and persisted client presence.
+- Added offline app workspace and pull-cache contract coverage for intake sync
+  receipts, canonical inventory operation counting, and two-decimal money input
+  drafts.
+- Added API-client coverage for Square barcode/SKU inventory pull request
+  planning, missing mapping conflicts, and production credential rejection.
+- Expanded customer account portal tests for asset enqueue contracts and branded
+  portal HTML.
+
+### Rollback Notes
+
+- Roll back to plugin/package version `0.168.0` if the branded account portal
+  or ScryDex admin behavior needs to be reverted.
+- Remove `client_devices` from the local sync SQLite database if reverting the
+  LAN presence feature.
+- Square barcode/SKU planner changes are planning-only and can be reverted from
+  `packages/api-client` without database rollback.
+
+## 2026-06-09 - ScryDex Full Index Runner and Admin Failure Visibility
+
+### What Changed
+
+- Updated the production ScryDex index runner so the default production path is
+  the full catalog mirror: all expansion pages, all stored sets, and card pages
+  until ScryDex returns a short page.
+- Added checkpoint forwarding between repeated bounded production card batches
+  so smoke runs advance to the next page instead of re-requesting page 1.
+- Updated the read-only live ScryDex smoke helper to test the real expansion
+  card endpoint with `include=prices`, then summarize card image, variant, and
+  nested price coverage without logging raw API responses.
+- Updated the ScryDex Catalog admin importer to surface card-worker block
+  reasons, configuration issues, and provider error codes instead of silently
+  completing a zero-card batch.
+- Updated staff lookup/intake and customer account money displays to show two
+  decimal places while keeping four-decimal provider/database values intact.
+- Bumped the plugin/package version to `0.169.0`.
+
+### Why
+
+Production was pulling ScryDex sets but not showing usable card imports. The
+live API path was proven to return cards; the remaining failure mode was that
+blocked card batches could be hidden by the admin progress loop and bounded
+production helper runs could fail to advance checkpoint state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `scripts/scrydex-live-smoke.mjs`
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This revision changes indexing orchestration, admin visibility, and
+  verification tooling only.
+
+### Tests Added
+
+- Expanded the ScryDex live-smoke contract to require the expansion-card API
+  path, documented `page_size`, `include=prices`, image/variant/price summaries,
+  and no raw response logging.
+- Expanded the production ScryDex index contract to require run-until-short-page
+  defaults and checkpoint forwarding.
+- Expanded the ScryDex admin workspace contract to require visible block reason
+  handling for expansion and card batches.
+- Expanded staff/customer UI tests so human-facing money formatting stays at
+  two decimals.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.168.0` if the admin import console behavior
+  needs to be reverted.
+- No database rollback is required.
+
 ## 2026-06-09 - Production ScryDex Catalog Verification Runner
 
 ### What Changed

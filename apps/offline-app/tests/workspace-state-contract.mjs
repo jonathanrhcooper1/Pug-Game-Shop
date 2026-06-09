@@ -34,6 +34,8 @@ for (const requiredExport of [
   "OfflinePushRequestPlan",
   "OfflinePushResultSummary",
   "OfflinePushQueueApplyResult",
+  "LocalInventoryIntakeSyncReceipt",
+  "LocalInventoryIntakePushResultSummary",
   "OfflinePullRefreshPreview",
   "OfflineConnectorTestReport",
   "OneWebsiteConnectorSetupPlan",
@@ -72,6 +74,10 @@ for (const requiredExport of [
   "buildConflictReviewOperation",
   "buildOfflineConflictResolutionRequestBody",
   "buildOfflinePushBatchPayload",
+  "buildLocalInventoryIntakeSyncReceipts",
+  "applyLocalInventoryIntakePushResults",
+  "pendingLocalInventoryIntakeReceipts",
+  "isCanonicalInventoryOperation",
   "buildOfflinePullRequestBody",
   "applyOfflinePullInventoryRecordsToCache",
   "applyOfflinePullCustomerCreditRecordsToCache",
@@ -122,6 +128,7 @@ for (const requiredExport of [
   "connectorManifestUnavailableGuidance",
   "creditRedemptionInputFromMinorUnits",
   "creditRedemptionInputToMinorUnits",
+  "moneyInputDraftWithTwoDecimals",
   "customerCreditAvailableAfterPending",
   "customerCreditDisplayName",
   "customerCreditLedgerEntriesForCustomer",
@@ -155,6 +162,13 @@ for (const marker of [
   "authorization_context_json",
   "schema_version: 1",
   "inventory_update",
+  "local_inventory_intake_sync_receipt",
+  "queueOperationType: \"inventory_intake\"",
+  "browserOperationEnvelopeCreated: false",
+  "wordpress_inventory_intake_route",
+  "applyLocalInventoryIntakePushResults",
+  "pendingLocalInventoryIntakeReceipts",
+  "isCanonicalInventoryOperation",
   "credit_redemption",
   "customerPublicId",
   "customer_public_id",
@@ -346,6 +360,9 @@ assert.ok(appSource.includes("useState<OfflineLabelPrintJob[]>([])"))
 assert.ok(appSource.includes("job.payloadText"))
 assert.ok(appSource.includes("job.inventoryPublicId !== labelJob.inventoryPublicId"))
 assert.ok(appSource.includes("buildInventoryUpdateOperation(targetItem, operationOptions)"))
+assert.ok(appSource.includes("buildLocalInventoryIntakeSyncReceipts(nextItems"))
+assert.ok(appSource.includes("applyLocalInventoryIntakePushResults(receipts, lanPushResults).receipts"))
+assert.ok(appSource.includes("useState<\n    LocalInventoryIntakeSyncReceipt[]"))
 assert.ok(appSource.includes("quantityDeltaInput"))
 assert.ok(appSource.includes("quantityAdjustmentReason"))
 assert.ok(appSource.includes("inventoryQuantityDeltaFromInput(quantityDeltaInput)"))
@@ -404,6 +421,7 @@ assert.ok(appSource.includes("pushSummary.status"))
 assert.ok(appSource.includes("pushSummary.canonical_inventory_writes_deferred"))
 assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
 assert.ok(appSource.includes("syncSessionPlan.push.canonical_inventory_writes_deferred"))
+assert.ok(appSource.includes("batch.operations.filter(isCanonicalInventoryOperation)"))
 assert.ok(appSource.includes("handleInventoryReservation"))
 assert.ok(appSource.includes("handleEventCheckin"))
 assert.ok(appSource.includes("handleEventRegistration"))

@@ -13,6 +13,7 @@ use TCGStorePlatform\WooCommerce\CustomerAccountPortalController;
 final class CustomerAccountPortalControllerTest extends TestCase {
 	public function test_controller_contract_registers_single_my_account_endpoint(): void {
 		$this->assert_same( 'pug-portal', CustomerAccountPortalController::ENDPOINT );
+		$this->assert_same( 'tcg-store-customer-account-portal', CustomerAccountPortalController::STYLE_HANDLE );
 
 		$contracts = CustomerAccountPortalController::hook_contracts();
 		$map       = array();
@@ -25,6 +26,7 @@ final class CustomerAccountPortalControllerTest extends TestCase {
 		$this->assert_same( 'register_query_var', $map['filter query_vars'] );
 		$this->assert_same( 'add_menu_item', $map['filter woocommerce_account_menu_items'] );
 		$this->assert_same( 'render_endpoint', $map['action woocommerce_account_pug-portal_endpoint'] );
+		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
 	}
 
 	public function test_query_var_is_idempotently_added(): void {

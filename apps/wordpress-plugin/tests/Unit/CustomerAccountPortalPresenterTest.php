@@ -40,14 +40,29 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 					'created_at'           => '2026-06-09 12:00:00',
 				),
 			),
-			array()
+			array(),
+			array(
+				'branding' => array(
+					'company' => array(
+						'name'       => 'The Pug Game Shop',
+						'short_name' => 'The Pug',
+						'logo_url'   => 'https://example.test/logo.png',
+					),
+				),
+				'links'    => array(
+					'shop_url'   => 'https://example.test/shop/',
+					'orders_url' => 'https://example.test/my-account/orders/',
+				),
+			)
 		);
 
 		$json = (string) json_encode( $portal );
 
 		$this->assert_true( $portal['customer_linked'] );
-		$this->assert_same( '27.5000', $portal['store_credit']['balance'] );
+		$this->assert_same( '27.50', $portal['store_credit']['balance'] );
 		$this->assert_same( 'USD', $portal['store_credit']['currency'] );
+		$this->assert_same( 'The Pug Collector Vault', $portal['brand']['headline'] );
+		$this->assert_same( 'https://example.test/shop/', $portal['links']['shop_url'] );
 		$this->assert_same( 'Buylist credit', $portal['store_credit']['ledger_entries'][0]['label'] );
 		$this->assert_not_contains( 'jane@example.com', $json );
 		$this->assert_not_contains( '555-1212', $json );
@@ -102,7 +117,7 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 		$line  = $order['lines'][0];
 
 		$this->assert_same( 'GM-7001', $order['order_number'] );
-		$this->assert_same( '18.9900', $order['total'] );
+		$this->assert_same( '18.99', $order['total'] );
 		$this->assert_same( 'USD', $order['currency'] );
 		$this->assert_same( 'Charizard', $line['name'] );
 		$this->assert_same( 55, $line['inventory_id'] );
@@ -140,16 +155,31 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 						),
 					),
 				),
+			),
+			array(
+				'branding' => array(
+					'company' => array(
+						'name'       => 'The Pug Game Shop',
+						'short_name' => 'The Pug',
+					),
+				),
+				'links'    => array(
+					'shop_url'   => 'https://example.test/shop/',
+					'orders_url' => 'https://example.test/my-account/orders/',
+				),
 			)
 		);
 
 		$html = $presenter->render_html( $portal );
 
 		$this->assert_contains( 'Store Credit', $html );
-		$this->assert_contains( '8.0000 USD', $html );
+		$this->assert_contains( 'Collector Vault', $html );
+		$this->assert_contains( 'Browse inventory', $html );
+		$this->assert_contains( '8.00 USD', $html );
 		$this->assert_contains( 'Card Purchase History', $html );
 		$this->assert_contains( 'Order GM-7001', $html );
-		$this->assert_contains( 'Mew x1', $html );
+		$this->assert_contains( 'Mew', $html );
+		$this->assert_contains( 'x1', $html );
 		$this->assert_contains( 'Lightly Played', $html );
 	}
 }

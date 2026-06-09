@@ -36,17 +36,27 @@ export function createLocalSyncHttpServer(options = {}) {
           status: "ok",
           service: "pug_local_sync_server",
           local_database: "store-sync.sqlite",
-          contract_version: 1,
+          contract_version: 2,
           topology: "lan_middleman_server",
           setup_screen_mode: "single_configurable_website",
           one_website_mode: true,
           website_configured: setupStatus.website_configured,
           setup_status_path: "/setup/status",
+          device_heartbeat_path: "/devices/heartbeat",
+          device_status_path: "/devices/status",
         })
       }
 
       if (request.method === "GET" && url.pathname === "/setup/status") {
         return sendJson(response, 200, setupStatus)
+      }
+
+      if (request.method === "POST" && url.pathname === "/devices/heartbeat") {
+        return sendStoreResult(response, store.recordDeviceHeartbeat(await readJson(request)))
+      }
+
+      if (request.method === "GET" && url.pathname === "/devices/status") {
+        return sendStoreResult(response, store.deviceStatus())
       }
 
       if (request.method === "POST" && url.pathname === "/auth/pin") {

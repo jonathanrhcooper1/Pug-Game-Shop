@@ -11,6 +11,7 @@ const SKIPPED = "skipped";
 const SANDBOX_ENVIRONMENTS = new Set(["sandbox", "test", "local", "staging"]);
 const SQUARE_CATALOG_BATCH_UPSERT_PATH = "/v2/catalog/batch-upsert";
 const SQUARE_INVENTORY_BATCH_CHANGE_PATH = "/v2/inventory/changes/batch-create";
+const SQUARE_INVENTORY_BATCH_RETRIEVE_COUNTS_PATH = "/v2/inventory/counts/batch-retrieve";
 
 export function planSquareInventorySyncRequest(projectionContract, options = {}) {
   const contract = normalizeProjectionContract(projectionContract);
@@ -149,6 +150,131 @@ export function planSquarePosReconciliation(event, mappings = [], options = {}) 
   });
 }
 
+export function planSquareBarcodeSkuInventoryPull(wordpressInventoryRows, options = {}) {
+  const environment = normalizeSlug(options.environment ?? "sandbox");
+  const paymentDelegation = squarePaymentDelegationPolicy({ provider: "square" });
+  const rows = arrayValue(wordpressInventoryRows)
+    .map((row, index) => normalizeWordPressInventoryRow(row, index, options))
+    .filter((row) => row !== null);
+  const errors = [];
+
+  if (!SANDBOX_ENVIRONMENTS.has(environment)) {
+    errors.push("square_inventory_pull_sandbox_environment_required");
+  }
+
+  if (
+    looksLikeProductionCredential(
+      options.accessToken ?? options.apiKey ?? "",
+      options,
+    )
+  ) {
+    errors.push("square_inventory_pull_production_credentials_rejected");
+  }
+
+  if (rows.length === 0) {
+    errors.push("square_inventory_pull_rows_required");
+  }
+
+  const duplicateScanIdentities = duplicateValues(
+    rows.map((row) => row.scanIdentity).filter((value) => value !== ""),
+  );
+  const mappedRows = [];
+  const unresolvedMappings = [];
+
+  for (const row of rows) {
+    const rowErrors = [];
+
+    if (row.inventoryId === null && row.publicId === "") {
+      rowErrors.push("wordpress_inventory_identity_required");
+    }
+
+    if (row.scanIdentity === "") {
+      rowErrors.push("barcode_or_sku_required");
+    }
+
+    if (duplicateScanIdentities.includes(row.scanIdentity)) {
+      rowErrors.push("duplicate_barcode_or_sku");
+    }
+
+    if (row.squareCatalogVariationId === "") {
+      rowErrors.push("square_catalog_variation_id_required_for_inventory_pull");
+    }
+
+    if (row.squareLocationId === "") {
+      rowErrors.push("square_location_id_required_for_inventory_pull");
+    }
+
+    if (rowErrors.length > 0) {
+      unresolvedMappings.push({
+        inventoryId: row.inventoryId,
+        publicId: row.publicId,
+        barcode: row.barcode,
+        sku: row.sku,
+        scanIdentity: row.scanIdentity,
+        errors: rowErrors,
+      });
+      continue;
+    }
+
+    mappedRows.push(row);
+  }
+
+  if (errors.length > 0) {
+    return outcome(REJECTED, "square_inventory_pull_expectation_rejected", {
+      errors: [...new Set(errors)],
+      environment,
+      paymentDelegation,
+      paymentCaptureAuthority:
+        POS_PAYMENT_DELEGATION.OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION,
+      pluginPaymentCapturePermitted: false,
+      networkRequestDeferred: true,
+      providerInventoryReadDeferred: true,
+      requestPlan: null,
+      barcodeMappings: mappedRows.map(publicBarcodeMapping),
+      unresolvedMappings,
+    });
+  }
+
+  const pullRequest = squareInventoryCountsPullRequest(mappedRows, options);
+  const status = unresolvedMappings.length > 0 ? CONFLICT : READY;
+
+  return outcome(
+    status,
+    status === CONFLICT
+      ? "square_inventory_pull_mapping_requires_review"
+      : "square_inventory_pull_expectation_ready",
+    {
+      environment,
+      sourceOfTruth: "tcg_store_platform",
+      mappingSource: "wordpress_inventory_rows",
+      paymentDelegation,
+      paymentCaptureAuthority:
+        POS_PAYMENT_DELEGATION.OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION,
+      pluginPaymentCapturePermitted: false,
+      pluginCustomGatewayPermitted: false,
+      squarePaymentCaptureSupported: false,
+      networkRequestDeferred: true,
+      providerInventoryReadDeferred: true,
+      productionNetworkRequestDeferred: true,
+      requestPlan: pullRequest,
+      barcodeMappings: mappedRows.map(publicBarcodeMapping),
+      unresolvedMappings,
+      externalIds: {
+        catalogObjectIds: mappedRows.map((row) => row.squareCatalogVariationId),
+        locationIds: uniqueValues(mappedRows.map((row) => row.squareLocationId)),
+        skus: uniqueValues(mappedRows.map((row) => row.sku).filter((value) => value !== "")),
+        barcodes: uniqueValues(mappedRows.map((row) => row.barcode).filter((value) => value !== "")),
+      },
+      expectations: {
+        squareVariationSkuMatchesWordPressScanIdentity: true,
+        squareCountsAreReconciliationInputsOnly: true,
+        wordpressSerializedInventoryRemainsAuthoritative: true,
+        oneSquareVariationRepresentsOneSerializedInventoryItem: true,
+      },
+    },
+  );
+}
+
 function catalogBatchUpsertRequest(contract) {
   return {
     method: "POST",
@@ -162,6 +288,36 @@ function catalogBatchUpsertRequest(contract) {
         },
       ],
     },
+  };
+}
+
+function squareInventoryCountsPullRequest(rows, options = {}) {
+  if (rows.length === 0) {
+    return {
+      method: "POST",
+      path: SQUARE_INVENTORY_BATCH_RETRIEVE_COUNTS_PATH,
+      body: {
+        catalog_object_ids: [],
+        location_ids: [],
+        states: ["IN_STOCK"],
+        limit: boundedInteger(options.limit, 1, 1000, 1000),
+      },
+    };
+  }
+
+  return {
+    method: "POST",
+    path: SQUARE_INVENTORY_BATCH_RETRIEVE_COUNTS_PATH,
+    body: {
+      catalog_object_ids: uniqueValues(rows.map((row) => row.squareCatalogVariationId)).slice(0, 1000),
+      location_ids: uniqueValues(rows.map((row) => row.squareLocationId)),
+      states: ["IN_STOCK"],
+      limit: boundedInteger(options.limit, 1, 1000, 1000),
+      updated_after: cleanTimestamp(options.updatedAfter ?? options.updated_after),
+    },
+    catalogObjectIdLimit: 1000,
+    inventoryAuthority: "tcg_store_platform",
+    squareCountsUsedFor: "pos_reconciliation_and_exception_detection",
   };
 }
 
@@ -238,6 +394,81 @@ function normalizeProjectionContract(contract) {
   };
 }
 
+function normalizeWordPressInventoryRow(row, index, options = {}) {
+  if (row === null || typeof row !== "object" || Array.isArray(row)) {
+    return null;
+  }
+
+  const barcode = cleanScanValue(row.barcode);
+  const sku = cleanScanValue(row.sku) || barcode;
+  const scanIdentity = sku || barcode;
+  const publicId = String(row.public_id ?? row.publicId ?? "").trim();
+  const squareCatalogVariationId = cleanExternalId(
+    row.square_catalog_variation_id ??
+      row.squareCatalogVariationId ??
+      row.square_variation_id ??
+      "",
+  );
+  const squareCatalogItemId = cleanExternalId(
+    row.square_catalog_item_id ??
+      row.squareCatalogItemId ??
+      row.square_item_id ??
+      "",
+  );
+  const squareLocationId = cleanExternalId(
+    row.square_location_id ??
+      row.squareLocationId ??
+      options.squareLocationId ??
+      options.square_location_id ??
+      "",
+  );
+
+  return {
+    index,
+    inventoryId: positiveInteger(row.inventory_id ?? row.inventoryId ?? row.id),
+    publicId,
+    barcode,
+    sku,
+    scanIdentity,
+    squareCatalogItemId,
+    squareCatalogVariationId,
+    squareLocationId,
+    status: normalizeSlug(row.status ?? ""),
+    posVisibility: normalizeSlug(row.pos_visibility ?? row.posVisibility ?? "visible"),
+    rowVersion: positiveInteger(row.row_version ?? row.rowVersion),
+  };
+}
+
+function publicBarcodeMapping(row) {
+  return {
+    inventoryId: row.inventoryId,
+    publicId: row.publicId,
+    barcode: row.barcode,
+    sku: row.sku,
+    scanIdentity: row.scanIdentity,
+    squareCatalogItemId: row.squareCatalogItemId,
+    squareCatalogVariationId: row.squareCatalogVariationId,
+    squareLocationId: row.squareLocationId,
+    expectedSquareVariation: {
+      catalog_object_id: row.squareCatalogVariationId,
+      item_id: row.squareCatalogItemId,
+      sku: row.scanIdentity,
+      track_inventory: true,
+    },
+    expectedSquareCountPull: {
+      catalog_object_id: row.squareCatalogVariationId,
+      location_id: row.squareLocationId,
+      states: ["IN_STOCK"],
+      expected_serialized_quantity: row.status === "available" && row.posVisibility === "visible" ? "1" : "0",
+    },
+    squarePosLineMatchKeys: uniqueValues([
+      row.squareCatalogVariationId,
+      row.sku,
+      row.barcode,
+    ]),
+  };
+}
+
 function deriveSquareExternalIds(contract) {
   const ids = new Set();
   const skus = new Set();
@@ -259,6 +490,25 @@ function deriveSquareExternalIds(contract) {
     catalogObjectIds: [...ids],
     skus: [...skus],
   };
+}
+
+function duplicateValues(values) {
+  const seen = new Set();
+  const duplicates = new Set();
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      duplicates.add(value);
+    }
+
+    seen.add(value);
+  }
+
+  return [...duplicates];
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter((value) => String(value ?? "").trim() !== ""))];
 }
 
 function mappingIndex(mappings) {
@@ -321,6 +571,18 @@ function normalizeLineIdentity(line) {
   };
 }
 
+function cleanScanValue(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toUpperCase()
+    .slice(0, 80);
+}
+
+function cleanExternalId(value) {
+  return String(value ?? "").trim().slice(0, 191);
+}
+
 function looksLikeProductionCredential(value, options = {}) {
   const declaredCredentialEnvironment = normalizeSlug(
     options.credentialEnvironment ?? options.tokenEnvironment ?? "",
@@ -340,6 +602,36 @@ function looksLikeProductionCredential(value, options = {}) {
     credential.includes("prod") ||
     credential.includes("live")
   );
+}
+
+function positiveInteger(value) {
+  if (Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function cleanTimestamp(value) {
+  const text = String(value ?? "").trim();
+
+  if (text === "" || Number.isNaN(Date.parse(text))) {
+    return undefined;
+  }
+
+  return new Date(text).toISOString();
+}
+
+function boundedInteger(value, min, max, fallback) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, parsed));
 }
 
 function collectId(target, value) {

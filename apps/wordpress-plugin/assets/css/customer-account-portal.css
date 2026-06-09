@@ -1,0 +1,296 @@
+.tcg-account-portal {
+	--tcg-portal-border: color-mix(in srgb, var(--tcg-text, #111827) 14%, transparent);
+	--tcg-portal-muted: color-mix(in srgb, var(--tcg-text, #111827) 64%, transparent);
+	--tcg-portal-soft: color-mix(in srgb, var(--tcg-primary, #0F766E) 9%, var(--tcg-surface, #F8FAFC));
+	color: var(--tcg-text, #111827);
+	display: grid;
+	gap: 18px;
+}
+
+.tcg-account-portal * {
+	box-sizing: border-box;
+}
+
+.tcg-account-portal__hero,
+.tcg-account-portal__section,
+.tcg-account-portal__metric {
+	background: var(--tcg-surface, #F8FAFC);
+	border: 1px solid var(--tcg-portal-border);
+	border-radius: 8px;
+}
+
+.tcg-account-portal__hero {
+	align-items: center;
+	display: flex;
+	gap: 18px;
+	justify-content: space-between;
+	padding: 22px;
+}
+
+.tcg-account-portal__brand-lockup {
+	align-items: center;
+	display: flex;
+	gap: 14px;
+	min-width: 0;
+}
+
+.tcg-account-portal__mark,
+.tcg-account-portal__logo {
+	align-items: center;
+	aspect-ratio: 1;
+	background: var(--tcg-primary, #0F766E);
+	border-radius: 8px;
+	color: #FFFFFF;
+	display: inline-flex;
+	flex: 0 0 56px;
+	font-weight: 800;
+	justify-content: center;
+	width: 56px;
+}
+
+.tcg-account-portal__logo {
+	background: #FFFFFF;
+	object-fit: contain;
+	padding: 7px;
+}
+
+.tcg-account-portal__eyebrow,
+.tcg-account-portal__section-heading p,
+.tcg-account-portal__hero p,
+.tcg-account-portal__metric span,
+.tcg-account-portal__metric small,
+.tcg-account-portal__order-header p,
+.tcg-account-portal__line-details {
+	color: var(--tcg-portal-muted);
+	margin: 0;
+}
+
+.tcg-account-portal__eyebrow {
+	font-size: 0.78rem;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+
+.tcg-account-portal h2,
+.tcg-account-portal h3,
+.tcg-account-portal h4 {
+	color: var(--tcg-text, #111827);
+	letter-spacing: 0;
+	line-height: 1.2;
+	margin: 0;
+}
+
+.tcg-account-portal__hero h2 {
+	font-size: clamp(1.35rem, 2vw, 1.85rem);
+	margin: 2px 0 5px;
+}
+
+.tcg-account-portal__hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: flex-end;
+}
+
+.tcg-account-portal__button,
+.tcg-account-portal__button:visited,
+.tcg-account-portal__text-link,
+.tcg-account-portal__text-link:visited {
+	color: var(--tcg-primary, #0F766E);
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.tcg-account-portal__button {
+	align-items: center;
+	background: var(--tcg-primary, #0F766E);
+	border: 1px solid var(--tcg-primary, #0F766E);
+	border-radius: 8px;
+	color: #FFFFFF;
+	display: inline-flex;
+	min-height: 42px;
+	padding: 0 14px;
+}
+
+.tcg-account-portal__button:visited {
+	color: #FFFFFF;
+}
+
+.tcg-account-portal__button--secondary {
+	background: var(--tcg-background, #FFFFFF);
+	color: var(--tcg-primary, #0F766E);
+}
+
+.tcg-account-portal__button--secondary:visited {
+	color: var(--tcg-primary, #0F766E);
+}
+
+.tcg-account-portal__notice,
+.tcg-account-portal__empty {
+	background: var(--tcg-portal-soft);
+	border: 1px solid var(--tcg-portal-border);
+	border-radius: 8px;
+	margin: 0;
+	padding: 12px 14px;
+}
+
+.tcg-account-portal__notice--warning {
+	border-color: var(--tcg-warning, #B45309);
+}
+
+.tcg-account-portal__summary,
+.tcg-account-portal__grid {
+	display: grid;
+	gap: 14px;
+}
+
+.tcg-account-portal__summary {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tcg-account-portal__metric {
+	display: grid;
+	gap: 6px;
+	min-height: 118px;
+	padding: 18px;
+}
+
+.tcg-account-portal__metric strong {
+	font-size: 1.45rem;
+	line-height: 1.1;
+}
+
+.tcg-account-portal__metric--credit strong {
+	color: var(--tcg-success, #15803D);
+}
+
+.tcg-account-portal__grid {
+	grid-template-columns: minmax(280px, 0.85fr) minmax(320px, 1.15fr);
+}
+
+.tcg-account-portal__section {
+	padding: 18px;
+}
+
+.tcg-account-portal__section-heading {
+	align-items: end;
+	display: flex;
+	gap: 12px;
+	justify-content: space-between;
+	margin-bottom: 14px;
+}
+
+.tcg-account-portal__ledger {
+	margin: 0;
+}
+
+.tcg-account-portal__ledger th,
+.tcg-account-portal__ledger td {
+	vertical-align: middle;
+}
+
+.tcg-account-portal__money {
+	font-weight: 800;
+}
+
+.tcg-account-portal__badge {
+	background: var(--tcg-portal-soft);
+	border: 1px solid var(--tcg-portal-border);
+	border-radius: 999px;
+	color: var(--tcg-text, #111827);
+	display: inline-flex;
+	font-size: 0.78rem;
+	font-weight: 800;
+	line-height: 1;
+	padding: 7px 9px;
+	white-space: nowrap;
+}
+
+.tcg-account-portal__badge--credit {
+	background: color-mix(in srgb, var(--tcg-success, #15803D) 14%, #FFFFFF);
+	color: var(--tcg-success, #15803D);
+}
+
+.tcg-account-portal__badge--debit {
+	background: color-mix(in srgb, var(--tcg-accent, #F97316) 16%, #FFFFFF);
+	color: #9A3412;
+}
+
+.tcg-account-portal__order-list {
+	display: grid;
+	gap: 12px;
+}
+
+.tcg-account-portal__order {
+	background: var(--tcg-background, #FFFFFF);
+	border: 1px solid var(--tcg-portal-border);
+	border-radius: 8px;
+	padding: 14px;
+}
+
+.tcg-account-portal__order-header {
+	align-items: flex-start;
+	display: flex;
+	gap: 12px;
+	justify-content: space-between;
+}
+
+.tcg-account-portal__order-total {
+	font-weight: 800;
+	margin: 10px 0;
+}
+
+.tcg-account-portal__card-lines {
+	display: grid;
+	gap: 8px;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.tcg-account-portal__card-lines li {
+	background: var(--tcg-portal-soft);
+	border-radius: 8px;
+	display: grid;
+	gap: 3px;
+	grid-template-columns: minmax(0, 1fr) auto;
+	padding: 10px;
+}
+
+.tcg-account-portal__card-name,
+.tcg-account-portal__quantity {
+	font-weight: 800;
+}
+
+.tcg-account-portal__line-details {
+	grid-column: 1 / -1;
+}
+
+.tcg-account-portal__empty {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+}
+
+.tcg-account-portal__empty span {
+	color: var(--tcg-accent, #F97316);
+	font-weight: 900;
+}
+
+@media (max-width: 780px) {
+	.tcg-account-portal__hero,
+	.tcg-account-portal__section-heading,
+	.tcg-account-portal__order-header {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.tcg-account-portal__hero-actions {
+		justify-content: flex-start;
+	}
+
+	.tcg-account-portal__summary,
+	.tcg-account-portal__grid {
+		grid-template-columns: 1fr;
+	}
+}

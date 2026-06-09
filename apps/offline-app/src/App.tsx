@@ -24,8 +24,10 @@ import {
   applyOfflinePullCustomerCreditRecordsToCache,
   applyOfflinePullEventRecordsToCache,
   applyOfflinePullInventoryRecordsToCache,
+  applyLocalInventoryIntakePushResults,
   buildPreparedDevicePairingRequest,
   buildOfflineSessionStorageSnapshot,
+  buildLocalInventoryIntakeSyncReceipts,
   buildPreparedPairingStorageSnapshot,
   buildPairedDeviceRecord,
   buildPairedDeviceStorageSnapshot,
@@ -59,6 +61,8 @@ import {
   findInventoryItem,
   findPairedDeviceRecord,
   formatMoney,
+  isCanonicalInventoryOperation,
+  moneyInputDraftWithTwoDecimals,
   inventoryQuantityDeltaFromInput,
   localSyncServerDisplayUrl,
   offlineWorkspaceSeed,
@@ -88,6 +92,7 @@ import {
   type IconName,
   type InventoryItem,
   type InventoryStatus,
+  type LocalInventoryIntakeSyncReceipt,
   type OfflineOperationEnvelope,
   type OfflineLabelPrintJob,
   type OfflineConnectorManifest,
@@ -133,7 +138,7 @@ import {
 } from "./data/tauriOfflineSyncAdapter"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import { createTauriSecureStoreAdapter } from "./data/tauriSecureStoreAdapter"
-import pugGameShopCrest from "./assets/pug-game-shop-crest.png"
+import thePugBrandLogo from "./assets/the-pug-brand-logo.webp"
 import "./styles.css"
 
 type AppIconName =
@@ -612,6 +617,7 @@ function syncVisibilityQueueSummary(
 function buildOperationSyncVisibilityRows(options: {
   queuedOperations: OfflineOperationEnvelope[]
   inventoryItems: InventoryItem[]
+  localInventoryIntakeReceipts: LocalInventoryIntakeSyncReceipt[]
   localSyncStatus: LocalSyncStatusResult | null
   pendingEventRegistrationCount: number
   pendingEventCheckinCount: number
@@ -657,6 +663,9 @@ function buildOperationSyncVisibilityRows(options: {
   const pendingIntakeCount = options.inventoryItems.filter(
     (item) => item.status === "pending_intake",
   ).length
+  const pendingIntakeReceiptCount = options.localInventoryIntakeReceipts.filter(
+    (receipt) => receipt.status === "pending_sync" || receipt.status === "retry",
+  ).length
   const eventRegistrationCount = Math.max(
     queuedOperationCount(options.queuedOperations, "event_reservation"),
     options.pendingEventRegistrationCount,
@@ -676,13 +685,13 @@ function buildOperationSyncVisibilityRows(options: {
     {
       id: "inventory-intake",
       label: "Inventory intake",
-      countLabel: pendingIntakeCount > 0
-        ? countLabel(pendingIntakeCount, "pending row")
+      countLabel: Math.max(pendingIntakeCount, pendingIntakeReceiptCount) > 0
+        ? countLabel(Math.max(pendingIntakeCount, pendingIntakeReceiptCount), "pending intake")
         : countLabel(localStatus?.inventory_count ?? options.inventoryItems.length, "local row"),
       wordpressStatus: `${inventoryPushStatus}: inventory_intake`,
-      localStatus: `LAN intake queue until accepted by WordPress; ${lanQueueStatus}`,
+      localStatus: `LAN intake queue until accepted by WordPress; ${lanQueueStatus}; ${countLabel(pendingIntakeReceiptCount, "app receipt")}`,
       detail:
-        "New cards stay pending_intake in store-sync.sqlite until WordPress accepts the inventory push.",
+        "New cards stay pending_intake in store-sync.sqlite with an app receipt until WordPress accepts the inventory push.",
       tone: "wordpress",
     },
     {
@@ -969,6 +978,9 @@ export function App() {
   const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>(
     offlineSessionStorage.queuedOperations,
   )
+  const [localInventoryIntakeReceipts, setLocalInventoryIntakeReceipts] = useState<
+    LocalInventoryIntakeSyncReceipt[]
+  >([])
   const [activeCustomerId, setActiveCustomerId] = useState(workspace.customerCredit.customerId)
   const [pendingCreditByCustomer, setPendingCreditByCustomer] = useState<Record<number, number>>({})
   const [creditRedemptionInput, setCreditRedemptionInput] = useState(() =>
@@ -1267,6 +1279,7 @@ export function App() {
       buildOperationSyncVisibilityRows({
         queuedOperations,
         inventoryItems,
+        localInventoryIntakeReceipts,
         localSyncStatus,
         pendingEventRegistrationCount,
         pendingEventCheckinCount,
@@ -1277,6 +1290,7 @@ export function App() {
     [
       queuedOperations,
       inventoryItems,
+      localInventoryIntakeReceipts,
       localSyncStatus,
       pendingEventRegistrationCount,
       pendingEventCheckinCount,
@@ -2778,8 +2792,14 @@ export function App() {
     const nextId = inventoryItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
     const nextItems = responseItems.map((item, index) => inventoryItemFromLocalSync(item, nextId + index))
     const nextItem = nextItems[0]
+    const intakeReceipts = buildLocalInventoryIntakeSyncReceipts(nextItems, {
+      profileId: activeProfile.id,
+      companyName: activeProfile.companyName,
+      localSyncServerUrl: localSyncClient.serverUrl,
+    })
 
     setInventoryItems((items) => [...nextItems, ...items])
+    setLocalInventoryIntakeReceipts((receipts) => [...intakeReceipts, ...receipts].slice(0, 50))
     setSelectedId(nextItem.id)
     setQuery(nextItem.barcode)
     setIntakeCardName("")
@@ -2794,7 +2814,7 @@ export function App() {
       title: "Inventory intake queued",
       detail:
         `${nextItem.cardName} x${intakeResult.quantity_added ?? nextItems.length} was added to ${localSyncClient.serverUrl}; ` +
-        "WordPress acceptance and label printing remain pending sync.",
+        `${intakeReceipts.length} intake receipt(s) now track WordPress acceptance and label printing remains pending sync.`,
     })
   }
 
@@ -3458,9 +3478,11 @@ export function App() {
 
       lanPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
 
-      if (lanPushResult.status === "ok" && lanPushResult.accepted_count > 0) {
+      const successfulLanPushResult = lanPushResult.status === "ok" ? lanPushResult : null
+
+      if (successfulLanPushResult && successfulLanPushResult.accepted_count > 0) {
         const acceptedPublicIds = new Set(
-          lanPushResult.results
+          successfulLanPushResult.results
             .filter((result) => result.status === "accepted")
             .map((result) => result.entity_id),
         )
@@ -3474,8 +3496,16 @@ export function App() {
                   source: "accepted",
                   rowVersion: item.rowVersion + 1,
                 }
-              : item,
+            : item,
           ),
+        )
+      }
+
+      if (successfulLanPushResult && successfulLanPushResult.results.length > 0) {
+        const lanPushResults = successfulLanPushResult.results
+
+        setLocalInventoryIntakeReceipts((receipts) =>
+          applyLocalInventoryIntakePushResults(receipts, lanPushResults).receipts,
         )
       }
     }
@@ -3498,9 +3528,7 @@ export function App() {
         activePairedDevice ? { deviceId: activePairedDevice.devicePublicId } : {},
       )
       syncBatchForExecution = batch
-      const canonicalInventoryOperationCount = batch.operations.filter(
-        (operation) => operation.operation_type === "inventory_reservation",
-      ).length
+      const canonicalInventoryOperationCount = batch.operations.filter(isCanonicalInventoryOperation).length
       const canonicalInventoryWritesReady =
         activeProfile.wordpress.routeConnectedPushReady &&
         activeProfile.wordpress.canonicalInventoryWritesEnabled &&
@@ -4517,8 +4545,8 @@ export function App() {
       <main className="offline-shell login-shell">
         <div className="app-window-bar" aria-label="Desktop app window">
           <div className="window-brand">
-            <img src={pugGameShopCrest} alt="" />
-            <span>Pug Game Shop Offline</span>
+            <img src={thePugBrandLogo} alt="" />
+            <span>The Pug Offline</span>
           </div>
           <div className="window-controls" aria-hidden="true">
             <span />
@@ -4528,7 +4556,7 @@ export function App() {
         </div>
         <section className="login-workspace" aria-label="Offline app login">
           <div className="login-card">
-            <img src={pugGameShopCrest} alt="" />
+            <img src={thePugBrandLogo} alt="" />
             <span className="micro-label">Website-connected local app</span>
             <h1>Enter PIN</h1>
             <div className="login-fields">
@@ -4608,8 +4636,8 @@ export function App() {
     <main className="offline-shell">
       <div className="app-window-bar" aria-label="Desktop app window">
         <div className="window-brand">
-          <img src={pugGameShopCrest} alt="" />
-          <span>Pug Game Shop Offline</span>
+          <img src={thePugBrandLogo} alt="" />
+          <span>The Pug Offline</span>
         </div>
         <div className="window-controls" aria-hidden="true">
           <span />
@@ -4621,10 +4649,10 @@ export function App() {
       <div className="app-layout">
         <aside className="nav-rail" aria-label="Offline app sections">
           <div className="brand-lockup">
-            <img className="brand-crest" src={pugGameShopCrest} alt="" />
+            <img className="brand-crest" src={thePugBrandLogo} alt="" />
             <span>
-              <strong>Pug Game Shop</strong>
-              <small>Offline</small>
+              <strong>The Pug</strong>
+              <small>Cards, Games & More</small>
             </span>
           </div>
           <nav>
@@ -5105,7 +5133,7 @@ export function App() {
                             <small>
                               {card.set_name} - {card.printed_number}
                             </small>
-                            <span>
+                            <span className="market-price">
                               {formatMoney(card.market_price_minor_units, card.currency)} market;
                               {" "}
                               {card.stock_available_count} in stock
@@ -5204,7 +5232,9 @@ export function App() {
                         setIntakePriceInput(creditRedemptionInputFromMinorUnits(parsed))
                       }
                     }}
-                    onChange={(event) => setIntakePriceInput(event.target.value)}
+                    onChange={(event) =>
+                      setIntakePriceInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
                     placeholder="0.00"
                   />
                 </label>
@@ -5284,9 +5314,16 @@ export function App() {
                       key={item.id}
                     >
                       <span className={`status-dot ${item.status}`}>{statusLabel(item.status)}</span>
+                      <div className="inventory-card-art" aria-hidden="true">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" loading="lazy" />
+                        ) : (
+                          <Icon name="card" />
+                        )}
+                      </div>
                       <strong>{item.cardName}</strong>
                       <small>{item.setName}</small>
-                      <span>{item.price}</span>
+                      <span className="inventory-card-price">{item.price}</span>
                     </button>
                   ))}
                   {filteredItems.length === 0 ? (
@@ -5494,6 +5531,13 @@ export function App() {
                 <div className="kiosk-inventory-list" aria-label="Kiosk inventory results">
                   {filteredItems.slice(0, 12).map((item) => (
                     <article className="kiosk-card" key={item.id}>
+                      <div className="kiosk-card-art" aria-hidden="true">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" loading="lazy" />
+                        ) : (
+                          <Icon name="card" />
+                        )}
+                      </div>
                       <div>
                         <span className={`status-dot ${item.status}`}>{statusLabel(item.status)}</span>
                         <strong>{item.cardName}</strong>
@@ -6572,7 +6616,9 @@ export function App() {
                         setCreditRedemptionInput(creditRedemptionInputFromMinorUnits(parsed))
                       }
                     }}
-                    onChange={(event) => setCreditRedemptionInput(event.target.value)}
+                    onChange={(event) =>
+                      setCreditRedemptionInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
                     placeholder="0.00"
                   />
                 </label>
@@ -6599,7 +6645,9 @@ export function App() {
                         setCreditAdjustmentInput(creditRedemptionInputFromMinorUnits(parsed))
                       }
                     }}
-                    onChange={(event) => setCreditAdjustmentInput(event.target.value)}
+                    onChange={(event) =>
+                      setCreditAdjustmentInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
                     placeholder="0.00"
                   />
                 </label>

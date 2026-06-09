@@ -15,3 +15,9 @@ Current coverage verifies:
   serialized inventory IDs for staff review.
 - Unmapped provider lines create staff-review conflicts and keep inventory
   mutations deferred.
+- WordPress inventory rows with barcodes/SKUs and stored Square variation IDs
+  produce deferred Square inventory-count pull expectations using
+  `/v2/inventory/counts/batch-retrieve`.
+- Missing Square variation IDs, missing Square locations, and duplicate scan
+  identities are surfaced as staff-review mapping conflicts before any network
+  pull is attempted.

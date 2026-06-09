@@ -14,6 +14,8 @@ Primary responsibilities:
 - Verify 4-digit staff/manager PIN sessions against cached user access policy.
 - Store PIN credentials as hashes, not cleartext.
 - Prevent local double-sell between employee stations and kiosk devices.
+- Track employee and kiosk device heartbeat, setup state, and online/offline
+  presence for the LAN.
 - Enforce manager approval for user/access changes and store-credit adds.
 - Queue inventory, customer, credit, event, and kiosk pickup operations.
 - Push local operations to WordPress and pull canonical changes back.
@@ -33,6 +35,12 @@ Current runtime:
   server calls `/wp-json/tcg-store/v1/reference/search`; clients still receive
   only secret-free card data.
 - `POST /auth/pin` verifies cached 4-digit PIN users.
+- `POST /devices/heartbeat` lets each employee, manager, or kiosk app instance
+  report a stable `device_id`, setup status, network status, app version, and
+  capabilities. The response is credential-free and returns the computed
+  online/offline state for that device.
+- `GET /devices/status` returns all known client devices with online/offline
+  counts, setup-ready/setup-required counts, and mode counts for status screens.
 - `GET /users/access-policy`, `POST /users`, and
   `PATCH /users/{id}/access` are manager-session protected.
 - `GET /inventory/search`, `GET /scrydex/cards/search`,
@@ -50,8 +58,8 @@ Current runtime:
   check-in surface while WordPress remains the final event authority.
 - Staff PIN users, access policy changes, local inventory reservation locks,
   local inventory intake rows, kiosk pickup orders, local customers, pending
-  credit ledger entries, event snapshots, and operation queue rows persist
-  across server restarts.
+  credit ledger entries, event snapshots, client heartbeat rows, and operation
+  queue rows persist across server restarts.
 
 The current SQLite schema is a development runtime for the LAN middleman. Live
 WordPress pull/push workers, richer event registration tables, conflict tables,

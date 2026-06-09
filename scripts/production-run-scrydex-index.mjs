@@ -28,14 +28,14 @@ const payload = {
   game: gameKey(process.env.SCRYDEX_INDEX_GAME ?? "pokemon"),
   expansion_id: String(process.env.SCRYDEX_INDEX_EXPANSION_ID ?? "").trim(),
   page_size: clampInt(process.env.SCRYDEX_INDEX_PAGE_SIZE, 1, 100, 100),
-  max_pages: clampInt(process.env.SCRYDEX_INDEX_MAX_PAGES, 1, 25, 10),
-  rounds: clampInt(process.env.SCRYDEX_INDEX_ROUNDS, 1, 20, 1),
+  max_pages: unboundedInt(process.env.SCRYDEX_INDEX_MAX_PAGES, 0, 100000, 0),
+  rounds: unboundedInt(process.env.SCRYDEX_INDEX_ROUNDS, 0, 100000, 0),
   execute_database_writes: true,
   index_expansions: envFlag(process.env.SCRYDEX_INDEX_EXPANSIONS, true),
   expansions_page: clampInt(process.env.SCRYDEX_INDEX_EXPANSIONS_PAGE, 1, 1000000, 1),
-  max_expansion_pages: clampInt(process.env.SCRYDEX_INDEX_MAX_EXPANSION_PAGES, 1, 25, 25),
+  max_expansion_pages: unboundedInt(process.env.SCRYDEX_INDEX_MAX_EXPANSION_PAGES, 0, 100000, 0),
   index_by_set: envFlag(process.env.SCRYDEX_INDEX_BY_SET, true),
-  set_limit: clampInt(process.env.SCRYDEX_INDEX_SET_LIMIT, 1, 100, 5),
+  set_limit: unboundedInt(process.env.SCRYDEX_INDEX_SET_LIMIT, 0, 1000000, 0),
   set_offset: clampInt(process.env.SCRYDEX_INDEX_SET_OFFSET, 0, 1000000, 0),
 }
 
@@ -64,6 +64,7 @@ if (dryRun) {
           index_by_set: payload.index_by_set,
           set_limit: payload.set_limit,
           set_offset: payload.set_offset,
+          zeroMeansRunUntilShortPage: true,
         },
         requiresEnv: [
           "PUG_PROD_SSH_HOST",
@@ -85,7 +86,8 @@ if (dryRun) {
         readsIgnoredEnvFile: ".env.production.local",
         createsProductionDatabaseBackup: true,
         backupLocation: "$HOME/tcg-production-backups",
-        boundedPages: true,
+        continuesUntilShortPage: true,
+        unboundedByDefault: true,
         writesWordPressSettings: false,
         writesWordPressData: true,
         runsProviderNetworkRequest: true,
@@ -127,31 +129,35 @@ if ($admin_id <= 0) {
 	exit(1);
 }
 wp_set_current_user($admin_id);
-$rounds = max(1, min(20, (int) ($payload['rounds'] ?? 1)));
+$rounds = max(0, (int) ($payload['rounds'] ?? 0));
 $game = sanitize_key($payload['game'] ?? 'pokemon');
 $explicit_expansion_id = sanitize_key($payload['expansion_id'] ?? '');
 $expansions_page = max(1, (int) ($payload['expansions_page'] ?? 1));
 $index_expansions = !empty($payload['index_expansions']);
 $index_by_set = !empty($payload['index_by_set']) && '' === $explicit_expansion_id;
-$set_limit = max(1, min(100, (int) ($payload['set_limit'] ?? 5)));
+$set_limit = max(0, (int) ($payload['set_limit'] ?? 0));
 $set_offset = max(0, (int) ($payload['set_offset'] ?? 0));
 $runs = array();
 $sets = array();
 $last_status = 'unknown';
 
-function tcg_production_scrydex_catalog_request(array $payload, string $game, string $expansion_id, bool $index_expansions, int $expansions_page, bool $skip_cards): array {
+function tcg_production_scrydex_catalog_request(array $payload, string $game, string $expansion_id, bool $index_expansions, int $expansions_page, bool $skip_cards, array $checkpoint = array()): array {
 	$request = new WP_REST_Request('POST', '/tcg-store/v1/scrydex/catalog/index');
-	$request->set_body_params(array(
+	$params = array(
 		'game' => $game,
 		'expansion_id' => $expansion_id,
 		'page_size' => max(1, min(100, (int) ($payload['page_size'] ?? 100))),
-		'max_pages' => max(1, min(25, (int) ($payload['max_pages'] ?? 10))),
+		'max_pages' => max(0, min(100000, (int) ($payload['max_pages'] ?? 0))),
 		'execute_database_writes' => true,
 		'index_expansions' => $index_expansions,
 		'expansions_page' => $expansions_page,
-		'max_expansion_pages' => max(1, min(25, (int) ($payload['max_expansion_pages'] ?? 25))),
+		'max_expansion_pages' => max(0, min(100000, (int) ($payload['max_expansion_pages'] ?? 0))),
 		'skip_cards' => $skip_cards,
-	));
+	);
+	if (array() !== $checkpoint) {
+		$params['checkpoint'] = $checkpoint;
+	}
+	$request->set_body_params($params);
 	$response = rest_do_request($request);
 	$response_data = $response->get_data();
 	$data = is_array($response_data['data'] ?? null) ? $response_data['data'] : array();
@@ -167,6 +173,7 @@ function tcg_production_scrydex_catalog_request(array $payload, string $game, st
 		'cards_page_count' => (int) ($cards['page_count'] ?? 0),
 		'cards_provider_request_count' => (int) ($cards['provider_request_count'] ?? 0),
 		'cards_continuation_available' => $card_continuation,
+		'cards_continuation_checkpoint_row' => is_array($cards['continuation_checkpoint_row'] ?? null) ? $cards['continuation_checkpoint_row'] : null,
 		'expansions_status' => (string) ($expansions['status'] ?? 'skipped'),
 		'expansions_provider_request_count' => (int) ($expansions['provider_request_count'] ?? 0),
 		'expansions_row_count' => (int) ($expansions['row_count'] ?? 0),
@@ -187,16 +194,18 @@ function tcg_production_scrydex_reference_sets(string $game, int $limit, int $of
 		return array();
 	}
 
-	$rows = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT provider_set_id, name FROM {$table} WHERE provider_name = %s AND game = %s ORDER BY COALESCE(release_date, '1900-01-01') ASC, provider_set_id ASC LIMIT %d OFFSET %d",
-			'scrydex',
-			$game,
-			$limit,
-			$offset
-		),
-		ARRAY_A
-	);
+	$sql = "SELECT provider_set_id, name FROM {$table} WHERE provider_name = %s AND game = %s ORDER BY COALESCE(release_date, '1900-01-01') ASC, provider_set_id ASC";
+	$args = array('scrydex', $game);
+	if ($limit > 0) {
+		$sql .= ' LIMIT %d OFFSET %d';
+		$args[] = $limit;
+		$args[] = $offset;
+	} elseif ($offset > 0) {
+		$sql .= ' LIMIT 18446744073709551615 OFFSET %d';
+		$args[] = $offset;
+	}
+
+	$rows = $wpdb->get_results($wpdb->prepare($sql, $args), ARRAY_A);
 
 	return is_array($rows) ? $rows : array();
 }
@@ -217,8 +226,9 @@ if ($index_by_set) {
 		if ('' === $set_id) {
 			continue;
 		}
-		for ($round = 1; $round <= $rounds; ++$round) {
-			$set_run = tcg_production_scrydex_catalog_request($payload, $game, $set_id, false, $expansions_page, false);
+		$checkpoint = array();
+		for ($round = 1; ; ++$round) {
+			$set_run = tcg_production_scrydex_catalog_request($payload, $game, $set_id, false, $expansions_page, false, $checkpoint);
 			$set_run['scope'] = 'set_cards';
 			$set_run['round'] = $round;
 			$set_run['expansion_id'] = $set_id;
@@ -228,11 +238,16 @@ if ($index_by_set) {
 			if ($set_run['http_status'] !== 200 || empty($set_run['cards_continuation_available'])) {
 				break;
 			}
+			$checkpoint = is_array($set_run['cards_continuation_checkpoint_row'] ?? null) ? $set_run['cards_continuation_checkpoint_row'] : array();
+			if ($rounds > 0 && $round >= $rounds) {
+				break;
+			}
 		}
 	}
 } else {
-	for ($round = 1; $round <= $rounds; ++$round) {
-		$run = tcg_production_scrydex_catalog_request($payload, $game, $explicit_expansion_id, $index_expansions, $expansions_page, false);
+	$checkpoint = array();
+	for ($round = 1; ; ++$round) {
+		$run = tcg_production_scrydex_catalog_request($payload, $game, $explicit_expansion_id, $index_expansions, $expansions_page, false, $checkpoint);
 		$run['scope'] = '' === $explicit_expansion_id ? 'global_cards' : 'set_cards';
 		$run['round'] = $round;
 		$run['expansion_id'] = $explicit_expansion_id;
@@ -249,6 +264,10 @@ if ($index_by_set) {
 			$index_expansions = false;
 		}
 		if (!$card_continuation && !$expansion_continuation) {
+			break;
+		}
+		$checkpoint = is_array($run['cards_continuation_checkpoint_row'] ?? null) ? $run['cards_continuation_checkpoint_row'] : array();
+		if ($rounds > 0 && $round >= $rounds) {
 			break;
 		}
 	}
@@ -328,7 +347,8 @@ const result = await withProductionConnection(async (connection) => {
       backupCreated: true,
       backupLocation: `$HOME/tcg-production-backups/${backupFileName}`,
       runnerRemoved: false,
-      boundedPages: true,
+      continuesUntilShortPage: true,
+      unboundedByDefault: true,
       writesWordPressSettings: false,
       writesWordPressData: true,
       runsProviderNetworkRequest: true,
@@ -489,6 +509,16 @@ function gameKey(value) {
 
 function clampInt(value, min, max, fallback) {
   const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback
+}
+
+function unboundedInt(value, min, max, fallback) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(String(value), 10)
 
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback
 }

@@ -1,9 +1,11 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 1
-export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 1
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 2
+export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 2
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "GET", path: "/health", purpose: "LAN server health and version probe" },
   { method: "GET", path: "/setup/status", purpose: "Secret-free one-website setup and LAN binding probe" },
+  { method: "POST", path: "/devices/heartbeat", purpose: "Employee and kiosk client presence heartbeat" },
+  { method: "GET", path: "/devices/status", purpose: "LAN client online/offline and setup status summary" },
   { method: "POST", path: "/auth/pin", purpose: "PIN session verification against cached access policy" },
   { method: "GET", path: "/users/access-policy", purpose: "Manager-readable cached user role and access policy" },
   { method: "POST", path: "/users", purpose: "Manager-created local staff PIN user queue" },
@@ -48,6 +50,8 @@ export function buildLocalSyncServerContract(options = {}) {
     website_url: websiteUrl,
     wordpress_rest_base: `${websiteUrl.replace(/\/$/, "")}/wp-json/tcg-store/v1`,
     setup_status_path: "/setup/status",
+    device_heartbeat_path: "/devices/heartbeat",
+    device_status_path: "/devices/status",
     setup_status: setupStatus,
     local_database: options.localDatabase ?? "store-sync.sqlite",
     sync_interval_seconds: syncIntervalSeconds,
@@ -62,6 +66,9 @@ export function buildLocalSyncServerContract(options = {}) {
     responsibilities: [
       "serve_shared_inventory_customer_credit_event_and_conflict_cache",
       "publish_secret_free_one_website_setup_status",
+      "track_employee_and_kiosk_device_heartbeats",
+      "publish_online_offline_client_presence",
+      "report_client_setup_status_without_credentials",
       "bind_clients_to_configured_lan_server_before_sync",
       "serve_scrydex_reference_lookup_without_client_credentials",
       "serve_scrydex_lookup_from_local_cache_before_wordpress_proxy",
@@ -88,6 +95,7 @@ export function buildLocalSyncServerContract(options = {}) {
       live_credentials_blocked_in_local_server: true,
       one_website_configuration_required: true,
       setup_status_returns_credentials: false,
+      device_status_returns_credentials: false,
       scrydex_credentials_synced_to_clients: false,
       scrydex_lookup_uses_server_side_credentials_only: true,
     },
@@ -119,6 +127,9 @@ export function buildLocalSyncSetupStatus(options = {}) {
     store_id: cleanToken(options.storeId ?? "pug-game-shop"),
     server_url: serverUrl.replace(/\/$/, ""),
     setup_status_path: "/setup/status",
+    device_heartbeat_path: "/devices/heartbeat",
+    device_status_path: "/devices/status",
+    client_presence_enabled: true,
     website_url: websiteUrl,
     website_configured: Boolean(websiteUrl),
     setup_required: !websiteUrl,
@@ -149,6 +160,10 @@ export function planLocalClientConnection({ mode, serverUrl, websiteUrl }) {
     setup_screen_mode: "single_configurable_website",
     one_website_mode: true,
     setup_status_path: "/setup/status",
+    device_heartbeat_path: "/devices/heartbeat",
+    device_status_path: "/devices/status",
+    heartbeat_interval_seconds: 30,
+    reports_setup_status_to_server: true,
     server_url: normalizeUrl(serverUrl),
     website_url: normalizeUrl(websiteUrl),
     auth_boundary:

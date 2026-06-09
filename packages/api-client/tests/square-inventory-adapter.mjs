@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   SQUARE_INVENTORY_ADAPTER_OUTCOME,
+  planSquareBarcodeSkuInventoryPull,
   planSquareInventorySyncRequest,
   planSquarePosReconciliation,
 } from "../src/squareInventoryAdapter.mjs";
@@ -98,6 +99,140 @@ test("Square inventory adapter skips hidden unmapped projections without request
   assert.deepEqual(result.details.idempotencyKeys, [
     "square:inventory-projection:hidden:v2",
   ]);
+});
+
+test("Square barcode/SKU pull planning maps WordPress inventory rows to Square count pulls", () => {
+  const result = planSquareBarcodeSkuInventoryPull(
+    [
+      {
+        inventory_id: 42,
+        public_id: "card-public-42",
+        barcode: "PKM-BASE-004-HOLO",
+        sku: "PKM-BASE-004-HOLO",
+        square_catalog_item_id: "SQUARE-ITEM-42",
+        square_catalog_variation_id: "SQUARE-VARIATION-42",
+        square_location_id: "L-SANDBOX-1",
+        status: "available",
+        pos_visibility: "visible",
+        row_version: 7,
+      },
+      {
+        inventory_id: 43,
+        public_id: "card-public-43",
+        barcode: "MTG-LEA-001",
+        square_catalog_variation_id: "SQUARE-VARIATION-43",
+        square_location_id: "L-SANDBOX-1",
+        status: "sold",
+        pos_visibility: "visible",
+      },
+    ],
+    {
+      environment: "sandbox",
+      credentialEnvironment: "sandbox",
+      accessToken: "EAAA-sandbox-token",
+      limit: 250,
+      updatedAfter: "2026-06-09T12:00:00Z",
+    },
+  );
+
+  assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.READY);
+  assert.equal(result.code, "square_inventory_pull_expectation_ready");
+  assert.equal(result.details.sourceOfTruth, "tcg_store_platform");
+  assert.equal(result.details.networkRequestDeferred, true);
+  assert.equal(result.details.providerInventoryReadDeferred, true);
+  assert.equal(result.details.squarePaymentCaptureSupported, false);
+  assert.equal(
+    result.details.paymentCaptureAuthority,
+    "official_woocommerce_square_extension",
+  );
+  assert.equal(result.details.requestPlan.path, "/v2/inventory/counts/batch-retrieve");
+  assert.deepEqual(result.details.requestPlan.body.catalog_object_ids, [
+    "SQUARE-VARIATION-42",
+    "SQUARE-VARIATION-43",
+  ]);
+  assert.deepEqual(result.details.requestPlan.body.location_ids, ["L-SANDBOX-1"]);
+  assert.deepEqual(result.details.requestPlan.body.states, ["IN_STOCK"]);
+  assert.equal(result.details.requestPlan.body.limit, 250);
+  assert.equal(
+    result.details.requestPlan.body.updated_after,
+    "2026-06-09T12:00:00.000Z",
+  );
+  assert.equal(result.details.barcodeMappings[0].expectedSquareVariation.sku, "PKM-BASE-004-HOLO");
+  assert.equal(result.details.barcodeMappings[0].expectedSquareVariation.track_inventory, true);
+  assert.equal(result.details.barcodeMappings[0].expectedSquareCountPull.expected_serialized_quantity, "1");
+  assert.equal(result.details.barcodeMappings[1].sku, "MTG-LEA-001");
+  assert.equal(result.details.barcodeMappings[1].expectedSquareCountPull.expected_serialized_quantity, "0");
+  assert.deepEqual(result.details.barcodeMappings[0].squarePosLineMatchKeys, [
+    "SQUARE-VARIATION-42",
+    "PKM-BASE-004-HOLO",
+  ]);
+  assert.deepEqual(result.details.externalIds.skus, [
+    "PKM-BASE-004-HOLO",
+    "MTG-LEA-001",
+  ]);
+  assert.equal(result.details.expectations.wordpressSerializedInventoryRemainsAuthoritative, true);
+});
+
+test("Square barcode/SKU pull planning flags missing mappings for staff review", () => {
+  const result = planSquareBarcodeSkuInventoryPull(
+    [
+      {
+        inventory_id: 42,
+        public_id: "card-public-42",
+        barcode: "PKM-BASE-004-HOLO",
+        square_catalog_variation_id: "SQUARE-VARIATION-42",
+        square_location_id: "L-SANDBOX-1",
+      },
+      {
+        inventory_id: 44,
+        public_id: "card-public-44",
+        barcode: "PKM-BASE-004-HOLO",
+        square_location_id: "L-SANDBOX-1",
+      },
+    ],
+    {
+      environment: "sandbox",
+    },
+  );
+
+  assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.CONFLICT);
+  assert.equal(result.code, "square_inventory_pull_mapping_requires_review");
+  assert.equal(result.details.requestPlan.path, "/v2/inventory/counts/batch-retrieve");
+  assert.deepEqual(result.details.requestPlan.body.catalog_object_ids, []);
+  assert.equal(result.details.unresolvedMappings.length, 2);
+  assert.ok(result.details.unresolvedMappings[0].errors.includes("duplicate_barcode_or_sku"));
+  assert.ok(result.details.unresolvedMappings[1].errors.includes("duplicate_barcode_or_sku"));
+  assert.ok(
+    result.details.unresolvedMappings[1].errors.includes(
+      "square_catalog_variation_id_required_for_inventory_pull",
+    ),
+  );
+  assert.equal(result.details.networkRequestDeferred, true);
+});
+
+test("Square barcode/SKU pull planning rejects production context and live credentials", () => {
+  const result = planSquareBarcodeSkuInventoryPull(
+    [
+      {
+        inventory_id: 42,
+        barcode: "PKM-BASE-004-HOLO",
+        square_catalog_variation_id: "SQUARE-VARIATION-42",
+        square_location_id: "L-SANDBOX-1",
+      },
+    ],
+    {
+      environment: "production",
+      accessToken: "EAA-live-production-token",
+    },
+  );
+
+  assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.REJECTED);
+  assert.deepEqual(result.details.errors, [
+    "square_inventory_pull_sandbox_environment_required",
+    "square_inventory_pull_production_credentials_rejected",
+  ]);
+  assert.equal(result.details.requestPlan, null);
+  assert.equal(result.details.pluginPaymentCapturePermitted, false);
 });
 
 test("Square POS reconciliation maps Square variation IDs back to serialized inventory", () => {

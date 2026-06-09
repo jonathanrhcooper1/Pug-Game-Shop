@@ -25,9 +25,13 @@ final class CustomerAccountPortalPresenter {
 		array $context = array()
 	): array {
 		$currency = $this->currency( $customer['credit_currency'] ?? $context['currency'] ?? 'USD' );
+		$branding = $this->present_branding( $context['branding'] ?? array() );
+		$links    = $this->present_links( $context['links'] ?? array(), $branding );
 
 		return array(
 			'resource'         => 'customer_account_portal',
+			'brand'            => $branding,
+			'links'            => $links,
 			'customer_linked'  => null !== $customer,
 			'customer'         => $this->present_customer( $customer ),
 			'store_credit'     => array(
@@ -35,6 +39,7 @@ final class CustomerAccountPortalPresenter {
 				'balance'        => $this->money( $customer['credit_balance'] ?? '0.0000' ),
 				'currency'       => $currency,
 				'version'        => $this->nonnegative_int( $customer['credit_version'] ?? 0 ),
+				'display'        => $this->display_money( $customer['credit_balance'] ?? '0.0000', $currency ),
 				'ledger_entries' => array_map(
 					fn ( array $entry ): array => $this->present_ledger_entry( $entry, $currency ),
 					array_slice( $ledger_entries, 0, self::DEFAULT_LEDGER_LIMIT )
@@ -57,28 +62,70 @@ final class CustomerAccountPortalPresenter {
 	 * @param array<string, mixed> $portal Presented portal payload.
 	 */
 	public function render_html( array $portal ): string {
-		$credit = is_array( $portal['store_credit'] ?? null ) ? $portal['store_credit'] : array();
-		$orders = is_array( $portal['purchase_history']['orders'] ?? null )
+		$brand    = is_array( $portal['brand'] ?? null ) ? $portal['brand'] : array();
+		$links    = is_array( $portal['links'] ?? null ) ? $portal['links'] : array();
+		$customer = is_array( $portal['customer'] ?? null ) ? $portal['customer'] : array();
+		$credit   = is_array( $portal['store_credit'] ?? null ) ? $portal['store_credit'] : array();
+		$orders   = is_array( $portal['purchase_history']['orders'] ?? null )
 			? $portal['purchase_history']['orders']
 			: array();
+		$notices  = is_array( $portal['notices'] ?? null ) ? $portal['notices'] : array();
 
-		$html  = '<div class="tcg-account-portal">';
-		$html .= '<section class="tcg-account-portal__section tcg-account-portal__credit">';
-		$html .= '<h2>' . $this->esc_html( 'Store Credit' ) . '</h2>';
+		$html  = '<div class="tcg-account-portal" data-resource="' . $this->esc_attr( (string) ( $portal['resource'] ?? 'customer_account_portal' ) ) . '">';
+		$html .= '<section class="tcg-account-portal__hero">';
+		$html .= '<div class="tcg-account-portal__brand-lockup">';
+		$html .= $this->brand_mark_html( $brand );
+		$html .= '<div>';
+		$html .= '<p class="tcg-account-portal__eyebrow">' . $this->esc_html( (string) ( $brand['short_name'] ?? 'The Pug' ) ) . '</p>';
+		$html .= '<h2>' . $this->esc_html( (string) ( $brand['headline'] ?? 'Collector Vault' ) ) . '</h2>';
+		$html .= '<p>' . $this->esc_html( $this->welcome_message( $customer ) ) . '</p>';
+		$html .= '</div></div>';
+		$html .= '<div class="tcg-account-portal__hero-actions">';
+		$html .= $this->action_link_html( $links['shop_url'] ?? null, 'Browse inventory', 'tcg-account-portal__button' );
+		$html .= $this->action_link_html( $links['orders_url'] ?? null, 'All orders', 'tcg-account-portal__button tcg-account-portal__button--secondary' );
+		$html .= '</div>';
+		$html .= '</section>';
 
 		if ( ! (bool) ( $portal['customer_linked'] ?? false ) ) {
-			$html .= '<p class="tcg-account-portal__notice">';
+			$html .= '<p class="tcg-account-portal__notice tcg-account-portal__notice--warning">';
 			$html .= $this->esc_html( 'We could not match this website login to a store customer record yet.' );
 			$html .= '</p>';
 		}
 
-		$html .= '<p class="tcg-account-portal__balance">';
-		$html .= '<strong>' . $this->esc_html( $this->display_money( $credit['balance'] ?? '0.0000', $credit['currency'] ?? 'USD' ) ) . '</strong>';
-		$html .= '</p>';
+		if ( in_array( 'woocommerce_orders_unavailable', $notices, true ) ) {
+			$html .= '<p class="tcg-account-portal__notice tcg-account-portal__notice--warning">';
+			$html .= $this->esc_html( 'Order history is temporarily unavailable.' );
+			$html .= '</p>';
+		}
+
+		$html .= '<section class="tcg-account-portal__summary" aria-label="' . $this->esc_attr( 'Account summary' ) . '">';
+		$html .= '<article class="tcg-account-portal__metric tcg-account-portal__metric--credit">';
+		$html .= '<span>' . $this->esc_html( 'Store credit' ) . '</span>';
+		$html .= '<strong>' . $this->esc_html( (string) ( $credit['display'] ?? $this->display_money( $credit['balance'] ?? '0.0000', $credit['currency'] ?? 'USD' ) ) ) . '</strong>';
+		$html .= '<small>' . $this->esc_html( 'Available balance' ) . '</small>';
+		$html .= '</article>';
+		$html .= '<article class="tcg-account-portal__metric">';
+		$html .= '<span>' . $this->esc_html( 'Card orders' ) . '</span>';
+		$html .= '<strong>' . $this->esc_html( (string) count( $orders ) ) . '</strong>';
+		$html .= '<small>' . $this->esc_html( 'Recent purchases' ) . '</small>';
+		$html .= '</article>';
+		$html .= '<article class="tcg-account-portal__metric">';
+		$html .= '<span>' . $this->esc_html( 'Account' ) . '</span>';
+		$html .= '<strong>' . $this->esc_html( (bool) ( $portal['customer_linked'] ?? false ) ? 'Linked' : 'Needs link' ) . '</strong>';
+		$html .= '<small>' . $this->esc_html( (string) ( $customer['status'] ?? 'unlinked' ) ) . '</small>';
+		$html .= '</article>';
+		$html .= '</section>';
+
+		$html .= '<div class="tcg-account-portal__grid">';
+		$html .= '<section class="tcg-account-portal__section tcg-account-portal__credit">';
+		$html .= '<div class="tcg-account-portal__section-heading">';
+		$html .= '<h3>' . $this->esc_html( 'Store Credit Activity' ) . '</h3>';
+		$html .= '<p>' . $this->esc_html( 'Recent account ledger entries' ) . '</p>';
+		$html .= '</div>';
 
 		$ledger_entries = is_array( $credit['ledger_entries'] ?? null ) ? $credit['ledger_entries'] : array();
 		if ( array() === $ledger_entries ) {
-			$html .= '<p>' . $this->esc_html( 'No store credit activity is available yet.' ) . '</p>';
+			$html .= $this->empty_state_html( 'No store credit activity is available yet.' );
 		} else {
 			$html .= '<table class="shop_table shop_table_responsive tcg-account-portal__ledger">';
 			$html .= '<thead><tr>';
@@ -95,8 +142,10 @@ final class CustomerAccountPortalPresenter {
 
 				$html .= '<tr>';
 				$html .= '<td>' . $this->esc_html( $entry['created_at'] ?? '' ) . '</td>';
-				$html .= '<td>' . $this->esc_html( $entry['label'] ?? '' ) . '</td>';
-				$html .= '<td>' . $this->esc_html( $this->display_money( $entry['amount'] ?? '0.0000', $entry['currency'] ?? 'USD' ) ) . '</td>';
+				$html .= '<td><span class="tcg-account-portal__badge tcg-account-portal__badge--' . $this->esc_attr( (string) ( $entry['direction'] ?? 'credit' ) ) . '">';
+				$html .= $this->esc_html( $entry['label'] ?? '' );
+				$html .= '</span></td>';
+				$html .= '<td class="tcg-account-portal__money">' . $this->esc_html( $this->display_money( $entry['amount'] ?? '0.0000', $entry['currency'] ?? 'USD' ) ) . '</td>';
 				$html .= '<td>' . $this->esc_html( $this->display_money( $entry['balance_after'] ?? '0.0000', $entry['currency'] ?? 'USD' ) ) . '</td>';
 				$html .= '</tr>';
 			}
@@ -106,10 +155,13 @@ final class CustomerAccountPortalPresenter {
 
 		$html .= '</section>';
 		$html .= '<section class="tcg-account-portal__section tcg-account-portal__orders">';
-		$html .= '<h2>' . $this->esc_html( 'Card Purchase History' ) . '</h2>';
+		$html .= '<div class="tcg-account-portal__section-heading">';
+		$html .= '<h3>' . $this->esc_html( 'Card Purchase History' ) . '</h3>';
+		$html .= '<p>' . $this->esc_html( 'Recent WooCommerce card orders' ) . '</p>';
+		$html .= '</div>';
 
 		if ( array() === $orders ) {
-			$html .= '<p>' . $this->esc_html( 'No card purchase history is available yet.' ) . '</p>';
+			$html .= $this->empty_state_html( 'No card purchase history is available yet.' );
 		} else {
 			$html .= '<div class="tcg-account-portal__order-list">';
 
@@ -119,18 +171,16 @@ final class CustomerAccountPortalPresenter {
 				}
 
 				$html .= '<article class="tcg-account-portal__order">';
-				$html .= '<h3>' . $this->esc_html( 'Order ' . (string) ( $order['order_number'] ?? '' ) ) . '</h3>';
-				$html .= '<p>';
-				$html .= $this->esc_html( (string) ( $order['created_at'] ?? '' ) );
-				$html .= ' - ';
-				$html .= $this->esc_html( (string) ( $order['status_label'] ?? '' ) );
-				$html .= ' - ';
-				$html .= $this->esc_html( $this->display_money( $order['total'] ?? '0.0000', $order['currency'] ?? 'USD' ) );
-				$html .= '</p>';
+				$html .= '<div class="tcg-account-portal__order-header">';
+				$html .= '<div><h4>' . $this->esc_html( 'Order ' . (string) ( $order['order_number'] ?? '' ) ) . '</h4>';
+				$html .= '<p>' . $this->esc_html( (string) ( $order['created_at'] ?? '' ) ) . '</p></div>';
+				$html .= '<span class="tcg-account-portal__badge">' . $this->esc_html( (string) ( $order['status_label'] ?? '' ) ) . '</span>';
+				$html .= '</div>';
+				$html .= '<p class="tcg-account-portal__order-total">' . $this->esc_html( $this->display_money( $order['total'] ?? '0.0000', $order['currency'] ?? 'USD' ) ) . '</p>';
 
 				$lines = is_array( $order['lines'] ?? null ) ? $order['lines'] : array();
 				if ( array() !== $lines ) {
-					$html .= '<ul>';
+					$html .= '<ul class="tcg-account-portal__card-lines">';
 					foreach ( $lines as $line ) {
 						if ( ! is_array( $line ) ) {
 							continue;
@@ -145,8 +195,8 @@ final class CustomerAccountPortalPresenter {
 						);
 
 						$html .= '<li>';
-						$html .= $this->esc_html( (string) ( $line['name'] ?? '' ) );
-						$html .= ' x' . $this->esc_html( (string) ( $line['quantity'] ?? 1 ) );
+						$html .= '<span class="tcg-account-portal__card-name">' . $this->esc_html( (string) ( $line['name'] ?? '' ) ) . '</span>';
+						$html .= '<span class="tcg-account-portal__quantity">x' . $this->esc_html( (string) ( $line['quantity'] ?? 1 ) ) . '</span>';
 
 						if ( array() !== $details ) {
 							$html .= ' <span class="tcg-account-portal__line-details">';
@@ -160,7 +210,7 @@ final class CustomerAccountPortalPresenter {
 				}
 
 				if ( '' !== (string) ( $order['view_url'] ?? '' ) ) {
-					$html .= '<p><a class="button" href="' . $this->esc_url( (string) $order['view_url'] ) . '">';
+					$html .= '<p><a class="tcg-account-portal__text-link" href="' . $this->esc_url( (string) $order['view_url'] ) . '">';
 					$html .= $this->esc_html( 'View order' );
 					$html .= '</a></p>';
 				}
@@ -172,6 +222,7 @@ final class CustomerAccountPortalPresenter {
 		}
 
 		$html .= '</section>';
+		$html .= '</div>';
 		$html .= '</div>';
 
 		return $html;
@@ -264,6 +315,41 @@ final class CustomerAccountPortalPresenter {
 	}
 
 	/**
+	 * @param mixed $branding Client-safe branding payload.
+	 * @return array<string, string>
+	 */
+	private function present_branding( mixed $branding ): array {
+		$branding = is_array( $branding ) ? $branding : array();
+		$company  = is_array( $branding['company'] ?? null ) ? $branding['company'] : array();
+
+		$name       = $this->clean_string( $company['name'] ?? 'The Pug' );
+		$short_name = $this->clean_string( $company['short_name'] ?? 'The Pug' );
+
+		return array(
+			'name'        => '' === $name ? 'The Pug' : $name,
+			'short_name'  => '' === $short_name ? 'The Pug' : $short_name,
+			'headline'    => ( '' === $short_name ? 'The Pug' : $short_name ) . ' Collector Vault',
+			'logo_url'    => $this->nullable_string( $company['logo_url'] ?? null ) ?? '',
+			'support_url' => $this->nullable_string( $company['support_url'] ?? null ) ?? '',
+		);
+	}
+
+	/**
+	 * @param mixed                $links Submitted links.
+	 * @param array<string,string> $branding Presented branding.
+	 * @return array<string, string|null>
+	 */
+	private function present_links( mixed $links, array $branding ): array {
+		$links = is_array( $links ) ? $links : array();
+
+		return array(
+			'shop_url'    => $this->nullable_url( $links['shop_url'] ?? null ),
+			'orders_url'  => $this->nullable_url( $links['orders_url'] ?? null ),
+			'support_url' => $this->nullable_url( $links['support_url'] ?? $branding['support_url'] ?? null ),
+		);
+	}
+
+	/**
 	 * @param array<string, mixed>       $context Runtime flags.
 	 * @param list<array<string, mixed>> $orders WooCommerce order snapshots.
 	 * @return list<string>
@@ -316,6 +402,63 @@ final class CustomerAccountPortalPresenter {
 		};
 	}
 
+	/**
+	 * @param array<string,mixed> $customer Presented customer row.
+	 */
+	private function welcome_message( array $customer ): string {
+		$name = $this->clean_string( $customer['display_name'] ?? '' );
+
+		if ( '' === $name ) {
+			return 'Your account snapshot is ready.';
+		}
+
+		return 'Welcome back, ' . $name . '.';
+	}
+
+	/**
+	 * @param array<string,string> $brand Presented branding.
+	 */
+	private function brand_mark_html( array $brand ): string {
+		$logo_url = $this->nullable_url( $brand['logo_url'] ?? null );
+
+		if ( null !== $logo_url ) {
+			return '<img class="tcg-account-portal__logo" src="' . $this->esc_url( $logo_url ) . '" alt="' . $this->esc_attr( (string) ( $brand['name'] ?? 'Store' ) ) . '" />';
+		}
+
+		$initials = $this->initials( (string) ( $brand['short_name'] ?? $brand['name'] ?? 'The Pug' ) );
+
+		return '<span class="tcg-account-portal__mark" aria-hidden="true">' . $this->esc_html( $initials ) . '</span>';
+	}
+
+	private function action_link_html( mixed $url, string $label, string $class_name ): string {
+		$url = $this->nullable_url( $url );
+
+		if ( null === $url ) {
+			return '';
+		}
+
+		return '<a class="' . $this->esc_attr( $class_name ) . '" href="' . $this->esc_url( $url ) . '">' . $this->esc_html( $label ) . '</a>';
+	}
+
+	private function empty_state_html( string $message ): string {
+		return '<div class="tcg-account-portal__empty"><span aria-hidden="true">--</span><p>' . $this->esc_html( $message ) . '</p></div>';
+	}
+
+	private function initials( string $value ): string {
+		$parts    = array_filter( explode( ' ', $this->clean_string( $value ) ) );
+		$initials = '';
+
+		foreach ( $parts as $part ) {
+			$initials .= strtoupper( substr( $part, 0, 1 ) );
+
+			if ( strlen( $initials ) >= 2 ) {
+				break;
+			}
+		}
+
+		return '' === $initials ? 'TP' : $initials;
+	}
+
 	private function display_money( mixed $amount, mixed $currency ): string {
 		return $this->money( $amount ) . ' ' . $this->currency( $currency );
 	}
@@ -324,10 +467,10 @@ final class CustomerAccountPortalPresenter {
 		$value = $this->clean_string( $value );
 
 		if ( 1 !== preg_match( '/^-?\d+(?:\.\d+)?$/', $value ) ) {
-			return '0.0000';
+			return '0.00';
 		}
 
-		return number_format( (float) $value, 4, '.', '' );
+		return number_format( (float) $value, 2, '.', '' );
 	}
 
 	private function currency( mixed $value ): string {
@@ -362,6 +505,26 @@ final class CustomerAccountPortalPresenter {
 		$value = $this->clean_string( $value ?? '' );
 
 		return '' === $value ? null : $value;
+	}
+
+	private function nullable_url( mixed $value ): ?string {
+		$value = $this->clean_string( $value ?? '' );
+
+		if ( '' === $value || false === filter_var( $value, FILTER_VALIDATE_URL ) ) {
+			return null;
+		}
+
+		return $value;
+	}
+
+	private function esc_attr( mixed $value ): string {
+		$value = (string) $value;
+
+		if ( function_exists( 'esc_attr' ) ) {
+			return esc_attr( $value );
+		}
+
+		return htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
 	}
 
 	private function esc_html( mixed $value ): string {

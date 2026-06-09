@@ -30,3 +30,13 @@ The adapter also includes reconciliation-only mapping for Square POS lines back
 to serialized inventory IDs. Unmapped provider lines become staff-review
 conflicts, and inventory mutations remain deferred until an explicit
 WordPress-side reconciliation action is approved.
+
+`planSquareBarcodeSkuInventoryPull()` bridges WordPress inventory/search rows
+to Square POS inventory-read expectations. It treats the WordPress barcode/SKU
+as the scan identity, expects that identity to be present on the Square item
+variation `sku`, and uses stored `square_catalog_variation_id` plus Square
+location IDs to shape a deferred
+`POST /v2/inventory/counts/batch-retrieve` request plan. Missing variation IDs,
+missing locations, or duplicate scan identities are returned as staff-review
+mapping conflicts. Payments remain delegated to the official WooCommerce Square
+extension; this package never plans Square payment capture.

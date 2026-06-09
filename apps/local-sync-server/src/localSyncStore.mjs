@@ -16,6 +16,11 @@ export const ACCESS_SECTIONS = Object.freeze([
   "Settings",
 ])
 
+const CLIENT_DEVICE_MODES = Object.freeze(["employee", "manager", "kiosk"])
+const CLIENT_DEVICE_SETUP_STATUSES = Object.freeze(["setup_required", "configuring", "ready", "error"])
+const CLIENT_DEVICE_NETWORK_STATUSES = Object.freeze(["online", "offline", "degraded"])
+const DEFAULT_HEARTBEAT_TIMEOUT_SECONDS = 90
+
 export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -24,6 +29,12 @@ export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
 
 export function createLocalSyncStore(options = {}) {
   const now = options.now ?? (() => new Date())
+  const heartbeatTimeoutSeconds = boundedInt(
+    options.heartbeatTimeoutSeconds,
+    15,
+    3600,
+    DEFAULT_HEARTBEAT_TIMEOUT_SECONDS,
+  )
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
@@ -49,6 +60,7 @@ export function createLocalSyncStore(options = {}) {
   const creditLedgerEntries = loadCreditLedgerEntries(database)
   const eventSnapshots = loadEventSnapshots(database)
   const referenceCards = loadReferenceCards(database)
+  const clientDevices = loadClientDevices(database)
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -825,7 +837,83 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function recordDeviceHeartbeat(input = {}) {
+    const deviceId = cleanPublicId(input.device_id ?? input.deviceId ?? input.client_id ?? input.clientId)
+
+    if (!deviceId) {
+      return blocked("device_id_required", "A stable device_id is required for client heartbeat tracking.")
+    }
+
+    const existingDevice = clientDevices.find((device) => device.device_id === deviceId)
+    const mode = cleanClientDeviceMode(input.mode ?? existingDevice?.mode)
+    const timestamp = now().toISOString()
+    const device = {
+      device_id: deviceId,
+      device_label: cleanName(input.device_label ?? input.deviceLabel ?? existingDevice?.device_label) || deviceId,
+      mode,
+      app_version: cleanName(input.app_version ?? input.appVersion ?? existingDevice?.app_version),
+      platform: cleanName(input.platform ?? existingDevice?.platform),
+      network_status: cleanClientDeviceNetworkStatus(
+        input.network_status ?? input.networkStatus ?? input.connection_status ?? "online",
+      ),
+      setup_status: cleanClientDeviceSetupStatus(input.setup_status ?? input.setupStatus ?? existingDevice?.setup_status),
+      server_url: cleanHttpUrl(input.server_url ?? input.serverUrl ?? existingDevice?.server_url),
+      website_url: cleanHttpUrl(input.website_url ?? input.websiteUrl ?? existingDevice?.website_url),
+      capabilities: cleanClientDeviceCapabilities(input.capabilities ?? existingDevice?.capabilities, mode),
+      heartbeat_interval_seconds: boundedInt(
+        input.heartbeat_interval_seconds ?? input.heartbeatIntervalSeconds ?? existingDevice?.heartbeat_interval_seconds,
+        5,
+        600,
+        30,
+      ),
+      first_seen_at_utc: existingDevice?.first_seen_at_utc ?? timestamp,
+      last_seen_at_utc: timestamp,
+    }
+    const existingIndex = clientDevices.findIndex((candidate) => candidate.device_id === device.device_id)
+
+    if (existingIndex >= 0) {
+      clientDevices.splice(existingIndex, 1, device)
+    } else {
+      clientDevices.push(device)
+    }
+
+    saveClientDevice(database, device)
+
+    const summary = buildClientDeviceSummary(clientDevices, now, heartbeatTimeoutSeconds)
+
+    return {
+      status: "ok",
+      action: "local_client_device_heartbeat",
+      device: publicClientDevice(device, now, heartbeatTimeoutSeconds),
+      device_count: summary.device_count,
+      online_count: summary.online_count,
+      offline_count: summary.offline_count,
+      setup_ready_count: summary.setup_ready_count,
+      setup_required_count: summary.setup_required_count,
+      heartbeat_timeout_seconds: heartbeatTimeoutSeconds,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  function deviceStatus() {
+    const summary = buildClientDeviceSummary(clientDevices, now, heartbeatTimeoutSeconds)
+
+    return {
+      status: "ok",
+      action: "local_client_device_status",
+      topology: "lan_middleman_server",
+      server_authority: "local_sync_server",
+      heartbeat_timeout_seconds: heartbeatTimeoutSeconds,
+      ...summary,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
   function syncStatus() {
+    const deviceSummary = buildClientDeviceSummary(clientDevices, now, heartbeatTimeoutSeconds)
+
     return {
       status: "ok",
       local_database: "store-sync.sqlite",
@@ -837,6 +925,13 @@ export function createLocalSyncStore(options = {}) {
       customer_count: customers.length,
       credit_ledger_entry_count: creditLedgerEntries.length,
       event_count: eventSnapshots.length,
+      client_presence_enabled: true,
+      client_device_count: deviceSummary.device_count,
+      online_client_device_count: deviceSummary.online_count,
+      offline_client_device_count: deviceSummary.offline_count,
+      setup_ready_client_device_count: deviceSummary.setup_ready_count,
+      setup_required_client_device_count: deviceSummary.setup_required_count,
+      heartbeat_timeout_seconds: heartbeatTimeoutSeconds,
       active_session_count: sessions.size,
       wordpress_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_push_connected: Boolean(
@@ -1439,9 +1534,11 @@ export function createLocalSyncStore(options = {}) {
     createEventRegistration,
     createInventoryIntake,
     createKioskOrder,
+    deviceStatus,
     listEvents,
     createSession,
     listAccessPolicy,
+    recordDeviceHeartbeat,
     reserveInventory,
     pullWebsiteInventory,
     searchCustomers,
@@ -1584,6 +1681,22 @@ function migrateLocalSyncDatabase(database) {
       catalog_source TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS client_devices (
+      device_id TEXT PRIMARY KEY,
+      device_label TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      app_version TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      network_status TEXT NOT NULL,
+      setup_status TEXT NOT NULL,
+      server_url TEXT NOT NULL,
+      website_url TEXT NOT NULL,
+      capabilities_json TEXT NOT NULL,
+      heartbeat_interval_seconds INTEGER NOT NULL,
+      first_seen_at_utc TEXT NOT NULL,
+      last_seen_at_utc TEXT NOT NULL
+    );
   `)
 
   ensureLocalSyncColumn(database, "inventory_items", "provider_card_id", "TEXT NOT NULL DEFAULT ''")
@@ -1703,6 +1816,34 @@ function loadReferenceCards(database) {
     `)
     .all()
     .map((row) => normalizeReferenceCard(row, row.game))
+}
+
+function loadClientDevices(database) {
+  return database
+    .prepare(`
+      SELECT device_id, device_label, mode, app_version, platform, network_status,
+        setup_status, server_url, website_url, capabilities_json,
+        heartbeat_interval_seconds, first_seen_at_utc, last_seen_at_utc
+      FROM client_devices
+      ORDER BY last_seen_at_utc DESC, device_label, device_id
+    `)
+    .all()
+    .map((row) => ({
+      device_id: cleanPublicId(row.device_id),
+      device_label: cleanName(row.device_label) || cleanPublicId(row.device_id),
+      mode: cleanClientDeviceMode(row.mode),
+      app_version: cleanName(row.app_version),
+      platform: cleanName(row.platform),
+      network_status: cleanClientDeviceNetworkStatus(row.network_status),
+      setup_status: cleanClientDeviceSetupStatus(row.setup_status),
+      server_url: cleanHttpUrl(row.server_url),
+      website_url: cleanHttpUrl(row.website_url),
+      capabilities: cleanClientDeviceCapabilities(parseJson(row.capabilities_json, []), row.mode),
+      heartbeat_interval_seconds: boundedInt(row.heartbeat_interval_seconds, 5, 600, 30),
+      first_seen_at_utc: cleanIsoTimestamp(row.first_seen_at_utc),
+      last_seen_at_utc: cleanIsoTimestamp(row.last_seen_at_utc),
+    }))
+    .filter((device) => device.device_id)
 }
 
 function loadQueue(database) {
@@ -1935,6 +2076,45 @@ function saveReferenceCard(database, card, now) {
       card.catalog_synced_at_utc,
       card.catalog_source,
       now().toISOString(),
+    )
+}
+
+function saveClientDevice(database, device) {
+  database
+    .prepare(`
+      INSERT INTO client_devices (
+        device_id, device_label, mode, app_version, platform, network_status,
+        setup_status, server_url, website_url, capabilities_json,
+        heartbeat_interval_seconds, first_seen_at_utc, last_seen_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(device_id) DO UPDATE SET
+        device_label = excluded.device_label,
+        mode = excluded.mode,
+        app_version = excluded.app_version,
+        platform = excluded.platform,
+        network_status = excluded.network_status,
+        setup_status = excluded.setup_status,
+        server_url = excluded.server_url,
+        website_url = excluded.website_url,
+        capabilities_json = excluded.capabilities_json,
+        heartbeat_interval_seconds = excluded.heartbeat_interval_seconds,
+        last_seen_at_utc = excluded.last_seen_at_utc
+    `)
+    .run(
+      device.device_id,
+      device.device_label,
+      cleanClientDeviceMode(device.mode),
+      device.app_version,
+      device.platform,
+      cleanClientDeviceNetworkStatus(device.network_status),
+      cleanClientDeviceSetupStatus(device.setup_status),
+      device.server_url,
+      device.website_url,
+      JSON.stringify(cleanClientDeviceCapabilities(device.capabilities, device.mode)),
+      boundedInt(device.heartbeat_interval_seconds, 5, 600, 30),
+      device.first_seen_at_utc,
+      device.last_seen_at_utc,
     )
 }
 
@@ -2428,6 +2608,61 @@ function publicEventSnapshot(event) {
   }
 }
 
+function publicClientDevice(device, now, heartbeatTimeoutSeconds) {
+  const nowMs = now().getTime()
+  const lastSeenMs = Date.parse(device.last_seen_at_utc)
+  const lastSeenIsValid = Number.isFinite(lastSeenMs)
+  const secondsSinceSeen = lastSeenIsValid ? Math.max(0, Math.floor((nowMs - lastSeenMs) / 1000)) : null
+  const staleAfterMs = lastSeenIsValid ? lastSeenMs + heartbeatTimeoutSeconds * 1000 : 0
+  const connectionStatus =
+    lastSeenIsValid && device.network_status !== "offline" && nowMs <= staleAfterMs ? "online" : "offline"
+
+  return {
+    device_id: device.device_id,
+    device_label: device.device_label,
+    mode: cleanClientDeviceMode(device.mode),
+    app_version: device.app_version,
+    platform: device.platform,
+    network_status: cleanClientDeviceNetworkStatus(device.network_status),
+    setup_status: cleanClientDeviceSetupStatus(device.setup_status),
+    connection_status: connectionStatus,
+    capabilities: cleanClientDeviceCapabilities(device.capabilities, device.mode),
+    heartbeat_interval_seconds: boundedInt(device.heartbeat_interval_seconds, 5, 600, 30),
+    first_seen_at_utc: device.first_seen_at_utc,
+    last_seen_at_utc: device.last_seen_at_utc,
+    seconds_since_seen: secondsSinceSeen,
+    stale_after_utc: staleAfterMs > 0 ? new Date(staleAfterMs).toISOString() : "",
+    server_url: device.server_url,
+    website_url: device.website_url,
+    credentials_synced_to_client: false,
+    raw_credentials_returned: false,
+  }
+}
+
+function buildClientDeviceSummary(devices, now, heartbeatTimeoutSeconds) {
+  const publicDevices = devices
+    .map((device) => publicClientDevice(device, now, heartbeatTimeoutSeconds))
+    .sort((left, right) => {
+      if (left.connection_status !== right.connection_status) {
+        return left.connection_status === "online" ? -1 : 1
+      }
+
+      return String(right.last_seen_at_utc).localeCompare(String(left.last_seen_at_utc))
+    })
+
+  return {
+    devices: publicDevices,
+    device_count: publicDevices.length,
+    online_count: publicDevices.filter((device) => device.connection_status === "online").length,
+    offline_count: publicDevices.filter((device) => device.connection_status === "offline").length,
+    setup_ready_count: publicDevices.filter((device) => device.setup_status === "ready").length,
+    setup_required_count: publicDevices.filter((device) => device.setup_status === "setup_required").length,
+    kiosk_count: publicDevices.filter((device) => device.mode === "kiosk").length,
+    employee_count: publicDevices.filter((device) => device.mode === "employee").length,
+    manager_count: publicDevices.filter((device) => device.mode === "manager").length,
+  }
+}
+
 function buildCreditLedgerEntry({
   customer,
   entryType,
@@ -2541,6 +2776,39 @@ function cleanEmail(value) {
 
 function cleanRole(value) {
   return value === "manager" ? "manager" : "staff"
+}
+
+function cleanClientDeviceMode(value) {
+  const mode = String(value ?? "").trim().toLowerCase()
+
+  return CLIENT_DEVICE_MODES.includes(mode) ? mode : "employee"
+}
+
+function cleanClientDeviceSetupStatus(value) {
+  const status = String(value ?? "").trim().toLowerCase()
+
+  return CLIENT_DEVICE_SETUP_STATUSES.includes(status) ? status : "setup_required"
+}
+
+function cleanClientDeviceNetworkStatus(value) {
+  const status = String(value ?? "").trim().toLowerCase()
+
+  return CLIENT_DEVICE_NETWORK_STATUSES.includes(status) ? status : "online"
+}
+
+function cleanClientDeviceCapabilities(value, mode) {
+  const defaultCapabilities =
+    cleanClientDeviceMode(mode) === "kiosk"
+      ? ["Kiosk", "Status"]
+      : ["Inventory", "Kiosk", "Events", "Customers", "Sync", "Status"]
+
+  if (!Array.isArray(value)) {
+    return defaultCapabilities
+  }
+
+  const capabilities = [...new Set(value.filter((section) => ACCESS_SECTIONS.includes(section)))]
+
+  return capabilities.length > 0 ? capabilities : defaultCapabilities
 }
 
 function cleanReason(value) {

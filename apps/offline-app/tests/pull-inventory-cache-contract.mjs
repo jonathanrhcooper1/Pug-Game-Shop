@@ -29,6 +29,7 @@ try {
     applyOfflinePullEventRecordsToCache,
     applyOfflinePullInventoryRecordsToCache,
     applyOfflinePushResultToQueue,
+    applyLocalInventoryIntakePushResults,
     buildCustomerCreditRedemptionOperation,
     buildConnectorManifestPreview,
     buildOneWebsiteConnectorSetupPlan,
@@ -37,6 +38,7 @@ try {
     buildOfflineEventQueuePreviewEntries,
     buildOfflineLabelPrintJob,
     buildInventoryUpdateOperation,
+    buildLocalInventoryIntakeSyncReceipts,
     buildOfflineConflictResolutionRequestBody,
     buildOfflineSessionStorageSnapshot,
     cleanInventoryAdjustmentReason,
@@ -45,6 +47,7 @@ try {
     connectorManifestUnavailableGuidance,
     creditRedemptionInputFromMinorUnits,
     creditRedemptionInputToMinorUnits,
+    moneyInputDraftWithTwoDecimals,
     customerCreditAvailableAfterPending,
     customerCreditDisplayName,
     customerCreditLedgerEntriesForCustomer,
@@ -53,8 +56,10 @@ try {
     findInventoryItemByScan,
     findCustomerCreditSnapshot,
     inventoryQuantityDeltaFromInput,
+    isCanonicalInventoryOperation,
     offlineWorkspaceSeed,
     offlineSessionStorageKey,
+    pendingLocalInventoryIntakeReceipts,
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
     upsertConnectorProfile,
@@ -481,6 +486,91 @@ try {
   assert.equal(quantityAdjustmentPayload.quantity_delta, -2)
   assert.equal(quantityAdjustmentPayload.adjustment_reason, "cycle count shelf")
   assert.equal(quantityAdjustmentPayload.sync_intent, "staff_quantity_adjustment")
+  assert.equal(isCanonicalInventoryOperation(quantityAdjustmentOperation), true)
+
+  const intakeReceipts = buildLocalInventoryIntakeSyncReceipts(
+    [
+      {
+        ...insertedItem,
+        id: 20,
+        publicId: "local-inventory-intake-001",
+        rowVersion: 1,
+        cardName: "Bulbasaur",
+        setName: "Base Set",
+        number: "44/102",
+        condition: "LP",
+        barcode: "PUG-PKM-BASE-044-01",
+        priceMinorUnits: 350,
+        price: "$3.50",
+        location: "Intake Queue",
+        status: "pending_intake",
+        source: "queued",
+      },
+      {
+        ...insertedItem,
+        id: 21,
+        publicId: "local-inventory-intake-002",
+        rowVersion: 1,
+        cardName: "Bulbasaur",
+        setName: "Base Set",
+        number: "44/102",
+        condition: "LP",
+        barcode: "PUG-PKM-BASE-044-02",
+        priceMinorUnits: 350,
+        price: "$3.50",
+        location: "Intake Queue",
+        status: "pending_intake",
+        source: "queued",
+      },
+    ],
+    {
+      profileId: "pug-game-shop-staging",
+      companyName: "Pug Game Shop",
+      localSyncServerUrl: "http://127.0.0.1:8787",
+      queuedAtUtc: "2026-06-08T12:40:00Z",
+    },
+  )
+  assert.equal(intakeReceipts.length, 2)
+  assert.equal(intakeReceipts[0].action, "local_inventory_intake_sync_receipt")
+  assert.equal(intakeReceipts[0].queueOperationType, "inventory_intake")
+  assert.equal(intakeReceipts[0].localDatabase, "store-sync.sqlite")
+  assert.equal(intakeReceipts[0].wordpressAcceptanceRequired, true)
+  assert.equal(intakeReceipts[0].browserOperationEnvelopeCreated, false)
+  assert.deepEqual(intakeReceipts[0].syncPath, [
+    "offline_app",
+    "local_sync_server",
+    "wordpress_inventory_intake_route",
+  ])
+  const intakeReceiptPushResult = applyLocalInventoryIntakePushResults(
+    intakeReceipts,
+    [
+      {
+        operation_type: "inventory_intake",
+        entity_id: "local-inventory-intake-001",
+        status: "accepted",
+        wordpress_code: "inventory_item_created",
+        http_status: 201,
+      },
+      {
+        operation_type: "inventory_intake",
+        entity_id: "local-inventory-intake-002",
+        status: "retry",
+        wordpress_code: "wordpress_inventory_push_unavailable",
+        http_status: 503,
+      },
+    ],
+    { syncedAtUtc: "2026-06-08T12:45:00Z" },
+  )
+  assert.equal(intakeReceiptPushResult.acceptedCount, 1)
+  assert.equal(intakeReceiptPushResult.retryCount, 1)
+  assert.equal(intakeReceiptPushResult.pendingCount, 0)
+  assert.equal(intakeReceiptPushResult.receipts[0].status, "accepted")
+  assert.equal(intakeReceiptPushResult.receipts[0].wordpressCode, "inventory_item_created")
+  assert.equal(intakeReceiptPushResult.receipts[0].lastSyncAttemptAtUtc, "2026-06-08T12:45:00Z")
+  assert.deepEqual(
+    pendingLocalInventoryIntakeReceipts(intakeReceiptPushResult.receipts).map((receipt) => receipt.inventoryPublicId),
+    ["local-inventory-intake-002"],
+  )
 
   const conflictResolutionBody = buildOfflineConflictResolutionRequestBody(
     updatedConflict,
@@ -620,6 +710,8 @@ try {
   assert.equal(creditRedemptionInputToMinorUnits("$1,234.56"), 123456)
   assert.equal(creditRedemptionInputToMinorUnits("28.1"), 2810)
   assert.equal(creditRedemptionInputToMinorUnits("28.123"), null)
+  assert.equal(moneyInputDraftWithTwoDecimals("12.0000"), "12.00")
+  assert.equal(moneyInputDraftWithTwoDecimals("$1,234.567"), "1234.56")
   assert.equal(customerCreditAvailableAfterPending(creditResult.customerCredit, 400), 1700)
 
   const creditRedemptionOperation = buildCustomerCreditRedemptionOperation(

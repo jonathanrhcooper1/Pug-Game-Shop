@@ -8,9 +8,13 @@
 namespace TCGStorePlatform\WooCommerce;
 
 use DateTimeInterface;
+use TCGStorePlatform\Settings\BrandingSettings;
+use TCGStorePlatform\Settings\Settings;
+use TCGStorePlatform\Version;
 
 final class CustomerAccountPortalController {
 	public const ENDPOINT = 'pug-portal';
+	public const STYLE_HANDLE = 'tcg-store-customer-account-portal';
 
 	private const ORDER_LIMIT  = 10;
 	private const LEDGER_LIMIT = 12;
@@ -24,6 +28,7 @@ final class CustomerAccountPortalController {
 		add_filter( 'query_vars', array( $this, 'register_query_var' ), 0 );
 		add_filter( 'woocommerce_account_menu_items', array( $this, 'add_menu_item' ), 40 );
 		add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', array( $this, 'render_endpoint' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
 	/**
@@ -53,6 +58,12 @@ final class CustomerAccountPortalController {
 				'type'     => 'action',
 				'hook'     => 'woocommerce_account_' . self::ENDPOINT . '_endpoint',
 				'callback' => 'render_endpoint',
+				'priority' => 10,
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'wp_enqueue_scripts',
+				'callback' => 'enqueue_assets',
 				'priority' => 10,
 			),
 		);
@@ -106,6 +117,26 @@ final class CustomerAccountPortalController {
 		echo $this->presenter->render_html( $this->portal_payload() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
+	public function enqueue_assets(): void {
+		if ( ! function_exists( 'wp_enqueue_style' ) || ! $this->should_enqueue_assets() ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			self::STYLE_HANDLE,
+			$this->asset_url( 'assets/css/customer-account-portal.css' ),
+			array(),
+			Version::PLUGIN
+		);
+
+		if ( function_exists( 'wp_add_inline_style' ) ) {
+			wp_add_inline_style(
+				self::STYLE_HANDLE,
+				'.tcg-account-portal {' . BrandingSettings::css_variable_string( Settings::all() ) . '}'
+			);
+		}
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */
@@ -125,6 +156,8 @@ final class CustomerAccountPortalController {
 				'currency'                     => $customer['credit_currency'] ?? 'USD',
 				'is_logged_in'                 => $user_id > 0,
 				'woocommerce_orders_available' => function_exists( 'wc_get_orders' ),
+				'branding'                     => BrandingSettings::public_config( Settings::all() ),
+				'links'                        => $this->portal_links(),
 			)
 		);
 	}
@@ -356,6 +389,43 @@ final class CustomerAccountPortalController {
 		$pages = defined( 'EP_PAGES' ) ? (int) constant( 'EP_PAGES' ) : 0;
 
 		return $root | $pages;
+	}
+
+	/**
+	 * @return array<string, string|null>
+	 */
+	private function portal_links(): array {
+		$shop_url = null;
+		if ( function_exists( 'wc_get_page_permalink' ) ) {
+			$shop_url = (string) wc_get_page_permalink( 'shop' );
+		}
+
+		$orders_url = null;
+		if ( function_exists( 'wc_get_account_endpoint_url' ) ) {
+			$orders_url = (string) wc_get_account_endpoint_url( 'orders' );
+		}
+
+		return array(
+			'shop_url'    => '' === (string) $shop_url ? null : $shop_url,
+			'orders_url'  => '' === (string) $orders_url ? null : $orders_url,
+			'support_url' => null,
+		);
+	}
+
+	private function should_enqueue_assets(): bool {
+		if ( function_exists( 'is_account_page' ) ) {
+			return (bool) is_account_page();
+		}
+
+		return false;
+	}
+
+	private function asset_url( string $path ): string {
+		if ( defined( 'TCG_STORE_PLATFORM_FILE' ) && function_exists( 'plugins_url' ) ) {
+			return plugins_url( $path, TCG_STORE_PLATFORM_FILE );
+		}
+
+		return $path;
 	}
 
 	private function array_a(): mixed {

@@ -7,9 +7,11 @@ import { createLocalSyncStore } from "../src/localSyncStore.mjs"
 
 const tempDir = await mkdtemp(join(tmpdir(), "pug-local-sync-"))
 const databasePath = join(tempDir, "store-sync.sqlite")
+let currentTime = new Date("2026-06-09T12:00:00.000Z")
+const now = () => currentTime
 
 try {
-  const firstStore = createLocalSyncStore({ databasePath })
+  const firstStore = createLocalSyncStore({ databasePath, now, heartbeatTimeoutSeconds: 90 })
   const managerAuth = firstStore.createSession({ pin: "9999" })
   assert.equal(managerAuth.status, "ok")
 
@@ -23,6 +25,22 @@ try {
 
   const cashierAuth = firstStore.createSession({ pin: "1357" })
   assert.equal(cashierAuth.status, "ok")
+
+  const firstHeartbeat = firstStore.recordDeviceHeartbeat({
+    device_id: "front-counter-01",
+    device_label: "Front Counter 01",
+    mode: "employee",
+    app_version: "0.2.0",
+    platform: "windows",
+    network_status: "online",
+    setup_status: "ready",
+    server_url: "http://127.0.0.1:8787",
+    website_url: "https://vbf.2a7.myftpupload.com/",
+    capabilities: ["Inventory", "Customers", "Sync", "Status"],
+  })
+  assert.equal(firstHeartbeat.status, "ok")
+  assert.equal(firstHeartbeat.device.connection_status, "online")
+  assert.equal(firstHeartbeat.device.setup_status, "ready")
 
   const firstReservation = firstStore.reserveInventory(cashierAuth.session.token, {
     inventory_public_id: "inv-1001",
@@ -75,10 +93,13 @@ try {
   const firstStatus = firstStore.syncStatus()
   assert.equal(firstStatus.persistence_mode, "sqlite")
   assert.equal(firstStatus.queue_depth, 7)
+  assert.equal(firstStatus.client_device_count, 1)
+  assert.equal(firstStatus.online_client_device_count, 1)
   assert.ok(firstStatus.reference_card_count >= 5)
   firstStore.close()
 
-  const restartedStore = createLocalSyncStore({ databasePath })
+  currentTime = new Date("2026-06-09T12:02:01.000Z")
+  const restartedStore = createLocalSyncStore({ databasePath, now, heartbeatTimeoutSeconds: 90 })
   const persistedCashierAuth = restartedStore.createSession({ pin: "1357" })
   assert.equal(persistedCashierAuth.status, "ok")
   assert.equal(persistedCashierAuth.user.name, "Persistent Cashier")
@@ -101,6 +122,25 @@ try {
   assert.equal(persistedEvent.registered_count, 11)
   assert.equal(persistedEvent.source, "queued")
 
+  const persistedDeviceStatus = restartedStore.deviceStatus()
+  assert.equal(persistedDeviceStatus.device_count, 1)
+  assert.equal(persistedDeviceStatus.online_count, 0)
+  assert.equal(persistedDeviceStatus.offline_count, 1)
+  assert.equal(persistedDeviceStatus.devices[0].device_id, "front-counter-01")
+  assert.equal(persistedDeviceStatus.devices[0].connection_status, "offline")
+  assert.equal(persistedDeviceStatus.devices[0].setup_status, "ready")
+
+  const restartedHeartbeat = restartedStore.recordDeviceHeartbeat({
+    device_id: "front-counter-01",
+    mode: "employee",
+    network_status: "online",
+    setup_status: "ready",
+  })
+  assert.equal(restartedHeartbeat.status, "ok")
+  assert.equal(restartedHeartbeat.online_count, 1)
+  assert.equal(restartedHeartbeat.device.first_seen_at_utc, "2026-06-09T12:00:00.000Z")
+  assert.equal(restartedHeartbeat.device.last_seen_at_utc, "2026-06-09T12:02:01.000Z")
+
   const duplicateReservation = restartedStore.reserveInventory(persistedCashierAuth.session.token, {
     inventory_public_id: "inv-1001",
     hold_reason: "duplicate after restart",
@@ -110,6 +150,8 @@ try {
 
   const restartedStatus = restartedStore.syncStatus()
   assert.equal(restartedStatus.queue_depth, 7)
+  assert.equal(restartedStatus.client_device_count, 1)
+  assert.equal(restartedStatus.online_client_device_count, 1)
   assert.ok(restartedStatus.reference_card_count >= 5)
   assert.ok(restartedStatus.customer_count >= 4)
   assert.ok(restartedStatus.credit_ledger_entry_count >= 5)

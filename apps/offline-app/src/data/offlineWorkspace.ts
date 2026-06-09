@@ -732,6 +732,44 @@ export type OfflinePushQueueApplyResult = {
   queueReplayApplied: boolean
 }
 
+export type LocalInventoryIntakeSyncStatus = "pending_sync" | "accepted" | "retry" | "rejected"
+
+export type LocalInventoryIntakeSyncReceipt = {
+  action: "local_inventory_intake_sync_receipt"
+  receiptId: string
+  profileId: string
+  companyName: string
+  localSyncServerUrl: string
+  localDatabase: "store-sync.sqlite"
+  queueOperationType: "inventory_intake"
+  inventoryPublicId: string
+  cardName: string
+  setName: string
+  condition: string
+  barcode: string
+  priceMinorUnits: number
+  location: string
+  status: LocalInventoryIntakeSyncStatus
+  queuedAtUtc: string
+  lastSyncAttemptAtUtc?: string
+  wordpressAcceptanceRequired: true
+  labelPrintDeferred: true
+  browserOperationEnvelopeCreated: false
+  directWordPressAccess: false
+  directMysqlAccess: false
+  syncPath: ["offline_app", "local_sync_server", "wordpress_inventory_intake_route"]
+  wordpressCode?: string
+  httpStatus?: number
+}
+
+export type LocalInventoryIntakePushResultSummary = {
+  receipts: LocalInventoryIntakeSyncReceipt[]
+  acceptedCount: number
+  retryCount: number
+  rejectedCount: number
+  pendingCount: number
+}
+
 export type DevicePairingRequestPlan = {
   method: "POST"
   path: "/wp-json/tcg-store/v1/offline/devices/register"
@@ -1403,16 +1441,34 @@ export function cleanOfflineEventRegistrationPublicId(
 }
 
 export function formatMoney(minorUnits: number, currency: "USD") {
+  const safeMinorUnits = Number.isFinite(minorUnits) ? Math.round(minorUnits) : 0
+
   return new Intl.NumberFormat("en-US", {
     currency,
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
     style: "currency",
-  }).format(minorUnits / 100)
+  }).format(safeMinorUnits / 100)
 }
 
 export function creditRedemptionInputFromMinorUnits(minorUnits: number) {
-  const safeMinorUnits = Math.max(0, Math.trunc(minorUnits))
+  const safeMinorUnits = Math.max(0, Math.round(minorUnits))
 
   return (safeMinorUnits / 100).toFixed(2)
+}
+
+export function moneyInputDraftWithTwoDecimals(value: string) {
+  const normalized = value.trim().replace(/^\$/, "").replaceAll(",", "")
+  const cleaned = normalized.replace(/[^\d.]/g, "")
+  const hasDecimal = cleaned.includes(".")
+  const [wholeRaw = "", ...decimalParts] = cleaned.split(".")
+  const whole = wholeRaw.replace(/^0+(?=\d)/, "")
+
+  if (!hasDecimal) {
+    return whole
+  }
+
+  return `${whole || "0"}.${decimalParts.join("").slice(0, 2)}`
 }
 
 export function creditRedemptionInputToMinorUnits(value: string) {
@@ -3940,6 +3996,128 @@ export function buildOfflinePushRequestPlan(batch: OfflinePushBatchPayload): Off
   }
 }
 
+export function isCanonicalInventoryOperation(
+  operation: Pick<OfflineOperationEnvelope | OfflinePushOperationPayload, "operation_type">,
+): boolean {
+  return operation.operation_type === "inventory_update" ||
+    operation.operation_type === "inventory_reservation"
+}
+
+export function buildLocalInventoryIntakeSyncReceipts(
+  items: InventoryItem[],
+  options: {
+    profileId?: string
+    companyName?: string
+    localSyncServerUrl?: string
+    queuedAtUtc?: string
+  } = {},
+): LocalInventoryIntakeSyncReceipt[] {
+  const queuedAtUtc = options.queuedAtUtc ?? new Date().toISOString()
+
+  return items
+    .filter((item) => item.status === "pending_intake" || item.source === "queued")
+    .map((item) => ({
+      action: "local_inventory_intake_sync_receipt",
+      receiptId: `intake-receipt-${item.publicId}`,
+      profileId: options.profileId ?? "local-profile-preview",
+      companyName: options.companyName ?? "Local store",
+      localSyncServerUrl: options.localSyncServerUrl ?? "http://127.0.0.1:8787",
+      localDatabase: "store-sync.sqlite",
+      queueOperationType: "inventory_intake",
+      inventoryPublicId: item.publicId,
+      cardName: item.cardName,
+      setName: item.setName,
+      condition: item.condition,
+      barcode: item.barcode,
+      priceMinorUnits: item.priceMinorUnits,
+      location: item.location,
+      status: "pending_sync",
+      queuedAtUtc,
+      wordpressAcceptanceRequired: true,
+      labelPrintDeferred: true,
+      browserOperationEnvelopeCreated: false,
+      directWordPressAccess: false,
+      directMysqlAccess: false,
+      syncPath: ["offline_app", "local_sync_server", "wordpress_inventory_intake_route"],
+    }))
+}
+
+export function applyLocalInventoryIntakePushResults(
+  receipts: LocalInventoryIntakeSyncReceipt[],
+  results: Array<{
+    operation_type?: string
+    entity_id?: string
+    status?: string
+    wordpress_code?: string
+    http_status?: number
+  }>,
+  options: { syncedAtUtc?: string } = {},
+): LocalInventoryIntakePushResultSummary {
+  const resultByPublicId = new Map(
+    results
+      .filter((result) => result.operation_type === "inventory_intake")
+      .map((result) => [stringValue(result.entity_id), result]),
+  )
+  const lastSyncAttemptAtUtc = options.syncedAtUtc ?? new Date().toISOString()
+  let acceptedCount = 0
+  let retryCount = 0
+  let rejectedCount = 0
+  let pendingCount = 0
+
+  const nextReceipts = receipts.map((receipt) => {
+    const result = resultByPublicId.get(receipt.inventoryPublicId)
+
+    if (!result) {
+      pendingCount += receipt.status === "pending_sync" || receipt.status === "retry" ? 1 : 0
+      return receipt
+    }
+
+    const nextStatus = localInventoryIntakeSyncStatus(result.status)
+
+    if (nextStatus === "accepted") {
+      acceptedCount += 1
+    } else if (nextStatus === "retry") {
+      retryCount += 1
+    } else if (nextStatus === "rejected") {
+      rejectedCount += 1
+    } else {
+      pendingCount += 1
+    }
+
+    return {
+      ...receipt,
+      status: nextStatus,
+      lastSyncAttemptAtUtc,
+      wordpressCode: stringValue(result.wordpress_code),
+      httpStatus: typeof result.http_status === "number" ? result.http_status : undefined,
+    }
+  })
+
+  return {
+    receipts: nextReceipts,
+    acceptedCount,
+    retryCount,
+    rejectedCount,
+    pendingCount,
+  }
+}
+
+export function pendingLocalInventoryIntakeReceipts(
+  receipts: LocalInventoryIntakeSyncReceipt[],
+): LocalInventoryIntakeSyncReceipt[] {
+  return receipts.filter((receipt) => receipt.status === "pending_sync" || receipt.status === "retry")
+}
+
+function localInventoryIntakeSyncStatus(value: unknown): LocalInventoryIntakeSyncStatus {
+  const status = stringValue(value)
+
+  if (status === "accepted" || status === "retry" || status === "rejected") {
+    return status
+  }
+
+  return "pending_sync"
+}
+
 export function buildOfflineConnectorSyncSessionPlan(
   profile: StoreConnectorProfile,
   batch: OfflinePushBatchPayload | null,
@@ -3951,7 +4129,7 @@ export function buildOfflineConnectorSyncSessionPlan(
   const pairedDeviceAvailable = pairedDeviceRecord?.profileId === profile.id
   const desktopTokenStatus = pairedDeviceAvailable ? pairedDeviceRecord.tokenStatus : "missing"
   const canonicalInventoryOperationCount =
-    batch?.operations.filter((operation) => operation.operation_type === "inventory_reservation").length ?? 0
+    batch?.operations.filter(isCanonicalInventoryOperation).length ?? 0
   const canonicalInventoryWritesReady =
     profile.wordpress.routeConnectedPushReady &&
     profile.wordpress.canonicalInventoryWritesEnabled &&
