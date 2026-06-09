@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Local App LAN Client Presence
+
+### What Changed
+
+- Added typed offline app client methods for `POST /devices/heartbeat` and
+  `GET /devices/status`.
+- The unlocked local app now reports a 30-second heartbeat to the LAN
+  middleman server with device ID, mode, app version, setup status, website URL,
+  server URL, and allowed workspace capabilities.
+- Added a Status screen client-presence summary and heartbeat timeline entry
+  showing online/offline client counts without exposing credentials.
+- Updated offline Tauri Windows metadata from `0.175.0` to `0.176.0`.
+
+### Why
+
+The LAN server already persisted employee/kiosk device presence, but the app was
+not calling those endpoints. Multiple local app and kiosk instances need a
+central status view so staff can tell which clients are connected before relying
+on offline fallback or live sync.
+
+The Windows package contract was also failing because the Tauri metadata lagged
+behind the current app/package version.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `npm --prefix apps/offline-app run test:package-contract`
+- Browser smoke against `http://127.0.0.1:1420` verifying PIN unlock, Status
+  screen client presence, heartbeat text, and no fresh browser console warnings
+  or errors.
+- LAN endpoint smoke against `http://127.0.0.1:8787/devices/status` confirming
+  one online client and no credential fields returned.
+
+### Rollback Notes
+
+- Revert the app heartbeat/status UI changes if client presence causes noisy
+  local network traffic or stale status expectations. No WordPress or SQLite
+  schema rollback is required.
+
 ## 2026-06-09 - Local App Website Sync Status Preservation
 
 ### What Changed

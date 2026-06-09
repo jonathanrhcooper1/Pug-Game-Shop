@@ -90,6 +90,58 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   direct_mysql_access: false
 }>
 
+export type LocalSyncClientDevice = {
+  device_id: string
+  device_label: string
+  mode: "employee" | "kiosk" | "manager"
+  app_version: string
+  platform: string
+  network_status: "online" | "offline" | "degraded"
+  setup_status: "ready" | "setup_required"
+  connection_status: "online" | "offline"
+  capabilities: LocalSyncAccessSection[]
+  heartbeat_interval_seconds: number
+  first_seen_at_utc: string
+  last_seen_at_utc: string
+  seconds_since_seen: number | null
+  stale_after_utc: string
+  server_url: string
+  website_url: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}
+
+export type LocalSyncDeviceHeartbeatResult = LocalSyncResult<{
+  action: "local_client_device_heartbeat"
+  device: LocalSyncClientDevice
+  device_count: number
+  online_count: number
+  offline_count: number
+  setup_ready_count: number
+  setup_required_count: number
+  heartbeat_timeout_seconds: number
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncDeviceStatusResult = LocalSyncResult<{
+  action: "local_client_device_status"
+  topology: "lan_middleman_server"
+  server_authority: "local_sync_server"
+  heartbeat_timeout_seconds: number
+  devices: LocalSyncClientDevice[]
+  device_count: number
+  online_count: number
+  offline_count: number
+  setup_ready_count: number
+  setup_required_count: number
+  kiosk_count: number
+  employee_count: number
+  manager_count: number
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
 export type LocalSyncInventoryItem = {
   public_id: string
   row_version: number
@@ -340,6 +392,13 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   customer_count: number
   credit_ledger_entry_count: number
   event_count: number
+  client_presence_enabled: true
+  client_device_count: number
+  online_client_device_count: number
+  offline_client_device_count: number
+  setup_ready_client_device_count: number
+  setup_required_client_device_count: number
+  heartbeat_timeout_seconds: number
   active_session_count: number
   wordpress_push_connected: boolean
   wordpress_inventory_push_connected?: boolean
@@ -414,6 +473,20 @@ export type LocalSyncFetch = (
 export type LocalSyncServerClient = {
   serverUrl: string
   getSetupStatus: () => Promise<LocalSyncSetupStatusResult>
+  recordDeviceHeartbeat: (input: {
+    deviceId: string
+    deviceLabel: string
+    mode: LocalSyncClientDevice["mode"]
+    appVersion: string
+    platform: string
+    networkStatus: LocalSyncClientDevice["network_status"]
+    setupStatus: LocalSyncClientDevice["setup_status"]
+    serverUrl: string
+    websiteUrl: string
+    capabilities: LocalSyncAccessSection[]
+    heartbeatIntervalSeconds?: number
+  }) => Promise<LocalSyncDeviceHeartbeatResult>
+  getDeviceStatus: () => Promise<LocalSyncDeviceStatusResult>
   authWithPin: (pin: string, options?: { ttlMinutes?: number }) => Promise<LocalSyncAuthResult>
   getAccessPolicy: (sessionToken: string) => Promise<LocalSyncAccessPolicyResult>
   addUser: (
@@ -515,6 +588,25 @@ export function createLocalSyncServerClient(
     serverUrl: baseUrl,
     getSetupStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/setup/status") as Promise<LocalSyncSetupStatusResult>,
+    recordDeviceHeartbeat: (input) =>
+      requestLocalSync(fetcher, baseUrl, "/devices/heartbeat", {
+        method: "POST",
+        body: {
+          device_id: input.deviceId,
+          device_label: input.deviceLabel,
+          mode: input.mode,
+          app_version: input.appVersion,
+          platform: input.platform,
+          network_status: input.networkStatus,
+          setup_status: input.setupStatus,
+          server_url: input.serverUrl,
+          website_url: input.websiteUrl,
+          capabilities: input.capabilities,
+          heartbeat_interval_seconds: input.heartbeatIntervalSeconds ?? 30,
+        },
+      }) as Promise<LocalSyncDeviceHeartbeatResult>,
+    getDeviceStatus: () =>
+      requestLocalSync(fetcher, baseUrl, "/devices/status") as Promise<LocalSyncDeviceStatusResult>,
     authWithPin: (pin, options = {}) =>
       requestLocalSync(fetcher, baseUrl, "/auth/pin", {
         method: "POST",

@@ -10,6 +10,9 @@ All notable changes follow Semantic Versioning.
   prevents overlapping manual sync clicks, preserves the inventory status
   returned by WordPress after LAN push acceptance, and keeps the status/queue
   visibility panel resilient during app reloads.
+- The offline app now records LAN client heartbeats while unlocked, shows
+  employee/kiosk/manager client presence on the Status screen, and aligns the
+  Tauri Windows package metadata with the current app version.
 - WordPress reference-card search now ranks exact, prefix, and contains matches
   on card name ahead of identifier and set-name-only matches, so intake lookups
   like `Charizard` surface actual Charizard cards before set-only results.

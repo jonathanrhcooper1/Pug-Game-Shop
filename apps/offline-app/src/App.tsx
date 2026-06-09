@@ -115,6 +115,8 @@ import {
   type LocalSyncAuthResult,
   type LocalSyncCreditLedgerEntry,
   type LocalSyncCustomer,
+  type LocalSyncDeviceHeartbeatResult,
+  type LocalSyncDeviceStatusResult,
   type LocalSyncEventSnapshot,
   type LocalSyncInventoryItem,
   type LocalSyncPullResult,
@@ -177,6 +179,7 @@ const ACCESS_SECTIONS = [
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
+const OFFLINE_APP_VERSION = "0.176.0"
 
 type OfflineAppUser = {
   id: string
@@ -1050,6 +1053,10 @@ export function App() {
   const [localSyncSessionToken, setLocalSyncSessionToken] = useState("")
   const [localSyncSessionExpiresAtUtc, setLocalSyncSessionExpiresAtUtc] = useState("")
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
+  const [localDeviceHeartbeat, setLocalDeviceHeartbeat] =
+    useState<LocalSyncDeviceHeartbeatResult | null>(null)
+  const [localDeviceStatus, setLocalDeviceStatus] =
+    useState<LocalSyncDeviceStatusResult | null>(null)
   const [loginPin, setLoginPin] = useState("")
   const [loginIssue, setLoginIssue] = useState("")
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30)
@@ -1357,6 +1364,29 @@ export function App() {
     queuedOperations.length > 0 || (localSyncStatus?.status === "ok" && localSyncStatus.queue_depth > 0)
       ? "warning"
       : "ready"
+  const deviceStatusOk = localDeviceStatus?.status === "ok" ? localDeviceStatus : null
+  const deviceHeartbeatOk = localDeviceHeartbeat?.status === "ok" ? localDeviceHeartbeat : null
+  const localClientPresenceValue = deviceStatusOk
+    ? `${countLabel(deviceStatusOk.online_count, "online client")}; ${countLabel(deviceStatusOk.offline_count, "offline client")}`
+    : localSyncStatus?.status === "ok"
+      ? `${countLabel(localSyncStatus.online_client_device_count, "online client")}; ${countLabel(localSyncStatus.offline_client_device_count, "offline client")}`
+      : "Device presence pending"
+  const localClientPresenceDetail = deviceStatusOk
+    ? `Device heartbeat status screen loaded ${countLabel(deviceStatusOk.device_count, "LAN client")} from ${localSyncClient.serverUrl}; employee ${deviceStatusOk.employee_count}, kiosk ${deviceStatusOk.kiosk_count}, manager ${deviceStatusOk.manager_count}; raw credentials copied: no.`
+    : deviceHeartbeatOk
+      ? `Device heartbeat accepted for ${deviceHeartbeatOk.device.device_label}; ${countLabel(deviceHeartbeatOk.online_count, "online client")} currently visible to the LAN server; raw credentials copied: no.`
+      : localDeviceStatus && localDeviceStatus.status !== "ok"
+        ? localDeviceStatus.message
+        : "Device heartbeat has not reported to the LAN middleman server yet."
+  const localClientPresenceTone: StatusTone = deviceStatusOk
+    ? deviceStatusOk.setup_required_count > 0 || deviceStatusOk.offline_count > 0
+      ? "warning"
+      : "ready"
+    : localDeviceStatus
+      ? statusToneFromRemoteState(localDeviceStatus.status)
+      : deviceHeartbeatOk
+        ? "ready"
+        : "idle"
   const setupStatusTone = statusToneFromRemoteState(lanSetupProbe.status)
   const manifestStatusTone = statusToneFromRemoteState(connectorManifestFetch.status)
   const setupAndManifestTone =
@@ -1430,6 +1460,13 @@ export function App() {
       tone: queueStatusTone,
     },
     {
+      id: "client-presence",
+      label: "Client presence",
+      value: localClientPresenceValue,
+      detail: localClientPresenceDetail,
+      tone: localClientPresenceTone,
+    },
+    {
       id: "setup-manifest",
       label: "Setup and manifest",
       value: `Setup ${lanSetupProbe.status}; manifest ${connectorManifestFetch.status}`,
@@ -1475,6 +1512,12 @@ export function App() {
           ? `${operationSyncVisibilitySummary}; ${countLabel(localSyncStatus.queue_depth, "LAN queued op")}; ${queueExportStatus.detail}`
           : `${operationSyncVisibilitySummary}; ${queueExportStatus.detail}`,
       tone: queueStatusTone,
+    },
+    {
+      id: "client-presence",
+      title: "Device heartbeat",
+      detail: localClientPresenceDetail,
+      tone: localClientPresenceTone,
     },
     {
       id: "desktop-sync",
@@ -1621,6 +1664,30 @@ export function App() {
       setSelectedId(filteredItems[0].id)
     }
   }, [filteredItems, scannedInventoryItem, selectedId])
+
+  useEffect(() => {
+    if (!sessionIsUnlocked) {
+      return
+    }
+
+    void recordLocalDeviceHeartbeat()
+
+    const heartbeatId = window.setInterval(() => {
+      void recordLocalDeviceHeartbeat()
+    }, 30_000)
+
+    return () => {
+      window.clearInterval(heartbeatId)
+    }
+  }, [
+    sessionIsUnlocked,
+    sessionRole,
+    sessionUserId,
+    activeSection,
+    activeProfile.id,
+    activePairedDevice?.devicePublicId,
+    localSyncClient,
+  ])
 
   useEffect(() => {
     setConnectorValidation((currentValidation) =>
@@ -1950,12 +2017,57 @@ export function App() {
     })
   }
 
+  function currentClientDeviceMode() {
+    if (sessionRole === "manager") {
+      return "manager"
+    }
+
+    return activeSection === "Kiosk" ? "kiosk" : "employee"
+  }
+
+  function currentClientDeviceCapabilities(): AccessSection[] {
+    if (sessionRole === "manager") {
+      return [...ACCESS_SECTIONS]
+    }
+
+    return activeOfflineUser?.access ?? ["Inventory", "Kiosk", "Queue", "Status"]
+  }
+
   async function refreshLocalSyncStatus() {
     const nextStatus = await localSyncClient.getSyncStatus()
 
     setLocalSyncStatus(nextStatus)
 
     return nextStatus
+  }
+
+  async function refreshLocalDeviceStatus() {
+    const nextDeviceStatus = await localSyncClient.getDeviceStatus()
+
+    setLocalDeviceStatus(nextDeviceStatus)
+
+    return nextDeviceStatus
+  }
+
+  async function recordLocalDeviceHeartbeat(networkStatus: "online" | "offline" | "degraded" = "online") {
+    const heartbeatResult = await localSyncClient.recordDeviceHeartbeat({
+      deviceId: activePairedDevice?.devicePublicId ?? workspace.device.installationId,
+      deviceLabel: `${workspace.device.storeLabel} ${workspace.device.modeLabel}`.trim(),
+      mode: currentClientDeviceMode(),
+      appVersion: OFFLINE_APP_VERSION,
+      platform: "windows",
+      networkStatus,
+      setupStatus: activeProfile.localSync.oneWebsiteMode ? "ready" : "setup_required",
+      serverUrl: localSyncClient.serverUrl,
+      websiteUrl: connectorDisplayUrl(activeProfile),
+      capabilities: currentClientDeviceCapabilities(),
+      heartbeatIntervalSeconds: 30,
+    })
+
+    setLocalDeviceHeartbeat(heartbeatResult)
+    void refreshLocalDeviceStatus()
+
+    return heartbeatResult
   }
 
   async function handleProbeLanSetup() {
