@@ -87,6 +87,7 @@ final class ScryDexCatalogController {
 				'data' => array(
 					'resource'                     => 'scrydex_catalog_status',
 					'counts'                       => $this->catalog_counts(),
+					'integrity'                    => $this->catalog_integrity_summary(),
 					'latest_checkpoints'           => $this->latest_checkpoints(),
 					'database_prefix_valid'        => $this->table_prefix_ready(),
 					'credential_values_redacted'   => true,
@@ -673,6 +674,241 @@ final class ScryDexCatalogController {
 		}
 
 		return $counts;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function catalog_integrity_summary(): array {
+		$empty = array(
+			'status'                    => 'empty',
+			'cards_checked'             => 0,
+			'cards_with_images'         => 0,
+			'cards_missing_images'      => 0,
+			'cards_with_variants'       => 0,
+			'cards_missing_variants'    => 0,
+			'cards_with_price_points'   => 0,
+			'cards_missing_price_points' => 0,
+			'price_points_total'        => 0,
+			'condition_price_points'    => 0,
+			'image_coverage_percent'    => 0,
+			'variant_coverage_percent'  => 0,
+			'price_coverage_percent'    => 0,
+			'game_counts'               => array(),
+			'latest_cards'              => array(),
+			'missing_tables'            => array(),
+			'credential_values_redacted' => true,
+		);
+
+		if ( ! $this->table_prefix_ready() ) {
+			$empty['status'] = 'database_unavailable';
+
+			return $empty;
+		}
+
+		$database = $this->database();
+		if ( null === $database ) {
+			$empty['status'] = 'database_unavailable';
+
+			return $empty;
+		}
+
+		$tables  = $this->catalog_table_names();
+		$missing = $this->missing_catalog_tables( $tables );
+		if ( $missing ) {
+			$empty['status']         = 'missing_tables';
+			$empty['missing_tables'] = $missing;
+
+			return $empty;
+		}
+
+		$cards_table    = $tables['reference_cards'];
+		$variants_table = $tables['reference_variants'];
+		$prices_table   = $tables['provider_price_points'];
+		$total_cards    = $this->count_query(
+			$database->prepare(
+				"SELECT COUNT(1) FROM {$cards_table} WHERE provider_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			)
+		);
+
+		if ( 0 === $total_cards ) {
+			return $empty;
+		}
+
+		$cards_with_images = $this->count_query(
+			$database->prepare(
+				"SELECT COUNT(1) FROM {$cards_table} WHERE provider_name = %s AND front_image_url IS NOT NULL AND front_image_url <> ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			)
+		);
+		$cards_with_variants = $this->count_query(
+			$database->prepare(
+				"SELECT COUNT(1) FROM {$cards_table} c WHERE c.provider_name = %s AND EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.provider_name = c.provider_name AND v.provider_card_id = c.provider_card_id)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			)
+		);
+		$cards_with_prices = $this->count_query(
+			$database->prepare(
+				"SELECT COUNT(1) FROM {$cards_table} c WHERE c.provider_name = %s AND EXISTS (SELECT 1 FROM {$prices_table} p WHERE p.provider_name = c.provider_name AND p.provider_card_id = c.provider_card_id)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			)
+		);
+		$price_points_total = $this->count_query(
+			$database->prepare(
+				"SELECT COUNT(1) FROM {$prices_table} WHERE provider_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			)
+		);
+		$condition_prices = $this->count_query(
+			$database->prepare(
+				"SELECT COUNT(1) FROM {$prices_table} WHERE provider_name = %s AND condition_code IS NOT NULL AND condition_code <> ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			)
+		);
+
+		return array(
+			'status'                    => $cards_with_images > 0 && $cards_with_prices > 0 ? 'usable' : 'partial',
+			'cards_checked'             => $total_cards,
+			'cards_with_images'         => $cards_with_images,
+			'cards_missing_images'      => max( 0, $total_cards - $cards_with_images ),
+			'cards_with_variants'       => $cards_with_variants,
+			'cards_missing_variants'    => max( 0, $total_cards - $cards_with_variants ),
+			'cards_with_price_points'   => $cards_with_prices,
+			'cards_missing_price_points' => max( 0, $total_cards - $cards_with_prices ),
+			'price_points_total'        => $price_points_total,
+			'condition_price_points'    => $condition_prices,
+			'image_coverage_percent'    => $this->coverage_percent( $cards_with_images, $total_cards ),
+			'variant_coverage_percent'  => $this->coverage_percent( $cards_with_variants, $total_cards ),
+			'price_coverage_percent'    => $this->coverage_percent( $cards_with_prices, $total_cards ),
+			'game_counts'               => $this->catalog_game_counts( $cards_table ),
+			'latest_cards'              => $this->latest_catalog_cards( $cards_table, $variants_table, $prices_table ),
+			'missing_tables'            => array(),
+			'credential_values_redacted' => true,
+		);
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	private function catalog_table_names(): array {
+		$database = $this->database();
+		$prefix   = null === $database ? '' : $database->prefix;
+
+		return array(
+			'reference_cards'       => $prefix . 'tcg_reference_cards',
+			'reference_variants'    => $prefix . 'tcg_reference_variants',
+			'provider_price_points' => $prefix . 'tcg_provider_price_points',
+		);
+	}
+
+	/**
+	 * @param array<string, string> $tables Catalog table names.
+	 * @return list<string>
+	 */
+	private function missing_catalog_tables( array $tables ): array {
+		$missing = array();
+
+		foreach ( $tables as $key => $table ) {
+			if ( ! $this->table_exists( $table ) ) {
+				$missing[] = $key;
+			}
+		}
+
+		return $missing;
+	}
+
+	/**
+	 * @return list<array{game:string,cards:int}>
+	 */
+	private function catalog_game_counts( string $cards_table ): array {
+		$database = $this->database();
+		if ( null === $database ) {
+			return array();
+		}
+
+		$rows = $database->get_results(
+			$database->prepare(
+				"SELECT game, COUNT(1) AS cards FROM {$cards_table} WHERE provider_name = %s GROUP BY game ORDER BY cards DESC, game ASC LIMIT 10", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		return array_map(
+			static fn ( array $row ): array => array(
+				'game'  => (string) ( $row['game'] ?? '' ),
+				'cards' => max( 0, (int) ( $row['cards'] ?? 0 ) ),
+			),
+			$rows
+		);
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	private function latest_catalog_cards( string $cards_table, string $variants_table, string $prices_table ): array {
+		$database = $this->database();
+		if ( null === $database ) {
+			return array();
+		}
+
+		$rows = $database->get_results(
+			$database->prepare(
+				"SELECT c.provider_card_id, c.game, c.name, c.set_name, c.set_code, c.card_number, c.printed_number, c.front_image_url, c.updated_at,
+					EXISTS (SELECT 1 FROM {$variants_table} v WHERE v.provider_name = c.provider_name AND v.provider_card_id = c.provider_card_id) AS has_variants,
+					EXISTS (SELECT 1 FROM {$prices_table} p WHERE p.provider_name = c.provider_name AND p.provider_card_id = c.provider_card_id) AS has_price_points
+				FROM {$cards_table} c
+				WHERE c.provider_name = %s
+				ORDER BY c.updated_at DESC, c.reference_card_id DESC
+				LIMIT 8", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'scrydex'
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		return array_map(
+			static fn ( array $row ): array => array(
+				'provider_card_id' => (string) ( $row['provider_card_id'] ?? '' ),
+				'game'             => (string) ( $row['game'] ?? '' ),
+				'name'             => (string) ( $row['name'] ?? '' ),
+				'set_name'         => (string) ( $row['set_name'] ?? '' ),
+				'set_code'         => (string) ( $row['set_code'] ?? '' ),
+				'card_number'      => (string) ( $row['card_number'] ?? '' ),
+				'printed_number'   => (string) ( $row['printed_number'] ?? '' ),
+				'front_image_url'  => (string) ( $row['front_image_url'] ?? '' ),
+				'has_image'        => '' !== trim( (string) ( $row['front_image_url'] ?? '' ) ),
+				'has_variants'     => ! empty( $row['has_variants'] ),
+				'has_price_points' => ! empty( $row['has_price_points'] ),
+				'updated_at'       => (string) ( $row['updated_at'] ?? '' ),
+			),
+			$rows
+		);
+	}
+
+	private function count_query( string $prepared_sql ): int {
+		$database = $this->database();
+		if ( null === $database ) {
+			return 0;
+		}
+
+		return max( 0, (int) $database->get_var( $prepared_sql ) );
+	}
+
+	private function coverage_percent( int $covered, int $total ): int {
+		if ( 0 >= $total ) {
+			return 0;
+		}
+
+		return (int) round( ( $covered / $total ) * 100 );
 	}
 
 	/**

@@ -51,6 +51,13 @@ final class ScryDexCatalogAdminWorkspaceTest extends TestCase {
 				'tcg-store-scrydex-catalog-browser',
 				'data-export-endpoint',
 				'Download Full Catalog JSON',
+				'Catalog Integrity',
+				'integrityTable',
+				'image_coverage_percent',
+				'variant_coverage_percent',
+				'price_coverage_percent',
+				'Latest Imported Cards',
+				'has_price_points',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

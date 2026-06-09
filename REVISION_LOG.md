@@ -3,6 +3,52 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Catalog Integrity Status
+
+### What Changed
+
+- Added a secret-free catalog integrity summary to the ScryDex catalog status
+  REST response.
+- Added a ScryDex Catalog admin panel section that shows card image coverage,
+  variant coverage, price-point coverage, total condition price points, per-game
+  card counts, and latest imported card samples.
+- Bumped the plugin/package version to `0.168.0`.
+
+### Why
+
+After a production ScryDex import, table counts alone do not prove the catalog
+is usable for inventory intake. Staff need to see whether imported cards have
+images, variants, and condition/variant price points before relying on lookup
+and add-to-inventory flows.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `docs/CHANGELOG.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This status view reads existing catalog tables only.
+
+### Tests Added
+
+- Added controller/admin source contract coverage for the new integrity summary
+  and admin display markers.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.167.0` if the integrity display needs to be
+  removed.
+- No database rollback is required because this revision does not change schema
+  or imported catalog rows.
+
 ## 2026-06-09 - Live ScryDex Card Import Probe and Variant Price Fix
 
 ### What Changed

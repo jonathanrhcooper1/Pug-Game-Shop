@@ -78,6 +78,33 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 		}
 	}
 
+	public function test_catalog_status_reports_import_integrity_without_secrets(): void {
+		$source = $this->source();
+
+		foreach (
+			array(
+				'integrity',
+				'catalog_integrity_summary',
+				'cards_with_images',
+				'cards_missing_images',
+				'cards_with_variants',
+				'cards_missing_variants',
+				'cards_with_price_points',
+				'cards_missing_price_points',
+				'condition_price_points',
+				'image_coverage_percent',
+				'variant_coverage_percent',
+				'price_coverage_percent',
+				'latest_catalog_cards',
+				'catalog_game_counts',
+				'has_price_points',
+				'credential_values_redacted',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
+	}
+
 	public function test_catalog_index_keeps_database_writes_manager_only(): void {
 		$source = $this->source();
 

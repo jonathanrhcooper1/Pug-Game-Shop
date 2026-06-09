@@ -49,6 +49,8 @@ const scrydexController = execFileSync(
 assert.match(pluginHeader, new RegExp(`Version:\\s+${packageJson.version.replaceAll(".", "\\.")}`))
 assert.match(versionPhp, new RegExp(`PLUGIN\\s+=\\s+'${packageJson.version.replaceAll(".", "\\.")}'`))
 assert.match(scrydexController, /\/scrydex\/catalog\/export/)
+assert.match(scrydexController, /catalog_integrity_summary/)
+assert.match(scrydexController, /cards_with_price_points/)
 assert.match(scrydexController, /daily_credit_budget_enforced'\s*=>\s*false/)
 
 for (const forbidden of [

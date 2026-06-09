@@ -40,6 +40,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- ScryDex Catalog status now includes a secret-free integrity summary showing
+  card image coverage, variant coverage, condition/variant price coverage, game
+  card counts, and latest imported card samples so production imports can be
+  verified from WordPress after each run.
 - Reference-card search responses now include real inventory stock summaries
   from WordPress inventory rows, including available, reserved,
   pending-intake, total, and available-by-condition counts for the card lookup
