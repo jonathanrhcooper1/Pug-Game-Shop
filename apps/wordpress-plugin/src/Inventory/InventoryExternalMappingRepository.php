@@ -63,6 +63,68 @@ final class InventoryExternalMappingRepository {
 	}
 
 	/**
+	 * @param list<int> $inventory_ids Inventory row IDs to map to one grouped card product.
+	 * @return array<string, mixed>
+	 */
+	public function mark_woocommerce_product_synced_for_inventory_ids( array $inventory_ids, int $product_id ): array {
+		$inventory_ids = array_values(
+			array_unique(
+				array_filter(
+					array_map( 'absint', $inventory_ids ),
+					static fn ( int $inventory_id ): bool => $inventory_id > 0
+				)
+			)
+		);
+
+		if ( array() === $inventory_ids || $product_id <= 0 ) {
+			return $this->result( 'inventory_external_group_mapping_update', 'rejected', array( 'inventory_external_group_mapping_ids_invalid' ), 0, null );
+		}
+
+		$table_name = (string) ( $this->database->prefix ?? '' ) . 'tcg_inventory_items';
+		if ( array() !== $this->validate_table_name( $table_name ) ) {
+			return $this->result( 'inventory_external_group_mapping_update', 'rejected', array( 'inventory_external_mapping_table_prefix_mismatch' ), 0, null );
+		}
+
+		$now          = gmdate( 'Y-m-d H:i:s.u' );
+		$placeholders = implode( ', ', array_fill( 0, count( $inventory_ids ), '%d' ) );
+		$sql          = $this->database->prepare(
+			"UPDATE `{$table_name}` SET `woocommerce_product_id` = %d, `external_sync_state` = %s, `last_external_sync_at` = %s, `updated_at` = %s, `row_version` = `row_version` + 1 WHERE `inventory_id` IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			array_merge(
+				array(
+					$product_id,
+					'synced',
+					$now,
+					$now,
+				),
+				$inventory_ids
+			)
+		);
+
+		if ( ! is_string( $sql ) || '' === $sql ) {
+			return $this->result( 'inventory_external_group_mapping_update', 'rejected', array( 'inventory_external_mapping_prepare_failed' ), 0, null );
+		}
+
+		$rows = $this->database->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( false === $rows ) {
+			return $this->result( 'inventory_external_group_mapping_update', 'rejected', array( 'inventory_external_mapping_update_failed' ), 0, $sql );
+		}
+
+		return $this->result(
+			'inventory_external_group_mapping_update',
+			'synced',
+			count( $inventory_ids ) === (int) $rows ? array() : array( 'inventory_external_mapping_partial_update' ),
+			(int) $rows,
+			$sql,
+			array(
+				'product_id'          => $product_id,
+				'inventory_id_count'  => count( $inventory_ids ),
+				'grouped_product_map' => true,
+			)
+		);
+	}
+
+	/**
 	 * @return array<string, mixed>
 	 */
 	public function mark_square_catalog_synced( int $inventory_id, string $catalog_item_id, string $catalog_variation_id ): array {

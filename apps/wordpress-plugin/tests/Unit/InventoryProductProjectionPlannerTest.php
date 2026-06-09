@@ -44,6 +44,42 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_meta_value( 'USD', '_tcg_sale_currency', $product['meta_data'] );
 	}
 
+	public function test_available_card_group_projects_one_product_with_condition_price_options(): void {
+		$near_mint                       = $this->available_row();
+		$near_mint['reference_card_id']  = 777;
+		$near_mint['front_image_remote_url'] = 'https://images.example.test/charizard.png';
+		$light_played                    = $this->available_row();
+		$light_played['inventory_id']    = 43;
+		$light_played['public_id']       = 'card-public-43';
+		$light_played['reference_card_id'] = 777;
+		$light_played['condition_code']  = 'LP';
+		$light_played['sale_price']      = '80.00';
+		unset( $light_played['sale_price_minor_units'] );
+
+		$plan      = ( new InventoryProductProjectionPlanner() )->plan_group(
+			array( $near_mint, $light_played ),
+			array( 'store_currency' => 'USD' )
+		);
+		$operation = $plan->product_operations()[0];
+		$product   = $operation['product'];
+
+		$this->assert_same( InventoryProductProjectionPlan::READY, $plan->status() );
+		$this->assert_same( 'woocommerce_grouped_product_projection_ready', $plan->code() );
+		$this->assert_same( 'create_product', $operation['operation'] );
+		$this->assert_same( 'simple', $product['type'] );
+		$this->assert_same( 'TCG-777', $product['sku'] );
+		$this->assert_same( '80.00', $product['regular_price'] );
+		$this->assert_same( 2, $product['stock_quantity'] );
+		$this->assert_same( 'instock', $product['stock_status'] );
+		$this->assert_same( true, $product['sold_individually'] );
+		$this->assert_meta_value( 'grouped_card', '_tcg_inventory_product_mode', $product['meta_data'] );
+		$this->assert_meta_value( 'reference:777', '_tcg_inventory_group_key', $product['meta_data'] );
+		$this->assert_meta_value( 'https://images.example.test/charizard.png', '_tcg_front_image_url', $product['meta_data'] );
+		$this->assert_true( in_array( 'serialized_checkout_reserves_exact_inventory_row', $plan->errors(), true ) );
+		$this->assert_contains( '"condition_code":"LP"', $this->meta_value( '_tcg_inventory_options_json', $product['meta_data'] ) );
+		$this->assert_contains( '"price":"80.00"', $this->meta_value( '_tcg_inventory_options_json', $product['meta_data'] ) );
+	}
+
 	public function test_existing_woocommerce_product_updates_without_recreation(): void {
 		$row                           = $this->available_row();
 		$row['woocommerce_product_id'] = '1001';
@@ -119,14 +155,21 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 	 * @param list<array{key:string,value:string}> $meta_data Product metadata rows.
 	 */
 	private function assert_meta_value( string $expected, string $key, array $meta_data ): void {
+		$this->assert_same( $expected, $this->meta_value( $key, $meta_data ) );
+	}
+
+	/**
+	 * @param list<array{key:string,value:string}> $meta_data Product metadata rows.
+	 */
+	private function meta_value( string $key, array $meta_data ): string {
 		foreach ( $meta_data as $meta_row ) {
 			if ( $key === $meta_row['key'] ) {
-				$this->assert_same( $expected, $meta_row['value'] );
-				return;
+				return $meta_row['value'];
 			}
 		}
 
 		$this->assert_true( false, 'Expected product metadata key ' . $key . '.' );
+		return '';
 	}
 
 	/**

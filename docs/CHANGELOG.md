@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WooCommerce inventory publishing now supports grouped card products: existing
+  inventory rows for the same card can sync to one product with remote card art
+  metadata, stock by condition/version, condition-specific price options, and
+  exact inventory reservation during add-to-cart and checkout.
 - WordPress plugin package, offline app package, Tauri config, and Rust crate
   metadata now align with workspace version `0.187.0`.
 - WordPress inventory admin Square POS Mapping rows now include secure manager

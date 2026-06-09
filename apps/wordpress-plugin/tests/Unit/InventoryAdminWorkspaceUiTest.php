@@ -91,6 +91,30 @@ final class InventoryAdminWorkspaceUiTest extends TestCase {
 		}
 	}
 
+	public function test_inventory_search_can_sync_existing_card_groups_to_woocommerce_products(): void {
+		$source = $this->source();
+
+		foreach (
+			array(
+				'admin_post_tcg_store_woocommerce_product_sync',
+				'handle_woocommerce_product_sync',
+				'sync_inventory_row_to_woocommerce',
+				'plan_group',
+				'inventory_rows_for_product_group',
+				'mark_woocommerce_product_synced_for_inventory_ids',
+				'tcg_store_woocommerce_sync_nonce',
+				'tcg-store-woocommerce-sync-form',
+				'Sync WooCommerce product',
+				'woocommerce_product_id',
+				'Publishes the full card group with image, condition pricing, and exact inventory reservation.',
+				'Payments stay with WooCommerce Square',
+				'production_write_approval',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
+	}
+
 	public function test_intake_form_keeps_lookup_context_fields_and_quantity_batching(): void {
 		$source = $this->source();
 

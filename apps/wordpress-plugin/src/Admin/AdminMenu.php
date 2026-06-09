@@ -44,6 +44,10 @@ use TCGStorePlatform\Square\SquareInventorySyncReadinessPlanner;
 use TCGStorePlatform\Square\WooCommerceSquareExtensionStatus;
 use TCGStorePlatform\Version;
 use TCGStorePlatform\WooCommerce\Compatibility;
+use TCGStorePlatform\WooCommerce\InventoryProductProjectionExecutor;
+use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlanner;
+use TCGStorePlatform\WooCommerce\InventoryProductWriteRequestPlanner;
+use TCGStorePlatform\WooCommerce\WooCommerceInventoryProductWriter;
 
 final class AdminMenu {
 	private Logger $logger;
@@ -55,6 +59,7 @@ final class AdminMenu {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_post_tcg_store_square_mapping_update', array( $this, 'handle_square_mapping_update' ) );
+		add_action( 'admin_post_tcg_store_woocommerce_product_sync', array( $this, 'handle_woocommerce_product_sync' ) );
 	}
 
 	public function handle_square_mapping_update(): void {
@@ -91,6 +96,224 @@ final class AdminMenu {
 			)
 		);
 		exit;
+	}
+
+	public function handle_woocommerce_product_sync(): void {
+		if ( ! current_user_can( 'edit_inventory' ) ) {
+			wp_die( esc_html__( 'You do not have permission to sync inventory products.', 'tcg-store-platform' ) );
+		}
+
+		check_admin_referer( 'tcg_store_woocommerce_product_sync', 'tcg_store_woocommerce_sync_nonce' );
+
+		global $wpdb;
+
+		$inventory_id = absint( $this->posted_value( 'inventory_id' ) );
+		$row          = $this->inventory_row_by_id( $wpdb, $inventory_id );
+		$result       = array(
+			'synced' => false,
+			'errors' => array( 'inventory_row_not_found' ),
+		);
+
+		if ( array() !== $row ) {
+			$result = $this->sync_inventory_row_to_woocommerce( $wpdb, $row );
+		}
+
+		$status = true === ( $result['synced'] ?? false ) ? 'woocommerce_product_synced' : 'woocommerce_product_failed';
+		$error  = implode( ',', array_map( 'sanitize_key', is_array( $result['errors'] ?? null ) ? $result['errors'] : array() ) );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array_filter(
+					array(
+						'page'                    => 'tcg-store-platform-inventory',
+						'tcg_woocommerce_status' => $status,
+						'tcg_woocommerce_error'  => $error,
+					),
+					static fn ( string $value ): bool => '' !== $value
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function sync_inventory_row_to_woocommerce( \wpdb $database, array $row ): array {
+		$group_rows = $this->inventory_rows_for_product_group( $database, $row );
+		if ( array() === $group_rows ) {
+			$group_rows = array( $row );
+		}
+
+		$context   = array(
+			'environment'               => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
+			'store_currency'            => (string) ( $row['sale_currency'] ?? 'USD' ),
+			'production_write_approval' => 'woocommerce-product-sync',
+		);
+		$plan      = ( new InventoryProductProjectionPlanner() )->plan_group( $group_rows, $context );
+		$execution = ( new InventoryProductProjectionExecutor(
+			true,
+			new WooCommerceInventoryProductWriter(),
+			new InventoryProductWriteRequestPlanner(),
+			$context
+		) )->execute( $plan );
+		$product_ids = $execution->product_ids();
+		$product_id  = isset( $product_ids[0] ) ? (int) $product_ids[0] : 0;
+		$mapping     = null;
+
+		if ( $execution->is_executed() && $product_id > 0 ) {
+			$mapping = ( new InventoryExternalMappingRepository( $database ) )->mark_woocommerce_product_synced_for_inventory_ids(
+				$this->inventory_ids( $group_rows ),
+				$product_id
+			);
+		}
+
+		return array(
+			'action'                     => 'woocommerce_product_admin_sync',
+			'status'                     => $execution->status(),
+			'synced'                     => $execution->is_executed() && true === ( $mapping['synced'] ?? false ),
+			'product_id'                 => $product_id,
+			'grouped_product'            => true,
+			'group_row_count'            => count( $group_rows ),
+			'execution'                  => $execution->audit_payload(),
+			'mapping'                    => $mapping,
+			'payment_capture_deferred'   => true,
+			'square_inventory_deferred'  => true,
+			'source_of_truth'            => 'tcg_store_platform',
+			'errors'                     => array_values(
+				array_unique(
+					array_merge(
+						$execution->errors(),
+						$execution->block_reasons(),
+						is_array( $mapping ) ? ( $mapping['errors'] ?? array() ) : array()
+					)
+				)
+			),
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function inventory_row_by_id( \wpdb $database, int $inventory_id ): array {
+		if ( $inventory_id <= 0 ) {
+			return array();
+		}
+
+		$table_name = $this->inventory_items_table_name( $database );
+		if ( '' === $table_name ) {
+			return array();
+		}
+
+		$sql = $database->prepare(
+			"SELECT * FROM `{$table_name}` WHERE `inventory_id` = %d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$inventory_id
+		);
+
+		if ( ! is_string( $sql ) || '' === $sql ) {
+			return array();
+		}
+
+		$row = $database->get_row( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return is_array( $row ) ? $row : array();
+	}
+
+	/**
+	 * @param array<string, mixed> $seed_row Inventory row used to identify the product group.
+	 * @return list<array<string, mixed>>
+	 */
+	private function inventory_rows_for_product_group( \wpdb $database, array $seed_row ): array {
+		$table_name = $this->inventory_items_table_name( $database );
+		if ( '' === $table_name ) {
+			return array();
+		}
+
+		$where = $this->inventory_product_group_where( $database, $seed_row );
+		if ( null === $where ) {
+			return array();
+		}
+
+		$sql = "SELECT * FROM `{$table_name}` WHERE {$where} ORDER BY `condition_code` ASC, `variant` ASC, `finish` ASC, `sale_price` ASC, `inventory_id` ASC"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $database->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : array();
+	}
+
+	/**
+	 * @param array<string, mixed> $seed_row Inventory row used to identify the product group.
+	 */
+	private function inventory_product_group_where( \wpdb $database, array $seed_row ): ?string {
+		$reference_id = absint( $seed_row['reference_card_id'] ?? 0 );
+		if ( $reference_id > 0 ) {
+			$sql = $database->prepare( '`reference_card_id` = %d', $reference_id );
+
+			return is_string( $sql ) ? $sql : null;
+		}
+
+		$provider_name    = $this->safe_sql_text( $seed_row['provider_name'] ?? '' );
+		$provider_card_id = $this->safe_sql_text( $seed_row['provider_card_id'] ?? '' );
+		if ( '' !== $provider_name && '' !== $provider_card_id ) {
+			$sql = $database->prepare(
+				'`provider_name` = %s AND `provider_card_id` = %s',
+				$provider_name,
+				$provider_card_id
+			);
+
+			return is_string( $sql ) ? $sql : null;
+		}
+
+		$game           = $this->safe_sql_text( $seed_row['game'] ?? '' );
+		$card_name      = $this->safe_sql_text( $seed_row['card_name'] ?? '' );
+		$set_code       = $this->safe_sql_text( $seed_row['set_code'] ?? '' );
+		$printed_number = $this->safe_sql_text( $seed_row['printed_number'] ?? ( $seed_row['card_number'] ?? '' ) );
+
+		if ( '' === $game || '' === $card_name || ( '' === $set_code && '' === $printed_number ) ) {
+			return null;
+		}
+
+		$sql = $database->prepare(
+			'`game` = %s AND `card_name` = %s AND (`set_code` = %s OR `set_name` = %s) AND (`printed_number` = %s OR `card_number` = %s)',
+			$game,
+			$card_name,
+			$set_code,
+			$set_code,
+			$printed_number,
+			$printed_number
+		);
+
+		return is_string( $sql ) ? $sql : null;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 * @return list<int>
+	 */
+	private function inventory_ids( array $rows ): array {
+		return array_values(
+			array_filter(
+				array_map(
+					static fn ( array $row ): int => absint( $row['inventory_id'] ?? 0 ),
+					$rows
+				),
+				static fn ( int $inventory_id ): bool => $inventory_id > 0
+			)
+		);
+	}
+
+	private function safe_sql_text( mixed $value ): string {
+		return substr( trim( (string) ( is_array( $value ) || is_object( $value ) ? '' : $value ) ), 0, 191 );
+	}
+
+	private function inventory_items_table_name( \wpdb $database ): string {
+		$prefix = (string) ( $database->prefix ?? '' );
+
+		if ( '' === $prefix || 1 !== preg_match( '/^[A-Za-z0-9_]+$/', $prefix ) ) {
+			return '';
+		}
+
+		return $prefix . 'tcg_inventory_items';
 	}
 
 	private function posted_value( string $key ): string {
@@ -619,6 +842,8 @@ final class AdminMenu {
 		$sort_options   = is_array( $panel['sort_options'] ?? null ) ? $panel['sort_options'] : array();
 		$page_sizes     = is_array( $panel['page_sizes'] ?? null ) ? $panel['page_sizes'] : array();
 
+		$this->render_woocommerce_product_sync_notice();
+
 		echo '<div class="notice notice-' . esc_attr( $ready ? 'success' : 'warning' ) . ' inline"><p><strong>';
 		echo esc_html( (string) ( $panel['status_label'] ?? '' ) );
 		echo '</strong> ';
@@ -671,7 +896,11 @@ final class AdminMenu {
 
 		echo '<div id="tcg-store-inventory-search-results" data-ready="' . esc_attr( $ready ? '1' : '0' ) . '" data-endpoint="';
 		echo esc_url( $endpoint );
-		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">';
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '" data-woocommerce-sync-action="';
+		echo esc_url( admin_url( 'admin-post.php' ) );
+		echo '" data-woocommerce-sync-nonce="';
+		echo esc_attr( wp_create_nonce( 'tcg_store_woocommerce_product_sync' ) );
+		echo '">';
 		echo '<p>' . esc_html__( 'Results will appear here after a staff search runs.', 'tcg-store-platform' ) . '</p>';
 		echo '</div>';
 
@@ -708,6 +937,29 @@ final class AdminMenu {
 		echo esc_html__( 'Run a staff inventory search to review Square POS-visible mappings, duplicate barcode/SKU values, and rows that need Square variation IDs.', 'tcg-store-platform' );
 		echo '</p>';
 		echo '</div>';
+	}
+
+	private function render_woocommerce_product_sync_notice(): void {
+		$status = sanitize_key( wp_unslash( (string) ( $_GET['tcg_woocommerce_status'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( '' === $status ) {
+			return;
+		}
+
+		if ( 'woocommerce_product_synced' === $status ) {
+			echo '<div class="notice notice-success is-dismissible"><p>';
+			echo esc_html__( 'WooCommerce product sync completed for the selected card group. The product now uses website inventory for condition, price, stock, and checkout reservation.', 'tcg-store-platform' );
+			echo '</p></div>';
+			return;
+		}
+
+		$error = sanitize_text_field( wp_unslash( (string) ( $_GET['tcg_woocommerce_error'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		echo '<div class="notice notice-error is-dismissible"><p>';
+		echo esc_html__( 'WooCommerce product sync could not complete.', 'tcg-store-platform' );
+		if ( '' !== $error ) {
+			echo ' <code>' . esc_html( $error ) . '</code>';
+		}
+		echo '</p></div>';
 	}
 
 	private function render_square_mapping_update_notice(): void {
@@ -1014,6 +1266,8 @@ final class AdminMenu {
 		echo 'if(!form||!target||target.dataset.ready!=="1"){return;}';
 		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
 		echo 'const formatMoney=function(amount){const text=String(amount===null||amount===undefined?"":amount).trim();if(text===""){return "";}const value=Number(text);return Number.isFinite(value)?value.toFixed(2):text;};';
+		echo 'const wcProductLabel=function(item){const id=String(item.woocommerce_product_id||"").trim();return id?"<code>#"+esc(id)+"</code>":"<span class=\"description\">' . esc_js( __( 'Not synced', 'tcg-store-platform' ) ) . '</span>";};';
+		echo 'const wcProductForm=function(item){const inventoryId=String(item.inventory_id||"").trim();if(!inventoryId){return "<span class=\"description\">' . esc_js( __( 'Inventory ID unavailable', 'tcg-store-platform' ) ) . '</span>";}return "<form method=\"post\" action=\""+esc(target.dataset.woocommerceSyncAction||"")+"\" class=\"tcg-store-woocommerce-sync-form\" style=\"display:grid;gap:4px;max-width:260px;margin-top:4px;\"><input type=\"hidden\" name=\"action\" value=\"tcg_store_woocommerce_product_sync\" /><input type=\"hidden\" name=\"tcg_store_woocommerce_sync_nonce\" value=\""+esc(target.dataset.woocommerceSyncNonce||"")+"\" /><input type=\"hidden\" name=\"inventory_id\" value=\""+esc(inventoryId)+"\" /><button type=\"submit\" class=\"button button-small\">' . esc_js( __( 'Sync WooCommerce product', 'tcg-store-platform' ) ) . '</button><span class=\"description\">' . esc_js( __( 'Publishes the full card group with image, condition pricing, and exact inventory reservation.', 'tcg-store-platform' ) ) . '</span></form>";};';
 		echo 'const squareTarget=document.getElementById("tcg-store-square-mapping-readiness");';
 		echo 'const scanIdentity=function(item){return String(item.sku||item.barcode||"").trim();};';
 		echo 'const squareErrors=function(item,counts){const errors=[];const scan=scanIdentity(item);if(scan===""){errors.push("barcode_or_sku_required");}if(scan!==""&&counts[scan]>1){errors.push("duplicate_barcode_or_sku");}if(String(item.square_catalog_variation_id||"").trim()===""){errors.push("square_catalog_variation_id_required_for_inventory_pull");}return errors;};';
@@ -1025,7 +1279,7 @@ final class AdminMenu {
 		echo 'const render=function(payload){const items=((payload.data||{}).items)||[];const meta=((payload.data||{}).meta)||{};';
 		echo 'updateSquareMapping(items);';
 		echo 'if(!items.length){target.innerHTML="<p>' . esc_js( __( 'No matching inventory found.', 'tcg-store-platform' ) ) . '</p>";return;}';
-		echo 'target.innerHTML="<p>"+esc(meta.total)+" ' . esc_js( __( 'matching items', 'tcg-store-platform' ) ) . '</p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Status', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'SKU', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+items.map(function(item){return "<tr><td>"+esc(item.card_name)+"</td><td>"+esc(item.set_code||item.set_name||"")+"</td><td>"+esc(item.status)+"</td><td>"+esc(formatMoney(item.sale_price))+" "+esc(item.sale_currency||"")+"</td><td>"+esc(item.sku||item.barcode||"")+"</td></tr>";}).join("")+"</tbody></table>";};';
+		echo 'target.innerHTML="<p>"+esc(meta.total)+" ' . esc_js( __( 'matching items', 'tcg-store-platform' ) ) . '</p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Status', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'SKU', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'WooCommerce', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+items.map(function(item){return "<tr><td>"+esc(item.card_name)+"<br><span class=\"description\">"+esc(item.condition_code||"")+" "+esc(item.variant||item.finish||"")+"</span></td><td>"+esc(item.set_code||item.set_name||"")+"</td><td>"+esc(item.status)+"</td><td>"+esc(formatMoney(item.sale_price))+" "+esc(item.sale_currency||"")+"</td><td>"+esc(item.sku||item.barcode||"")+"</td><td>"+wcProductLabel(item)+wcProductForm(item)+"<p class=\"description\">' . esc_js( __( 'Payments stay with WooCommerce Square; this sync controls product, stock, image, and exact inventory reservation.', 'tcg-store-platform' ) ) . '</p></td></tr>";}).join("")+"</tbody></table>";};';
 		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));params.delete("page");params.delete("inventory_search");params.set("visibility","staff");target.innerHTML="<p>' . esc_js( __( 'Searching inventory...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint+"?"+params.toString(),{headers:{"X-WP-Nonce":target.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";return;}render(result.payload);}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";});});';
 		echo 'if(new URLSearchParams(window.location.search).get("inventory_search")==="1"){form.dispatchEvent(new Event("submit",{cancelable:true}));}';
 		echo '})();';

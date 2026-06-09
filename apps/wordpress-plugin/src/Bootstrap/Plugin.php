@@ -32,6 +32,7 @@ use TCGStorePlatform\Settings\SettingsPage;
 use TCGStorePlatform\Staging\StagingSafety;
 use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshRunner;
 use TCGStorePlatform\WooCommerce\CustomerAccountPortalController;
+use TCGStorePlatform\WooCommerce\GroupedInventoryProductHooks;
 
 final class Plugin {
 	private static ?self $instance = null;
@@ -85,6 +86,7 @@ final class Plugin {
 		( new CustomerController() )->register();
 		( new CustomerCreditController() )->register();
 		( new CustomerAccountPortalController() )->register();
+		( new GroupedInventoryProductHooks() )->register();
 		( new InventorySearchShortcode() )->register();
 		( new EventsController() )->register();
 		( new KioskOrderController() )->register();

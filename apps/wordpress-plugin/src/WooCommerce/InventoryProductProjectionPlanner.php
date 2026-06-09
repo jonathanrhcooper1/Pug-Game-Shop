@@ -76,6 +76,108 @@ final class InventoryProductProjectionPlanner {
 		);
 	}
 
+	/**
+	 * @param list<array<string, mixed>> $inventory_rows Canonical plugin inventory rows for one card product.
+	 * @param array<string, mixed>       $context Projection context.
+	 */
+	public function plan_group( array $inventory_rows, array $context = array() ): InventoryProductProjectionPlan {
+		$rows = array_values(
+			array_filter(
+				$inventory_rows,
+				static fn ( array $row ): bool => array() !== $row
+			)
+		);
+
+		if ( array() === $rows ) {
+			return InventoryProductProjectionPlan::failed(
+				'woocommerce_grouped_product_projection_invalid',
+				'woocommerce:grouped-product-projection:empty',
+				array( 'inventory_group_rows_required' )
+			);
+		}
+
+		$seed            = $rows[0];
+		$group_key       = $this->product_group_key( $seed );
+		$idempotency_key = $this->group_idempotency_key( $group_key, $rows, $context );
+		$product_id      = $this->group_product_id( $rows );
+		$visible_rows    = $this->available_visible_rows( $rows );
+
+		if ( array() === $visible_rows && null === $product_id ) {
+			return InventoryProductProjectionPlan::skipped(
+				'woocommerce_grouped_product_projection_skipped',
+				$idempotency_key,
+				array( 'no_available_visible_inventory_rows', 'woocommerce_product_id_missing' ),
+				array(
+					$this->audit_event(
+						'woocommerce.grouped_product_projection_skipped',
+						$group_key,
+						array(
+							'row_count'                    => count( $rows ),
+							'available_visible_row_count'  => 0,
+							'woocommerce_write_deferred'   => true,
+							'network_request_deferred'     => true,
+						)
+					),
+				)
+			);
+		}
+
+		$card_name = $this->string_value( $seed, array( 'card_name', 'name' ) );
+		$sku       = $this->group_sku( $seed, $group_key );
+		$currency  = $this->currency( $seed['sale_currency'] ?? $context['store_currency'] ?? 'USD' );
+		$options   = $this->group_options( $visible_rows, $currency );
+		$price     = $this->lowest_option_price( $options );
+		$errors    = $this->group_errors( $card_name, $sku, $currency, $price, $context );
+
+		if ( array() !== $errors ) {
+			return InventoryProductProjectionPlan::failed(
+				'woocommerce_grouped_product_projection_invalid',
+				$idempotency_key,
+				$errors
+			);
+		}
+
+		$requires_product_creation = null === $product_id;
+		$operation                 = array(
+			'operation'                 => $requires_product_creation ? 'create_product' : 'update_product',
+			'product_id'                => $product_id,
+			'requires_product_creation' => $requires_product_creation,
+			'product'                   => $this->group_product_payload(
+				$seed,
+				$product_id,
+				$card_name,
+				$sku,
+				(string) $price,
+				$currency,
+				$group_key,
+				$options
+			),
+		);
+
+		return InventoryProductProjectionPlan::ready(
+			'woocommerce_grouped_product_projection_ready',
+			$idempotency_key,
+			array( $operation ),
+			array(
+				$this->audit_event(
+					'woocommerce.grouped_product_projection_ready',
+					$group_key,
+					array(
+						'product_operation_count'    => 1,
+						'requires_product_creation'  => $requires_product_creation,
+						'row_count'                  => count( $rows ),
+						'available_visible_row_count' => count( $visible_rows ),
+						'option_count'               => count( $options ),
+						'woocommerce_write_deferred' => true,
+						'network_request_deferred'   => true,
+					)
+				),
+			),
+			$requires_product_creation,
+			array( 'serialized_checkout_reserves_exact_inventory_row' )
+		);
+	}
+
 	private function plan_unavailable_row(
 		string $status,
 		string $online_visibility,
@@ -250,6 +352,369 @@ final class InventoryProductProjectionPlanner {
 		}
 
 		return $payload;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 * @return list<array<string, mixed>>
+	 */
+	private function available_visible_rows( array $rows ): array {
+		return array_values(
+			array_filter(
+				$rows,
+				function ( array $row ): bool {
+					return InventoryStatus::AVAILABLE === $this->slug( $row['status'] ?? '' )
+						&& 'visible' === $this->slug( $row['online_visibility'] ?? 'hidden' )
+						&& null !== $this->sale_price( $row );
+				}
+			)
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 */
+	private function group_product_id( array $rows ): ?int {
+		foreach ( $rows as $row ) {
+			$product_id = $this->positive_int( $row['woocommerce_product_id'] ?? null );
+
+			if ( null !== $product_id ) {
+				return $product_id;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 * @param array<string, mixed>       $context Projection context.
+	 */
+	private function group_idempotency_key( string $group_key, array $rows, array $context ): string {
+		$requested_key = $this->string_value( $context, array( 'idempotency_key' ) );
+
+		if ( '' !== $requested_key ) {
+			return substr( $requested_key, 0, 191 );
+		}
+
+		$row_version = 1;
+		foreach ( $rows as $row ) {
+			$row_version = max( $row_version, $this->positive_int( $row['row_version'] ?? null ) ?? 1 );
+		}
+
+		return substr( self::PROVIDER . ':grouped-product-projection:' . $group_key . ':v' . (string) $row_version, 0, 191 );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 * @return list<array<string, mixed>>
+	 */
+	private function group_options( array $rows, string $currency ): array {
+		$options = array();
+
+		foreach ( $rows as $row ) {
+			$price = $this->sale_price( $row );
+
+			if ( null === $price ) {
+				continue;
+			}
+
+			$option_key = $this->inventory_option_key( $row, $price );
+
+			if ( ! isset( $options[ $option_key ] ) ) {
+				$options[ $option_key ] = array(
+					'option_key'     => $option_key,
+					'condition_code' => strtoupper( $this->string_value( $row, array( 'condition_code' ) ) ),
+					'condition_label' => $this->condition_label( $this->string_value( $row, array( 'condition_code' ) ) ),
+					'variant'        => $this->string_value( $row, array( 'variant' ) ),
+					'finish'         => $this->string_value( $row, array( 'finish' ) ),
+					'language'       => strtoupper( $this->string_value( $row, array( 'language' ) ) ),
+					'raw_or_graded'  => $this->string_value( $row, array( 'raw_or_graded' ) ),
+					'price'          => $price,
+					'price_minor_units' => $this->minor_units( $price ),
+					'currency'       => $currency,
+					'stock_quantity' => 0,
+					'inventory_ids'  => array(),
+				);
+			}
+
+			++$options[ $option_key ]['stock_quantity'];
+			$options[ $option_key ]['inventory_ids'][] = (int) ( $row['inventory_id'] ?? 0 );
+		}
+
+		usort(
+			$options,
+			static function ( array $left, array $right ): int {
+				$price_compare = ( (int) ( $left['price_minor_units'] ?? 0 ) ) <=> ( (int) ( $right['price_minor_units'] ?? 0 ) );
+
+				if ( 0 !== $price_compare ) {
+					return $price_compare;
+				}
+
+				return strcmp( (string) ( $left['condition_code'] ?? '' ), (string) ( $right['condition_code'] ?? '' ) );
+			}
+		);
+
+		return array_values( $options );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $options Product options.
+	 */
+	private function lowest_option_price( array $options ): ?string {
+		foreach ( $options as $option ) {
+			$price = $this->sale_price( array( 'sale_price' => $option['price'] ?? null ) );
+
+			if ( null !== $price ) {
+				return $price;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed>       $row Seed inventory row.
+	 * @param list<array<string, mixed>> $options Option payloads.
+	 * @return array<string, mixed>
+	 */
+	private function group_product_payload(
+		array $row,
+		?int $product_id,
+		string $card_name,
+		string $sku,
+		string $price,
+		string $currency,
+		string $group_key,
+		array $options
+	): array {
+		$total_stock = array_sum(
+			array_map(
+				static fn ( array $option ): int => max( 0, (int) ( $option['stock_quantity'] ?? 0 ) ),
+				$options
+			)
+		);
+		$image_url   = $this->string_value( $row, array( 'front_image_remote_url', 'front_image_url', 'image_url' ) );
+		$payload     = array(
+			'type'               => 'simple',
+			'status'             => 'publish',
+			'name'               => $this->product_name( $row, $card_name ),
+			'description'        => $this->group_description( $row, $options ),
+			'short_description'  => $this->group_short_description( $row, $options ),
+			'sku'                => $sku,
+			'regular_price'      => $price,
+			'manage_stock'       => true,
+			'stock_quantity'     => $total_stock,
+			'stock_status'       => $total_stock > 0 ? 'instock' : 'outofstock',
+			'sold_individually'  => true,
+			'catalog_visibility' => $total_stock > 0 ? 'visible' : 'hidden',
+			'virtual'            => false,
+			'downloadable'       => false,
+			'meta_data'          => $this->meta_data(
+				array(
+					'_tcg_serialized_inventory'   => '1',
+					'_tcg_inventory_product_mode' => 'grouped_card',
+					'_tcg_inventory_group_key'    => $group_key,
+					'_tcg_card_name'              => $card_name,
+					'_tcg_game'                   => $this->string_value( $row, array( 'game' ) ),
+					'_tcg_set_name'               => $this->string_value( $row, array( 'set_name' ) ),
+					'_tcg_set_code'               => $this->string_value( $row, array( 'set_code' ) ),
+					'_tcg_card_number'            => $this->string_value( $row, array( 'card_number' ) ),
+					'_tcg_printed_number'         => $this->string_value( $row, array( 'printed_number' ) ),
+					'_tcg_reference_card_id'      => (string) ( $this->positive_int( $row['reference_card_id'] ?? null ) ?? '' ),
+					'_tcg_provider_name'          => $this->string_value( $row, array( 'provider_name' ) ),
+					'_tcg_provider_card_id'       => $this->string_value( $row, array( 'provider_card_id' ) ),
+					'_tcg_front_image_url'        => $image_url,
+					'_tcg_sale_currency'          => $currency,
+					'_tcg_group_stock_quantity'   => (string) $total_stock,
+					'_tcg_inventory_options_json' => $this->json( $options ),
+					'_tcg_source_of_truth'        => 'tcg_store_platform',
+				)
+			),
+		);
+
+		if ( null !== $product_id ) {
+			$payload['id'] = $product_id;
+		}
+
+		return $payload;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $options Option payloads.
+	 */
+	private function group_description( array $row, array $options ): string {
+		$conditions = array();
+		foreach ( $options as $option ) {
+			$conditions[] = trim(
+				(string) ( $option['condition_code'] ?? '' ) . ' '
+				. (string) ( $option['finish'] ?? '' ) . ' '
+				. (string) ( $option['variant'] ?? '' ) . ' - '
+				. (string) ( $option['stock_quantity'] ?? 0 ) . ' in stock'
+			);
+		}
+
+		$parts = array_filter(
+			array(
+				$this->string_value( $row, array( 'card_name', 'name' ) ),
+				$this->string_value( $row, array( 'set_name' ) ),
+				$this->string_value( $row, array( 'set_code' ) ),
+				$this->string_value( $row, array( 'rarity' ) ),
+				implode( "\n", array_filter( $conditions ) ),
+			),
+			static fn ( string $value ): bool => '' !== trim( $value )
+		);
+
+		return $this->bounded_text( implode( "\n", $parts ), 5000 );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $options Option payloads.
+	 */
+	private function group_short_description( array $row, array $options ): string {
+		$labels = array();
+
+		foreach ( array_slice( $options, 0, 4 ) as $option ) {
+			$labels[] = trim(
+				(string) ( $option['condition_code'] ?? '' )
+				. ' '
+				. (string) ( $option['finish'] ?? '' )
+			);
+		}
+
+		$prefix = $this->string_value( $row, array( 'set_name', 'set_code' ) );
+		$text   = trim( $prefix . ' - ' . implode( ', ', array_filter( $labels ) ) );
+
+		return $this->bounded_text( $text, 255 );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $options Product options.
+	 * @param array<string, mixed>       $context Projection context.
+	 * @return list<string>
+	 */
+	private function group_errors( string $card_name, string $sku, string $currency, ?string $price, array $context ): array {
+		$errors         = array();
+		$store_currency = $this->currency( $context['store_currency'] ?? '' );
+
+		if ( '' === $card_name ) {
+			$errors[] = 'card_name_required';
+		}
+
+		if ( '' === $sku ) {
+			$errors[] = 'group_sku_required';
+		}
+
+		if ( null === $price ) {
+			$errors[] = 'available_option_price_required';
+		}
+
+		if ( '' === $currency ) {
+			$errors[] = 'sale_currency_invalid';
+		}
+
+		if ( '' !== $store_currency && '' !== $currency && $store_currency !== $currency ) {
+			$errors[] = 'sale_currency_mismatch';
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Inventory row.
+	 */
+	private function group_sku( array $row, string $group_key ): string {
+		$reference_id = $this->positive_int( $row['reference_card_id'] ?? null );
+
+		if ( null !== $reference_id ) {
+			return 'TCG-' . (string) $reference_id;
+		}
+
+		$provider_card_id = $this->string_value( $row, array( 'provider_card_id' ) );
+
+		if ( '' !== $provider_card_id ) {
+			return $this->bounded_text( 'TCG-' . strtoupper( preg_replace( '/[^A-Za-z0-9_-]+/', '-', $provider_card_id ) ?? $provider_card_id ), 100 );
+		}
+
+		return 'TCG-' . substr( hash( 'sha256', $group_key ), 0, 16 );
+	}
+
+	/**
+	 * @param array<string, mixed> $row Inventory row.
+	 */
+	private function product_group_key( array $row ): string {
+		$reference_id = $this->positive_int( $row['reference_card_id'] ?? null );
+
+		if ( null !== $reference_id ) {
+			return 'reference:' . (string) $reference_id;
+		}
+
+		$provider = $this->string_value( $row, array( 'provider_name' ) );
+		$card_id  = $this->string_value( $row, array( 'provider_card_id' ) );
+
+		if ( '' !== $provider && '' !== $card_id ) {
+			return 'provider:' . strtolower( $provider ) . ':' . strtolower( $card_id );
+		}
+
+		return 'fingerprint:' . substr(
+			hash(
+				'sha256',
+				strtolower(
+					implode(
+						'|',
+						array(
+							$this->string_value( $row, array( 'game' ) ),
+							$this->string_value( $row, array( 'card_name', 'name' ) ),
+							$this->string_value( $row, array( 'set_code', 'set_name' ) ),
+							$this->string_value( $row, array( 'printed_number', 'card_number' ) ),
+						)
+					)
+				)
+			),
+			0,
+			24
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Inventory row.
+	 */
+	private function inventory_option_key( array $row, string $price ): string {
+		return substr(
+			hash(
+				'sha256',
+				strtolower(
+					implode(
+						'|',
+						array(
+							$this->string_value( $row, array( 'condition_code' ) ),
+							$this->string_value( $row, array( 'variant' ) ),
+							$this->string_value( $row, array( 'finish' ) ),
+							$this->string_value( $row, array( 'language' ) ),
+							$this->string_value( $row, array( 'raw_or_graded' ) ),
+							$price,
+						)
+					)
+				)
+			),
+			0,
+			32
+		);
+	}
+
+	private function condition_label( string $condition ): string {
+		return match ( strtoupper( trim( $condition ) ) ) {
+			'NM' => 'Near Mint',
+			'LP' => 'Lightly Played',
+			'MP' => 'Moderately Played',
+			'HP' => 'Heavily Played',
+			'DMG' => 'Damaged',
+			default => strtoupper( trim( $condition ) ),
+		};
+	}
+
+	private function minor_units( string $price ): int {
+		return max( 0, (int) round( (float) $price * 100 ) );
 	}
 
 	/**

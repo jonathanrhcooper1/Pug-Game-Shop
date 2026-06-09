@@ -3,6 +3,73 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Grouped WooCommerce Card Product Checkout
+
+### What Changed
+
+- Added grouped WooCommerce product projection for card inventory so one card
+  product can represent multiple exact inventory rows by condition/version.
+- Added admin inventory search actions that sync a selected card group to
+  WooCommerce and map the resulting product ID back to all matching inventory
+  rows.
+- Added WooCommerce storefront hooks for card image fallback, condition/version
+  selection, price display, exact inventory reservation on add-to-cart, cart
+  price snapshots, order-line metadata, and reservation conversion/release on
+  payment or cart/order failure.
+- Added a WordPress database reservation storage adapter for the existing
+  reservation domain service.
+
+### Why
+
+Online inventory needs to sell the same way staff manages cards: the website
+must show a card image, let the buyer choose condition/version, show the right
+price, and reserve one exact inventory row so the same copy cannot be sold twice
+online, in-store, or through the local app.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryExternalMappingRepository.php`
+- `apps/wordpress-plugin/src/Reservations/WpdbReservationStorage.php`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/WpdbReservationStorageTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses existing inventory, reservation, and WooCommerce
+  product ID mapping tables.
+
+### Tests Added
+
+- Grouped WooCommerce product projection test covering condition/price option
+  metadata, stock counts, product image URL metadata, and grouped product mode.
+- WooCommerce grouped product hook contract tests covering selector,
+  add-to-cart reservation, price snapshot, metadata, payment conversion, and
+  cart removal release hooks.
+- Admin UI contract test for syncing existing card groups into WooCommerce.
+- WordPress reservation storage adapter source contract test.
+
+### Verification
+
+- `php tests/lint.php`
+- `php tests/run.php`
+
+### Rollback Notes
+
+- Disable the grouped product hooks by reverting `GroupedInventoryProductHooks`
+  registration in `Plugin.php`.
+- Existing WooCommerce products created by this revision can be unpublished or
+  deleted from WooCommerce; inventory rows keep their canonical website status.
+- If product IDs were mapped incorrectly, clear `woocommerce_product_id` on the
+  affected `tcg_inventory_items` rows and resync the correct card group.
+
 ## 2026-06-09 - Production Deploy 0.187.0
 
 ### What Changed
