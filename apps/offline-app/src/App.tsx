@@ -1359,6 +1359,24 @@ export function App() {
     (total, card) => total + card.stock_total_count,
     0,
   )
+  const selectedScryDexStockLabel = selectedScryDexCard
+    ? selectedScryDexCard.stock_by_condition.length > 0
+      ? selectedScryDexCard.stock_by_condition
+          .map((entry) => `${entry.condition} x${entry.quantity}`)
+          .join(", ")
+      : "No local copies cached"
+    : ""
+  const selectedScryDexVariantLabels =
+    selectedScryDexCard?.variants
+      .slice(0, 4)
+      .map(formatScryDexVariant)
+      .filter(Boolean) ?? []
+  const selectedScryDexSourceLabel =
+    selectedScryDexCard?.catalog_source === "local_reference_cache"
+      ? "Local reference cache"
+      : selectedScryDexCard?.catalog_source === "wordpress_catalog_cache"
+        ? "Website catalog cache"
+        : "Catalog source pending"
   const scryDexLookupTone = statusToneFromRemoteState(scryDexLookupStatus)
   const queueStatusTone =
     queuedOperations.length > 0 || (localSyncStatus?.status === "ok" && localSyncStatus.queue_depth > 0)
@@ -1590,6 +1608,13 @@ export function App() {
           : intakeQuantity === null
             ? "Enter a quantity from 1 to 200."
             : ""
+  const selectedScryDexQueueQuantity = intakeQuantity ?? 1
+  const selectedScryDexIntakeSummary = selectedScryDexCard
+    ? `${selectedScryDexQueueQuantity} ${selectedScryDexQueueQuantity === 1 ? "copy" : "copies"} as ${intakeCondition || "RAW"} at ${formatMoney(
+        selectedScryDexCard.market_price_minor_units,
+        selectedScryDexCard.currency,
+      )}`
+    : ""
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -5312,6 +5337,51 @@ export function App() {
                         </article>
                       ))}
                     </div>
+                  ) : null}
+                  {selectedScryDexCard ? (
+                    <section className="selected-scrydex-preview" aria-label="Selected catalog card for intake">
+                      <div className="selected-scrydex-preview__art" aria-hidden="true">
+                        {selectedScryDexCard.image_url ? (
+                          <img src={selectedScryDexCard.image_url} alt="" loading="lazy" />
+                        ) : (
+                          <Icon name="card" />
+                        )}
+                      </div>
+                      <div className="selected-scrydex-preview__body">
+                        <div>
+                          <span className="micro-label">Selected catalog card</span>
+                          <strong>{selectedScryDexCard.card_name}</strong>
+                          <small>
+                            {selectedScryDexCard.set_name} {selectedScryDexCard.printed_number}
+                          </small>
+                        </div>
+                        <div className="selected-scrydex-preview__meta">
+                          <span>
+                            <strong>Source</strong>
+                            {selectedScryDexSourceLabel}
+                          </span>
+                          <span>
+                            <strong>Stock</strong>
+                            {selectedScryDexCard.stock_available_count} available; {selectedScryDexStockLabel}
+                          </span>
+                          <span>
+                            <strong>Queue</strong>
+                            {selectedScryDexIntakeSummary}
+                          </span>
+                        </div>
+                        <div className="selected-scrydex-preview__pill-row">
+                          <span>{selectedScryDexCard.provider_card_id}</span>
+                          {selectedScryDexVariantLabels.length > 0 ? (
+                            selectedScryDexVariantLabels.map((label) => <span key={label}>{label}</span>)
+                          ) : (
+                            <span>Variant details pending</span>
+                          )}
+                        </div>
+                        <small className="selected-scrydex-preview__path">
+                          {scryDexLookupOrderLabel}
+                        </small>
+                      </div>
+                    </section>
                   ) : null}
                 </div>
                 <label htmlFor="intake-card-name">

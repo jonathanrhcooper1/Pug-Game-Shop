@@ -2433,6 +2433,106 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+.selected-scrydex-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(7, 19, 29, 0.94), rgba(18, 59, 89, 0.9)),
+    #07131d;
+  border: 1px solid rgba(73, 220, 244, 0.28);
+  border-radius: 8px;
+  box-shadow: 0 16px 28px rgba(7, 19, 29, 0.16);
+}
+
+.selected-scrydex-preview__art {
+  display: grid;
+  place-items: center;
+  min-height: 152px;
+  overflow: hidden;
+  color: var(--pug-cyan);
+  background: linear-gradient(145deg, rgba(73, 220, 244, 0.14), rgba(255, 208, 68, 0.12));
+  border: 1px solid rgba(244, 251, 255, 0.14);
+  border-radius: 8px;
+}
+
+.selected-scrydex-preview__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.selected-scrydex-preview__body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.selected-scrydex-preview__body .micro-label,
+.selected-scrydex-preview__body small {
+  color: rgba(244, 251, 255, 0.72);
+}
+
+.selected-scrydex-preview__body strong {
+  color: #ffffff;
+}
+
+.selected-scrydex-preview__meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.selected-scrydex-preview__meta span,
+.selected-scrydex-preview__pill-row span {
+  min-width: 0;
+  padding: 8px;
+  color: rgba(244, 251, 255, 0.82);
+  font-size: 12px;
+  line-height: 1.3;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(244, 251, 255, 0.1);
+  border-radius: 7px;
+}
+
+.selected-scrydex-preview__meta strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--gold);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.selected-scrydex-preview__pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.selected-scrydex-preview__pill-row span {
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #07131d;
+  font-weight: 900;
+  background: linear-gradient(135deg, rgba(121, 215, 143, 0.92), rgba(73, 220, 244, 0.82));
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.selected-scrydex-preview__path {
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+}
+
 .inventory-intake-control button {
   display: inline-flex;
   align-items: center;
@@ -4062,6 +4162,8 @@ dd {
   .inventory-intake-control,
   .scrydex-lookup-control,
   .scrydex-result-list article,
+  .selected-scrydex-preview,
+  .selected-scrydex-preview__meta,
   .inventory-adjustment-controls,
   .event-row,
   .event-detail-card,
@@ -4095,6 +4197,43 @@ dd {
     justify-content: center;
   }
 
+  .content-grid,
+  .content-grid.page-inventory,
+  .content-grid.page-kiosk,
+  .content-grid.page-queue,
+  .content-grid.page-events,
+  .content-grid.page-conflicts,
+  .content-grid.page-customers,
+  .content-grid.page-settings,
+  .content-grid.page-sync,
+  .content-grid.page-status {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .content-grid.page-inventory {
+    grid-template-areas:
+      "inventory"
+      "detail";
+  }
+
+  .inventory-intake-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inventory-intake-control > label,
+  .inventory-intake-control > div,
+  .inventory-intake-control > label:nth-of-type(1),
+  .inventory-intake-control > label:nth-of-type(2),
+  .inventory-intake-control > .scrydex-lookup-control,
+  .selected-scrydex-preview {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .inventory-intake-control > .scrydex-lookup-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .sync-strip div {
     min-height: 68px;
   }
@@ -4113,6 +4252,17 @@ dd {
   .sync-visibility-row-head strong {
     max-width: 100%;
     text-align: left;
+  }
+
+  .selected-scrydex-preview__art {
+    width: min(180px, 100%);
+    max-width: 100%;
+    min-height: 220px;
+  }
+
+  .selected-scrydex-preview__body,
+  .selected-scrydex-preview__pill-row {
+    max-width: 100%;
   }
 
   .scanner-row {

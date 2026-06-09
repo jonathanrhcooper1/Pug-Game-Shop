@@ -3,6 +3,56 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline ScryDex Intake Preview
+
+### What Changed
+
+- Added a selected-card preview to the offline app's ScryDex inventory intake
+  flow.
+- The preview shows card art, card/set identity, catalog source, local stock by
+  condition, queued intake quantity/price, provider card ID, variants, and the
+  lookup order used by the app.
+- Tightened the phone-width layout so the ScryDex lookup and selected-card
+  preview stay readable without horizontal overflow.
+- Extended the offline UI shell contract to pin the selected-card preview
+  markers.
+
+### Why
+
+Store staff need the online catalog/intake flow to clearly confirm the exact
+card, image, variant, condition stock, and queued price before adding inventory
+from the local app.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended `node apps/offline-app/tests/ui-shell-contract.mjs`.
+
+### Verification
+
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- Browser smoke at `http://127.0.0.1:1420/` with PIN login, Charizard catalog
+  lookup, selected-card image/stock/price preview, desktop layout check, mobile
+  390px layout check, and console warning/error check.
+
+### Rollback Notes
+
+- Revert the affected offline app UI files. No database rollback or WordPress
+  plugin rollback is required.
+
 ## 2026-06-09 - Production Public Inventory and Events Pages
 
 ### What Changed

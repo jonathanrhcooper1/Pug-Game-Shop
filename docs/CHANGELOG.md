@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The offline app ScryDex intake flow now shows a selected-card preview with
+  card art, catalog source, condition stock, queued quantity/price, variants,
+  and lookup path, including a responsive mobile layout for phone-sized
+  manager/employee screens.
 - The offline app queue now exposes a dedicated `Sync to Website` command,
   prevents overlapping manual sync clicks, preserves the inventory status
   returned by WordPress after LAN push acceptance, and keeps the status/queue
