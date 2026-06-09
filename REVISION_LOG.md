@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Fresh Plugin Package Install Guard
+
+### What Changed
+
+- Updated production plugin installs to rebuild the default WordPress plugin
+  zip from the current working tree before upload/install.
+- Updated staging plugin install and upload scripts with the same fresh-package
+  default.
+- Preserved custom zip support through `PUG_PROD_PLUGIN_ZIP` and
+  `PUG_STAGING_PLUGIN_ZIP`; when those are set, the scripts use the supplied
+  package and report that a custom package was provided.
+- Added dry-run/result fields showing whether a fresh package will be built
+  from source.
+
+### Why
+
+The production customer-credit fix initially installed a stale existing
+`dist/tcg-store-platform-0.189.0.zip`, which left old code active on the site.
+Deployment tooling now makes the current source the default source of truth for
+plugin installs.
+
+### Files Affected
+
+- `scripts/production-install-wordpress-package.mjs`
+- `scripts/staging-install-wordpress-package.mjs`
+- `scripts/staging-upload-wordpress-package.mjs`
+- `scripts/tests/production-install-contract.mjs`
+- `scripts/tests/staging-install-contract.mjs`
+- `scripts/tests/staging-upload-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated production and staging install/upload contract tests to require fresh
+  package build reporting and custom-package reporting.
+
+### Verification
+
+- `node --check scripts/production-install-wordpress-package.mjs`: passed.
+- `node --check scripts/staging-install-wordpress-package.mjs`: passed.
+- `node --check scripts/staging-upload-wordpress-package.mjs`: passed.
+- `node scripts/tests/production-install-contract.mjs`: passed.
+- `node scripts/tests/staging-install-contract.mjs`: passed.
+- `node scripts/tests/staging-upload-contract.mjs`: passed.
+- `npm run production:install-package -- --dry-run`: reports
+  `buildsFreshPackageFromSource: true`.
+- `npm run staging:install-package -- --dry-run`: reports
+  `buildsFreshPackageFromSource: true`.
+- `npm run test:packaging`: passed.
+
+### Rollback Notes
+
+- Revert these script changes if a release process needs to reuse a prebuilt
+  default zip without rebuilding.
+- To intentionally install a prebuilt zip without rollback, set
+  `PUG_PROD_PLUGIN_ZIP` or `PUG_STAGING_PLUGIN_ZIP` to the desired package path.
+- No production database or WordPress content changes are made by this commit.
+
 ## 2026-06-09 - Production Local Sync Customer And Credit Workflow Fix
 
 ### What Changed

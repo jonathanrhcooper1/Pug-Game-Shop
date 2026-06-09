@@ -11,7 +11,8 @@ loadLocalEnv([resolve(root, ".env.production.local"), resolve(root, ".env.local"
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const defaultPackagePath = resolve(root, "dist", `tcg-store-platform-${packageJson.version}.zip`)
-const localPackagePath = resolve(root, process.env.PUG_PROD_PLUGIN_ZIP ?? defaultPackagePath)
+const customPackageZip = String(process.env.PUG_PROD_PLUGIN_ZIP ?? "").trim()
+const localPackagePath = resolve(root, customPackageZip || defaultPackagePath)
 const uploadDir = normalizeRemoteDir(process.env.PUG_PROD_REMOTE_UPLOAD_DIR ?? "/html/wp-content/uploads")
 const remoteFileName =
   process.env.PUG_PROD_REMOTE_FILE ??
@@ -33,7 +34,7 @@ const requiredEnv = {
   PUG_PROD_SSH_PASSWORD: process.env.PUG_PROD_SSH_PASSWORD,
 }
 
-if (!existsSync(localPackagePath) && !dryRun) {
+if (!customPackageZip && !dryRun) {
   execFileSync(npmCommand(), ["run", "package:wordpress"], {
     cwd: root,
     stdio: "inherit",
@@ -59,6 +60,8 @@ if (dryRun) {
         localPackage: localPackagePath,
         localSizeBytes: packageSize,
         localPackageExists: packageExists,
+        buildsFreshPackageFromSource: !customPackageZip,
+        customPackageZipProvided: Boolean(customPackageZip),
         remotePath,
         pluginSlug,
         pluginFile,
@@ -166,6 +169,8 @@ const result = await new Promise((resolveResult, reject) => {
           action: "production_plugin_package_installed",
           localPackage: basename(localPackagePath),
           localSizeBytes: packageSize,
+          builtFreshPackageFromSource: !customPackageZip,
+          customPackageZipProvided: Boolean(customPackageZip),
           remotePath,
           remoteSizeBytes: remoteStats.size,
           sizeMatched: remoteStats.size === packageSize,

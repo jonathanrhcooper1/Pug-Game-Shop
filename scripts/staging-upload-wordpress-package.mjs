@@ -8,7 +8,8 @@ import { stagingSshConnectConfig } from "./lib/staging-ssh.mjs"
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const defaultPackagePath = resolve(root, "dist", `tcg-store-platform-${packageJson.version}.zip`)
-const localPackagePath = resolve(root, process.env.PUG_STAGING_PLUGIN_ZIP ?? defaultPackagePath)
+const customPackageZip = String(process.env.PUG_STAGING_PLUGIN_ZIP ?? "").trim()
+const localPackagePath = resolve(root, customPackageZip || defaultPackagePath)
 const uploadDir = normalizeRemoteDir(process.env.PUG_STAGING_REMOTE_UPLOAD_DIR ?? "/html/wp-content/uploads")
 const remoteFileName =
   process.env.PUG_STAGING_REMOTE_FILE ??
@@ -22,16 +23,17 @@ const requiredEnv = {
   PUG_STAGING_SSH_PASSWORD: process.env.PUG_STAGING_SSH_PASSWORD,
 }
 
-if (!existsSync(localPackagePath)) {
+if (!customPackageZip && !dryRun) {
   execFileSync("npm", ["run", "package:wordpress"], {
     cwd: root,
     stdio: "inherit",
   })
 }
 
-const packageSize = statSync(localPackagePath).size
+const packageExists = existsSync(localPackagePath)
+const packageSize = packageExists ? statSync(localPackagePath).size : 0
 
-if (packageSize <= 0) {
+if (!dryRun && packageSize <= 0) {
   throw new Error(`WordPress plugin package is empty: ${localPackagePath}`)
 }
 
@@ -54,6 +56,9 @@ if (dryRun) {
         action: "staging_plugin_package_upload_dry_run",
         localPackage: localPackagePath,
         localSizeBytes: packageSize,
+        localPackageExists: packageExists,
+        buildsFreshPackageFromSource: !customPackageZip,
+        customPackageZipProvided: Boolean(customPackageZip),
         remotePath,
         uploadOnly: true,
         activatesPlugin: false,
@@ -97,6 +102,8 @@ const result = await new Promise((resolveResult, reject) => {
               action: "staging_plugin_package_uploaded",
               localPackage: basename(localPackagePath),
               localSizeBytes: packageSize,
+              builtFreshPackageFromSource: !customPackageZip,
+              customPackageZipProvided: Boolean(customPackageZip),
               remotePath,
               remoteSizeBytes: remoteStats.size,
               sizeMatched: remoteStats.size === packageSize,

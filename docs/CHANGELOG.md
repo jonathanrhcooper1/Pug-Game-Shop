@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Production and staging plugin install/upload scripts now rebuild the
+  WordPress plugin package from the current working tree by default unless a
+  custom zip path is explicitly provided, preventing stale versioned zips from
+  being deployed.
 - Production customer upserts now store missing customer barcodes as `NULL`
   instead of an empty string, preventing unique-barcode collisions when the LAN
   app creates multiple customers without barcode assignments.
