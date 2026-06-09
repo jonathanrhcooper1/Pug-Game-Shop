@@ -3,6 +3,55 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Local Sync Multi-Client Smoke Coverage
+
+### What Changed
+
+- Added a dedicated local sync server multi-client HTTP smoke test.
+- The new smoke boots one LAN middleman server and simulates:
+  - front-counter employee app heartbeat
+  - customer kiosk heartbeat
+  - back-counter employee app heartbeat
+  - kiosk pickup order creation
+  - duplicate pickup hold prevention
+  - employee pickup status update
+  - second staff queue read with the updated status
+  - stale-device offline detection after heartbeat timeout
+- Wired the smoke into `npm --prefix apps/local-sync-server run test`.
+
+### Why
+
+The architecture depends on one local server coordinating multiple employee app
+and customer kiosk instances. Single-client tests are useful, but they do not
+prove that separate devices share the same pickup queue, reservation state, and
+presence status through the LAN middleman.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/local-sync-server-multi-client.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `apps/local-sync-server/tests/local-sync-server-multi-client.mjs`
+
+### Verification
+
+- `node apps/local-sync-server/tests/local-sync-server-multi-client.mjs`:
+  passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the multi-client smoke and test script hook.
+- No runtime or database rollback is required.
+
 ## 2026-06-09 - Shared LAN Kiosk Pickup Queue
 
 ### What Changed

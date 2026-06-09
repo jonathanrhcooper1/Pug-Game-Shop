@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Local sync server testing now includes a multi-client LAN smoke that simulates
+  two employee stations plus a customer kiosk sharing one pickup queue, blocking
+  duplicate holds, and marking stale local devices offline.
 - LAN kiosk pickup orders now have a shared queue across employee and kiosk
   clients: the local sync server stores item snapshots, exposes staff list/status
   endpoints, and the offline app can refresh and update pickup status without
