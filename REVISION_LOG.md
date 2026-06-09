@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Public Inventory And Events Pages
+
+### What Changed
+
+- Verified production public inventory, event list, and event detail shortcodes.
+- Configured the production `card-inventory` and `events` pages to use the
+  plugin shortcodes.
+- Updated the ignored local production expected-version override from `0.187.0`
+  to `0.189.0` so future production helper runs validate the current package.
+
+### Why
+
+The live site needs customer-facing entry points for searchable card inventory
+and event registration. The helper updates only the dedicated public pages,
+backs up previous page content metadata, and does not change the homepage or
+navigation menus.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+- `.env.production.local` (ignored local operator config only)
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run production:verify-public-shortcodes`: passed. Verified
+  inventory/events/event-detail shortcodes, public CSS enqueues, rendered
+  inventory shell, rendered events shell, event detail contract, and no raw
+  shortcode output.
+- `npm.cmd run production:configure-public-pages`: passed. Updated
+  `/card-inventory/` and `/events/`, backed up prior content metadata, and did
+  not change the homepage or menus.
+- `Invoke-WebRequest https://vbf.2a7.myftpupload.com/card-inventory/?q=Charizard&game=pokemon`:
+  returned HTTP 200, rendered the inventory shell, included Charizard content,
+  and did not expose the raw shortcode.
+- `Invoke-WebRequest https://vbf.2a7.myftpupload.com/events/`: returned HTTP
+  200, rendered the `.tcg-events` shell, loaded public events CSS, and did not
+  expose the raw shortcode.
+
+### Rollback Notes
+
+- Restore prior page content from the `_tcg_store_public_pages_backup_*` post
+  meta key created by the helper if the public page content needs to be
+  reverted.
+- No database migration rollback is required.
+
 ## 2026-06-09 - Offline App Test And Windows Build Verification
 
 ### What Changed
