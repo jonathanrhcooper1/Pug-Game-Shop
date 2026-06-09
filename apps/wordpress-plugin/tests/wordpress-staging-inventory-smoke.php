@@ -451,7 +451,7 @@ $reference_cards = $reference_data['data']['cards'] ?? array();
 $assert( is_array( $reference_cards ) && isset( $reference_cards[0] ) && is_array( $reference_cards[0] ), 'Reference search should return a card row.' );
 $assert( 'Charizard' === ( $reference_cards[0]['card_name'] ?? null ), 'Reference search should return the seeded Charizard card.' );
 $assert( 'https://images.pokemontcg.io/base1/4_hires.png' === ( $reference_cards[0]['image_url'] ?? null ), 'Reference search should expose the card image URL.' );
-$assert( '250.0000' === ( $reference_cards[0]['market_price']['amount'] ?? null ), 'Reference search should expose the market price.' );
+$assert( '250.00' === ( $reference_cards[0]['market_price']['amount'] ?? null ), 'Reference search should expose the market price.' );
 $assert( 25000 === (int) ( $reference_cards[0]['market_price_minor_units'] ?? 0 ), 'Reference search should expose price minor units.' );
 $assert( 'USD' === ( $reference_cards[0]['currency'] ?? null ), 'Reference search should expose the price currency.' );
 $assert( false === ( $reference_cards[0]['live_provider_request'] ?? null ), 'Reference search card should not come from a live provider request.' );

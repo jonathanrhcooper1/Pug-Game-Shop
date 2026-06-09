@@ -375,6 +375,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
 			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );
+			$this->assert_same( '1120.45', $response['data']['cards'][0]['market_price']['amount'] );
 			$this->assert_same( 112045, $response['data']['cards'][0]['market_price_minor_units'] );
 			$this->assert_same( 3, $response['data']['cards'][0]['stock_available_count'] );
 			$this->assert_same( 1, $response['data']['cards'][0]['stock_reserved_count'] );
@@ -388,7 +389,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_reverse_hires.png', $response['data']['cards'][0]['variants'][0]['front_image_url'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215-alt-art', $response['data']['cards'][0]['price_points'][0]['provider_variant_id'] );
 			$this->assert_same( 'NM', $response['data']['cards'][0]['price_points'][0]['condition_code'] );
-			$this->assert_same( '1199.9900', $response['data']['cards'][0]['price_points'][0]['market_price'] );
+			$this->assert_same( '1199.99', $response['data']['cards'][0]['price_points'][0]['market_price'] );
 			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
 			$this->assert_false( $response['data']['meta']['live_provider_request'] );
 		}
@@ -437,12 +438,13 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
 			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );
+			$this->assert_same( '1120.45', $response['data']['cards'][0]['market_price']['amount'] );
 			$this->assert_same( 112045, $response['data']['cards'][0]['market_price_minor_units'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215-alt-art', $response['data']['cards'][0]['variants'][0]['provider_variant_id'] );
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_reverse_hires.png', $response['data']['cards'][0]['variants'][0]['front_image_url'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215-alt-art', $response['data']['cards'][0]['price_points'][0]['provider_variant_id'] );
 			$this->assert_same( 'NM', $response['data']['cards'][0]['price_points'][0]['condition_code'] );
-			$this->assert_same( '1199.9900', $response['data']['cards'][0]['price_points'][0]['market_price'] );
+			$this->assert_same( '1199.99', $response['data']['cards'][0]['price_points'][0]['market_price'] );
 			$this->assert_true( $response['data']['cards'][0]['live_provider_request'] );
 			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
 		}

@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Reference-card lookup prices now present as two-decimal money values in API
+  responses and admin intake/search results, while database precision remains
+  four decimals.
 - ScryDex persistence now accepts observed provider card/variant IDs containing
   `?` and `!`, allowing legitimate cards such as Unseen Forces Unown variants
   to import instead of blocking the batch.

@@ -1373,10 +1373,10 @@ final class ReferenceCardSearchRouteHandler {
 
 	private function decimal_string( mixed $value ): string {
 		if ( is_numeric( $value ) ) {
-			return number_format( (float) $value, 4, '.', '' );
+			return number_format( (float) $value, 2, '.', '' );
 		}
 
-		return '0.0000';
+		return '0.00';
 	}
 
 	private function currency( mixed $value ): string {

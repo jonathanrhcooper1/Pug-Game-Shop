@@ -3,6 +3,50 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Two-Decimal Reference Lookup Pricing
+
+### What Changed
+
+- Changed reference-card search API presentation to return money strings with
+  two decimal places for market prices and condition price points.
+- Added unit coverage for the lookup payload consumed by the admin card intake
+  workspace.
+- Updated the WordPress inventory smoke assertion for two-decimal lookup prices.
+- Bumped the plugin/package version to `0.175.0`.
+
+### Why
+
+The live intake/search UI was showing catalog prices like `250.0000`. Staff
+pricing should display as normal currency (`250.00`) while the database can
+continue storing four-decimal precision internally.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added assertions that reference-card lookup returns `1120.45` and `1199.99`
+  presentation values instead of four-decimal strings.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.174.0` to restore four-decimal reference lookup
+  presentation.
+- No database rollback is required.
+
 ## 2026-06-09 - ScryDex Provider ID Punctuation Compatibility
 
 ### What Changed
