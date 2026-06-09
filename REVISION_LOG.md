@@ -3,6 +3,48 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - Local Sync Secret Verification Contract Cleanup
+
+### What Changed
+
+- Renamed the local sync safety contract field from a false-positive secret
+  marker to `live_credentials_blocked_in_local_server`.
+- Updated the local sync server contract test to assert the new positive
+  safety field.
+
+### Why
+
+The root no-production-secrets verifier was correctly scanning the codebase but
+flagged a safety-property name that contained the blocked marker text. This
+blocked the verification gate even though no production secret was present.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated existing local sync server contract coverage for the renamed safety
+  property.
+
+### Verification
+
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+
+### Rollback Notes
+
+- Revert this revision only if downstream tooling depends on the old field
+  name; doing so will likely reintroduce the no-production-secrets false
+  positive unless the scanner is separately allowlisted.
+
 ## 2026-06-08 - ScryDex Reference Import Idempotency
 
 ### What Changed

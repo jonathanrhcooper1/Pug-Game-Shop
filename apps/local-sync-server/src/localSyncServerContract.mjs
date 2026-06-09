@@ -72,7 +72,7 @@ export function buildLocalSyncServerContract(options = {}) {
       manager_required_for_user_access_changes: true,
       square_payment_capture_supported: false,
       square_payment_handoff_only: true,
-      production_api_keys_allowed_in_local_server: false,
+      live_credentials_blocked_in_local_server: true,
       scrydex_credentials_synced_to_clients: false,
       scrydex_lookup_uses_server_side_credentials_only: true,
     },

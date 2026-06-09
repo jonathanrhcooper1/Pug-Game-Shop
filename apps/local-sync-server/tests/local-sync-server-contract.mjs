@@ -25,7 +25,7 @@ assert.equal(contract.safety.wordpress_acceptance_required_for_final_inventory_s
 assert.equal(contract.safety.pin_credentials_stored_as_hashes, true)
 assert.equal(contract.safety.manager_required_for_user_access_changes, true)
 assert.equal(contract.safety.square_payment_capture_supported, false)
-assert.equal(contract.safety.production_api_keys_allowed_in_local_server, false)
+assert.equal(contract.safety.live_credentials_blocked_in_local_server, true)
 assert.equal(contract.safety.scrydex_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, true)
 assert.ok(contract.responsibilities.includes("prevent_local_double_sell_between_employee_and_kiosk_clients"))

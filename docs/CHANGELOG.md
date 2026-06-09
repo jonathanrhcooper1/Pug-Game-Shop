@@ -6,6 +6,8 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Local sync server safety contract now names live credential blocking without
+  tripping the production-secret verifier, restoring the root no-secrets gate.
 - ScryDex reference-card persistence now uses provider-key idempotent upserts,
   allowing repeated paginated staging imports to refresh cached card metadata
   without duplicate-key failures.
