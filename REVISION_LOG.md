@@ -3,6 +3,50 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Production Set Card Indexing ID Preservation
+
+### What Changed
+
+- Updated the production ScryDex index runner to preserve case-sensitive
+  provider expansion IDs when importing cards by set.
+- Replaced the runner's `sanitize_key()` expansion handling with a
+  provider-resource sanitizer aligned to the WordPress catalog controller.
+- Added production index contract markers to prevent lowercasing provider set
+  IDs again.
+
+### Why
+
+ScryDex scoped card endpoints use provider expansion IDs in the path, such as
+`/expansions/OGN/cards`. Lowercasing those IDs can make the runner successfully
+import expansion metadata but fail to import the cards inside each expansion on
+case-sensitive provider routes.
+
+### Files Affected
+
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `scripts/tests/production-scrydex-index-contract.mjs`.
+
+### Verification
+
+- `node scripts/tests/production-scrydex-index-contract.mjs`: passed.
+- `node scripts/production-run-scrydex-index.mjs --dry-run`: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the previous production runner expansion-ID
+  sanitation behavior.
+- No database rollback is required.
+
 ## 2026-06-09 - WooCommerce Selector Production Smoke Coverage
 
 ### What Changed

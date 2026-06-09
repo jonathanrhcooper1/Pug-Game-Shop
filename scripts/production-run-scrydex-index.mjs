@@ -133,7 +133,7 @@ if ($admin_id <= 0) {
 wp_set_current_user($admin_id);
 $rounds = max(0, (int) ($payload['rounds'] ?? 0));
 $game = sanitize_key($payload['game'] ?? 'pokemon');
-$explicit_expansion_id = sanitize_key($payload['expansion_id'] ?? '');
+$explicit_expansion_id = tcg_production_scrydex_provider_resource_id($payload['expansion_id'] ?? '');
 $expansions_page = max(1, (int) ($payload['expansions_page'] ?? 1));
 $index_expansions = !empty($payload['index_expansions']);
 $index_by_set = !empty($payload['index_by_set']) && '' === $explicit_expansion_id;
@@ -142,6 +142,14 @@ $set_offset = max(0, (int) ($payload['set_offset'] ?? 0));
 $runs = array();
 $sets = array();
 $last_status = 'unknown';
+
+function tcg_production_scrydex_provider_resource_id($value): string {
+	$value = trim((string) $value);
+	$value = preg_replace('/[^A-Za-z0-9_:-]+/', '-', $value);
+	$value = trim((string) $value, '-');
+
+	return substr($value, 0, 191);
+}
 
 function tcg_production_scrydex_catalog_request(array $payload, string $game, string $expansion_id, bool $index_expansions, int $expansions_page, bool $skip_cards, array $checkpoint = array()): array {
 	$request = new WP_REST_Request('POST', '/tcg-store/v1/scrydex/catalog/index');
@@ -230,7 +238,7 @@ if ($index_by_set && $index_expansions) {
 if ($index_by_set) {
 	$sets = tcg_production_scrydex_reference_sets($game, $set_limit, $set_offset);
 	foreach ($sets as $set) {
-		$set_id = sanitize_key($set['provider_set_id'] ?? '');
+		$set_id = tcg_production_scrydex_provider_resource_id($set['provider_set_id'] ?? '');
 		if ('' === $set_id) {
 			continue;
 		}

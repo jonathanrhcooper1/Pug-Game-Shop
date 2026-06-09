@@ -38,6 +38,8 @@ for (const requiredMarker of [
   "zeroMeansRunUntilShortPage",
   "/tcg-store/v1/scrydex/catalog/index",
   "/tcg-store/v1/scrydex/catalog/status",
+  "tcg_production_scrydex_provider_resource_id",
+  "[^A-Za-z0-9_:-]+",
   "tcg_production_scrydex_reference_sets",
   "tcg_production_scrydex_catalog_request",
   "cards_continuation_checkpoint_row",
@@ -70,6 +72,8 @@ for (const forbiddenMarker of [
   "credentialsPrinted: true",
   "wp db reset",
   "wp db import",
+  "sanitize_key($payload['expansion_id']",
+  "sanitize_key($set['provider_set_id']",
 ]) {
   assert.equal(
     scriptSource.includes(forbiddenMarker),

@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The production ScryDex index runner now preserves case-sensitive provider
+  expansion IDs when importing cards by set, matching ScryDex scoped card
+  endpoints such as `/expansions/OGN/cards`.
 - The guarded production WooCommerce card smoke now verifies the rendered
   customer condition selector UI, including selected option, stock, two-decimal
   price data, and the serialized quantity lock.
