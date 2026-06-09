@@ -124,6 +124,7 @@ import {
   type LocalSyncSetupStatusResult,
   type LocalSyncSquarePosInventoryPullPlanResult,
   type LocalSyncScryDexCard,
+  type LocalSyncScryDexPricePoint,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
 } from "./data/localSyncServerClient"
@@ -928,6 +929,56 @@ function cardImageForSelectedVariant(
   return variant?.front_image_url || card?.image_url || ""
 }
 
+function pricePointMinorUnits(point: LocalSyncScryDexPricePoint) {
+  return point.market_price_minor_units ||
+    point.mid_price_minor_units ||
+    point.low_price_minor_units ||
+    point.high_price_minor_units ||
+    0
+}
+
+function scryDexIntakePriceMinorUnits(
+  card: LocalSyncScryDexCard,
+  variant: LocalSyncScryDexVariant | null,
+  condition: string,
+) {
+  const normalizedCondition = condition.trim().toUpperCase()
+  const variantProviderId = variant?.provider_variant_id ?? ""
+  const variantReferenceId = variant?.reference_variant_id ?? null
+  const pricePoints = card.price_points ?? []
+
+  const variantAndConditionPoint = pricePoints.find((point) =>
+    pricePointMinorUnits(point) > 0 &&
+    point.condition_code === normalizedCondition &&
+    (
+      (variantProviderId !== "" && point.provider_variant_id === variantProviderId) ||
+      (variantReferenceId !== null && point.reference_variant_id === variantReferenceId)
+    ),
+  )
+
+  if (variantAndConditionPoint) {
+    return pricePointMinorUnits(variantAndConditionPoint)
+  }
+
+  const conditionPoint = pricePoints.find((point) =>
+    pricePointMinorUnits(point) > 0 && point.condition_code === normalizedCondition,
+  )
+
+  if (conditionPoint) {
+    return pricePointMinorUnits(conditionPoint)
+  }
+
+  const variantPoint = pricePoints.find((point) =>
+    pricePointMinorUnits(point) > 0 &&
+    (
+      (variantProviderId !== "" && point.provider_variant_id === variantProviderId) ||
+      (variantReferenceId !== null && point.reference_variant_id === variantReferenceId)
+    ),
+  )
+
+  return variantPoint ? pricePointMinorUnits(variantPoint) : card.market_price_minor_units
+}
+
 function inventoryVersionLabel(item: InventoryItem) {
   return [
     item.variant,
@@ -1327,6 +1378,9 @@ export function App() {
     ? formatScryDexVariant(selectedScryDexVariant) || "Selected version"
     : "Default version"
   const selectedScryDexImageUrl = cardImageForSelectedVariant(selectedScryDexCard, selectedScryDexVariant)
+  const selectedScryDexIntakePriceMinorUnits = selectedScryDexCard
+    ? scryDexIntakePriceMinorUnits(selectedScryDexCard, selectedScryDexVariant, intakeCondition)
+    : 0
   const selectedInventoryImageUrl = selectedItem.imageUrl || ""
   const selectedInventoryVersionLabel = inventoryVersionLabel(selectedItem)
   const selectedInventoryVisibilitySummary = inventoryVisibilitySummary(selectedItem)
@@ -1755,7 +1809,7 @@ export function App() {
   const selectedScryDexQueueQuantity = intakeQuantity ?? 1
   const selectedScryDexIntakeSummary = selectedScryDexCard
     ? `${selectedScryDexQueueQuantity} ${selectedScryDexQueueQuantity === 1 ? "copy" : "copies"} as ${intakeCondition || "RAW"} at ${formatMoney(
-        selectedScryDexCard.market_price_minor_units,
+        selectedScryDexIntakePriceMinorUnits,
         selectedScryDexCard.currency,
       )}`
     : ""
@@ -3222,19 +3276,57 @@ export function App() {
 
   function handleUseScryDexCard(card: LocalSyncScryDexCard) {
     setSelectedScryDexCardId(card.provider_card_id)
-    const variantId = card.variants[0]
-      ? scryDexVariantId(card.provider_card_id, card.variants[0], 0)
+    const firstVariant = card.variants[0] ?? null
+    const variantId = firstVariant
+      ? scryDexVariantId(card.provider_card_id, firstVariant, 0)
       : ""
 
     setSelectedScryDexVariantId(variantId)
     setIntakeCardName(card.card_name)
     setIntakeSetName(card.set_name)
     setIntakeBarcode("")
-    setIntakePriceInput(creditRedemptionInputFromMinorUnits(card.market_price_minor_units))
+    setIntakePriceInput(
+      creditRedemptionInputFromMinorUnits(
+        scryDexIntakePriceMinorUnits(card, firstVariant, intakeCondition),
+      ),
+    )
     setActivityMessage({
       title: "ScryDex reference selected",
       detail: `${card.card_name} ${card.printed_number} is ready for local intake review; leave barcode blank to auto-generate a unique copy code.`,
     })
+  }
+
+  function handleScryDexVariantChange(nextVariantId: string) {
+    setSelectedScryDexVariantId(nextVariantId)
+
+    if (!selectedScryDexCard) {
+      return
+    }
+
+    const nextVariant = selectedScryDexCard.variants.find(
+      (variant, index) =>
+        scryDexVariantId(selectedScryDexCard.provider_card_id, variant, index) === nextVariantId,
+    ) ?? null
+
+    setIntakePriceInput(
+      creditRedemptionInputFromMinorUnits(
+        scryDexIntakePriceMinorUnits(selectedScryDexCard, nextVariant, intakeCondition),
+      ),
+    )
+  }
+
+  function handleIntakeConditionChange(nextCondition: string) {
+    setIntakeCondition(nextCondition)
+
+    if (!selectedScryDexCard) {
+      return
+    }
+
+    setIntakePriceInput(
+      creditRedemptionInputFromMinorUnits(
+        scryDexIntakePriceMinorUnits(selectedScryDexCard, selectedScryDexVariant, nextCondition),
+      ),
+    )
   }
 
   function handleKioskAddItem(item = selectedItem) {
@@ -5587,7 +5679,7 @@ export function App() {
                             <select
                               id="scrydex-variant-select"
                               value={selectedScryDexVariantId}
-                              onChange={(event) => setSelectedScryDexVariantId(event.target.value)}
+                              onChange={(event) => handleScryDexVariantChange(event.target.value)}
                             >
                               {selectedScryDexCard.variants.map((variant, index) => {
                                 const variantId = scryDexVariantId(
@@ -5645,7 +5737,7 @@ export function App() {
                   <select
                     id="intake-condition"
                     value={intakeCondition}
-                    onChange={(event) => setIntakeCondition(event.target.value)}
+                    onChange={(event) => handleIntakeConditionChange(event.target.value)}
                   >
                     <option value="NM">Near Mint</option>
                     <option value="LP">Lightly Played</option>

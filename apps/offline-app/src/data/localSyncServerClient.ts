@@ -210,6 +210,19 @@ export type LocalSyncStockByCondition = {
   quantity: number
 }
 
+export type LocalSyncScryDexPricePoint = {
+  reference_variant_id?: number | null
+  provider_variant_id: string
+  condition_code: string
+  raw_or_graded: "raw" | "graded"
+  market_price_minor_units: number
+  low_price_minor_units: number
+  mid_price_minor_units: number
+  high_price_minor_units: number
+  currency: "USD"
+  observed_at_utc: string
+}
+
 export type LocalSyncScryDexVariant = {
   reference_variant_id?: number | null
   provider_variant_id: string
@@ -242,6 +255,7 @@ export type LocalSyncScryDexCard = {
   stock_available_count: number
   stock_total_count: number
   stock_by_condition: LocalSyncStockByCondition[]
+  price_points: LocalSyncScryDexPricePoint[]
   variants: LocalSyncScryDexVariant[]
 }
 

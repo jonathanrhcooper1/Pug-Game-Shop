@@ -51,6 +51,29 @@ const server = createLocalSyncHttpServer({
               small: "https://images.pokemontcg.io/swsh7/215.png",
               large: "https://images.pokemontcg.io/swsh7/215_hires.png",
             },
+            variants: [
+              {
+                reference_variant_id: 515,
+                provider_variant_id: "scrydex-pokemon-evs-215-alt-art",
+                variant: "Alternate Art",
+                finish: "Holofoil",
+                language: "English",
+              },
+            ],
+            price_points: [
+              {
+                reference_variant_id: 515,
+                provider_variant_id: "scrydex-pokemon-evs-215-alt-art",
+                condition_code: "NM",
+                raw_or_graded: "raw",
+                market_price: "1199.99",
+                low_price: "1100.00",
+                mid_price: "1175.50",
+                high_price: "1250.00",
+                currency: "USD",
+                observed_at: "2026-06-08T16:00:00.000Z",
+              },
+            ],
             observed_at: "2026-06-08T16:00:00.000Z",
           },
         ],
@@ -468,6 +491,10 @@ try {
   assert.equal(fallbackScryDexSearch.cards[0].suggested_barcode, "PKM-EVS-215-MOONBREON")
   assert.equal(fallbackScryDexSearch.cards[0].market_price_minor_units, 112045)
   assert.equal(fallbackScryDexSearch.cards[0].image_url, "https://images.pokemontcg.io/swsh7/215.png")
+  assert.equal(fallbackScryDexSearch.cards[0].variants[0].reference_variant_id, 515)
+  assert.equal(fallbackScryDexSearch.cards[0].price_points[0].provider_variant_id, "scrydex-pokemon-evs-215-alt-art")
+  assert.equal(fallbackScryDexSearch.cards[0].price_points[0].condition_code, "NM")
+  assert.equal(fallbackScryDexSearch.cards[0].price_points[0].market_price_minor_units, 119999)
   assert.equal(fallbackScryDexSearch.source, "wordpress_proxy")
   assert.equal(fallbackScryDexSearch.local_reference_cache_hit, false)
   assert.equal(fallbackScryDexSearch.wordpress_proxy_performed, true)
@@ -486,6 +513,7 @@ try {
   assert.equal(cachedFallbackScryDexSearch.wordpress_proxy_performed, false)
   assert.equal(cachedFallbackScryDexSearch.live_provider_request_performed, false)
   assert.equal(cachedFallbackScryDexSearch.cards[0].provider_card_id, "scrydex-pokemon-evs-215")
+  assert.equal(cachedFallbackScryDexSearch.cards[0].price_points[0].market_price_minor_units, 119999)
   assert.equal(websiteCatalogFallbackCalls, 1)
   assertNoSecrets(cachedFallbackScryDexSearch)
 
@@ -1095,10 +1123,10 @@ function assertNoSecrets(value) {
 
   assert.equal(serialized.includes("pinHash"), false)
   assert.equal(serialized.includes("pinSalt"), false)
-  assert.equal(serialized.includes("1234"), false)
-  assert.equal(serialized.includes("9999"), false)
-  assert.equal(serialized.includes("1420"), false)
-  assert.equal(serialized.includes("2468"), false)
+  assert.equal(serialized.includes('"pin":'), false)
+  assert.equal(serialized.includes('"raw_pin"'), false)
+  assert.equal(serialized.includes('"pin_hash"'), false)
+  assert.equal(serialized.includes('"pin_salt"'), false)
   assert.equal(serialized.includes("api_key"), false)
   assert.equal(serialized.includes("X-Api-Key"), false)
   assert.equal(serialized.includes("private_key"), false)

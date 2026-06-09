@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Price Points Through Local Intake
+
+### What Changed
+
+- Added an additive `price_points_json` column to the LAN `reference_cards`
+  SQLite cache.
+- Preserved WordPress/ScryDex `price_points` through local sync fallback,
+  normalization, persistence, and cached search responses.
+- Added typed offline app support for ScryDex price points.
+- Updated offline intake pricing so selecting a ScryDex card, changing version,
+  or changing condition uses the best matching variant/condition price point
+  before falling back to card-level market price.
+- Tightened the local sync runtime secret guard to inspect PIN/API key fields
+  rather than brittle substring matches that collide with normal catalog data.
+
+### Why
+
+Inventory intake is what fills the online and in-store shop, so staff should see
+the correct condition/version price when adding cards instead of a single
+card-level fallback price.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- LAN SQLite additive column: `reference_cards.price_points_json TEXT NOT NULL
+  DEFAULT '[]'`.
+- No WordPress database migration.
+
+### Tests Added
+
+- Extended local sync runtime coverage to assert WordPress fallback price points
+  are normalized to minor units and persist into the cached second lookup.
+- Extended offline client/UI contracts for price point types and price-aware
+  intake handlers.
+
+### Verification
+
+- `npm.cmd run local-sync:test`
+- `npm.cmd run test:offline-app`
+- `npm.cmd run build`
+- `npm.cmd run verify:no-production-secrets`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert the local sync cache, offline app type/UI, and test changes. Existing
+  reference search and intake still work, but offline intake will return to
+  card-level market price instead of matching variant/condition price points.
+
 ## 2026-06-09 - Offline Inventory Detail and Intake Preview Polish
 
 ### What Changed

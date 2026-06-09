@@ -1869,6 +1869,7 @@ function migrateLocalSyncDatabase(database) {
       currency TEXT NOT NULL,
       image_url TEXT NOT NULL DEFAULT '',
       variants_json TEXT NOT NULL DEFAULT '[]',
+      price_points_json TEXT NOT NULL DEFAULT '[]',
       price_observed_at_utc TEXT NULL,
       catalog_synced_at_utc TEXT NOT NULL,
       catalog_source TEXT NOT NULL,
@@ -1914,6 +1915,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "reference_cards", "price_points_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "event_snapshots", "slug", "TEXT NOT NULL DEFAULT ''")
   database.exec(`
     UPDATE operation_queue
@@ -2048,7 +2050,7 @@ function loadReferenceCards(database) {
     .prepare(`
       SELECT provider_card_id, game, card_name, set_name, set_code, card_number,
         printed_number, suggested_barcode, market_price_minor_units, currency,
-        image_url, variants_json, price_observed_at_utc, catalog_synced_at_utc, catalog_source
+        image_url, variants_json, price_points_json, price_observed_at_utc, catalog_synced_at_utc, catalog_source
       FROM reference_cards
       ORDER BY card_name, set_name, provider_card_id
     `)
@@ -2308,10 +2310,10 @@ function saveReferenceCard(database, card, now) {
       INSERT INTO reference_cards (
         provider_card_id, game, card_name, set_name, set_code, card_number,
         printed_number, suggested_barcode, market_price_minor_units, currency,
-        image_url, variants_json, price_observed_at_utc, catalog_synced_at_utc, catalog_source,
+        image_url, variants_json, price_points_json, price_observed_at_utc, catalog_synced_at_utc, catalog_source,
         updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(provider_card_id) DO UPDATE SET
         game = excluded.game,
         card_name = excluded.card_name,
@@ -2324,6 +2326,7 @@ function saveReferenceCard(database, card, now) {
         currency = excluded.currency,
         image_url = excluded.image_url,
         variants_json = excluded.variants_json,
+        price_points_json = excluded.price_points_json,
         price_observed_at_utc = excluded.price_observed_at_utc,
         catalog_synced_at_utc = excluded.catalog_synced_at_utc,
         catalog_source = excluded.catalog_source,
@@ -2342,6 +2345,7 @@ function saveReferenceCard(database, card, now) {
       card.currency,
       card.image_url,
       JSON.stringify(card.variants ?? []),
+      JSON.stringify(card.price_points ?? []),
       card.price_observed_at_utc,
       card.catalog_synced_at_utc,
       card.catalog_source,
@@ -3438,6 +3442,7 @@ function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new 
   const marketPrice = card.market_price && typeof card.market_price === "object" ? card.market_price : {}
   const images = card.images && typeof card.images === "object" ? card.images : {}
   const variants = cleanReferenceVariants(card.variants ?? parseJson(card.variants_json, []))
+  const pricePoints = cleanReferencePricePoints(card.price_points ?? parseJson(card.price_points_json, []))
   const priceMinorUnits =
     card.market_price_minor_units !== undefined
       ? minorUnits(card.market_price_minor_units)
@@ -3456,10 +3461,56 @@ function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new 
     currency: cleanCurrency(card.currency ?? marketPrice.currency),
     image_url: cleanHttpUrl(card.image_url ?? card.front_image_url ?? images.front ?? images.small ?? images.large),
     variants,
+    price_points: pricePoints,
     price_observed_at_utc: cleanIsoTimestamp(card.price_observed_at_utc ?? card.observed_at ?? card.updated_at),
     catalog_synced_at_utc: cleanIsoTimestamp(card.catalog_synced_at_utc ?? card.synced_at_utc) || currentTimestamp,
     catalog_source: cleanCatalogSource(card.catalog_source ?? catalogSource),
   }
+}
+
+function cleanReferencePricePoints(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((point) => point && typeof point === "object")
+    .map((point) => {
+      const marketPriceMinorUnits = pricePointMinorUnits(point.market_price_minor_units, point.market_price)
+      const lowPriceMinorUnits = pricePointMinorUnits(point.low_price_minor_units, point.low_price)
+      const midPriceMinorUnits = pricePointMinorUnits(point.mid_price_minor_units, point.mid_price)
+      const highPriceMinorUnits = pricePointMinorUnits(point.high_price_minor_units, point.high_price)
+
+      return {
+        reference_variant_id: positiveInt(point.reference_variant_id),
+        provider_variant_id: cleanPublicId(point.provider_variant_id),
+        condition_code: cleanCondition(point.condition_code),
+        raw_or_graded: cleanRawOrGraded(point.raw_or_graded),
+        market_price_minor_units: marketPriceMinorUnits,
+        low_price_minor_units: lowPriceMinorUnits,
+        mid_price_minor_units: midPriceMinorUnits,
+        high_price_minor_units: highPriceMinorUnits,
+        currency: cleanCurrency(point.currency),
+        observed_at_utc: cleanIsoTimestamp(
+          point.observed_at_utc ?? point.observed_at ?? point.source_observed_at ?? point.provider_updated_at,
+        ),
+      }
+    })
+    .filter((point) =>
+      point.market_price_minor_units > 0 ||
+      point.mid_price_minor_units > 0 ||
+      point.low_price_minor_units > 0 ||
+      point.high_price_minor_units > 0,
+    )
+    .slice(0, 80)
+}
+
+function pricePointMinorUnits(minorValue, decimalValue) {
+  if (minorValue !== undefined && minorValue !== null && minorValue !== "") {
+    return minorUnits(minorValue)
+  }
+
+  return minorUnitsFromDecimal(decimalValue)
 }
 
 function cleanReferenceVariants(value) {

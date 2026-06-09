@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- LAN ScryDex reference search now preserves WordPress/ScryDex price points in
+  the local `store-sync.sqlite` reference cache, and offline intake updates the
+  draft price from the selected condition/version when price points are
+  available.
 - Offline inventory details now keep selected inventory-row art separate from
   the ScryDex intake draft, show version and online/kiosk/POS visibility in the
   detail panel, and keep selected ScryDex card art uncropped.
