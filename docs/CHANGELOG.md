@@ -26,6 +26,8 @@ All notable changes follow Semantic Versioning.
 - ScryDex reference-card persistence now keeps normalized expansion metadata
   fields, including year, rarity code, language, language code, and release
   date, so set/version searches keep the full provider context.
+- The read-only ScryDex live-smoke helper now loads ignored local env files
+  before checking credentials, keeping API keys out of shell history.
 - Production-safe WordPress deployment helpers now cover the real ScryDex
   catalog path: package install with production database/`wp-content` backup,
   ScryDex settings configuration through a redacted WP-CLI runner, and bounded

@@ -3,6 +3,41 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Live Smoke Env Loading
+
+### What Changed
+
+- Updated the read-only ScryDex live-smoke helper to load ignored local env
+  files before reading ScryDex credentials.
+- Added contract coverage for the env-file loading behavior.
+- Documented the safe local env-file path for live ScryDex credential checks.
+
+### Why
+
+Live ScryDex verification should be easy to run without placing API keys in
+shell history, commit history, or test output.
+
+### Files Affected
+
+- `scripts/scrydex-live-smoke.mjs`
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `scripts/tests/scrydex-live-smoke-contract.mjs` now verifies local env-file
+  loading markers.
+
+### Rollback Notes
+
+- Revert this helper change to require process environment variables only.
+- No WordPress data or database rollback is required; this helper is read-only.
+
 ## 2026-06-09 - ScryDex Reference Metadata Persistence
 
 ### What Changed

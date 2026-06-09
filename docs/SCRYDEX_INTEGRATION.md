@@ -232,6 +232,9 @@ endpoint in bounded per-set rounds by default. Useful controls are
 
 Use the live smoke only for a manual, read-only credential check. It is not
 part of CI and must not be run with production credentials in automated tests.
+The helper reads ignored local env files first, including
+`.env.production.local`, `.env.local`, and `.env`, so credentials do not need to
+be placed directly in shell history.
 
 ```text
 SCRYDEX_API_KEY=...

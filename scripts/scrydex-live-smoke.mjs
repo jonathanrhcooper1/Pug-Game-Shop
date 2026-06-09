@@ -1,3 +1,7 @@
+import { loadLocalEnv } from "./lib/local-env.mjs"
+
+loadLocalEnv([".env.production.local", ".env.local", ".env"])
+
 const baseUrl = normalizeBaseUrl(process.env.SCRYDEX_BASE_URL ?? "https://api.scrydex.com")
 const apiKey = String(
   process.env.SCRYDEX_API_KEY ?? process.env.SCRYDEX_PRIMARY_API_KEY ?? "",
@@ -18,6 +22,7 @@ if (dryRun) {
         pageSize,
         requiresEnv: ["SCRYDEX_API_KEY", "SCRYDEX_TEAM_ID", "SCRYDEX_SMOKE_CONFIRM"],
         optionalEnv: ["SCRYDEX_BASE_URL", "SCRYDEX_PRIMARY_API_KEY", "SCRYDEX_SMOKE_QUERY"],
+        readsIgnoredEnvFiles: [".env.production.local", ".env.local", ".env"],
         readonly: true,
         writesWordPressData: false,
         credentialsPrinted: false,
