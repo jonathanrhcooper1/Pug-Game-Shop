@@ -3,6 +3,50 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline App Test And Windows Build Verification
+
+### What Changed
+
+- Verified the offline/online desktop app test suite, including TypeScript
+  typecheck, UI shell contracts, local queue/cache contracts, local sync client
+  contracts, Tauri command contracts, and Rust command tests.
+- Verified the production web build for the offline app.
+- Verified the Windows Tauri build and NSIS installer generation.
+
+### Why
+
+The offline app must run online and offline, sync through the LAN middleman
+server, preserve connector isolation, and package as a Windows desktop app. The
+previous Rust/Cargo blocker is now cleared on this machine.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run test:offline-app`: passed, including 22 Rust/Tauri command
+  tests.
+- `npm.cmd run build`: passed, producing the offline app web build.
+- `npm.cmd run build:offline-app:windows`: passed, producing
+  `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/tcg-store-offline.exe`
+  and the NSIS setup executable
+  `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/TCG Store Local_0.189.0_x64-setup.exe`.
+
+### Rollback Notes
+
+- No rollback is required because this revision records verification only.
+- Build artifacts are ignored and can be regenerated with
+  `npm.cmd run build:offline-app:windows`.
+
 ## 2026-06-09 - Production Local Sync Smoke Verification
 
 ### What Changed
