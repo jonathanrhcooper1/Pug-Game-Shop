@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-08 - LAN Inventory Search Hydration Preview
+
+### What Changed
+
+- Offline app inventory search now calls the central LAN sync server
+  `/inventory/search` route as the user types, merges returned rows into the
+  local app cache, and keeps the existing device-cache filter as fallback.
+- Added visible inventory search status copy showing LAN cache, searching, and
+  device-cache fallback states.
+- Renamed the ScryDex intake control copy to a broader card catalog lookup
+  while preserving the server-side local-cache-first, WordPress proxy, and
+  ScryDex-backed catalog flow.
+- Expanded LAN inventory search matching to include location, set code, card
+  number, printed number, condition, provider card ID, barcode, public ID, card
+  name, and set name.
+
+### Why
+
+The preview needed the employee app to behave like it is connected to the
+central local database, not just filtering whatever rows React happened to
+have already loaded. This also makes location and condition searches match the
+visible placeholder and staff expectations.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline UI contract markers for LAN inventory search hydration and catalog
+  lookup labeling.
+- LAN runtime coverage for inventory search by WordPress location and
+  condition.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- Browser QA at `http://127.0.0.1:1420/`: PIN login, Inventory workspace,
+  LAN search for `Charizard`, catalog search for `Charizard`, Use Card, image
+  preview, and Add Inventory to a pending local intake row.
+
+### Rollback Notes
+
+- Revert this revision to return the main inventory search to device-cache-only
+  filtering and restore the narrower LAN search predicate.
+- No database rollback is required; local pending-intake rows created during
+  preview can be voided from the Queue if needed.
+
 ## 2026-06-08 - Square Inventory Batch Endpoint Alignment
 
 ### What Changed

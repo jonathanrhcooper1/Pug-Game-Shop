@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Offline app inventory search now hydrates from the central LAN sync server
+  while preserving device-cache fallback, and the LAN inventory search now
+  matches location, set code, card number, printed number, condition, provider
+  card ID, barcode, public ID, card name, and set name.
 - Square catalog/inventory request planners now use Square's current
   inventory batch-create endpoint,
   `/v2/inventory/changes/batch-create`, while keeping payment capture

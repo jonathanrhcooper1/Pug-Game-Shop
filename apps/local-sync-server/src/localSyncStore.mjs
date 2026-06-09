@@ -231,9 +231,18 @@ export function createLocalSyncStore(options = {}) {
         return true
       }
 
-      return [item.card_name, item.set_name, item.barcode, item.public_id].some((value) =>
-        String(value).toLowerCase().includes(needle),
-      )
+      return [
+        item.card_name,
+        item.set_name,
+        item.set_code,
+        item.card_number,
+        item.printed_number,
+        item.condition,
+        item.barcode,
+        item.public_id,
+        item.provider_card_id,
+        item.location,
+      ].some((value) => String(value).toLowerCase().includes(needle))
     })
 
     return {

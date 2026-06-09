@@ -165,6 +165,9 @@ for (const requiredText of [
   "Website",
   "No cached cards match this scan.",
   "No kiosk inventory matches this search.",
+  "Local database search",
+  "LAN cache synced",
+  "Device cache fallback",
 ]) {
   assert.ok(appSurface.includes(requiredText), `Missing offline UI text: ${requiredText}`)
 }
@@ -226,6 +229,7 @@ for (const className of [
   "sync-visibility-grid",
   "sync-visibility-row",
   "sync-visibility-path",
+  "inventory-search-status",
   "login-shell",
   "login-workspace",
   "login-card",
@@ -386,11 +390,13 @@ for (const interactionMarker of [
   "addScanTarget",
   "event.key === \"Enter\"",
   "Scan needs one match",
+  "searchInventory(normalizedQuery)",
+  "mergeLocalSyncInventoryItems(items, result.items)",
   "Inventory adjustment details",
   "Local inventory intake",
   "ScryDex card lookup",
-  "ScryDex lookup",
-  "Search ScryDex",
+  "Card catalog lookup",
+  "Search Catalog",
   "Use Card",
   "stock_available_count",
   "stock_by_condition",

@@ -526,6 +526,14 @@ try {
   assert.equal(preservedPendingIntake.items[0].card_name, "Local Only Pull Guard")
   assert.equal(preservedPendingIntake.items[0].image_url, "https://images.example.test/pull-guard-local.png")
 
+  const locationInventory = await fetchJson(`${baseUrl}/inventory/search?q=WordPress Location 7`)
+  assert.equal(locationInventory.status, "ok")
+  assert.ok(locationInventory.items.some((item) => item.barcode === "PUG-WP-CHARIZARD"))
+
+  const conditionInventory = await fetchJson(`${baseUrl}/inventory/search?q=LP`)
+  assert.equal(conditionInventory.status, "ok")
+  assert.ok(conditionInventory.items.some((item) => item.condition === "LP"))
+
   const inventory = await fetchJson(`${baseUrl}/inventory/search?q=charizard`)
   assert.equal(inventory.status, "ok")
   assert.ok(inventory.items.length >= 2)

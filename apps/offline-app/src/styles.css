@@ -1997,6 +1997,48 @@ h2 {
   height: 17px;
 }
 
+.inventory-search-status {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  color: #172016;
+  background: #fffaf0;
+  border: 1px solid rgba(121, 215, 143, 0.24);
+  border-radius: 8px;
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.inventory-search-status.searching {
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.inventory-search-status.blocked {
+  border-color: rgba(203, 73, 82, 0.24);
+  box-shadow: inset 3px 0 0 var(--red);
+}
+
+.inventory-search-status .micro-label {
+  grid-column: 1 / -1;
+}
+
+.inventory-search-status strong {
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.inventory-search-status small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #52605a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .filter-button,
 .icon-button {
   color: #202a25;

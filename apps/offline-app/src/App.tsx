@@ -743,6 +743,31 @@ function inventoryItemFromLocalSync(
   }
 }
 
+function mergeLocalSyncInventoryItems(
+  currentItems: InventoryItem[],
+  localSyncItems: LocalSyncInventoryItem[],
+): InventoryItem[] {
+  if (localSyncItems.length === 0) {
+    return currentItems
+  }
+
+  const remoteItemsByPublicId = new Map(
+    localSyncItems.map((item) => [item.public_id, item] as const),
+  )
+  const seenPublicIds = new Set(currentItems.map((item) => item.publicId))
+  const updatedItems = currentItems.map((item) => {
+    const remoteItem = remoteItemsByPublicId.get(item.publicId)
+
+    return remoteItem ? inventoryItemFromLocalSync(remoteItem, item.id) : item
+  })
+  let nextId = currentItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
+  const newItems = localSyncItems
+    .filter((item) => !seenPublicIds.has(item.public_id))
+    .map((item) => inventoryItemFromLocalSync(item, nextId++))
+
+  return newItems.length > 0 ? [...newItems, ...updatedItems] : updatedItems
+}
+
 function formatScryDexVariant(variant: LocalSyncScryDexVariant) {
   return [
     variant.variant,
@@ -860,6 +885,12 @@ export function App() {
   const [showEventQueue, setShowEventQueue] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<OfflineLabelPrintJob[]>([])
   const [query, setQuery] = useState("")
+  const [lanInventorySearchStatus, setLanInventorySearchStatus] = useState<
+    "idle" | "searching" | "ready" | "blocked"
+  >("idle")
+  const [lanInventorySearchDetail, setLanInventorySearchDetail] = useState(
+    "Type to search the local cache; LAN results hydrate automatically.",
+  )
   const [intakeCardName, setIntakeCardName] = useState("")
   const [intakeSetName, setIntakeSetName] = useState("")
   const [intakeCondition, setIntakeCondition] = useState("LP")
@@ -1222,6 +1253,49 @@ export function App() {
       setSelectedQueuedOperationId(queuedOperations[0].client_operation_id)
     }
   }, [queuedOperations, selectedQueuedOperationId])
+
+  useEffect(() => {
+    const normalizedQuery = query.trim()
+
+    if (normalizedQuery.length === 0) {
+      setLanInventorySearchStatus("idle")
+      setLanInventorySearchDetail("Type to search the local cache; LAN results hydrate automatically.")
+      return
+    }
+
+    let cancelled = false
+    const timeoutId = window.setTimeout(() => {
+      setLanInventorySearchStatus("searching")
+      setLanInventorySearchDetail(`Checking ${localSyncClient.serverUrl} for "${normalizedQuery}".`)
+
+      void localSyncClient.searchInventory(normalizedQuery).then((result) => {
+        if (cancelled) {
+          return
+        }
+
+        if (result.status !== "ok") {
+          setLanInventorySearchStatus("blocked")
+          setLanInventorySearchDetail(
+            result.status === "unavailable"
+              ? `${result.message} Showing this device cache only.`
+              : result.message,
+          )
+          return
+        }
+
+        setInventoryItems((items) => mergeLocalSyncInventoryItems(items, result.items))
+        setLanInventorySearchStatus("ready")
+        setLanInventorySearchDetail(
+          `${result.items.length} LAN cache result${result.items.length === 1 ? "" : "s"} from ${localSyncClient.serverUrl}; website remains the final authority after sync.`,
+        )
+      })
+    }, 220)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [query, localSyncClient])
 
   useEffect(() => {
     if (scannedInventoryItem && scannedInventoryItem.id !== selectedId) {
@@ -4540,6 +4614,19 @@ export function App() {
                   <Icon name="plus" />
                   <span>Add Scan</span>
                 </button>
+                <div className={`inventory-search-status ${lanInventorySearchStatus}`}>
+                  <span className="micro-label">Local database search</span>
+                  <strong>
+                    {lanInventorySearchStatus === "searching"
+                      ? "Checking LAN"
+                      : lanInventorySearchStatus === "ready"
+                        ? "LAN cache synced"
+                        : lanInventorySearchStatus === "blocked"
+                          ? "Device cache fallback"
+                          : "Ready"}
+                  </strong>
+                  <small>{lanInventorySearchDetail}</small>
+                </div>
               </div>
 
               {filtersOpen ? (
@@ -4560,7 +4647,7 @@ export function App() {
               <div className="inventory-intake-control" aria-label="Local inventory intake">
                 <div className="scrydex-lookup-control" aria-label="ScryDex card lookup">
                   <label htmlFor="scrydex-card-query">
-                    <span className="micro-label">ScryDex lookup</span>
+                    <span className="micro-label">Card catalog lookup</span>
                     <input
                       id="scrydex-card-query"
                       value={scryDexQuery}
@@ -4571,7 +4658,7 @@ export function App() {
                           void handleScryDexLookup()
                         }
                       }}
-                      placeholder="Charizard"
+                      placeholder="Charizard, set, or number"
                     />
                   </label>
                   <label htmlFor="scrydex-game">
@@ -4601,7 +4688,7 @@ export function App() {
                     <small>{scryDexLookupDetail}</small>
                     <button type="button" onClick={() => void handleScryDexLookup()}>
                       <Icon name="search" />
-                      <span>Search ScryDex</span>
+                      <span>Search Catalog</span>
                     </button>
                   </div>
                   {scryDexCards.length > 0 ? (
