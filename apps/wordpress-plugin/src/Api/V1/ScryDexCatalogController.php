@@ -100,6 +100,8 @@ final class ScryDexCatalogController {
 		$expansion_id            = $this->slug( $payload['expansion_id'] ?? '', '' );
 		$page_size               = $this->bounded_int( $payload['page_size'] ?? self::MAX_PAGE_SIZE, 1, self::MAX_PAGE_SIZE );
 		$max_pages               = $this->bounded_int( $payload['max_pages'] ?? 1, 1, self::MAX_PAGES );
+		$expansions_page         = $this->bounded_int( $payload['expansions_page'] ?? 1, 1, PHP_INT_MAX );
+		$max_expansion_pages     = $this->bounded_int( $payload['max_expansion_pages'] ?? 1, 1, self::MAX_PAGES );
 		$execute_database_writes = $this->truthy( $payload['execute_database_writes'] ?? false );
 		$index_expansions        = $this->truthy( $payload['index_expansions'] ?? false );
 		$provider                = $factory->provider();
@@ -118,7 +120,7 @@ final class ScryDexCatalogController {
 		);
 
 		$expansion_result = $index_expansions
-			? $this->index_expansions( $provider, $game, $page_size, $execute_database_writes )
+			? $this->index_expansions( $provider, $game, $page_size, $expansions_page, $max_expansion_pages, $execute_database_writes )
 			: array(
 				'status'                    => 'skipped',
 				'expansion_index_requested' => false,
@@ -146,6 +148,8 @@ final class ScryDexCatalogController {
 					'expansion_id'                   => $expansion_id,
 					'page_size'                      => $page_size,
 					'max_pages'                      => $max_pages,
+					'expansions_page'                => $expansions_page,
+					'max_expansion_pages'            => $max_expansion_pages,
 					'execute_database_writes'        => $execute_database_writes,
 					'usage_snapshot'                 => $usage['public_snapshot'],
 					'expansions'                     => $expansion_result,
@@ -242,34 +246,70 @@ final class ScryDexCatalogController {
 		ScryDexProvider $provider,
 		string $game,
 		int $page_size,
+		int $start_page,
+		int $max_pages,
 		bool $execute_database_writes
 	): array {
-		$result = $provider->search_expansions(
-			'',
-			array(
-				'game'      => $game,
-				'page_size' => (string) $page_size,
-			),
-			1,
-			''
-		);
+		$request_count          = 0;
+		$row_count              = 0;
+		$write_rows             = 0;
+		$current_page           = $start_page;
+		$last_page_requested    = $start_page;
+		$continuation_available = false;
+		$next_page              = null;
 
-		if ( ! $result->is_success() ) {
-			return array(
-				'status'      => 'blocked',
-				'http_status' => $result->http_status(),
-				'error_code'  => $result->error_code(),
+		for ( $offset = 0; $offset < $max_pages; ++$offset ) {
+			$result = $provider->search_expansions(
+				'',
+				array(
+					'game'      => $game,
+					'page_size' => (string) $page_size,
+				),
+				$current_page,
+				''
 			);
+
+			++$request_count;
+			$last_page_requested = $current_page;
+
+			if ( ! $result->is_success() ) {
+				return array(
+					'status'                    => 'blocked',
+					'expansion_index_requested' => true,
+					'provider_request_count'    => $request_count,
+					'http_status'               => $result->http_status(),
+					'error_code'                => $result->error_code(),
+					'provider_body_logged'      => false,
+				);
+			}
+
+			$body   = $result->body();
+			$rows   = $this->expansion_rows( $body, $game );
+			$row_count += count( $rows );
+			$write_rows += $execute_database_writes ? $this->persist_expansions( $rows ) : 0;
+			$continuation_available = $this->has_more_pages( $body, $current_page, $page_size, count( $rows ) );
+			$next_page              = $continuation_available ? $last_page_requested + 1 : null;
+
+			if ( ! $continuation_available ) {
+				break;
+			}
+
+			++$current_page;
 		}
 
-		$rows       = $this->expansion_rows( $result->body(), $game );
-		$write_rows = $execute_database_writes ? $this->persist_expansions( $rows ) : 0;
+		if ( $continuation_available && $request_count >= $max_pages ) {
+			$next_page = $last_page_requested + 1;
+		}
 
 		return array(
-			'status'                    => 'completed',
+			'status'                    => $continuation_available ? 'page_limit_reached' : 'completed',
 			'expansion_index_requested' => true,
-			'provider_request_count'    => 1,
-			'row_count'                 => count( $rows ),
+			'provider_request_count'    => $request_count,
+			'start_page'                => $start_page,
+			'last_page'                 => $last_page_requested,
+			'next_page'                 => $next_page,
+			'continuation_available'    => $continuation_available,
+			'row_count'                 => $row_count,
 			'write_count'               => $write_rows,
 			'database_writes_deferred'  => ! $execute_database_writes,
 			'provider_body_logged'      => false,
@@ -532,6 +572,48 @@ final class ScryDexCatalogController {
 		$value = trim( (string) ( $value ?? '' ) );
 
 		return filter_var( $value, FILTER_VALIDATE_URL ) ? substr( $value, 0, 255 ) : null;
+	}
+
+	private function has_more_pages( array $body, int $page, int $page_size, int $row_count ): bool {
+		foreach (
+			array(
+				$body['has_more'] ?? null,
+				$body['hasMore'] ?? null,
+				is_array( $body['pagination'] ?? null ) ? ( $body['pagination']['has_more'] ?? null ) : null,
+				is_array( $body['pagination'] ?? null ) ? ( $body['pagination']['hasMore'] ?? null ) : null,
+			) as $value
+		) {
+			if ( is_bool( $value ) ) {
+				return $value;
+			}
+		}
+
+		$total = $this->total_count( $body );
+		if ( null !== $total ) {
+			return $page * $page_size < $total;
+		}
+
+		return $row_count >= $page_size;
+	}
+
+	private function total_count( array $body ): ?int {
+		foreach (
+			array(
+				$body['totalCount'] ?? null,
+				$body['total_count'] ?? null,
+				$body['total'] ?? null,
+				is_array( $body['pagination'] ?? null ) ? ( $body['pagination']['totalCount'] ?? null ) : null,
+				is_array( $body['pagination'] ?? null ) ? ( $body['pagination']['total_count'] ?? null ) : null,
+				is_array( $body['meta'] ?? null ) ? ( $body['meta']['totalCount'] ?? null ) : null,
+				is_array( $body['meta'] ?? null ) ? ( $body['meta']['total_count'] ?? null ) : null,
+			) as $value
+		) {
+			if ( is_numeric( $value ) ) {
+				return max( 0, (int) $value );
+			}
+		}
+
+		return null;
 	}
 
 	private function date_value( mixed $value ): ?string {

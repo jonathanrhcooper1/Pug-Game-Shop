@@ -121,16 +121,18 @@ WordPress registers two authenticated ScryDex catalog endpoints:
 - `POST /wp-json/tcg-store/v1/scrydex/catalog/index` runs a bounded catalog
   import batch and is limited to users who can manage settings. Supported
   payload fields are `game` (default `pokemon`), `expansion_id`, `page_size`,
-  `max_pages`, `index_expansions`, and `execute_database_writes`. The endpoint
-  checks provider readiness and usage before importing, can index one expansion
-  page, runs bounded card pages through the existing ScryDex worker, returns
+  `max_pages`, `index_expansions`, `expansions_page`,
+  `max_expansion_pages`, and `execute_database_writes`. The endpoint checks
+  provider readiness and usage before importing, can index bounded expansion
+  pages, runs bounded card pages through the existing ScryDex worker, returns
   public usage metadata, expansion/card summaries, `counts_after`, and
   `next_action`, and does not return raw provider bodies or credentials.
 
 ScryDex documents a maximum page size of 100. The HTTP provider, dry-run
 planner, usage planner, worker, scheduled settings, and catalog import
 controller all clamp requested ScryDex page sizes to `1..100`; the catalog
-index endpoint additionally caps `max_pages` at 25 per request.
+index endpoint additionally caps card `max_pages` and
+`max_expansion_pages` at 25 per request.
 The worker continues across documented `nextCursor`/`hasMore` style pagination
 and `page * pageSize < totalCount` pagination.
 
@@ -192,6 +194,29 @@ temporary WP-CLI runner over stdin, stores them in WordPress settings, reports
 only configured/missing booleans plus the active key fingerprint, and deletes
 the runner. It does not call ScryDex, sync card tables, print raw responses,
 send credentials to the offline app, or run scheduled workers.
+
+## Production Catalog Indexing
+
+Production helpers read secrets from process environment variables or the
+ignored `.env.production.local` file. Keep that file off GitHub. The sequence
+is:
+
+```text
+npm run production:install-package
+npm run production:configure-scrydex
+npm run production:run-scrydex-index
+```
+
+`production:install-package` creates a production database backup, optionally
+backs up `wp-content`, installs and activates the packaged plugin, runs pending
+migrations, and verifies the catalog routes. `production:configure-scrydex`
+stores ScryDex settings and prints only redacted status. `production:run-scrydex-index`
+creates a database backup, then calls the authenticated catalog index endpoint
+in bounded rounds. Useful controls are `SCRYDEX_INDEX_GAME`,
+`SCRYDEX_INDEX_PAGE_SIZE`, `SCRYDEX_INDEX_MAX_PAGES`,
+`SCRYDEX_INDEX_ROUNDS`, `SCRYDEX_INDEX_EXPANSIONS`,
+`SCRYDEX_INDEX_EXPANSIONS_PAGE`, and
+`SCRYDEX_INDEX_MAX_EXPANSION_PAGES`.
 
 ## Live Smoke Verification
 

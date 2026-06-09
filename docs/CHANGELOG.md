@@ -17,6 +17,15 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Production-safe WordPress deployment helpers now cover the real ScryDex
+  catalog path: package install with production database/`wp-content` backup,
+  ScryDex settings configuration through a redacted WP-CLI runner, and bounded
+  production catalog indexing through the authenticated WordPress REST import
+  endpoint.
+- The ScryDex catalog index endpoint now supports bounded expansion pagination
+  through `expansions_page` and `max_expansion_pages`, allowing repeated
+  real-provider imports to fill the website-owned set/card database without
+  relying on fake tests.
 - Offline app PIN login now sends the configured session timeout to the LAN
   server, stores the returned expiration, displays the auto-lock time, and
   locks the app when the session expires.

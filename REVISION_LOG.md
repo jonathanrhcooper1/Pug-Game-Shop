@@ -3,6 +3,72 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production ScryDex Catalog Indexing Path
+
+### What Changed
+
+- Added production helpers for approved live WordPress package install,
+  production ScryDex settings configuration, and bounded production ScryDex
+  catalog indexing.
+- The production install helper creates a production database backup, can back
+  up `wp-content`, uploads the packaged plugin zip, installs and activates it,
+  runs pending migrations, verifies catalog REST routes, and prints no secrets.
+- The production ScryDex config helper reads credentials from environment
+  variables or ignored local env files, streams them to a temporary WP-CLI
+  runner over stdin, stores settings server-side, and reports only redacted
+  readiness.
+- The production ScryDex index helper creates a database backup before writes
+  and calls `/wp-json/tcg-store/v1/scrydex/catalog/index` in bounded rounds.
+- The catalog index endpoint now supports bounded expansion pagination with
+  `expansions_page`, `max_expansion_pages`, `next_page`, and continuation
+  metadata.
+
+### Why
+
+The live website needs a real card catalog mirror populated from ScryDex before
+the local server, employee app, kiosk, and storefront can trust card images,
+sets, variants, and prices from the website database.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `scripts/lib/local-env.mjs`
+- `scripts/production-install-wordpress-package.mjs`
+- `scripts/production-configure-scrydex.mjs`
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-install-contract.mjs`
+- `scripts/tests/production-scrydex-config-contract.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/DEPLOYMENT.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `scripts/README.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This release uses the existing database target version `12`.
+
+### Tests Added
+
+- Production install, ScryDex config, and ScryDex index script contract tests.
+- Catalog controller contract coverage for bounded expansion pagination and
+  credential/raw-provider-body redaction markers.
+
+### Rollback Notes
+
+- Reinstall the prior packaged plugin zip if the production helper causes file
+  issues.
+- Use the production backup path printed by the helper if a database restore is
+  required after catalog writes.
+- If only catalog import rows need cleanup, prefer restoring the pre-index
+  database backup; targeted cleanup must account for reference sets, reference
+  cards, variants, provider price observations, provider price points, and
+  ScryDex checkpoints.
+- ScryDex keys are stored only in WordPress settings; rotate them if any
+  operator accidentally copies raw values into logs or artifacts.
+
 ## 2026-06-09 - ScryDex Catalog Database Import Surface
 
 ### What Changed

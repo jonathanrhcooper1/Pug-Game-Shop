@@ -29,3 +29,17 @@ fixture-generation scripts.
   routes, cleans temporary sync rows, restores previous gates, and keeps
   canonical inventory, Square, payment, POS, ScryDex, and production writes
   deferred.
+
+## Production
+
+- `npm run production:install-package` installs the packaged WordPress plugin
+  on an explicitly confirmed production site after creating a database backup
+  and, by default, a `wp-content` tarball backup.
+- `npm run production:configure-scrydex` stores production ScryDex settings via
+  a temporary stdin-fed WP-CLI runner and prints only redacted readiness.
+- `npm run production:run-scrydex-index` creates a production database backup
+  and runs bounded authenticated catalog import rounds against the WordPress
+  ScryDex catalog endpoint.
+
+Production scripts read secrets from process environment variables or the
+ignored `.env.production.local` file. They must not be run from CI.
