@@ -3,6 +3,56 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Catalog Admin Workspace
+
+### What Changed
+
+- Added a WordPress admin **ScryDex Catalog** submenu under the Pug platform
+  admin menu.
+- Staff with inventory access can view secret-free catalog counts and latest
+  ScryDex checkpoints.
+- Managers with settings access can run bounded catalog import batches through
+  the existing authenticated REST catalog index endpoint.
+- The import form includes game, optional expansion ID, card page size/page
+  limit, expansion page/page limit, expansion refresh, and explicit database
+  write confirmation controls.
+- Bumped the plugin/package version to `0.159.0`.
+
+### Why
+
+Operators need a first-class WordPress screen to see whether the website-owned
+ScryDex catalog is filling and to start bounded imports without using shell
+scripts for every batch.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This release uses the existing database target version `12`.
+
+### Tests Added
+
+- ScryDex catalog admin workspace contract coverage for submenu registration,
+  REST endpoint usage, bounded import controls, manager-only write controls,
+  and absence of rendered credential fields.
+
+### Rollback Notes
+
+- Reinstall the prior plugin package to remove the admin workspace.
+- No database rollback is required because this revision adds no migration.
+- Any catalog rows created through the admin import form are covered by the
+  existing ScryDex catalog rollback notes and should be reset from the latest
+  pre-import database backup when a clean reset is required.
+
 ## 2026-06-09 - Production ScryDex Catalog Indexing Path
 
 ### What Changed

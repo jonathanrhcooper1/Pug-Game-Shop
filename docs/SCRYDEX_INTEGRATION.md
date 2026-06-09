@@ -141,6 +141,12 @@ the catalog index route persists expansion rows or lets the cards worker use
 the persistence execution boundary. Without it, the route is suitable for
 readiness and dry-run style staging checks.
 
+The WordPress admin menu includes **ScryDex Catalog** for staff and managers.
+Staff with inventory access can view catalog counts and latest checkpoints.
+Managers with settings access can run bounded import batches from the admin
+screen. The admin screen uses the same status/index REST endpoints as the
+production helper scripts and never renders ScryDex credential fields.
+
 ## Credential Handling
 
 ScryDex credentials may be provided for staging configuration, but they must

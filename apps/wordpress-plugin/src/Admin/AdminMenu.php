@@ -88,6 +88,15 @@ final class AdminMenu {
 
 		add_submenu_page(
 			'tcg-store-platform',
+			__( 'ScryDex Catalog', 'tcg-store-platform' ),
+			__( 'ScryDex Catalog', 'tcg-store-platform' ),
+			'edit_inventory',
+			'tcg-store-platform-scrydex-catalog',
+			array( $this, 'render_scrydex_catalog' )
+		);
+
+		add_submenu_page(
+			'tcg-store-platform',
 			__( 'Settings', 'tcg-store-platform' ),
 			__( 'Settings', 'tcg-store-platform' ),
 			'manage_settings',
@@ -165,6 +174,65 @@ final class AdminMenu {
 		echo '<h2>' . esc_html__( 'Checkpoints', 'tcg-store-platform' ) . '</h2>';
 		$this->render_workspace_table( $workspace->checkpoint_rows( $dependency_payload ) );
 
+		echo '</div>';
+	}
+
+	public function render_scrydex_catalog(): void {
+		if ( ! current_user_can( 'edit_inventory' ) && ! current_user_can( 'manage_settings' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view the ScryDex catalog.', 'tcg-store-platform' ) );
+		}
+
+		$can_index       = current_user_can( 'manage_settings' );
+		$status_endpoint = rest_url( 'tcg-store/v1/scrydex/catalog/status' );
+		$index_endpoint  = rest_url( 'tcg-store/v1/scrydex/catalog/index' );
+
+		echo '<div class="wrap"><h1>';
+		echo esc_html__( 'ScryDex Catalog', 'tcg-store-platform' );
+		echo '</h1>';
+
+		echo '<div id="tcg-store-scrydex-catalog-status" data-endpoint="';
+		echo esc_url( $status_endpoint );
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">';
+		echo '<p>' . esc_html__( 'Loading catalog status...', 'tcg-store-platform' ) . '</p>';
+		echo '</div>';
+
+		echo '<h2>' . esc_html__( 'Import Batch', 'tcg-store-platform' ) . '</h2>';
+		echo '<form id="tcg-store-scrydex-catalog-import-form" method="post" action="';
+		echo esc_url( $index_endpoint );
+		echo '">';
+		echo '<table class="form-table" role="presentation"><tbody>';
+		$this->render_scrydex_catalog_text_input( 'game', __( 'Game', 'tcg-store-platform' ), 'pokemon', 'pokemon' );
+		$this->render_scrydex_catalog_text_input( 'expansion_id', __( 'Expansion ID', 'tcg-store-platform' ), '', 'Optional set-specific import' );
+		$this->render_scrydex_catalog_number_input( 'page_size', __( 'Page size', 'tcg-store-platform' ), 100, 1, 100 );
+		$this->render_scrydex_catalog_number_input( 'max_pages', __( 'Card pages this run', 'tcg-store-platform' ), 10, 1, 25 );
+		$this->render_scrydex_catalog_number_input( 'expansions_page', __( 'Expansion start page', 'tcg-store-platform' ), 1, 1, 1000000 );
+		$this->render_scrydex_catalog_number_input( 'max_expansion_pages', __( 'Expansion pages this run', 'tcg-store-platform' ), 25, 1, 25 );
+		echo '<tr><th scope="row">' . esc_html__( 'Expansion index', 'tcg-store-platform' ) . '</th><td><label>';
+		echo '<input type="checkbox" name="index_expansions" value="1" checked="checked" /> ';
+		echo esc_html__( 'Refresh expansion/set metadata with this batch.', 'tcg-store-platform' );
+		echo '</label></td></tr>';
+		echo '<tr><th scope="row">' . esc_html__( 'Database writes', 'tcg-store-platform' ) . '</th><td><label>';
+		echo '<input type="checkbox" name="execute_database_writes" value="1" /> ';
+		echo esc_html__( 'Write imported rows to the website catalog database.', 'tcg-store-platform' );
+		echo '</label></td></tr>';
+		echo '</tbody></table>';
+		submit_button( __( 'Run ScryDex Batch', 'tcg-store-platform' ), 'primary', 'submit', false, $can_index ? array() : array( 'disabled' => 'disabled' ) );
+		echo '</form>';
+
+		echo '<div id="tcg-store-scrydex-catalog-import-result" data-endpoint="';
+		echo esc_url( $index_endpoint );
+		echo '" data-status-endpoint="' . esc_url( $status_endpoint );
+		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) );
+		echo '" data-can-index="' . esc_attr( $can_index ? '1' : '0' ) . '">';
+		echo '<p>';
+		echo esc_html(
+			$can_index
+				? __( 'Batch results will appear here.', 'tcg-store-platform' )
+				: __( 'Manager settings access is required to run catalog imports.', 'tcg-store-platform' )
+		);
+		echo '</p></div>';
+
+		$this->render_scrydex_catalog_script();
 		echo '</div>';
 	}
 
@@ -633,6 +701,22 @@ final class AdminMenu {
 		echo '</select></td></tr>';
 	}
 
+	private function render_scrydex_catalog_text_input( string $name, string $label, string $value, string $placeholder ): void {
+		echo '<tr><th scope="row"><label for="tcg-store-scrydex-catalog-' . esc_attr( $name ) . '">';
+		echo esc_html( $label );
+		echo '</label></th><td><input type="text" class="regular-text" id="tcg-store-scrydex-catalog-' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="';
+		echo esc_attr( $value );
+		echo '" placeholder="' . esc_attr( $placeholder ) . '" /></td></tr>';
+	}
+
+	private function render_scrydex_catalog_number_input( string $name, string $label, int $value, int $min, int $max ): void {
+		echo '<tr><th scope="row"><label for="tcg-store-scrydex-catalog-' . esc_attr( $name ) . '">';
+		echo esc_html( $label );
+		echo '</label></th><td><input type="number" id="tcg-store-scrydex-catalog-' . esc_attr( $name ) . '" name="' . esc_attr( $name ) . '" value="';
+		echo esc_attr( (string) $value );
+		echo '" min="' . esc_attr( (string) $min ) . '" max="' . esc_attr( (string) $max ) . '" /></td></tr>';
+	}
+
 	private function database_prefix(): string {
 		global $wpdb;
 
@@ -680,6 +764,26 @@ final class AdminMenu {
 		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
 		echo 'const resultLine=function(payload){const data=payload.data||{};const meta=payload.meta||{};return "<p><strong>' . esc_js( __( 'Created', 'tcg-store-platform' ) ) . '</strong> #"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+" <span class=\"description\">' . esc_js( __( 'External projections deferred', 'tcg-store-platform' ) ) . ': "+esc(meta.woocommerce_projection_deferred&&meta.square_inventory_projection_deferred&&meta.label_print_deferred?"yes":"check")+"</span></p>";};';
 		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));const key="admin-intake-"+Date.now()+"-"+Math.random().toString(16).slice(2);target.innerHTML="<p>' . esc_js( __( 'Creating inventory item...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint,{method:"POST",headers:{"X-WP-Nonce":target.dataset.nonce,"Idempotency-Key":key},body:params}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok||result.payload.status!=="created"){const errors=(result.payload.errors||[]).join(", ");target.innerHTML="<p>' . esc_js( __( 'Inventory create failed.', 'tcg-store-platform' ) ) . ' "+esc(errors)+"</p>";return;}target.innerHTML=resultLine(result.payload);form.reset();}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory create failed.', 'tcg-store-platform' ) ) . '</p>";});});';
+		echo '})();';
+		echo '</script>';
+	}
+
+	private function render_scrydex_catalog_script(): void {
+		echo '<script>';
+		echo '(function(){';
+		echo 'const statusBox=document.getElementById("tcg-store-scrydex-catalog-status");';
+		echo 'const form=document.getElementById("tcg-store-scrydex-catalog-import-form");';
+		echo 'const resultBox=document.getElementById("tcg-store-scrydex-catalog-import-result");';
+		echo 'if(!statusBox||!form||!resultBox){return;}';
+		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
+		echo 'const title=function(value){return String(value||"").replace(/_/g," ").replace(/\b\w/g,function(char){return char.toUpperCase();});};';
+		echo 'const countsTable=function(counts){const keys=Object.keys(counts||{});if(!keys.length){return "<p>' . esc_js( __( 'Catalog count tables are not ready.', 'tcg-store-platform' ) ) . '</p>";}return "<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Table', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Rows', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+keys.map(function(key){return "<tr><th scope=\"row\">"+esc(title(key))+"</th><td>"+esc(counts[key])+"</td></tr>";}).join("")+"</tbody></table>";};';
+		echo 'const checkpointsTable=function(rows){rows=Array.isArray(rows)?rows:[];if(!rows.length){return "<p>' . esc_js( __( 'No ScryDex checkpoints yet.', 'tcg-store-platform' ) ) . '</p>";}return "<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Resource', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Key', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Page', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Committed', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Updated', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+rows.map(function(row){return "<tr><td>"+esc(row.resource_type)+"</td><td>"+esc(row.resource_key)+"</td><td>"+esc(row.page_number)+"</td><td>"+esc(row.committed_count)+"</td><td>"+esc(row.updated_at)+"</td></tr>";}).join("")+"</tbody></table>";};';
+		echo 'const renderStatus=function(payload){const data=(payload||{}).data||{};statusBox.innerHTML="<h2>' . esc_js( __( 'Catalog Status', 'tcg-store-platform' ) ) . '</h2>"+countsTable(data.counts)+"<h2>' . esc_js( __( 'Latest Checkpoints', 'tcg-store-platform' ) ) . '</h2>"+checkpointsTable(data.latest_checkpoints);};';
+		echo 'const loadStatus=function(){fetch(statusBox.dataset.endpoint,{headers:{"X-WP-Nonce":statusBox.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){statusBox.innerHTML="<p>' . esc_js( __( 'Catalog status failed.', 'tcg-store-platform' ) ) . '</p>";return;}renderStatus(result.payload);}).catch(function(){statusBox.innerHTML="<p>' . esc_js( __( 'Catalog status failed.', 'tcg-store-platform' ) ) . '</p>";});};';
+		echo 'const renderImport=function(payload){const data=(payload||{}).data||{};const cards=data.cards||{};const expansions=data.expansions||{};const usage=data.usage_snapshot||{};resultBox.innerHTML="<p><strong>' . esc_js( __( 'Batch status', 'tcg-store-platform' ) ) . ':</strong> "+esc(cards.status||"unknown")+" <strong>' . esc_js( __( 'Card pages', 'tcg-store-platform' ) ) . ':</strong> "+esc(cards.page_count||0)+" <strong>' . esc_js( __( 'Card requests', 'tcg-store-platform' ) ) . ':</strong> "+esc(cards.provider_request_count||0)+"</p><p><strong>' . esc_js( __( 'Expansions', 'tcg-store-platform' ) ) . ':</strong> "+esc(expansions.status||"skipped")+" "+esc(expansions.write_count||0)+" ' . esc_js( __( 'writes', 'tcg-store-platform' ) ) . ' <strong>' . esc_js( __( 'Remaining credits', 'tcg-store-platform' ) ) . ':</strong> "+esc(usage.remaining_credits||"")+"</p><p>"+esc(data.next_action||"")+"</p>";};';
+		echo 'form.addEventListener("submit",function(event){event.preventDefault();if(resultBox.dataset.canIndex!=="1"){return;}const formData=new FormData(form);const payload={game:String(formData.get("game")||"pokemon"),expansion_id:String(formData.get("expansion_id")||""),page_size:Number(formData.get("page_size")||100),max_pages:Number(formData.get("max_pages")||1),index_expansions:form.querySelector("[name=index_expansions]").checked,expansions_page:Number(formData.get("expansions_page")||1),max_expansion_pages:Number(formData.get("max_expansion_pages")||1),execute_database_writes:form.querySelector("[name=execute_database_writes]").checked};resultBox.innerHTML="<p>' . esc_js( __( 'Running ScryDex batch...', 'tcg-store-platform' ) ) . '</p>";fetch(resultBox.dataset.endpoint,{method:"POST",headers:{"Content-Type":"application/json","X-WP-Nonce":resultBox.dataset.nonce},body:JSON.stringify(payload)}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){const error=((result.payload||{}).error||{});resultBox.innerHTML="<p>' . esc_js( __( 'ScryDex batch failed.', 'tcg-store-platform' ) ) . ' "+esc(error.code||"")+"</p>";return;}renderImport(result.payload);loadStatus();}).catch(function(){resultBox.innerHTML="<p>' . esc_js( __( 'ScryDex batch failed.', 'tcg-store-platform' ) ) . '</p>";});});';
+		echo 'loadStatus();';
 		echo '})();';
 		echo '</script>';
 	}
