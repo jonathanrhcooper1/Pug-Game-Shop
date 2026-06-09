@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Reference Search Relevance Ranking
+
+### What Changed
+
+- Bumped the platform/plugin package version to `0.176.0`.
+- Updated WordPress reference-card search SQL to rank exact, prefix, and
+  contains matches on `cards.name` ahead of identifier/search-text/set-name
+  matches.
+- Added a unit assertion that the generated reference-card select uses the
+  relevance `CASE` ordering and binds exact/prefix/contains search arguments.
+- Added a read-only production reference-search verification script and contract
+  test for the live `/tcg-store/v1/reference/search` route.
+
+### Why
+
+Production catalog lookup for broad terms such as `Charizard` could return
+set-name-only matches before actual card-name matches. Staff intake search
+should show the most likely card first.
+
+The live verifier gives us a repeatable way to confirm production search result
+ordering, card images, two-decimal price presentation, and catalog-cache source
+without exposing credentials or writing production data.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `scripts/production-verify-reference-search.mjs`
+- `scripts/tests/production-reference-search-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `php tests/bootstrap-smoke.php`
+- `node scripts/tests/production-reference-search-contract.mjs`
+- `npm run production:verify-reference-search`
+- `npm run production:verify-scrydex-catalog`
+
+### Rollback Notes
+
+- Reinstall the previous WordPress plugin package `0.175.0` if search ranking
+  causes unexpected database-load or result-order issues. No database rollback is
+  required.
+
 ## 2026-06-09 - LAN Local Sync Server Foundation
 
 ### What Changed

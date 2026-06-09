@@ -6,6 +6,13 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WordPress reference-card search now ranks exact, prefix, and contains matches
+  on card name ahead of identifier and set-name-only matches, so intake lookups
+  like `Charizard` surface actual Charizard cards before set-only results.
+- Added a production reference-search verifier that checks the live WordPress
+  catalog route through WP-CLI without printing credentials, including result
+  relevance, image presence, two-decimal price formatting, and catalog-cache
+  source.
 - Added a SQLite-backed LAN local sync server package with 4-digit PIN auth,
   manager-gated user access, local inventory intake queueing, kiosk holds,
   customer credit/event workflows, and WordPress catalog proxy lookup.

@@ -200,11 +200,24 @@ final class ReferenceCardSearchRouteHandler {
 		$prices_table   = $table_prefix . 'tcg_provider_price_observations';
 		$price_points_table = $table_prefix . 'tcg_provider_price_points';
 		$inventory_table = $table_prefix . 'tcg_inventory_items';
-		$like          = '%' . addcslashes( $query, "\\_%" ) . '%';
+		$escaped_query = addcslashes( $query, "\\_%" );
+		$like          = '%' . $escaped_query . '%';
+		$prefix_like   = $escaped_query . '%';
 		$where_parts   = array(
 			'(cards.name LIKE %s OR cards.set_name LIKE %s OR cards.set_code LIKE %s OR cards.card_number LIKE %s OR cards.printed_number LIKE %s OR cards.provider_card_id LIKE %s OR cards.search_text LIKE %s)',
 		);
 		$where_args    = array( $like, $like, $like, $like, $like, $like, $like );
+		$order_args    = array(
+			$query,
+			$prefix_like,
+			$like,
+			$like,
+			$like,
+			$like,
+			$like,
+			$like,
+			$like,
+		);
 
 		if ( '' !== $game ) {
 			$where_parts[] = 'cards.game = %s';
@@ -243,7 +256,19 @@ final class ReferenceCardSearchRouteHandler {
 					LIMIT 1
 				)
 			WHERE {$where_sql}
-			ORDER BY cards.name ASC, cards.set_code ASC, cards.card_number ASC
+			ORDER BY
+				CASE
+					WHEN cards.name = %s THEN 0
+					WHEN cards.name LIKE %s THEN 1
+					WHEN cards.name LIKE %s THEN 2
+					WHEN cards.provider_card_id LIKE %s OR cards.set_code LIKE %s OR cards.card_number LIKE %s OR cards.printed_number LIKE %s THEN 3
+					WHEN cards.search_text LIKE %s THEN 4
+					WHEN cards.set_name LIKE %s THEN 5
+					ELSE 6
+				END ASC,
+				cards.name ASC,
+				cards.set_code ASC,
+				cards.card_number ASC
 			LIMIT %d OFFSET %d
 		";
 		$count     = "
@@ -259,7 +284,7 @@ final class ReferenceCardSearchRouteHandler {
 			'price_points_table'  => $price_points_table,
 			'inventory_table'     => $inventory_table,
 			'select_sql_template' => $select,
-			'select_prepare_args' => array_merge( $where_args, array( $limit, $offset ) ),
+			'select_prepare_args' => array_merge( $where_args, $order_args, array( $limit, $offset ) ),
 			'count_sql_template'  => $count,
 			'count_prepare_args'  => $where_args,
 			'errors'              => array(),

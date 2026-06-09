@@ -368,6 +368,12 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 4, $database->get_results_count );
 			$this->assert_same( 1, $database->get_var_count );
 			$this->assert_same( 5, $database->prepare_count );
+			$this->assert_contains( 'CASE', $database->prepare_queries[0] );
+			$this->assert_contains( 'WHEN cards.name = %s THEN 0', $database->prepare_queries[0] );
+			$this->assert_contains( 'WHEN cards.set_name LIKE %s THEN 5', $database->prepare_queries[0] );
+			$this->assert_same( 'moonbreon', $database->prepare_args[0][8] );
+			$this->assert_same( 'moonbreon%', $database->prepare_args[0][9] );
+			$this->assert_same( '%moonbreon%', $database->prepare_args[0][10] );
 			$this->assert_same( 1, $response['data']['meta']['total'] );
 			$this->assert_same( 'ready', $response['data']['meta']['stock_summary_status'] );
 			$this->assert_same( 'ready', $response['data']['meta']['price_point_status'] );
