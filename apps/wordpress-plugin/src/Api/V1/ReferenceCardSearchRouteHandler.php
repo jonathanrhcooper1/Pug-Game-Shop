@@ -7,10 +7,25 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\ScryDex\ScryDexPersistencePlanner;
+use TCGStorePlatform\ScryDex\ScryDexPersistenceQueryBuilder;
+use TCGStorePlatform\ScryDex\ScryDexPersistenceRepository;
+use TCGStorePlatform\ScryDex\ScryDexProvider;
+use TCGStorePlatform\ScryDex\ScryDexResult;
+use TCGStorePlatform\ScryDex\ScryDexSyncCheckpoint;
+use TCGStorePlatform\ScryDex\ScryDexSyncPagePlan;
+use TCGStorePlatform\ScryDex\ScryDexSyncPageProcessor;
+use Throwable;
+
 final class ReferenceCardSearchRouteHandler {
 	public function __construct(
 		private \wpdb $database,
-		private string $table_prefix = 'wp_'
+		private string $table_prefix = 'wp_',
+		private ?ScryDexProvider $scrydex_provider = null,
+		private ?ScryDexPersistenceRepository $scrydex_repository = null,
+		private ?ScryDexSyncPageProcessor $scrydex_page_processor = null,
+		private ?ScryDexPersistencePlanner $scrydex_persistence_planner = null,
+		private ?ScryDexPersistenceQueryBuilder $scrydex_query_builder = null
 	) {
 	}
 
@@ -66,6 +81,11 @@ final class ReferenceCardSearchRouteHandler {
 				'reference_search_repository_rejected',
 				array( 'reference_search_count_failed' )
 			);
+		}
+
+		$fallback_response = $this->maybe_provider_fallback( $request, $query, $rows, $total );
+		if ( null !== $fallback_response ) {
+			return $fallback_response;
 		}
 
 		return array(
@@ -354,6 +374,313 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
+	 * @param array{query:string,game:string,page:int,page_size:int,errors:list<string>} $request Parsed request.
+	 * @param array<string, mixed>                                                      $query Query plan.
+	 * @param list<array<string, mixed>>                                                $rows Reference rows.
+	 * @return array<string, mixed>|null
+	 */
+	private function maybe_provider_fallback( array $request, array $query, array $rows, int $total ): ?array {
+		if ( null === $this->scrydex_provider || 0 !== $total || array() !== $rows || 1 !== (int) $request['page'] ) {
+			return null;
+		}
+
+		$game = '' !== (string) $request['game'] ? (string) $request['game'] : 'pokemon';
+
+		try {
+			$result = $this->scrydex_provider->search_cards(
+				(string) $request['query'],
+				array(
+					'game'      => $game,
+					'page_size' => (string) $request['page_size'],
+					'include'   => 'prices',
+				),
+				1,
+				''
+			);
+		} catch ( Throwable $error ) {
+			return $this->provider_fallback_unavailable_response(
+				$request,
+				$query,
+				'scrydex_provider_exception',
+				$error->getMessage()
+			);
+		}
+
+		if ( ! $result->is_success() ) {
+			return $this->provider_fallback_unavailable_response(
+				$request,
+				$query,
+				$result->error_code() ?? 'scrydex_provider_failed',
+				$result->message(),
+				$result
+			);
+		}
+
+		$page_plan          = $this->page_processor()->process_cards_page(
+			ScryDexSyncCheckpoint::initial( 0, 'cards', $game ),
+			$result
+		);
+		$persistence       = $this->persist_provider_fallback( $page_plan );
+		$variants_by_card  = $this->provider_variants_by_card( $page_plan );
+		$provider_cards    = $this->present_provider_rows(
+			$page_plan->reference_rows(),
+			$this->provider_prices_by_card( $page_plan ),
+			$variants_by_card
+		);
+		$normalizer_errors = $page_plan->errors();
+
+		return array(
+			'status'      => 'ready',
+			'status_code' => 200,
+			'code'        => 'reference_search_read_ready',
+			'callback'    => 'search_reference_cards',
+			'data'        => array(
+				'cards'        => $provider_cards,
+				'query'        => (string) $request['query'],
+				'game'         => $game,
+				'source'       => 'scrydex_provider',
+				'lookup_order' => array( 'wordpress_catalog_cache', 'scrydex_provider' ),
+				'meta'         => array(
+					'total'                       => count( $provider_cards ),
+					'page'                        => (int) $request['page'],
+					'page_size'                   => (int) $request['page_size'],
+					'public_catalog_safe'         => true,
+					'credentials_in_response'     => false,
+					'live_provider_request'       => true,
+					'wordpress_catalog_cache_hit' => false,
+					'scrydex_fallback_status'     => 'completed',
+					'scrydex_persistence_status'  => $persistence['status'],
+					'scrydex_persistence_errors'  => $persistence['errors'],
+					'scrydex_normalizer_errors'   => $normalizer_errors,
+					'scrydex_credentials_scope'   => 'wordpress_server_settings',
+				),
+			),
+			'meta'        => array_merge(
+				$this->ready_meta( $query, count( $provider_cards ), count( $provider_cards ) ),
+				array(
+					'row_count'                     => count( $provider_cards ),
+					'total'                         => count( $provider_cards ),
+					'live_provider_request'         => true,
+					'wordpress_catalog_cache_hit'   => false,
+					'scrydex_persistence_status'    => $persistence['status'],
+					'scrydex_credentials_in_response' => false,
+				)
+			),
+		);
+	}
+
+	/**
+	 * @param array{query:string,game:string,page:int,page_size:int,errors:list<string>} $request Parsed request.
+	 * @param array<string, mixed>                                                      $query Query plan.
+	 * @return array<string, mixed>
+	 */
+	private function provider_fallback_unavailable_response(
+		array $request,
+		array $query,
+		string $error_code,
+		string $message = '',
+		?ScryDexResult $result = null
+	): array {
+		return array(
+			'status'      => 'ready',
+			'status_code' => 200,
+			'code'        => 'reference_search_read_ready',
+			'callback'    => 'search_reference_cards',
+			'data'        => array(
+				'cards'        => array(),
+				'query'        => (string) $request['query'],
+				'game'         => (string) $request['game'],
+				'source'       => 'wordpress_catalog_cache',
+				'lookup_order' => array( 'wordpress_catalog_cache', 'scrydex_provider' ),
+				'meta'         => array(
+					'total'                       => 0,
+					'page'                        => (int) $request['page'],
+					'page_size'                   => (int) $request['page_size'],
+					'public_catalog_safe'         => true,
+					'credentials_in_response'     => false,
+					'live_provider_request'       => true,
+					'wordpress_catalog_cache_hit' => false,
+					'scrydex_fallback_status'     => 'blocked',
+					'scrydex_provider_status'     => null === $result ? 'failed' : $result->status(),
+					'scrydex_provider_http_status' => null === $result ? 0 : $result->http_status(),
+					'scrydex_provider_error_code' => $error_code,
+					'scrydex_provider_message'    => $this->safe_provider_message( $message ),
+					'scrydex_credentials_scope'   => 'wordpress_server_settings',
+				),
+			),
+			'meta'        => array_merge(
+				$this->ready_meta( $query, 0, 0 ),
+				array(
+					'live_provider_request'          => true,
+					'wordpress_catalog_cache_hit'    => false,
+					'scrydex_fallback_status'        => 'blocked',
+					'scrydex_provider_error_code'    => $error_code,
+					'scrydex_credentials_in_response' => false,
+				)
+			),
+		);
+	}
+
+	/**
+	 * @return array{status:string,errors:list<string>}
+	 */
+	private function persist_provider_fallback( ScryDexSyncPagePlan $page_plan ): array {
+		if ( null === $this->scrydex_repository ) {
+			return array(
+				'status' => 'deferred',
+				'errors' => array( 'scrydex_persistence_repository_not_configured' ),
+			);
+		}
+
+		$persistence_plan = $this->persistence_planner()->plan_page(
+			$page_plan,
+			array(),
+			gmdate( 'Y-m-d H:i:s' )
+		);
+		$query_plan       = $this->query_builder()->build( $persistence_plan, $this->table_prefix, false );
+		$result           = $this->scrydex_repository->execute( $query_plan );
+
+		if ( method_exists( $result, 'status' ) ) {
+			$status = (string) $result->status();
+		} else {
+			$status = 'unknown';
+		}
+
+		return array(
+			'status' => $status,
+			'errors' => method_exists( $result, 'errors' ) ? $this->string_list( $result->errors() ) : array(),
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>>               $rows Normalized provider rows.
+	 * @param array<string, array<string, mixed>>      $prices_by_card Provider prices by card ID.
+	 * @param array<string, list<array<string, mixed>>> $variants_by_card Provider variants by card ID.
+	 * @return list<array<string, mixed>>
+	 */
+	private function present_provider_rows( array $rows, array $prices_by_card, array $variants_by_card ): array {
+		$presented = array();
+
+		foreach ( $rows as $row ) {
+			$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+			$price            = $prices_by_card[ $provider_card_id ] ?? array();
+			$market_price     = $this->decimal_string( $price['market_price'] ?? null );
+			$currency         = $this->currency( $price['currency'] ?? null );
+			$front_image_url  = $this->url( $row['front_image_url'] ?? '' );
+
+			$presented[] = array(
+				'provider_card_id'          => $provider_card_id,
+				'public_id'                 => '',
+				'provider_name'             => $this->text( $row['provider_name'] ?? 'scrydex' ),
+				'game'                      => $this->slug( $row['game'] ?? '' ),
+				'card_name'                 => $this->text( $row['name'] ?? '' ),
+				'name'                      => $this->text( $row['name'] ?? '' ),
+				'set_name'                  => $this->text( $row['set_name'] ?? '' ),
+				'set_code'                  => strtoupper( $this->text( $row['set_code'] ?? '' ) ),
+				'card_number'               => $this->text( $row['card_number'] ?? '' ),
+				'printed_number'            => $this->text( $row['printed_number'] ?? '' ),
+				'suggested_barcode'         => $provider_card_id,
+				'image_url'                 => $front_image_url,
+				'front_image_url'           => $front_image_url,
+				'back_image_url'            => $this->url( $row['back_image_url'] ?? '' ),
+				'market_price_minor_units'  => $this->minor_units( $market_price ),
+				'market_price'              => array(
+					'amount'   => $market_price,
+					'currency' => $currency,
+				),
+				'currency'                  => $currency,
+				'price_observed_at_utc'     => $this->utc_timestamp( $price['source_observed_at'] ?? null ),
+				'catalog_synced_at_utc'     => gmdate( 'c' ),
+				'provider_updated_at_utc'   => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
+				'catalog_source'            => 'scrydex_provider',
+				'stock_available_count'     => 0,
+				'stock_total_count'         => 0,
+				'stock_by_condition'        => array(),
+				'variants'                  => $variants_by_card[ $provider_card_id ] ?? array(),
+				'live_provider_request'     => true,
+				'credentials_in_response'   => false,
+			);
+		}
+
+		return $presented;
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function provider_prices_by_card( ScryDexSyncPagePlan $page_plan ): array {
+		$indexed = array();
+
+		foreach ( $page_plan->price_rows() as $row ) {
+			$key = $this->text( $row['provider_card_id'] ?? '' );
+			if ( '' !== $key ) {
+				$indexed[ $key ] = $row;
+			}
+		}
+
+		return $indexed;
+	}
+
+	/**
+	 * @return array<string, list<array<string, mixed>>>
+	 */
+	private function provider_variants_by_card( ScryDexSyncPagePlan $page_plan ): array {
+		$indexed = array();
+
+		foreach ( $page_plan->variant_rows() as $row ) {
+			$key = $this->text( $row['provider_card_id'] ?? '' );
+			if ( '' === $key ) {
+				continue;
+			}
+
+			$indexed[ $key ][] = $this->present_provider_variant_row( $row );
+		}
+
+		return $indexed;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Normalized provider variant row.
+	 * @return array<string, mixed>
+	 */
+	private function present_provider_variant_row( array $row ): array {
+		return array(
+			'provider_variant_id'   => $this->text( $row['provider_variant_id'] ?? '' ),
+			'variant'               => $this->text( $row['variant'] ?? '' ),
+			'finish'                => $this->text( $row['finish'] ?? '' ),
+			'parallel_name'         => $this->text( $row['parallel_name'] ?? '' ),
+			'edition'               => $this->text( $row['edition'] ?? '' ),
+			'language'              => $this->text( $row['language'] ?? '' ),
+			'raw_or_graded_support' => $this->text( $row['raw_or_graded_support'] ?? 'both' ),
+			'attributes'            => $this->json_object( $row['normalized_attributes_json'] ?? null ),
+		);
+	}
+
+	private function page_processor(): ScryDexSyncPageProcessor {
+		if ( null === $this->scrydex_page_processor ) {
+			$this->scrydex_page_processor = new ScryDexSyncPageProcessor();
+		}
+
+		return $this->scrydex_page_processor;
+	}
+
+	private function persistence_planner(): ScryDexPersistencePlanner {
+		if ( null === $this->scrydex_persistence_planner ) {
+			$this->scrydex_persistence_planner = new ScryDexPersistencePlanner();
+		}
+
+		return $this->scrydex_persistence_planner;
+	}
+
+	private function query_builder(): ScryDexPersistenceQueryBuilder {
+		if ( null === $this->scrydex_query_builder ) {
+			$this->scrydex_query_builder = new ScryDexPersistenceQueryBuilder();
+		}
+
+		return $this->scrydex_query_builder;
+	}
+
+	/**
 	 * @param array<string, mixed> $row Reference card row.
 	 * @return array<string, mixed>
 	 */
@@ -455,6 +782,38 @@ final class ReferenceCardSearchRouteHandler {
 				'credentials_in_response'         => false,
 			),
 		);
+	}
+
+	/**
+	 * @param mixed $values Candidate list.
+	 * @return list<string>
+	 */
+	private function string_list( mixed $values ): array {
+		if ( ! is_array( $values ) ) {
+			return array();
+		}
+
+		return array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						static fn ( mixed $value ): string => trim( (string) $value ),
+						$values
+					),
+					static fn ( string $value ): bool => '' !== $value
+				)
+			)
+		);
+	}
+
+	private function safe_provider_message( string $message ): string {
+		$message = trim( $message );
+
+		if ( '' === $message ) {
+			return '';
+		}
+
+		return substr( preg_replace( '/[A-Za-z0-9+\/=_-]{24,}/', '[redacted]', $message ) ?? $message, 0, 180 );
 	}
 
 	private function positive_int( mixed $value, int $fallback ): int {

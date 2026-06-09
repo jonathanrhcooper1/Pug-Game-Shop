@@ -11,6 +11,8 @@ use RuntimeException;
 use TCGStorePlatform\Logging\Redactor;
 
 final class ScryDexHttpProvider implements ScryDexProvider {
+	private const MAX_PAGE_SIZE = 100;
+
 	private string $api_key;
 	private string $team_id;
 	private string $base_url;
@@ -48,7 +50,7 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			array(
 				'q'        => $query,
 				'page'     => (string) max( 1, $page ),
-				'pageSize' => (string) min( 250, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'pageSize' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
 				'cursor'   => trim( $cursor ),
 			)
 		);
@@ -84,6 +86,77 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			'GET',
 			'/pokemon/v1/cards/' . rawurlencode( trim( $provider_card_id ) ),
 			array( 'game' => 'pokemon' )
+		);
+	}
+
+	/**
+	 * @param array<string, string> $filters Provider expansion filters.
+	 */
+	public function search_expansions(
+		string $query = '',
+		array $filters = array(),
+		int $page = 1,
+		string $cursor = ''
+	): ScryDexResult {
+		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
+		unset( $filters['game'] );
+
+		$params = array_merge(
+			$filters,
+			array(
+				'q'        => $query,
+				'page'     => (string) max( 1, $page ),
+				'pageSize' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'cursor'   => trim( $cursor ),
+			)
+		);
+		unset( $params['page_size'] );
+
+		$params = array_filter(
+			$params,
+			static fn ( string $value ): bool => '' !== trim( $value )
+		);
+
+		return $this->request(
+			'GET',
+			'/' . $game . '/v1/expansions?' . http_build_query( $params ),
+			array( 'game' => $game )
+		);
+	}
+
+	/**
+	 * @param array<string, string> $filters Provider search filters.
+	 */
+	public function search_expansion_cards(
+		string $expansion_id,
+		string $query = '',
+		array $filters = array(),
+		int $page = 1,
+		string $cursor = ''
+	): ScryDexResult {
+		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
+		unset( $filters['game'] );
+
+		$params = array_merge(
+			$filters,
+			array(
+				'q'        => $query,
+				'page'     => (string) max( 1, $page ),
+				'pageSize' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'cursor'   => trim( $cursor ),
+			)
+		);
+		unset( $params['page_size'] );
+
+		$params = array_filter(
+			$params,
+			static fn ( string $value ): bool => '' !== trim( $value )
+		);
+
+		return $this->request(
+			'GET',
+			'/' . $game . '/v1/expansions/' . rawurlencode( trim( $expansion_id ) ) . '/cards?' . http_build_query( $params ),
+			array( 'game' => $game )
 		);
 	}
 

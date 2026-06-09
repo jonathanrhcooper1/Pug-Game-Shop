@@ -16,6 +16,7 @@ final class ScryDexSyncPagePlan {
 	 * @param list<array<string, mixed>> $reference_rows Normalized reference rows.
 	 * @param list<array<string, mixed>> $price_rows Normalized price rows.
 	 * @param list<array<string, mixed>> $variant_rows Normalized variant rows.
+	 * @param list<array<string, mixed>> $price_point_rows Normalized provider price-point rows.
 	 * @param list<array<string, mixed>> $errors Normalization or provider errors.
 	 */
 	private function __construct(
@@ -23,6 +24,7 @@ final class ScryDexSyncPagePlan {
 		private array $reference_rows,
 		private array $price_rows,
 		private array $variant_rows,
+		private array $price_point_rows,
 		private array $errors,
 		private ?ScryDexSyncCheckpoint $next_checkpoint,
 		private bool $retryable,
@@ -34,6 +36,7 @@ final class ScryDexSyncPagePlan {
 	 * @param list<array<string, mixed>> $reference_rows Normalized reference rows.
 	 * @param list<array<string, mixed>> $price_rows Normalized price rows.
 	 * @param list<array<string, mixed>> $variant_rows Normalized variant rows.
+	 * @param list<array<string, mixed>> $price_point_rows Normalized provider price-point rows.
 	 * @param list<array<string, mixed>> $errors Normalization errors.
 	 */
 	public static function planned(
@@ -41,13 +44,15 @@ final class ScryDexSyncPagePlan {
 		array $price_rows,
 		array $errors,
 		ScryDexSyncCheckpoint $next_checkpoint,
-		array $variant_rows = array()
+		array $variant_rows = array(),
+		array $price_point_rows = array()
 	): self {
 		return new self(
 			array() === $errors ? self::SUCCESS : self::PARTIAL_SUCCESS,
 			$reference_rows,
 			$price_rows,
 			array_values( $variant_rows ),
+			array_values( $price_point_rows ),
 			$errors,
 			$next_checkpoint,
 			false,
@@ -58,6 +63,7 @@ final class ScryDexSyncPagePlan {
 	public static function failed( string $error_code, bool $retryable ): self {
 		return new self(
 			self::FAILED,
+			array(),
 			array(),
 			array(),
 			array(),
@@ -95,6 +101,13 @@ final class ScryDexSyncPagePlan {
 	 */
 	public function variant_rows(): array {
 		return $this->variant_rows;
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	public function price_point_rows(): array {
+		return $this->price_point_rows;
 	}
 
 	/**

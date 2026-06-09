@@ -11,10 +11,13 @@ final class ScryDexPersistenceQueryBuilder {
 	private const REFERENCE_CARDS_TABLE             = 'tcg_reference_cards';
 	private const REFERENCE_VARIANTS_TABLE          = 'tcg_reference_variants';
 	private const PROVIDER_PRICE_OBSERVATIONS_TABLE = 'tcg_provider_price_observations';
+	private const PROVIDER_PRICE_POINTS_TABLE       = 'tcg_provider_price_points';
 	private const REFERENCE_INSERT_COLUMNS          = array(
 		'public_id',
 		'provider_name',
 		'provider_card_id',
+		'reference_set_id',
+		'provider_set_id',
 		'game',
 		'name',
 		'normalized_name',
@@ -22,7 +25,12 @@ final class ScryDexPersistenceQueryBuilder {
 		'set_code',
 		'card_number',
 		'printed_number',
+		'year',
 		'rarity',
+		'rarity_code',
+		'language',
+		'language_code',
+		'release_date',
 		'front_image_url',
 		'back_image_url',
 		'provider_updated_at',
@@ -34,6 +42,8 @@ final class ScryDexPersistenceQueryBuilder {
 	private const REFERENCE_UPDATABLE_COLUMNS       = array(
 		'provider_name',
 		'provider_card_id',
+		'reference_set_id',
+		'provider_set_id',
 		'game',
 		'name',
 		'normalized_name',
@@ -41,7 +51,12 @@ final class ScryDexPersistenceQueryBuilder {
 		'set_code',
 		'card_number',
 		'printed_number',
+		'year',
 		'rarity',
+		'rarity_code',
+		'language',
+		'language_code',
+		'release_date',
 		'front_image_url',
 		'back_image_url',
 		'provider_updated_at',
@@ -63,6 +78,30 @@ final class ScryDexPersistenceQueryBuilder {
 		'sync_job_id',
 		'created_at',
 	);
+	private const PRICE_POINT_COLUMNS               = array(
+		'public_id',
+		'reference_card_id',
+		'reference_variant_id',
+		'provider_name',
+		'provider_card_id',
+		'provider_variant_id',
+		'game',
+		'condition_code',
+		'raw_or_graded',
+		'grading_company',
+		'grade',
+		'market_price',
+		'low_price',
+		'mid_price',
+		'high_price',
+		'currency',
+		'source_observed_at',
+		'provider_updated_at',
+		'observed_at',
+		'sync_job_id',
+		'raw_price_payload_json',
+		'created_at',
+	);
 	private const REFERENCE_VARIANT_COLUMNS         = array(
 		'provider_variant_id',
 		'variant',
@@ -76,7 +115,7 @@ final class ScryDexPersistenceQueryBuilder {
 		'updated_at',
 	);
 
-	public function build( ScryDexPersistencePlan $persistence_plan, string $table_prefix ): ScryDexPersistenceQueryBuildPlan {
+	public function build( ScryDexPersistencePlan $persistence_plan, string $table_prefix, bool $include_checkpoint = true ): ScryDexPersistenceQueryBuildPlan {
 		$errors       = array();
 		$table_prefix = trim( $table_prefix );
 
@@ -151,29 +190,46 @@ final class ScryDexPersistenceQueryBuilder {
 			);
 		}
 
+		$price_point_queries = array();
+		foreach ( $persistence_plan->price_points() as $index => $row ) {
+			$row_errors = $this->validate_price_point( $row, $index );
+
+			if ( array() !== $row_errors ) {
+				$errors = array_merge( $errors, $row_errors );
+				continue;
+			}
+
+			$price_point_queries[] = $this->price_point_query_for_row(
+				$table_names['provider_price_points'],
+				$row
+			);
+		}
+
 		$checkpoint_upsert_query = null;
 		$checkpoint              = $persistence_plan->next_checkpoint();
 
-		if ( null === $checkpoint && ScryDexPersistencePlan::FAILED !== $persistence_plan->status() ) {
-			$errors[] = 'scrydex_persistence_checkpoint_missing';
-		}
+		if ( $include_checkpoint ) {
+			if ( null === $checkpoint && ScryDexPersistencePlan::FAILED !== $persistence_plan->status() ) {
+				$errors[] = 'scrydex_persistence_checkpoint_missing';
+			}
 
-		if ( null !== $checkpoint ) {
-			$checkpoint_plan = ( new ScryDexSyncCheckpointRepositoryPlanner( $table_prefix ) )->plan( $checkpoint );
-			if ( true !== ( $checkpoint_plan['repository_configured'] ?? false ) ) {
-				$checkpoint_errors = $checkpoint_plan['configuration_issues'] ?? array();
-				$errors            = array_merge(
-					$errors,
-					is_array( $checkpoint_errors ) ? $this->string_list( $checkpoint_errors ) : array( 'scrydex_checkpoint_repository_not_configured' )
-				);
-			} elseif ( is_array( $checkpoint_plan['upsert_query'] ?? null ) ) {
-				$checkpoint_upsert_query = array_merge(
-					$checkpoint_plan['upsert_query'],
-					array(
-						'query_kind'   => 'checkpoint_upsert',
-						'resource_key' => $checkpoint->resource_key(),
-					)
-				);
+			if ( null !== $checkpoint ) {
+				$checkpoint_plan = ( new ScryDexSyncCheckpointRepositoryPlanner( $table_prefix ) )->plan( $checkpoint );
+				if ( true !== ( $checkpoint_plan['repository_configured'] ?? false ) ) {
+					$checkpoint_errors = $checkpoint_plan['configuration_issues'] ?? array();
+					$errors            = array_merge(
+						$errors,
+						is_array( $checkpoint_errors ) ? $this->string_list( $checkpoint_errors ) : array( 'scrydex_checkpoint_repository_not_configured' )
+					);
+				} elseif ( is_array( $checkpoint_plan['upsert_query'] ?? null ) ) {
+					$checkpoint_upsert_query = array_merge(
+						$checkpoint_plan['upsert_query'],
+						array(
+							'query_kind'   => 'checkpoint_upsert',
+							'resource_key' => $checkpoint->resource_key(),
+						)
+					);
+				}
 			}
 		}
 
@@ -192,6 +248,7 @@ final class ScryDexPersistenceQueryBuilder {
 			$reference_update_queries,
 			$reference_variant_upsert_queries,
 			$price_observation_queries,
+			$price_point_queries,
 			$checkpoint_upsert_query
 		);
 	}
@@ -204,6 +261,7 @@ final class ScryDexPersistenceQueryBuilder {
 			'reference_cards'             => $table_prefix . self::REFERENCE_CARDS_TABLE,
 			'reference_variants'          => $table_prefix . self::REFERENCE_VARIANTS_TABLE,
 			'provider_price_observations' => $table_prefix . self::PROVIDER_PRICE_OBSERVATIONS_TABLE,
+			'provider_price_points'       => $table_prefix . self::PROVIDER_PRICE_POINTS_TABLE,
 			'sync_checkpoints'            => $table_prefix . 'tcg_sync_checkpoints',
 		);
 	}
@@ -327,6 +385,70 @@ final class ScryDexPersistenceQueryBuilder {
 
 		if ( null !== ( $row['sync_job_id'] ?? null ) && null === $this->positive_int( $row['sync_job_id'] ) ) {
 			$errors[] = 'price_observation_row_' . $index . '_sync_job_id_invalid';
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Provider price-point row.
+	 * @return list<string>
+	 */
+	private function validate_price_point( array $row, int $index ): array {
+		$errors = $this->validate_reference_identity( $row, 'price_point_row_' . $index );
+
+		if ( ! $this->is_uuid( (string) ( $row['public_id'] ?? '' ) ) ) {
+			$errors[] = 'price_point_row_' . $index . '_public_id_invalid';
+		}
+
+		foreach ( array( 'reference_card_id', 'reference_variant_id', 'sync_job_id' ) as $field ) {
+			if ( null !== ( $row[ $field ] ?? null ) && null === $this->positive_int( $row[ $field ] ) ) {
+				$errors[] = 'price_point_row_' . $index . '_' . $field . '_invalid';
+			}
+		}
+
+		if ( null !== ( $row['game'] ?? null ) && ! $this->is_slugish( (string) $row['game'], 1, 64 ) ) {
+			$errors[] = 'price_point_row_' . $index . '_game_invalid';
+		}
+
+		if ( null !== ( $row['provider_variant_id'] ?? null ) && ! $this->is_identifier( (string) $row['provider_variant_id'], 1, 191 ) ) {
+			$errors[] = 'price_point_row_' . $index . '_provider_variant_id_invalid';
+		}
+
+		if ( null !== ( $row['condition_code'] ?? null ) && ! $this->is_slugish( (string) $row['condition_code'], 1, 32 ) ) {
+			$errors[] = 'price_point_row_' . $index . '_condition_code_invalid';
+		}
+
+		if ( ! in_array( (string) ( $row['raw_or_graded'] ?? '' ), array( 'raw', 'graded' ), true ) ) {
+			$errors[] = 'price_point_row_' . $index . '_raw_or_graded_invalid';
+		}
+
+		if ( null === ( $row['market_price'] ?? null )
+			&& null === ( $row['low_price'] ?? null )
+			&& null === ( $row['mid_price'] ?? null )
+			&& null === ( $row['high_price'] ?? null )
+		) {
+			$errors[] = 'price_point_row_' . $index . '_price_missing';
+		}
+
+		foreach ( array( 'market_price', 'low_price', 'mid_price', 'high_price' ) as $field ) {
+			if ( null !== ( $row[ $field ] ?? null ) && ! $this->is_money( $row[ $field ] ) ) {
+				$errors[] = 'price_point_row_' . $index . '_' . $field . '_invalid';
+			}
+		}
+
+		if ( ! $this->is_currency( (string) ( $row['currency'] ?? '' ) ) ) {
+			$errors[] = 'price_point_row_' . $index . '_currency_invalid';
+		}
+
+		foreach ( array( 'source_observed_at', 'provider_updated_at' ) as $field ) {
+			if ( null !== ( $row[ $field ] ?? null ) && ! $this->is_mysql_datetime( $row[ $field ] ) ) {
+				$errors[] = 'price_point_row_' . $index . '_' . $field . '_invalid';
+			}
+		}
+
+		if ( ! $this->is_mysql_datetime( $row['observed_at'] ?? null ) ) {
+			$errors[] = 'price_point_row_' . $index . '_observed_at_invalid';
 		}
 
 		return $errors;
@@ -516,6 +638,29 @@ final class ScryDexPersistenceQueryBuilder {
 
 		$query['sql_template']                                       .= ' ON DUPLICATE KEY UPDATE provider_price_observation_id = provider_price_observation_id';
 		$query['provider_price_observation_write_execution_deferred'] = true;
+
+		return $query;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Provider price-point row.
+	 * @return array<string, mixed>
+	 */
+	private function price_point_query_for_row( string $table_name, array $row ): array {
+		$query = $this->insert_query_for_row(
+			$table_name,
+			self::PRICE_POINT_COLUMNS,
+			$row,
+			array(
+				'query_kind'              => 'provider_price_point_insert',
+				'provider_card_id'        => (string) $row['provider_card_id'],
+				'provider_variant_id'     => (string) ( $row['provider_variant_id'] ?? '' ),
+				'public_id'               => (string) $row['public_id'],
+			)
+		);
+
+		$query['sql_template']                                .= ' ON DUPLICATE KEY UPDATE market_price = VALUES(market_price), low_price = VALUES(low_price), mid_price = VALUES(mid_price), high_price = VALUES(high_price), source_observed_at = VALUES(source_observed_at), provider_updated_at = VALUES(provider_updated_at), raw_price_payload_json = VALUES(raw_price_payload_json)';
+		$query['provider_price_point_write_execution_deferred'] = true;
 
 		return $query;
 	}

@@ -142,7 +142,7 @@ final class ScryDexSyncCheckpointRepositoryPlanner {
 			$errors[] = 'scrydex_checkpoint_resource_type_invalid';
 		}
 
-		if ( ! $this->is_identifier( $checkpoint->resource_key(), 2, 191 ) ) {
+		if ( ! $this->is_resource_key( $checkpoint->resource_key(), 2, 191 ) ) {
 			$errors[] = 'scrydex_checkpoint_resource_key_invalid';
 		}
 
@@ -155,5 +155,9 @@ final class ScryDexSyncCheckpointRepositoryPlanner {
 
 	private function is_identifier( string $value, int $minimum, int $maximum ): bool {
 		return 1 === preg_match( '/^[a-zA-Z0-9_-]{' . $minimum . ',' . $maximum . '}$/', trim( $value ) );
+	}
+
+	private function is_resource_key( string $value, int $minimum, int $maximum ): bool {
+		return 1 === preg_match( '/^[a-zA-Z0-9_:-]{' . $minimum . ',' . $maximum . '}$/', trim( $value ) );
 	}
 }

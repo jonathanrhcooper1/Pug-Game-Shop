@@ -143,6 +143,7 @@ final class MigrationRunner {
 			new Version0009PosPayments(),
 			new Version0010ProviderPriceObservations(),
 			new Version0011ReferenceCardImages(),
+			new Version0012ScryDexCatalog(),
 		);
 	}
 	/**

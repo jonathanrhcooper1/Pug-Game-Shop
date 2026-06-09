@@ -18,7 +18,7 @@ final class ScryDexSyncCheckpointTest extends TestCase {
 
 		$this->assert_same( 1, $checkpoint->next_page() );
 		$this->assert_same( '', $checkpoint->cursor() );
-		$this->assert_same( 250, $request['page_size'] );
+		$this->assert_same( 100, $request['page_size'] );
 		$this->assert_same( 'pokemon', $request['resource_key'] );
 	}
 

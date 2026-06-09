@@ -11,6 +11,8 @@ final class ScryDexPersistencePlanner {
 	private const CARD_FIELDS = array(
 		'provider_name',
 		'provider_card_id',
+		'reference_set_id',
+		'provider_set_id',
 		'game',
 		'name',
 		'normalized_name',
@@ -50,6 +52,7 @@ final class ScryDexPersistencePlanner {
 		$unchanged_keys     = array();
 		$variant_upserts    = array();
 		$price_observations = array();
+		$price_points       = array();
 		$errors             = $page_plan->errors();
 
 		foreach ( $page_plan->reference_rows() as $index => $row ) {
@@ -142,12 +145,44 @@ final class ScryDexPersistencePlanner {
 			);
 		}
 
+		foreach ( $page_plan->price_point_rows() as $index => $price_point_row ) {
+			$key = $this->provider_key_from_row( $price_point_row );
+
+			if ( '' === $key ) {
+				$errors[] = array(
+					'index'  => $index,
+					'errors' => array( 'missing_price_point_provider_key' ),
+				);
+				continue;
+			}
+
+			$existing = $existing_by_key[ $key ] ?? null;
+
+			if ( null === $existing && ! isset( $planned_keys[ $key ] ) ) {
+				$errors[] = array(
+					'provider_key' => $key,
+					'errors'       => array( 'missing_reference_for_price_point' ),
+				);
+				continue;
+			}
+
+			$price_points[] = $this->price_point_payload(
+				$price_point_row,
+				$key,
+				$planned_by_key[ $key ] ?? null,
+				$existing,
+				$page_plan->next_checkpoint(),
+				$now
+			);
+		}
+
 		return ScryDexPersistencePlan::ready(
 			$reference_inserts,
 			$reference_updates,
 			$unchanged_keys,
 			$variant_upserts,
 			$price_observations,
+			$price_points,
 			$errors,
 			$page_plan->next_checkpoint()
 		);
@@ -325,6 +360,71 @@ final class ScryDexPersistencePlanner {
 		);
 	}
 
+	/**
+	 * @param array<string, mixed> $price_row Normalized provider price-point row.
+	 * @param array<string, mixed>|null $planned_reference Planned reference-card row.
+	 * @param array<string, mixed>|null $existing Existing reference-card row.
+	 * @return array<string, mixed>
+	 */
+	private function price_point_payload(
+		array $price_row,
+		string $key,
+		?array $planned_reference,
+		?array $existing,
+		?ScryDexSyncCheckpoint $checkpoint,
+		string $now
+	): array {
+		$sync_job_id         = null === $checkpoint ? null : $this->positive_int( $checkpoint->job_id() );
+		$provider_variant_id = $this->nullable_string( $price_row['provider_variant_id'] ?? null );
+		$condition_code      = $this->nullable_string( $price_row['condition_code'] ?? null );
+		$raw_or_graded       = $this->raw_or_graded( $price_row['raw_or_graded'] ?? null );
+		$grading_company     = $this->nullable_string( $price_row['grading_company'] ?? null );
+		$grade               = $this->nullable_string( $price_row['grade'] ?? null );
+		$currency            = (string) ( $price_row['currency'] ?? 'USD' );
+
+		return array(
+			'public_id'              => $this->stable_uuid(
+				'scrydex-price-point:'
+					. implode(
+						':',
+						array(
+							$key,
+							(string) $provider_variant_id,
+							(string) $condition_code,
+							$raw_or_graded,
+							(string) $grading_company,
+							(string) $grade,
+							$currency,
+							(string) ( $price_row['source_observed_at'] ?? '' ),
+							(string) $sync_job_id,
+						)
+					)
+			),
+			'provider_key'           => $key,
+			'reference_card_id'      => null === $existing ? null : $this->positive_int( $existing['reference_card_id'] ?? null ),
+			'reference_variant_id'   => null,
+			'provider_name'          => (string) $price_row['provider_name'],
+			'provider_card_id'       => (string) $price_row['provider_card_id'],
+			'provider_variant_id'    => $provider_variant_id,
+			'game'                   => $this->reference_game( $planned_reference, $existing ),
+			'condition_code'         => $condition_code,
+			'raw_or_graded'          => $raw_or_graded,
+			'grading_company'        => $grading_company,
+			'grade'                  => $grade,
+			'market_price'           => $price_row['market_price'] ?? null,
+			'low_price'              => $price_row['low_price'] ?? null,
+			'mid_price'              => $price_row['mid_price'] ?? null,
+			'high_price'             => $price_row['high_price'] ?? null,
+			'currency'               => $currency,
+			'source_observed_at'     => $price_row['source_observed_at'] ?? null,
+			'provider_updated_at'    => $price_row['provider_updated_at'] ?? null,
+			'observed_at'            => $now,
+			'sync_job_id'            => $sync_job_id,
+			'raw_price_payload_json' => $price_row['raw_price_payload_json'] ?? null,
+			'created_at'             => $now,
+		);
+	}
+
 	private function values_match( mixed $left, mixed $right ): bool {
 		return $this->normalize_comparable( $left ) === $this->normalize_comparable( $right );
 	}
@@ -359,6 +459,12 @@ final class ScryDexPersistencePlanner {
 		$value = strtolower( trim( (string) ( $value ?? '' ) ) );
 
 		return in_array( $value, array( 'raw', 'graded', 'both' ), true ) ? $value : 'both';
+	}
+
+	private function raw_or_graded( mixed $value ): string {
+		$value = strtolower( trim( (string) ( $value ?? '' ) ) );
+
+		return in_array( $value, array( 'raw', 'graded' ), true ) ? $value : 'raw';
 	}
 
 	private function next_row_version( mixed $value ): int {

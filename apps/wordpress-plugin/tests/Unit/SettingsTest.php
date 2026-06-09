@@ -72,7 +72,7 @@ final class SettingsTest extends TestCase {
 
 		$this->assert_true( $schedule['enabled'] );
 		$this->assert_same( array( 'pokemon', 'magic-the-gathering', 'lorcana' ), $schedule['game_keys'] );
-		$this->assert_same( 250, $schedule['cards_page_size'] );
+		$this->assert_same( 100, $schedule['cards_page_size'] );
 		$this->assert_same( 25, $schedule['max_pages_per_game_run'] );
 		$this->assert_true( $schedule['network_requests_enabled'] );
 		$this->assert_true( $schedule['database_writes_enabled'] );

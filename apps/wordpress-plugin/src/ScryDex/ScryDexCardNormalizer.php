@@ -50,13 +50,18 @@ final class ScryDexCardNormalizer {
 			return ScryDexCardNormalizationResult::invalid( $errors );
 		}
 
-		$set                 = is_array( $raw['set'] ?? null ) ? $raw['set'] : array();
+		$set                 = is_array( $raw['set'] ?? null )
+			? $raw['set']
+			: ( is_array( $raw['expansion'] ?? null ) ? $raw['expansion'] : array() );
 		$images              = is_array( $raw['images'] ?? null ) ? $raw['images'] : array();
 		$provider_updated_at = $this->normalize_datetime( $raw['updated_at'] ?? '' );
 		$variants            = $this->normalize_variants( $raw, $provider_card_id );
+		$price_points        = $this->normalize_price_points( $raw, $provider_card_id, $game, $provider_updated_at );
 		$card                = array(
 			'provider_name'       => self::PROVIDER,
 			'provider_card_id'    => $provider_card_id,
+			'reference_set_id'    => null,
+			'provider_set_id'     => $this->nullable_string( $set['id'] ?? ( $set['provider_set_id'] ?? null ) ),
 			'game'                => $game,
 			'name'                => $name,
 			'normalized_name'     => $this->normalize_name( $name ),
@@ -64,19 +69,32 @@ final class ScryDexCardNormalizer {
 			'set_code'            => $this->nullable_string( $set['code'] ?? null ),
 			'card_number'         => $this->nullable_string( $raw['number'] ?? null ),
 			'printed_number'      => $this->nullable_string( $raw['printed_number'] ?? null ),
+			'year'                => $this->year_from_date( $set['release_date'] ?? ( $set['releaseDate'] ?? null ) ),
 			'rarity'              => $this->nullable_string( $raw['rarity'] ?? null ),
-			'front_image_url'     => $this->image_url(
-				$raw['image_url'] ?? $images['front'] ?? $images['large'] ?? $images['small'] ?? null
+			'rarity_code'         => $this->nullable_string( $raw['rarity_code'] ?? ( $raw['rarityCode'] ?? null ) ),
+			'language'            => $this->nullable_string( $raw['language'] ?? ( $set['language'] ?? null ) ),
+			'language_code'       => $this->nullable_string( $raw['language_code'] ?? ( $raw['languageCode'] ?? ( $set['language_code'] ?? ( $set['languageCode'] ?? null ) ) ) ),
+			'release_date'        => $this->normalize_date( $raw['release_date'] ?? ( $set['release_date'] ?? ( $set['releaseDate'] ?? null ) ) ),
+			'front_image_url'     => $this->first_image_url(
+				$raw['image_url'] ?? null,
+				$raw['front_image_url'] ?? null,
+				$raw['imageUrl'] ?? null,
+				$this->front_image_value( $images )
 			),
-			'back_image_url'      => $this->image_url( $images['back'] ?? $raw['back_image_url'] ?? null ),
+			'back_image_url'      => $this->first_image_url(
+				$raw['back_image_url'] ?? null,
+				$raw['backImageUrl'] ?? null,
+				$this->back_image_value( $images )
+			),
 			'provider_updated_at' => $provider_updated_at,
 			'search_text'         => $this->search_text( $raw, $set, $name, $game, $variants ),
 		);
 
 		return ScryDexCardNormalizationResult::valid(
 			$card,
-			$this->normalize_price( $raw, $provider_card_id, $provider_updated_at ),
-			$variants
+			$this->normalize_price( $raw, $provider_card_id, $provider_updated_at, $price_points ),
+			$variants,
+			$price_points
 		);
 	}
 
@@ -87,16 +105,12 @@ final class ScryDexCardNormalizer {
 	private function normalize_price(
 		array $raw,
 		string $provider_card_id,
-		?string $provider_updated_at
+		?string $provider_updated_at,
+		array $price_points = array()
 	): ?array {
-		$market_price = $raw['market_price'] ?? null;
-
-		if ( ! is_array( $market_price ) ) {
-			return null;
-		}
-
-		$amount   = $this->decimal_amount( $market_price['amount'] ?? null );
-		$currency = $this->currency( $market_price['currency'] ?? '' );
+		$market_price = $price_points[0] ?? $this->market_price_payload( $raw );
+		$amount       = is_array( $market_price ) ? $this->decimal_amount( $market_price['market_price'] ?? ( $market_price['amount'] ?? null ) ) : null;
+		$currency     = is_array( $market_price ) ? $this->currency( $market_price['currency'] ?? '' ) : '';
 
 		if ( null === $amount || '' === $currency ) {
 			return null;
@@ -109,6 +123,76 @@ final class ScryDexCardNormalizer {
 			'currency'            => $currency,
 			'source_observed_at'  => $provider_updated_at,
 			'provider_updated_at' => $provider_updated_at,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $raw Raw provider card.
+	 * @return list<array<string, mixed>>
+	 */
+	private function normalize_price_points(
+		array $raw,
+		string $provider_card_id,
+		string $game,
+		?string $provider_updated_at
+	): array {
+		$points = array();
+
+		foreach ( $this->price_payloads( $raw ) as $payload ) {
+			$row = $this->price_point_row( $payload, $provider_card_id, $game, $provider_updated_at );
+			if ( null !== $row ) {
+				$points[] = $row;
+			}
+		}
+
+		return $points;
+	}
+
+	/**
+	 * @param array<string, mixed> $source Provider price source.
+	 * @return array<string, mixed>|null
+	 */
+	private function price_point_row(
+		array $source,
+		string $provider_card_id,
+		string $game,
+		?string $provider_updated_at
+	): ?array {
+		$market = $this->decimal_amount( $this->first_present( $source, array( 'amount', 'market_price', 'marketPrice', 'market', 'avg_price', 'avgPrice', 'price' ) ) );
+		$low    = $this->decimal_amount( $this->first_present( $source, array( 'low_price', 'lowPrice', 'low' ) ) );
+		$mid    = $this->decimal_amount( $this->first_present( $source, array( 'mid_price', 'midPrice', 'mid' ) ) );
+		$high   = $this->decimal_amount( $this->first_present( $source, array( 'high_price', 'highPrice', 'high' ) ) );
+
+		if ( null === $market && null === $low && null === $mid && null === $high ) {
+			return null;
+		}
+
+		$currency = $this->currency( $source['currency'] ?? 'USD' );
+		if ( '' === $currency ) {
+			$currency = 'USD';
+		}
+
+		$grade           = $this->nullable_string( $source['grade'] ?? null );
+		$grading_company = $this->nullable_string( $source['grading_company'] ?? ( $source['grader'] ?? null ) );
+		$raw_or_graded   = $this->raw_or_graded( $source, $grade, $grading_company );
+
+		return array(
+			'provider_name'          => self::PROVIDER,
+			'provider_card_id'       => $provider_card_id,
+			'provider_variant_id'    => $this->nullable_string( $source['provider_variant_id'] ?? ( $source['variant_id'] ?? ( $source['variantId'] ?? ( $source['id'] ?? null ) ) ) ),
+			'game'                   => $game,
+			'condition_code'         => $this->condition_code( $source['condition_code'] ?? ( $source['conditionCode'] ?? ( $source['condition'] ?? null ) ) ),
+			'raw_or_graded'          => $raw_or_graded,
+			'grading_company'        => $grading_company,
+			'grade'                  => $grade,
+			'market_price'           => $market,
+			'low_price'              => $low,
+			'mid_price'              => $mid,
+			'high_price'             => $high,
+			'currency'               => $currency,
+			'source_observed_at'     => $provider_updated_at,
+			'provider_updated_at'    => $provider_updated_at,
+			'raw_price_payload_json' => $this->json_payload( $source ),
 		);
 	}
 
@@ -173,6 +257,24 @@ final class ScryDexCardNormalizer {
 		return preg_match( '/^[A-Z]{3}$/', $value ) ? $value : '';
 	}
 
+	private function normalize_date( mixed $value ): ?string {
+		$value = $this->clean_string( $value );
+
+		if ( '' === $value ) {
+			return null;
+		}
+
+		$timestamp = strtotime( str_replace( '/', '-', $value ) );
+
+		return false === $timestamp ? null : gmdate( 'Y-m-d', $timestamp );
+	}
+
+	private function year_from_date( mixed $value ): ?int {
+		$date = $this->normalize_date( $value );
+
+		return null === $date ? null : (int) substr( $date, 0, 4 );
+	}
+
 	private function image_url( mixed $value ): ?string {
 		$value = $this->clean_string( $value ?? '' );
 
@@ -187,6 +289,211 @@ final class ScryDexCardNormalizer {
 		}
 
 		return substr( $value, 0, 255 );
+	}
+
+	private function first_image_url( mixed ...$values ): ?string {
+		foreach ( $values as $value ) {
+			$url = $this->image_url( $value );
+			if ( null !== $url ) {
+				return $url;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<int|string, mixed> $images Provider image payload.
+	 */
+	private function front_image_value( array $images ): mixed {
+		foreach ( array( 'front', 'large', 'small', 'url' ) as $key ) {
+			if ( isset( $images[ $key ] ) ) {
+				return $images[ $key ];
+			}
+		}
+
+		return $this->image_from_list( $images, array( 'front', 'card', 'image' ) );
+	}
+
+	/**
+	 * @param array<int|string, mixed> $images Provider image payload.
+	 */
+	private function back_image_value( array $images ): mixed {
+		if ( isset( $images['back'] ) ) {
+			return $images['back'];
+		}
+
+		return $this->image_from_list( $images, array( 'back' ) );
+	}
+
+	/**
+	 * @param array<int|string, mixed> $images Provider image payload.
+	 * @param list<string>            $type_needles Image type hints.
+	 */
+	private function image_from_list( array $images, array $type_needles ): mixed {
+		foreach ( $images as $image ) {
+			if ( ! is_array( $image ) ) {
+				continue;
+			}
+
+			$type = strtolower( $this->clean_string( $image['type'] ?? ( $image['name'] ?? '' ) ) );
+			if ( '' !== $type ) {
+				$matched = false;
+				foreach ( $type_needles as $needle ) {
+					if ( str_contains( $type, $needle ) ) {
+						$matched = true;
+						break;
+					}
+				}
+
+				if ( ! $matched ) {
+					continue;
+				}
+			}
+
+			foreach ( array( 'large', 'url', 'image_url', 'imageUrl', 'small' ) as $key ) {
+				if ( isset( $image[ $key ] ) ) {
+					return $image[ $key ];
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $raw Raw provider card.
+	 * @return array<string, mixed>|null
+	 */
+	private function market_price_payload( array $raw ): ?array {
+		if ( is_array( $raw['market_price'] ?? null ) ) {
+			return $raw['market_price'];
+		}
+
+		if ( is_numeric( $raw['market_price'] ?? null ) ) {
+			return array(
+				'amount'   => $raw['market_price'],
+				'currency' => $raw['currency'] ?? 'USD',
+			);
+		}
+
+		$prices = $raw['prices'] ?? null;
+		if ( ! is_array( $prices ) ) {
+			return null;
+		}
+
+		foreach ( $prices as $price ) {
+			if ( ! is_array( $price ) ) {
+				continue;
+			}
+
+			$amount = $price['amount']
+				?? $price['market_price']
+				?? $price['marketPrice']
+				?? $price['market']
+				?? $price['avg_price']
+				?? $price['avgPrice']
+				?? $price['price']
+				?? null;
+
+			if ( null === $amount ) {
+				continue;
+			}
+
+			return array(
+				'amount'   => $amount,
+				'currency' => $price['currency'] ?? 'USD',
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $raw Raw provider card.
+	 * @return list<array<string, mixed>>
+	 */
+	private function price_payloads( array $raw ): array {
+		$payloads = array();
+
+		foreach ( array( 'market_price', 'price' ) as $key ) {
+			if ( is_array( $raw[ $key ] ?? null ) ) {
+				$payloads[] = $raw[ $key ];
+			} elseif ( is_numeric( $raw[ $key ] ?? null ) ) {
+				$payloads[] = array(
+					'market_price' => $raw[ $key ],
+					'currency'     => $raw['currency'] ?? 'USD',
+				);
+			}
+		}
+
+		$prices = $raw['prices'] ?? null;
+		if ( is_array( $prices ) ) {
+			if ( array_is_list( $prices ) ) {
+				foreach ( $prices as $price ) {
+					if ( is_array( $price ) ) {
+						$payloads[] = $price;
+					}
+				}
+			} else {
+				foreach ( $prices as $key => $price ) {
+					if ( is_array( $price ) ) {
+						$payloads[] = is_string( $key ) ? array_merge( array( 'condition' => $key ), $price ) : $price;
+					} elseif ( is_numeric( $price ) ) {
+						$payloads[] = array(
+							'condition'    => is_string( $key ) ? $key : null,
+							'market_price' => $price,
+							'currency'     => $raw['currency'] ?? 'USD',
+						);
+					}
+				}
+			}
+		}
+
+		return $payloads;
+	}
+
+	/**
+	 * @param array<string, mixed> $source Source values.
+	 * @param list<string> $keys Candidate keys.
+	 */
+	private function first_present( array $source, array $keys ): mixed {
+		foreach ( $keys as $key ) {
+			if ( array_key_exists( $key, $source ) && null !== $source[ $key ] && '' !== trim( (string) $source[ $key ] ) ) {
+				return $source[ $key ];
+			}
+		}
+
+		return null;
+	}
+
+	private function condition_code( mixed $value ): ?string {
+		$value = strtolower( $this->clean_string( $value ?? '' ) );
+		$value = preg_replace( '/[^a-z0-9_+-]+/', '_', $value ) ?? '';
+		$value = trim( $value, '_' );
+
+		return '' === $value ? null : substr( $value, 0, 32 );
+	}
+
+	/**
+	 * @param array<string, mixed> $source Provider price source.
+	 */
+	private function raw_or_graded( array $source, ?string $grade, ?string $grading_company ): string {
+		$value = strtolower( $this->clean_string( $source['raw_or_graded'] ?? ( $source['rawOrGraded'] ?? ( $source['type'] ?? '' ) ) ) );
+		if ( in_array( $value, array( 'raw', 'graded' ), true ) ) {
+			return $value;
+		}
+
+		return null !== $grade || null !== $grading_company ? 'graded' : 'raw';
+	}
+
+	/**
+	 * @param array<string, mixed> $payload Raw price payload.
+	 */
+	private function json_payload( array $payload ): ?string {
+		$json = json_encode( $payload, JSON_UNESCAPED_SLASHES );
+
+		return false === $json ? null : $json;
 	}
 
 	/**
@@ -377,6 +684,7 @@ final class ScryDexCardNormalizer {
 				$name,
 				$this->clean_string( $set['name'] ?? '' ),
 				$this->clean_string( $set['code'] ?? '' ),
+				$this->clean_string( $set['id'] ?? '' ),
 				$this->clean_string( $raw['number'] ?? '' ),
 				$this->clean_string( $raw['rarity'] ?? '' ),
 			),

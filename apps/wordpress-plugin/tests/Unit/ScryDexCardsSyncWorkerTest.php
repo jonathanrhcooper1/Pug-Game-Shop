@@ -143,12 +143,13 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 		$this->assert_false( $result['database_writes_deferred'] );
 		$this->assert_false( $result['reference_card_writes_deferred'] );
 		$this->assert_false( $result['checkpoint_upsert_execution_deferred'] );
+		$this->assert_false( $result['pages'][0]['orchestration_plan']['persistence_repository_result']['provider_price_point_writes_deferred'] );
 		$this->assert_true( $result['execute_database_writes_requested'] );
 		$this->assert_same( 'executed', $result['pages'][0]['orchestration_plan']['status'] );
 		$this->assert_same( 'executed', $result['pages'][0]['orchestration_plan']['persistence_repository_result']['status'] );
 		$this->assert_true( $result['pages'][0]['orchestration_plan']['persistence_repository_result']['transaction_committed'] );
-		$this->assert_same( 3, $database->prepare_count );
-		$this->assert_same( 5, $database->query_count );
+		$this->assert_same( 4, $database->prepare_count );
+		$this->assert_same( 6, $database->query_count );
 	}
 
 	/**

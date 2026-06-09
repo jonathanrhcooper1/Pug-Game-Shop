@@ -48,7 +48,7 @@ final class ScryDexScheduleSettings {
 			'cards_page_size'          => self::bounded_int(
 				$value['cards_page_size'] ?? $existing['cards_page_size'],
 				1,
-				250
+				100
 			),
 			'max_pages_per_game_run'   => self::bounded_int(
 				$value['max_pages_per_game_run'] ?? $existing['max_pages_per_game_run'],

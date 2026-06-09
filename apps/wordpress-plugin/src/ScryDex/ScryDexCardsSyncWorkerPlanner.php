@@ -138,6 +138,8 @@ final class ScryDexCardsSyncWorkerPlanner {
 			'reference_write_count'     => $persistence_plan->reference_write_count(),
 			'reference_variant_write_count' => $persistence_plan->reference_variant_write_count(),
 			'error_count'               => count( $persistence_plan->errors() ),
+			'price_point_count'         => count( $persistence_plan->price_points() ),
+			'price_point_write_count'   => $persistence_plan->price_point_write_count(),
 			'retryable'                 => $persistence_plan->retryable(),
 			'error_code'                => $persistence_plan->error_code(),
 		);

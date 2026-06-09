@@ -98,6 +98,57 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( null, $result->price() );
 	}
 
+	public function test_normalizes_scrydex_expansion_images_and_included_price_rows(): void {
+		$result = ( new ScryDexCardNormalizer() )->normalize_card(
+			array(
+				'id'           => 'sv1-1',
+				'game'         => 'pokemon',
+				'name'         => 'Sprigatito',
+				'expansion'    => array(
+					'id'            => 'sv1',
+					'name'          => 'Scarlet & Violet',
+					'code'          => 'SV1',
+					'language'      => 'English',
+					'language_code' => 'EN',
+					'release_date'  => '2023/03/31',
+				),
+				'number'       => '1',
+				'rarity'       => 'Common',
+				'images'       => array(
+					array(
+						'type'  => 'front',
+						'large' => 'https://images.scrydex.com/pokemon/sv1-1/front',
+					),
+					array(
+						'type' => 'back',
+						'url'  => 'https://images.scrydex.com/pokemon/card-back',
+					),
+				),
+				'prices'       => array(
+					array(
+						'market'   => '0.12',
+						'currency' => 'USD',
+					),
+				),
+				'updated_at'   => '2026-06-08T13:15:00Z',
+			)
+		);
+		$card   = $result->card();
+		$price  = $result->price();
+
+		$this->assert_true( $result->is_valid() );
+		$this->assert_same( 'Scarlet & Violet', $card['set_name'] );
+		$this->assert_same( 'SV1', $card['set_code'] );
+		$this->assert_same( 2023, $card['year'] );
+		$this->assert_same( 'English', $card['language'] );
+		$this->assert_same( 'EN', $card['language_code'] );
+		$this->assert_same( '2023-03-31', $card['release_date'] );
+		$this->assert_same( 'https://images.scrydex.com/pokemon/sv1-1/front', $card['front_image_url'] );
+		$this->assert_same( 'https://images.scrydex.com/pokemon/card-back', $card['back_image_url'] );
+		$this->assert_true( is_array( $price ) );
+		$this->assert_same( '0.1200', $price['market_price'] );
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */

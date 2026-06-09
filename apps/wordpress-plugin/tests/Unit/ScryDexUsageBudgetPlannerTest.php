@@ -42,7 +42,7 @@ final class ScryDexUsageBudgetPlannerTest extends TestCase {
 		$this->assert_true( $plan['provider_usage_requests_deferred'] );
 		$this->assert_same( 5, $plan['estimated_credit_cost'] );
 		$this->assert_same( 'magic', $plan['request']['resource_key'] );
-		$this->assert_same( 250, $plan['request']['page_size'] );
+		$this->assert_same( 100, $plan['request']['page_size'] );
 		$this->assert_same( array(), $plan['block_reasons'] );
 	}
 

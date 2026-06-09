@@ -14,6 +14,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 	 * @param list<array<string, mixed>> $reference_update_queries Reference-card update templates.
 	 * @param list<array<string, mixed>> $reference_variant_upsert_queries Reference variant upsert templates.
 	 * @param list<array<string, mixed>> $price_observation_queries Provider price observation insert templates.
+	 * @param list<array<string, mixed>> $price_point_queries Provider price-point insert templates.
 	 * @param array<string, mixed>|null  $checkpoint_upsert_query Checkpoint upsert template.
 	 * @param list<string>              $errors Query build errors.
 	 */
@@ -24,6 +25,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		private array $reference_update_queries,
 		private array $reference_variant_upsert_queries,
 		private array $price_observation_queries,
+		private array $price_point_queries,
 		private ?array $checkpoint_upsert_query,
 		private array $errors,
 		private ScryDexPersistencePlan $source_plan
@@ -36,6 +38,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 	 * @param list<array<string, mixed>> $reference_update_queries Reference-card update templates.
 	 * @param list<array<string, mixed>> $reference_variant_upsert_queries Reference variant upsert templates.
 	 * @param list<array<string, mixed>> $price_observation_queries Provider price observation insert templates.
+	 * @param list<array<string, mixed>> $price_point_queries Provider price-point insert templates.
 	 * @param array<string, mixed>|null  $checkpoint_upsert_query Checkpoint upsert template.
 	 */
 	public static function accepted(
@@ -45,6 +48,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		array $reference_update_queries,
 		array $reference_variant_upsert_queries,
 		array $price_observation_queries,
+		array $price_point_queries,
 		?array $checkpoint_upsert_query
 	): self {
 		return new self(
@@ -54,6 +58,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 			array_values( $reference_update_queries ),
 			array_values( $reference_variant_upsert_queries ),
 			array_values( $price_observation_queries ),
+			array_values( $price_point_queries ),
 			$checkpoint_upsert_query,
 			array(),
 			$source_plan
@@ -68,6 +73,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 		return new self(
 			false,
 			$table_names,
+			array(),
 			array(),
 			array(),
 			array(),
@@ -118,6 +124,13 @@ final class ScryDexPersistenceQueryBuildPlan {
 	}
 
 	/**
+	 * @return list<array<string, mixed>>
+	 */
+	public function price_point_queries(): array {
+		return $this->price_point_queries;
+	}
+
+	/**
 	 * @return array<string, mixed>|null
 	 */
 	public function checkpoint_upsert_query(): ?array {
@@ -136,6 +149,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 			+ count( $this->reference_update_queries )
 			+ count( $this->reference_variant_upsert_queries )
 			+ count( $this->price_observation_queries )
+			+ count( $this->price_point_queries )
 			+ ( null === $this->checkpoint_upsert_query ? 0 : 1 );
 	}
 
@@ -162,6 +176,7 @@ final class ScryDexPersistenceQueryBuildPlan {
 			'reference_update_query_count'               => count( $this->reference_update_queries ),
 			'reference_variant_upsert_query_count'       => count( $this->reference_variant_upsert_queries ),
 			'price_observation_query_count'              => count( $this->price_observation_queries ),
+			'price_point_query_count'                    => count( $this->price_point_queries ),
 			'checkpoint_upsert_query_present'            => null !== $this->checkpoint_upsert_query,
 			'total_query_count'                          => $this->total_query_count(),
 			'prepare_arg_count'                          => $this->prepare_arg_count(),
@@ -169,10 +184,12 @@ final class ScryDexPersistenceQueryBuildPlan {
 			'reference_variant_write_count'              => $this->source_plan->reference_variant_write_count(),
 			'unchanged_reference_count'                  => count( $this->source_plan->unchanged_reference_keys() ),
 			'price_observation_count'                    => count( $this->source_plan->price_observations() ),
+			'price_point_count'                          => count( $this->source_plan->price_points() ),
 			'persistence_query_execution_deferred'       => true,
 			'persistence_repository_deferred'            => true,
 			'checkpoint_upsert_execution_deferred'       => true,
 			'provider_price_observation_writes_deferred' => true,
+			'provider_price_point_writes_deferred'       => true,
 			'reference_card_writes_deferred'             => true,
 			'reference_variant_writes_deferred'          => true,
 			'errors'                                     => $this->errors,
@@ -187,7 +204,8 @@ final class ScryDexPersistenceQueryBuildPlan {
 			$this->reference_insert_queries,
 			$this->reference_update_queries,
 			$this->reference_variant_upsert_queries,
-			$this->price_observation_queries
+			$this->price_observation_queries,
+			$this->price_point_queries
 		);
 
 		if ( null !== $this->checkpoint_upsert_query ) {

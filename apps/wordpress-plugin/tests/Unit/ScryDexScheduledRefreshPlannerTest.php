@@ -44,7 +44,7 @@ final class ScryDexScheduledRefreshPlannerTest extends TestCase {
 		$this->assert_true( $plan['scheduled_refresh_configured'] );
 		$this->assert_false( $plan['production_execution_blocked'] );
 		$this->assert_same( array( 'pokemon', 'lorcana' ), $plan['request']['game_keys'] );
-		$this->assert_same( 200, $plan['request']['page_size'] );
+		$this->assert_same( 100, $plan['request']['page_size'] );
 		$this->assert_same( 3, $plan['request']['max_pages_per_game_run'] );
 		$this->assert_true( $plan['request']['execute_database_writes'] );
 		$this->assert_true( $plan['gate_overrides']['network_requests_enabled'] );
@@ -53,7 +53,7 @@ final class ScryDexScheduledRefreshPlannerTest extends TestCase {
 		$this->assert_same( array(), $plan['block_reasons'] );
 	}
 
-	public function test_planner_blocks_production_even_when_settings_are_confirmed(): void {
+	public function test_planner_blocks_automatic_production_refresh_even_when_settings_are_confirmed(): void {
 		$plan = ( new ScryDexScheduledRefreshPlanner() )->plan(
 			$this->settings(),
 			true,
@@ -62,9 +62,9 @@ final class ScryDexScheduledRefreshPlannerTest extends TestCase {
 		);
 
 		$this->assert_same( 'blocked', $plan['status'] );
-		$this->assert_false( $plan['feature_available'] );
+		$this->assert_true( $plan['feature_available'] );
 		$this->assert_true( $plan['production_execution_blocked'] );
-		$this->assert_true( in_array( 'scrydex_sync_unavailable_environment', $plan['block_reasons'], true ) );
+		$this->assert_false( in_array( 'scrydex_sync_unavailable_environment', $plan['block_reasons'], true ) );
 		$this->assert_true( in_array( 'scrydex_scheduled_refresh_production_blocked', $plan['block_reasons'], true ) );
 	}
 

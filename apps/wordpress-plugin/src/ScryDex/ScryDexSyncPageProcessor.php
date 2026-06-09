@@ -31,6 +31,7 @@ final class ScryDexSyncPageProcessor {
 		$reference_rows = array();
 		$price_rows     = array();
 		$variant_rows   = array();
+		$price_point_rows = array();
 		$errors         = array();
 
 		foreach ( $this->cards_from_body( $body ) as $index => $card ) {
@@ -46,6 +47,7 @@ final class ScryDexSyncPageProcessor {
 
 			$reference_rows[] = $normalized->card();
 			$variant_rows     = array_merge( $variant_rows, $normalized->variants() );
+			$price_point_rows = array_merge( $price_point_rows, $normalized->price_points() );
 
 			if ( null !== $normalized->price() ) {
 				$price_rows[] = $normalized->price();
@@ -61,7 +63,8 @@ final class ScryDexSyncPageProcessor {
 				$body,
 				count( $reference_rows )
 			),
-			$variant_rows
+			$variant_rows,
+			$price_point_rows
 		);
 	}
 

@@ -42,7 +42,7 @@ final class ScryDexScheduleSettingsTest extends TestCase {
 		$this->assert_same( 'ready', $status['status'] );
 		$this->assert_true( $status['configured'] );
 		$this->assert_same( array( 'pokemon', 'lorcana' ), $status['game_keys'] );
-		$this->assert_same( 200, $status['cards_page_size'] );
+		$this->assert_same( 100, $status['cards_page_size'] );
 		$this->assert_same( 5, $status['max_pages_per_game_run'] );
 		$this->assert_true( $status['credential_values_redacted'] );
 		$this->assert_true( $status['provider_result_bodies_not_logged'] );

@@ -45,7 +45,10 @@ final class ScryDexSyncExecutionGate {
 	 */
 	public function plan_cards_worker( array $request = array(), array $gate_overrides = array() ): array {
 		$dry_run                = $this->dry_run_planner->plan_cards_sync( $request );
-		$budget                 = $this->usage_budget_planner->plan_cards_page( $dry_run['request'] );
+		$usage_snapshot         = is_array( $gate_overrides['usage_snapshot'] ?? null )
+			? $gate_overrides['usage_snapshot']
+			: null;
+		$budget                 = $this->usage_budget_planner->plan_cards_page( $dry_run['request'], $usage_snapshot );
 		$checkpoint_repository  = $this->checkpoint_repository_planner->plan( $dry_run['checkpoint_row'] );
 		$persistence_repository = $this->persistence_repository_planner->plan( $dry_run['checkpoint_row'] );
 		$gates                  = $this->gates( $gate_overrides, $budget, $checkpoint_repository, $persistence_repository );

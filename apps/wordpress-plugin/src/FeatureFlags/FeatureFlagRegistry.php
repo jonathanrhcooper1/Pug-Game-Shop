@@ -24,14 +24,14 @@ final class FeatureFlagRegistry {
 				'default'                => false,
 				'available'              => true,
 				'phase'                  => 2,
-				'available_environments' => array( 'local', 'development', 'staging' ),
+				'available_environments' => array( 'local', 'development', 'staging', 'production' ),
 			),
 			'scrydex_sync'             => array(
 				'label'                  => 'ScryDex sync',
 				'default'                => false,
 				'available'              => true,
 				'phase'                  => 3,
-				'available_environments' => array( 'local', 'development', 'staging' ),
+				'available_environments' => array( 'local', 'development', 'staging', 'production' ),
 			),
 			'woocommerce_reservations' => array(
 				'label'     => 'WooCommerce reservations',

@@ -144,6 +144,13 @@ namespace {
 
 				return $this->count_result;
 			}
+
+			public function query( string $query ): int|false {
+				++$this->query_count;
+				$this->last_query = $query;
+
+				return 1;
+			}
 		}
 	}
 }
@@ -155,7 +162,82 @@ namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Api\V1\OfflineRestRequestData;
 	use TCGStorePlatform\Api\V1\ReferenceCardSearchRouteHandler;
 	use TCGStorePlatform\Inventory\InventorySearchRepository;
+	use TCGStorePlatform\ScryDex\ScryDexPersistenceRepository;
+	use TCGStorePlatform\ScryDex\ScryDexProvider;
+	use TCGStorePlatform\ScryDex\ScryDexResult;
 	use TCGStorePlatform\Tests\TestCase;
+
+	final class ReferenceSearchFallbackProvider implements ScryDexProvider {
+		public int $search_count = 0;
+		public string $last_query = '';
+
+		/**
+		 * @var array<string, string>
+		 */
+		public array $last_filters = array();
+
+		public function __construct(
+			private ScryDexResult $result
+		) {
+		}
+
+		/**
+		 * @param array<string, string> $filters Provider search filters.
+		 */
+		public function search_cards(
+			string $query = '',
+			array $filters = array(),
+			int $page = 1,
+			string $cursor = ''
+		): ScryDexResult {
+			unset( $page, $cursor );
+
+			++$this->search_count;
+			$this->last_query   = $query;
+			$this->last_filters = $filters;
+
+			return $this->result;
+		}
+
+		public function get_card( string $provider_card_id ): ScryDexResult {
+			unset( $provider_card_id );
+
+			return ScryDexResult::not_supported( 'unused in reference search tests' );
+		}
+
+		public function search_expansions(
+			string $query = '',
+			array $filters = array(),
+			int $page = 1,
+			string $cursor = ''
+		): ScryDexResult {
+			unset( $query, $filters, $page, $cursor );
+
+			return ScryDexResult::not_supported( 'unused in reference search tests' );
+		}
+
+		public function search_expansion_cards(
+			string $expansion_id,
+			string $query = '',
+			array $filters = array(),
+			int $page = 1,
+			string $cursor = ''
+		): ScryDexResult {
+			unset( $expansion_id, $query, $filters, $page, $cursor );
+
+			return ScryDexResult::not_supported( 'unused in reference search tests' );
+		}
+
+		public function get_usage(): ScryDexResult {
+			return ScryDexResult::not_supported( 'unused in reference search tests' );
+		}
+
+		public function register_webhook( string $event_type, string $callback_url ): ScryDexResult {
+			unset( $event_type, $callback_url );
+
+			return ScryDexResult::not_supported( 'unused in reference search tests' );
+		}
+	}
 
 	final class InventorySearchRouteHandlerFactoryTest extends TestCase {
 		public function test_handler_returns_presented_public_inventory_search_results(): void {
@@ -281,6 +363,91 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'Alternate Art Secret', $response['data']['cards'][0]['variants'][0]['variant'] );
 			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
 			$this->assert_false( $response['data']['meta']['live_provider_request'] );
+		}
+
+		public function test_reference_handler_fetches_and_persists_provider_card_on_cache_miss(): void {
+			$database = new \InventorySearchRouteHandlerWpdb( array(), '0', 'wp_' );
+			$provider = new ReferenceSearchFallbackProvider(
+				new ScryDexResult(
+					ScryDexResult::SUCCESS,
+					200,
+					array(
+						'data' => array( $this->provider_reference_card() ),
+					)
+				)
+			);
+			$handler  = new ReferenceCardSearchRouteHandler(
+				$database,
+				'wp_',
+				$provider,
+				new ScryDexPersistenceRepository( $database )
+			);
+
+			$response = $handler->search_reference_cards(
+				$this->request(
+					array(
+						'q'     => 'moonbreon',
+						'game'  => 'pokemon',
+						'limit' => '8',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'scrydex_provider', $response['data']['source'] );
+			$this->assert_same( 1, $provider->search_count );
+			$this->assert_same( 'moonbreon', $provider->last_query );
+			$this->assert_same( 'pokemon', $provider->last_filters['game'] );
+			$this->assert_same( '8', $provider->last_filters['page_size'] );
+			$this->assert_same( 'prices', $provider->last_filters['include'] );
+			$this->assert_true( $database->query_count > 0 );
+			$this->assert_true( $response['data']['meta']['live_provider_request'] );
+			$this->assert_false( $response['data']['meta']['credentials_in_response'] );
+			$this->assert_same( 'completed', $response['data']['meta']['scrydex_fallback_status'] );
+			$this->assert_same( 'executed', $response['data']['meta']['scrydex_persistence_status'] );
+			$this->assert_same( array(), $response['data']['meta']['scrydex_persistence_errors'] );
+			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
+			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
+			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );
+			$this->assert_same( 112045, $response['data']['cards'][0]['market_price_minor_units'] );
+			$this->assert_same( 'scrydex-pokemon-evs-215-alt-art', $response['data']['cards'][0]['variants'][0]['provider_variant_id'] );
+			$this->assert_true( $response['data']['cards'][0]['live_provider_request'] );
+			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
+		}
+
+		public function test_reference_handler_reports_provider_failure_without_secrets_on_cache_miss(): void {
+			$database = new \InventorySearchRouteHandlerWpdb( array(), '0', 'wp_' );
+			$provider = new ReferenceSearchFallbackProvider(
+				new ScryDexResult(
+					ScryDexResult::UNAUTHORIZED,
+					403,
+					array(),
+					'scrydex_unauthorized',
+					'Configured key abcdefghijklmnopqrstuvwxyz123456 was rejected.'
+				)
+			);
+			$handler  = new ReferenceCardSearchRouteHandler( $database, 'wp_', $provider );
+
+			$response = $handler->search_reference_cards(
+				$this->request(
+					array(
+						'q'    => 'moonbreon',
+						'game' => 'pokemon',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( array(), $response['data']['cards'] );
+			$this->assert_same( 1, $provider->search_count );
+			$this->assert_true( $response['data']['meta']['live_provider_request'] );
+			$this->assert_false( $response['data']['meta']['credentials_in_response'] );
+			$this->assert_same( 'blocked', $response['data']['meta']['scrydex_fallback_status'] );
+			$this->assert_same( 'scrydex_unauthorized', $response['data']['meta']['scrydex_provider_error_code'] );
+			$this->assert_false(
+				str_contains( (string) $response['data']['meta']['scrydex_provider_message'], 'abcdefghijklmnopqrstuvwxyz123456' )
+			);
+			$this->assert_same( 0, $database->query_count );
 		}
 
 		public function test_reference_handler_rejects_empty_query_before_repository_reads(): void {
@@ -486,6 +653,43 @@ namespace TCGStorePlatform\Tests\Unit {
 				'language'                   => 'English',
 				'raw_or_graded_support'      => 'both',
 				'normalized_attributes_json' => '{"variant":"Alternate Art Secret","finish":"Foil"}',
+			);
+		}
+
+		/**
+		 * @return array<string, mixed>
+		 */
+		private function provider_reference_card(): array {
+			return array(
+				'id'             => 'scrydex-pokemon-evs-215',
+				'game'           => 'pokemon',
+				'name'           => 'Umbreon VMAX',
+				'set'            => array(
+					'name' => 'Evolving Skies',
+					'code' => 'EVS',
+				),
+				'number'         => '215',
+				'printed_number' => '215/203',
+				'images'         => array(
+					'large' => 'https://images.pokemontcg.io/swsh7/215_hires.png',
+					'small' => 'https://images.pokemontcg.io/swsh7/215.png',
+				),
+				'market_price'   => array(
+					'amount'   => '1120.45',
+					'currency' => 'USD',
+				),
+				'updated_at'     => '2026-06-08T16:00:00Z',
+				'variants'       => array(
+					array(
+						'provider_variant_id'   => 'scrydex-pokemon-evs-215-alt-art',
+						'variant'               => 'Alternate Art Secret',
+						'finish'                => 'Foil',
+						'parallel_name'         => 'Secret Rare',
+						'edition'               => 'First Printing',
+						'language'              => 'English',
+						'raw_or_graded_support' => 'both',
+					),
+				),
 			);
 		}
 	}

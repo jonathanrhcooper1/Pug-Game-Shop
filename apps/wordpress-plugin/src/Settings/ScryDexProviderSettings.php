@@ -10,7 +10,7 @@ namespace TCGStorePlatform\Settings;
 final class ScryDexProviderSettings {
 	public const KEY = 'scrydex_provider';
 
-	private const ENVIRONMENTS = array( 'disabled', 'sandbox', 'staging' );
+	private const ENVIRONMENTS = array( 'disabled', 'sandbox', 'staging', 'production' );
 
 	/**
 	 * @return array<string, mixed>

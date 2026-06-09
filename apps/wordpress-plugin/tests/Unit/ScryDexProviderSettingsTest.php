@@ -99,6 +99,21 @@ final class ScryDexProviderSettingsTest extends TestCase {
 		$this->assert_same( 'sandbox', $context['environment'] );
 	}
 
+	public function test_production_environment_can_be_configured_for_server_side_imports(): void {
+		$status = ScryDexProviderSettings::public_status(
+			array(
+				'enabled'         => true,
+				'environment'     => 'production',
+				'team_id'         => 'production-team-id',
+				'primary_api_key' => 'production-primary-key',
+			)
+		);
+
+		$this->assert_true( $status['configured'] );
+		$this->assert_same( 'production', $status['environment'] );
+		$this->assert_true( $status['credential_values_redacted'] );
+	}
+
 	public function test_clear_flags_remove_saved_secret_values(): void {
 		$result = ScryDexProviderSettings::sanitize(
 			array(

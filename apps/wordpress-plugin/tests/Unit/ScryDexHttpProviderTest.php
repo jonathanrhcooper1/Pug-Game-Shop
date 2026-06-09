@@ -94,6 +94,56 @@ final class ScryDexHttpProviderTest extends TestCase {
 		$this->assert_same( 259, $body['total_count'] );
 	}
 
+	public function test_search_cards_caps_page_size_to_scrydex_documented_limit(): void {
+		$captured = array();
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static function ( string $method, string $url, array $args ) use ( &$captured ): array {
+				unset( $method, $args );
+
+				$captured['url'] = $url;
+
+				return array(
+					'status' => 200,
+					'body'   => array( 'data' => array() ),
+				);
+			}
+		);
+
+		$provider->search_cards( '', array( 'game' => 'pokemon', 'page_size' => '250' ), 1 );
+
+		$this->assert_contains( 'pageSize=100', $captured['url'] );
+	}
+
+	public function test_search_expansions_and_expansion_cards_use_documented_routes(): void {
+		$urls     = array();
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static function ( string $method, string $url, array $args ) use ( &$urls ): array {
+				unset( $method, $args );
+
+				$urls[] = $url;
+
+				return array(
+					'status' => 200,
+					'body'   => array( 'data' => array() ),
+				);
+			}
+		);
+
+		$provider->search_expansions( '', array( 'game' => 'pokemon', 'page_size' => '100' ), 1 );
+		$provider->search_expansion_cards( 'sv1', '', array( 'game' => 'pokemon', 'include' => 'prices' ), 1 );
+
+		$this->assert_contains( '/pokemon/v1/expansions?', $urls[0] );
+		$this->assert_contains( 'pageSize=100', $urls[0] );
+		$this->assert_contains( '/pokemon/v1/expansions/sv1/cards?', $urls[1] );
+		$this->assert_contains( 'include=prices', $urls[1] );
+	}
+
 	public function test_rate_limit_response_maps_to_retryable_status(): void {
 		$provider = new ScryDexHttpProvider(
 			'sandbox-scrydex-key',

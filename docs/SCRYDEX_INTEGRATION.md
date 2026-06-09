@@ -15,14 +15,16 @@ execution gate that reports provider, network, usage-budget, checkpoint,
 persistence, database-write, and scheduler readiness without running the worker.
 Card, provider image URL, and current market price normalization is implemented
 against sanitized fixtures. Persistence planning now prepares deterministic
-reference-card inserts, changed-row updates, unchanged row detection, and
-current price observations from normalized page plans. Persistence SQL staging
-now converts those plans into deferred reference-card insert/update templates,
-provider price observation inserts, and checkpoint upsert plans with repository
-audit metadata. The persistence repository now has a separate explicit
-execution path that validates the active WordPress table prefix, runs accepted
-reference-card, price-observation, and checkpoint query plans in a transaction,
-and rolls back on failure. Health output still uses the staged/deferred
+reference-card inserts, changed-row updates, unchanged row detection, reference
+variant upserts, current price observations, and dimensional price points from
+normalized page plans. Persistence SQL staging now converts those plans into
+deferred reference-card insert/update templates, reference-variant upserts,
+provider price observation inserts, provider price-point inserts, and
+checkpoint upsert plans with repository audit metadata. The persistence
+repository now has a separate explicit execution path that validates the active
+WordPress table prefix, runs accepted reference-card, variant, price-observation,
+price-point, and checkpoint query plans in a transaction, and rolls back on
+failure. Health output still uses the staged/deferred
 `scrydex_persistence_repository` readiness payload, and the execution gate uses
 that payload to derive the persistence repository gate. The cards worker
 orchestration planner can accept an injected/mock provider result and rehearse
@@ -32,8 +34,9 @@ provider for bounded paginated pages in staging/tests, expose continuation
 checkpoints, and then feed each page through that same orchestration planner.
 The worker shell can call the persistence execution method only when explicitly
 requested through `execute_database_writes`; staged/deferred mode remains the
-default. The `scrydex_sync` feature flag is available only in local,
-development, and staging environments and remains unavailable in production.
+default. The `scrydex_sync` feature flag is available in production for the
+manual, bounded catalog import surface; automatic scheduled production refresh
+remains blocked until a separate release hardens unattended execution.
 Daily scheduled refresh controls now exist in WordPress settings and health
 output. They require game keys, page limits, network-request enablement,
 database-write enablement, and explicit persistence execution confirmation
@@ -57,6 +60,18 @@ normalization and persistence planning now carry provider image URLs into those
 columns so the website catalog, local sync server, offline employee app, kiosk,
 and storefront can show the actual card art from the mirrored catalog.
 
+Schema migration `0012_scrydex_catalog` adds
+`tcg_reference_sets` for ScryDex expansion/set metadata and
+`tcg_provider_price_points` for normalized provider price points by card,
+variant, condition, raw/graded state, currency, and observation time. These
+tables extend the website-owned catalog database while leaving
+`tcg_reference_cards`, `tcg_reference_variants`,
+`tcg_provider_price_observations`, and `tcg_sync_checkpoints` as the existing
+card, variant, latest-price, and resume/checkpoint surfaces used by the cards
+worker. The migration also refreshes the existing reference-card and
+price-observation table definitions so clean installs and upgraded sites both
+receive provider set IDs, set lookup indexes, and latest-price lookup indexes.
+
 The local sync server ScryDex lookup surface now models the final architecture:
 clients first query the persisted local `reference_cards` cache and receive a
 secret-free result that includes card identity, image URL, current market
@@ -72,8 +87,11 @@ The WordPress plugin exposes the catalog-safe fallback surface through
 `/wp-json/tcg-store/v1/reference/search` when connected inventory reads are
 enabled. The response includes ScryDex reference identity, card art URLs, latest
 provider price observation when present, catalog timestamps, and explicit
-secret-free metadata. It does not return ScryDex credentials or issue live
-provider requests by itself.
+secret-free metadata. If the website catalog has no local match and the
+server-side ScryDex provider is configured, the route can make a bounded live
+provider fallback, persist normalized cache rows without writing ad hoc
+checkpoint rows, and return secret-free fallback metadata. It never returns
+ScryDex credentials to clients.
 
 The LAN sync server can be pointed at that website surface with
 `PUG_WORDPRESS_URL`. When configured, missing-card local lookup calls the
@@ -81,13 +99,45 @@ WordPress reference-search route with a bounded result limit, then saves the
 returned catalog row into its local `reference_cards` cache. Local clients still
 receive only normalized card data and never receive ScryDex API keys.
 
-The sync page processor now plans normalized reference-card rows, current price
-rows, normalization errors, retryability, and next checkpoint state from a
-provider page response. The persistence planner turns those page plans into
-write payloads with stable provider price observation IDs, game context,
+The sync page processor now plans normalized reference-card rows, reference
+variants, current price rows, dimensional price-point rows, normalization
+errors, retryability, and next checkpoint state from a provider page response.
+The persistence planner turns those page plans into write payloads with stable
+provider price observation IDs, stable provider price-point IDs, game context,
 observed timestamps, and sync job IDs. The persistence query builder and
-repository boundary stage the resulting SQL templates and audit payloads, but
-they do not execute `wpdb` writes or schedule follow-up jobs yet.
+repository boundary stage the resulting SQL templates and audit payloads, and
+execute them only when the caller explicitly requests database writes.
+
+## Catalog Database And Import Endpoints
+
+WordPress registers two authenticated ScryDex catalog endpoints:
+
+- `GET /wp-json/tcg-store/v1/scrydex/catalog/status` is available to users who
+  can manage settings or edit inventory and reports secret-free catalog state.
+  The payload includes counts for reference sets, reference cards, reference
+  variants, provider price observations, provider price points, and sync
+  checkpoints; the latest ScryDex checkpoints; database-prefix validity;
+  `credential_values_redacted: true`; and `credentials_synced_to_client: false`.
+- `POST /wp-json/tcg-store/v1/scrydex/catalog/index` runs a bounded catalog
+  import batch and is limited to users who can manage settings. Supported
+  payload fields are `game` (default `pokemon`), `expansion_id`, `page_size`,
+  `max_pages`, `index_expansions`, and `execute_database_writes`. The endpoint
+  checks provider readiness and usage before importing, can index one expansion
+  page, runs bounded card pages through the existing ScryDex worker, returns
+  public usage metadata, expansion/card summaries, `counts_after`, and
+  `next_action`, and does not return raw provider bodies or credentials.
+
+ScryDex documents a maximum page size of 100. The HTTP provider, dry-run
+planner, usage planner, worker, scheduled settings, and catalog import
+controller all clamp requested ScryDex page sizes to `1..100`; the catalog
+index endpoint additionally caps `max_pages` at 25 per request.
+The worker continues across documented `nextCursor`/`hasMore` style pagination
+and `page * pageSize < totalCount` pagination.
+
+Database writes stay explicit. `execute_database_writes` must be truthy before
+the catalog index route persists expansion rows or lets the cards worker use
+the persistence execution boundary. Without it, the route is suitable for
+readiness and dry-run style staging checks.
 
 ## Credential Handling
 
@@ -96,6 +146,12 @@ never be committed to GitHub, test fixtures, screenshots, logs, or revision
 notes. Store them only in environment variables, deployment secrets, or the
 WordPress administrator ScryDex settings. Local and CI tests continue to use
 sanitized mock responses and fixture-backed transports.
+
+Production ScryDex keys must not be stored in this repository. Do not add them
+to `.env` examples, committed config, generated docs, test fixtures, screenshots,
+or copied command output. If a production key is exposed in Git, logs, or an
+artifact, rotate it before continuing and remove the exposed value from the
+artifact history wherever possible.
 
 The WordPress settings surface stores Team ID, primary key, and secondary key
 values as administrator-controlled settings. Saved values are never echoed back
@@ -238,6 +294,27 @@ Checkpoint-specific blockers are:
 - `scrydex_checkpoint_resource_type_invalid`
 - `scrydex_checkpoint_resource_key_invalid`
 - `scrydex_checkpoint_payload_hash_invalid`
+
+## Rollback Notes
+
+Before enabling `execute_database_writes`, create a staging database export so
+the catalog mirror can be reset as a unit. A status-only check does not mutate
+data and has no database rollback requirement.
+
+To roll back migration `0012_scrydex_catalog`, roll migrations back below
+version `12` or run the migration's `down()` path. The drop order is
+`tcg_provider_price_points` first, then `tcg_reference_sets`.
+
+If a catalog import has already executed, prefer restoring the staging database
+backup. A targeted cleanup must account for all rows created by the import
+scope, including `tcg_reference_sets`, `tcg_provider_price_points`,
+`tcg_reference_cards`, `tcg_reference_variants`,
+`tcg_provider_price_observations`, and ScryDex entries in
+`tcg_sync_checkpoints`.
+
+If endpoint rollback is needed without a database rollback, revert the
+`ScryDexCatalogController` registration. Existing catalog rows can remain in
+place until the database restore or migration rollback decision is made.
 
 ## Role
 

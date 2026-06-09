@@ -8,6 +8,8 @@
 namespace TCGStorePlatform\ScryDex;
 
 final class ScryDexSyncPlanner {
+	private const MAX_PAGE_SIZE = 100;
+
 	/**
 	 * @return array<string, string|int>
 	 */
@@ -18,7 +20,7 @@ final class ScryDexSyncPlanner {
 			'resource_key'  => $checkpoint->resource_key(),
 			'page'          => $checkpoint->next_page(),
 			'cursor'        => $checkpoint->cursor(),
-			'page_size'     => max( 1, min( 250, $page_size ) ),
+			'page_size'     => max( 1, min( self::MAX_PAGE_SIZE, $page_size ) ),
 		);
 	}
 

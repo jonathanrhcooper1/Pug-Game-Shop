@@ -45,7 +45,8 @@ final class ScryDexCardsSyncWorkerPlannerTest extends TestCase {
 		$this->assert_same( 2, $plan['persistence_plan']['reference_insert_count'] );
 		$this->assert_same( 2, $plan['persistence_plan']['reference_variant_upsert_count'] );
 		$this->assert_same( 2, $plan['persistence_plan']['price_observation_count'] );
-		$this->assert_same( 7, $plan['persistence_query_plan']['total_query_count'] );
+		$this->assert_same( 2, $plan['persistence_plan']['price_point_count'] );
+		$this->assert_same( 9, $plan['persistence_query_plan']['total_query_count'] );
 		$this->assert_same( 'deferred', $plan['persistence_repository_result']['status'] );
 		$this->assert_true( $plan['network_requests_deferred'] );
 		$this->assert_true( $plan['provider_fetch_deferred'] );
@@ -54,6 +55,7 @@ final class ScryDexCardsSyncWorkerPlannerTest extends TestCase {
 		$this->assert_true( $plan['reference_card_writes_deferred'] );
 		$this->assert_true( $plan['reference_variant_writes_deferred'] );
 		$this->assert_true( $plan['provider_price_observation_writes_deferred'] );
+		$this->assert_true( $plan['persistence_repository_result']['provider_price_point_writes_deferred'] );
 		$this->assert_true( $plan['checkpoint_upsert_execution_deferred'] );
 		$this->assert_same( array(), $plan['block_reasons'] );
 		$this->assert_not_contains( 'staging-primary-key', false === $json ? '' : $json );
@@ -131,12 +133,13 @@ final class ScryDexCardsSyncWorkerPlannerTest extends TestCase {
 		$this->assert_false( $plan['reference_card_writes_deferred'] );
 		$this->assert_false( $plan['reference_variant_writes_deferred'] );
 		$this->assert_false( $plan['provider_price_observation_writes_deferred'] );
+		$this->assert_false( $plan['persistence_repository_result']['provider_price_point_writes_deferred'] );
 		$this->assert_false( $plan['checkpoint_upsert_execution_deferred'] );
 		$this->assert_true( $plan['execute_database_writes_requested'] );
 		$this->assert_same( 'executed', $plan['persistence_repository_result']['status'] );
 		$this->assert_true( $plan['persistence_repository_result']['transaction_committed'] );
-		$this->assert_same( 9, $database->query_count );
-		$this->assert_same( 7, $database->prepare_count );
+		$this->assert_same( 11, $database->query_count );
+		$this->assert_same( 9, $database->prepare_count );
 	}
 
 	private function planner(

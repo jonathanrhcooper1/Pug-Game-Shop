@@ -3,6 +3,90 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - ScryDex Catalog Database Import Surface
+
+### What Changed
+
+- Added the `0012` ScryDex catalog migration for expansion metadata and
+  provider price points through `tcg_reference_sets` and
+  `tcg_provider_price_points`.
+- Registered authenticated admin/staff catalog endpoints:
+  `GET /wp-json/tcg-store/v1/scrydex/catalog/status` and
+  `POST /wp-json/tcg-store/v1/scrydex/catalog/index`.
+- The status endpoint reports catalog table counts, latest ScryDex
+  checkpoints, database-prefix readiness, and explicit credential redaction
+  flags without returning provider keys.
+- The index endpoint runs bounded ScryDex catalog batches for cards and,
+  optionally, expansions. It clamps ScryDex `page_size` to the documented
+  maximum of 100, caps `max_pages` at 25, checks usage before importing, and
+  keeps database writes behind the explicit `execute_database_writes` flag.
+- Card imports now persist provider set IDs, reference-card set lookup indexes,
+  provider price-point rows, and latest-price lookup indexes; worker
+  continuation also handles documented `page`, `pageSize`, and `totalCount`
+  pagination.
+- Cache-miss `/reference/search` fallback can persist normalized ScryDex rows
+  without writing synthetic checkpoint rows, and the catalog import write
+  endpoint now requires manager/settings-level permission.
+- Documentation now calls out that production ScryDex keys must not be stored
+  in the repository; use environment variables, deployment secrets, or
+  WordPress administrator settings only.
+
+### Why
+
+The website needs a server-owned ScryDex catalog mirror with observable import
+state before the local app and LAN server can rely on website catalog data at
+store scale. The catalog import endpoints give staging operators a bounded,
+credential-redacted way to build and inspect that mirror without exposing
+ScryDex keys to clients.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/ScryDexCatalogSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0012ScryDexCatalog.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogSchemaTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- `0012_scrydex_catalog` creates `tcg_reference_sets` and
+  `tcg_provider_price_points` and refreshes existing reference-card and
+  provider-price-observation table definitions through dbDelta.
+
+### Tests Added
+
+- ScryDex catalog schema coverage for the reference-set table, provider
+  price-point table, and rollback drop order.
+- Existing ScryDex normalizer, worker, planner, query-builder, and repository
+  tests now cover provider price-point planning/execution and checkpoint-safe
+  fallback behavior.
+
+### Verification
+
+- `php tests\run.php` from `apps/wordpress-plugin`: 938 tests, 0 failures.
+- `npm.cmd run verify:no-production-secrets`: passed.
+
+### Rollback Notes
+
+- Run a staging database export before enabling `execute_database_writes`.
+- To roll back the catalog schema, roll migrations back below version `12` or
+  run the `Version0012ScryDexCatalog::down()` path, which drops
+  `tcg_provider_price_points` before `tcg_reference_sets`.
+- If an import has already executed, restore the staging database backup for a
+  clean reset. If a targeted cleanup is approved instead, remove imported
+  ScryDex rows from `tcg_reference_sets`, `tcg_provider_price_points`, and any
+  card, variant, price-observation, or checkpoint rows written by the same
+  import scope.
+- Revert the catalog controller registration to remove the status/import
+  endpoints. Calling the status endpoint alone has no data rollback
+  requirement.
+- If a ScryDex key is ever accidentally committed, printed, or copied into a
+  log, rotate it immediately; production keys must remain outside Git.
+
 ## 2026-06-08 - LAN Inventory Search Hydration Preview
 
 ### What Changed

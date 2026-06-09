@@ -9,6 +9,7 @@ namespace TCGStorePlatform\ScryDex;
 
 final class ScryDexCardsSyncWorker {
 	private const MAX_PAGES_LIMIT = 25;
+	private const MAX_PAGE_SIZE   = 100;
 
 	public function __construct(
 		private string $table_prefix = '',
@@ -61,16 +62,29 @@ final class ScryDexCardsSyncWorker {
 			}
 
 			$provider_request = $this->provider_request( $gate['request'] ?? array() );
-			$provider         = $provider ?? $this->provider_factory->provider();
-			$provider_result  = $provider->search_cards(
-				'',
-				array(
-					'game'      => $provider_request['resource_key'],
-					'page_size' => (string) $provider_request['page_size'],
-				),
-				$provider_request['page'],
-				$provider_request['cursor']
-			);
+			$provider        = $provider ?? $this->provider_factory->provider();
+			$provider_result = '' === $provider_request['expansion_id']
+				? $provider->search_cards(
+					'',
+					array(
+						'game'      => $provider_request['game'],
+						'page_size' => (string) $provider_request['page_size'],
+						'include'   => 'prices',
+					),
+					$provider_request['page'],
+					$provider_request['cursor']
+				)
+				: $provider->search_expansion_cards(
+					$provider_request['expansion_id'],
+					'',
+					array(
+						'game'      => $provider_request['game'],
+						'page_size' => (string) $provider_request['page_size'],
+						'include'   => 'prices',
+					),
+					$provider_request['page'],
+					$provider_request['cursor']
+				);
 
 			++$provider_request_count;
 
@@ -104,8 +118,9 @@ final class ScryDexCardsSyncWorker {
 			$current_request = array_merge(
 				$current_request,
 				array(
-					'game'       => $provider_request['resource_key'],
-					'page_size'  => $provider_request['page_size'],
+					'game'         => $provider_request['game'],
+					'page_size'    => $provider_request['page_size'],
+					'expansion_id' => $provider_request['expansion_id'],
 					'checkpoint' => $next_checkpoint_row,
 				)
 			);
@@ -181,15 +196,21 @@ final class ScryDexCardsSyncWorker {
 
 	/**
 	 * @param array<string, mixed> $request Planned request.
-	 * @return array{resource_key:string,page:int,page_size:int,cursor:string}
+	 * @return array{resource_key:string,game:string,expansion_id:string,page:int,page_size:int,cursor:string}
 	 */
 	private function provider_request( mixed $request ): array {
 		$request = is_array( $request ) ? $request : array();
+		$game    = $this->resource_key( $request['game'] ?? ( $request['resource_key'] ?? 'pokemon' ) );
+		if ( '' === $game ) {
+			$game = 'pokemon';
+		}
 
 		return array(
-			'resource_key' => $this->resource_key( $request['resource_key'] ?? 'pokemon' ),
+			'resource_key'  => $this->resource_key( $request['resource_key'] ?? $game ),
+			'game'          => $game,
+			'expansion_id'  => $this->resource_key( $request['expansion_id'] ?? '' ),
 			'page'         => max( 1, (int) ( $request['page'] ?? 1 ) ),
-			'page_size'    => max( 1, min( 250, (int) ( $request['page_size'] ?? 100 ) ) ),
+			'page_size'    => max( 1, min( self::MAX_PAGE_SIZE, (int) ( $request['page_size'] ?? 100 ) ) ),
 			'cursor'       => trim( (string) ( $request['cursor'] ?? '' ) ),
 		);
 	}
@@ -205,7 +226,7 @@ final class ScryDexCardsSyncWorker {
 	}
 
 	/**
-	 * @param array{resource_key:string,page:int,page_size:int,cursor:string} $provider_request Provider request.
+	 * @param array{resource_key:string,game:string,expansion_id:string,page:int,page_size:int,cursor:string} $provider_request Provider request.
 	 * @param array<string, mixed>                                           $page_plan Orchestration page plan.
 	 * @return array<string, mixed>
 	 */
@@ -229,7 +250,7 @@ final class ScryDexCardsSyncWorker {
 
 	/**
 	 * @param array<string, mixed>                       $body Provider response body.
-	 * @param array{resource_key:string,page:int,page_size:int,cursor:string} $provider_request Provider request.
+	 * @param array{resource_key:string,game:string,expansion_id:string,page:int,page_size:int,cursor:string} $provider_request Provider request.
 	 * @param array<string, mixed>|null                  $next_checkpoint_row Next checkpoint row.
 	 */
 	private function should_continue( array $body, array $provider_request, ?array $next_checkpoint_row ): bool {
@@ -272,7 +293,38 @@ final class ScryDexCardsSyncWorker {
 			)
 		);
 
-		return null !== $total_pages && $provider_request['page'] < $total_pages;
+		if ( null !== $total_pages && $provider_request['page'] < $total_pages ) {
+			return true;
+		}
+
+		$total_count = $this->positive_int(
+			$this->first_scalar_from_paths(
+				$body,
+				array(
+					array( 'totalCount' ),
+					array( 'total_count' ),
+					array( 'pagination', 'totalCount' ),
+					array( 'pagination', 'total_count' ),
+					array( 'meta', 'totalCount' ),
+					array( 'meta', 'total_count' ),
+				)
+			)
+		);
+		$page_size   = $this->positive_int(
+			$this->first_scalar_from_paths(
+				$body,
+				array(
+					array( 'pageSize' ),
+					array( 'page_size' ),
+					array( 'pagination', 'pageSize' ),
+					array( 'pagination', 'page_size' ),
+					array( 'meta', 'pageSize' ),
+					array( 'meta', 'page_size' ),
+				)
+			)
+		) ?? $provider_request['page_size'];
+
+		return null !== $total_count && $provider_request['page'] * $page_size < $total_count;
 	}
 
 	private function max_pages( mixed $value ): int {
@@ -284,7 +336,7 @@ final class ScryDexCardsSyncWorker {
 		$value = preg_replace( '/[^a-z0-9_-]+/', '-', $value ) ?? $value;
 		$value = trim( $value, '-' );
 
-		return '' === $value ? 'pokemon' : $value;
+		return substr( $value, 0, 64 );
 	}
 
 	private function truthy( mixed $value ): bool {

@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Api\V1;
 
 use TCGStorePlatform\Settings\InventoryRouteRuntimeSettings;
+use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 
 final class InventoryRouteDependencyFactory {
 	private const HANDLER_CALLBACKS = array(
@@ -49,10 +50,25 @@ final class InventoryRouteDependencyFactory {
 		?callable $capability_checker = null,
 		?callable $register_route_callback = null
 	): self {
-		return self::from_runtime_settings(
-			InventoryRouteRuntimeSettings::from_settings( $settings ),
+		$configurator    = new InventoryRouteRuntimeConfigurator();
+		$runtime_settings = InventoryRouteRuntimeSettings::sanitize(
+			InventoryRouteRuntimeSettings::from_settings( $settings )
+		);
+
+		return new self(
+			null,
+			array(),
 			$capability_checker,
-			$register_route_callback
+			$register_route_callback,
+			$configurator->public_read_routes_enabled( $runtime_settings ),
+			new InventorySearchRouteHandlerFactory(
+				null,
+				$configurator->route_connected_reads_enabled( $runtime_settings ),
+				ScryDexProviderFactory::from_settings( $settings )
+			),
+			new InventoryIntakeRouteHandlerFactory( null, $configurator->route_connected_writes_enabled( $runtime_settings ) ),
+			$configurator->route_contracts( $runtime_settings ),
+			InventoryPublicReadRateLimitPolicy::for_wordpress_transients()
 		);
 	}
 
@@ -75,7 +91,10 @@ final class InventoryRouteDependencyFactory {
 			$capability_checker,
 			$register_route_callback,
 			$configurator->public_read_routes_enabled( $settings ),
-			new InventorySearchRouteHandlerFactory( null, $configurator->route_connected_reads_enabled( $settings ) ),
+			new InventorySearchRouteHandlerFactory(
+				null,
+				$configurator->route_connected_reads_enabled( $settings )
+			),
 			new InventoryIntakeRouteHandlerFactory( null, $configurator->route_connected_writes_enabled( $settings ) ),
 			$configurator->route_contracts( $settings ),
 			InventoryPublicReadRateLimitPolicy::for_wordpress_transients()

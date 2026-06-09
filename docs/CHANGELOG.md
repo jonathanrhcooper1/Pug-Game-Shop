@@ -25,6 +25,16 @@ All notable changes follow Semantic Versioning.
 - ScryDex reference-card persistence now uses provider-key idempotent upserts,
   allowing repeated paginated staging imports to refresh cached card metadata
   without duplicate-key failures.
+- WordPress now includes the ScryDex catalog database/import surface:
+  migration `0012` adds expansion and provider price-point tables, admin
+  `/scrydex/catalog/status` and `/scrydex/catalog/index` endpoints report
+  catalog counts/checkpoints and run bounded imports, ScryDex page sizes are
+  capped at the documented maximum of 100, and credentials stay redacted with
+  no production keys committed to the repository.
+- ScryDex card imports now persist provider set IDs, dimensional provider
+  price points, latest-price lookup indexes, expansion checkpoint keys, and
+  documented `totalCount` pagination, while cache-miss `/reference/search`
+  persistence skips ad hoc checkpoint writes.
 - WordPress now exposes a staff-only event check-in route that records
   check-ins against existing event registrations, updates registration check-in
   state, and treats duplicate local check-ins idempotently.

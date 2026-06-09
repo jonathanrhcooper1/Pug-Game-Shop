@@ -59,7 +59,7 @@ final class ScryDexSyncDryRunPlannerTest extends TestCase {
 		$this->assert_true( $plan['provider_context_ready'] );
 		$this->assert_true( $plan['credential_values_redacted'] );
 		$this->assert_same( 'lorcana', $plan['request']['resource_key'] );
-		$this->assert_same( 250, $plan['request']['page_size'] );
+		$this->assert_same( 100, $plan['request']['page_size'] );
 		$this->assert_same( array(), $plan['configuration_issues'] );
 		$this->assert_not_contains( 'staging-team-id', false === $json ? '' : $json );
 		$this->assert_not_contains( 'staging-primary-key', false === $json ? '' : $json );

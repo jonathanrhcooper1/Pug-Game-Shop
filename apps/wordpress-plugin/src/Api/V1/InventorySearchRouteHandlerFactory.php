@@ -10,6 +10,8 @@ namespace TCGStorePlatform\Api\V1;
 use TCGStorePlatform\Inventory\InventorySearchQueryPlanner;
 use TCGStorePlatform\Inventory\InventorySearchRepository;
 use TCGStorePlatform\Inventory\InventorySearchRequestParser;
+use TCGStorePlatform\ScryDex\ScryDexPersistenceRepository;
+use TCGStorePlatform\ScryDex\ScryDexProviderFactory;
 use Throwable;
 
 final class InventorySearchRouteHandlerFactory {
@@ -22,7 +24,8 @@ final class InventorySearchRouteHandlerFactory {
 
 	public function __construct(
 		?callable $database_provider = null,
-		private bool $route_connected_reads_enabled = false
+		private bool $route_connected_reads_enabled = false,
+		private ?ScryDexProviderFactory $scrydex_provider_factory = null
 	) {
 		$this->database_provider = $database_provider;
 	}
@@ -55,9 +58,19 @@ final class InventorySearchRouteHandlerFactory {
 			return null;
 		}
 
+		$scrydex_provider = null;
+		$scrydex_repository = null;
+		$scrydex_summary = $this->scrydex_provider_factory?->readiness_summary() ?? array();
+		if ( true === ( $scrydex_summary['configured'] ?? false ) ) {
+			$scrydex_provider = $this->scrydex_provider_factory?->provider();
+			$scrydex_repository = new ScryDexPersistenceRepository( $database );
+		}
+
 		return new ReferenceCardSearchRouteHandler(
 			$database,
-			(string) $database->prefix
+			(string) $database->prefix,
+			$scrydex_provider,
+			$scrydex_repository
 		);
 	}
 
@@ -111,6 +124,8 @@ final class InventorySearchRouteHandlerFactory {
 			'query_planner_ready'                 => method_exists( InventorySearchQueryPlanner::class, 'plan' ),
 			'repository_adapter_ready'            => method_exists( InventorySearchRepository::class, 'fetch' ),
 			'reference_search_handler_ready'      => $handler_ready,
+			'reference_search_live_fallback_ready' => $handler_ready
+				&& true === ( ( $this->scrydex_provider_factory?->readiness_summary() ?? array() )['configured'] ?? false ),
 			'route_connected_reads_enabled'       => $this->route_connected_reads_enabled,
 			'database_configured'                 => $database_ready,
 			'table_prefix_ready'                  => $prefix_ready,

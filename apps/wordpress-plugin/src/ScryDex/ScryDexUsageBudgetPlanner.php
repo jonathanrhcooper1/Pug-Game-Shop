@@ -11,6 +11,8 @@ use TCGStorePlatform\Settings\ScryDexUsageBudgetSettings;
 use TCGStorePlatform\Settings\Settings;
 
 final class ScryDexUsageBudgetPlanner {
+	private const MAX_PAGE_SIZE = 100;
+
 	/**
 	 * @param array<string, mixed>|null $settings Full platform settings or budget settings.
 	 */
@@ -90,8 +92,14 @@ final class ScryDexUsageBudgetPlanner {
 	 */
 	private function normalize_snapshot( array $snapshot ): array {
 		return array(
-			'used_today'            => max( 0, (int) ( $snapshot['used_today'] ?? 0 ) ),
-			'remaining_credits'     => max( 0, (int) ( $snapshot['remaining_credits'] ?? 0 ) ),
+			'used_today'            => max(
+				0,
+				(int) ( $snapshot['used_today'] ?? ( $snapshot['used_credits'] ?? ( $snapshot['usedCredits'] ?? 0 ) ) )
+			),
+			'remaining_credits'     => max(
+				0,
+				(int) ( $snapshot['remaining_credits'] ?? ( $snapshot['remainingCredits'] ?? 0 ) )
+			),
 			'snapshot_recorded_at'  => $this->scalar_string( $snapshot['snapshot_recorded_at'] ?? '' ),
 			'usage_window_start_at' => $this->scalar_string( $snapshot['usage_window_start_at'] ?? '' ),
 		);
@@ -107,7 +115,7 @@ final class ScryDexUsageBudgetPlanner {
 			'resource_type' => $this->scalar_string( $request['resource_type'] ?? 'cards' ),
 			'resource_key'  => $this->scalar_string( $request['resource_key'] ?? 'pokemon' ),
 			'page'          => max( 1, (int) ( $request['page'] ?? 1 ) ),
-			'page_size'     => max( 1, min( 250, (int) ( $request['page_size'] ?? 100 ) ) ),
+			'page_size'     => max( 1, min( self::MAX_PAGE_SIZE, (int) ( $request['page_size'] ?? 100 ) ) ),
 		);
 	}
 
