@@ -25,6 +25,7 @@ use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Logging\AuditLogger;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
+use TCGStorePlatform\PublicSite\InventorySearchShortcode;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
@@ -84,6 +85,7 @@ final class Plugin {
 		( new CustomerController() )->register();
 		( new CustomerCreditController() )->register();
 		( new CustomerAccountPortalController() )->register();
+		( new InventorySearchShortcode() )->register();
 		( new EventsController() )->register();
 		( new KioskOrderController() )->register();
 		( new ScryDexCatalogController() )->register();

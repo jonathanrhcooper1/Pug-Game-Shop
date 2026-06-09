@@ -1,0 +1,150 @@
+.tcg-events,
+.tcg-event-detail {
+  --pug-event-ink: var(--tcg-text, #101820);
+  --pug-event-blue: var(--tcg-primary, #0f5f8f);
+  --pug-event-gold: var(--tcg-accent, #ffd044);
+  --pug-event-line: rgba(16, 24, 32, 0.12);
+  color: var(--pug-event-ink);
+}
+
+.tcg-events {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.tcg-event-card,
+.tcg-event-detail {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+  box-shadow: 0 12px 34px rgba(16, 24, 32, 0.08);
+}
+
+.tcg-event-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.tcg-event-detail {
+  padding: 18px;
+}
+
+.tcg-event-card__image {
+  width: calc(100% + 28px);
+  height: 170px;
+  margin: -14px -14px 2px;
+  object-fit: cover;
+  background: #f2f6f7;
+}
+
+.tcg-event-card h3,
+.tcg-event-detail h2,
+.tcg-event-detail h3,
+.tcg-event-card p,
+.tcg-event-detail p {
+  margin: 0;
+}
+
+.tcg-event-card h3,
+.tcg-event-detail h2 {
+  line-height: 1.1;
+}
+
+.tcg-event-card p,
+.tcg-event-detail p {
+  color: rgba(16, 24, 32, 0.68);
+}
+
+.tcg-event-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tcg-event-badges li {
+  padding: 5px 8px;
+  color: #102015;
+  background: rgba(255, 208, 68, 0.34);
+  border: 1px solid rgba(255, 208, 68, 0.58);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.tcg-event-registration {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #f7fafb;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+}
+
+.tcg-event-registration--closed {
+  color: rgba(16, 24, 32, 0.66);
+}
+
+.tcg-event-registration__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tcg-event-registration label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: rgba(16, 24, 32, 0.7);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tcg-event-registration input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--pug-event-ink);
+  background: #ffffff;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+}
+
+.tcg-event-registration button {
+  min-height: 42px;
+  color: #111111;
+  background: var(--pug-event-gold);
+  border: 1px solid rgba(16, 24, 32, 0.14);
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.tcg-event-registration__notice {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.tcg-event-registration__notice--success {
+  color: #124223;
+  background: rgba(121, 215, 143, 0.2);
+  border: 1px solid rgba(18, 66, 35, 0.12);
+}
+
+.tcg-event-registration__notice--error {
+  color: #7b2017;
+  background: rgba(216, 79, 63, 0.12);
+  border: 1px solid rgba(216, 79, 63, 0.24);
+}
+
+@media (max-width: 640px) {
+  .tcg-events,
+  .tcg-event-registration__fields {
+    grid-template-columns: 1fr;
+  }
+}

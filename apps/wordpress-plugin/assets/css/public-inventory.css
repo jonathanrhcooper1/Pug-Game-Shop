@@ -1,0 +1,228 @@
+.tcg-public-inventory {
+  --pug-ink: var(--tcg-brand-ink, #101820);
+  --pug-panel: #ffffff;
+  --pug-line: rgba(16, 24, 32, 0.12);
+  --pug-blue: var(--tcg-brand-primary, #0f5f8f);
+  --pug-teal: var(--tcg-brand-secondary, #18a8b5);
+  --pug-gold: var(--tcg-brand-accent, #ffd044);
+  --pug-red: #d84f3f;
+  color: var(--pug-ink);
+  font-family: inherit;
+}
+
+.tcg-public-inventory__hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  color: #ffffff;
+  background:
+    linear-gradient(135deg, rgba(16, 24, 32, 0.96), rgba(14, 67, 95, 0.92)),
+    linear-gradient(90deg, var(--pug-blue), var(--pug-teal));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__hero h2,
+.tcg-public-inventory__hero p {
+  margin: 0;
+}
+
+.tcg-public-inventory__hero h2 {
+  font-size: clamp(28px, 3vw, 44px);
+  line-height: 1;
+}
+
+.tcg-public-inventory__hero p {
+  max-width: 760px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.tcg-public-inventory__eyebrow {
+  color: var(--pug-gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__logo,
+.tcg-public-inventory__mark {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__mark {
+  display: grid;
+  place-items: center;
+  color: var(--pug-gold);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.tcg-public-inventory__search {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(140px, 180px) minmax(140px, 180px) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 16px 0;
+  padding: 12px;
+  background: #f7fafb;
+  border: 1px solid var(--pug-line);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__search label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: rgba(16, 24, 32, 0.7);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__search input,
+.tcg-public-inventory__search select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--pug-ink);
+  background: #ffffff;
+  border: 1px solid var(--pug-line);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__search button,
+.tcg-public-inventory__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  color: #111111;
+  background: var(--pug-gold);
+  border: 1px solid rgba(16, 24, 32, 0.16);
+  border-radius: 8px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tcg-public-inventory__toolbar {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 10px;
+  color: rgba(16, 24, 32, 0.68);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tcg-public-inventory__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.tcg-public-inventory__card {
+  display: grid;
+  grid-template-rows: 260px minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  background: var(--pug-panel);
+  border: 1px solid var(--pug-line);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(16, 24, 32, 0.08);
+}
+
+.tcg-public-inventory__card img,
+.tcg-public-inventory__image-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background:
+    linear-gradient(135deg, rgba(15, 95, 143, 0.1), rgba(255, 208, 68, 0.14)),
+    #f3f7f8;
+}
+
+.tcg-public-inventory__image-placeholder::after {
+  content: "Image pending";
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: rgba(16, 24, 32, 0.58);
+  font-weight: 800;
+}
+
+.tcg-public-inventory__card-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.tcg-public-inventory__card h3,
+.tcg-public-inventory__card p {
+  margin: 0;
+}
+
+.tcg-public-inventory__card h3 {
+  font-size: 18px;
+  line-height: 1.16;
+}
+
+.tcg-public-inventory__card p {
+  color: rgba(16, 24, 32, 0.66);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tcg-public-inventory__card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tcg-public-inventory__card-meta strong {
+  color: var(--pug-red);
+  font-size: 18px;
+}
+
+.tcg-public-inventory__card-meta span {
+  padding: 5px 8px;
+  color: #124223;
+  background: rgba(121, 215, 143, 0.2);
+  border: 1px solid rgba(18, 66, 35, 0.12);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.tcg-public-inventory__notice,
+.tcg-public-inventory__empty {
+  padding: 14px;
+  color: var(--pug-ink);
+  background: #fff8d7;
+  border: 1px solid rgba(255, 208, 68, 0.5);
+  border-radius: 8px;
+}
+
+@media (max-width: 760px) {
+  .tcg-public-inventory__hero,
+  .tcg-public-inventory__search {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-public-inventory__logo,
+  .tcg-public-inventory__mark {
+    width: 72px;
+    height: 72px;
+  }
+
+  .tcg-public-inventory__card {
+    grid-template-rows: 230px minmax(0, 1fr);
+  }
+}

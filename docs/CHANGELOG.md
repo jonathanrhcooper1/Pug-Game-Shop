@@ -13,6 +13,9 @@ All notable changes follow Semantic Versioning.
 - The offline app now records LAN client heartbeats while unlocked, shows
   employee/kiosk/manager client presence on the Status screen, and aligns the
   Tauri Windows package metadata with the current app version.
+- Added branded customer-facing WordPress shortcodes for public inventory
+  search and event registration, including image/condition/price/stock display,
+  safe grouping of serialized inventory rows, and dedicated public CSS.
 - WordPress reference-card search now ranks exact, prefix, and contains matches
   on card name ahead of identifier and set-name-only matches, so intake lookups
   like `Charizard` surface actual Charizard cards before set-only results.

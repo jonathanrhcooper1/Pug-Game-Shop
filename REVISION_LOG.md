@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Public Inventory Search and Event Registration
+
+### What Changed
+
+- Added `[tcg_inventory_search]`, a branded public inventory shortcode that
+  renders customer-facing search filters and card results from the inventory
+  repository.
+- Grouped serialized inventory rows into card listings with card image,
+  condition, set/number, price, quantity in stock, and WooCommerce product link
+  when a product mapping exists.
+- Added public inventory CSS for The Pug-styled search and card grid.
+- Extended event shortcodes to enqueue public event CSS and render inline event
+  registration forms for open, almost-full, and waitlist events.
+- Event registration form posts into the existing event registration service,
+  preserving current duplicate/idempotency/capacity behavior.
+
+### Why
+
+The backend inventory, WooCommerce projection, and event registration logic
+existed, but the customer-facing website still lacked a usable inventory search
+surface and visible registration forms. This adds the first functional public
+website layer without depending on the inventory REST route being enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/Events/EventShortcodes.php`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/assets/css/public-events.css`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/EventShortcodesTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the public inventory shortcode and inline
+  event registration forms. Existing inventory, WooCommerce, and event database
+  tables are unchanged, so no database rollback is required.
+
 ## 2026-06-09 - Local App LAN Client Presence
 
 ### What Changed
