@@ -9,6 +9,8 @@ All notable changes follow Semantic Versioning.
 - Public inventory cards now use a stronger The Pug display-case treatment
   with framed card art, detail chips for condition/variant/set/number, clearer
   stock badges, and two-decimal staff inventory price display in admin search.
+- Prepared the production WordPress package as version `0.179.0` so public
+  inventory CSS and price-display fixes bust deployed asset caches.
 - WordPress inventory rows can now persist Square catalog item/variation
   mappings after provider sync, and the LAN/offline cache keeps those mapping
   fields so staff can see POS mapping status while Square payment capture

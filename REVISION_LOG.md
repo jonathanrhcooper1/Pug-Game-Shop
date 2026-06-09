@@ -14,6 +14,8 @@ review, staging approval, deployment approval, and rollback planning.
   framing, clearer price/stock hierarchy, and responsive mobile behavior.
 - Added staff admin inventory-search money formatting so raw four-decimal
   database prices display as two-decimal money values.
+- Bumped the WordPress plugin/package version to `0.179.0` for deployed asset
+  cache busting.
 
 ### Why
 
@@ -24,11 +26,15 @@ database, exports, provider price history, and audit records.
 ### Files Affected
 
 - `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/tcg-store-platform.php`
 - `apps/wordpress-plugin/src/Admin/AdminMenu.php`
 - `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/Version.php`
 - `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
 - `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
 - `docs/CHANGELOG.md`
+- `package-lock.json`
+- `package.json`
 - `REVISION_LOG.md`
 
 ### Migrations Added
