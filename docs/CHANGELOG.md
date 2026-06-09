@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Offline inventory details now keep selected inventory-row art separate from
+  the ScryDex intake draft, show version and online/kiosk/POS visibility in the
+  detail panel, and keep selected ScryDex card art uncropped.
 - Public inventory search now renders with saved website branding settings
   across ready and blocked states, aligns the stylesheet with the active
   `--tcg-*` brand variables, and gives card art a roomier display treatment.

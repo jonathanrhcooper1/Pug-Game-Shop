@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline Inventory Detail and Intake Preview Polish
+
+### What Changed
+
+- Added online, kiosk, and POS visibility fields to the offline inventory item
+  model and populated them from LAN sync inventory rows.
+- Updated the selected inventory detail panel to show card version and
+  online/kiosk/POS visibility.
+- Kept the selected inventory image separate from the selected ScryDex catalog
+  intake draft, preventing a catalog lookup image from appearing on an
+  unrelated inventory row.
+- Added a clearly labeled catalog intake draft callout when staff has selected
+  a ScryDex card for intake.
+- Changed selected ScryDex preview art to use contained card art instead of
+  cropped cover images, and allowed long detail values to wrap cleanly.
+
+### Why
+
+Staff need to see exactly which inventory row is selected while they are also
+preparing a separate ScryDex-based intake draft. The detail panel now shows the
+inventory row's own image, version, visibility, and sync context without
+blending it with the catalog lookup state.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline UI shell contract coverage for the selected inventory image,
+  version/visibility summaries, and catalog intake draft callout.
+
+### Verification
+
+- `npm.cmd run test:offline-app`
+- `npm.cmd run build`
+- `npm.cmd run local-sync:test`
+- Playwright headless preview at `http://127.0.0.1:1420/`, including login,
+  Inventory navigation, selected detail text checks, screenshot capture, and no
+  console/page errors.
+
+### Rollback Notes
+
+- Revert the offline app model, UI, styles, and contract test. Existing intake
+  still works, but the selected inventory panel may again mix catalog lookup art
+  with an unrelated inventory row and will no longer display visibility state.
+
 ## 2026-06-09 - Public Inventory Brand Settings Polish
 
 ### What Changed

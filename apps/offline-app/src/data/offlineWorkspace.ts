@@ -49,6 +49,9 @@ export type InventoryItem = {
   status: InventoryStatus
   imageUrl?: string
   backImageUrl?: string
+  onlineVisibility?: "hidden" | "visible" | "staff_only"
+  kioskVisibility?: "hidden" | "visible" | "staff_only"
+  posVisibility?: "hidden" | "visible" | "staff_only"
   squareCatalogItemId?: string
   squareCatalogVariationId?: string
   externalSyncState?: "pending" | "synced" | "square_synced" | "failed" | "conflict"

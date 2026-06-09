@@ -871,6 +871,9 @@ function inventoryItemFromLocalSync(
     status: item.status,
     imageUrl: item.image_url,
     backImageUrl: item.back_image_url,
+    onlineVisibility: item.online_visibility,
+    kioskVisibility: item.kiosk_visibility,
+    posVisibility: item.pos_visibility,
     squareCatalogItemId: item.square_catalog_item_id,
     squareCatalogVariationId: item.square_catalog_variation_id,
     externalSyncState: item.external_sync_state,
@@ -923,6 +926,34 @@ function cardImageForSelectedVariant(
   variant: LocalSyncScryDexVariant | null,
 ) {
   return variant?.front_image_url || card?.image_url || ""
+}
+
+function inventoryVersionLabel(item: InventoryItem) {
+  return [
+    item.variant,
+    item.finish,
+    item.language,
+  ]
+    .filter(Boolean)
+    .join(" / ") || "Default version"
+}
+
+function inventoryVisibilityLabel(value?: InventoryVisibility) {
+  if (value === "staff_only") {
+    return "Staff only"
+  }
+
+  if (value === "hidden") {
+    return "Hidden"
+  }
+
+  return "Visible"
+}
+
+function inventoryVisibilitySummary(item: InventoryItem) {
+  return `Online ${inventoryVisibilityLabel(item.onlineVisibility)}, kiosk ${inventoryVisibilityLabel(
+    item.kioskVisibility,
+  )}, POS ${inventoryVisibilityLabel(item.posVisibility)}`
 }
 
 function lanSyncPushMessage(result: LocalSyncPushResult | null) {
@@ -1296,7 +1327,9 @@ export function App() {
     ? formatScryDexVariant(selectedScryDexVariant) || "Selected version"
     : "Default version"
   const selectedScryDexImageUrl = cardImageForSelectedVariant(selectedScryDexCard, selectedScryDexVariant)
-  const selectedPreviewImageUrl = selectedScryDexImageUrl || selectedItem.imageUrl || ""
+  const selectedInventoryImageUrl = selectedItem.imageUrl || ""
+  const selectedInventoryVersionLabel = inventoryVersionLabel(selectedItem)
+  const selectedInventoryVisibilitySummary = inventoryVisibilitySummary(selectedItem)
   const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
   const customerCredit =
     findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
@@ -5816,10 +5849,10 @@ export function App() {
                     <small>{selectedItem.condition}</small>
                   </div>
                   <div className="card-art">
-                    {selectedPreviewImageUrl ? (
+                    {selectedInventoryImageUrl ? (
                       <img
-                        alt={`${selectedScryDexCard?.card_name ?? selectedItem.cardName} card art`}
-                        src={selectedPreviewImageUrl}
+                        alt={`${selectedItem.cardName} inventory card art`}
+                        src={selectedInventoryImageUrl}
                         loading="lazy"
                       />
                     ) : (
@@ -5841,6 +5874,15 @@ export function App() {
                 </span>
                 <h2>{selectedItem.cardName}</h2>
                 <p>{selectedItem.setName}</p>
+                {selectedScryDexCard ? (
+                  <div className="detail-catalog-context" aria-label="Separate selected catalog intake draft">
+                    <span>Catalog intake draft</span>
+                    <strong>{selectedScryDexCard.card_name}</strong>
+                    <small>
+                      {selectedScryDexCard.set_name} {selectedScryDexCard.printed_number} / {selectedScryDexVariantLabel}
+                    </small>
+                  </div>
+                ) : null}
               </div>
               <dl className="detail-list">
                 <div>
@@ -5864,6 +5906,14 @@ export function App() {
                 <div>
                   <dt>Location</dt>
                   <dd>{selectedItem.location}</dd>
+                </div>
+                <div>
+                  <dt>Version</dt>
+                  <dd>{selectedInventoryVersionLabel}</dd>
+                </div>
+                <div>
+                  <dt>Visibility</dt>
+                  <dd>{selectedInventoryVisibilitySummary}</dd>
                 </div>
                 <div>
                   <dt>Price</dt>
