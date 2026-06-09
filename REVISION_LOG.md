@@ -3,6 +3,58 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Visible Local Inventory WooCommerce Smoke Coverage
+
+### What Changed
+
+- Extended the guarded production local-sync inventory smoke so it can run in
+  hidden mode or visible mode using `PUG_PROD_LOCAL_SYNC_INVENTORY_VISIBILITY`.
+- Visible mode now verifies that a local inventory intake pushed through the LAN
+  middleman asks WordPress to publish a WooCommerce product and returns at least
+  one product ID.
+- The smoke cleanup now removes temporary WooCommerce products found by returned
+  product ID, SKU, or barcode, then removes the matching inventory and price log
+  rows.
+- Updated the smoke contract test to cover the dual-mode behavior while keeping
+  secret and destructive-operation checks.
+
+### Why
+
+The store workflow requires visible local inventory to automatically become
+saleable website inventory. The existing smoke intentionally used hidden
+inventory, so it proved WordPress inventory push without proving the visible
+WooCommerce publishing path.
+
+### Files Affected
+
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/tests/production-local-sync-inventory-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+
+### Tests Added
+
+- Updated `production-local-sync-inventory-smoke-contract.mjs` to assert the
+  visible-mode WooCommerce sync and cleanup markers.
+
+### Verification
+
+- `node --check scripts/production-run-local-sync-inventory-smoke.mjs`: passed.
+- `node scripts/tests/production-local-sync-inventory-smoke-contract.mjs`:
+  passed.
+
+### Rollback Notes
+
+- Revert this revision to return the production local-sync inventory smoke to
+  hidden-only verification.
+- No database rollback is required; the smoke deletes temporary rows and
+  products that it creates.
+
 ## 2026-06-09 - Storefront Shelves And Automatic WooCommerce Inventory Publishing
 
 ### What Changed

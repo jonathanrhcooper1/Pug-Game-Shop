@@ -17,6 +17,9 @@ All notable changes follow Semantic Versioning.
   WooCommerce card product during the LAN inventory push, including the explicit
   production WooCommerce product-sync approval and without enabling payment or
   Square inventory writes.
+- The production local-sync inventory smoke can now run in visible mode to
+  verify automatic WooCommerce product publishing and cleanup of the temporary
+  saleable product.
 - WooCommerce card product projections now tag published singles with the
   `singles` category and the matching game product category.
 - The offline app Add Inventory flow now immediately attempts the LAN queue push

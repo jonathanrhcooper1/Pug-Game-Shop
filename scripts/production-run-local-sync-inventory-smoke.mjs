@@ -29,6 +29,8 @@ const remoteRunnerPath = `${remoteUploadDir}/local-sync-production-inventory-smo
 const wpPath = process.env.PUG_PROD_WP_PATH ?? "/html"
 const wpCli = process.env.PUG_PROD_WP_CLI ?? "wp"
 const managerPin = firstEnv("LOCAL_SYNC_MANAGER_PIN", "PUG_LOCAL_SYNC_MANAGER_PIN") ?? "1420"
+const smokeVisibility = normalizeVisibility(process.env.PUG_PROD_LOCAL_SYNC_INVENTORY_VISIBILITY ?? "hidden")
+const smokeIsVisible = smokeVisibility === "visible"
 const wordpressUsername = firstEnv("PUG_WORDPRESS_INVENTORY_USERNAME", "PUG_WORDPRESS_USERNAME")
 const wordpressApplicationPassword = firstEnv(
   "PUG_WORDPRESS_INVENTORY_APPLICATION_PASSWORD",
@@ -56,9 +58,10 @@ const expectations = {
   wpCli,
   barcode: smoke.barcode,
   cardName: smoke.cardName,
-  onlineVisibility: "hidden",
-  kioskVisibility: "hidden",
-  posVisibility: "hidden",
+  onlineVisibility: smokeVisibility,
+  kioskVisibility: smokeVisibility,
+  posVisibility: smokeVisibility,
+  expectsWooCommerceProductSync: smokeIsVisible,
 }
 
 const missingEnv = Object.entries(requiredEnv)
@@ -83,6 +86,7 @@ if (dryRun) {
         optionalEnv: [
           "LOCAL_SYNC_SERVER_URL",
           "LOCAL_SYNC_MANAGER_PIN",
+          "PUG_PROD_LOCAL_SYNC_INVENTORY_VISIBILITY",
           "PUG_WORDPRESS_REST_BASE",
           "LOCAL_SYNC_SQLITE_PATH",
         ],
@@ -90,11 +94,13 @@ if (dryRun) {
         createsLocalIntake: true,
         pushesToWordPress: true,
         wordpressVisibility: {
-          online: "hidden",
-          kiosk: "hidden",
-          pos: "hidden",
+          online: smokeVisibility,
+          kiosk: smokeVisibility,
+          pos: smokeVisibility,
         },
+        expectsWooCommerceProductSync: smokeIsVisible,
         cleansWordPressRowsByBarcode: true,
+        cleansWooCommerceProductsByBarcode: true,
         cleansLocalRowsByBarcode: true,
         productionApprovalRequired: true,
         credentialsPrinted: false,
@@ -127,6 +133,7 @@ const cleanupSummary = {
   local: null,
 }
 let smokeResult = null
+let createdWooCommerceProductIds = []
 
 try {
   const auth = await localSyncRequest("/auth/pin", {
@@ -150,7 +157,7 @@ try {
       condition: "RAW",
       barcode: smoke.barcode,
       price_minor_units: 123,
-      location: "Production Smoke Hidden",
+      location: `Production Smoke ${smokeVisibility}`,
       quantity: 1,
       provider_card_id: "codex-local-sync-smoke",
       game: "pokemon",
@@ -158,9 +165,9 @@ try {
       card_number: "001",
       printed_number: "001/001",
       image_url: "https://images.scrydex.com/pokemon/mcd24-1/large",
-      online_visibility: "hidden",
-      kiosk_visibility: "hidden",
-      pos_visibility: "hidden",
+      online_visibility: smokeVisibility,
+      kiosk_visibility: smokeVisibility,
+      pos_visibility: smokeVisibility,
     },
   })
 
@@ -181,6 +188,8 @@ try {
   const accepted = Array.isArray(push.results)
     ? push.results.find((result) => result.entity_id === intake.item.public_id && result.status === "accepted")
     : null
+  const acceptedWooCommerceProductSync = safeWooCommerceProductSync(accepted?.woocommerce_product_sync)
+  createdWooCommerceProductIds = acceptedWooCommerceProductSync.productIds
 
   const directSearch = await wordpressInventorySearch(smoke.barcode)
 
@@ -205,9 +214,10 @@ try {
       wordpressInventoryPushConnected: Boolean(push.wordpress_inventory_push_connected),
       acceptedEntity: accepted?.entity_id ?? "",
       wordpressInventory: safeWordPressInventory(accepted?.wordpress_inventory),
+      woocommerceProductSync: acceptedWooCommerceProductSync,
     },
     wordpressSearch: directSearch,
-    checks: buildChecks({ intake, push, accepted, directSearch }),
+    checks: buildChecks({ intake, push, accepted, directSearch, acceptedWooCommerceProductSync }),
     cleanup: cleanupSummary,
     productionApprovalRequired: true,
     credentialsPrinted: false,
@@ -215,7 +225,7 @@ try {
   }
 } finally {
   cleanupSummary.attempted = true
-  cleanupSummary.wordpress = await cleanupWordPressSmoke(smoke)
+  cleanupSummary.wordpress = await cleanupWordPressSmoke(smoke, createdWooCommerceProductIds)
   cleanupSummary.local = cleanupLocalSmoke(smoke)
 }
 
@@ -227,6 +237,12 @@ if (smokeResult) {
       pass: Number(cleanupSummary.wordpress?.inventoryRowsDeleted ?? 0) >= 1,
       expected: ">=1",
       actual: cleanupSummary.wordpress?.inventoryRowsDeleted ?? null,
+    },
+    {
+      name: "wordpress_cleanup_deleted_visible_woocommerce_product",
+      pass: smokeIsVisible ? Number(cleanupSummary.wordpress?.woocommerceProductsDeleted ?? 0) >= 1 : true,
+      expected: smokeIsVisible ? ">=1" : "not required for hidden smoke",
+      actual: cleanupSummary.wordpress?.woocommerceProductsDeleted ?? null,
     },
     {
       name: "local_cleanup_deleted_smoke_row",
@@ -250,7 +266,7 @@ function buildSmokePayload() {
   return {
     id,
     barcode,
-    cardName: "Codex Hidden Local Sync Smoke",
+    cardName: `Codex ${smokeVisibility === "visible" ? "Visible" : "Hidden"} Local Sync Smoke`,
   }
 }
 
@@ -335,7 +351,7 @@ async function wordpressInventorySearch(barcode) {
   }
 }
 
-async function cleanupWordPressSmoke(smokePayload) {
+async function cleanupWordPressSmoke(smokePayload, wooCommerceProductIds = []) {
   try {
     return await withProductionConnection(async (connection) => {
       await writeRemoteFile(connection, remoteRunnerPath, cleanupRunnerSource())
@@ -347,6 +363,7 @@ async function cleanupWordPressSmoke(smokePayload) {
           JSON.stringify({
             barcode: smokePayload.barcode,
             card_name: smokePayload.cardName,
+            product_ids: wooCommerceProductIds,
           }),
         )
         const parsed = parseJson(execution.stdout)
@@ -357,6 +374,8 @@ async function cleanupWordPressSmoke(smokePayload) {
           inventoryRowsMatched: Number(parsed?.inventory_rows_matched ?? 0),
           inventoryRowsDeleted: Number(parsed?.inventory_rows_deleted ?? 0),
           priceRowsDeleted: Number(parsed?.price_rows_deleted ?? 0),
+          woocommerceProductsMatched: Number(parsed?.woocommerce_products_matched ?? 0),
+          woocommerceProductsDeleted: Number(parsed?.woocommerce_products_deleted ?? 0),
           matchedVisibility: parsed?.matched_visibility ?? null,
           runnerRemoved: false,
           credentialsPrinted: false,
@@ -454,7 +473,25 @@ function safeWordPressInventory(value) {
     : null
 }
 
-function buildChecks({ intake, push, accepted, directSearch }) {
+function safeWooCommerceProductSync(value) {
+  const productIds = Array.isArray(value?.product_ids)
+    ? value.product_ids
+        .map((candidate) => Number.parseInt(String(candidate ?? ""), 10))
+        .filter((candidate) => Number.isFinite(candidate) && candidate > 0)
+    : []
+
+  return {
+    requested: Boolean(value?.requested),
+    synced: Boolean(value?.synced),
+    status: String(value?.status ?? (value?.requested ? "unknown" : "deferred")),
+    productIds,
+    errors: Array.isArray(value?.errors) ? value.errors.map((error) => String(error)) : [],
+    paymentCaptureDeferred: value?.payment_capture_deferred !== false,
+    squareInventoryDeferred: value?.square_inventory_deferred !== false,
+  }
+}
+
+function buildChecks({ intake, push, accepted, directSearch, acceptedWooCommerceProductSync }) {
   return [
     {
       name: "local_intake_created",
@@ -463,12 +500,12 @@ function buildChecks({ intake, push, accepted, directSearch }) {
       actual: intake?.item?.barcode ?? null,
     },
     {
-      name: "local_visibility_hidden",
+      name: "local_visibility_matches_requested_mode",
       pass:
-        intake?.item?.online_visibility === "hidden" &&
-        intake?.item?.kiosk_visibility === "hidden" &&
-        intake?.item?.pos_visibility === "hidden",
-      expected: "hidden/hidden/hidden",
+        intake?.item?.online_visibility === smokeVisibility &&
+        intake?.item?.kiosk_visibility === smokeVisibility &&
+        intake?.item?.pos_visibility === smokeVisibility,
+      expected: `${smokeVisibility}/${smokeVisibility}/${smokeVisibility}`,
       actual: `${intake?.item?.online_visibility ?? ""}/${intake?.item?.kiosk_visibility ?? ""}/${
         intake?.item?.pos_visibility ?? ""
       }`,
@@ -491,6 +528,16 @@ function buildChecks({ intake, push, accepted, directSearch }) {
       expected: true,
       actual: directSearch?.matched ?? (directSearch?.skipped ? "skipped" : null),
     },
+    {
+      name: "visible_inventory_auto_publishes_woocommerce_product",
+      pass: smokeIsVisible
+        ? acceptedWooCommerceProductSync?.requested === true &&
+          acceptedWooCommerceProductSync?.synced === true &&
+          acceptedWooCommerceProductSync?.productIds.length >= 1
+        : acceptedWooCommerceProductSync?.requested === false,
+      expected: smokeIsVisible ? "requested/synced/product_id" : "not requested",
+      actual: acceptedWooCommerceProductSync,
+    },
   ]
 }
 
@@ -508,12 +555,43 @@ if (!$wpdb instanceof wpdb) {
 }
 $barcode = strtoupper(trim((string) ($payload['barcode'] ?? '')));
 $card_name = trim((string) ($payload['card_name'] ?? ''));
+$product_ids = array_values(array_unique(array_filter(array_map('absint', (array) ($payload['product_ids'] ?? array())))));
 if ('' === $barcode || !preg_match('/^CODEX-LSYNC-[A-Z0-9]{8,64}$/', $barcode)) {
 	echo wp_json_encode(array('status' => 'error', 'message' => 'barcode_invalid'));
 	exit(1);
 }
 $inventory_table = $wpdb->prefix . 'tcg_inventory_items';
 $price_log_table = $wpdb->prefix . 'tcg_price_change_log';
+if (function_exists('wc_get_product_id_by_sku')) {
+	$product_id_by_sku = absint(wc_get_product_id_by_sku($barcode));
+	if ($product_id_by_sku > 0) {
+		$product_ids[] = $product_id_by_sku;
+	}
+}
+$product_meta_ids = $wpdb->get_col(
+	$wpdb->prepare(
+		"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_sku', '_tcg_barcode') AND meta_value = %s",
+		$barcode
+	)
+);
+foreach ((array) $product_meta_ids as $product_meta_id) {
+	$product_meta_id = absint($product_meta_id);
+	if ($product_meta_id > 0) {
+		$product_ids[] = $product_meta_id;
+	}
+}
+$product_ids = array_values(array_unique(array_filter(array_map('absint', $product_ids))));
+$woocommerce_products_matched = count($product_ids);
+$woocommerce_products_deleted = 0;
+foreach ($product_ids as $product_id) {
+	if ('product' !== get_post_type($product_id)) {
+		continue;
+	}
+	$deleted = wp_delete_post($product_id, true);
+	if ($deleted) {
+		++$woocommerce_products_deleted;
+	}
+}
 $rows = $wpdb->get_results(
 	$wpdb->prepare(
 		"SELECT inventory_id, public_id, barcode, sku, card_name, status, online_visibility, kiosk_visibility, pos_visibility FROM {$inventory_table} WHERE barcode = %s OR sku = %s",
@@ -553,6 +631,8 @@ echo wp_json_encode(array(
 	'inventory_rows_matched' => count($matched),
 	'inventory_rows_deleted' => $inventory_rows_deleted,
 	'price_rows_deleted' => $price_rows_deleted,
+	'woocommerce_products_matched' => $woocommerce_products_matched,
+	'woocommerce_products_deleted' => $woocommerce_products_deleted,
 	'matched_visibility' => array(
 		'status' => (string) ($first['status'] ?? ''),
 		'online' => (string) ($first['online_visibility'] ?? ''),
@@ -713,6 +793,12 @@ function normalizeRestBase(value) {
     .trim()
     .replace(/^\/?/, "/")
     .replace(/\/+$/, "")
+}
+
+function normalizeVisibility(value) {
+  const visibility = String(value ?? "").trim().toLowerCase()
+
+  return visibility === "visible" ? "visible" : "hidden"
 }
 
 function normalizeRemoteDir(value) {
