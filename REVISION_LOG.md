@@ -14,6 +14,9 @@ review, staging approval, deployment approval, and rollback planning.
   public local sync item responses.
 - Added staff-facing visibility controls to the offline inventory intake form.
 - Added optional LAN server env defaults for WordPress inventory visibility.
+- Documented `PUG_WORDPRESS_DEFAULT_LOCATION_ID` so stores can map accepted
+  local intake to an active WordPress inventory location and immediately create
+  available stock.
 - Added a guarded production local-sync inventory smoke script that creates one
   hidden test item, pushes it through the LAN server to WordPress, verifies it
   through authenticated inventory search, and deletes the smoke row from
@@ -75,6 +78,12 @@ online, in the customer kiosk, or in POS-facing inventory.
   `CODEX-LSYNC-20260609T094614Z`, verified it in authenticated WordPress
   inventory search, then deleted one WordPress inventory row, one price-log row,
   and one local SQLite row.
+- After setting the local machine's ignored
+  `PUG_WORDPRESS_DEFAULT_LOCATION_ID=6`, a second guarded smoke pushed hidden
+  barcode `CODEX-LSYNC-20260609T095727Z`, verified it as WordPress
+  `available` inventory with online/kiosk/POS visibility still hidden, then
+  deleted one WordPress inventory row, one price-log row, and one local SQLite
+  row.
 - Restarted the LAN server after the `local_only` migration and verified
   `queueDepth: 0` with the preserved `user_access_upsert` row no longer counted
   as pending WordPress work.

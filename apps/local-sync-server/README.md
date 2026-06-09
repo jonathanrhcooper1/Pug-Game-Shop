@@ -24,6 +24,9 @@ instead of each keeping an isolated local authority.
   WordPress Application Password server-side. Credentials are never returned to
   clients.
 - WordPress writes are disabled unless `LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true`.
+- Set `PUG_WORDPRESS_DEFAULT_LOCATION_ID` to an active WordPress inventory
+  location when accepted local intake should become immediately available
+  inventory. If omitted, local intake is pushed as `pending_intake`.
 - Set `PUG_WORDPRESS_INVENTORY_ONLINE_VISIBILITY`,
   `PUG_WORDPRESS_INVENTORY_KIOSK_VISIBILITY`, and
   `PUG_WORDPRESS_INVENTORY_POS_VISIBILITY` to choose default visibility for

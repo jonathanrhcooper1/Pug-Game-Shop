@@ -8,7 +8,8 @@ All notable changes follow Semantic Versioning.
 
 - Local sync inventory intake now preserves online/kiosk/POS visibility from
   the desktop app through SQLite, WordPress push mapping, and production smoke
-  verification, with a guarded hidden-row live smoke that cleans itself up.
+  verification, with a guarded hidden-row live smoke that cleans itself up and
+  supports active WordPress location mapping for immediately available stock.
 - LAN user/PIN access policy changes are now stored as `local_only` audit
   operations instead of pending WordPress pushes, so Sync status reflects only
   work that can actually be accepted by WordPress.

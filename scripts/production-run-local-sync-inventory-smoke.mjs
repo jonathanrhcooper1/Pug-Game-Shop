@@ -297,7 +297,6 @@ async function wordpressInventorySearch(barcode) {
   const endpoint = new URL(`${wpRestBase}/inventory/search`)
   endpoint.searchParams.set("q", barcode)
   endpoint.searchParams.set("visibility", "staff")
-  endpoint.searchParams.set("status", "pending_intake")
   endpoint.searchParams.set("page_size", "5")
 
   const response = await fetch(endpoint, {
