@@ -3,6 +3,66 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline App Website Pull UI Integration
+
+### What Changed
+
+- Updated the offline app LAN sync client contract so `/sync/pull` requests
+  both `inventory` and `events` domains.
+- Added typed support for event pull counters, event rows, separate
+  inventory/event pull connector health, local event counts, and accepted
+  WordPress inventory IDs.
+- Updated the app Sync Now flow to merge pulled event snapshots into the local
+  Events workspace alongside website inventory refreshes.
+- Updated LAN status copy in the sidebar, Status screen, and Settings screen
+  to show separate inventory pull and event pull health.
+
+### Why
+
+The backend was already able to pull production WordPress inventory and events,
+but the desktop preview still treated Sync Now as an inventory-only workflow.
+The app needs to make the connected website-event cache visible so staff can
+trust that local event registration and check-in screens are using current
+website data.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline app local sync client contract markers for event pull
+  counters, event metadata, separate pull connector health, and explicit
+  inventory/events domain requests.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- Headless preview check against `http://127.0.0.1:1420/` unlocked with the
+  test PIN and clicked Sync Now. The UI reported inventory pull and event pull
+  connected, pulled five website inventory rows, kept LAN queue depth at `0`,
+  and had no console or page errors.
+
+### Rollback Notes
+
+- Revert the offline app files if Sync Now should return to inventory-only
+  behavior. Backend event pull can remain in place; this change only affects
+  the desktop/client display and request body.
+
 ## 2026-06-09 - Live Local Sync Workflow Verification and Event Pull
 
 ### What Changed

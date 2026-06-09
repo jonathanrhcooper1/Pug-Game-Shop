@@ -144,6 +144,7 @@ export type LocalSyncDeviceStatusResult = LocalSyncResult<{
 
 export type LocalSyncInventoryItem = {
   public_id: string
+  wordpress_public_id?: string
   row_version: number
   provider_card_id: string
   game: "pokemon" | "magic" | "lorcana" | "one-piece"
@@ -338,6 +339,7 @@ export type LocalSyncCreditRedemptionResult = LocalSyncResult<{
 
 export type LocalSyncEventSnapshot = {
   event_id: string
+  slug: string
   row_version: number
   title: string
   starts_at_utc: string
@@ -414,6 +416,8 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   wordpress_customer_push_connected?: boolean
   wordpress_kiosk_order_push_connected?: boolean
   wordpress_pull_connected: boolean
+  wordpress_inventory_pull_connected?: boolean
+  wordpress_events_pull_connected?: boolean
   scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   scrydex_fallback_connected: boolean
   local_operations_preserved: true
@@ -426,15 +430,30 @@ export type LocalSyncPullResult = LocalSyncResult<{
   updated_count: number
   ignored_count: number
   items: LocalSyncInventoryItem[]
+  events_pulled_count: number
+  events_applied_count: number
+  events_inserted_count: number
+  events_updated_count: number
+  events_ignored_count: number
+  events: LocalSyncEventSnapshot[]
   meta: {
     page: number
     page_size: number
     total: number
     has_more: boolean
   } | null
+  events_meta: {
+    page: number
+    page_size: number
+    total: number
+    has_more: boolean
+  } | null
   wordpress_pull_connected: true
+  wordpress_inventory_pull_connected: boolean
+  wordpress_events_pull_connected: boolean
   credentials_synced_to_client: false
   local_inventory_count: number
+  local_event_count: number
   local_queue_depth: number
 }>
 
@@ -784,6 +803,9 @@ export function createLocalSyncServerClient(
       requestLocalSync(fetcher, baseUrl, "/sync/pull", {
         method: "POST",
         sessionToken,
+        body: {
+          domains: ["inventory", "events"],
+        },
       }) as Promise<LocalSyncPullResult>,
     planSquarePosInventoryPull: (sessionToken, input = {}) =>
       requestLocalSync(fetcher, baseUrl, "/pos/square/inventory-pull-plan", {

@@ -935,14 +935,14 @@ function inventoryStatusFromWordPressPushResult(
 
 function lanSyncPullMessage(result: LocalSyncPullResult | null) {
   if (!result) {
-    return "LAN inventory pull was not run because no PIN session is active."
+    return "LAN website pull was not run because no PIN session is active."
   }
 
   if (result.status !== "ok") {
-    return `LAN inventory pull blocked: ${result.message}`
+    return `LAN website pull blocked: ${result.message}`
   }
 
-  return `LAN inventory pull applied ${result.applied_count} website item(s), inserted ${result.inserted_count}, updated ${result.updated_count}, and preserved ${result.ignored_count} local row(s).`
+  return `LAN website pull applied ${result.applied_count} inventory item(s) and ${result.events_applied_count} event(s); inserted ${result.inserted_count} item(s) / ${result.events_inserted_count} event(s), updated ${result.updated_count} item(s) / ${result.events_updated_count} event(s), and preserved ${result.ignored_count + result.events_ignored_count} local row(s).`
 }
 
 function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapshot {
@@ -958,6 +958,30 @@ function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapsho
     locationLabel: event.location_label,
     note: event.note,
   }
+}
+
+function mergeLocalSyncEventSnapshots(
+  currentEvents: EventSnapshot[],
+  localSyncEvents: LocalSyncEventSnapshot[],
+): EventSnapshot[] {
+  if (localSyncEvents.length === 0) {
+    return currentEvents
+  }
+
+  const mergedByEventId = new Map(currentEvents.map((event) => [event.eventId, event] as const))
+
+  for (const pulledEvent of localSyncEvents) {
+    const mappedEvent = eventSnapshotFromLocalSync(pulledEvent)
+    const existingEvent = mergedByEventId.get(mappedEvent.eventId)
+
+    if (!existingEvent || mappedEvent.rowVersion >= existingEvent.rowVersion) {
+      mergedByEventId.set(mappedEvent.eventId, mappedEvent)
+    }
+  }
+
+  return Array.from(mergedByEventId.values()).sort((left, right) =>
+    left.startsAtUtc.localeCompare(right.startsAtUtc),
+  )
 }
 
 export function App() {
@@ -1400,9 +1424,13 @@ export function App() {
           ? "LAN unavailable"
           : "LAN blocked"
         : "Not checked"
+  const localSyncPullStatusLabel =
+    localSyncStatus?.status === "ok"
+      ? `inventory pull ${(localSyncStatus.wordpress_inventory_pull_connected ?? localSyncStatus.wordpress_pull_connected) ? "on" : "off"}; event pull ${(localSyncStatus.wordpress_events_pull_connected ?? localSyncStatus.wordpress_pull_connected) ? "on" : "off"}`
+      : "pull not checked"
   const localSyncStatusDetail =
     localSyncStatus?.status === "ok"
-      ? `${localSyncClient.serverUrl}; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}; website ${connectorDisplayUrl(activeProfile)}.`
+      ? `${localSyncClient.serverUrl}; ${localSyncPullStatusLabel}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}; website ${connectorDisplayUrl(activeProfile)}.`
       : localSyncStatus
         ? localSyncStatus.message
         : "Use Sync Now or the Settings probe to verify the LAN middleman server."
@@ -3734,6 +3762,13 @@ export function App() {
         })
       }
 
+      if (lanPullResult.status === "ok" && lanPullResult.events.length > 0) {
+        const pulledEvents = lanPullResult.events
+
+        setEventSnapshots((events) => mergeLocalSyncEventSnapshots(events, pulledEvents))
+        setSelectedEventId((currentEventId) => currentEventId || pulledEvents[0]?.event_id || "")
+      }
+
       lanPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
 
       const successfulLanPushResult = lanPushResult.status === "ok" ? lanPushResult : null
@@ -4955,7 +4990,7 @@ export function App() {
             <strong>{localSyncClient.serverUrl}</strong>
             <small>
               {localSyncStatus?.status === "ok"
-                ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
+                ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}; ${localSyncPullStatusLabel}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
                 : "store-sync.sqlite; check server"}
             </small>
           </div>
@@ -6392,7 +6427,7 @@ export function App() {
                   <strong>{localSyncClient.serverUrl}</strong>
                   <small>
                     {localSyncStatus?.status === "ok"
-                      ? `${localSyncStatus.local_database}; ${localSyncStatus.queue_depth} queued; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
+                      ? `${localSyncStatus.local_database}; ${localSyncStatus.queue_depth} queued; ${localSyncPullStatusLabel}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
                       : "Local middleman server; run npm start in apps/local-sync-server"}
                   </small>
                   <small>

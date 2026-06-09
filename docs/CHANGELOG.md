@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The offline app Sync Now flow now requests both website inventory and
+  website events from the LAN middleman server, merges pulled event snapshots
+  into the Events workspace, and shows separate inventory/event pull health in
+  the sidebar, Status, and Settings screens.
 - The LAN sync server can now pull published WordPress events into the local
   SQLite event cache, including the WordPress event slug required for local
   event registration and check-in pushes.
