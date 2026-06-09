@@ -3,6 +3,56 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Version 0.187.0 Package Preparation
+
+### What Changed
+
+- Bumped root workspace, WordPress plugin, offline app, Tauri config, and Rust
+  package metadata to `0.187.0`.
+- Prepared the next WordPress package version to carry the Square POS Mapping
+  dashboard and Square mapping save workflow.
+
+### Why
+
+The production plugin installer and verification scripts compare the deployed
+plugin version against repository metadata. A version bump keeps the install,
+rollback, and smoke-test trail clear.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None; package/version metadata is covered by existing package and bootstrap
+  checks.
+
+### Verification
+
+- `npm.cmd run package:wordpress`
+- `npm.cmd run test`
+- `npm.cmd run build`
+- `npm.cmd run verify:no-production-secrets`
+
+### Rollback Notes
+
+- Revert this revision to return package metadata to `0.186.0`.
+- No database migrations or production data changes are involved.
+
 ## 2026-06-09 - Website Square Mapping Save Workflow
 
 ### What Changed
