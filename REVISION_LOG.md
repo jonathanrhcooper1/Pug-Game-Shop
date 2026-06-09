@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Deploy 0.189.0
+
+### What Changed
+
+- Installed and activated WordPress plugin package `tcg-store-platform-0.189.0.zip`
+  on production with the guarded production installer.
+- Confirmed production plugin status is active and database target/current
+  version remains `14`.
+- Verified the new WooCommerce grouped card product stylesheet package with
+  production smoke checks.
+
+### Why
+
+The buyer-facing card product UI polish needs to be live beside the already
+verified grouped WooCommerce checkout and exact inventory reservation behavior.
+
+### Files Affected
+
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None in this deployment record; the `0.189.0` package added the CSS enqueue
+  contract and production smoke coverage already exists.
+
+### Verification
+
+- `npm.cmd run production:install-package`: passed on retry; production plugin
+  active at `0.189.0`, database version `14`, database backup created, and
+  `wp-content` backup created. The first install attempt timed out during SSH
+  handshake before upload or mutation, then the retry completed successfully.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:verify-scrydex-catalog`:
+  passed with 151,854 cards, 245,641 variants, 737,845 price points, 100%
+  image coverage, 100% variant coverage, and 86% price coverage.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:verify-reference-search`:
+  passed against cached WordPress catalog search for `Charizard`.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:verify-public-shortcodes`:
+  passed for public inventory, events, and event-detail shortcode contracts.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:local-sync-inventory-smoke`:
+  passed for local inventory intake, WordPress push/search, and cleanup.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:local-sync-workflows-smoke`:
+  passed for event pull/register/check-in, customer credit add/redeem, hidden
+  inventory, kiosk order, and cleanup.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 PUG_PROD_CONFIRM_WOOCOMMERCE_CARD_SMOKE=run-production-woocommerce-card-smoke npm.cmd run production:woocommerce-card-smoke`:
+  passed; temporary WooCommerce product had remote card art, two condition
+  options (`0.99` and `1.23`), exact reservation release to available, exact
+  order conversion to sold, and deleted temporary product/order/inventory and
+  reservation rows.
+
+### Rollback Notes
+
+- Reinstall `dist/tcg-store-platform-0.188.0.zip` to roll back the product-page
+  stylesheet package while keeping the previously verified grouped WooCommerce
+  checkout behavior.
+- The production installer created pre-deploy database and `wp-content` backups
+  under `$HOME/tcg-production-backups`.
+- No schema rollback is required.
+
 ## 2026-06-09 - WooCommerce Product UI Polish Package 0.189.0
 
 ### What Changed

@@ -9,6 +9,9 @@ All notable changes follow Semantic Versioning.
 - WooCommerce grouped card product pages now load a dedicated product UI
   stylesheet for remote card art, condition/version selector controls,
   selected-price display, and mobile layout polish.
+- Production is now verified on WordPress plugin `0.189.0` after backup-backed
+  package deployment, ScryDex catalog/search checks, public shortcode checks,
+  local sync smokes, and the WooCommerce exact-inventory smoke.
 - WordPress plugin package, offline app package, Tauri config, and Rust crate
   metadata now align with workspace version `0.189.0`.
 - Added a guarded production WooCommerce card smoke that creates a temporary
