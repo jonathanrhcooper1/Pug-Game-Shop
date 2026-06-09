@@ -22,6 +22,10 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Reference-card search responses now include real inventory stock summaries
+  from WordPress inventory rows, including available, reserved,
+  pending-intake, total, and available-by-condition counts for the card lookup
+  and local app surfaces.
 - Local sync setup now has a secret-free `GET /setup/status` probe, and the
   offline app stores one configurable website profile per installation while
   preserving and validating the configured LAN server URL.

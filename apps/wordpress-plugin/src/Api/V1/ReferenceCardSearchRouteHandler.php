@@ -74,6 +74,13 @@ final class ReferenceCardSearchRouteHandler {
 			);
 		}
 
+		$stock_summaries      = $this->fetch_stock_summaries( $query, $rows );
+		$stock_summary_status = is_array( $stock_summaries ) ? 'ready' : 'deferred';
+
+		if ( ! is_array( $stock_summaries ) ) {
+			$stock_summaries = $this->empty_stock_summary_index();
+		}
+
 		$total = $this->fetch_total( $query );
 
 		if ( null === $total ) {
@@ -94,7 +101,7 @@ final class ReferenceCardSearchRouteHandler {
 			'code'        => 'reference_search_read_ready',
 			'callback'    => 'search_reference_cards',
 			'data'        => array(
-				'cards'        => $this->present_rows( $rows, $variants_by_reference ),
+				'cards'        => $this->present_rows( $rows, $variants_by_reference, $stock_summaries ),
 				'query'        => (string) $request['query'],
 				'game'         => (string) $request['game'],
 				'source'       => 'wordpress_catalog_cache',
@@ -107,6 +114,7 @@ final class ReferenceCardSearchRouteHandler {
 					'credentials_in_response'   => false,
 					'live_provider_request'     => false,
 					'scrydex_credentials_scope' => 'wordpress_server_settings',
+					'stock_summary_status'      => $stock_summary_status,
 				),
 			),
 			'meta'        => $this->ready_meta( $query, count( $rows ), $total ),
@@ -182,6 +190,7 @@ final class ReferenceCardSearchRouteHandler {
 		$cards_table    = $table_prefix . 'tcg_reference_cards';
 		$variants_table = $table_prefix . 'tcg_reference_variants';
 		$prices_table   = $table_prefix . 'tcg_provider_price_observations';
+		$inventory_table = $table_prefix . 'tcg_inventory_items';
 		$like          = '%' . addcslashes( $query, "\\_%" ) . '%';
 		$where_parts   = array(
 			'(cards.name LIKE %s OR cards.set_name LIKE %s OR cards.set_code LIKE %s OR cards.card_number LIKE %s OR cards.printed_number LIKE %s OR cards.provider_card_id LIKE %s OR cards.search_text LIKE %s)',
@@ -238,12 +247,92 @@ final class ReferenceCardSearchRouteHandler {
 			'cards_table'         => $cards_table,
 			'variants_table'      => $variants_table,
 			'prices_table'        => $prices_table,
+			'inventory_table'     => $inventory_table,
 			'select_sql_template' => $select,
 			'select_prepare_args' => array_merge( $where_args, array( $limit, $offset ) ),
 			'count_sql_template'  => $count,
 			'count_prepare_args'  => $where_args,
 			'errors'              => array(),
 		);
+	}
+
+	/**
+	 * @param array<string, mixed>       $query Query plan.
+	 * @param list<array<string, mixed>> $rows Reference card rows.
+	 * @return array{by_reference:array<int,array<string,mixed>>,by_provider:array<string,array<string,mixed>>}|false
+	 */
+	private function fetch_stock_summaries( array $query, array $rows ): array|false {
+		if ( ! method_exists( $this->database, 'prepare' ) || ! method_exists( $this->database, 'get_results' ) ) {
+			return false;
+		}
+
+		$reference_ids     = array();
+		$provider_card_ids = array();
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$reference_id = $this->positive_reference_id( $row['reference_card_id'] ?? null );
+			if ( null !== $reference_id ) {
+				$reference_ids[] = $reference_id;
+			}
+
+			$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+			if ( '' !== $provider_card_id ) {
+				$provider_card_ids[] = $provider_card_id;
+			}
+		}
+
+		$reference_ids     = array_values( array_unique( $reference_ids ) );
+		$provider_card_ids = array_values( array_unique( $provider_card_ids ) );
+
+		if ( array() === $reference_ids && array() === $provider_card_ids ) {
+			return $this->empty_stock_summary_index();
+		}
+
+		$where_parts = array();
+		$where_args  = array();
+
+		if ( array() !== $reference_ids ) {
+			$where_parts[] = 'inventory.reference_card_id IN (' . implode( ', ', array_fill( 0, count( $reference_ids ), '%d' ) ) . ')';
+			$where_args    = array_merge( $where_args, $reference_ids );
+		}
+
+		if ( array() !== $provider_card_ids ) {
+			$where_parts[] = 'inventory.provider_card_id IN (' . implode( ', ', array_fill( 0, count( $provider_card_ids ), '%s' ) ) . ')';
+			$where_args    = array_merge( $where_args, $provider_card_ids );
+		}
+
+		$status_filters = array( 'available', 'reserved', 'pending_intake' );
+		$template       = "
+			SELECT
+				inventory.reference_card_id,
+				inventory.provider_name,
+				inventory.provider_card_id,
+				inventory.condition_code,
+				inventory.status,
+				COUNT(1) AS item_count
+			FROM {$query['inventory_table']} inventory
+			WHERE (" . implode( ' OR ', $where_parts ) . ')
+				AND inventory.status IN (' . implode( ', ', array_fill( 0, count( $status_filters ), '%s' ) ) . ')
+			GROUP BY inventory.reference_card_id, inventory.provider_name, inventory.provider_card_id, inventory.condition_code, inventory.status
+		';
+		$prepared       = $this->database->prepare(
+			$template, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			array_merge( $where_args, $status_filters )
+		);
+		$stock_rows     = $this->database->get_results(
+			$prepared, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$this->array_a_output_type()
+		);
+
+		if ( ! is_array( $stock_rows ) ) {
+			return false;
+		}
+
+		return $this->build_stock_summary_index( $stock_rows );
 	}
 
 	/**
@@ -361,12 +450,17 @@ final class ReferenceCardSearchRouteHandler {
 	 * @param list<array<string, mixed>> $rows Reference card rows.
 	 * @return list<array<string, mixed>>
 	 */
-	private function present_rows( array $rows, array $variants_by_reference = array() ): array {
+	private function present_rows(
+		array $rows,
+		array $variants_by_reference = array(),
+		array $stock_summaries = array()
+	): array {
 		return array_values(
 			array_map(
 				fn ( array $row ): array => $this->present_row(
 					$row,
-					$variants_by_reference[ (int) ( $row['reference_card_id'] ?? 0 ) ] ?? array()
+					$variants_by_reference[ (int) ( $row['reference_card_id'] ?? 0 ) ] ?? array(),
+					$this->stock_summary_for_row( $row, $stock_summaries )
 				),
 				array_filter( $rows, 'is_array' )
 			)
@@ -684,11 +778,12 @@ final class ReferenceCardSearchRouteHandler {
 	 * @param array<string, mixed> $row Reference card row.
 	 * @return array<string, mixed>
 	 */
-	private function present_row( array $row, array $variants = array() ): array {
+	private function present_row( array $row, array $variants = array(), array $stock_summary = array() ): array {
 		$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
 		$front_image_url  = $this->url( $row['front_image_url'] ?? '' );
 		$market_price     = $this->decimal_string( $row['market_price'] ?? null );
 		$currency         = $this->currency( $row['market_price_currency'] ?? null );
+		$stock_summary    = array_merge( $this->empty_stock_summary(), $stock_summary );
 
 		return array(
 			'provider_card_id'          => $provider_card_id,
@@ -715,9 +810,11 @@ final class ReferenceCardSearchRouteHandler {
 			'catalog_synced_at_utc'     => $this->utc_timestamp( $row['updated_at'] ?? null ),
 			'provider_updated_at_utc'   => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
 			'catalog_source'            => 'wordpress_catalog_cache',
-			'stock_available_count'     => 0,
-			'stock_total_count'         => 0,
-			'stock_by_condition'        => array(),
+			'stock_available_count'     => (int) $stock_summary['stock_available_count'],
+			'stock_reserved_count'      => (int) $stock_summary['stock_reserved_count'],
+			'stock_pending_intake_count' => (int) $stock_summary['stock_pending_intake_count'],
+			'stock_total_count'         => (int) $stock_summary['stock_total_count'],
+			'stock_by_condition'        => $this->stock_by_condition( $stock_summary['stock_by_condition'] ?? array() ),
 			'variants'                  => array_values( $variants ),
 			'live_provider_request'     => false,
 			'credentials_in_response'   => false,
@@ -758,8 +855,117 @@ final class ReferenceCardSearchRouteHandler {
 			'cards_table'                     => (string) ( $query['cards_table'] ?? '' ),
 			'variants_table'                  => (string) ( $query['variants_table'] ?? '' ),
 			'prices_table'                    => (string) ( $query['prices_table'] ?? '' ),
+			'inventory_table'                 => (string) ( $query['inventory_table'] ?? '' ),
 			'row_count'                       => $row_count,
 			'total'                           => $total,
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $stock_rows Stock aggregate rows.
+	 * @return array{by_reference:array<int,array<string,mixed>>,by_provider:array<string,array<string,mixed>>}
+	 */
+	private function build_stock_summary_index( array $stock_rows ): array {
+		$index = $this->empty_stock_summary_index();
+
+		foreach ( $stock_rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$reference_id     = $this->positive_reference_id( $row['reference_card_id'] ?? null );
+			$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+			$count            = $this->non_negative_int( $row['item_count'] ?? null ) ?? 0;
+
+			if ( $count <= 0 ) {
+				continue;
+			}
+
+			$status    = strtolower( $this->text( $row['status'] ?? '' ) );
+			$condition = strtoupper( $this->text( $row['condition_code'] ?? '' ) );
+			$condition = '' === $condition ? 'UNKNOWN' : $condition;
+
+			if ( null !== $reference_id ) {
+				if ( ! isset( $index['by_reference'][ $reference_id ] ) ) {
+					$index['by_reference'][ $reference_id ] = $this->empty_stock_summary();
+				}
+
+				$this->apply_stock_row( $index['by_reference'][ $reference_id ], $status, $condition, $count );
+			}
+
+			if ( '' !== $provider_card_id ) {
+				if ( ! isset( $index['by_provider'][ $provider_card_id ] ) ) {
+					$index['by_provider'][ $provider_card_id ] = $this->empty_stock_summary();
+				}
+
+				$this->apply_stock_row( $index['by_provider'][ $provider_card_id ], $status, $condition, $count );
+			}
+		}
+
+		return $index;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference card row.
+	 * @param array<string, mixed> $stock_summaries Stock summaries indexed by reference and provider.
+	 * @return array<string, mixed>
+	 */
+	private function stock_summary_for_row( array $row, array $stock_summaries ): array {
+		$reference_id = $this->positive_reference_id( $row['reference_card_id'] ?? null );
+
+		if ( null !== $reference_id && isset( $stock_summaries['by_reference'][ $reference_id ] ) ) {
+			return $stock_summaries['by_reference'][ $reference_id ];
+		}
+
+		$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+
+		if ( '' !== $provider_card_id && isset( $stock_summaries['by_provider'][ $provider_card_id ] ) ) {
+			return $stock_summaries['by_provider'][ $provider_card_id ];
+		}
+
+		return $this->empty_stock_summary();
+	}
+
+	/**
+	 * @param array<string, mixed> $summary Mutable stock summary.
+	 */
+	private function apply_stock_row( array &$summary, string $status, string $condition, int $count ): void {
+		if ( ! in_array( $status, array( 'available', 'reserved', 'pending_intake' ), true ) ) {
+			return;
+		}
+
+		$summary['stock_total_count'] += $count;
+
+		if ( 'available' === $status ) {
+			$summary['stock_available_count'] += $count;
+			$summary['stock_by_condition'][ $condition ] = ( $summary['stock_by_condition'][ $condition ] ?? 0 ) + $count;
+		} elseif ( 'reserved' === $status ) {
+			$summary['stock_reserved_count'] += $count;
+		} else {
+			$summary['stock_pending_intake_count'] += $count;
+		}
+	}
+
+	/**
+	 * @return array{by_reference:array<int,array<string,mixed>>,by_provider:array<string,array<string,mixed>>}
+	 */
+	private function empty_stock_summary_index(): array {
+		return array(
+			'by_reference' => array(),
+			'by_provider'  => array(),
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function empty_stock_summary(): array {
+		return array(
+			'stock_available_count'      => 0,
+			'stock_reserved_count'       => 0,
+			'stock_pending_intake_count' => 0,
+			'stock_total_count'          => 0,
+			'stock_by_condition'         => array(),
 		);
 	}
 
@@ -864,6 +1070,28 @@ final class ReferenceCardSearchRouteHandler {
 		$decoded = json_decode( (string) $value, true );
 
 		return is_array( $decoded ) ? $decoded : array();
+	}
+
+	/**
+	 * @param mixed $values Stock by condition map.
+	 * @return array<string, int>
+	 */
+	private function stock_by_condition( mixed $values ): array {
+		if ( ! is_array( $values ) ) {
+			return array();
+		}
+
+		$result = array();
+		foreach ( $values as $condition => $count ) {
+			$condition = strtoupper( $this->text( $condition ) );
+			$count     = $this->non_negative_int( $count ) ?? 0;
+
+			if ( '' !== $condition && $count > 0 ) {
+				$result[ $condition ] = $count;
+			}
+		}
+
+		return $result;
 	}
 
 	private function minor_units( string $amount ): int {

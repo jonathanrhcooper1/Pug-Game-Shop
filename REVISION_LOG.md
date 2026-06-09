@@ -3,6 +3,42 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Reference Search Stock Summaries
+
+### What Changed
+
+- Added WordPress inventory stock aggregation to the reference-card search
+  route.
+- Included available, reserved, pending-intake, total, and
+  available-by-condition counts in card lookup responses.
+- Updated focused route-handler tests to prove stock counts come from
+  `tcg_inventory_items`.
+
+### Why
+
+Staff need the card lookup window to show real quantity in stock while adding
+cards from the website catalog or ScryDex cache.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded `InventorySearchRouteHandlerFactoryTest::test_reference_handler_returns_catalog_cards_with_images_and_price`
+  with stock-count assertions.
+
+### Rollback Notes
+
+- Revert this revision to return zero stock counts in reference search. No
+  database rollback is required.
+
 ## 2026-06-09 - Customer Account Portal
 
 ### What Changed

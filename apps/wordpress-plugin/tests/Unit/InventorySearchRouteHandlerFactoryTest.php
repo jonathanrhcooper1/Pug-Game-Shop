@@ -109,7 +109,8 @@ namespace {
 				private array|false $result_set = array(),
 				private mixed $count_result = 0,
 				string $prefix = 'wp_',
-				private array|false $variant_result_set = array()
+				private array|false $variant_result_set = array(),
+				private array|false $stock_result_set = array()
 			) {
 				$this->prefix = $prefix;
 			}
@@ -134,6 +135,13 @@ namespace {
 
 				if ( str_contains( $query, 'tcg_reference_variants' ) ) {
 					return $this->variant_result_set;
+				}
+
+				if (
+					str_contains( $query, 'tcg_inventory_items' )
+					&& str_contains( $query, 'GROUP BY inventory.reference_card_id' )
+				) {
+					return $this->stock_result_set;
 				}
 
 				return $this->result_set;
@@ -333,7 +341,8 @@ namespace TCGStorePlatform\Tests\Unit {
 				array( $this->reference_card_row() ),
 				'1',
 				'wp_',
-				array( $this->reference_variant_row() )
+				array( $this->reference_variant_row() ),
+				$this->reference_stock_rows()
 			);
 			$handler  = new ReferenceCardSearchRouteHandler( $database, 'wp_' );
 
@@ -350,15 +359,22 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'ready', $response['status'] );
 			$this->assert_same( 200, $response['status_code'] );
 			$this->assert_same( 'reference_search_read_ready', $response['code'] );
-			$this->assert_same( 2, $database->get_results_count );
+			$this->assert_same( 3, $database->get_results_count );
 			$this->assert_same( 1, $database->get_var_count );
-			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 4, $database->prepare_count );
 			$this->assert_same( 1, $response['data']['meta']['total'] );
+			$this->assert_same( 'ready', $response['data']['meta']['stock_summary_status'] );
 			$this->assert_same( 'wordpress_catalog_cache', $response['data']['source'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215', $response['data']['cards'][0]['provider_card_id'] );
 			$this->assert_same( 'Umbreon VMAX', $response['data']['cards'][0]['card_name'] );
 			$this->assert_same( 'https://images.pokemontcg.io/swsh7/215_hires.png', $response['data']['cards'][0]['image_url'] );
 			$this->assert_same( 112045, $response['data']['cards'][0]['market_price_minor_units'] );
+			$this->assert_same( 3, $response['data']['cards'][0]['stock_available_count'] );
+			$this->assert_same( 1, $response['data']['cards'][0]['stock_reserved_count'] );
+			$this->assert_same( 2, $response['data']['cards'][0]['stock_pending_intake_count'] );
+			$this->assert_same( 6, $response['data']['cards'][0]['stock_total_count'] );
+			$this->assert_same( 2, $response['data']['cards'][0]['stock_by_condition']['NM'] );
+			$this->assert_same( 1, $response['data']['cards'][0]['stock_by_condition']['LP'] );
 			$this->assert_same( 'scrydex-pokemon-evs-215-alt-art', $response['data']['cards'][0]['variants'][0]['provider_variant_id'] );
 			$this->assert_same( 'Alternate Art Secret', $response['data']['cards'][0]['variants'][0]['variant'] );
 			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
@@ -653,6 +669,46 @@ namespace TCGStorePlatform\Tests\Unit {
 				'language'                   => 'English',
 				'raw_or_graded_support'      => 'both',
 				'normalized_attributes_json' => '{"variant":"Alternate Art Secret","finish":"Foil"}',
+			);
+		}
+
+		/**
+		 * @return list<array<string, mixed>>
+		 */
+		private function reference_stock_rows(): array {
+			return array(
+				array(
+					'reference_card_id' => '215',
+					'provider_name'     => 'scrydex',
+					'provider_card_id'  => 'scrydex-pokemon-evs-215',
+					'condition_code'    => 'NM',
+					'status'            => 'available',
+					'item_count'        => '2',
+				),
+				array(
+					'reference_card_id' => '215',
+					'provider_name'     => 'scrydex',
+					'provider_card_id'  => 'scrydex-pokemon-evs-215',
+					'condition_code'    => 'LP',
+					'status'            => 'available',
+					'item_count'        => '1',
+				),
+				array(
+					'reference_card_id' => '215',
+					'provider_name'     => 'scrydex',
+					'provider_card_id'  => 'scrydex-pokemon-evs-215',
+					'condition_code'    => 'NM',
+					'status'            => 'reserved',
+					'item_count'        => '1',
+				),
+				array(
+					'reference_card_id' => '215',
+					'provider_name'     => 'scrydex',
+					'provider_card_id'  => 'scrydex-pokemon-evs-215',
+					'condition_code'    => 'MP',
+					'status'            => 'pending_intake',
+					'item_count'        => '2',
+				),
 			);
 		}
 
