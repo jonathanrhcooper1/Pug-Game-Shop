@@ -11,6 +11,8 @@ let wordpressCustomerUpsertPushCalls = 0
 let wordpressCreditPushCalls = 0
 let wordpressKioskOrderPushCalls = 0
 let wordpressInventoryPullRows = []
+let wordpressEventsPullCalls = 0
+let wordpressEventPullRows = []
 
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
@@ -68,6 +70,31 @@ const server = createLocalSyncHttpServer({
           page: 1,
           page_size: 10,
           total: wordpressInventoryPullRows.length,
+          has_more: false,
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressEventsPull: async ({ page, pageSize, filters }) => {
+      wordpressEventsPullCalls += 1
+
+      assert.equal(page, 1)
+      assert.equal(pageSize, 10)
+      assert.deepEqual(filters, {
+        game: undefined,
+        format: undefined,
+        event_type: undefined,
+        registration_status: undefined,
+      })
+
+      return {
+        status: "ok",
+        events: wordpressEventPullRows,
+        meta: {
+          page: 1,
+          page_size: 10,
+          total: wordpressEventPullRows.length,
           has_more: false,
         },
         credentials_synced_to_client: false,
@@ -217,6 +244,7 @@ const server = createLocalSyncHttpServer({
       assert.equal(operation.payload.first_name, "Ada")
       assert.equal(operation.payload.last_name, "Lovelace")
       assert.equal(inventoryPublicIds.length, 1)
+      assert.equal(inventoryPublicIds[0].startsWith("local-inventory-"), false)
 
       return {
         status: "ok",
@@ -546,6 +574,7 @@ try {
   assert.equal(acceptedIntakeInventory.items.length, 2)
   assert.equal(acceptedIntakeInventory.items[0].status, "available")
   assert.equal(acceptedIntakeInventory.items[0].source, "accepted")
+  assert.ok(acceptedIntakeInventory.items[0].wordpress_public_id.startsWith("wp-local-inventory-"))
   assert.equal(acceptedIntakeInventory.items[0].image_url, "https://images.example.test/mewtwo.png")
   assert.equal(acceptedIntakeInventory.items[0].online_visibility, "hidden")
   assert.equal(acceptedIntakeInventory.items[0].kiosk_visibility, "visible")
@@ -618,6 +647,7 @@ try {
       query: "charizard",
       page: 1,
       page_size: 10,
+      domain: "inventory",
     },
   })
   assert.equal(pulledInventory.status, "ok")
@@ -626,19 +656,65 @@ try {
   assert.equal(pulledInventory.inserted_count, 1)
   assert.equal(pulledInventory.ignored_count, 1)
   assert.equal(pulledInventory.wordpress_pull_connected, true)
+  assert.equal(pulledInventory.wordpress_inventory_pull_connected, true)
+  assert.equal(pulledInventory.wordpress_events_pull_connected, true)
   assert.equal(pulledInventory.credentials_synced_to_client, false)
   assert.equal(wordpressInventoryPullCalls, 1)
+  assert.equal(wordpressEventsPullCalls, 0)
 
   const pulledCharizardInventory = await fetchJson(`${baseUrl}/inventory/search?q=PUG-WP-CHARIZARD`)
   assert.equal(pulledCharizardInventory.status, "ok")
   assert.equal(pulledCharizardInventory.items.length, 1)
   assert.equal(pulledCharizardInventory.items[0].status, "available")
   assert.equal(pulledCharizardInventory.items[0].source, "cached")
+  assert.equal(pulledCharizardInventory.items[0].wordpress_public_id, "wp-inventory-charizard")
   assert.equal(pulledCharizardInventory.items[0].price_minor_units, 25000)
   assert.equal(pulledCharizardInventory.items[0].image_url, "https://images.pokemontcg.io/base1/4_hires.png")
   assert.equal(pulledCharizardInventory.items[0].square_catalog_item_id, "SQUARE-ITEM-42")
   assert.equal(pulledCharizardInventory.items[0].square_catalog_variation_id, "SQUARE-VARIATION-42")
   assert.equal(pulledCharizardInventory.items[0].external_sync_state, "square_synced")
+
+  wordpressEventPullRows = [
+    {
+      id: 42,
+      public_id: "event-public-42",
+      slug: "friday-commander-night",
+      title: "Friday Commander Night",
+      start_datetime: "2026-06-12T23:00:00+00:00",
+      player_cap: 24,
+      registered_count: 10,
+      seats_remaining: 14,
+      registration_status: "open",
+      event_type: "commander",
+      game: "magic",
+      description: "Pulled from WordPress.",
+    },
+  ]
+
+  const pulledEvents = await fetchJson(`${baseUrl}/sync/pull`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      domain: "events",
+      page: 1,
+      page_size: 10,
+    },
+  })
+  assert.equal(pulledEvents.status, "ok")
+  assert.equal(pulledEvents.events_pulled_count, 1)
+  assert.equal(pulledEvents.events_applied_count, 1)
+  assert.equal(pulledEvents.events_inserted_count, 1)
+  assert.equal(pulledEvents.events_ignored_count, 0)
+  assert.equal(pulledEvents.events[0].event_id, "event-public-42")
+  assert.equal(pulledEvents.events[0].slug, "friday-commander-night")
+  assert.equal(pulledEvents.events[0].registration_status, "open")
+  assert.equal(pulledEvents.events[0].capacity, 24)
+  assert.equal(wordpressEventsPullCalls, 1)
+
+  const cachedEvents = await fetchJson(`${baseUrl}/events`)
+  const cachedPulledEvent = cachedEvents.events.find((event) => event.event_id === "event-public-42")
+  assert.equal(cachedPulledEvent.slug, "friday-commander-night")
+  assert.equal(cachedPulledEvent.source, "cached")
 
   const staffSquarePlan = await fetchJson(`${baseUrl}/pos/square/inventory-pull-plan`, {
     method: "POST",
@@ -963,6 +1039,8 @@ try {
   assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
   assert.equal(syncStatus.scrydex_fallback_connected, true)
   assert.equal(syncStatus.wordpress_pull_connected, true)
+  assert.equal(syncStatus.wordpress_inventory_pull_connected, true)
+  assert.equal(syncStatus.wordpress_events_pull_connected, true)
   assert.equal(syncStatus.wordpress_push_connected, true)
   assert.equal(syncStatus.wordpress_inventory_push_connected, true)
   assert.equal(syncStatus.wordpress_event_registration_push_connected, true)

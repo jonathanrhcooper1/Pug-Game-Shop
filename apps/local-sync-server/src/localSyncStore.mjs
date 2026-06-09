@@ -46,6 +46,7 @@ export function createLocalSyncStore(options = {}) {
   )
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
+  const wordpressEventsPull = typeof options.wordpressEventsPull === "function" ? options.wordpressEventsPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
   const wordpressEventRegistrationPush =
     typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
@@ -449,6 +450,7 @@ export function createLocalSyncStore(options = {}) {
 
     const items = barcodes.map((barcode) => ({
       public_id: `local-inventory-${randomUUID()}`,
+      wordpress_public_id: "",
       row_version: 1,
       provider_card_id: providerCardId,
       game,
@@ -1006,7 +1008,9 @@ export function createLocalSyncStore(options = {}) {
       setup_required_client_device_count: deviceSummary.setup_required_count,
       heartbeat_timeout_seconds: heartbeatTimeoutSeconds,
       active_session_count: sessions.size,
-      wordpress_pull_connected: Boolean(wordpressInventoryPull),
+      wordpress_pull_connected: Boolean(wordpressInventoryPull || wordpressEventsPull),
+      wordpress_inventory_pull_connected: Boolean(wordpressInventoryPull),
+      wordpress_events_pull_connected: Boolean(wordpressEventsPull),
       wordpress_push_connected: Boolean(
         wordpressInventoryPush ||
           wordpressEventRegistrationPush ||
@@ -1034,77 +1038,157 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
-    if (!wordpressInventoryPull) {
-      return blocked("wordpress_pull_unavailable", "WordPress inventory pull is not configured on this LAN server.")
+    if (!wordpressInventoryPull && !wordpressEventsPull) {
+      return blocked("wordpress_pull_unavailable", "WordPress pull is not configured on this LAN server.")
     }
 
-    const pullResult = await wordpressInventoryPull({
-      query: input.query,
-      page: input.page,
-      pageSize: input.page_size ?? input.pageSize,
-    })
-
-    if (pullResult.status !== "ok") {
-      return {
-        status: "blocked",
-        code: pullResult.code ?? "wordpress_pull_failed",
-        message: pullResult.message ?? "WordPress inventory pull did not complete.",
-        http_status: pullResult.http_status ?? 0,
-        credentials_synced_to_client: false,
-      }
-    }
+    const requestedDomains = pullDomains(input.domains ?? input.domain)
+    const shouldPullInventory = requestedDomains.has("inventory") && Boolean(wordpressInventoryPull)
+    const shouldPullEvents = requestedDomains.has("events") && Boolean(wordpressEventsPull)
+    let inventoryPullResult = null
+    let eventPullResult = null
 
     const appliedItems = []
     let insertedCount = 0
     let updatedCount = 0
     let ignoredCount = 0
 
-    for (const row of pullResult.items ?? []) {
-      const pulledItem = localInventoryItemFromWordPress(row)
+    if (shouldPullInventory) {
+      inventoryPullResult = await wordpressInventoryPull({
+        query: input.query,
+        page: input.page,
+        pageSize: input.page_size ?? input.pageSize,
+      })
 
-      if (!pulledItem) {
-        ignoredCount += 1
-        continue
-      }
-
-      const existingIndex = inventoryItems.findIndex((candidate) => candidate.public_id === pulledItem.public_id)
-      const existing = existingIndex >= 0 ? inventoryItems[existingIndex] : null
-
-      if (existing && (existing.source === "queued" || existing.status === "pending_intake")) {
-        ignoredCount += 1
-        continue
-      }
-
-      if (existing) {
-        inventoryItems[existingIndex] = {
-          ...existing,
-          ...pulledItem,
-          row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
-          source: "cached",
+      if (inventoryPullResult.status !== "ok") {
+        return {
+          status: "blocked",
+          code: inventoryPullResult.code ?? "wordpress_pull_failed",
+          message: inventoryPullResult.message ?? "WordPress inventory pull did not complete.",
+          http_status: inventoryPullResult.http_status ?? 0,
+          credentials_synced_to_client: false,
         }
-        saveInventoryItem(database, inventoryItems[existingIndex], now)
-        appliedItems.push(publicInventoryItem(inventoryItems[existingIndex]))
-        updatedCount += 1
-      } else {
-        inventoryItems.push(pulledItem)
-        saveInventoryItem(database, pulledItem, now)
-        appliedItems.push(publicInventoryItem(pulledItem))
-        insertedCount += 1
+      }
+
+      for (const row of inventoryPullResult.items ?? []) {
+        const pulledItem = localInventoryItemFromWordPress(row)
+
+        if (!pulledItem) {
+          ignoredCount += 1
+          continue
+        }
+
+        const existingIndex = inventoryItems.findIndex((candidate) => candidate.public_id === pulledItem.public_id)
+        const existing = existingIndex >= 0 ? inventoryItems[existingIndex] : null
+
+        if (existing && (existing.source === "queued" || existing.status === "pending_intake")) {
+          ignoredCount += 1
+          continue
+        }
+
+        if (existing) {
+          inventoryItems[existingIndex] = {
+            ...existing,
+            ...pulledItem,
+            row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
+            source: "cached",
+          }
+          saveInventoryItem(database, inventoryItems[existingIndex], now)
+          appliedItems.push(publicInventoryItem(inventoryItems[existingIndex]))
+          updatedCount += 1
+        } else {
+          inventoryItems.push(pulledItem)
+          saveInventoryItem(database, pulledItem, now)
+          appliedItems.push(publicInventoryItem(pulledItem))
+          insertedCount += 1
+        }
+      }
+    }
+
+    const appliedEvents = []
+    let eventsInsertedCount = 0
+    let eventsUpdatedCount = 0
+    let eventsIgnoredCount = 0
+
+    if (shouldPullEvents) {
+      eventPullResult = await wordpressEventsPull({
+        page: input.event_page ?? input.eventPage ?? input.page,
+        pageSize: input.event_page_size ?? input.eventPageSize ?? input.page_size ?? input.pageSize,
+        filters: {
+          game: input.game,
+          format: input.format,
+          event_type: input.event_type ?? input.eventType,
+          registration_status: input.registration_status ?? input.registrationStatus,
+        },
+      })
+
+      if (eventPullResult.status !== "ok") {
+        return {
+          status: "blocked",
+          code: eventPullResult.code ?? "wordpress_events_pull_failed",
+          message: eventPullResult.message ?? "WordPress events pull did not complete.",
+          http_status: eventPullResult.http_status ?? 0,
+          credentials_synced_to_client: false,
+        }
+      }
+
+      for (const row of eventPullResult.events ?? []) {
+        const pulledEvent = localEventSnapshotFromWordPress(row)
+
+        if (!pulledEvent) {
+          eventsIgnoredCount += 1
+          continue
+        }
+
+        const existingIndex = eventSnapshots.findIndex((candidate) => candidate.event_id === pulledEvent.event_id)
+        const existing = existingIndex >= 0 ? eventSnapshots[existingIndex] : null
+
+        if (existing && existing.source === "queued") {
+          eventsIgnoredCount += 1
+          continue
+        }
+
+        if (existing) {
+          eventSnapshots[existingIndex] = {
+            ...existing,
+            ...pulledEvent,
+            row_version: Math.max(existing.row_version + 1, pulledEvent.row_version),
+            source: "cached",
+          }
+          saveEventSnapshot(database, eventSnapshots[existingIndex], now)
+          appliedEvents.push(publicEventSnapshot(eventSnapshots[existingIndex]))
+          eventsUpdatedCount += 1
+        } else {
+          eventSnapshots.push(pulledEvent)
+          saveEventSnapshot(database, pulledEvent, now)
+          appliedEvents.push(publicEventSnapshot(pulledEvent))
+          eventsInsertedCount += 1
+        }
       }
     }
 
     return {
       status: "ok",
-      pulled_count: (pullResult.items ?? []).length,
+      pulled_count: (inventoryPullResult?.items ?? []).length,
       applied_count: appliedItems.length,
       inserted_count: insertedCount,
       updated_count: updatedCount,
       ignored_count: ignoredCount,
       items: appliedItems,
-      meta: pullResult.meta ?? null,
+      events_pulled_count: (eventPullResult?.events ?? []).length,
+      events_applied_count: appliedEvents.length,
+      events_inserted_count: eventsInsertedCount,
+      events_updated_count: eventsUpdatedCount,
+      events_ignored_count: eventsIgnoredCount,
+      events: appliedEvents,
+      meta: inventoryPullResult?.meta ?? null,
+      events_meta: eventPullResult?.meta ?? null,
       wordpress_pull_connected: true,
+      wordpress_inventory_pull_connected: Boolean(wordpressInventoryPull),
+      wordpress_events_pull_connected: Boolean(wordpressEventsPull),
       credentials_synced_to_client: false,
       local_inventory_count: inventoryItems.length,
+      local_event_count: eventSnapshots.length,
       local_queue_depth: pendingQueueOperations(queue).length,
     }
   }
@@ -1191,6 +1275,7 @@ export function createLocalSyncStore(options = {}) {
 
       if (localItem) {
         localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "pending_intake"
+        localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id)
         localItem.source = "accepted"
         localItem.row_version += 1
         saveInventoryItem(database, localItem, now)
@@ -1328,7 +1413,12 @@ export function createLocalSyncStore(options = {}) {
         reservationIds.includes(reservationOperation.entity_id),
       )
       const inventoryPublicIds = matchingReservationOperations
-        .map((reservationOperation) => cleanPublicId(reservationOperation.payload?.inventory_public_id))
+        .map((reservationOperation) => {
+          const localPublicId = cleanPublicId(reservationOperation.payload?.inventory_public_id)
+          const item = inventoryItems.find((candidate) => candidate.public_id === localPublicId)
+
+          return cleanPublicId(item?.wordpress_public_id) || localPublicId
+        })
         .filter(Boolean)
 
       if (inventoryPublicIds.length === 0) {
@@ -1655,6 +1745,7 @@ function migrateLocalSyncDatabase(database) {
 
     CREATE TABLE IF NOT EXISTS inventory_items (
       public_id TEXT PRIMARY KEY,
+      wordpress_public_id TEXT NOT NULL DEFAULT '',
       row_version INTEGER NOT NULL,
       provider_card_id TEXT NOT NULL DEFAULT '',
       game TEXT NOT NULL DEFAULT 'pokemon',
@@ -1730,6 +1821,7 @@ function migrateLocalSyncDatabase(database) {
 
     CREATE TABLE IF NOT EXISTS event_snapshots (
       event_id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL DEFAULT '',
       row_version INTEGER NOT NULL,
       title TEXT NOT NULL,
       starts_at_utc TEXT NOT NULL,
@@ -1780,6 +1872,7 @@ function migrateLocalSyncDatabase(database) {
   `)
 
   ensureLocalSyncColumn(database, "inventory_items", "provider_card_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "wordpress_public_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "game", "TEXT NOT NULL DEFAULT 'pokemon'")
   ensureLocalSyncColumn(database, "inventory_items", "set_code", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "card_number", "TEXT NOT NULL DEFAULT ''")
@@ -1793,6 +1886,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "event_snapshots", "slug", "TEXT NOT NULL DEFAULT ''")
   database.exec(`
     UPDATE operation_queue
     SET sync_status = 'local_only'
@@ -1876,7 +1970,7 @@ function loadUsers(database) {
 function loadInventoryItems(database) {
   return database
     .prepare(`
-      SELECT public_id, row_version, provider_card_id, game, card_name, set_name,
+      SELECT public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
         set_code, card_number, printed_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
@@ -1887,6 +1981,7 @@ function loadInventoryItems(database) {
     .all()
     .map((row) => ({
       public_id: row.public_id,
+      wordpress_public_id: cleanPublicId(row.wordpress_public_id),
       row_version: Number(row.row_version),
       provider_card_id: row.provider_card_id ?? "",
       game: cleanGame(row.game),
@@ -2045,13 +2140,14 @@ function loadEventSnapshots(database) {
   return database
     .prepare(`
       SELECT event_id, row_version, title, starts_at_utc, starts_at_label,
-        registration_status, capacity, registered_count, location_label, note, source
+        slug, registration_status, capacity, registered_count, location_label, note, source
       FROM event_snapshots
       ORDER BY starts_at_utc, event_id
     `)
     .all()
     .map((row) => ({
       event_id: row.event_id,
+      slug: cleanSlug(row.slug),
       row_version: Number(row.row_version),
       title: row.title,
       starts_at_utc: row.starts_at_utc,
@@ -2093,14 +2189,15 @@ function saveInventoryItem(database, item, now) {
   database
     .prepare(`
       INSERT INTO inventory_items (
-        public_id, row_version, provider_card_id, game, card_name, set_name,
+        public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
         set_code, card_number, printed_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
+        wordpress_public_id = excluded.wordpress_public_id,
         row_version = excluded.row_version,
         provider_card_id = excluded.provider_card_id,
         game = excluded.game,
@@ -2127,6 +2224,7 @@ function saveInventoryItem(database, item, now) {
     `)
     .run(
       item.public_id,
+      cleanPublicId(item.wordpress_public_id),
       item.row_version,
       item.provider_card_id ?? "",
       cleanGame(item.game),
@@ -2331,12 +2429,13 @@ function saveEventSnapshot(database, event, now) {
   database
     .prepare(`
       INSERT INTO event_snapshots (
-        event_id, row_version, title, starts_at_utc, starts_at_label,
+        event_id, slug, row_version, title, starts_at_utc, starts_at_label,
         registration_status, capacity, registered_count, location_label, note,
         source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(event_id) DO UPDATE SET
+        slug = excluded.slug,
         row_version = excluded.row_version,
         title = excluded.title,
         starts_at_utc = excluded.starts_at_utc,
@@ -2351,6 +2450,7 @@ function saveEventSnapshot(database, event, now) {
     `)
     .run(
       event.event_id,
+      cleanSlug(event.slug),
       event.row_version,
       event.title,
       event.starts_at_utc,
@@ -2459,6 +2559,7 @@ function seedInventoryItems() {
   return [
     {
       public_id: "inv-1001",
+      wordpress_public_id: "",
       row_version: 1,
       provider_card_id: "scrydex-pokemon-base-004",
       game: "pokemon",
@@ -2478,6 +2579,7 @@ function seedInventoryItems() {
     },
     {
       public_id: "inv-1002",
+      wordpress_public_id: "",
       row_version: 1,
       provider_card_id: "scrydex-pokemon-jungle-060",
       game: "pokemon",
@@ -2590,6 +2692,7 @@ function seedEventSnapshots() {
   return [
     {
       event_id: "event-100",
+      slug: "event-100",
       row_version: 3,
       title: "Friday Commander Night",
       starts_at_utc: "2026-06-12T23:00:00Z",
@@ -2603,6 +2706,7 @@ function seedEventSnapshots() {
     },
     {
       event_id: "event-101",
+      slug: "event-101",
       row_version: 2,
       title: "Pokemon League Challenge",
       starts_at_utc: "2026-06-14T17:00:00Z",
@@ -2630,6 +2734,7 @@ function publicUser(user) {
 function publicInventoryItem(item) {
   return {
     public_id: item.public_id,
+    wordpress_public_id: cleanPublicId(item.wordpress_public_id),
     row_version: item.row_version,
     provider_card_id: item.provider_card_id ?? "",
     game: cleanGame(item.game),
@@ -2672,6 +2777,7 @@ function localInventoryItemFromWordPress(row) {
 
   return {
     public_id: publicId,
+    wordpress_public_id: publicId,
     row_version: boundedInt(row.row_version, 1, 999999999, 1),
     provider_card_id: cleanPublicId(row.provider_card_id),
     game: cleanGame(row.game),
@@ -2693,6 +2799,38 @@ function localInventoryItemFromWordPress(row) {
     square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
     square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
     external_sync_state: cleanExternalSyncState(row.external_sync_state),
+    source: "cached",
+  }
+}
+
+function localEventSnapshotFromWordPress(row) {
+  const slug = cleanSlug(row.slug)
+  const publicId = cleanPublicId(row.public_id)
+  const numericId = Number.parseInt(String(row.id ?? row.event_id ?? ""), 10)
+  const eventId = publicId || slug || (Number.isFinite(numericId) && numericId > 0 ? `wp-event-${numericId}` : "")
+  const title = cleanName(row.title)
+  const startsAt = cleanDateTime(row.start_datetime ?? row.starts_at_utc ?? row.start)
+  const playerCap = nullableNonNegativeInt(row.player_cap ?? row.capacity)
+  const registeredCount = boundedInt(row.registered_count, 0, 999999, 0)
+  const seatsRemaining = nullableNonNegativeInt(row.seats_remaining)
+  const capacity = playerCap ?? (seatsRemaining === null ? registeredCount : registeredCount + seatsRemaining)
+
+  if (!eventId || !title || !startsAt) {
+    return null
+  }
+
+  return {
+    event_id: eventId,
+    slug,
+    row_version: boundedInt(row.row_version, 1, 999999999, 1),
+    title,
+    starts_at_utc: startsAt,
+    starts_at_label: cleanName(row.starts_at_label) || eventStartLabel(startsAt),
+    registration_status: cleanEventRegistrationStatus(row.registration_status),
+    capacity,
+    registered_count: registeredCount,
+    location_label: cleanName(row.location_label ?? row.event_type ?? row.game) || "Website Event",
+    note: cleanName(row.description) || "Pulled from the WordPress event calendar.",
     source: "cached",
   }
 }
@@ -2748,6 +2886,7 @@ function publicCreditLedgerEntry(entry) {
 function publicEventSnapshot(event) {
   return {
     event_id: event.event_id,
+    slug: cleanSlug(event.slug) || cleanSlug(event.event_id),
     row_version: event.row_version,
     title: event.title,
     starts_at_utc: event.starts_at_utc,
@@ -3009,6 +3148,15 @@ function cleanPublicId(value) {
   return String(value ?? "").trim().replace(/[^a-zA-Z0-9-_:.]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 96)
 }
 
+function cleanSlug(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 96)
+}
+
 function cleanHttpUrl(value) {
   const candidate = String(value ?? "").trim()
 
@@ -3031,6 +3179,58 @@ function cleanEventPaymentStatus(value) {
 
 function cleanEventRegistrationStatus(value) {
   return ["open", "waitlist", "full", "closed"].includes(value) ? value : "closed"
+}
+
+function cleanDateTime(value) {
+  const text = String(value ?? "").trim()
+
+  if (!text) {
+    return ""
+  }
+
+  const parsed = Date.parse(text)
+
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : ""
+}
+
+function eventStartLabel(value) {
+  const parsed = Date.parse(value)
+
+  if (!Number.isFinite(parsed)) {
+    return ""
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(parsed))
+}
+
+function nullableNonNegativeInt(value) {
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
+  const parsed = Number.parseInt(String(value), 10)
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+function pullDomains(value) {
+  const raw = Array.isArray(value) ? value : String(value ?? "").split(",")
+  const domains = new Set(
+    raw.map((entry) => String(entry ?? "").trim().toLowerCase()).filter((entry) => ["inventory", "events"].includes(entry)),
+  )
+
+  if (domains.size === 0) {
+    domains.add("inventory")
+    domains.add("events")
+  }
+
+  return domains
 }
 
 function cleanCustomerStatus(value) {

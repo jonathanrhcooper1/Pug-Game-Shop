@@ -3,6 +3,84 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Live Local Sync Workflow Verification and Event Pull
+
+### What Changed
+
+- Added a WordPress events pull adapter for the LAN sync server so `/sync/pull`
+  can cache published website events in the local SQLite database.
+- Added `slug` to local event snapshots so queued local event registration and
+  check-in pushes target the real WordPress event route instead of a local seed
+  ID.
+- Added `wordpress_public_id` to local inventory rows and persist the accepted
+  WordPress inventory ID returned from inventory intake pushes.
+- Updated kiosk order push mapping to send the WordPress inventory `public_id`
+  for locally created inventory, preventing WordPress reservation failures from
+  local-only IDs.
+- Added a guarded production workflow smoke script that creates temporary
+  production smoke rows, verifies event pull/register/check-in, customer credit
+  add/redeem, hidden inventory intake, kiosk reservation, and cleans up both
+  WordPress and local SQLite rows.
+
+### Why
+
+The local app needs website events as a real source-of-truth cache, not seeded
+event placeholders. The live production workflow smoke also exposed that kiosk
+reservations for locally created inventory were using local-only IDs after
+inventory push acceptance; WordPress requires its own inventory `public_id` for
+reservation writes.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressEventsPull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-events-pull.mjs`
+- `apps/local-sync-server/package.json`
+- `scripts/production-run-local-sync-workflows-smoke.mjs`
+- `scripts/tests/production-local-sync-workflows-smoke-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite additive columns only:
+  - `event_snapshots.slug`
+  - `inventory_items.wordpress_public_id`
+
+### Tests Added
+
+- Added `tests/wordpress-events-pull.mjs` for WordPress event pull request,
+  response, auth, and pagination contracts.
+- Extended `tests/local-sync-server-runtime.mjs` to verify `/sync/pull` caches
+  WordPress events with slugs and preserves WordPress inventory IDs for kiosk
+  pushes.
+- Added `scripts/tests/production-local-sync-workflows-smoke-contract.mjs` for
+  production smoke safety markers and confirmation gates.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `node scripts/production-run-local-sync-workflows-smoke.mjs --dry-run`
+- `node scripts/tests/production-local-sync-workflows-smoke-contract.mjs`
+- Production local-sync workflows smoke passed with temporary event,
+  registration, check-in, customer credit add/redeem, hidden inventory intake,
+  kiosk reservation, and cleanup. Queue depth after smoke: `0`.
+- LAN server restarted after cleanup and verified with `queue_depth=0`,
+  WordPress inventory/event pull connected, and WordPress push connected.
+
+### Rollback Notes
+
+- Revert the event pull adapter and remove `wordpressEventsPull` wiring if
+  event caching needs to return to seeded/local-only behavior.
+- Revert the `wordpress_public_id` mapping only if kiosk reservations no longer
+  depend on WordPress inventory IDs; otherwise local intake kiosk orders will
+  fail again.
+- The SQLite changes are additive; rollback can leave the columns unused.
+
 ## 2026-06-09 - LAN ScryDex Lookup and Offline Queue Demo Stabilization
 
 ### What Changed

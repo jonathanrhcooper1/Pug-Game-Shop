@@ -6,6 +6,15 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The LAN sync server can now pull published WordPress events into the local
+  SQLite event cache, including the WordPress event slug required for local
+  event registration and check-in pushes.
+- Local inventory rows now retain the accepted WordPress inventory `public_id`
+  after push, and kiosk pickup orders send that WordPress ID instead of the
+  local-only ID when reserving website inventory.
+- Added a guarded production local-sync workflows smoke covering event
+  pull/register/check-in, customer credit add/redeem, hidden inventory intake,
+  kiosk reservation, and WordPress/local cleanup.
 - The LAN ScryDex reference search now ignores variant-only matches for normal
   card-name searches, preventing noisy stamp variants from blocking a
   WordPress catalog fallback for real card results such as `Pikachu`.

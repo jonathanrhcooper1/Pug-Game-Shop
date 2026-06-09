@@ -8,6 +8,7 @@ import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
 import { createWordPressEventCheckinPush } from "./wordpressEventCheckinPush.mjs"
 import { createWordPressCustomerUpsertPush } from "./wordpressCustomerUpsertPush.mjs"
 import { createWordPressEventRegistrationPush } from "./wordpressEventRegistrationPush.mjs"
+import { createWordPressEventsPull } from "./wordpressEventsPull.mjs"
 import { createWordPressInventoryPull } from "./wordpressInventoryPull.mjs"
 import { createWordPressInventoryPush } from "./wordpressInventoryPush.mjs"
 import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
@@ -92,6 +93,14 @@ const wordpressInventoryPull = createWordPressInventoryPull({
   applicationPassword: inventoryApplicationPassword ?? catalogApplicationPassword,
   pageSize: process.env.PUG_WORDPRESS_PULL_PAGE_SIZE,
 })
+const wordpressEventsPull = createWordPressEventsPull({
+  websiteUrl,
+  restBasePath,
+  authHeader: eventsAuthHeader ?? catalogAuthHeader,
+  username: eventsUsername ?? catalogUsername,
+  applicationPassword: eventsApplicationPassword ?? catalogApplicationPassword,
+  pageSize: process.env.PUG_WORDPRESS_EVENTS_PULL_PAGE_SIZE ?? process.env.PUG_WORDPRESS_PULL_PAGE_SIZE,
+})
 const wordpressEventRegistrationPush = wordpressPushEnabled
   ? createWordPressEventRegistrationPush({
       websiteUrl,
@@ -149,6 +158,7 @@ const server = await listenLocalSyncHttpServer({
     removeSeedReferenceCards,
     websiteCatalogFallback,
     wordpressInventoryPull,
+    wordpressEventsPull,
     wordpressInventoryPush,
     wordpressEventRegistrationPush,
     wordpressEventCheckinPush,

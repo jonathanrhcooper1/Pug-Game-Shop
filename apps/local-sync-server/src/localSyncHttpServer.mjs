@@ -12,7 +12,8 @@ export function createLocalSyncHttpServer(options = {}) {
     websiteUrl: options.websiteUrl,
     restBasePath: options.restBasePath,
     localDatabase: options.localDatabase,
-    wordpressPullConfigured: typeof storeOptions.wordpressInventoryPull === "function",
+    wordpressPullConfigured:
+      typeof storeOptions.wordpressInventoryPull === "function" || typeof storeOptions.wordpressEventsPull === "function",
     wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
     wordpressEventRegistrationPushConnected: typeof storeOptions.wordpressEventRegistrationPush === "function",
     wordpressEventCheckinPushConnected: typeof storeOptions.wordpressEventCheckinPush === "function",
