@@ -14,7 +14,10 @@ use TCGStorePlatform\Reservations\ReservationService;
 use TCGStorePlatform\Reservations\WpdbReservationStorage;
 
 final class GroupedInventoryProductHooks {
+	public const STYLE_HANDLE = 'tcg-store-woocommerce-card-product';
+
 	public function register(): void {
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'woocommerce_product_get_image', array( $this, 'product_image' ), 10, 5 );
 		add_action( 'woocommerce_before_add_to_cart_button', array( $this, 'render_condition_selector' ), 15 );
 		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'validate_add_to_cart' ), 10, 5 );
@@ -33,6 +36,7 @@ final class GroupedInventoryProductHooks {
 	 */
 	public static function hook_contracts(): array {
 		return array(
+			array( 'type' => 'action', 'hook' => 'wp_enqueue_scripts', 'callback' => 'enqueue_assets' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_product_get_image', 'callback' => 'product_image' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_before_add_to_cart_button', 'callback' => 'render_condition_selector' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_add_to_cart_validation', 'callback' => 'validate_add_to_cart' ),
@@ -41,6 +45,19 @@ final class GroupedInventoryProductHooks {
 			array( 'type' => 'action', 'hook' => 'woocommerce_checkout_create_order_line_item', 'callback' => 'attach_exact_inventory_order_line_metadata' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_payment_complete', 'callback' => 'convert_paid_order_reservations' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_cart_item_removed', 'callback' => 'release_removed_cart_item_reservation' ),
+		);
+	}
+
+	public function enqueue_assets(): void {
+		if ( ! function_exists( 'wp_enqueue_style' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			self::STYLE_HANDLE,
+			$this->asset_url( 'assets/css/woocommerce-card-product.css' ),
+			array(),
+			$this->asset_version( 'assets/css/woocommerce-card-product.css' )
 		);
 	}
 
@@ -494,6 +511,18 @@ final class GroupedInventoryProductHooks {
 		if ( function_exists( 'wc_add_notice' ) ) {
 			wc_add_notice( $message, 'error' );
 		}
+	}
+
+	private function asset_url( string $path ): string {
+		return function_exists( 'plugins_url' )
+			? plugins_url( $path, dirname( __DIR__, 2 ) . '/tcg-store-platform.php' )
+			: ltrim( $path, '/' );
+	}
+
+	private function asset_version( string $path ): string {
+		$file = dirname( __DIR__, 2 ) . '/' . ltrim( $path, '/' );
+
+		return is_readable( $file ) ? (string) filemtime( $file ) : '1';
 	}
 
 	private function money( mixed $value ): string {

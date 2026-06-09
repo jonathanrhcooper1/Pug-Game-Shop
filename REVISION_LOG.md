@@ -3,6 +3,69 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - WooCommerce Product UI Polish Package 0.189.0
+
+### What Changed
+
+- Added a dedicated WooCommerce grouped card product stylesheet for remote card
+  art, condition/version selector controls, selected-price display, empty stock
+  messaging, add-to-cart button alignment, and mobile product-page layout.
+- Wired the grouped card product hooks to enqueue the stylesheet on public
+  WooCommerce pages.
+- Bumped root workspace, WordPress plugin, offline app, Tauri config, and Rust
+  package metadata to `0.189.0`.
+
+### Why
+
+The grouped WooCommerce product flow is live and verified. The buyer-facing
+product page also needs polished visual treatment so card image, condition
+choice, and price selection look like an intentional shopping experience.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended grouped WooCommerce product hook contract coverage for public asset
+  enqueue and stylesheet markers.
+
+### Verification
+
+- `php tests/run.php`: passed 994 tests.
+- `php tests/lint.php`: passed 630 PHP files.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed before version
+  packaging and confirmed the product stylesheet is included in the package.
+- `npm.cmd run package:wordpress`: passed and produced
+  `dist/tcg-store-platform-0.189.0.zip`.
+- `npm.cmd run test`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+
+### Rollback Notes
+
+- Reinstall `dist/tcg-store-platform-0.188.0.zip` to remove the product-page
+  stylesheet while keeping the previously verified grouped WooCommerce product
+  checkout behavior.
+- No database schema or data rollback is required.
+
 ## 2026-06-09 - Production Deploy 0.188.0 and WooCommerce Card Smoke
 
 ### What Changed

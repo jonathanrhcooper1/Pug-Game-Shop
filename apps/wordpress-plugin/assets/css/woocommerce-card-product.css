@@ -1,0 +1,106 @@
+.tcg-woocommerce-card-image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 560px;
+  object-fit: contain;
+  margin: 0 auto;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(38, 217, 240, 0.12), rgba(246, 198, 53, 0.12)),
+    #eef8fc;
+  border: 1px solid rgba(10, 38, 57, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(10, 38, 57, 0.12);
+}
+
+.tcg-inventory-options,
+.tcg-inventory-options__empty {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 18px 0;
+  color: var(--tcg-text, #0b1116);
+  background: linear-gradient(180deg, #ffffff, var(--tcg-background, #f5f9fc));
+  border: 1px solid color-mix(in srgb, var(--tcg-primary, #0a2639) 14%, transparent);
+  border-radius: 8px;
+}
+
+.tcg-inventory-options {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.tcg-inventory-options label {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  color: color-mix(in srgb, var(--tcg-text, #0b1116) 72%, transparent);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.tcg-inventory-options select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  color: var(--tcg-text, #0b1116);
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--tcg-primary, #0a2639) 18%, transparent);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tcg-inventory-options select:focus {
+  outline: 2px solid color-mix(in srgb, var(--tcg-accent, #f6c635) 64%, transparent);
+  outline-offset: 2px;
+}
+
+.tcg-inventory-options__price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 12px;
+  color: #111111;
+  background: linear-gradient(180deg, #ffe376, var(--tcg-accent, #f6c635) 65%, #c78110);
+  border: 1px solid rgba(16, 24, 32, 0.16);
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.tcg-inventory-options__empty {
+  padding: 13px 14px;
+  font-weight: 800;
+}
+
+.single-product form.cart .tcg-inventory-options + .quantity {
+  margin-top: 0;
+}
+
+.single-product form.cart .tcg-inventory-options ~ button.single_add_to_cart_button {
+  min-height: 46px;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+@media (max-width: 640px) {
+  .tcg-woocommerce-card-image {
+    max-height: 420px;
+    padding: 10px;
+  }
+
+  .tcg-inventory-options {
+    padding: 12px;
+  }
+
+  .tcg-inventory-options__price {
+    width: 100%;
+  }
+}

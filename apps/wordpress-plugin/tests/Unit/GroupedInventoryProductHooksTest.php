@@ -20,6 +20,7 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 			$map[ $contract['type'] . ' ' . $contract['hook'] ] = $contract['callback'];
 		}
 
+		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
 		$this->assert_same( 'product_image', $map['filter woocommerce_product_get_image'] );
 		$this->assert_same( 'render_condition_selector', $map['action woocommerce_before_add_to_cart_button'] );
 		$this->assert_same( 'validate_add_to_cart', $map['filter woocommerce_add_to_cart_validation'] );
@@ -42,6 +43,8 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'next_available_inventory_for_option',
 				'ReservationService',
 				'WpdbReservationStorage',
+				'woocommerce-card-product.css',
+				'tcg-store-woocommerce-card-product',
 				'price_snapshot_minor_units',
 				'SerializedOrderLineMetadataPlanner',
 				'convert_to_sale',
