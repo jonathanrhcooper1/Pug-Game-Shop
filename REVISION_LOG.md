@@ -3,6 +3,65 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Catalog And WooCommerce Smoke Verification
+
+### What Changed
+
+- Reinstalled the current `tcg-store-platform-0.189.0.zip` package on
+  production after the first WooCommerce smoke showed production code lagged the
+  local selector implementation.
+- Production install created a database backup and a `wp-content` backup before
+  overwriting plugin files.
+- Verified production ScryDex catalog status, production reference-card search,
+  and the guarded WooCommerce exact-card smoke.
+
+### Why
+
+The live site needed to prove that the populated ScryDex catalog powers local
+reference search and that inventory rows can become WooCommerce card products
+with exact condition/price/stock selection and reservation safety.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Production database version remained `14`.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run production:verify-scrydex-catalog`: passed with plugin `0.189.0`,
+  database `14`, catalog/status/index/export routes registered, `151854`
+  reference cards, `245641` variants, `737845` price points, 100% image
+  coverage, 100% variant coverage, and 86% price coverage.
+- `npm.cmd run production:verify-reference-search`: passed for Pokemon
+  `Charizard`; source was `wordpress_catalog_cache`, no live ScryDex provider
+  request was made, images were present, price formatting was two decimals, and
+  no credentials were returned.
+- First `npm.cmd run production:woocommerce-card-smoke`: failed only the new
+  selector UI checks, showing production plugin files were behind the local
+  package.
+- `npm.cmd run production:install-package`: passed; uploaded package size
+  matched, plugin stayed active, migrations remained current at version `14`,
+  and production backups were created.
+- Second `npm.cmd run production:woocommerce-card-smoke`: passed; verified
+  grouped card product creation, exact-copy selector header, selected option,
+  stock, two-decimal price data, quantity lock, reservation release,
+  paid-order conversion to sold inventory, and cleanup of temporary product,
+  order, inventory rows, and reservations.
+
+### Rollback Notes
+
+- Restore the production database backup and `wp-content` backup created by the
+  install helper if the package reinstall needs to be reversed.
+- No migration rollback is required for this verification because no new
+  migrations were applied.
+
 ## 2026-06-09 - ScryDex Production Index Page Diagnostics
 
 ### What Changed
