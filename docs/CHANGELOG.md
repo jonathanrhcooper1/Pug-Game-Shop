@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- ScryDex manager-triggered catalog indexing now explicitly enables the
+  repository readiness gates after validating the WordPress database and
+  constructing the checkpoint/persistence repositories, allowing production
+  card pages to run instead of stopping with zero provider requests.
 - The WooCommerce customer account portal now renders a branded The Pug-style
   “Collector Vault” dashboard with store-credit metrics, recent-order cards,
   quick shop/order actions, responsive styling, and account-page-only CSS

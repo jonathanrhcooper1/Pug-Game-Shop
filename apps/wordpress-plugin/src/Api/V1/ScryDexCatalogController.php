@@ -155,6 +155,8 @@ final class ScryDexCatalogController {
 		$gate_overrides = array(
 			'network_requests_enabled'    => true,
 			'usage_budget_configured'     => true,
+			'checkpoint_repository_configured'  => true,
+			'persistence_repository_configured' => true,
 			'database_writes_enabled'     => true,
 			'scheduled_worker_configured' => true,
 			'usage_snapshot'              => $usage['snapshot'],

@@ -3,6 +3,48 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production ScryDex Card Worker Gate Fix
+
+### What Changed
+
+- Updated the manager ScryDex catalog index route to explicitly enable the
+  checkpoint and persistence repository readiness gates after database prefix
+  validation and repository construction.
+- Bumped the plugin/package version to `0.170.0`.
+
+### Why
+
+Production ScryDex indexing was able to import expansion/set rows, but card
+workers stopped as `blocked` with zero provider requests. The route was already
+constructing repository-backed workers; the execution gate simply needed the
+same controlled-route override for repository readiness that it already had for
+network, budget, database-write, and worker gates.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded the ScryDex catalog controller source contract to require repository
+  gate overrides on the manager catalog index path.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.169.0` to restore the previous gate behavior.
+- No database rollback is required.
+
 ## 2026-06-09 - Pug Demo UI, Local Presence, Intake Receipts, and Square Barcode Planning
 
 ### What Changed

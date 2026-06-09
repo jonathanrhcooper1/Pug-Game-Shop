@@ -51,6 +51,8 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 				'short_page_completion_rule',
 				'usage_budget_plan',
 				'enterprise_usage_budget_plan',
+				'checkpoint_repository_configured',
+				'persistence_repository_configured',
 				'daily_credit_budget_enforced',
 				'enterprise_overage_allowed',
 			) as $marker
