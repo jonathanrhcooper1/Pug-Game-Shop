@@ -808,6 +808,60 @@ try {
   assert.equal(squarePlan.plugin_square_payment_capture_supported, false)
   assert.equal(squarePlan.credentials_synced_to_client, false)
 
+  const staffSquareReconciliation = await fetchJson(`${baseUrl}/pos/square/inventory-counts/reconcile`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    body: {
+      square_location_id: "L-SANDBOX-1",
+      counts: [],
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(staffSquareReconciliation.status, "blocked")
+  assert.equal(staffSquareReconciliation.code, "manager_required")
+
+  const squareCountReconciliation = await fetchJson(`${baseUrl}/pos/square/inventory-counts/reconcile`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      square_location_id: "L-SANDBOX-1",
+      counts: [
+        {
+          catalog_object_id: "SQUARE-VARIATION-42",
+          location_id: "L-SANDBOX-1",
+          quantity: "2",
+          state: "IN_STOCK",
+        },
+        {
+          catalog_object_id: "SQUARE-UNEXPECTED-99",
+          location_id: "L-SANDBOX-1",
+          quantity: "1",
+          state: "IN_STOCK",
+        },
+      ],
+    },
+  })
+  assert.equal(squareCountReconciliation.status, "ok")
+  assert.equal(squareCountReconciliation.action, "square_pos_inventory_count_reconciliation")
+  assert.equal(squareCountReconciliation.reconciliation_status, "conflict")
+  assert.equal(squareCountReconciliation.requires_manager_review, true)
+  assert.equal(squareCountReconciliation.summary.mismatched_count, 1)
+  assert.equal(squareCountReconciliation.summary.unexpected_square_count, 1)
+  assert.ok(squareCountReconciliation.summary.unresolved_mapping_count > 0)
+  assert.equal(squareCountReconciliation.comparisons[0].card_name, "Charizard")
+  assert.equal(squareCountReconciliation.comparisons[0].expected_serialized_quantity, "1")
+  assert.equal(squareCountReconciliation.comparisons[0].actual_square_quantity, "2")
+  assert.equal(squareCountReconciliation.comparisons[0].issue_label, "Count mismatch")
+  assert.equal(squareCountReconciliation.unexpected_square_counts[0].catalogObjectId, "SQUARE-UNEXPECTED-99")
+  assert.equal(squareCountReconciliation.provider_inventory_write_deferred, true)
+  assert.equal(squareCountReconciliation.square_payment_capture_supported, false)
+  assert.equal(squareCountReconciliation.credentials_synced_to_client, false)
+  assert.ok(
+    squareCountReconciliation.next_actions.some((action) =>
+      action.includes("Review Square count mismatches"),
+    ),
+  )
+
   const preservedPendingIntake = await fetchJson(`${baseUrl}/inventory/search?q=PUG-PULL-GUARD`)
   assert.equal(preservedPendingIntake.items[0].status, "pending_intake")
   assert.equal(preservedPendingIntake.items[0].source, "queued")

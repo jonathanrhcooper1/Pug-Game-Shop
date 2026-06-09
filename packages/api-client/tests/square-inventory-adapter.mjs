@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   SQUARE_INVENTORY_ADAPTER_OUTCOME,
   planSquareBarcodeSkuInventoryPull,
+  planSquareInventoryCountReconciliation,
   planSquareInventorySyncRequest,
   planSquarePosReconciliation,
 } from "../src/squareInventoryAdapter.mjs";
@@ -233,6 +234,129 @@ test("Square barcode/SKU pull planning rejects production context and live crede
   ]);
   assert.equal(result.details.requestPlan, null);
   assert.equal(result.details.pluginPaymentCapturePermitted, false);
+});
+
+test("Square count reconciliation matches returned counts to serialized inventory", () => {
+  const result = planSquareInventoryCountReconciliation(
+    [
+      {
+        inventory_id: 42,
+        public_id: "card-public-42",
+        barcode: "PKM-BASE-004-HOLO",
+        sku: "PKM-BASE-004-HOLO",
+        square_catalog_item_id: "SQUARE-ITEM-42",
+        square_catalog_variation_id: "SQUARE-VARIATION-42",
+        square_location_id: "L-SANDBOX-1",
+        status: "available",
+        pos_visibility: "visible",
+      },
+      {
+        inventory_id: 43,
+        public_id: "card-public-43",
+        barcode: "MTG-LEA-001",
+        square_catalog_variation_id: "SQUARE-VARIATION-43",
+        square_location_id: "L-SANDBOX-1",
+        status: "sold",
+        pos_visibility: "visible",
+      },
+    ],
+    {
+      counts: [
+        {
+          catalog_object_id: "SQUARE-VARIATION-42",
+          location_id: "L-SANDBOX-1",
+          quantity: "1",
+          state: "IN_STOCK",
+        },
+        {
+          catalog_object_id: "SQUARE-VARIATION-43",
+          location_id: "L-SANDBOX-1",
+          quantity: "0",
+          state: "IN_STOCK",
+        },
+      ],
+    },
+    {
+      environment: "sandbox",
+      squareLocationId: "L-SANDBOX-1",
+    },
+  );
+
+  assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.ACCEPTED);
+  assert.equal(result.code, "square_inventory_count_reconciliation_matched");
+  assert.equal(result.details.providerInventoryReadAlreadyPerformed, true);
+  assert.equal(result.details.providerInventoryWriteDeferred, true);
+  assert.equal(result.details.squarePaymentCaptureSupported, false);
+  assert.equal(result.details.summary.matched_count, 2);
+  assert.equal(result.details.summary.mismatched_count, 0);
+  assert.equal(result.details.summary.missing_square_count, 0);
+  assert.equal(result.details.summary.unexpected_square_count, 0);
+  assert.equal(result.details.summary.expected_total_quantity, "1");
+  assert.equal(result.details.summary.actual_total_quantity, "1");
+  assert.deepEqual(
+    result.details.comparisons.map((comparison) => comparison.status),
+    ["matched", "matched"],
+  );
+});
+
+test("Square count reconciliation creates review conflicts for mismatch, missing, and unexpected counts", () => {
+  const result = planSquareInventoryCountReconciliation(
+    [
+      {
+        inventory_id: 42,
+        public_id: "card-public-42",
+        barcode: "PKM-BASE-004-HOLO",
+        square_catalog_variation_id: "SQUARE-VARIATION-42",
+        square_location_id: "L-SANDBOX-1",
+        status: "available",
+        pos_visibility: "visible",
+      },
+      {
+        inventory_id: 43,
+        public_id: "card-public-43",
+        barcode: "MTG-LEA-001",
+        square_catalog_variation_id: "SQUARE-VARIATION-43",
+        square_location_id: "L-SANDBOX-1",
+        status: "available",
+        pos_visibility: "visible",
+      },
+    ],
+    {
+      inventory_counts: [
+        {
+          catalog_object_id: "SQUARE-VARIATION-42",
+          location_id: "L-SANDBOX-1",
+          quantity: "3",
+          state: "IN_STOCK",
+        },
+        {
+          catalog_object_id: "SQUARE-UNEXPECTED",
+          location_id: "L-SANDBOX-1",
+          quantity: "2",
+          state: "IN_STOCK",
+        },
+      ],
+    },
+    {
+      environment: "sandbox",
+      squareLocationId: "L-SANDBOX-1",
+    },
+  );
+
+  assert.equal(result.status, SQUARE_INVENTORY_ADAPTER_OUTCOME.CONFLICT);
+  assert.equal(result.code, "square_inventory_count_reconciliation_requires_review");
+  assert.equal(result.details.summary.matched_count, 0);
+  assert.equal(result.details.summary.mismatched_count, 1);
+  assert.equal(result.details.summary.missing_square_count, 1);
+  assert.equal(result.details.summary.unexpected_square_count, 1);
+  assert.equal(result.details.comparisons[0].status, "mismatch");
+  assert.equal(result.details.comparisons[0].actualSquareQuantity, "3");
+  assert.equal(result.details.comparisons[1].status, "missing_square_count");
+  assert.equal(
+    result.details.unexpectedSquareCounts[0].issue,
+    "square_count_without_wordpress_mapping",
+  );
+  assert.equal(result.details.providerInventoryWriteDeferred, true);
 });
 
 test("Square POS reconciliation maps Square variation IDs back to serialized inventory", () => {

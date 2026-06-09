@@ -122,6 +122,7 @@ import {
   type LocalSyncPullResult,
   type LocalSyncPushResult,
   type LocalSyncSetupStatusResult,
+  type LocalSyncSquarePosInventoryCountReconciliationResult,
   type LocalSyncSquarePosInventoryPullPlanResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexPricePoint,
@@ -1267,6 +1268,11 @@ export function App() {
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
   const [squarePosPlan, setSquarePosPlan] =
     useState<LocalSyncSquarePosInventoryPullPlanResult | null>(null)
+  const [squareCountsInput, setSquareCountsInput] = useState(
+    '{\n  "counts": []\n}',
+  )
+  const [squareCountReconciliation, setSquareCountReconciliation] =
+    useState<LocalSyncSquarePosInventoryCountReconciliationResult | null>(null)
   const squarePosMappingSummary =
     squarePosPlan?.status === "ok"
       ? squarePosPlan.mapping_summary ?? {
@@ -1300,6 +1306,14 @@ export function App() {
           ? ["Map POS-visible website inventory to Square catalog variations or hide it from POS until mapped."]
           : [])
       : []
+  const squareCountSummary =
+    squareCountReconciliation?.status === "ok" ? squareCountReconciliation.summary : null
+  const squareCountComparisons =
+    squareCountReconciliation?.status === "ok" ? squareCountReconciliation.comparisons : []
+  const squareUnexpectedCounts =
+    squareCountReconciliation?.status === "ok" ? squareCountReconciliation.unexpected_square_counts : []
+  const squareCountNextActions =
+    squareCountReconciliation?.status === "ok" ? squareCountReconciliation.next_actions : []
   const [localDeviceHeartbeat, setLocalDeviceHeartbeat] =
     useState<LocalSyncDeviceHeartbeatResult | null>(null)
   const [localDeviceStatus, setLocalDeviceStatus] =
@@ -2463,6 +2477,61 @@ export function App() {
       detail:
         `${plan.mapped_count} mapped barcode/SKU row(s), ${plan.unresolved_count} unmapped row(s). ` +
         `Payment capture supported by this app: ${plan.square_payment_capture_supported ? "yes" : "no"}.`,
+    })
+  }
+
+  async function handleReconcileSquarePosCounts() {
+    if (!localSyncSessionToken) {
+      setActiveSection("Settings")
+      setActivityMessage({
+        title: "Manager session required",
+        detail: "Unlock with a manager PIN before comparing Square count pulls.",
+      })
+      return
+    }
+
+    let parsedCountsPayload: unknown
+
+    try {
+      parsedCountsPayload = JSON.parse(squareCountsInput)
+    } catch {
+      setActiveSection("Settings")
+      setActivityMessage({
+        title: "Square counts JSON invalid",
+        detail: "Paste the Square inventory counts response as JSON before comparing counts.",
+      })
+      return
+    }
+
+    const counts = Array.isArray(parsedCountsPayload)
+      ? (parsedCountsPayload.filter((row) => row && typeof row === "object") as Record<string, unknown>[])
+      : undefined
+    const squareCountsResponse =
+      !Array.isArray(parsedCountsPayload) && parsedCountsPayload && typeof parsedCountsPayload === "object"
+        ? (parsedCountsPayload as Record<string, unknown>)
+        : undefined
+    const result = await localSyncClient.reconcileSquarePosInventoryCounts(localSyncSessionToken, {
+      counts,
+      squareCountsResponse,
+    })
+
+    setSquareCountReconciliation(result)
+    setActiveSection("Settings")
+
+    if (result.status !== "ok") {
+      setActivityMessage({
+        title: "Square count comparison blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setActivityMessage({
+      title: result.ready ? "Square counts matched" : "Square count review needed",
+      detail:
+        `${result.summary.matched_count} matched, ${result.summary.mismatched_count} mismatched, ` +
+        `${result.summary.missing_square_count} missing, ${result.summary.unexpected_square_count} unexpected. ` +
+        "No Square payment capture or inventory write was performed.",
     })
   }
 
@@ -7145,6 +7214,106 @@ export function App() {
                   </small>
                 </div>
               ) : null}
+              <div className="square-pos-counts" aria-label="Square POS count reconciliation">
+                <div className="square-pos-counts__heading">
+                  <div>
+                    <span className="micro-label">Square count comparison</span>
+                    <strong>
+                      {squareCountSummary
+                        ? `${squareCountSummary.matched_count} matched / ${squareCountSummary.mismatched_count} mismatch`
+                        : "Ready for Square counts"}
+                    </strong>
+                    <small>Provider inventory writes stay deferred; website inventory remains authoritative.</small>
+                  </div>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={sessionRole !== "manager"}
+                    onClick={() => void handleReconcileSquarePosCounts()}
+                  >
+                    <Icon name="check" />
+                    <span>Compare Counts</span>
+                  </button>
+                </div>
+                <label htmlFor="square-counts-json">
+                  <span className="micro-label">Square inventory counts JSON</span>
+                  <textarea
+                    id="square-counts-json"
+                    value={squareCountsInput}
+                    onChange={(event) => setSquareCountsInput(event.target.value)}
+                    spellCheck={false}
+                    rows={5}
+                  />
+                </label>
+                {squareCountSummary ? (
+                  <>
+                    <div className="square-pos-counts__metrics">
+                      <span>
+                        <strong>{squareCountSummary.matched_count}</strong>
+                        matched
+                      </span>
+                      <span>
+                        <strong>{squareCountSummary.mismatched_count}</strong>
+                        mismatched
+                      </span>
+                      <span>
+                        <strong>{squareCountSummary.missing_square_count}</strong>
+                        missing
+                      </span>
+                      <span>
+                        <strong>{squareCountSummary.unexpected_square_count}</strong>
+                        unexpected
+                      </span>
+                    </div>
+                    {squareCountNextActions.length ? (
+                      <ul className="square-pos-next-actions" aria-label="Square count next actions">
+                        {squareCountNextActions.map((action) => (
+                          <li key={action}>{action}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <div className="square-pos-plan__columns">
+                      <div>
+                        <span className="micro-label">Count comparison</span>
+                        {squareCountComparisons.length ? (
+                          <ul className="square-pos-review-list">
+                            {squareCountComparisons.slice(0, 5).map((row) => (
+                              <li key={`${row.public_id}-${row.square_catalog_variation_id}`}>
+                                <strong>{row.card_name}</strong>
+                                <span>
+                                  {row.issue_label}; expected {row.expected_serialized_quantity}; actual{" "}
+                                  {row.actual_square_quantity ?? "missing"}
+                                </span>
+                                <small>{row.next_action}</small>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <small>No mapped Square rows were compared.</small>
+                        )}
+                      </div>
+                      <div>
+                        <span className="micro-label">Unexpected Square counts</span>
+                        {squareUnexpectedCounts.length ? (
+                          <ul className="square-pos-review-list">
+                            {squareUnexpectedCounts.slice(0, 5).map((row) => (
+                              <li key={`${row.catalogObjectId}-${row.locationId}`}>
+                                <strong>{row.catalogObjectId}</strong>
+                                <span>
+                                  {row.locationId}; qty {row.quantity}; {row.state}
+                                </span>
+                                <small>Map this Square variation to website inventory or review in Square.</small>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <small>No unexpected Square counts in the latest comparison.</small>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </div>
               <div
                 className={`manifest-validation ${connectorValidation?.status ?? "idle"}`}
                 aria-live="polite"

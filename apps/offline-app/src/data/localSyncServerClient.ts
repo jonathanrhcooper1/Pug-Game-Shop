@@ -587,6 +587,61 @@ export type LocalSyncSquarePosInventoryPullPlanResult = LocalSyncResult<{
   raw_credentials_returned: false
 }>
 
+export type LocalSyncSquarePosInventoryCountReconciliationResult = LocalSyncResult<{
+  action: "square_pos_inventory_count_reconciliation"
+  reconciliation_status: "accepted" | "conflict" | "rejected"
+  code: string
+  ready: boolean
+  requires_manager_review: boolean
+  summary: {
+    expected_rows_count: number
+    compared_count: number
+    matched_count: number
+    mismatched_count: number
+    missing_square_count: number
+    unexpected_square_count: number
+    unresolved_mapping_count: number
+    expected_total_quantity: string
+    actual_total_quantity: string
+  }
+  comparisons: Array<{
+    public_id: string
+    card_name: string
+    set_name: string
+    condition: string
+    barcode: string
+    sku: string
+    square_catalog_item_id: string
+    square_catalog_variation_id: string
+    square_location_id: string
+    expected_serialized_quantity: string
+    actual_square_quantity: string | null
+    status: "matched" | "mismatch" | "missing_square_count" | string
+    issue: string
+    issue_label: string
+    next_action: string
+    location: string
+  }>
+  unexpected_square_counts: Array<{
+    catalogObjectId: string
+    locationId: string
+    quantity: string
+    state: string
+    calculatedAt: string
+    issue: string
+  }>
+  unresolved_mappings: Record<string, unknown>[]
+  generated_at_utc: string
+  source_of_truth: "tcg_store_platform"
+  square_counts_used_for: "pos_reconciliation_and_exception_detection"
+  provider_inventory_write_deferred: true
+  square_payment_capture_supported: false
+  plugin_square_payment_capture_supported: false
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+  next_actions: string[]
+}>
+
 export type LocalSyncFetch = (
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -718,6 +773,16 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input?: { squareLocationId?: string; updatedAfter?: string; limit?: number },
   ) => Promise<LocalSyncSquarePosInventoryPullPlanResult>
+  reconcileSquarePosInventoryCounts: (
+    sessionToken: string,
+    input?: {
+      squareLocationId?: string
+      updatedAfter?: string
+      limit?: number
+      counts?: Record<string, unknown>[]
+      squareCountsResponse?: Record<string, unknown>
+    },
+  ) => Promise<LocalSyncSquarePosInventoryCountReconciliationResult>
   pushQueuedOperations: (sessionToken: string) => Promise<LocalSyncPushResult>
 }
 
@@ -923,6 +988,18 @@ export function createLocalSyncServerClient(
           limit: input.limit ?? 1000,
         },
       }) as Promise<LocalSyncSquarePosInventoryPullPlanResult>,
+    reconcileSquarePosInventoryCounts: (sessionToken, input = {}) =>
+      requestLocalSync(fetcher, baseUrl, "/pos/square/inventory-counts/reconcile", {
+        method: "POST",
+        sessionToken,
+        body: {
+          square_location_id: input.squareLocationId ?? "",
+          updated_after: input.updatedAfter ?? "",
+          limit: input.limit ?? 1000,
+          counts: input.counts ?? [],
+          square_counts_response: input.squareCountsResponse ?? undefined,
+        },
+      }) as Promise<LocalSyncSquarePosInventoryCountReconciliationResult>,
     pushQueuedOperations: (sessionToken) =>
       requestLocalSync(fetcher, baseUrl, "/sync/push", {
         method: "POST",

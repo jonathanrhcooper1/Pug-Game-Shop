@@ -99,6 +99,10 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.planSquarePosInventoryPull(token, await readJson(request)))
       }
 
+      if (request.method === "POST" && url.pathname === "/pos/square/inventory-counts/reconcile") {
+        return sendStoreResult(response, store.reconcileSquarePosInventoryCounts(token, await readJson(request)))
+      }
+
       if (request.method === "POST" && url.pathname === "/inventory/intake") {
         return sendStoreResult(response, store.createInventoryIntake(token, await readJson(request)))
       }

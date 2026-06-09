@@ -3,6 +3,77 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Square POS Count Reconciliation Slice
+
+### What Changed
+
+- Added shared Square inventory count reconciliation logic that compares returned
+  Square `IN_STOCK` counts against serialized WordPress inventory expectations.
+- Added a manager-only LAN endpoint:
+  `/pos/square/inventory-counts/reconcile`.
+- Added offline app client typing and a Settings UI panel where managers can
+  paste Square inventory count JSON, compare counts, and review matched,
+  mismatched, missing, and unexpected Square rows.
+- Updated local sync server contract coverage to advertise count reconciliation
+  as manager-only, non-mutating, and payment-capture-free.
+
+### Why
+
+Square POS integration needs a practical step after the barcode/SKU pull plan:
+staff must be able to compare Square's returned counts to the website inventory
+source of truth without letting the local app capture payments or write directly
+to Square inventory.
+
+### Files Affected
+
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Shared Square adapter tests for matched count reconciliation and mismatch /
+  missing / unexpected Square count conflicts.
+- LAN runtime coverage for manager-only Square count reconciliation and
+  non-mutating conflict output.
+- Offline app client and UI shell contract coverage for the new reconciliation
+  method, route, fields, and UI labels.
+
+### Verification
+
+- `node packages/api-client/tests/square-inventory-adapter.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd run test:api-client`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:offline-app`: passed, including offline app contracts and
+  22 Rust/Tauri unit tests.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the Square count reconciliation endpoint,
+  client method, and Settings UI panel.
+- No database rollback is required because the comparison is non-mutating.
+
 ## 2026-06-09 - Offline Kiosk Pickup Pull Workflow
 
 ### What Changed

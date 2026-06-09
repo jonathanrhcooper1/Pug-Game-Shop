@@ -4,7 +4,10 @@ import { dirname, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
 
-import { planSquareBarcodeSkuInventoryPull } from "../../../packages/api-client/src/squareInventoryAdapter.mjs"
+import {
+  planSquareBarcodeSkuInventoryPull,
+  planSquareInventoryCountReconciliation,
+} from "../../../packages/api-client/src/squareInventoryAdapter.mjs"
 
 export const ACCESS_SECTIONS = Object.freeze([
   "Inventory",
@@ -338,6 +341,65 @@ export function createLocalSyncStore(options = {}) {
       source_of_truth: "tcg_store_platform",
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
+    }
+  }
+
+  function reconcileSquarePosInventoryCounts(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const generatedAtUtc = now().toISOString()
+    const plannerRows = inventoryItems.map(squareInventoryRowForPlanner)
+    const reconciliation = planSquareInventoryCountReconciliation(
+      plannerRows,
+      squareCountsPayloadFromInput(input),
+      {
+        environment: cleanSquareEnvironment(input.environment) || squareEnvironment,
+        credentialEnvironment: "sandbox",
+        squareLocationId: cleanExternalId(input.square_location_id) || squareLocationId,
+        updatedAfter: cleanIsoTimestamp(input.updated_after),
+        limit: boundedInt(input.limit, 1, 1000, 1000),
+      },
+    )
+    const comparisonRows = squarePosCountComparisonRows(inventoryItems, reconciliation.details?.comparisons ?? [])
+    const unexpectedCounts = Array.isArray(reconciliation.details?.unexpectedSquareCounts)
+      ? reconciliation.details.unexpectedSquareCounts
+      : []
+    const summary = reconciliation.details?.summary ?? {
+      expected_rows_count: 0,
+      compared_count: 0,
+      matched_count: 0,
+      mismatched_count: 0,
+      missing_square_count: 0,
+      unexpected_square_count: 0,
+      unresolved_mapping_count: 0,
+      expected_total_quantity: "0",
+      actual_total_quantity: "0",
+    }
+
+    return {
+      status: "ok",
+      action: "square_pos_inventory_count_reconciliation",
+      reconciliation_status: reconciliation.status,
+      code: reconciliation.code,
+      ready: reconciliation.status === "accepted",
+      requires_manager_review: reconciliation.status === "conflict",
+      summary,
+      comparisons: comparisonRows,
+      unexpected_square_counts: unexpectedCounts,
+      unresolved_mappings: reconciliation.details?.unresolvedMappings ?? [],
+      generated_at_utc: generatedAtUtc,
+      source_of_truth: "tcg_store_platform",
+      square_counts_used_for: "pos_reconciliation_and_exception_detection",
+      provider_inventory_write_deferred: true,
+      square_payment_capture_supported: false,
+      plugin_square_payment_capture_supported: false,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+      next_actions: squarePosCountReconciliationNextActions(reconciliation.status, comparisonRows, unexpectedCounts),
     }
   }
 
@@ -1774,6 +1836,7 @@ export function createLocalSyncStore(options = {}) {
     createSession,
     listAccessPolicy,
     planSquarePosInventoryPull,
+    reconcileSquarePosInventoryCounts,
     recordDeviceHeartbeat,
     reserveInventory,
     pullWebsiteInventory,
@@ -3122,6 +3185,124 @@ function squarePosReviewNextAction(errors) {
   }
 
   return "Review this POS inventory row before enabling Square reconciliation."
+}
+
+function squareCountsPayloadFromInput(input = {}) {
+  if (Array.isArray(input)) {
+    return { counts: input }
+  }
+
+  if (Array.isArray(input.square_counts)) {
+    return { counts: input.square_counts }
+  }
+
+  if (Array.isArray(input.counts)) {
+    return { counts: input.counts }
+  }
+
+  if (Array.isArray(input.inventory_counts)) {
+    return { inventory_counts: input.inventory_counts }
+  }
+
+  if (input.square_counts_response && typeof input.square_counts_response === "object") {
+    return input.square_counts_response
+  }
+
+  if (input.squareCountsResponse && typeof input.squareCountsResponse === "object") {
+    return input.squareCountsResponse
+  }
+
+  return { counts: [] }
+}
+
+function squarePosCountComparisonRows(inventoryItems, comparisons) {
+  return comparisons.map((comparison) => {
+    const item = inventoryItemForSquareMapping(inventoryItems, comparison)
+    const issue = cleanName(comparison.issue)
+    const status = cleanName(comparison.status) || "review"
+
+    return {
+      public_id: cleanPublicId(comparison.publicId ?? item?.public_id),
+      card_name: cleanName(item?.card_name) || "Mapped inventory item",
+      set_name: cleanName(item?.set_name),
+      condition: cleanCondition(item?.condition),
+      barcode: cleanBarcode(comparison.barcode ?? item?.barcode),
+      sku: cleanBarcode(comparison.sku ?? comparison.scanIdentity ?? item?.barcode),
+      square_catalog_item_id: cleanExternalId(comparison.squareCatalogItemId ?? item?.square_catalog_item_id),
+      square_catalog_variation_id: cleanExternalId(
+        comparison.squareCatalogVariationId ?? item?.square_catalog_variation_id,
+      ),
+      square_location_id: cleanExternalId(comparison.squareLocationId),
+      expected_serialized_quantity: String(comparison.expectedSerializedQuantity ?? "0"),
+      actual_square_quantity:
+        comparison.actualSquareQuantity === null || comparison.actualSquareQuantity === undefined
+          ? null
+          : String(comparison.actualSquareQuantity),
+      status,
+      issue,
+      issue_label: squarePosCountIssueLabel(issue),
+      next_action: squarePosCountNextAction(status, issue),
+      location: cleanName(item?.location),
+    }
+  })
+}
+
+function squarePosCountReconciliationNextActions(reconciliationStatus, comparisons, unexpectedCounts) {
+  const actions = []
+
+  if (comparisons.some((row) => row.status === "mismatch")) {
+    actions.push("Review Square count mismatches against serialized website inventory before changing stock.")
+  }
+
+  if (comparisons.some((row) => row.status === "missing_square_count")) {
+    actions.push("Confirm missing Square counts are true zeroes or link the Square variation/location.")
+  }
+
+  if (unexpectedCounts.length > 0) {
+    actions.push("Investigate Square count rows that do not map back to website inventory.")
+  }
+
+  if (reconciliationStatus === "accepted" && actions.length === 0) {
+    actions.push("Square counts match serialized website inventory; no inventory mutation is required.")
+  }
+
+  if (reconciliationStatus === "conflict" && actions.length === 0) {
+    actions.push("Review Square reconciliation rows before updating inventory.")
+  }
+
+  return actions
+}
+
+function squarePosCountIssueLabel(issue) {
+  if (issue === "square_count_missing_for_expected_variation") {
+    return "Missing Square count"
+  }
+
+  if (issue === "square_count_does_not_match_serialized_inventory") {
+    return "Count mismatch"
+  }
+
+  if (issue === "square_count_without_wordpress_mapping") {
+    return "Unexpected Square count"
+  }
+
+  return issue ? issue.replace(/_/g, " ") : "Matched"
+}
+
+function squarePosCountNextAction(status, issue) {
+  if (status === "matched") {
+    return "No action; Square count matches the website serialized inventory expectation."
+  }
+
+  if (issue === "square_count_missing_for_expected_variation") {
+    return "Verify the Square variation/location mapping or treat the Square value as zero for review."
+  }
+
+  if (issue === "square_count_does_not_match_serialized_inventory") {
+    return "Investigate sale, refund, or manual Square adjustment before changing website inventory."
+  }
+
+  return "Review this Square count before using it for reconciliation."
 }
 
 function inventoryItemForSquareMapping(inventoryItems, mapping) {

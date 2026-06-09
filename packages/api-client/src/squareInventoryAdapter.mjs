@@ -275,6 +275,179 @@ export function planSquareBarcodeSkuInventoryPull(wordpressInventoryRows, option
   );
 }
 
+export function planSquareInventoryCountReconciliation(wordpressInventoryRows, squareCountsPayload, options = {}) {
+  const pullPlan = planSquareBarcodeSkuInventoryPull(wordpressInventoryRows, options);
+
+  if (pullPlan.status === REJECTED) {
+    return outcome(REJECTED, "square_inventory_count_reconciliation_rejected", {
+      errors: pullPlan.details.errors,
+      environment: pullPlan.details.environment,
+      sourceOfTruth: "tcg_store_platform",
+      mappingSource: "wordpress_inventory_rows",
+      paymentDelegation: pullPlan.details.paymentDelegation,
+      paymentCaptureAuthority: pullPlan.details.paymentCaptureAuthority,
+      pluginPaymentCapturePermitted: false,
+      squarePaymentCaptureSupported: false,
+      networkRequestDeferred: true,
+      providerInventoryWriteDeferred: true,
+      reconciliationPermitted: false,
+      pullPlan,
+    });
+  }
+
+  const mappings = Array.isArray(pullPlan.details.barcodeMappings)
+    ? pullPlan.details.barcodeMappings
+    : [];
+  const squareCounts = normalizeSquareInventoryCounts(squareCountsPayload);
+  const expectedByKey = new Map();
+
+  for (const mapping of mappings) {
+    const expected = mapping.expectedSquareCountPull ?? {};
+    const key = squareCountKey(
+      expected.catalog_object_id ?? mapping.squareCatalogVariationId,
+      expected.location_id ?? mapping.squareLocationId,
+    );
+
+    if (key !== "") {
+      expectedByKey.set(key, mapping);
+    }
+  }
+
+  const squareCountsByKey = new Map();
+
+  for (const count of squareCounts) {
+    const key = squareCountKey(count.catalogObjectId, count.locationId);
+
+    if (key === "" || count.state !== "IN_STOCK") {
+      continue;
+    }
+
+    const current = squareCountsByKey.get(key);
+    squareCountsByKey.set(key, {
+      ...count,
+      quantity: (current?.quantity ?? 0) + count.quantity,
+      raw: current ? [...current.raw, count.raw] : [count.raw],
+    });
+  }
+
+  const comparisons = [];
+  let matchedCount = 0;
+  let mismatchedCount = 0;
+  let missingSquareCount = 0;
+  let expectedTotalQuantity = 0;
+  let actualTotalQuantity = 0;
+
+  for (const mapping of mappings) {
+    const expected = mapping.expectedSquareCountPull ?? {};
+    const key = squareCountKey(
+      expected.catalog_object_id ?? mapping.squareCatalogVariationId,
+      expected.location_id ?? mapping.squareLocationId,
+    );
+    const squareCount = squareCountsByKey.get(key) ?? null;
+    const expectedQuantity = nonNegativeInteger(expected.expected_serialized_quantity, 0);
+    const actualQuantity = squareCount ? squareCount.quantity : null;
+    const status = actualQuantity === null
+      ? "missing_square_count"
+      : actualQuantity === expectedQuantity
+        ? "matched"
+        : "mismatch";
+
+    expectedTotalQuantity += expectedQuantity;
+    actualTotalQuantity += actualQuantity ?? 0;
+
+    if (status === "matched") {
+      matchedCount += 1;
+    } else if (status === "missing_square_count") {
+      missingSquareCount += 1;
+    } else {
+      mismatchedCount += 1;
+    }
+
+    comparisons.push({
+      publicId: mapping.publicId,
+      inventoryId: mapping.inventoryId,
+      barcode: mapping.barcode,
+      sku: mapping.sku,
+      scanIdentity: mapping.scanIdentity,
+      squareCatalogItemId: mapping.squareCatalogItemId,
+      squareCatalogVariationId: mapping.squareCatalogVariationId,
+      squareLocationId: mapping.squareLocationId,
+      expectedSerializedQuantity: String(expectedQuantity),
+      actualSquareQuantity: actualQuantity === null ? null : String(actualQuantity),
+      status,
+      issue:
+        status === "matched"
+          ? ""
+          : status === "missing_square_count"
+            ? "square_count_missing_for_expected_variation"
+            : "square_count_does_not_match_serialized_inventory",
+    });
+  }
+
+  const unexpectedSquareCounts = [];
+
+  for (const [key, count] of squareCountsByKey.entries()) {
+    if (expectedByKey.has(key)) {
+      continue;
+    }
+
+    unexpectedSquareCounts.push({
+      catalogObjectId: count.catalogObjectId,
+      locationId: count.locationId,
+      quantity: String(count.quantity),
+      state: count.state,
+      calculatedAt: count.calculatedAt,
+      issue: "square_count_without_wordpress_mapping",
+    });
+  }
+
+  const unresolvedMappings = Array.isArray(pullPlan.details.unresolvedMappings)
+    ? pullPlan.details.unresolvedMappings
+    : [];
+  const hasConflict =
+    unresolvedMappings.length > 0 ||
+    mismatchedCount > 0 ||
+    missingSquareCount > 0 ||
+    unexpectedSquareCounts.length > 0;
+
+  return outcome(
+    hasConflict ? CONFLICT : ACCEPTED,
+    hasConflict
+      ? "square_inventory_count_reconciliation_requires_review"
+      : "square_inventory_count_reconciliation_matched",
+    {
+      environment: pullPlan.details.environment,
+      sourceOfTruth: "tcg_store_platform",
+      mappingSource: "wordpress_inventory_rows",
+      paymentDelegation: pullPlan.details.paymentDelegation,
+      paymentCaptureAuthority: pullPlan.details.paymentCaptureAuthority,
+      pluginPaymentCapturePermitted: false,
+      pluginCustomGatewayPermitted: false,
+      squarePaymentCaptureSupported: false,
+      networkRequestDeferred: true,
+      providerInventoryWriteDeferred: true,
+      providerInventoryReadAlreadyPerformed: true,
+      reconciliationPermitted: true,
+      squareCountsUsedFor: "pos_reconciliation_and_exception_detection",
+      comparisons,
+      unexpectedSquareCounts,
+      unresolvedMappings,
+      summary: {
+        expected_rows_count: mappings.length,
+        compared_count: comparisons.length,
+        matched_count: matchedCount,
+        mismatched_count: mismatchedCount,
+        missing_square_count: missingSquareCount,
+        unexpected_square_count: unexpectedSquareCounts.length,
+        unresolved_mapping_count: unresolvedMappings.length,
+        expected_total_quantity: String(expectedTotalQuantity),
+        actual_total_quantity: String(actualTotalQuantity),
+      },
+      pullPlan,
+    },
+  );
+}
+
 function catalogBatchUpsertRequest(contract) {
   return {
     method: "POST",
@@ -571,6 +744,65 @@ function normalizeLineIdentity(line) {
   };
 }
 
+function normalizeSquareInventoryCounts(payload) {
+  const source = payload?.counts ??
+    payload?.inventory_counts ??
+    payload?.inventoryCounts ??
+    payload?.data?.counts ??
+    payload?.data?.inventory_counts ??
+    payload;
+
+  return arrayValue(source)
+    .map((count) => normalizeSquareInventoryCount(count))
+    .filter((count) => count !== null);
+}
+
+function normalizeSquareInventoryCount(count) {
+  if (count === null || typeof count !== "object" || Array.isArray(count)) {
+    return null;
+  }
+
+  const catalogObjectId = cleanExternalId(
+    count.catalog_object_id ??
+      count.catalogObjectId ??
+      count.catalog_object?.id ??
+      count.catalogObject?.id ??
+      "",
+  );
+  const locationId = cleanExternalId(
+    count.location_id ??
+      count.locationId ??
+      count.location?.id ??
+      "",
+  );
+  const quantity = nonNegativeInteger(count.quantity ?? count.count ?? count.available_quantity, 0);
+  const state = String(count.state ?? "IN_STOCK").trim().toUpperCase() || "IN_STOCK";
+
+  if (catalogObjectId === "" || locationId === "") {
+    return null;
+  }
+
+  return {
+    catalogObjectId,
+    locationId,
+    quantity,
+    state,
+    calculatedAt: cleanTimestamp(count.calculated_at ?? count.calculatedAt) ?? "",
+    raw: count,
+  };
+}
+
+function squareCountKey(catalogObjectId, locationId) {
+  const objectId = cleanExternalId(catalogObjectId);
+  const squareLocationId = cleanExternalId(locationId);
+
+  if (objectId === "" || squareLocationId === "") {
+    return "";
+  }
+
+  return `${objectId}::${squareLocationId}`;
+}
+
 function cleanScanValue(value) {
   return String(value ?? "")
     .trim()
@@ -612,6 +844,16 @@ function positiveInteger(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function nonNegativeInteger(value, fallback = 0) {
+  if (Number.isInteger(value) && value >= 0) {
+    return value;
+  }
+
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 function cleanTimestamp(value) {
