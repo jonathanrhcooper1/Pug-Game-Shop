@@ -20,6 +20,7 @@ final class ScryDexCatalogAdminWorkspaceTest extends TestCase {
 				'ScryDex Catalog',
 				'tcg-store/v1/scrydex/catalog/status',
 				'tcg-store/v1/scrydex/catalog/index',
+				'tcg-store/v1/scrydex/catalog/export',
 				'wp_create_nonce( \'wp_rest\' )',
 			) as $marker
 		) {
@@ -27,7 +28,7 @@ final class ScryDexCatalogAdminWorkspaceTest extends TestCase {
 		}
 	}
 
-	public function test_catalog_import_controls_are_bounded_and_manager_only(): void {
+	public function test_catalog_import_controls_run_full_game_index_and_export_manager_only(): void {
 		$source = $this->source();
 
 		foreach (
@@ -35,12 +36,17 @@ final class ScryDexCatalogAdminWorkspaceTest extends TestCase {
 				'current_user_can( \'manage_settings\' )',
 				'data-can-index',
 				'page_size',
-				'max_pages',
-				'expansions_page',
-				'max_expansion_pages',
 				'execute_database_writes',
 				'index_expansions',
-				'Running ScryDex batch',
+				'Full Game Index',
+				'Start Full ScryDex Index',
+				'loadExpansionIds',
+				'indexCardsForExpansion',
+				'continuation_checkpoint_row',
+				'returns fewer than',
+				'Daily credit limits are not enforced',
+				'Catalog Export',
+				'data-export-endpoint',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

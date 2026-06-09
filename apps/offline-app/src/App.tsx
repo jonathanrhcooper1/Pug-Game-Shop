@@ -186,6 +186,23 @@ type ActivityMessage = {
   detail: string
 }
 
+type StatusTone = "ready" | "working" | "blocked" | "idle" | "warning"
+
+type StatusSummaryCard = {
+  id: string
+  label: string
+  value: string
+  detail: string
+  tone: StatusTone
+}
+
+type StatusTimelineEntry = {
+  id: string
+  title: string
+  detail: string
+  tone: StatusTone
+}
+
 type LanSyncLastResult = {
   generatedAtLabel: string
   pullMessage: string
@@ -485,6 +502,37 @@ function safeSummaryValue(value: unknown) {
 
 function countLabel(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
+}
+
+function statusToneFromRemoteState(status: string): StatusTone {
+  if (status === "loading" || status === "searching") {
+    return "working"
+  }
+
+  if (
+    status === "ready" ||
+    status === "ok" ||
+    status === "success" ||
+    status === "synced" ||
+    status === "copied" ||
+    status === "downloaded" ||
+    status === "previewed" ||
+    status === "restored" ||
+    status === "voided" ||
+    status === "cleared"
+  ) {
+    return "ready"
+  }
+
+  if (status === "blocked" || status === "error" || status === "unavailable") {
+    return "blocked"
+  }
+
+  if (status === "warning") {
+    return "warning"
+  }
+
+  return "idle"
 }
 
 function connectorOriginKey(value: string) {
@@ -1241,6 +1289,171 @@ export function App() {
     localSyncStatus,
     queuedOperations,
   )
+  const localSyncStatusTone =
+    localSyncStatus?.status === "ok"
+      ? "ready"
+      : localSyncStatus
+        ? statusToneFromRemoteState(localSyncStatus.status)
+        : "idle"
+  const localSyncStatusValue =
+    localSyncStatus?.status === "ok"
+      ? `${localSyncStatus.local_database}; ${countLabel(localSyncStatus.inventory_count, "inventory row")}`
+      : localSyncStatus
+        ? localSyncStatus.status === "unavailable"
+          ? "LAN unavailable"
+          : "LAN blocked"
+        : "Not checked"
+  const localSyncStatusDetail =
+    localSyncStatus?.status === "ok"
+      ? `${localSyncClient.serverUrl}; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}; website ${connectorDisplayUrl(activeProfile)}.`
+      : localSyncStatus
+        ? localSyncStatus.message
+        : "Use Sync Now or the Settings probe to verify the LAN middleman server."
+  const scryDexLookupOrderLabel =
+    localSyncStatus?.status === "ok" && localSyncStatus.scrydex_lookup_order.length > 0
+      ? localSyncStatus.scrydex_lookup_order.join(" -> ")
+      : "local_reference_cache -> wordpress_catalog_proxy -> scrydex_provider"
+  const scryDexCurrentStockCount = scryDexCards.reduce(
+    (total, card) => total + card.stock_total_count,
+    0,
+  )
+  const scryDexLookupTone = statusToneFromRemoteState(scryDexLookupStatus)
+  const queueStatusTone =
+    queuedOperations.length > 0 || (localSyncStatus?.status === "ok" && localSyncStatus.queue_depth > 0)
+      ? "warning"
+      : "ready"
+  const setupStatusTone = statusToneFromRemoteState(lanSetupProbe.status)
+  const manifestStatusTone = statusToneFromRemoteState(connectorManifestFetch.status)
+  const setupAndManifestTone =
+    setupStatusTone === "blocked" || manifestStatusTone === "blocked"
+      ? "blocked"
+      : setupStatusTone === "warning"
+        ? "warning"
+        : setupStatusTone === "working" || manifestStatusTone === "working"
+          ? "working"
+          : setupStatusTone === "ready" || manifestStatusTone === "ready"
+            ? "ready"
+            : "idle"
+  const statusSummaryCards: StatusSummaryCard[] = [
+    {
+      id: "website-lan",
+      label: "Website/LAN",
+      value: localSyncStatusValue,
+      detail: localSyncStatusDetail,
+      tone: localSyncStatusTone,
+    },
+    {
+      id: "scrydex-catalog",
+      label: "ScryDex catalog",
+      value:
+        localSyncStatus?.status === "ok"
+          ? countLabel(localSyncStatus.reference_card_count, "reference card")
+          : "Catalog count pending",
+      detail:
+        `Lookup order: ${scryDexLookupOrderLabel}; provider fallback ${
+          localSyncStatus?.status === "ok" && localSyncStatus.scrydex_fallback_connected
+            ? "connected"
+            : "not confirmed"
+        }. Local database first; ScryDex provider fallback only when the website reference cache misses.`,
+      tone: localSyncStatus?.status === "ok" && localSyncStatus.reference_card_count > 0
+        ? "ready"
+        : localSyncStatusTone === "blocked"
+          ? "blocked"
+          : "warning",
+    },
+    {
+      id: "scrydex-lookup",
+      label: "ScryDex lookup status",
+      value:
+        scryDexLookupStatus === "searching"
+          ? "Searching"
+          : scryDexLookupStatus === "ready"
+            ? `${countLabel(scryDexCards.length, "result")}; ${countLabel(scryDexCurrentStockCount, "stock copy")}`
+            : scryDexLookupStatus === "blocked"
+              ? "Blocked"
+              : "Idle",
+      detail: selectedScryDexCard
+        ? `${scryDexLookupDetail} Selected ${selectedScryDexCard.card_name}; image, price, condition stock, and variants are ready for intake.`
+        : scryDexLookupDetail,
+      tone: scryDexLookupTone,
+    },
+    {
+      id: "inventory-search",
+      label: "Inventory search",
+      value: `${countLabel(inventoryItems.length, "cached inventory row")}`,
+      detail: lanInventorySearchDetail,
+      tone: statusToneFromRemoteState(lanInventorySearchStatus),
+    },
+    {
+      id: "queue-health",
+      label: "Queue health",
+      value:
+        localSyncStatus?.status === "ok"
+          ? `${countLabel(queuedOperations.length, "device op")}; ${countLabel(localSyncStatus.queue_depth, "LAN op")}`
+          : `${countLabel(queuedOperations.length, "device op")}; LAN queue pending`,
+      detail: `${queueExportStatus.detail} Sync attempts saved on this device: ${syncAttempts.length}.`,
+      tone: queueStatusTone,
+    },
+    {
+      id: "setup-manifest",
+      label: "Setup and manifest",
+      value: `Setup ${lanSetupProbe.status}; manifest ${connectorManifestFetch.status}`,
+      detail: `${lanSetupProbe.detail} Manifest: ${connectorManifestFetch.detail}`,
+      tone: setupAndManifestTone,
+    },
+  ]
+  const statusTimelineEntries: StatusTimelineEntry[] = [
+    {
+      id: "latest-action",
+      title: activityMessage.title,
+      detail: activityMessage.detail,
+      tone: "ready",
+    },
+    {
+      id: "website-lan",
+      title: "Website/LAN status",
+      detail: localSyncStatusDetail,
+      tone: localSyncStatusTone,
+    },
+    {
+      id: "scrydex-lookup",
+      title: "ScryDex lookup status",
+      detail:
+        `${scryDexLookupDetail} Lookup order: ${scryDexLookupOrderLabel}; ${
+          scryDexCards.length > 0
+            ? `${countLabel(scryDexCards.length, "card")} visible with image and stock summary.`
+            : "no result set loaded yet."
+        }`,
+      tone: scryDexLookupTone,
+    },
+    {
+      id: "local-cache",
+      title: "Local database search",
+      detail: lanInventorySearchDetail,
+      tone: statusToneFromRemoteState(lanInventorySearchStatus),
+    },
+    {
+      id: "queue",
+      title: "Queue status timeline",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? `${operationSyncVisibilitySummary}; ${countLabel(localSyncStatus.queue_depth, "LAN queued op")}; ${queueExportStatus.detail}`
+          : `${operationSyncVisibilitySummary}; ${queueExportStatus.detail}`,
+      tone: queueStatusTone,
+    },
+    {
+      id: "desktop-sync",
+      title: "Desktop sync execution",
+      detail: desktopSyncExecution.detail,
+      tone: statusToneFromRemoteState(desktopSyncExecution.status),
+    },
+    {
+      id: "setup-manifest",
+      title: "Setup and manifest",
+      detail: `${lanSetupProbe.detail} Manifest: ${connectorManifestFetch.detail}`,
+      tone: setupAndManifestTone,
+    },
+  ]
   const displayedCreditMinorUnits = customerCreditAvailableAfterPending(
     customerCredit,
     pendingCreditMinorUnits,
@@ -4506,16 +4719,58 @@ export function App() {
             aria-label="Status activity"
             ref={statusPanelRef}
           >
-          <section className="workflow-status" aria-live="polite" ref={workflowPanelRef}>
-            <div>
-              <span className="micro-label">Active workspace</span>
-              <strong>{activeSection}</strong>
-            </div>
-            <p>
-              <b>{activityMessage.title}</b>
-              {activityMessage.detail}
-            </p>
-          </section>
+            <section className="workflow-status" aria-live="polite" ref={workflowPanelRef}>
+              <div>
+                <span className="micro-label">Active workspace</span>
+                <strong>{activeSection}</strong>
+              </div>
+              <p>
+                <b>{activityMessage.title}</b>
+                {activityMessage.detail}
+              </p>
+            </section>
+
+            <section className="status-dashboard" aria-label="Live system status">
+              <header className="status-dashboard-heading">
+                <div>
+                  <span className="micro-label">Live system status</span>
+                  <strong>Website, catalog, queue, and local cache</strong>
+                </div>
+                <span>Online-first with offline fallback</span>
+              </header>
+              <div className="status-summary-grid">
+                {statusSummaryCards.map((card) => (
+                  <article className={`status-summary-card ${card.tone}`} key={card.id}>
+                    <div>
+                      <span>{card.label}</span>
+                      <strong>{card.value}</strong>
+                    </div>
+                    <p>{card.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="status-timeline" aria-label="Status message center">
+              <header className="status-dashboard-heading">
+                <div>
+                  <span className="micro-label">Status message center</span>
+                  <strong>Latest operational messages</strong>
+                </div>
+                <span>{countLabel(statusTimelineEntries.length, "tracked signal")}</span>
+              </header>
+              <div className="status-timeline-list">
+                {statusTimelineEntries.map((entry) => (
+                  <article className={`status-timeline-entry ${entry.tone}`} key={entry.id}>
+                    <span className="status-timeline-dot" aria-hidden="true" />
+                    <div>
+                      <strong>{entry.title}</strong>
+                      <p>{entry.detail}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
 
           {renderOperationSyncVisibilityPanel()}
 

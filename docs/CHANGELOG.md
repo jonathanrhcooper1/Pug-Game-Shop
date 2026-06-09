@@ -6,11 +6,11 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
-- ScryDex catalog imports now preflight the whole planned provider request
-  batch against configured usage credits and a per-call ceiling below the
-  documented ScryDex request-rate limit before any expansion/card indexing
-  starts; database writes are also re-checked for `manage_settings` inside the
-  controller.
+- ScryDex catalog imports now run as an enterprise full-game indexer from the
+  admin page: expansions are pulled first, cards are indexed by expansion, and
+  pagination continues until ScryDex returns fewer than the requested page size.
+  The plugin no longer enforces an artificial daily credit ceiling for this
+  manager-only catalog mirror flow.
 - Offline app inventory search now hydrates from the central LAN sync server
   while preserving device-cache fallback, and the LAN inventory search now
   matches location, set code, card number, printed number, condition, provider
@@ -26,6 +26,8 @@ All notable changes follow Semantic Versioning.
   from WordPress inventory rows, including available, reserved,
   pending-intake, total, and available-by-condition counts for the card lookup
   and local app surfaces.
+- ScryDex catalog admin now includes paginated JSON export links for reference
+  sets, cards, variants, price observations, price points, and checkpoints.
 - Local sync setup now has a secret-free `GET /setup/status` probe, and the
   offline app stores one configurable website profile per installation while
   preserving and validating the configured LAN server URL.

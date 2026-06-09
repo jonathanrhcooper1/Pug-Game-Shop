@@ -10,7 +10,7 @@ namespace TCGStorePlatform\Tests\Unit;
 use TCGStorePlatform\Tests\TestCase;
 
 final class ScryDexCatalogControllerContractTest extends TestCase {
-	public function test_catalog_index_accepts_bounded_expansion_pagination(): void {
+	public function test_catalog_index_supports_expansion_first_auto_pagination(): void {
 		$source = $this->source();
 
 		foreach (
@@ -18,47 +18,60 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 				'expansions_page',
 				'max_expansion_pages',
 				'skip_cards',
+				'checkpoint',
 				'cards_index_requested',
 				'continuation_available',
 				'next_page',
+				'provider_set_ids',
+				'short_page_reached',
 				'has_more_pages',
+				'unbounded_page_count',
 				'totalCount',
 				'total_count',
 				'self::MAX_PAGE_SIZE',
-				'self::MAX_PAGES',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );
 		}
-
-		$rate_limit_check = strpos( $source, 'scrydex_provider_request_budget_exceeded' );
-		$settings_load    = strpos( $source, 'Settings::all()' );
-
-		$this->assert_true( false !== $rate_limit_check );
-		$this->assert_true( false !== $settings_load );
-		$this->assert_true(
-			$rate_limit_check < $settings_load,
-			'Expected batch-size rate-limit preflight to run before loading settings or provider readiness.'
-		);
 	}
 
-	public function test_catalog_index_preflights_usage_and_rate_limit_budget(): void {
+	public function test_catalog_index_uses_enterprise_usage_policy_without_daily_plugin_cap(): void {
 		$source = $this->source();
 
 		foreach (
 			array(
 				'DOCUMENTED_REQUESTS_PER_SECOND_LIMIT',
-				'MAX_PROVIDER_REQUESTS_PER_CALL',
 				'USAGE_REQUEST_CREDIT_ESTIMATE',
 				'planned_catalog_request_count',
 				'planned_provider_request_count',
 				'rate_limit_plan',
+				'informational',
 				'documented_requests_per_second_limit',
 				'usage_request_credit_estimate_included',
+				'short_page_completion_rule',
 				'usage_budget_plan',
-				'plan_provider_request_batch',
-				'scrydex_provider_request_batch_exceeds_safe_limit',
-				'scrydex_usage_budget_blocked',
+				'enterprise_usage_budget_plan',
+				'daily_credit_budget_enforced',
+				'enterprise_overage_allowed',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
+	}
+
+	public function test_catalog_export_route_is_manager_only_and_paginated(): void {
+		$source = $this->source();
+
+		foreach (
+			array(
+				'/scrydex/catalog/export',
+				'MAX_EXPORT_PAGE_SIZE',
+				'EXPORT_TABLES',
+				'public function export',
+				'scrydex_catalog_export',
+				'has_more',
+				'allowed_tables',
+				'credential_values_redacted',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

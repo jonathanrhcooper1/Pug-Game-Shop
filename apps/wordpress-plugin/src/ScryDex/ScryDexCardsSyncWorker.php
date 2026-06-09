@@ -8,8 +8,7 @@
 namespace TCGStorePlatform\ScryDex;
 
 final class ScryDexCardsSyncWorker {
-	private const MAX_PAGES_LIMIT = 25;
-	private const MAX_PAGE_SIZE   = 100;
+	private const MAX_PAGE_SIZE = 100;
 
 	public function __construct(
 		private string $table_prefix = '',
@@ -324,11 +323,26 @@ final class ScryDexCardsSyncWorker {
 			)
 		) ?? $provider_request['page_size'];
 
-		return null !== $total_count && $provider_request['page'] * $page_size < $total_count;
+		if ( null !== $total_count ) {
+			return $provider_request['page'] * $page_size < $total_count;
+		}
+
+		return $this->row_count_from_body( $body ) >= $provider_request['page_size'];
 	}
 
 	private function max_pages( mixed $value ): int {
-		return max( 1, min( self::MAX_PAGES_LIMIT, (int) $value ) );
+		$value = (int) $value;
+
+		return 0 >= $value ? PHP_INT_MAX : $value;
+	}
+
+	/**
+	 * @param array<string, mixed> $body Provider response body.
+	 */
+	private function row_count_from_body( array $body ): int {
+		$rows = $body['data'] ?? $body['cards'] ?? array();
+
+		return is_array( $rows ) ? count( $rows ) : 0;
 	}
 
 	private function resource_key( mixed $value ): string {

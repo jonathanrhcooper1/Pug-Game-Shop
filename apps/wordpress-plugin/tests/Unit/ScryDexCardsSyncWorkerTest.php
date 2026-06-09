@@ -119,6 +119,47 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 		$this->assert_same( 1, $result['continuation_checkpoint_row']['page_number'] );
 	}
 
+	public function test_worker_continues_full_pages_until_short_page_without_provider_metadata(): void {
+		$urls   = array();
+		$worker = $this->worker(
+			function ( string $method, string $url, array $args ) use ( &$urls ): array {
+				unset( $method, $args );
+				$urls[] = $url;
+
+				if ( str_contains( $url, 'page=2' ) ) {
+					return array(
+						'status' => 200,
+						'body'   => array(
+							'page'  => 2,
+							'cards' => array(),
+						),
+					);
+				}
+
+				return array(
+					'status' => 200,
+					'body'   => $this->cards_page( 1, '', 'sdx-pkm-001', 'Charizard' ),
+				);
+			}
+		);
+		$result = $worker->run_cards_pages(
+			array(
+				'game'      => 'pokemon',
+				'page_size' => 1,
+				'max_pages' => 3,
+			),
+			array(),
+			$this->ready_gate_overrides()
+		);
+
+		$this->assert_same( 'completed', $result['status'] );
+		$this->assert_same( 2, $result['page_count'] );
+		$this->assert_same( 2, $result['provider_request_count'] );
+		$this->assert_false( $result['continuation_available'] );
+		$this->assert_same( 0, $result['pages'][1]['orchestration_plan']['page_plan']['reference_row_count'] );
+		$this->assert_same( 2, count( $urls ) );
+	}
+
 	public function test_worker_can_execute_persistence_when_explicitly_requested(): void {
 		$database = $this->database();
 		$worker   = $this->worker(

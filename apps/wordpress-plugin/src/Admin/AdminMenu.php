@@ -193,6 +193,7 @@ final class AdminMenu {
 		$can_index       = current_user_can( 'manage_settings' );
 		$status_endpoint = rest_url( 'tcg-store/v1/scrydex/catalog/status' );
 		$index_endpoint  = rest_url( 'tcg-store/v1/scrydex/catalog/index' );
+		$export_endpoint = rest_url( 'tcg-store/v1/scrydex/catalog/export' );
 
 		echo '<div class="wrap"><h1>';
 		echo esc_html__( 'ScryDex Catalog', 'tcg-store-platform' );
@@ -204,32 +205,30 @@ final class AdminMenu {
 		echo '<p>' . esc_html__( 'Loading catalog status...', 'tcg-store-platform' ) . '</p>';
 		echo '</div>';
 
-		echo '<h2>' . esc_html__( 'Import Batch', 'tcg-store-platform' ) . '</h2>';
+		echo '<h2>' . esc_html__( 'Full Game Index', 'tcg-store-platform' ) . '</h2>';
 		echo '<form id="tcg-store-scrydex-catalog-import-form" method="post" action="';
 		echo esc_url( $index_endpoint );
 		echo '">';
 		echo '<table class="form-table" role="presentation"><tbody>';
 		$this->render_scrydex_catalog_text_input( 'game', __( 'Game', 'tcg-store-platform' ), 'pokemon', 'pokemon' );
-		$this->render_scrydex_catalog_text_input( 'expansion_id', __( 'Expansion ID', 'tcg-store-platform' ), '', 'Optional set-specific import' );
+		$this->render_scrydex_catalog_text_input( 'expansion_id', __( 'Expansion ID', 'tcg-store-platform' ), '', 'Optional single expansion; leave blank for full game' );
 		$this->render_scrydex_catalog_number_input( 'page_size', __( 'Page size', 'tcg-store-platform' ), 100, 1, 100 );
-		$this->render_scrydex_catalog_number_input( 'max_pages', __( 'Card pages this run', 'tcg-store-platform' ), 10, 1, 25 );
-		$this->render_scrydex_catalog_number_input( 'expansions_page', __( 'Expansion start page', 'tcg-store-platform' ), 1, 1, 1000000 );
-		$this->render_scrydex_catalog_number_input( 'max_expansion_pages', __( 'Expansion pages this run', 'tcg-store-platform' ), 25, 1, 25 );
 		echo '<tr><th scope="row">' . esc_html__( 'Expansion index', 'tcg-store-platform' ) . '</th><td><label>';
 		echo '<input type="checkbox" name="index_expansions" value="1" checked="checked" /> ';
-		echo esc_html__( 'Refresh expansion/set metadata with this batch.', 'tcg-store-platform' );
+		echo esc_html__( 'Pull expansions first, then index cards by expansion automatically until each page returns fewer than 100 rows.', 'tcg-store-platform' );
 		echo '</label></td></tr>';
 		echo '<tr><th scope="row">' . esc_html__( 'Database writes', 'tcg-store-platform' ) . '</th><td><label>';
-		echo '<input type="checkbox" name="execute_database_writes" value="1" /> ';
+		echo '<input type="checkbox" name="execute_database_writes" value="1" checked="checked" /> ';
 		echo esc_html__( 'Write imported rows to the website catalog database.', 'tcg-store-platform' );
 		echo '</label></td></tr>';
 		echo '</tbody></table>';
-		submit_button( __( 'Run ScryDex Batch', 'tcg-store-platform' ), 'primary', 'submit', false, $can_index ? array() : array( 'disabled' => 'disabled' ) );
+		submit_button( __( 'Start Full ScryDex Index', 'tcg-store-platform' ), 'primary', 'submit', false, $can_index ? array() : array( 'disabled' => 'disabled' ) );
 		echo '</form>';
 
 		echo '<div id="tcg-store-scrydex-catalog-import-result" data-endpoint="';
 		echo esc_url( $index_endpoint );
 		echo '" data-status-endpoint="' . esc_url( $status_endpoint );
+		echo '" data-export-endpoint="' . esc_url( $export_endpoint );
 		echo '" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) );
 		echo '" data-can-index="' . esc_attr( $can_index ? '1' : '0' ) . '">';
 		echo '<p>';
@@ -239,6 +238,9 @@ final class AdminMenu {
 				: __( 'Manager settings access is required to run catalog imports.', 'tcg-store-platform' )
 		);
 		echo '</p></div>';
+
+		echo '<h2>' . esc_html__( 'Catalog Export', 'tcg-store-platform' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Use the REST export endpoint for paginated JSON exports of reference sets, cards, variants, prices, and checkpoints.', 'tcg-store-platform' ) . '</p>';
 
 		$this->render_scrydex_catalog_script();
 		echo '</div>';
@@ -886,22 +888,96 @@ final class AdminMenu {
 	}
 
 	private function render_scrydex_catalog_script(): void {
-		echo '<script>';
-		echo '(function(){';
-		echo 'const statusBox=document.getElementById("tcg-store-scrydex-catalog-status");';
-		echo 'const form=document.getElementById("tcg-store-scrydex-catalog-import-form");';
-		echo 'const resultBox=document.getElementById("tcg-store-scrydex-catalog-import-result");';
-		echo 'if(!statusBox||!form||!resultBox){return;}';
-		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
-		echo 'const title=function(value){return String(value||"").replace(/_/g," ").replace(/\b\w/g,function(char){return char.toUpperCase();});};';
-		echo 'const countsTable=function(counts){const keys=Object.keys(counts||{});if(!keys.length){return "<p>' . esc_js( __( 'Catalog count tables are not ready.', 'tcg-store-platform' ) ) . '</p>";}return "<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Table', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Rows', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+keys.map(function(key){return "<tr><th scope=\"row\">"+esc(title(key))+"</th><td>"+esc(counts[key])+"</td></tr>";}).join("")+"</tbody></table>";};';
-		echo 'const checkpointsTable=function(rows){rows=Array.isArray(rows)?rows:[];if(!rows.length){return "<p>' . esc_js( __( 'No ScryDex checkpoints yet.', 'tcg-store-platform' ) ) . '</p>";}return "<table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Resource', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Key', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Page', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Committed', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Updated', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+rows.map(function(row){return "<tr><td>"+esc(row.resource_type)+"</td><td>"+esc(row.resource_key)+"</td><td>"+esc(row.page_number)+"</td><td>"+esc(row.committed_count)+"</td><td>"+esc(row.updated_at)+"</td></tr>";}).join("")+"</tbody></table>";};';
-		echo 'const renderStatus=function(payload){const data=(payload||{}).data||{};statusBox.innerHTML="<h2>' . esc_js( __( 'Catalog Status', 'tcg-store-platform' ) ) . '</h2>"+countsTable(data.counts)+"<h2>' . esc_js( __( 'Latest Checkpoints', 'tcg-store-platform' ) ) . '</h2>"+checkpointsTable(data.latest_checkpoints);};';
-		echo 'const loadStatus=function(){fetch(statusBox.dataset.endpoint,{headers:{"X-WP-Nonce":statusBox.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){statusBox.innerHTML="<p>' . esc_js( __( 'Catalog status failed.', 'tcg-store-platform' ) ) . '</p>";return;}renderStatus(result.payload);}).catch(function(){statusBox.innerHTML="<p>' . esc_js( __( 'Catalog status failed.', 'tcg-store-platform' ) ) . '</p>";});};';
-		echo 'const renderImport=function(payload){const data=(payload||{}).data||{};const cards=data.cards||{};const expansions=data.expansions||{};const usage=data.usage_snapshot||{};resultBox.innerHTML="<p><strong>' . esc_js( __( 'Batch status', 'tcg-store-platform' ) ) . ':</strong> "+esc(cards.status||"unknown")+" <strong>' . esc_js( __( 'Card pages', 'tcg-store-platform' ) ) . ':</strong> "+esc(cards.page_count||0)+" <strong>' . esc_js( __( 'Card requests', 'tcg-store-platform' ) ) . ':</strong> "+esc(cards.provider_request_count||0)+"</p><p><strong>' . esc_js( __( 'Expansions', 'tcg-store-platform' ) ) . ':</strong> "+esc(expansions.status||"skipped")+" "+esc(expansions.write_count||0)+" ' . esc_js( __( 'writes', 'tcg-store-platform' ) ) . ' <strong>' . esc_js( __( 'Remaining credits', 'tcg-store-platform' ) ) . ':</strong> "+esc(usage.remaining_credits||"")+"</p><p>"+esc(data.next_action||"")+"</p>";};';
-		echo 'form.addEventListener("submit",function(event){event.preventDefault();if(resultBox.dataset.canIndex!=="1"){return;}const formData=new FormData(form);const payload={game:String(formData.get("game")||"pokemon"),expansion_id:String(formData.get("expansion_id")||""),page_size:Number(formData.get("page_size")||100),max_pages:Number(formData.get("max_pages")||1),index_expansions:form.querySelector("[name=index_expansions]").checked,expansions_page:Number(formData.get("expansions_page")||1),max_expansion_pages:Number(formData.get("max_expansion_pages")||1),execute_database_writes:form.querySelector("[name=execute_database_writes]").checked};resultBox.innerHTML="<p>' . esc_js( __( 'Running ScryDex batch...', 'tcg-store-platform' ) ) . '</p>";fetch(resultBox.dataset.endpoint,{method:"POST",headers:{"Content-Type":"application/json","X-WP-Nonce":resultBox.dataset.nonce},body:JSON.stringify(payload)}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){const error=((result.payload||{}).error||{});resultBox.innerHTML="<p>' . esc_js( __( 'ScryDex batch failed.', 'tcg-store-platform' ) ) . ' "+esc(error.code||"")+"</p>";return;}renderImport(result.payload);loadStatus();}).catch(function(){resultBox.innerHTML="<p>' . esc_js( __( 'ScryDex batch failed.', 'tcg-store-platform' ) ) . '</p>";});});';
-		echo 'loadStatus();';
-		echo '})();';
-		echo '</script>';
+		echo <<<'HTML'
+<script>
+(function(){
+const statusBox=document.getElementById("tcg-store-scrydex-catalog-status");
+const form=document.getElementById("tcg-store-scrydex-catalog-import-form");
+const resultBox=document.getElementById("tcg-store-scrydex-catalog-import-result");
+if(!statusBox||!form||!resultBox){return;}
+const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[char];});};
+const title=function(value){return String(value||"").replace(/_/g," ").replace(/\b\w/g,function(char){return char.toUpperCase();});};
+const sleep=function(ms){return new Promise(function(resolve){window.setTimeout(resolve,ms);});};
+const countsTable=function(counts){const keys=Object.keys(counts||{});if(!keys.length){return "<p>Catalog count tables are not ready.</p>";}return "<table class=\"widefat striped\"><thead><tr><th>Table</th><th>Rows</th></tr></thead><tbody>"+keys.map(function(key){return "<tr><th scope=\"row\">"+esc(title(key))+"</th><td>"+esc(counts[key])+"</td></tr>";}).join("")+"</tbody></table>";};
+const checkpointsTable=function(rows){rows=Array.isArray(rows)?rows:[];if(!rows.length){return "<p>No ScryDex checkpoints yet.</p>";}return "<table class=\"widefat striped\"><thead><tr><th>Resource</th><th>Key</th><th>Page</th><th>Committed</th><th>Updated</th></tr></thead><tbody>"+rows.map(function(row){return "<tr><td>"+esc(row.resource_type)+"</td><td>"+esc(row.resource_key)+"</td><td>"+esc(row.page_number)+"</td><td>"+esc(row.committed_count)+"</td><td>"+esc(row.updated_at)+"</td></tr>";}).join("")+"</tbody></table>";};
+const exportLinks=function(){const endpoint=resultBox.dataset.exportEndpoint||"";if(!endpoint){return "";}const tables=["reference_sets","reference_cards","reference_variants","provider_price_observations","provider_price_points","sync_checkpoints"];return "<p><strong>Catalog export:</strong> "+tables.map(function(table){return "<a href=\""+esc(endpoint)+"?table="+esc(table)+"&page=1&page_size=1000\" target=\"_blank\" rel=\"noreferrer\">"+esc(title(table))+"</a>";}).join(" | ")+"</p>";};
+const renderStatus=function(payload){const data=(payload||{}).data||{};statusBox.innerHTML="<h2>Catalog Status</h2>"+countsTable(data.counts)+"<h2>Latest Checkpoints</h2>"+checkpointsTable(data.latest_checkpoints)+exportLinks();};
+const loadStatus=function(){return fetch(statusBox.dataset.endpoint,{headers:{"X-WP-Nonce":statusBox.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){statusBox.innerHTML="<p>Catalog status failed.</p>";return null;}renderStatus(result.payload);return result.payload;}).catch(function(){statusBox.innerHTML="<p>Catalog status failed.</p>";return null;});};
+const postIndex=function(payload){return fetch(resultBox.dataset.endpoint,{method:"POST",headers:{"Content-Type":"application/json","X-WP-Nonce":resultBox.dataset.nonce},body:JSON.stringify(payload)}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(result.ok){return result.payload;}const error=((result.payload||{}).error||{});throw new Error(error.code||"scrydex_catalog_request_failed");});};
+const cardPageRows=function(cards){const pages=Array.isArray(cards.pages)?cards.pages:[];const first=pages[0]||{};const plan=first.orchestration_plan||{};const pagePlan=plan.page_plan||{};return Number(pagePlan.reference_row_count||0);};
+const stateLine=function(state){return "<p><strong>Full index running</strong> Game: "+esc(state.game)+"; expansions "+esc(state.expansionPages)+" page(s), "+esc(state.expansionCount)+" set(s); cards "+esc(state.cardPages)+" page(s), "+esc(state.cardRows)+" row(s); current "+esc(state.current||"starting")+"</p><p><span class=\"description\">The indexer continues until each ScryDex response returns fewer than "+esc(state.pageSize)+" rows. Daily credit limits are not enforced by this plugin for enterprise indexing.</span></p>";};
+const setProgress=function(state){resultBox.innerHTML=stateLine(state)+"<p>"+esc(state.latest||"")+"</p>";};
+async function loadExpansionIds(state,indexExpansions){
+  const formData=new FormData(form);
+  const manual=String(formData.get("expansion_id")||"").trim();
+  if(manual){state.expansionCount=1;state.current="single expansion "+manual;setProgress(state);return [manual];}
+  if(!indexExpansions){state.current="game-level card endpoint";setProgress(state);return [""];}
+  const ids=[];
+  let page=1;
+  while(true){
+    state.current="expansion page "+page;
+    setProgress(state);
+    const payload={game:state.game,page_size:state.pageSize,expansions_page:page,max_expansion_pages:1,index_expansions:true,skip_cards:true,execute_database_writes:state.executeWrites};
+    const response=await postIndex(payload);
+    const data=(response||{}).data||{};
+    const expansions=data.expansions||{};
+    const pageIds=Array.isArray(expansions.provider_set_ids)?expansions.provider_set_ids:[];
+    pageIds.forEach(function(id){if(id&&!ids.includes(id)){ids.push(id);}});
+    state.expansionPages+=Number(expansions.provider_request_count||1);
+    state.expansionCount=ids.length;
+    state.latest="Expansion page "+page+" returned "+Number(expansions.row_count||0)+" row(s).";
+    setProgress(state);
+    await loadStatus();
+    if(Number(expansions.row_count||0)<state.pageSize||expansions.continuation_available===false){break;}
+    page=Number(expansions.next_page||page+1);
+    await sleep(85);
+  }
+  return ids;
+}
+async function indexCardsForExpansion(state,expansionId){
+  let checkpoint=null;
+  let page=1;
+  while(true){
+    state.current=expansionId?("cards for "+expansionId+" page "+page):("game card page "+page);
+    setProgress(state);
+    const payload={game:state.game,expansion_id:expansionId,page_size:state.pageSize,max_pages:1,index_expansions:false,skip_cards:false,execute_database_writes:state.executeWrites};
+    if(checkpoint){payload.checkpoint=checkpoint;}
+    const response=await postIndex(payload);
+    const data=(response||{}).data||{};
+    const cards=data.cards||{};
+    const rows=cardPageRows(cards);
+    state.cardPages+=Number(cards.provider_request_count||1);
+    state.cardRows+=rows;
+    state.latest=(expansionId||state.game)+" page "+page+" returned "+rows+" card row(s).";
+    setProgress(state);
+    await loadStatus();
+    checkpoint=cards.continuation_checkpoint_row||null;
+    if(rows<state.pageSize||cards.continuation_available===false){break;}
+    page+=1;
+    await sleep(85);
+  }
+}
+form.addEventListener("submit",function(event){
+  event.preventDefault();
+  if(resultBox.dataset.canIndex!=="1"){return;}
+  const formData=new FormData(form);
+  const state={game:String(formData.get("game")||"pokemon"),pageSize:Math.min(100,Math.max(1,Number(formData.get("page_size")||100))),executeWrites:!!form.querySelector("[name=execute_database_writes]").checked,expansionPages:0,expansionCount:0,cardPages:0,cardRows:0,current:"starting",latest:""};
+  const indexExpansions=!!form.querySelector("[name=index_expansions]").checked;
+  resultBox.innerHTML="<p>Starting full ScryDex index...</p>";
+  loadExpansionIds(state,indexExpansions).then(async function(expansionIds){
+    if(!expansionIds.length){state.latest="No expansions returned from ScryDex for "+state.game+".";setProgress(state);return;}
+    for(const expansionId of expansionIds){await indexCardsForExpansion(state,expansionId);}
+    state.current="complete";
+    state.latest="Full ScryDex index completed. Export links are available in Catalog Status.";
+    setProgress(state);
+    await loadStatus();
+  }).catch(function(error){
+    resultBox.innerHTML="<p><strong>ScryDex full index failed:</strong> "+esc(error&&error.message?error.message:error)+"</p>"+stateLine(state);
+  });
+});
+loadStatus();
+})();
+</script>
+HTML;
 	}
 }

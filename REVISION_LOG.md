@@ -3,6 +3,60 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Enterprise ScryDex Full-Game Indexer
+
+### What Changed
+
+- Replaced bounded manual ScryDex catalog batches with an admin full-game
+  runner that pulls expansions first, then indexes cards by expansion until a
+  page returns fewer than the configured page size.
+- Removed the plugin-side daily credit/batch ceiling from the manager-only
+  catalog mirror endpoint while keeping ScryDex credentials server-side and
+  provider bodies out of responses.
+- Added continuation checkpoint pass-through so browser-driven indexing resumes
+  page-by-page instead of restarting page 1.
+- Added paginated JSON export support for ScryDex catalog tables.
+- Fixed the catalog controller provider factory/provider ordering issue.
+- Added a local app Status dashboard so ScryDex, website/LAN, queue, and cache
+  messages are visible on the Status screen.
+
+### Why
+
+The live store needs to mirror the paid ScryDex catalog without manual page
+limits or fake daily caps, while still avoiding oversized WordPress requests
+that hosting may terminate.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added ScryDex worker coverage proving full pages continue until a short page
+  is returned when provider pagination metadata is absent.
+- Updated admin/controller contract tests for the full-game indexer, enterprise
+  usage policy, checkpoint continuation, and paginated export route.
+- Updated offline app UI contract coverage for the dedicated Status dashboard.
+
+### Rollback Notes
+
+- Reinstall version `0.163.0` to restore the previous bounded batch UI and
+  usage-budget preflight behavior. No database rollback is required; catalog
+  tables are append/update caches and remain compatible.
+
 ## 2026-06-09 - Reference Search Stock Summaries
 
 ### What Changed
