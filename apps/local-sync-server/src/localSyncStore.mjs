@@ -418,6 +418,9 @@ export function createLocalSyncStore(options = {}) {
       online_visibility: onlineVisibility,
       kiosk_visibility: kioskVisibility,
       pos_visibility: posVisibility,
+      square_catalog_item_id: "",
+      square_catalog_variation_id: "",
+      external_sync_state: "pending",
       source: "queued",
     }))
 
@@ -1620,6 +1623,9 @@ function migrateLocalSyncDatabase(database) {
       online_visibility TEXT NOT NULL DEFAULT 'visible',
       kiosk_visibility TEXT NOT NULL DEFAULT 'visible',
       pos_visibility TEXT NOT NULL DEFAULT 'visible',
+      square_catalog_item_id TEXT NOT NULL DEFAULT '',
+      square_catalog_variation_id TEXT NOT NULL DEFAULT '',
+      external_sync_state TEXT NOT NULL DEFAULT 'pending',
       source TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
     );
@@ -1732,6 +1738,9 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "online_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "inventory_items", "kiosk_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "inventory_items", "pos_visibility", "TEXT NOT NULL DEFAULT 'visible'")
+  ensureLocalSyncColumn(database, "inventory_items", "square_catalog_item_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "square_catalog_variation_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
   database.exec(`
@@ -1820,7 +1829,8 @@ function loadInventoryItems(database) {
       SELECT public_id, row_version, provider_card_id, game, card_name, set_name,
         set_code, card_number, printed_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, online_visibility, kiosk_visibility,
-        pos_visibility, source
+        pos_visibility, square_catalog_item_id, square_catalog_variation_id,
+        external_sync_state, source
       FROM inventory_items
       ORDER BY public_id
     `)
@@ -1845,6 +1855,9 @@ function loadInventoryItems(database) {
       online_visibility: cleanVisibility(row.online_visibility, "visible"),
       kiosk_visibility: cleanVisibility(row.kiosk_visibility, "visible"),
       pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
+      square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
+      square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
+      external_sync_state: cleanExternalSyncState(row.external_sync_state),
       source: row.source,
     }))
 }
@@ -2033,9 +2046,10 @@ function saveInventoryItem(database, item, now) {
         public_id, row_version, provider_card_id, game, card_name, set_name,
         set_code, card_number, printed_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, online_visibility, kiosk_visibility,
-        pos_visibility, source, updated_at_utc
+        pos_visibility, square_catalog_item_id, square_catalog_variation_id,
+        external_sync_state, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         row_version = excluded.row_version,
         provider_card_id = excluded.provider_card_id,
@@ -2055,6 +2069,9 @@ function saveInventoryItem(database, item, now) {
         online_visibility = excluded.online_visibility,
         kiosk_visibility = excluded.kiosk_visibility,
         pos_visibility = excluded.pos_visibility,
+        square_catalog_item_id = excluded.square_catalog_item_id,
+        square_catalog_variation_id = excluded.square_catalog_variation_id,
+        external_sync_state = excluded.external_sync_state,
         source = excluded.source,
         updated_at_utc = excluded.updated_at_utc
     `)
@@ -2078,6 +2095,9 @@ function saveInventoryItem(database, item, now) {
       cleanVisibility(item.online_visibility, "visible"),
       cleanVisibility(item.kiosk_visibility, "visible"),
       cleanVisibility(item.pos_visibility, "visible"),
+      cleanExternalId(item.square_catalog_item_id),
+      cleanExternalId(item.square_catalog_variation_id),
+      cleanExternalSyncState(item.external_sync_state),
       item.source,
       now().toISOString(),
     )
@@ -2578,6 +2598,9 @@ function publicInventoryItem(item) {
     online_visibility: cleanVisibility(item.online_visibility, "visible"),
     kiosk_visibility: cleanVisibility(item.kiosk_visibility, "visible"),
     pos_visibility: cleanVisibility(item.pos_visibility, "visible"),
+    square_catalog_item_id: cleanExternalId(item.square_catalog_item_id),
+    square_catalog_variation_id: cleanExternalId(item.square_catalog_variation_id),
+    external_sync_state: cleanExternalSyncState(item.external_sync_state),
     source: item.source,
   }
 }
@@ -2617,6 +2640,9 @@ function localInventoryItemFromWordPress(row) {
     online_visibility: cleanVisibility(row.online_visibility, "visible"),
     kiosk_visibility: cleanVisibility(row.kiosk_visibility, "visible"),
     pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
+    square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
+    square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
+    external_sync_state: cleanExternalSyncState(row.external_sync_state),
     source: "cached",
   }
 }
@@ -2898,6 +2924,16 @@ function cleanVisibility(value, fallback = "visible") {
 
 function cleanBarcode(value) {
   return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 64)
+}
+
+function cleanExternalId(value) {
+  return String(value ?? "").trim().slice(0, 191)
+}
+
+function cleanExternalSyncState(value) {
+  const status = String(value ?? "").trim().toLowerCase()
+
+  return ["pending", "synced", "square_synced", "failed", "conflict"].includes(status) ? status : "pending"
 }
 
 function cleanPublicId(value) {

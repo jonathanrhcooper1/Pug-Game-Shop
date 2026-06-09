@@ -3,6 +3,81 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Square POS Mapping Persistence and Local Cache
+
+### What Changed
+
+- Added a WordPress inventory repository method to persist Square catalog item
+  and variation IDs against serialized inventory rows.
+- Marked Square catalog mappings as `square_synced` without enabling plugin
+  payment capture or custom Square gateway behavior.
+- Added Square mapping fields to the LAN sync SQLite inventory cache with
+  migration-safe columns.
+- Preserved Square mapping fields from WordPress inventory pulls through local
+  sync public item responses and offline app cache records.
+- Displayed selected-card POS mapping status in the offline app inventory
+  detail panel.
+
+### Why
+
+Square POS needs barcode/SKU inventory and sold-line reconciliation to tie back
+to website inventory rows. The website remains the inventory authority, but
+staff need cached Square mapping visibility locally, including when the app is
+running offline.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryExternalMappingRepository.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryExternalMappingRepositoryTest.php`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite only: `inventory_items.square_catalog_item_id`,
+  `inventory_items.square_catalog_variation_id`, and
+  `inventory_items.external_sync_state`.
+- No WordPress database migration was required because the Square mapping
+  columns already exist in migration `0013`.
+
+### Tests Added
+
+- Extended WordPress inventory external mapping repository tests.
+- Extended LAN sync runtime and WordPress inventory-pull tests.
+- Extended offline app local-sync client, pull-cache, and UI shell contracts.
+
+### Verification
+
+- `php tests\run.php` from `apps\wordpress-plugin`
+- `php tests\lint.php` from `apps\wordpress-plugin`
+- `node packages\api-client\tests\square-inventory-adapter.mjs`
+- `npm.cmd --prefix apps\local-sync-server run test`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\pull-inventory-cache-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert the affected WordPress repository, LAN sync server, and offline app
+  files.
+- Existing WordPress `square_catalog_item_id` and
+  `square_catalog_variation_id` values can remain; they are inert without the
+  mapping update method.
+- Existing LAN SQLite caches can keep the added columns; older code ignores
+  them.
+- No customer credit, payment capture, or production Square transaction data is
+  affected.
+
 ## 2026-06-09 - Local Sync Inventory Visibility and Production Smoke
 
 ### What Changed

@@ -152,6 +152,32 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_true( $result['square_deferred'] );
 		}
 
+		public function test_repository_marks_inventory_row_with_square_catalog_mapping(): void {
+			$database = new \InventoryExternalMappingWpdb();
+			$result   = ( new InventoryExternalMappingRepository( $database ) )->mark_square_catalog_synced(
+				42,
+				'SQUARE-ITEM-42',
+				'SQUARE-VARIATION-42'
+			);
+
+			$this->assert_same( 'square_catalog_mapping_update', $result['action'] );
+			$this->assert_same( 'square_synced', $result['status'] );
+			$this->assert_true( $result['synced'] );
+			$this->assert_same( 1, $result['rows_affected'] );
+			$this->assert_contains( 'UPDATE `wp_tcg_inventory_items`', $database->prepare_queries[0] );
+			$this->assert_contains( '`square_catalog_item_id` = %s', $database->prepare_queries[0] );
+			$this->assert_contains( '`square_catalog_variation_id` = %s', $database->prepare_queries[0] );
+			$this->assert_contains( '`external_sync_state` = %s', $database->prepare_queries[0] );
+			$this->assert_same( 'SQUARE-ITEM-42', $database->prepare_args[0][0] );
+			$this->assert_same( 'SQUARE-VARIATION-42', $database->prepare_args[0][1] );
+			$this->assert_same( 'square_synced', $database->prepare_args[0][2] );
+			$this->assert_false( $result['square_deferred'] );
+			$this->assert_true( $result['woocommerce_deferred'] );
+			$this->assert_true( $result['payment_deferred'] );
+			$this->assert_same( 'SQUARE-ITEM-42', $result['square_catalog_item_id'] );
+			$this->assert_same( 'SQUARE-VARIATION-42', $result['square_catalog_variation_id'] );
+		}
+
 		public function test_repository_rejects_bad_ids_prefix_and_failed_updates(): void {
 			$bad_ids = ( new InventoryExternalMappingRepository( new \InventoryExternalMappingWpdb() ) )
 				->mark_woocommerce_product_synced( 0, 9001 );
@@ -159,10 +185,17 @@ namespace TCGStorePlatform\Tests\Unit {
 				->mark_woocommerce_product_synced( 42, 9001 );
 			$failed = ( new InventoryExternalMappingRepository( new \InventoryExternalMappingWpdb( false ) ) )
 				->mark_woocommerce_product_synced( 42, 9001 );
+			$bad_square_ids = ( new InventoryExternalMappingRepository( new \InventoryExternalMappingWpdb() ) )
+				->mark_square_catalog_synced( 42, '', 'SQUARE-VARIATION-42' );
+			$failed_square = ( new InventoryExternalMappingRepository( new \InventoryExternalMappingWpdb( false ) ) )
+				->mark_square_catalog_synced( 42, 'SQUARE-ITEM-42', 'SQUARE-VARIATION-42' );
 
 			$this->assert_same( array( 'inventory_external_mapping_ids_invalid' ), $bad_ids['errors'] );
 			$this->assert_same( array( 'inventory_external_mapping_table_prefix_mismatch' ), $bad_prefix['errors'] );
 			$this->assert_same( array( 'inventory_external_mapping_update_failed' ), $failed['errors'] );
+			$this->assert_same( array( 'square_catalog_mapping_ids_invalid' ), $bad_square_ids['errors'] );
+			$this->assert_same( array( 'square_catalog_mapping_update_failed' ), $failed_square['errors'] );
+			$this->assert_false( $bad_square_ids['square_deferred'] );
 		}
 	}
 }

@@ -552,6 +552,8 @@ for (const interactionMarker of [
   "operationKind: \"quantity\"",
   "staff_barcode_scan",
   "staff_quantity_adjustment",
+  "POS mapping",
+  "Pending Square mapping",
 ]) {
   assert.ok(appSource.includes(interactionMarker), `Missing interaction marker: ${interactionMarker}`)
 }

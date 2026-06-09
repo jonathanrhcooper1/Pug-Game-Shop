@@ -34,6 +34,9 @@ const pull = createWordPressInventoryPull({
             sale_currency: "USD",
             status: "available",
             location_id: 7,
+            square_catalog_item_id: "SQUARE-ITEM-42",
+            square_catalog_variation_id: "SQUARE-VARIATION-42",
+            external_sync_state: "square_synced",
             front_image_url: "https://images.pokemontcg.io/base1/4_hires.png",
           },
         ],
@@ -55,6 +58,9 @@ const result = await pull({ query: "charizard", page: 2 })
 assert.equal(result.status, "ok")
 assert.equal(result.items.length, 1)
 assert.equal(result.items[0].public_id, "wp-inventory-charizard")
+assert.equal(result.items[0].square_catalog_item_id, "SQUARE-ITEM-42")
+assert.equal(result.items[0].square_catalog_variation_id, "SQUARE-VARIATION-42")
+assert.equal(result.items[0].external_sync_state, "square_synced")
 assert.equal(result.meta.page_size, 25)
 assert.equal(result.credentials_synced_to_client, false)
 assert.equal(result.authorization_header_printed, false)

@@ -589,6 +589,9 @@ try {
       sale_currency: "USD",
       status: "available",
       location_id: 7,
+      square_catalog_item_id: "SQUARE-ITEM-42",
+      square_catalog_variation_id: "SQUARE-VARIATION-42",
+      external_sync_state: "square_synced",
       front_image_url: "https://images.pokemontcg.io/base1/4_hires.png",
     },
     {
@@ -633,6 +636,9 @@ try {
   assert.equal(pulledCharizardInventory.items[0].source, "cached")
   assert.equal(pulledCharizardInventory.items[0].price_minor_units, 25000)
   assert.equal(pulledCharizardInventory.items[0].image_url, "https://images.pokemontcg.io/base1/4_hires.png")
+  assert.equal(pulledCharizardInventory.items[0].square_catalog_item_id, "SQUARE-ITEM-42")
+  assert.equal(pulledCharizardInventory.items[0].square_catalog_variation_id, "SQUARE-VARIATION-42")
+  assert.equal(pulledCharizardInventory.items[0].external_sync_state, "square_synced")
 
   const preservedPendingIntake = await fetchJson(`${baseUrl}/inventory/search?q=PUG-PULL-GUARD`)
   assert.equal(preservedPendingIntake.items[0].status, "pending_intake")

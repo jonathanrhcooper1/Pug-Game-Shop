@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WordPress inventory rows can now persist Square catalog item/variation
+  mappings after provider sync, and the LAN/offline cache keeps those mapping
+  fields so staff can see POS mapping status while Square payment capture
+  remains delegated to the official WooCommerce Square extension.
 - Local sync inventory intake now preserves online/kiosk/POS visibility from
   the desktop app through SQLite, WordPress push mapping, and production smoke
   verification, with a guarded hidden-row live smoke that cleans itself up and

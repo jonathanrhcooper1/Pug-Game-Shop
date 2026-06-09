@@ -863,6 +863,9 @@ function inventoryItemFromLocalSync(
     location: item.location,
     status: item.status,
     imageUrl: item.image_url,
+    squareCatalogItemId: item.square_catalog_item_id,
+    squareCatalogVariationId: item.square_catalog_variation_id,
+    externalSyncState: item.external_sync_state,
     source: item.source,
   }
 }
@@ -5661,6 +5664,16 @@ export function App() {
                 <div>
                   <dt>Barcode</dt>
                   <dd>{selectedItem.barcode}</dd>
+                </div>
+                <div>
+                  <dt>POS mapping</dt>
+                  <dd>
+                    {selectedItem.squareCatalogVariationId
+                      ? `${selectedItem.externalSyncState ?? "mapped"} / ${selectedItem.squareCatalogVariationId}`
+                      : selectedItem.externalSyncState === "failed" || selectedItem.externalSyncState === "conflict"
+                        ? selectedItem.externalSyncState
+                        : "Pending Square mapping"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Location</dt>

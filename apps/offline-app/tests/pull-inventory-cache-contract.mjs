@@ -111,6 +111,9 @@ try {
       sale_currency: "USD",
       location_label: "Case B1",
       status: "reserved",
+      square_catalog_item_id: "SQUARE-ITEM-1001",
+      square_catalog_variation_id: "SQUARE-VARIATION-1001",
+      external_sync_state: "square_synced",
       updated_at_utc: "2026-06-08T12:05:00Z",
     },
     {
@@ -125,6 +128,9 @@ try {
       sale_currency: "USD",
       location_label: "Binder 2",
       status: "available",
+      square_catalog_item_id: "",
+      square_catalog_variation_id: "",
+      external_sync_state: "pending",
       updated_at_utc: "2026-06-08T12:10:00Z",
     },
     {
@@ -156,12 +162,16 @@ try {
   assert.equal(updatedItem.price, "$119.00")
   assert.equal(updatedItem.location, "Case B1")
   assert.equal(updatedItem.status, "reserved")
+  assert.equal(updatedItem.squareCatalogItemId, "SQUARE-ITEM-1001")
+  assert.equal(updatedItem.squareCatalogVariationId, "SQUARE-VARIATION-1001")
+  assert.equal(updatedItem.externalSyncState, "square_synced")
   assert.equal(updatedItem.source, "accepted")
 
   const insertedItem = result.items.find((item) => item.publicId === "inv-2002")
   assert.equal(insertedItem.id, 8)
   assert.equal(insertedItem.cardName, "Pikachu")
   assert.equal(insertedItem.priceMinorUnits, 1800)
+  assert.equal(insertedItem.externalSyncState, "pending")
   assert.equal(insertedItem.source, "accepted")
 
   const creditResult = applyOfflinePullCustomerCreditRecordsToCache(

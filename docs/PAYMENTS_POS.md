@@ -133,6 +133,14 @@ conflicts for staff review. Square counts are reconciliation inputs only;
 WordPress serialized inventory remains authoritative, and payments continue to
 belong to the official WooCommerce Square extension.
 
+WordPress inventory rows can persist Square catalog item and variation IDs once
+the Square catalog worker or official Square extension resolves them. The LAN
+sync cache keeps `square_catalog_item_id`, `square_catalog_variation_id`, and
+`external_sync_state` from website pulls, and the offline app displays that POS
+mapping status on the selected-card detail panel. These fields are mapping and
+reconciliation inputs only; they do not enable payment capture in the custom
+plugin.
+
 ## Square Inventory Sync Request Planning
 
 The WordPress plugin mirrors the API-client adapter with a PHP request planner.

@@ -42,6 +42,9 @@ export type InventoryItem = {
   location: string
   status: InventoryStatus
   imageUrl?: string
+  squareCatalogItemId?: string
+  squareCatalogVariationId?: string
+  externalSyncState?: "pending" | "synced" | "square_synced" | "failed" | "conflict"
   source: InventorySource
 }
 
@@ -554,6 +557,9 @@ export type OfflinePullInventoryCacheRecord = {
   sale_currency: "USD"
   location_label: string
   status: InventoryStatus
+  square_catalog_item_id?: string
+  square_catalog_variation_id?: string
+  external_sync_state?: "pending" | "synced" | "square_synced" | "failed" | "conflict"
   updated_at_utc: string
 }
 
@@ -2907,9 +2913,29 @@ function sanitizeOfflinePullInventoryCacheRecords(
       sale_currency: "USD" as const,
       location_label: record.location_label.trim() || "Unassigned",
       status: record.status,
+      square_catalog_item_id: cleanExternalId(record.square_catalog_item_id),
+      square_catalog_variation_id: cleanExternalId(record.square_catalog_variation_id),
+      external_sync_state: cleanExternalSyncState(record.external_sync_state),
       updated_at_utc: record.updated_at_utc.trim(),
     }))
     .slice(0, 50)
+}
+
+function cleanExternalId(value: unknown): string {
+  return typeof value === "string" ? value.trim().slice(0, 191) : ""
+}
+
+function cleanExternalSyncState(
+  value: unknown,
+): "pending" | "synced" | "square_synced" | "failed" | "conflict" {
+  const status = typeof value === "string" ? value.trim().toLowerCase() : ""
+
+  return status === "synced" ||
+    status === "square_synced" ||
+    status === "failed" ||
+    status === "conflict"
+    ? status
+    : "pending"
 }
 
 function sanitizeOfflinePullCustomerCreditCacheRecords(
@@ -3817,6 +3843,9 @@ export function applyOfflinePullInventoryRecordsToCache(
       currency: "USD",
       location: record.location_label || existing?.location || "Unassigned",
       status: record.status,
+      squareCatalogItemId: record.square_catalog_item_id || existing?.squareCatalogItemId,
+      squareCatalogVariationId: record.square_catalog_variation_id || existing?.squareCatalogVariationId,
+      externalSyncState: record.external_sync_state || existing?.externalSyncState || "pending",
       source: "accepted",
     }
 

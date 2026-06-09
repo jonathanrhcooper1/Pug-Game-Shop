@@ -162,6 +162,9 @@ export type LocalSyncInventoryItem = {
   online_visibility: "hidden" | "visible" | "staff_only"
   kiosk_visibility: "hidden" | "visible" | "staff_only"
   pos_visibility: "hidden" | "visible" | "staff_only"
+  square_catalog_item_id: string
+  square_catalog_variation_id: string
+  external_sync_state: "pending" | "synced" | "square_synced" | "failed" | "conflict"
   source: "cached" | "queued" | "accepted"
 }
 
