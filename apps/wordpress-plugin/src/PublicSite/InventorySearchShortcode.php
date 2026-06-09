@@ -72,7 +72,7 @@ final class InventorySearchShortcode {
 		$values     = $this->query_values( is_array( $attributes ) ? $attributes : array() );
 		$validation = ( new InventorySearchRequestParser() )->parse( $values );
 
-		if ( ! $validation->is_accepted() ) {
+		if ( ! $validation->is_valid() ) {
 			return $this->presenter->render_html(
 				$this->presenter->present(
 					$this->request_from_values( $values ),
@@ -167,18 +167,26 @@ final class InventorySearchShortcode {
 			)
 		);
 
-		return $validation->is_accepted()
-			? $validation->request()
-			: ( new InventorySearchRequestParser() )->parse(
-				array(
-					'q'          => '',
-					'game'       => '',
-					'sort'       => 'relevance',
-					'visibility' => 'public',
-					'page'       => 1,
-					'page_size'  => 24,
-				)
-			)->request();
+		if ( $validation->is_valid() && null !== $validation->request() ) {
+			return $validation->request();
+		}
+
+		$fallback = ( new InventorySearchRequestParser() )->parse(
+			array(
+				'q'          => '',
+				'game'       => '',
+				'sort'       => 'relevance',
+				'visibility' => 'public',
+				'page'       => 1,
+				'page_size'  => 24,
+			)
+		)->request();
+
+		if ( null === $fallback ) {
+			throw new \RuntimeException( 'Public inventory fallback request could not be created.' );
+		}
+
+		return $fallback;
 	}
 
 	private function request_value( string $key, mixed $fallback ): string {

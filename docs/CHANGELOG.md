@@ -16,6 +16,12 @@ All notable changes follow Semantic Versioning.
 - Added branded customer-facing WordPress shortcodes for public inventory
   search and event registration, including image/condition/price/stock display,
   safe grouping of serialized inventory rows, and dedicated public CSS.
+- Prepared the production WordPress package as version `0.177.0` so the live
+  site can verify the deployed public inventory and event-registration
+  shortcodes distinctly from the previous ScryDex catalog release.
+- Added a production public-shortcode verifier and fixed the public inventory
+  shortcode to use the real inventory parser contract, preventing fatal errors
+  when invalid filters are rendered on the live website.
 - WordPress reference-card search now ranks exact, prefix, and contains matches
   on card name ahead of identifier and set-name-only matches, so intake lookups
   like `Charizard` surface actual Charizard cards before set-only results.

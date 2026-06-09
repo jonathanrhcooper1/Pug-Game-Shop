@@ -3,6 +3,91 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Public Shortcode Hotfix 0.178.0
+
+### What Changed
+
+- Bumped the root package and WordPress plugin version to `0.178.0`.
+- Added a reusable read-only production verifier for public inventory and event
+  shortcodes.
+- Fixed `[tcg_inventory_search]` to use `InventorySearchValidationResult::is_valid()`
+  and guard its nullable request result instead of calling a non-existent
+  `is_accepted()` method.
+- Added a focused unit test for invalid public inventory filters, the branch
+  that exposed the production fatal during shortcode smoke testing.
+
+### Why
+
+The `0.177.0` production install activated correctly, but the live shortcode
+smoke found a parser-contract mismatch in the public inventory shortcode before
+any public page was wired to it. The hotfix makes the shortcode safe and adds a
+repeatable production check for the customer-facing website surfaces.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `scripts/production-verify-public-shortcodes.mjs`
+- `scripts/tests/production-public-shortcodes-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `node scripts/tests/production-public-shortcodes-contract.mjs`
+- `node scripts/production-verify-public-shortcodes.mjs`
+
+### Rollback Notes
+
+- Reinstall the previous `0.176.0` package if the public website shortcode
+  release needs to be backed out fully. No database rollback is required.
+
+## 2026-06-09 - Production Public Website Package 0.177.0
+
+### What Changed
+
+- Bumped the root package and WordPress plugin version to `0.177.0`.
+- Prepared the production plugin package for the public inventory search and
+  event-registration shortcode release.
+
+### Why
+
+The production site needs a distinct plugin version for installing and
+verifying the newly added public website surfaces without confusing them with
+the prior ScryDex catalog import release.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Pending package and production smoke verification in this release pass.
+
+### Rollback Notes
+
+- Reinstall the previous `0.176.0` plugin package if the public shortcode
+  release causes production display issues. No database rollback is required.
+
 ## 2026-06-09 - Public Inventory Search and Event Registration
 
 ### What Changed

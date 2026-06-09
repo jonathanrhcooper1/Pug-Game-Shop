@@ -25,4 +25,26 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_same( 'render_inventory_search', $map['shortcode tcg_inventory_search'] );
 		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
 	}
+
+	public function test_invalid_filters_render_adjustment_notice_without_repository_lookup(): void {
+		global $wpdb;
+
+		$previous = $wpdb ?? null;
+		$wpdb     = (object) array(
+			'prefix' => 'wp_',
+		);
+
+		try {
+			$html = ( new InventorySearchShortcode() )->render_inventory_search(
+				array(
+					'game' => 'bad game!',
+				)
+			);
+		} finally {
+			$wpdb = $previous;
+		}
+
+		$this->assert_contains( 'tcg-public-inventory', $html );
+		$this->assert_contains( 'Search filters need to be adjusted.', $html );
+	}
 }
