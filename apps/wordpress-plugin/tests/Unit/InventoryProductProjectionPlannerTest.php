@@ -35,6 +35,7 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( 1, $product['stock_quantity'] );
 		$this->assert_same( 'instock', $product['stock_status'] );
 		$this->assert_same( true, $product['sold_individually'] );
+		$this->assert_same( array( 'singles', 'pokemon' ), $product['category_slugs'] );
 		$this->assert_same( true, $contract['woocommerce_write_deferred'] );
 		$this->assert_same( true, $contract['square_inventory_write_deferred'] );
 		$this->assert_contains( 'Charizard', $product['description'] );
@@ -72,6 +73,7 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( 2, $product['stock_quantity'] );
 		$this->assert_same( 'instock', $product['stock_status'] );
 		$this->assert_same( true, $product['sold_individually'] );
+		$this->assert_same( array( 'singles', 'pokemon' ), $product['category_slugs'] );
 		$this->assert_meta_value( 'grouped_card', '_tcg_inventory_product_mode', $product['meta_data'] );
 		$this->assert_meta_value( 'reference:777', '_tcg_inventory_group_key', $product['meta_data'] );
 		$this->assert_meta_value( 'https://images.example.test/charizard.png', '_tcg_front_image_url', $product['meta_data'] );

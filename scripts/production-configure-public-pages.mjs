@@ -26,6 +26,24 @@ const requiredEnv = {
 
 const pages = [
   {
+    slug: "shop-singles",
+    title: "Shop Singles",
+    content:
+      '<!-- wp:heading -->\n<h2>Shop Singles</h2>\n<!-- /wp:heading -->\n<!-- wp:shortcode -->\n[tcg_inventory_search limit="24"]\n<!-- /wp:shortcode -->',
+  },
+  {
+    slug: "shop-sealed-products",
+    title: "Shop Sealed Products",
+    content:
+      '<!-- wp:heading -->\n<h2>Shop Sealed Products</h2>\n<!-- /wp:heading -->\n<!-- wp:shortcode -->\n[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+  },
+  {
+    slug: "shop-accessories",
+    title: "Shop Accessories",
+    content:
+      '<!-- wp:heading -->\n<h2>Shop Accessories</h2>\n<!-- /wp:heading -->\n<!-- wp:shortcode -->\n[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+  },
+  {
     slug: "card-inventory",
     title: "Card Inventory",
     content:
@@ -38,9 +56,22 @@ const pages = [
   },
 ]
 
+const productCategories = [
+  { slug: "singles", name: "Singles", parent: "" },
+  { slug: "sealed-products", name: "Sealed Products", parent: "" },
+  { slug: "accessories", name: "Accessories", parent: "" },
+  { slug: "magic-the-gathering", name: "Magic: The Gathering", parent: "singles" },
+  { slug: "pokemon", name: "Pokemon", parent: "singles" },
+  { slug: "lorcana", name: "Lorcana", parent: "singles" },
+  { slug: "one-piece", name: "One Piece", parent: "singles" },
+  { slug: "riftbound", name: "Riftbound", parent: "singles" },
+  { slug: "gundam", name: "Gundam", parent: "singles" },
+]
+
 const expectations = {
   pluginVersion: String(process.env.PUG_PROD_EXPECT_PLUGIN_VERSION ?? packageJson.version),
   pages,
+  productCategories,
 }
 
 const missingEnv = Object.entries(requiredEnv)
@@ -65,7 +96,9 @@ if (dryRun) {
         optionalEnv: ["PUG_PROD_EXPECT_PLUGIN_VERSION"],
         readsIgnoredEnvFile: ".env.production.local",
         createsOrUpdatesPages: true,
+        createsOrUpdatesProductCategories: true,
         pageSlugs: pages.map((page) => page.slug),
+        productCategorySlugs: productCategories.map((category) => category.slug),
         backsUpExistingPageContentToPostMeta: true,
         changesHomepage: false,
         changesNavigationMenus: false,
@@ -102,8 +135,43 @@ if (!class_exists('TCGStorePlatform\\\\Version')) {
 	exit(1);
 }
 $pages = is_array($payload['pages'] ?? null) ? $payload['pages'] : array();
+$categories = is_array($payload['productCategories'] ?? null) ? $payload['productCategories'] : array();
 $results = array();
+$category_results = array();
 $backup_key = '_tcg_store_public_pages_backup_' . gmdate('YmdHis');
+foreach ($categories as $category) {
+	if (!is_array($category) || !taxonomy_exists('product_cat')) {
+		continue;
+	}
+	$slug = sanitize_title((string) ($category['slug'] ?? ''));
+	$name = sanitize_text_field((string) ($category['name'] ?? ''));
+	$parent_slug = sanitize_title((string) ($category['parent'] ?? ''));
+	if ('' === $slug || '' === $name) {
+		$category_results[] = array('slug' => $slug, 'status' => 'error', 'message' => 'invalid_category_payload');
+		continue;
+	}
+	$parent_id = 0;
+	if ('' !== $parent_slug) {
+		$parent = get_term_by('slug', $parent_slug, 'product_cat');
+		$parent_id = $parent && !is_wp_error($parent) ? (int) $parent->term_id : 0;
+	}
+	$existing = get_term_by('slug', $slug, 'product_cat');
+	if ($existing && !is_wp_error($existing)) {
+		$updated = wp_update_term((int) $existing->term_id, 'product_cat', array('name' => $name, 'parent' => $parent_id));
+		if (is_wp_error($updated)) {
+			$category_results[] = array('slug' => $slug, 'status' => 'error', 'message' => $updated->get_error_code());
+			continue;
+		}
+		$category_results[] = array('slug' => $slug, 'id' => (int) $existing->term_id, 'action' => 'updated', 'status' => 'ok', 'parent' => $parent_slug);
+		continue;
+	}
+	$created = wp_insert_term($name, 'product_cat', array('slug' => $slug, 'parent' => $parent_id));
+	if (is_wp_error($created)) {
+		$category_results[] = array('slug' => $slug, 'status' => 'error', 'message' => $created->get_error_code());
+		continue;
+	}
+	$category_results[] = array('slug' => $slug, 'id' => (int) ($created['term_id'] ?? 0), 'action' => 'created', 'status' => 'ok', 'parent' => $parent_slug);
+}
 foreach ($pages as $page) {
 	if (!is_array($page)) {
 		continue;
@@ -156,6 +224,7 @@ foreach ($pages as $page) {
 		'content_sha1' => sha1((string) get_post_field('post_content', $id)),
 		'contains_inventory_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[tcg_inventory_search'),
 		'contains_events_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[tcg_events'),
+		'contains_woocommerce_shortcode' => false !== strpos((string) get_post_field('post_content', $id), '[products'),
 		'backup_meta_key' => 'updated' === $action ? $backup_key : '',
 	);
 }
@@ -165,6 +234,7 @@ echo wp_json_encode(array(
 	'plugin_version' => TCGStorePlatform\\Version::PLUGIN,
 	'database_version' => TCGStorePlatform\\Version::DATABASE,
 	'pages' => $results,
+	'product_categories' => $category_results,
 	'backup_meta_key' => $backup_key,
 	'changesHomepage' => false,
 	'changesNavigationMenus' => false,
@@ -183,7 +253,7 @@ const result = await withProductionConnection(async (connection) => {
     const execution = await execWithStdin(
       connection,
       `${shellQuote(wpCli)} eval-file ${shellQuote(remoteRunnerPath)} --path=${shellQuote(wpPath)}`,
-      JSON.stringify({ pages }),
+      JSON.stringify({ pages, productCategories }),
     )
     const parsed = parseJson(execution.stdout)
     const checks = buildChecks(parsed, expectations)
@@ -196,15 +266,18 @@ const result = await withProductionConnection(async (connection) => {
       pluginVersion: parsed?.plugin_version ?? null,
       databaseVersion: parsed?.database_version ?? null,
       pages: parsed?.pages ?? [],
+      productCategories: parsed?.product_categories ?? [],
       backupMetaKey: parsed?.backup_meta_key ?? null,
       expectations: {
         pluginVersion: expectations.pluginVersion,
         pageSlugs: pages.map((page) => page.slug),
+        productCategorySlugs: productCategories.map((category) => category.slug),
       },
       checks,
       passed: execution.code === 0 && parsed?.status === "ok" && checks.every((check) => check.pass),
       runnerRemoved: false,
       createsOrUpdatesPages: true,
+      createsOrUpdatesProductCategories: true,
       backsUpExistingPageContentToPostMeta: true,
       changesHomepage: false,
       changesNavigationMenus: false,
@@ -232,6 +305,8 @@ if (!result.passed) {
 function buildChecks(parsed, expected) {
   const actualPages = Array.isArray(parsed?.pages) ? parsed.pages : []
   const bySlug = new Map(actualPages.map((page) => [page.slug, page]))
+  const actualCategories = Array.isArray(parsed?.product_categories) ? parsed.product_categories : []
+  const categoriesBySlug = new Map(actualCategories.map((category) => [category.slug, category]))
 
   return [
     {
@@ -246,10 +321,19 @@ function buildChecks(parsed, expected) {
       expected: expected.pages.length,
       actual: actualPages.length,
     },
+    {
+      name: "expected_product_category_count",
+      pass: actualCategories.length === expected.productCategories.length,
+      expected: expected.productCategories.length,
+      actual: actualCategories.length,
+    },
     ...expected.pages.map((page) => {
       const actual = bySlug.get(page.slug)
-      const expectedShortcode =
-        page.slug === "card-inventory" ? "contains_inventory_shortcode" : "contains_events_shortcode"
+      const expectedShortcode = page.content.includes("[tcg_inventory_search")
+        ? "contains_inventory_shortcode"
+        : page.content.includes("[tcg_events")
+          ? "contains_events_shortcode"
+          : "contains_woocommerce_shortcode"
 
       return {
         name: `page_${page.slug}`,
@@ -261,6 +345,23 @@ function buildChecks(parsed, expected) {
               status: actual.status ?? null,
               action: actual.action ?? null,
               shortcodePresent: actual[expectedShortcode] ?? null,
+            }
+          : null,
+      }
+    }),
+    ...expected.productCategories.map((category) => {
+      const actual = categoriesBySlug.get(category.slug)
+
+      return {
+        name: `product_category_${category.slug}`,
+        pass: Boolean(actual?.id) && actual?.status === "ok",
+        expected: { slug: category.slug, status: "ok" },
+        actual: actual
+          ? {
+              id: actual.id ?? null,
+              action: actual.action ?? null,
+              status: actual.status ?? null,
+              parent: actual.parent ?? null,
             }
           : null,
       }

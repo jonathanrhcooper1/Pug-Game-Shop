@@ -3,6 +3,111 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Storefront Shelves And Automatic WooCommerce Inventory Publishing
+
+### What Changed
+
+- Imported the Pug arcade WooCommerce storefront theme from the secondary Pug
+  Card Website workspace into `apps/storefront-theme-or-blocks`.
+- Added WordPress theme packaging and a guarded production theme install script.
+- Added storefront page/category setup for Shop Singles, Shop Sealed Products,
+  Shop Accessories, Events, and the related WooCommerce product categories.
+- Added a public set/expansion filter to `[tcg_inventory_search]`, matching set
+  name and set code and preserving the filter across pagination.
+- Updated WooCommerce card product projection/writing so published singles are
+  categorized as `singles` plus their game category.
+- Updated the LAN inventory push to request WooCommerce product sync for visible
+  inventory, carrying the explicit production product-sync approval while
+  keeping payment capture and Square inventory writes deferred.
+- Updated the offline app Add Inventory flow to immediately attempt the LAN
+  queue push after successful local intake and show a concise publish result.
+- Updated `wp-env` to install and activate the Pug storefront theme and seed the
+  storefront pages locally.
+- Updated the changelog and packaging/deployment contracts.
+
+### Why
+
+The website sales flow needed real storefront pages for singles, sealed
+products, and accessories, and the local app should not require a manual sync
+click after adding inventory. Visible card inventory now moves from local intake
+to WordPress and WooCommerce product publishing in the same guarded push path,
+while the customer storefront has category and filter surfaces to house it.
+
+### Files Affected
+
+- `.wp-env.json`
+- `apps/storefront-theme-or-blocks/README.md`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/*`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/tests/Unit/*`
+- `package.json`
+- `scripts/package-wordpress-theme.mjs`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-install-storefront-theme.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `scripts/tests/production-theme-install-contract.mjs`
+- `scripts/tests/wordpress-package-contract.mjs`
+- `scripts/wp-env/seed-dev-data.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+- WooCommerce taxonomy setup is handled by the production public page/category
+  configuration script and the product writer's category resolution.
+
+### Tests Added
+
+- Public inventory parser/planner/query/presenter coverage for the set/expansion
+  filter.
+- WooCommerce projection/writer coverage for singles/game category assignment.
+- Local sync inventory push coverage for automatic WooCommerce product-sync
+  request, approval flag, and deferred payment/Square writes.
+- Offline app contracts for automatic post-intake push feedback.
+- Theme package and guarded production theme install contract coverage.
+- Production public page/category setup contract coverage.
+
+### Verification
+
+- `php tests/run.php`: passed, 995 tests.
+- `php tests/lint.php`: passed, 630 files.
+- `node apps/local-sync-server/tests/wordpress-inventory-push.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node scripts/tests/production-public-pages-contract.mjs`: passed.
+- `node scripts/tests/production-theme-install-contract.mjs`: passed.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the imported storefront theme, automatic
+  WooCommerce product-sync request, public set filter, and category assignment.
+- If the production theme was installed, reactivate the previous theme through
+  WordPress Admin or `wp theme activate <previous-theme>`.
+- If production pages/categories were configured, restore page content from the
+  `_tcg_store_public_pages_backup_*` post meta created by the configuration
+  script or edit the pages manually.
+- No WordPress or local SQLite schema rollback is required.
+
 ## 2026-06-09 - Manager-Controlled LAN Website Setup
 
 ### What Changed

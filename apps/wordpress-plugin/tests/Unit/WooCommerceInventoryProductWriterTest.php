@@ -39,6 +39,10 @@ namespace {
 				$this->values['stock_status'] = $value;
 			}
 
+			public function set_category_ids( array $value ): void {
+				$this->values['category_ids'] = $value;
+			}
+
 			public function update_meta_data( string $key, string $value ): void {
 				$this->meta[ $key ] = $value;
 			}
@@ -71,6 +75,40 @@ namespace {
 			return 0;
 		}
 	}
+
+	if ( ! function_exists( 'taxonomy_exists' ) ) {
+		function taxonomy_exists( string $taxonomy ): bool {
+			return 'product_cat' === $taxonomy;
+		}
+	}
+
+	if ( ! function_exists( 'get_term_by' ) ) {
+		function get_term_by( string $field, string $value, string $taxonomy ): ?object {
+			unset( $field );
+
+			if ( 'product_cat' !== $taxonomy ) {
+				return null;
+			}
+
+			$terms = array(
+				'singles' => 101,
+			);
+
+			return isset( $terms[ $value ] ) ? (object) array( 'term_id' => $terms[ $value ] ) : null;
+		}
+	}
+
+	if ( ! function_exists( 'wp_insert_term' ) ) {
+		function wp_insert_term( string $name, string $taxonomy, array $args = array() ): array {
+			unset( $name, $taxonomy );
+
+			$slug = (string) ( $args['slug'] ?? '' );
+
+			return array(
+				'term_id' => 'pokemon' === $slug ? 102 : 199,
+			);
+		}
+	}
 }
 
 namespace TCGStorePlatform\Tests\Unit {
@@ -92,6 +130,7 @@ namespace TCGStorePlatform\Tests\Unit {
 						'manage_stock'   => true,
 						'stock_quantity' => 1,
 						'stock_status'   => 'instock',
+						'category_slugs' => array( 'singles', 'pokemon' ),
 						'meta_data'      => array(
 							array(
 								'key'   => '_tcg_inventory_public_id',
@@ -110,6 +149,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'Pokemon - Charizard', $product->values['name'] );
 			$this->assert_same( 'PKM-BASE-004', $product->values['sku'] );
 			$this->assert_same( 1, $product->values['stock_quantity'] );
+			$this->assert_same( array( 101, 102 ), $product->values['category_ids'] );
 			$this->assert_same( 'card-public-42', $product->meta['_tcg_inventory_public_id'] );
 		}
 	}

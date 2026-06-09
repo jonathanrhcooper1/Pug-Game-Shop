@@ -1545,6 +1545,7 @@ export function createLocalSyncStore(options = {}) {
         code: pushResult.code,
         wordpress_code: pushResult.wordpress_code,
         wordpress_inventory: pushResult.inventory,
+        woocommerce_product_sync: pushResult.woocommerce_product_sync,
       })
     }
 

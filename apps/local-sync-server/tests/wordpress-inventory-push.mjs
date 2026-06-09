@@ -50,6 +50,8 @@ assert.equal(body.kiosk_visibility, "visible")
 assert.equal(body.pos_visibility, "visible")
 assert.equal(body.front_image_remote_url, "https://images.pokemontcg.io/base1/4_hires.png")
 assert.equal(body.back_image_remote_url, "https://images.pokemontcg.io/cardback.png")
+assert.equal(body.sync_woocommerce_product, true)
+assert.equal(body.production_write_approval, "woocommerce-product-sync")
 assert.equal("location_id" in body, false)
 
 const activeBody = inventoryIntakeBody(item, { defaultLocationId: "7" })
@@ -74,6 +76,8 @@ const hiddenBody = inventoryIntakeBody(
 assert.equal(hiddenBody.online_visibility, "hidden")
 assert.equal(hiddenBody.kiosk_visibility, "staff_only")
 assert.equal(hiddenBody.pos_visibility, "visible")
+assert.equal(hiddenBody.sync_woocommerce_product, false)
+assert.equal("production_write_approval" in hiddenBody, false)
 
 const defaultHiddenBody = inventoryIntakeBody(item, {
   defaultOnlineVisibility: "hidden",
@@ -84,6 +88,8 @@ const defaultHiddenBody = inventoryIntakeBody(item, {
 assert.equal(defaultHiddenBody.online_visibility, "hidden")
 assert.equal(defaultHiddenBody.kiosk_visibility, "staff_only")
 assert.equal(defaultHiddenBody.pos_visibility, "hidden")
+assert.equal(defaultHiddenBody.sync_woocommerce_product, false)
+assert.equal("production_write_approval" in defaultHiddenBody, false)
 
 let observedRequest = null
 const push = createWordPressInventoryPush({
@@ -112,6 +118,21 @@ const push = createWordPressInventoryPush({
           status: "available",
           price_change_log_persisted: true,
         },
+        meta: {
+          projections: {
+            woocommerce_product_sync: {
+              requested: true,
+              synced: true,
+              status: "executed",
+              execution: {
+                product_ids: [9001],
+              },
+              payment_capture_deferred: true,
+              square_inventory_deferred: true,
+              errors: [],
+            },
+          },
+        },
       },
       { status: 201 },
     )
@@ -128,6 +149,11 @@ const result = await push({
 assert.equal(result.status, "ok")
 assert.equal(result.wordpress_code, "inventory_item_created")
 assert.equal(result.inventory.public_id, "wp-inventory-001")
+assert.equal(result.woocommerce_product_sync.requested, true)
+assert.equal(result.woocommerce_product_sync.synced, true)
+assert.deepEqual(result.woocommerce_product_sync.product_ids, [9001])
+assert.equal(result.woocommerce_product_sync.payment_capture_deferred, true)
+assert.equal(result.woocommerce_product_sync.square_inventory_deferred, true)
 assert.equal(result.credentials_synced_to_client, false)
 assert.equal(result.authorization_header_printed, false)
 assert.equal(observedRequest.url, "https://example.test/wp-json/tcg-store/v1/inventory")
@@ -139,6 +165,8 @@ assert.equal(observedRequest.body.location_id, 7)
 assert.equal(observedRequest.body.online_visibility, "hidden")
 assert.equal(observedRequest.body.kiosk_visibility, "staff_only")
 assert.equal(observedRequest.body.pos_visibility, "visible")
+assert.equal(observedRequest.body.sync_woocommerce_product, false)
+assert.equal("production_write_approval" in observedRequest.body, false)
 assert.equal(observedRequest.body.provider_variant_id, "scrydex-pokemon-base-004-holo-unlimited")
 assert.equal(observedRequest.body.variant, "Unlimited Holo")
 

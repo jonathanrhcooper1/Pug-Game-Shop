@@ -26,6 +26,7 @@ final class InventorySearchPresenter {
 			'brand'         => BrandingSettings::public_config( $context['settings'] ?? BrandingSettings::defaults() ),
 			'query'         => $request->query(),
 			'game'          => $request->game(),
+			'set_filter'    => $request->set_filter(),
 			'sort'          => $request->sort(),
 			'page'          => $page,
 			'page_size'     => $page_size,
@@ -47,6 +48,7 @@ final class InventorySearchPresenter {
 		$groups = is_array( $payload['groups'] ?? null ) ? $payload['groups'] : array();
 		$query  = (string) ( $payload['query'] ?? '' );
 		$game   = (string) ( $payload['game'] ?? '' );
+		$set_filter = (string) ( $payload['set_filter'] ?? '' );
 		$sort   = (string) ( $payload['sort'] ?? 'relevance' );
 		$page   = max( 1, (int) ( $payload['page'] ?? 1 ) );
 		$page_size = max( 1, (int) ( $payload['page_size'] ?? 24 ) );
@@ -58,7 +60,7 @@ final class InventorySearchPresenter {
 		$html .= '<h2>' . $this->esc_html( 'Browse The Pug inventory' ) . '</h2>';
 		$html .= '<p>' . $this->esc_html( 'Search live card inventory with images, condition, quantity, and online pricing.' ) . '</p></div>';
 		$html .= '</section>';
-		$html .= $this->render_form( $query, $game, $sort, $page_size );
+		$html .= $this->render_form( $query, $game, $set_filter, $sort, $page_size );
 
 		if ( 'blocked' === (string) ( $payload['status'] ?? '' ) ) {
 			$html .= '<p class="tcg-public-inventory__notice">' . $this->esc_html( (string) ( $payload['message'] ?? 'Inventory search is temporarily unavailable.' ) ) . '</p>';
@@ -75,7 +77,7 @@ final class InventorySearchPresenter {
 			}
 
 			$html .= '</div>';
-			$html .= $this->render_pagination( $payload, $query, $game, $sort, $page );
+			$html .= $this->render_pagination( $payload, $query, $game, $set_filter, $sort, $page );
 		}
 
 		$html .= '</div>';
@@ -129,7 +131,7 @@ final class InventorySearchPresenter {
 		return $groups;
 	}
 
-	private function render_form( string $query, string $game, string $sort, int $page_size ): string {
+	private function render_form( string $query, string $game, string $set_filter, string $sort, int $page_size ): string {
 		$html  = '<form class="tcg-public-inventory__search" method="get">';
 		$html .= '<label><span>' . $this->esc_html( 'Search' ) . '</span><input type="search" name="tcg_inventory_q" value="' . $this->esc_attr( $query ) . '" placeholder="' . $this->esc_attr( 'Card name, set, or number' ) . '" /></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Game' ) . '</span><select name="tcg_inventory_game">';
@@ -137,6 +139,7 @@ final class InventorySearchPresenter {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $game === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
 		}
 		$html .= '</select></label>';
+		$html .= '<label><span>' . $this->esc_html( 'Set / Expansion' ) . '</span><input type="search" name="tcg_inventory_set" value="' . $this->esc_attr( $set_filter ) . '" placeholder="' . $this->esc_attr( 'Base Set, TDM, or expansion code' ) . '" /></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Sort' ) . '</span><select name="tcg_inventory_sort">';
 		foreach ( array( 'relevance' => 'Relevance', 'price_asc' => 'Price low', 'price_desc' => 'Price high', 'name_asc' => 'Name' ) as $value => $label ) {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $sort === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
@@ -155,7 +158,7 @@ final class InventorySearchPresenter {
 	/**
 	 * @param array<string, mixed> $payload Presented payload.
 	 */
-	private function render_pagination( array $payload, string $query, string $game, string $sort, int $page ): string {
+	private function render_pagination( array $payload, string $query, string $game, string $set_filter, string $sort, int $page ): string {
 		$total_pages = max( 1, (int) ( $payload['total_pages'] ?? 1 ) );
 		$page_size   = max( 1, (int) ( $payload['page_size'] ?? 24 ) );
 
@@ -166,13 +169,13 @@ final class InventorySearchPresenter {
 		$html = '<nav class="tcg-public-inventory__pagination" aria-label="' . $this->esc_attr( 'Inventory pages' ) . '">';
 
 		if ( $page > 1 ) {
-			$html .= '<a href="' . $this->esc_url( $this->page_url( $query, $game, $sort, $page - 1, $page_size ) ) . '">' . $this->esc_html( 'Previous' ) . '</a>';
+			$html .= '<a href="' . $this->esc_url( $this->page_url( $query, $game, $set_filter, $sort, $page - 1, $page_size ) ) . '">' . $this->esc_html( 'Previous' ) . '</a>';
 		}
 
 		$html .= '<span>' . $this->esc_html( 'Page ' . $page . ' of ' . $total_pages ) . '</span>';
 
 		if ( true === (bool) ( $payload['has_next_page'] ?? false ) ) {
-			$html .= '<a href="' . $this->esc_url( $this->page_url( $query, $game, $sort, $page + 1, $page_size ) ) . '">' . $this->esc_html( 'Next page' ) . '</a>';
+			$html .= '<a href="' . $this->esc_url( $this->page_url( $query, $game, $set_filter, $sort, $page + 1, $page_size ) ) . '">' . $this->esc_html( 'Next page' ) . '</a>';
 		}
 
 		$html .= '</nav>';
@@ -297,10 +300,11 @@ final class InventorySearchPresenter {
 		return 'Showing ' . $from . '-' . $to . ' of ' . $this->count_label( $total, 'matching item' );
 	}
 
-	private function page_url( string $query, string $game, string $sort, int $page, int $page_size ): string {
+	private function page_url( string $query, string $game, string $set_filter, string $sort, int $page, int $page_size ): string {
 		$params = array(
 			'tcg_inventory_q'         => $query,
 			'tcg_inventory_game'      => $game,
+			'tcg_inventory_set'       => $set_filter,
 			'tcg_inventory_sort'      => $sort,
 			'tcg_inventory_page'      => max( 1, $page ),
 			'tcg_inventory_page_size' => max( 1, $page_size ),

@@ -98,6 +98,7 @@ final class WooCommerceInventoryProductWriter {
 		$this->call_bool_setter( $product, 'set_sold_individually', $payload['sold_individually'] ?? null );
 		$this->call_bool_setter( $product, 'set_virtual', $payload['virtual'] ?? null );
 		$this->call_bool_setter( $product, 'set_downloadable', $payload['downloadable'] ?? null );
+		$this->apply_category_slugs( $product, $payload['category_slugs'] ?? array() );
 
 		if ( array_key_exists( 'stock_quantity', $payload ) && method_exists( $product, 'set_stock_quantity' ) ) {
 			$product->set_stock_quantity( max( 0, (int) $payload['stock_quantity'] ) );
@@ -116,6 +117,72 @@ final class WooCommerceInventoryProductWriter {
 
 			$product->update_meta_data( $key, $this->text( $row['value'] ?? '' ) );
 		}
+	}
+
+	/**
+	 * @param list<mixed> $slugs Product category slugs.
+	 */
+	private function apply_category_slugs( \WC_Product $product, array $slugs ): void {
+		if ( ! method_exists( $product, 'set_category_ids' ) ) {
+			return;
+		}
+
+		$category_ids = array();
+
+		foreach ( $slugs as $slug ) {
+			$term_id = $this->product_category_id( $this->term_slug( $slug ) );
+
+			if ( null !== $term_id ) {
+				$category_ids[] = $term_id;
+			}
+		}
+
+		if ( array() !== $category_ids ) {
+			$product->set_category_ids( array_values( array_unique( $category_ids ) ) );
+		}
+	}
+
+	private function product_category_id( string $slug ): ?int {
+		if ( '' === $slug || ! function_exists( 'taxonomy_exists' ) || ! taxonomy_exists( 'product_cat' ) ) {
+			return null;
+		}
+
+		$term = function_exists( 'get_term_by' ) ? get_term_by( 'slug', $slug, 'product_cat' ) : null;
+
+		if ( is_object( $term ) && isset( $term->term_id ) && (int) $term->term_id > 0 ) {
+			return (int) $term->term_id;
+		}
+
+		if ( ! function_exists( 'wp_insert_term' ) ) {
+			return null;
+		}
+
+		$created = wp_insert_term( $this->category_name( $slug ), 'product_cat', array( 'slug' => $slug ) );
+
+		if ( is_array( $created ) && (int) ( $created['term_id'] ?? 0 ) > 0 ) {
+			return (int) $created['term_id'];
+		}
+
+		if ( function_exists( 'is_wp_error' ) && is_wp_error( $created ) && $created->get_error_data( 'term_exists' ) ) {
+			return $this->positive_int( $created->get_error_data( 'term_exists' ) );
+		}
+
+		return null;
+	}
+
+	private function category_name( string $slug ): string {
+		return match ( $slug ) {
+			'singles' => 'Singles',
+			'sealed-products' => 'Sealed Products',
+			'accessories' => 'Accessories',
+			'magic-the-gathering' => 'Magic: The Gathering',
+			'pokemon' => 'Pokemon',
+			'lorcana' => 'Lorcana',
+			'one-piece' => 'One Piece',
+			'riftbound' => 'Riftbound',
+			'gundam' => 'Gundam',
+			default => ucwords( str_replace( '-', ' ', $slug ) ),
+		};
 	}
 
 	private function call_string_setter( \WC_Product $product, string $method, mixed $value ): void {
@@ -146,5 +213,9 @@ final class WooCommerceInventoryProductWriter {
 
 	private function text( mixed $value ): string {
 		return substr( trim( (string) ( is_array( $value ) || is_object( $value ) ? '' : $value ) ), 0, 5000 );
+	}
+
+	private function term_slug( mixed $value ): string {
+		return strtolower( preg_replace( '/[^a-z0-9-]+/', '-', trim( (string) $value ) ) ?? '' );
 	}
 }

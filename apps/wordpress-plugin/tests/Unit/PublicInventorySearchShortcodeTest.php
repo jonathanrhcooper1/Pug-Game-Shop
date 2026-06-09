@@ -32,7 +32,7 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 	public function test_inventory_query_parameters_mark_page_as_inventory_context(): void {
 		$previous_get = $_GET;
 		$_GET         = array(
-			'tcg_inventory_q' => 'Charizard',
+			'tcg_inventory_set' => 'Base Set',
 		);
 
 		try {
@@ -93,6 +93,7 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 
 		$this->assert_contains( "'settings' => Settings::all()", $source );
 		$this->assert_contains( "tcg_inventory_page", $source );
+		$this->assert_contains( "tcg_inventory_set", $source );
 		$this->assert_contains( "tcg_inventory_page_size", $source );
 		$this->assert_contains( '.tcg-public-inventory {', $source );
 		$this->assert_contains( 'BrandingSettings::css_variable_string( Settings::all() )', $source );

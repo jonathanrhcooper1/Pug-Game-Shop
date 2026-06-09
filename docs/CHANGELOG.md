@@ -6,6 +6,21 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Imported the Pug arcade WooCommerce storefront theme into source control,
+  added a package/install path for the theme, and wired local `wp-env` to load
+  the same storefront experience.
+- Production public page setup now creates shop shelves for Singles, Sealed
+  Products, and Accessories, plus matching WooCommerce product categories.
+- Public inventory search now includes a set/expansion filter that searches set
+  name and set code while preserving the filter in pagination URLs.
+- Visible local inventory intake now asks WordPress to publish/update the
+  WooCommerce card product during the LAN inventory push, including the explicit
+  production WooCommerce product-sync approval and without enabling payment or
+  Square inventory writes.
+- WooCommerce card product projections now tag published singles with the
+  `singles` category and the matching game product category.
+- The offline app Add Inventory flow now immediately attempts the LAN queue push
+  after a successful intake and shows a shorter staff-facing publish result.
 - The LAN local sync server now supports a manager-only, secret-free
   `/setup/config` route that persists the one-website binding in SQLite; the
   offline app Settings save flow publishes website setup to the middleman when

@@ -328,6 +328,7 @@ final class InventoryProductProjectionPlanner {
 			'catalog_visibility' => 'visible',
 			'virtual'            => false,
 			'downloadable'       => false,
+			'category_slugs'     => $this->product_category_slugs( $row ),
 			'meta_data'          => $this->meta_data(
 				array(
 					'_tcg_serialized_inventory' => '1',
@@ -510,6 +511,7 @@ final class InventoryProductProjectionPlanner {
 			'catalog_visibility' => $total_stock > 0 ? 'visible' : 'hidden',
 			'virtual'            => false,
 			'downloadable'       => false,
+			'category_slugs'     => $this->product_category_slugs( $row ),
 			'meta_data'          => $this->meta_data(
 				array(
 					'_tcg_serialized_inventory'   => '1',
@@ -566,6 +568,29 @@ final class InventoryProductProjectionPlanner {
 		);
 
 		return $this->bounded_text( implode( "\n", $parts ), 5000 );
+	}
+
+	/**
+	 * @param array<string, mixed> $row Inventory row.
+	 * @return list<string>
+	 */
+	private function product_category_slugs( array $row ): array {
+		$slugs = array( 'singles' );
+		$game  = $this->slug( $row['game'] ?? '' );
+
+		if ( '' !== $game ) {
+			$slugs[] = $this->game_category_slug( $game );
+		}
+
+		return array_values( array_unique( array_filter( $slugs ) ) );
+	}
+
+	private function game_category_slug( string $game ): string {
+		return match ( $game ) {
+			'magic', 'mtg' => 'magic-the-gathering',
+			'one-piece', 'onepiece' => 'one-piece',
+			default => $game,
+		};
 	}
 
 	/**

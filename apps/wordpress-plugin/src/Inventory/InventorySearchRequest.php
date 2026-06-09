@@ -19,7 +19,8 @@ final class InventorySearchRequest {
 		private string $visibility,
 		private string $sort,
 		private int $page,
-		private int $page_size
+		private int $page_size,
+		private string $set_filter = ''
 	) {
 	}
 
@@ -29,6 +30,10 @@ final class InventorySearchRequest {
 
 	public function game(): string {
 		return $this->game;
+	}
+
+	public function set_filter(): string {
+		return $this->set_filter;
 	}
 
 	/**

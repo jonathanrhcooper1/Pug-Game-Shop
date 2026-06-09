@@ -3537,9 +3537,58 @@ export function App() {
       companyName: activeProfile.companyName,
       localSyncServerUrl: localSyncClient.serverUrl,
     })
+    let displayedNextItems = nextItems
+    let displayedIntakeReceipts = intakeReceipts
+    let autoPublishDetail =
+      "Queued locally; the LAN server will publish it when the website connector is available."
 
-    setInventoryItems((items) => [...nextItems, ...items])
-    setLocalInventoryIntakeReceipts((receipts) => [...intakeReceipts, ...receipts].slice(0, 50))
+    if (effectiveAccess.includes("Sync")) {
+      const autoPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
+
+      if (autoPushResult.status === "ok") {
+        const intakePublicIds = new Set(nextItems.map((item) => item.publicId))
+        const acceptedIntakeResults = autoPushResult.results.filter(
+          (result) => result.status === "accepted" && intakePublicIds.has(result.entity_id),
+        )
+        const acceptedPublicIds = new Set(acceptedIntakeResults.map((result) => result.entity_id))
+        const wooSyncedCount = acceptedIntakeResults.filter(
+          (result) => result.woocommerce_product_sync?.synced,
+        ).length
+
+        displayedNextItems = nextItems.map((item) =>
+          acceptedPublicIds.has(item.publicId)
+            ? {
+                ...item,
+                status: inventoryStatusFromWordPressPushResult(autoPushResult, item.publicId) ?? item.status,
+                source: "accepted",
+                rowVersion: item.rowVersion + 1,
+              }
+            : item,
+        )
+        displayedIntakeReceipts = applyLocalInventoryIntakePushResults(
+          intakeReceipts,
+          autoPushResult.results,
+        ).receipts
+
+        if (acceptedIntakeResults.length > 0 && wooSyncedCount > 0) {
+          autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; ${wooSyncedCount} WooCommerce product sync(s) completed.`
+        } else if (acceptedIntakeResults.length > 0) {
+          autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; WooCommerce publish is still pending review in the sync status screen.`
+        } else if (autoPushResult.retry_count > 0) {
+          autoPublishDetail = "Saved locally; website publish will retry from the LAN queue."
+        }
+      } else if (autoPushResult.status === "blocked") {
+        autoPublishDetail = `${autoPushResult.message} Saved locally for retry.`
+      } else {
+        autoPublishDetail = `${autoPushResult.message} Saved locally for retry.`
+      }
+    } else {
+      autoPublishDetail =
+        "Saved locally; this PIN does not have Sync access, so a manager or sync-enabled user must publish the queue."
+    }
+
+    setInventoryItems((items) => [...displayedNextItems, ...items])
+    setLocalInventoryIntakeReceipts((receipts) => [...displayedIntakeReceipts, ...receipts].slice(0, 50))
     setSelectedId(nextItem.id)
     setQuery(nextItem.barcode)
     setIntakeCardName("")
@@ -3551,10 +3600,9 @@ export function App() {
     setIntakeQuantityInput("1")
     void refreshLocalSyncStatus()
     setActivityMessage({
-      title: "Inventory intake queued",
+      title: "Inventory added",
       detail:
-        `${nextItem.cardName} x${intakeResult.quantity_added ?? nextItems.length} was added to ${localSyncClient.serverUrl}; ` +
-        `${intakeReceipts.length} intake receipt(s) now track WordPress acceptance and label printing remains pending sync.`,
+        `${nextItem.cardName} x${intakeResult.quantity_added ?? nextItems.length} saved. ${autoPublishDetail}`,
     })
   }
 

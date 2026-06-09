@@ -7,8 +7,19 @@ import { fileURLToPath } from "node:url"
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const zipPath = resolve(root, "dist", `tcg-store-platform-${packageJson.version}.zip`)
+const themeSlug = "pug-arcade-commerce-v2"
+const themeZipPath = resolve(root, "dist", `${themeSlug}-${packageJson.version}.zip`)
+
+assert.equal(
+  packageJson.scripts["package:wordpress-theme"],
+  "node scripts/package-wordpress-theme.mjs",
+)
 
 execFileSync("node", ["scripts/package-wordpress-plugin.mjs"], {
+  cwd: root,
+  stdio: "inherit",
+})
+execFileSync("node", ["scripts/package-wordpress-theme.mjs"], {
   cwd: root,
   stdio: "inherit",
 })
@@ -19,8 +30,15 @@ const entries = execFileSync("tar", ["-tf", zipPath], {
 })
   .split(/\r?\n/)
   .filter(Boolean)
+const themeEntries = execFileSync("tar", ["-tf", themeZipPath], {
+  cwd: root,
+  encoding: "utf8",
+})
+  .split(/\r?\n/)
+  .filter(Boolean)
 
 assert.ok(statSync(zipPath).size > 100_000)
+assert.ok(statSync(themeZipPath).size > 100_000)
 assert.ok(entries.includes("tcg-store-platform/"))
 assert.ok(entries.includes("tcg-store-platform/tcg-store-platform.php"))
 assert.ok(entries.includes("tcg-store-platform/uninstall.php"))
@@ -31,6 +49,15 @@ assert.ok(entries.includes("tcg-store-platform/assets/css/public-inventory.css")
 assert.ok(entries.includes("tcg-store-platform/src/Autoloader.php"))
 assert.ok(entries.includes("tcg-store-platform/src/Api/V1/OfflineRouteRuntimeConfigurator.php"))
 assert.ok(entries.includes("tcg-store-platform/src/Settings/OfflineRouteRuntimeSettings.php"))
+assert.ok(themeEntries.includes(`${themeSlug}/`))
+assert.ok(themeEntries.includes(`${themeSlug}/style.css`))
+assert.ok(themeEntries.includes(`${themeSlug}/functions.php`))
+assert.ok(themeEntries.includes(`${themeSlug}/front-page.php`))
+assert.ok(themeEntries.includes(`${themeSlug}/woocommerce.php`))
+assert.ok(themeEntries.includes(`${themeSlug}/assets/css/main.css`))
+assert.ok(themeEntries.includes(`${themeSlug}/assets/js/main.js`))
+assert.ok(themeEntries.includes(`${themeSlug}/assets/img/pug-logo.webp`))
+assert.ok(themeEntries.includes(`${themeSlug}/assets/img/pug-hero-arcade.png`))
 
 const pluginHeader = execFileSync("tar", ["-xOf", zipPath, "tcg-store-platform/tcg-store-platform.php"], {
   cwd: root,

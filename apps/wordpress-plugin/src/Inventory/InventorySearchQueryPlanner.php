@@ -95,6 +95,7 @@ final class InventorySearchQueryPlanner {
 		$filters      = array(
 			'query'              => $request->query(),
 			'game'               => $request->game(),
+			'set_filter'         => $request->set_filter(),
 			'requested_statuses' => $request->statuses(),
 			'statuses'           => $statuses,
 			'location_id'        => $request->location_id(),
@@ -162,6 +163,14 @@ final class InventorySearchQueryPlanner {
 
 		if ( '' !== $request->game() ) {
 			$where['game'] = $request->game();
+		}
+
+		if ( '' !== $request->set_filter() ) {
+			$where['set_filter'] = array(
+				'value'   => $request->set_filter(),
+				'like'    => '%' . $request->set_filter() . '%',
+				'columns' => array( 'set_name', 'set_code' ),
+			);
 		}
 
 		if ( array() !== $statuses ) {

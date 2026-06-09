@@ -575,6 +575,15 @@ export type LocalSyncPushResult = LocalSyncResult<{
       status: LocalSyncInventoryItem["status"]
       price_change_log_persisted: boolean
     }
+    woocommerce_product_sync?: {
+      requested: boolean
+      synced: boolean
+      status: string
+      product_ids: number[]
+      errors: string[]
+      payment_capture_deferred: boolean
+      square_inventory_deferred: boolean
+    }
   }>
   wordpress_push_connected: true
   wordpress_inventory_push_connected?: boolean

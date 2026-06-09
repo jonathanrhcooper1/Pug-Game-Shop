@@ -19,6 +19,7 @@ final class InventorySearchRequestParser {
 		$errors     = array();
 		$text_query = trim( (string) ( $query['q'] ?? ( $query['query'] ?? '' ) ) );
 		$game       = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
+		$set_filter = trim( (string) ( $query['set'] ?? ( $query['set_name'] ?? ( $query['set_filter'] ?? '' ) ) ) );
 		$visibility = strtolower( trim( (string) ( $query['visibility'] ?? 'public' ) ) );
 		$sort       = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
 		$page       = $this->positive_int( $query['page'] ?? 1, 'page', $errors, 1 );
@@ -29,6 +30,11 @@ final class InventorySearchRequestParser {
 		if ( strlen( $text_query ) > 120 ) {
 			$errors[]   = 'query_too_long';
 			$text_query = substr( $text_query, 0, 120 );
+		}
+
+		if ( strlen( $set_filter ) > 120 ) {
+			$errors[]   = 'set_filter_too_long';
+			$set_filter = substr( $set_filter, 0, 120 );
 		}
 
 		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
@@ -63,7 +69,8 @@ final class InventorySearchRequestParser {
 				$visibility,
 				$sort,
 				$page,
-				$page_size
+				$page_size,
+				$set_filter
 			)
 		);
 	}

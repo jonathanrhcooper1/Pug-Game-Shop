@@ -158,6 +158,7 @@ final class InventorySearchQueryBuilder {
 			'visibility_context',
 			'text_query',
 			'game',
+			'set_filter',
 			'status_in',
 			'location_id',
 			'online_visibility',
@@ -176,6 +177,10 @@ final class InventorySearchQueryBuilder {
 
 		if ( array_key_exists( 'text_query', $where ) ) {
 			$this->validate_text_query( $where['text_query'], $errors );
+		}
+
+		if ( array_key_exists( 'set_filter', $where ) ) {
+			$this->validate_text_query( $where['set_filter'], $errors );
 		}
 
 		$game = (string) ( $where['game'] ?? '' );
@@ -313,6 +318,21 @@ final class InventorySearchQueryBuilder {
 		if ( isset( $where['game'] ) ) {
 			$where_clauses[] = '`game` = %s';
 			$prepare_args[]  = (string) $where['game'];
+		}
+
+		if ( isset( $where['set_filter'] ) && is_array( $where['set_filter'] ) ) {
+			$set_filter = $where['set_filter'];
+			$columns    = array_values( $set_filter['columns'] ?? array() );
+			$or_clauses = array();
+
+			foreach ( $columns as $column ) {
+				$or_clauses[]   = sprintf( '%s LIKE %%s', $this->quote_identifier( (string) $column ) );
+				$prepare_args[] = (string) $set_filter['like'];
+			}
+
+			if ( array() !== $or_clauses ) {
+				$where_clauses[] = '(' . implode( ' OR ', $or_clauses ) . ')';
+			}
 		}
 
 		if ( isset( $where['status_in'] ) && is_array( $where['status_in'] ) ) {

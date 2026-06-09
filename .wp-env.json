@@ -9,6 +9,7 @@
     "https://downloads.wordpress.org/plugin/wordpress-importer.zip"
   ],
   "themes": [
+    "./apps/storefront-theme-or-blocks/pug-arcade-commerce-v2",
     "https://downloads.wordpress.org/theme/twentytwentyfive.zip"
   ],
   "mappings": {

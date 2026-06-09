@@ -26,7 +26,8 @@ final class InventorySearchQueryBuilderTest extends TestCase {
 					'public',
 					'price_desc',
 					2,
-					24
+					24,
+					'Base'
 				),
 				'wp_'
 			)
@@ -40,20 +41,21 @@ final class InventorySearchQueryBuilderTest extends TestCase {
 		$this->assert_contains( 'FROM `wp_tcg_inventory_items`', $query['select_sql_template'] );
 		$this->assert_contains( '(`card_name` LIKE %s OR `set_name` LIKE %s OR `set_code` LIKE %s OR `card_number` LIKE %s)', $query['select_sql_template'] );
 		$this->assert_contains( '`game` = %s', $query['select_sql_template'] );
+		$this->assert_contains( '(`set_name` LIKE %s OR `set_code` LIKE %s)', $query['select_sql_template'] );
 		$this->assert_contains( '`status` IN (%s)', $query['select_sql_template'] );
 		$this->assert_contains( '`online_visibility` = %s', $query['select_sql_template'] );
 		$this->assert_contains( 'ORDER BY `sale_price` DESC, `inventory_id` ASC LIMIT %d OFFSET %d', $query['select_sql_template'] );
 		$this->assert_contains( 'SELECT COUNT(*) FROM `wp_tcg_inventory_items`', $query['count_sql_template'] );
 		$this->assert_same(
-			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', InventoryStatus::AVAILABLE, 'visible', 24, 24 ),
+			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', '%Base%', '%Base%', InventoryStatus::AVAILABLE, 'visible', 24, 24 ),
 			$query['select_prepare_args']
 		);
 		$this->assert_same(
-			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', InventoryStatus::AVAILABLE, 'visible' ),
+			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', '%Base%', '%Base%', InventoryStatus::AVAILABLE, 'visible' ),
 			$query['count_prepare_args']
 		);
-		$this->assert_same( 9, $build->select_prepare_arg_count() );
-		$this->assert_same( 7, $build->count_prepare_arg_count() );
+		$this->assert_same( 11, $build->select_prepare_arg_count() );
+		$this->assert_same( 9, $build->count_prepare_arg_count() );
 		$this->assert_true( $query['read_execution_deferred'] );
 		$this->assert_true( $query['inventory_repository_deferred'] );
 		$this->assert_true( $query['square_inventory_projection_deferred'] );

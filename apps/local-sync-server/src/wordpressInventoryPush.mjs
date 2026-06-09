@@ -12,6 +12,7 @@ export function createWordPressInventoryPush(options = {}) {
   const defaultOnlineVisibility = cleanVisibility(options.defaultOnlineVisibility, "visible")
   const defaultKioskVisibility = cleanVisibility(options.defaultKioskVisibility, "visible")
   const defaultPosVisibility = cleanVisibility(options.defaultPosVisibility, "visible")
+  const autoPublishWooCommerceProducts = options.autoPublishWooCommerceProducts !== false
 
   if (!endpointBase || typeof fetcher !== "function" || !authorizationHeader) {
     return null
@@ -24,6 +25,7 @@ export function createWordPressInventoryPush(options = {}) {
       defaultOnlineVisibility,
       defaultKioskVisibility,
       defaultPosVisibility,
+      autoPublishWooCommerceProducts,
     })
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
@@ -62,6 +64,7 @@ export function createWordPressInventoryPush(options = {}) {
         http_status: Number(response.status ?? 201),
         wordpress_code: String(responseBody.code ?? "inventory_item_created"),
         inventory: inventoryCreateResponseData(responseBody),
+        woocommerce_product_sync: woocommerceProductSyncResponse(responseBody),
         credentials_synced_to_client: false,
         authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
@@ -87,6 +90,9 @@ export function inventoryIntakeBody(item = {}, options = {}) {
   const priceMinorUnits = boundedMinorUnits(item.price_minor_units)
   const locationId = positiveInt(item.location_id ?? options.defaultLocationId)
   const activeLocationConfigured = locationId !== null
+  const onlineVisibility = cleanVisibility(item.online_visibility, options.defaultOnlineVisibility ?? "visible")
+  const shouldPublishWooCommerce =
+    options.autoPublishWooCommerceProducts !== false && onlineVisibility === "visible"
 
   const body = {
     source: "offline",
@@ -112,16 +118,21 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     minimum_sale_price_minor_units: priceMinorUnits,
     sale_price_minor_units: priceMinorUnits,
     market_price_minor_units: priceMinorUnits,
-    online_visibility: cleanVisibility(item.online_visibility, options.defaultOnlineVisibility ?? "visible"),
+    online_visibility: onlineVisibility,
     kiosk_visibility: cleanVisibility(item.kiosk_visibility, options.defaultKioskVisibility ?? "visible"),
     pos_visibility: cleanVisibility(item.pos_visibility, options.defaultPosVisibility ?? "visible"),
     front_image_remote_url: cleanHttpUrl(item.image_url),
     back_image_remote_url: cleanHttpUrl(item.back_image_url),
     staff_notes: cleanText(`Queued from LAN sync server location: ${item.location ?? "Intake Queue"}`),
+    sync_woocommerce_product: shouldPublishWooCommerce,
   }
 
   if (activeLocationConfigured) {
     body.location_id = locationId
+  }
+
+  if (shouldPublishWooCommerce) {
+    body.production_write_approval = "woocommerce-product-sync"
   }
 
   return body
@@ -136,6 +147,28 @@ function inventoryCreateResponseData(body) {
     barcode: String(data.barcode ?? ""),
     status: String(data.status ?? ""),
     price_change_log_persisted: Boolean(data.price_change_log_persisted),
+  }
+}
+
+function woocommerceProductSyncResponse(body) {
+  const meta = body?.meta && typeof body.meta === "object" ? body.meta : {}
+  const projections = meta.projections && typeof meta.projections === "object" ? meta.projections : {}
+  const sync = projections.woocommerce_product_sync && typeof projections.woocommerce_product_sync === "object"
+    ? projections.woocommerce_product_sync
+    : {}
+
+  return {
+    requested: Boolean(sync.requested),
+    synced: Boolean(sync.synced),
+    status: String(sync.status ?? (sync.requested ? "unknown" : "deferred")),
+    product_ids: Array.isArray(sync.execution?.product_ids)
+      ? sync.execution.product_ids
+          .map((value) => positiveInt(value))
+          .filter((value) => value !== null)
+      : [],
+    errors: Array.isArray(sync.errors) ? sync.errors.map((value) => String(value)) : [],
+    payment_capture_deferred: sync.payment_capture_deferred !== false,
+    square_inventory_deferred: sync.square_inventory_deferred !== false,
   }
 }
 
