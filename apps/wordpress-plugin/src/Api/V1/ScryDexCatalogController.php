@@ -33,6 +33,14 @@ final class ScryDexCatalogController {
 		'provider_price_points'       => 'tcg_provider_price_points',
 		'sync_checkpoints'            => 'tcg_sync_checkpoints',
 	);
+	private const EXPORT_ORDER_COLUMNS = array(
+		'reference_sets'              => 'reference_set_id',
+		'reference_cards'             => 'reference_card_id',
+		'reference_variants'          => 'reference_variant_id',
+		'provider_price_observations' => 'provider_price_observation_id',
+		'provider_price_points'       => 'provider_price_point_id',
+		'sync_checkpoints'            => 'sync_checkpoint_id',
+	);
 
 	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ), 25 );
@@ -255,11 +263,12 @@ final class ScryDexCatalogController {
 			);
 		}
 
-		$total  = $this->table_count( $table );
-		$offset = ( $page - 1 ) * $page_size;
-		$rows   = $database->get_results(
+		$total        = $this->table_count( $table );
+		$offset       = ( $page - 1 ) * $page_size;
+		$order_column = self::EXPORT_ORDER_COLUMNS[ $table_key ] ?? '';
+		$rows         = $database->get_results(
 			$database->prepare(
-				"SELECT * FROM {$table} LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT * FROM {$table} ORDER BY {$order_column} ASC LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				array( $page_size, $offset )
 			),
 			ARRAY_A
@@ -275,6 +284,17 @@ final class ScryDexCatalogController {
 					'page_size'                    => $page_size,
 					'total'                        => $total,
 					'has_more'                     => $offset + count( $rows ) < $total,
+					'manifest'                     => array(
+						'format'              => 'json',
+						'table'               => $table_key,
+						'table_name'          => $table,
+						'order_by'            => $order_column . ' ASC',
+						'deterministic_order' => true,
+						'page'                => $page,
+						'page_size'           => $page_size,
+						'total'               => $total,
+						'generated_at_utc'    => gmdate( 'c' ),
+					),
 					'rows'                         => $rows,
 					'credential_values_redacted'   => true,
 					'credentials_synced_to_client' => false,

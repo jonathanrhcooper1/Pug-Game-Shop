@@ -346,6 +346,9 @@ export type LocalSyncSquareCreditHandoff = {
   currency: "USD"
   square_payment_method_label: "Pug Store Credit"
   square_handoff_mode: "custom_payment_method"
+  square_receipt_reference: string
+  square_cashier_confirmed: boolean
+  square_recorded_at_utc: string
   square_instruction: string
   pug_ledger_authority: true
   square_credit_balance_authority: false
@@ -602,6 +605,11 @@ export type LocalSyncServerClient = {
       rawOrGraded?: "raw" | "graded"
       imageUrl?: string
       backImageUrl?: string
+      priceSource?: string
+      priceObservedAtUtc?: string | null
+      suggestedPriceMinorUnits?: number
+      finalPriceMinorUnits?: number
+      priceOverrideReason?: string
       onlineVisibility?: LocalSyncInventoryItem["online_visibility"]
       kioskVisibility?: LocalSyncInventoryItem["kiosk_visibility"]
       posVisibility?: LocalSyncInventoryItem["pos_visibility"]
@@ -631,6 +639,8 @@ export type LocalSyncServerClient = {
       amountMinorUnits: number
       saleTotalMinorUnits: number
       reason: string
+      squareReceiptReference: string
+      squareCashierConfirmed: boolean
     },
   ) => Promise<LocalSyncCreditRedemptionResult>
   listEvents: () => Promise<LocalSyncEventListResult>
@@ -756,6 +766,11 @@ export function createLocalSyncServerClient(
           raw_or_graded: input.rawOrGraded ?? "raw",
           image_url: input.imageUrl ?? "",
           back_image_url: input.backImageUrl ?? "",
+          price_source: input.priceSource ?? "",
+          price_observed_at_utc: input.priceObservedAtUtc ?? "",
+          suggested_price_minor_units: input.suggestedPriceMinorUnits ?? input.priceMinorUnits,
+          final_price_minor_units: input.finalPriceMinorUnits ?? input.priceMinorUnits,
+          price_override_reason: input.priceOverrideReason ?? "",
           online_visibility: input.onlineVisibility ?? "visible",
           kiosk_visibility: input.kioskVisibility ?? "visible",
           pos_visibility: input.posVisibility ?? "visible",
@@ -810,6 +825,8 @@ export function createLocalSyncServerClient(
           amount_minor_units: input.amountMinorUnits,
           sale_total_minor_units: input.saleTotalMinorUnits,
           reason: input.reason,
+          square_receipt_reference: input.squareReceiptReference,
+          square_cashier_confirmed: input.squareCashierConfirmed,
         },
       }) as Promise<LocalSyncCreditRedemptionResult>,
     listEvents: () =>

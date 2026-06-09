@@ -53,6 +53,27 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 					'shop_url'   => 'https://example.test/shop/',
 					'orders_url' => 'https://example.test/my-account/orders/',
 				),
+			),
+			array(
+				array(
+					'public_id'       => 'registration-public-id',
+					'event_id'        => 17,
+					'event_title'     => 'Friday Pokemon League',
+					'event_slug'      => 'friday-pokemon-league',
+					'start_datetime'  => '2026-06-12 18:00:00',
+					'email'           => 'jane@example.com',
+					'first_name'      => 'Jane',
+					'last_name'       => 'Collector',
+					'phone'           => '555-1212',
+					'status'          => 'reserved',
+					'payment_status'  => 'pay_at_store',
+					'checkin_status'  => 'not_checked_in',
+					'game'            => 'pokemon',
+					'format'          => 'Standard',
+					'entry_fee'       => '5.0000',
+					'currency'        => 'USD',
+					'idempotency_key' => 'secret-event-key',
+				),
 			)
 		);
 
@@ -64,9 +85,14 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 		$this->assert_same( 'The Pug Collector Vault', $portal['brand']['headline'] );
 		$this->assert_same( 'https://example.test/shop/', $portal['links']['shop_url'] );
 		$this->assert_same( 'Buylist credit', $portal['store_credit']['ledger_entries'][0]['label'] );
+		$this->assert_same( 'Friday Pokemon League', $portal['event_history']['registrations'][0]['title'] );
+		$this->assert_same( 'Reserved', $portal['event_history']['registrations'][0]['status_label'] );
+		$this->assert_same( 'Pay At Store', $portal['event_history']['registrations'][0]['payment_status_label'] );
+		$this->assert_same( 'Pokemon', $portal['event_history']['registrations'][0]['game_label'] );
 		$this->assert_not_contains( 'jane@example.com', $json );
 		$this->assert_not_contains( '555-1212', $json );
 		$this->assert_not_contains( 'secret-idempotency-key', $json );
+		$this->assert_not_contains( 'secret-event-key', $json );
 		$this->assert_not_contains( 'offline-op-secret', $json );
 		$this->assert_not_contains( 'api_key', $json );
 		$this->assert_not_contains( 'manager_user_id', $json );
@@ -167,6 +193,19 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 					'shop_url'   => 'https://example.test/shop/',
 					'orders_url' => 'https://example.test/my-account/orders/',
 				),
+			),
+			array(
+				array(
+					'event_title'    => 'Commander Night',
+					'start_datetime' => '2026-06-12 19:00:00',
+					'status'         => 'confirmed',
+					'payment_status' => 'paid',
+					'checkin_status' => 'checked_in',
+					'game'           => 'magic',
+					'format'         => 'Commander',
+					'entry_fee'      => '10',
+					'currency'       => 'USD',
+				),
 			)
 		);
 
@@ -181,5 +220,8 @@ final class CustomerAccountPortalPresenterTest extends TestCase {
 		$this->assert_contains( 'Mew', $html );
 		$this->assert_contains( 'x1', $html );
 		$this->assert_contains( 'Lightly Played', $html );
+		$this->assert_contains( 'Event Registration History', $html );
+		$this->assert_contains( 'Commander Night', $html );
+		$this->assert_contains( 'Checked In', $html );
 	}
 }

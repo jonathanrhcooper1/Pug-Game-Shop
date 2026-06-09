@@ -1872,6 +1872,45 @@ h2 {
   font-size: 12px;
 }
 
+.kiosk-ticket-list {
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 22, 19, 0.12);
+  border-radius: 8px;
+}
+
+.kiosk-ticket-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.55fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  background: #ffffff;
+  border: 1px solid rgba(18, 59, 89, 0.12);
+  border-radius: 7px;
+}
+
+.kiosk-ticket-list strong,
+.kiosk-ticket-list small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kiosk-ticket-list strong {
+  display: block;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.kiosk-ticket-list small {
+  color: #52605a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .kiosk-card button,
 .kiosk-cart button {
   min-height: 34px;
@@ -2046,7 +2085,8 @@ h2 {
   border-radius: 8px;
 }
 
-.square-credit-handoff div {
+.square-credit-handoff div,
+.square-credit-handoff label {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -2062,6 +2102,72 @@ h2 {
   color: #5f563e;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.square-credit-handoff input[type="text"],
+.square-credit-handoff input:not([type]) {
+  min-height: 38px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  color: #172016;
+  background: #ffffff;
+  border: 1px solid rgba(35, 100, 70, 0.2);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.square-confirmation-check {
+  display: flex !important;
+  grid-template-columns: none;
+  align-items: flex-start;
+  gap: 8px !important;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(183, 137, 42, 0.18);
+  border-radius: 7px;
+}
+
+.square-confirmation-check input {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  accent-color: var(--mint);
+}
+
+.square-confirmation-check span {
+  color: #372e1d;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.square-ticket-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.square-ticket-actions button {
+  min-height: 34px;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.square-credit-checklist {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0 0 0 19px;
+  color: #4c432e;
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.square-credit-checklist strong {
+  font-size: 12px;
 }
 
 .credit-redemption-control input {

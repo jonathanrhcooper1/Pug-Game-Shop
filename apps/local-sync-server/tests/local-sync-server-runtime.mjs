@@ -1002,6 +1002,8 @@ try {
       customer_public_id: createdCustomer.customer.customer_public_id,
       amount_minor_units: 1000,
       sale_total_minor_units: 4500,
+      square_receipt_reference: "SQ-TEST-4500",
+      square_cashier_confirmed: true,
       reason: "Square handoff credit use",
     },
   })
@@ -1010,6 +1012,8 @@ try {
   assert.equal(creditRedemption.square_payment_capture_supported, false)
   assert.equal(creditRedemption.square_handoff.square_payment_method_label, "Pug Store Credit")
   assert.equal(creditRedemption.square_handoff.square_amount_due_minor_units, 3500)
+  assert.equal(creditRedemption.square_handoff.square_receipt_reference, "SQ-TEST-4500")
+  assert.equal(creditRedemption.square_handoff.square_cashier_confirmed, true)
 
   const pushedCustomerAndCredit = await fetchJson(`${baseUrl}/sync/push`, {
     method: "POST",
@@ -1056,6 +1060,8 @@ try {
       customer_public_id: createdCustomer.customer.customer_public_id,
       amount_minor_units: 10000,
       sale_total_minor_units: 10000,
+      square_receipt_reference: "SQ-OVERSPEND-10000",
+      square_cashier_confirmed: true,
       reason: "overspend should be blocked",
     },
     expectedStatus: 409,

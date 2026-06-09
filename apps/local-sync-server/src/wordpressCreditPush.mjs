@@ -127,6 +127,11 @@ export function creditPostingBody(operation = {}) {
       customer_public_id: cleanId(customer.customer_public_id),
       local_entry_type: cleanText(ledger.entry_type ?? ""),
       square_handoff_mode: cleanText(payload.square_handoff?.square_handoff_mode ?? ""),
+      square_receipt_reference: cleanText(payload.square_handoff?.square_receipt_reference ?? ""),
+      square_cashier_confirmed: payload.square_handoff?.square_cashier_confirmed === true ? "true" : "false",
+      square_recorded_at_utc: cleanText(payload.square_handoff?.square_recorded_at_utc ?? ""),
+      sale_total_minor_units: cleanText(payload.square_handoff?.sale_total_minor_units ?? ""),
+      square_amount_due_minor_units: cleanText(payload.square_handoff?.square_amount_due_minor_units ?? ""),
       sync_intent: cleanText(payload.sync_intent ?? ""),
     },
   }

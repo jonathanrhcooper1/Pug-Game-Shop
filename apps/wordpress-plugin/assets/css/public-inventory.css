@@ -281,6 +281,45 @@
   border-radius: 8px;
 }
 
+.tcg-public-inventory__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 12px;
+  color: var(--pug-muted);
+  background: linear-gradient(180deg, #ffffff, var(--pug-paper));
+  border: 1px solid var(--pug-line);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__pagination a,
+.tcg-public-inventory__pagination span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.tcg-public-inventory__pagination a {
+  color: #05080b;
+  background: var(--pug-gold);
+  border: 1px solid rgba(16, 24, 32, 0.14);
+  text-decoration: none;
+}
+
+.tcg-public-inventory__pagination span {
+  color: var(--pug-vault);
+  background: rgba(38, 217, 240, 0.1);
+  border: 1px solid rgba(38, 217, 240, 0.22);
+}
+
 @media (max-width: 760px) {
   .tcg-public-inventory__hero,
   .tcg-public-inventory__search {

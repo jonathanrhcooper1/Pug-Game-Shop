@@ -145,7 +145,7 @@
 }
 
 .tcg-account-portal__summary {
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .tcg-account-portal__metric {
@@ -219,6 +219,31 @@
 .tcg-account-portal__order-list {
 	display: grid;
 	gap: 12px;
+}
+
+.tcg-account-portal__events {
+	display: grid;
+	gap: 12px;
+}
+
+.tcg-account-portal__event-list {
+	display: grid;
+	gap: 10px;
+}
+
+.tcg-account-portal__event {
+	background: var(--tcg-background, #FFFFFF);
+	border: 1px solid var(--tcg-portal-border);
+	border-radius: 8px;
+	display: grid;
+	gap: 10px;
+	padding: 14px;
+}
+
+.tcg-account-portal__event-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
 }
 
 .tcg-account-portal__order {

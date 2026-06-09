@@ -156,6 +156,16 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 		$this->assert_not_contains( 'secondary_api_key', $source );
 	}
 
+	public function test_catalog_export_uses_deterministic_order_and_manifest(): void {
+		$source = $this->source();
+
+		$this->assert_contains( 'EXPORT_ORDER_COLUMNS', $source );
+		$this->assert_contains( 'ORDER BY {$order_column} ASC', $source );
+		$this->assert_contains( "'manifest'", $source );
+		$this->assert_contains( "'deterministic_order' => true", $source );
+		$this->assert_contains( "'order_by'", $source );
+	}
+
 	private function source(): string {
 		$path     = dirname( __DIR__, 2 ) . '/src/Api/V1/ScryDexCatalogController.php';
 		$contents = file_get_contents( $path );

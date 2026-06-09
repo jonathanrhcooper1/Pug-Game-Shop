@@ -187,6 +187,8 @@ for (const marker of [
   "customer_public_id",
   "amount_minor_units",
   "sale_total_minor_units",
+  "square_receipt_reference",
+  "square_cashier_confirmed",
   "wordpress_event_authority: true",
   "event_count",
   "event_id",

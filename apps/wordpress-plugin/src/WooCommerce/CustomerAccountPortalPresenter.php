@@ -22,7 +22,8 @@ final class CustomerAccountPortalPresenter {
 		?array $customer,
 		array $ledger_entries,
 		array $orders,
-		array $context = array()
+		array $context = array(),
+		array $event_registrations = array()
 	): array {
 		$currency = $this->currency( $customer['credit_currency'] ?? $context['currency'] ?? 'USD' );
 		$branding = $this->present_branding( $context['branding'] ?? array() );
@@ -52,6 +53,12 @@ final class CustomerAccountPortalPresenter {
 					array_slice( $orders, 0, self::DEFAULT_ORDER_LIMIT )
 				),
 			),
+			'event_history'    => array(
+				'registrations' => array_map(
+					fn ( array $registration ): array => $this->present_event_registration( $registration, $currency ),
+					array_slice( $event_registrations, 0, self::DEFAULT_ORDER_LIMIT )
+				),
+			),
 			'notices'          => $this->notices( $customer, $orders, $context ),
 		);
 	}
@@ -68,6 +75,9 @@ final class CustomerAccountPortalPresenter {
 		$credit   = is_array( $portal['store_credit'] ?? null ) ? $portal['store_credit'] : array();
 		$orders   = is_array( $portal['purchase_history']['orders'] ?? null )
 			? $portal['purchase_history']['orders']
+			: array();
+		$events   = is_array( $portal['event_history']['registrations'] ?? null )
+			? $portal['event_history']['registrations']
 			: array();
 		$notices  = is_array( $portal['notices'] ?? null ) ? $portal['notices'] : array();
 
@@ -108,6 +118,11 @@ final class CustomerAccountPortalPresenter {
 		$html .= '<span>' . $this->esc_html( 'Card orders' ) . '</span>';
 		$html .= '<strong>' . $this->esc_html( (string) count( $orders ) ) . '</strong>';
 		$html .= '<small>' . $this->esc_html( 'Recent purchases' ) . '</small>';
+		$html .= '</article>';
+		$html .= '<article class="tcg-account-portal__metric">';
+		$html .= '<span>' . $this->esc_html( 'Events' ) . '</span>';
+		$html .= '<strong>' . $this->esc_html( (string) count( $events ) ) . '</strong>';
+		$html .= '<small>' . $this->esc_html( 'Recent registrations' ) . '</small>';
 		$html .= '</article>';
 		$html .= '<article class="tcg-account-portal__metric">';
 		$html .= '<span>' . $this->esc_html( 'Account' ) . '</span>';
@@ -223,6 +238,41 @@ final class CustomerAccountPortalPresenter {
 
 		$html .= '</section>';
 		$html .= '</div>';
+
+		$html .= '<section class="tcg-account-portal__section tcg-account-portal__events">';
+		$html .= '<div class="tcg-account-portal__section-heading">';
+		$html .= '<h3>' . $this->esc_html( 'Event Registration History' ) . '</h3>';
+		$html .= '<p>' . $this->esc_html( 'Recent in-store and online event signups' ) . '</p>';
+		$html .= '</div>';
+
+		if ( array() === $events ) {
+			$html .= $this->empty_state_html( 'No event registrations are linked to this login yet.' );
+		} else {
+			$html .= '<div class="tcg-account-portal__event-list">';
+
+			foreach ( $events as $event ) {
+				if ( ! is_array( $event ) ) {
+					continue;
+				}
+
+				$html .= '<article class="tcg-account-portal__event">';
+				$html .= '<div><h4>' . $this->esc_html( (string) ( $event['title'] ?? '' ) ) . '</h4>';
+				$html .= '<p>' . $this->esc_html( (string) ( $event['starts_at'] ?? '' ) ) . '</p></div>';
+				$html .= '<div class="tcg-account-portal__event-badges">';
+				$html .= '<span class="tcg-account-portal__badge">' . $this->esc_html( (string) ( $event['status_label'] ?? '' ) ) . '</span>';
+				$html .= '<span class="tcg-account-portal__badge">' . $this->esc_html( (string) ( $event['payment_status_label'] ?? '' ) ) . '</span>';
+				$html .= '<span class="tcg-account-portal__badge">' . $this->esc_html( (string) ( $event['checkin_status_label'] ?? '' ) ) . '</span>';
+				$html .= '</div>';
+				$html .= '<p class="tcg-account-portal__line-details">';
+				$html .= $this->esc_html( trim( implode( ' - ', array_filter( array( $event['game_label'] ?? '', $event['format'] ?? '', $event['entry_fee_display'] ?? '' ) ) ) ) );
+				$html .= '</p>';
+				$html .= '</article>';
+			}
+
+			$html .= '</div>';
+		}
+
+		$html .= '</section>';
 		$html .= '</div>';
 
 		return $html;
@@ -315,6 +365,33 @@ final class CustomerAccountPortalPresenter {
 	}
 
 	/**
+	 * @param array<string, mixed> $registration Event registration row joined with its public event.
+	 * @return array<string, mixed>
+	 */
+	private function present_event_registration( array $registration, string $fallback_currency ): array {
+		$currency = $this->currency( $registration['currency'] ?? $fallback_currency );
+
+		return array(
+			'registration_public_id' => $this->nullable_string( $registration['public_id'] ?? null ),
+			'event_id'               => $this->positive_int( $registration['event_id'] ?? null ),
+			'title'                  => $this->clean_string( $registration['event_title'] ?? '' ),
+			'slug'                   => $this->clean_string( $registration['event_slug'] ?? '' ),
+			'starts_at'              => $this->nullable_string( $registration['start_datetime'] ?? null ),
+			'status'                 => $this->clean_string( $registration['status'] ?? '' ),
+			'status_label'           => $this->status_label( $registration['status'] ?? '' ),
+			'payment_status'         => $this->clean_string( $registration['payment_status'] ?? '' ),
+			'payment_status_label'   => $this->status_label( $registration['payment_status'] ?? '' ),
+			'checkin_status'         => $this->clean_string( $registration['checkin_status'] ?? '' ),
+			'checkin_status_label'   => $this->status_label( $registration['checkin_status'] ?? '' ),
+			'game_label'             => $this->game_label( $registration['game'] ?? '' ),
+			'format'                 => $this->nullable_string( $registration['format'] ?? null ),
+			'entry_fee'              => $this->money( $registration['entry_fee'] ?? '0.0000' ),
+			'entry_fee_display'      => $this->display_money( $registration['entry_fee'] ?? '0.0000', $currency ),
+			'currency'               => $currency,
+		);
+	}
+
+	/**
 	 * @param mixed $branding Client-safe branding payload.
 	 * @return array<string, string>
 	 */
@@ -399,6 +476,28 @@ final class CustomerAccountPortalPresenter {
 			'HP'    => 'Heavily Played',
 			'DMG'   => 'Damaged',
 			default => $condition,
+		};
+	}
+
+	private function status_label( mixed $status ): string {
+		$status = $this->clean_string( $status );
+
+		if ( '' === $status ) {
+			return 'Pending';
+		}
+
+		return ucwords( str_replace( '_', ' ', $status ) );
+	}
+
+	private function game_label( mixed $game ): string {
+		return match ( $this->clean_string( $game ) ) {
+			'magicthegathering', 'magic' => 'Magic',
+			'onepiece', 'one-piece'      => 'One Piece',
+			'pokemon'                    => 'Pokemon',
+			'lorcana'                    => 'Lorcana',
+			'gundam'                     => 'Gundam',
+			'riftbound'                  => 'Riftbound',
+			default                      => $this->status_label( $game ),
 		};
 	}
 

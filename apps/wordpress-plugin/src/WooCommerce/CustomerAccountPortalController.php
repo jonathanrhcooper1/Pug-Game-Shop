@@ -18,6 +18,7 @@ final class CustomerAccountPortalController {
 
 	private const ORDER_LIMIT  = 10;
 	private const LEDGER_LIMIT = 12;
+	private const EVENT_LIMIT  = 10;
 
 	public function __construct( private ?CustomerAccountPortalPresenter $presenter = null ) {
 		$this->presenter = $presenter ?? new CustomerAccountPortalPresenter();
@@ -147,6 +148,7 @@ final class CustomerAccountPortalController {
 		$customer = '' === $email ? null : $this->find_customer_by_email( $email );
 		$ledger   = null === $customer ? array() : $this->recent_ledger_entries( (int) $customer['customer_id'] );
 		$orders   = $this->recent_order_snapshots( $user_id );
+		$events   = '' === $email ? array() : $this->recent_event_registration_snapshots( $email );
 
 		return $this->presenter->present(
 			$customer,
@@ -158,7 +160,8 @@ final class CustomerAccountPortalController {
 				'woocommerce_orders_available' => function_exists( 'wc_get_orders' ),
 				'branding'                     => BrandingSettings::public_config( Settings::all() ),
 				'links'                        => $this->portal_links(),
-			)
+			),
+			$events
 		);
 	}
 
@@ -246,6 +249,35 @@ final class CustomerAccountPortalController {
 		}
 
 		return $snapshots;
+	}
+
+	/**
+	 * @return list<array<string, mixed>>
+	 */
+	private function recent_event_registration_snapshots( string $email ): array {
+		global $wpdb;
+
+		if ( '' === $email || ! is_object( $wpdb ?? null ) || ! isset( $wpdb->prefix ) ) {
+			return array();
+		}
+
+		$registrations_table = $wpdb->prefix . 'tcg_event_registrations';
+		$events_table        = $wpdb->prefix . 'tcg_events';
+		$rows                = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT registrations.*, events.title AS event_title, events.slug AS event_slug, events.start_datetime, events.end_datetime, events.timezone, events.location_id, events.game, events.format, events.entry_fee, events.currency
+				FROM {$registrations_table} registrations
+				INNER JOIN {$events_table} events ON events.event_id = registrations.event_id
+				WHERE LOWER(registrations.email) = LOWER(%s)
+				ORDER BY events.start_datetime DESC, registrations.created_at DESC
+				LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$email,
+				self::EVENT_LIMIT
+			),
+			$this->array_a()
+		);
+
+		return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : array();
 	}
 
 	/**

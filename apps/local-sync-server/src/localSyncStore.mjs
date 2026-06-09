@@ -439,6 +439,20 @@ export function createLocalSyncStore(options = {}) {
     const kioskVisibility = cleanVisibility(input.kiosk_visibility, "visible")
     const posVisibility = cleanVisibility(input.pos_visibility, "visible")
     const quantity = boundedInt(input.quantity ?? input.quantity_added, 1, 200, 1)
+    const suggestedPriceMinorUnits = Math.max(
+      0,
+      minorUnits(input.suggested_price_minor_units ?? input.market_price_minor_units ?? priceMinorUnits),
+    )
+    const finalPriceMinorUnits = Math.max(0, minorUnits(input.final_price_minor_units ?? priceMinorUnits))
+    const priceSource =
+      cleanName(input.price_source ?? input.pricing_source) ||
+      (providerCardId || referenceVariantId || providerVariantId ? "scrydex_catalog" : "manual_intake")
+    const priceObservedAtUtc =
+      cleanIsoTimestamp(input.price_observed_at_utc ?? input.catalog_synced_at_utc) || now().toISOString()
+    const priceOverrideReason =
+      finalPriceMinorUnits !== suggestedPriceMinorUnits
+        ? cleanReason(input.price_override_reason ?? "staff_price_override")
+        : cleanOptionalReason(input.price_override_reason)
 
     if (!cardName || priceMinorUnits <= 0) {
       return blocked("invalid_inventory_intake", "Card name and positive price are required for local intake.")
@@ -496,6 +510,15 @@ export function createLocalSyncStore(options = {}) {
         item: publicInventoryItem(item),
         actor_id: session.user.id,
         sync_intent: "offline_inventory_intake",
+        pricing: {
+          source: priceSource,
+          observed_at_utc: priceObservedAtUtc,
+          suggested_price_minor_units: suggestedPriceMinorUnits,
+          final_price_minor_units: finalPriceMinorUnits,
+          override_reason: priceOverrideReason,
+          reference_variant_id: referenceVariantId,
+          provider_variant_id: providerVariantId,
+        },
         wordpress_acceptance_required: true,
       }, now)
     }
@@ -836,13 +859,32 @@ export function createLocalSyncStore(options = {}) {
     const amountMinorUnits = minorUnits(input.amount_minor_units)
     const saleTotalMinorUnits = Math.max(0, minorUnits(input.sale_total_minor_units ?? amountMinorUnits))
     const reason = cleanReason(input.reason ?? "store credit redemption")
+    const squareReceiptReference = cleanExternalId(
+      input.square_receipt_reference ?? input.square_ticket_reference ?? input.square_payment_reference,
+    )
+    const squareCashierConfirmed =
+      input.square_cashier_confirmed === true ||
+      input.square_cashier_confirmed === 1 ||
+      String(input.square_cashier_confirmed ?? "").trim().toLowerCase() === "true"
 
     if (amountMinorUnits <= 0) {
       return blocked("invalid_credit_amount", "Credit redemption amount must be greater than zero.")
     }
 
+    if (saleTotalMinorUnits <= 0) {
+      return blocked("square_ticket_total_required", "Square ticket total is required before using customer credit.")
+    }
+
     if (saleTotalMinorUnits > 0 && amountMinorUnits > saleTotalMinorUnits) {
       return blocked("credit_exceeds_sale_total", "Credit redemption cannot exceed the Square sale total.")
+    }
+
+    if (!squareReceiptReference) {
+      return blocked("square_reference_required", "Square receipt or ticket reference is required for customer credit reconciliation.")
+    }
+
+    if (!squareCashierConfirmed) {
+      return blocked("square_cashier_confirmation_required", "Confirm the credit was applied in Square POS before staging customer credit use.")
     }
 
     if (amountMinorUnits > customer.credit_balance_minor_units) {
@@ -866,7 +908,11 @@ export function createLocalSyncStore(options = {}) {
       source: "employee_redemption",
       now,
     })
-    const squareHandoff = buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits)
+    const squareHandoff = buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits, {
+      receiptReference: squareReceiptReference,
+      cashierConfirmed: squareCashierConfirmed,
+      recordedAtUtc: now().toISOString(),
+    })
 
     creditLedgerEntries.push(ledgerEntry)
     saveCreditLedgerEntry(database, ledgerEntry)
@@ -3047,7 +3093,10 @@ function buildCreditLedgerEntry({
   }
 }
 
-function buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits) {
+function buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits, options = {}) {
+  const receiptReference = cleanExternalId(options.receiptReference)
+  const recordedAtUtc = cleanIsoTimestamp(options.recordedAtUtc) || new Date().toISOString()
+
   return {
     action: "customer_credit_square_pos_handoff",
     customer_public_id: customer.customer_public_id,
@@ -3059,10 +3108,13 @@ function buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnit
     currency: customer.credit_currency,
     square_payment_method_label: "Pug Store Credit",
     square_handoff_mode: "custom_payment_method",
+    square_receipt_reference: receiptReference,
+    square_cashier_confirmed: options.cashierConfirmed === true,
+    square_recorded_at_utc: recordedAtUtc,
     square_instruction:
       `Record ${formatMoney(amountMinorUnits, customer.credit_currency)} as Pug Store Credit in Square POS, ` +
       `then collect ${formatMoney(Math.max(0, saleTotalMinorUnits - amountMinorUnits), customer.credit_currency)} ` +
-      "with the customer's remaining tender.",
+      `with the customer's remaining tender. Attach Square reference ${receiptReference}.`,
     pug_ledger_authority: true,
     square_credit_balance_authority: false,
     square_payment_capture_supported: false,
@@ -3174,6 +3226,10 @@ function cleanClientDeviceCapabilities(value, mode) {
 
 function cleanReason(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 160) || "local reservation"
+}
+
+function cleanOptionalReason(value) {
+  return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 160)
 }
 
 function cleanCondition(value) {

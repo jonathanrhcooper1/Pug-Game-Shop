@@ -3,6 +3,109 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Connected Checkout, Kiosk, Account, and Catalog Polish
+
+### What Changed
+
+- Bumped the platform, WordPress plugin, offline app, Tauri, and Rust package
+  metadata to `0.186.0`.
+- Added cashier-facing Square store-credit reconciliation to the offline app:
+  Square ticket total, receipt/reference, explicit cashier confirmation, and a
+  checklist that keeps Square payment capture delegated to the official Square
+  path while WordPress remains the credit ledger authority.
+- Extended LAN credit redemption validation and WordPress credit push metadata
+  with Square receipt/reference, cashier confirmation, sale total, amount due,
+  and recorded timestamp.
+- Hydrated offline app PIN/user access from the LAN sync server policy after
+  successful PIN auth, while keeping demo PIN fallback limited to local dev.
+- Added kiosk pickup order ticket identity to the offline app and staged hold
+  reasons so kiosk, employee stations, and sync logs share the LAN order ID.
+- Added ScryDex price provenance to local inventory intake queue payloads:
+  catalog source, observed timestamp, suggested price, final staff price, and
+  override reason.
+- Added customer account event registration history to the WooCommerce portal.
+- Added public inventory pagination, result ranges, and pagination styling.
+- Hardened ScryDex catalog exports with deterministic per-table primary-key
+  ordering and an export manifest.
+
+### Why
+
+The three connected surfaces need to behave like one store system: WordPress is
+the primary data source, the LAN app/server keep staff and kiosk stations in
+sync, Square remains the in-person payment tool, and ScryDex powers card data
+and pricing without leaking credentials to local clients.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCreditPush.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/assets/css/customer-account-portal.css`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalController.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended local sync runtime and persistence coverage for Square credit
+  references and cashier confirmation.
+- Extended offline app client/UI contracts for Square reconciliation fields and
+  kiosk order ticket text.
+- Extended WordPress presenter/controller contracts for public inventory
+  pagination, account event history, and deterministic ScryDex catalog export.
+
+### Verification
+
+- `npm.cmd run test`
+- `npm.cmd run build`
+- `npm.cmd run test:packaging`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd run local-sync:test`
+- `git diff --check`
+- Browser QA on `http://127.0.0.1:1420/`: manager PIN login, Customers view
+  Square receipt/confirmation controls, Kiosk view render, and desktop
+  screenshot check. Mobile screenshot capture timed out in the in-app browser,
+  but build and responsive contracts passed.
+
+### Rollback Notes
+
+- Revert this revision and reinstall the previous `0.185.0` WordPress package.
+- No database migration rollback is required.
+- Existing ScryDex catalog rows, inventory rows, customer credit ledger rows,
+  kiosk orders, and local sync queues remain compatible. Reverting removes the
+  new receipt/reference metadata validation and public pagination UI, but does
+  not require data deletion.
+
 ## 2026-06-09 - Platform Package Version 0.185.0
 
 ### What Changed

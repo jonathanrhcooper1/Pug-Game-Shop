@@ -127,6 +127,7 @@ import {
   type LocalSyncScryDexPricePoint,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
+  type LocalSyncUser,
 } from "./data/localSyncServerClient"
 import {
   markOfflineOperationsSynced,
@@ -187,7 +188,8 @@ const ACCESS_SECTIONS = [
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
-const OFFLINE_APP_VERSION = "0.185.0"
+const OFFLINE_APP_VERSION = "0.186.0"
+const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
   id: string
@@ -195,6 +197,15 @@ type OfflineAppUser = {
   pin: string
   role: Exclude<AppSessionRole, "locked">
   access: AccessSection[]
+}
+
+type KioskOrderTicket = {
+  orderId: string
+  customerName: string
+  itemCount: number
+  reservationIds: string[]
+  createdAtUtc: string
+  status: "queued"
 }
 
 type ActivityMessage = {
@@ -1143,6 +1154,13 @@ export function App() {
   const [creditRedemptionInput, setCreditRedemptionInput] = useState(() =>
     creditRedemptionInputFromMinorUnits(workspace.customerCredit.redemptionPreviewMinorUnits),
   )
+  const [squareSaleTotalInput, setSquareSaleTotalInput] = useState(() =>
+    creditRedemptionInputFromMinorUnits(
+      workspace.inventoryItems.find((item) => item.id === 42)?.priceMinorUnits ?? 0,
+    ),
+  )
+  const [squareReceiptReference, setSquareReceiptReference] = useState("")
+  const [squareCashierConfirmed, setSquareCashierConfirmed] = useState(false)
   const [newCustomerFirstName, setNewCustomerFirstName] = useState("")
   const [newCustomerLastName, setNewCustomerLastName] = useState("")
   const [newCustomerEmail, setNewCustomerEmail] = useState("")
@@ -1236,6 +1254,7 @@ export function App() {
   const [kioskFirstName, setKioskFirstName] = useState("")
   const [kioskLastName, setKioskLastName] = useState("")
   const [kioskCartIds, setKioskCartIds] = useState<number[]>([])
+  const [kioskOrderTickets, setKioskOrderTickets] = useState<KioskOrderTicket[]>([])
   const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
   const activeSessionProfileRef = useRef(connectorProfileStorage.activeProfileId)
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
@@ -1426,6 +1445,10 @@ export function App() {
         .map((itemId) => findInventoryItem(inventoryItems, itemId))
         .filter((item): item is NonNullable<ReturnType<typeof findInventoryItem>> => Boolean(item)),
     [inventoryItems, kioskCartIds],
+  )
+  const kioskCartTotalMinorUnits = kioskCartItems.reduce(
+    (total, item) => total + item.priceMinorUnits,
+    0,
   )
   const kioskCustomerName = [kioskFirstName, kioskLastName]
     .map((value) => value.trim())
@@ -1752,9 +1775,27 @@ export function App() {
     customerCredit,
     pendingCreditMinorUnits,
   )
+  const squareSaleTotalMinorUnits = creditRedemptionInputToMinorUnits(squareSaleTotalInput)
+  const squareSaleTotalIssue =
+    squareSaleTotalInput.trim() === ""
+      ? "Enter the Square ticket total before staging credit use."
+      : squareSaleTotalMinorUnits === null
+        ? "Use a valid Square ticket total with up to two decimals."
+        : squareSaleTotalMinorUnits <= 0
+          ? "Square ticket total must be greater than $0.00."
+          : ""
+  const cleanSquareReceiptReference = squareReceiptReference.trim().replace(/\s+/g, " ")
+  const squareReceiptReferenceIssue =
+    cleanSquareReceiptReference === ""
+      ? "Enter the Square receipt, ticket, or transaction reference before staging credit use."
+      : cleanSquareReceiptReference.length < 3
+        ? "Use at least 3 characters for the Square reference."
+        : ""
   const creditRedemptionMinorUnits = creditRedemptionInputToMinorUnits(creditRedemptionInput)
   const creditRedemptionIssue =
-    creditRedemptionInput.trim() === ""
+    squareSaleTotalIssue
+      ? squareSaleTotalIssue
+      : creditRedemptionInput.trim() === ""
       ? "Enter a credit amount before staging."
       : creditRedemptionMinorUnits === null
         ? "Use a valid dollar amount with up to two decimals."
@@ -1762,7 +1803,13 @@ export function App() {
           ? "Credit amount must be greater than $0.00."
           : creditRedemptionMinorUnits > displayedCreditMinorUnits
             ? "Amount exceeds the cached balance after local holds."
-            : ""
+            : squareSaleTotalMinorUnits !== null && creditRedemptionMinorUnits > squareSaleTotalMinorUnits
+              ? "Credit amount cannot exceed the Square ticket total."
+              : squareReceiptReferenceIssue
+                ? squareReceiptReferenceIssue
+                : !squareCashierConfirmed
+                  ? "Confirm that the cashier applied this credit in Square before staging."
+                  : ""
   const creditAdjustmentMinorUnits = creditRedemptionInputToMinorUnits(creditAdjustmentInput)
   const creditAdjustmentIssue =
     creditAdjustmentInput.trim() === ""
@@ -1781,10 +1828,10 @@ export function App() {
       buildCustomerCreditSquarePosHandoffPlan(
         customerCredit,
         creditRedemptionMinorUnits ?? 0,
-        selectedItem.priceMinorUnits,
+        squareSaleTotalMinorUnits ?? 0,
         { mode: "custom_payment_method", offlineAllowed: true },
       ),
-    [customerCredit, creditRedemptionMinorUnits, selectedItem.priceMinorUnits],
+    [customerCredit, creditRedemptionMinorUnits, squareSaleTotalMinorUnits],
   )
   const quantityDelta = inventoryQuantityDeltaFromInput(quantityDeltaInput)
   const quantityAdjustmentIssue =
@@ -2187,6 +2234,37 @@ export function App() {
     return ACCESS_SECTIONS.includes(label as AccessSection)
   }
 
+  function accessFromLocalSyncUser(user: LocalSyncUser): AccessSection[] {
+    return user.role === "manager"
+      ? [...ACCESS_SECTIONS]
+      : user.access.filter(isAccessSection)
+  }
+
+  function offlineUserFromLocalSyncUser(user: LocalSyncUser): OfflineAppUser {
+    return {
+      id: user.id,
+      name: user.name,
+      pin: "",
+      role: user.role,
+      access: accessFromLocalSyncUser(user),
+    }
+  }
+
+  function applyLocalSyncAccessPolicy(users: LocalSyncUser[]) {
+    const authoritativeUsers = users.map(offlineUserFromLocalSyncUser)
+
+    setOfflineUsers((currentUsers) => {
+      const authoritativeIds = new Set(authoritativeUsers.map((user) => user.id))
+      const demoFallbackUsers = OFFLINE_DEMO_PIN_FALLBACK_ENABLED
+        ? currentUsers.filter((user) => user.pin && !authoritativeIds.has(user.id))
+        : []
+
+      return [...authoritativeUsers, ...demoFallbackUsers]
+    })
+
+    return authoritativeUsers
+  }
+
   function canAccessSection(label: string) {
     return isAccessSection(label) && effectiveAccess.includes(label)
   }
@@ -2207,16 +2285,7 @@ export function App() {
   }
 
   function upsertLocalSyncUser(authResult: Extract<LocalSyncAuthResult, { status: "ok" }>) {
-    const access = authResult.user.role === "manager"
-      ? [...ACCESS_SECTIONS]
-      : authResult.user.access.filter(isAccessSection)
-    const nextUser: OfflineAppUser = {
-      id: authResult.user.id,
-      name: authResult.user.name,
-      pin: "",
-      role: authResult.user.role,
-      access,
-    }
+    const nextUser = offlineUserFromLocalSyncUser(authResult.user)
 
     setOfflineUsers((users) => {
       if (users.some((user) => user.id === nextUser.id)) {
@@ -2421,20 +2490,36 @@ export function App() {
 
     if (authResult.status === "ok") {
       const user = upsertLocalSyncUser(authResult)
+      const policyResult = await localSyncClient.getAccessPolicy(authResult.session.token)
+      const policyUsers =
+        policyResult.status === "ok" ? applyLocalSyncAccessPolicy(policyResult.users) : []
+      const policyUser = policyUsers.find((candidate) => candidate.id === user.id)
+      const sessionUser = policyUser ?? user
+      const policyDetail =
+        policyResult.status === "ok"
+          ? ` Access policy hydrated from ${localSyncClient.serverUrl}; raw PINs and hashes were not returned.`
+          : ` Access policy refresh skipped: ${policyResult.message}`
+
       setLocalSyncSessionToken(authResult.session.token)
       setLocalSyncSessionExpiresAtUtc(authResult.session.expiresAtUtc)
       void refreshLocalSyncStatus()
       startOfflineUserSession(
-        user,
-        user.role === "manager"
-          ? `Manager session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); website setup and user access can be unlocked.`
-          : `${user.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s).`,
+        sessionUser,
+        sessionUser.role === "manager"
+          ? `Manager session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); website setup and user access can be unlocked.${policyDetail}`
+          : `${sessionUser.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s).${policyDetail}`,
       )
       return
     }
 
     if (authResult.status === "blocked") {
       setLoginIssue(authResult.message)
+      setLoginPin("")
+      return
+    }
+
+    if (!OFFLINE_DEMO_PIN_FALLBACK_ENABLED) {
+      setLoginIssue(`${authResult.message} Offline demo PIN fallback is disabled in packaged builds.`)
       setLoginPin("")
       return
     }
@@ -3170,6 +3255,21 @@ export function App() {
       rawOrGraded: selectedScryDexVariant?.raw_or_graded_support === "graded" ? "graded" : "raw",
       imageUrl: selectedScryDexImageUrl,
       backImageUrl: selectedScryDexVariant?.back_image_url,
+      priceSource: selectedScryDexCard
+        ? `${selectedScryDexCard.catalog_source}:scrydex_catalog`
+        : "manual_intake",
+      priceObservedAtUtc:
+        selectedScryDexCard?.price_observed_at_utc ??
+        selectedScryDexCard?.catalog_synced_at_utc ??
+        null,
+      suggestedPriceMinorUnits: selectedScryDexIntakePriceMinorUnits || intakePriceMinorUnits,
+      finalPriceMinorUnits: intakePriceMinorUnits,
+      priceOverrideReason:
+        selectedScryDexCard &&
+        selectedScryDexIntakePriceMinorUnits > 0 &&
+        selectedScryDexIntakePriceMinorUnits !== intakePriceMinorUnits
+          ? "staff_price_override_from_scrydex_suggestion"
+          : "",
       onlineVisibility: intakeOnlineVisibility,
       kioskVisibility: intakeKioskVisibility,
       posVisibility: intakePosVisibility,
@@ -3388,6 +3488,14 @@ export function App() {
     }
 
     void refreshLocalSyncStatus()
+    const kioskTicket: KioskOrderTicket = {
+      orderId: kioskOrder.order.order_id,
+      customerName: kioskCustomerName,
+      itemCount: availableItems.length,
+      reservationIds: kioskOrder.order.reservation_ids,
+      createdAtUtc: kioskOrder.order.created_at_utc,
+      status: kioskOrder.order.status,
+    }
 
     for (const item of availableItems) {
       await stageOfflineOperation(
@@ -3395,10 +3503,10 @@ export function App() {
           actorId: workspace.device.managerId,
           deviceId: activePairedDevice?.devicePublicId,
           locationId: workspace.device.locationId,
-          holdReason: `kiosk pickup order for ${kioskCustomerName}`,
+          holdReason: `kiosk pickup order ${kioskOrder.order.order_id} for ${kioskCustomerName}`,
         }),
         "Kiosk pickup hold staged",
-        `${item.cardName} is queued for ${kioskCustomerName}; staff can pull the order after website sync acceptance.`,
+        `${item.cardName} is queued for ${kioskCustomerName}; order ${kioskOrder.order.order_id} can be pulled after website sync acceptance.`,
       )
     }
 
@@ -3414,13 +3522,14 @@ export function App() {
           : item,
       ),
     )
+    setKioskOrderTickets((tickets) => [kioskTicket, ...tickets].slice(0, 8))
     setKioskCartIds([])
     setKioskFirstName("")
     setKioskLastName("")
     setActiveSection("Queue")
     setActivityMessage({
       title: "Kiosk order queued",
-      detail: `${availableItems.length} card(s) locked by ${localSyncClient.serverUrl} for ${kioskCustomerName}; the website remains the final inventory authority after sync acceptance.`,
+      detail: `${availableItems.length} card(s) locked by ${localSyncClient.serverUrl} for ${kioskCustomerName}; order ${kioskOrder.order.order_id} is ready for staff pull and website sync acceptance.`,
     })
   }
 
@@ -3750,6 +3859,10 @@ export function App() {
     const amount = formatMoney(creditRedemptionMinorUnits, customerCredit.currency)
     const creditPreviewOperation = buildCustomerCreditRedemptionOperation(customerCredit, {
       amountMinorUnits: creditRedemptionMinorUnits,
+      saleTotalMinorUnits: squareCreditHandoffPlan.saleTotalMinorUnits,
+      squareReceiptReference: cleanSquareReceiptReference,
+      squareCashierConfirmed,
+      squareHandoffMode: squareCreditHandoffPlan.squareHandoffMode,
       reason: `offline customer credit redemption ${amount}`,
     })
 
@@ -3766,6 +3879,8 @@ export function App() {
       amountMinorUnits: creditRedemptionMinorUnits,
       saleTotalMinorUnits: squareCreditHandoffPlan.saleTotalMinorUnits,
       reason: `offline customer credit redemption ${amount}`,
+      squareReceiptReference: cleanSquareReceiptReference,
+      squareCashierConfirmed,
     })
 
     if (redemptionResult.status !== "ok") {
@@ -3796,6 +3911,8 @@ export function App() {
     setCreditRedemptionInput(
       creditRedemptionInputFromMinorUnits(nextCreditSnapshot.redemptionPreviewMinorUnits),
     )
+    setSquareReceiptReference("")
+    setSquareCashierConfirmed(false)
     setPendingCreditByCustomer((holds) => ({
       ...holds,
       [customerCredit.customerId]: 0,
@@ -3806,7 +3923,8 @@ export function App() {
       detail:
         `${amount} customer credit locked by ${localSyncClient.serverUrl}; ` +
         `${redemptionResult.square_handoff.square_instruction} ` +
-        `Trace ${creditPreviewOperation.client_operation_id}; WordPress posts the final ledger entry after sync acceptance.`,
+        `Square ref ${redemptionResult.square_handoff.square_receipt_reference}; ` +
+        `trace ${creditPreviewOperation.client_operation_id}; WordPress posts the final ledger entry after sync acceptance.`,
     })
     setShowCreditLedger(true)
   }
@@ -6201,6 +6319,25 @@ export function App() {
                   )}
                 </div>
               </div>
+              {kioskOrderTickets.length > 0 ? (
+                <div className="kiosk-ticket-list" aria-label="Recent kiosk pickup tickets">
+                  <span className="micro-label">Recent pickup tickets</span>
+                  {kioskOrderTickets.map((ticket) => (
+                    <article key={ticket.orderId}>
+                      <div>
+                        <strong>{ticket.orderId}</strong>
+                        <small>
+                          {ticket.customerName}; {ticket.itemCount} card(s); {ticket.status}
+                        </small>
+                      </div>
+                      <small>
+                        Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
+                        {ticket.reservationIds.length > 3 ? "..." : ""}
+                      </small>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </section>
 
             <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>
@@ -7265,6 +7402,62 @@ export function App() {
                 </div>
               </div>
               <div className="credit-redemption-control" aria-label="Customer credit redemption amount">
+                <label htmlFor="square-ticket-total">
+                  <span className="micro-label">Square ticket total</span>
+                  <input
+                    id="square-ticket-total"
+                    inputMode="decimal"
+                    value={squareSaleTotalInput}
+                    onBlur={() => {
+                      const parsed = creditRedemptionInputToMinorUnits(squareSaleTotalInput)
+
+                      if (parsed !== null) {
+                        setSquareSaleTotalInput(creditRedemptionInputFromMinorUnits(parsed))
+                      }
+                    }}
+                    onChange={(event) =>
+                      setSquareSaleTotalInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
+                    placeholder="0.00"
+                  />
+                </label>
+                <div>
+                  <span className="micro-label">Ticket shortcuts</span>
+                  <strong>
+                    {squareSaleTotalIssue
+                      ? "Ticket total needed"
+                      : formatMoney(squareSaleTotalMinorUnits ?? 0, customerCredit.currency)}
+                  </strong>
+                  <small>
+                    Use the full Square ticket total before applying Pug Store Credit.
+                  </small>
+                  <div className="square-ticket-actions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSquareSaleTotalInput(
+                          creditRedemptionInputFromMinorUnits(selectedItem.priceMinorUnits),
+                        )
+                      }
+                    >
+                      <Icon name="tag" />
+                      <span>Selected Card</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={kioskCartTotalMinorUnits <= 0}
+                      onClick={() =>
+                        setSquareSaleTotalInput(
+                          creditRedemptionInputFromMinorUnits(kioskCartTotalMinorUnits),
+                        )
+                      }
+                    >
+                      <Icon name="queue" />
+                      <span>Kiosk Cart</span>
+                    </button>
+                  </div>
+                  {squareSaleTotalIssue ? <small>{squareSaleTotalIssue}</small> : null}
+                </div>
                 <label htmlFor="credit-redemption-amount">
                   <span className="micro-label">Redemption amount</span>
                   <input
@@ -7353,6 +7546,60 @@ export function App() {
                     sync required for ledger posting: yes.
                   </small>
                 </div>
+                <label htmlFor="square-receipt-reference">
+                  <span className="micro-label">Square receipt/ref</span>
+                  <input
+                    id="square-receipt-reference"
+                    value={squareReceiptReference}
+                    onBlur={() => setSquareReceiptReference(cleanSquareReceiptReference)}
+                    onChange={(event) => setSquareReceiptReference(event.target.value)}
+                    placeholder="Receipt, ticket, or transaction ID"
+                  />
+                  {squareReceiptReferenceIssue ? <small>{squareReceiptReferenceIssue}</small> : null}
+                </label>
+                <label className="square-confirmation-check" htmlFor="square-cashier-confirmed">
+                  <input
+                    id="square-cashier-confirmed"
+                    type="checkbox"
+                    checked={squareCashierConfirmed}
+                    onChange={(event) => setSquareCashierConfirmed(event.target.checked)}
+                  />
+                  <span>
+                    Cashier confirmed Pug Store Credit was applied in Square before staging.
+                  </span>
+                </label>
+                <ol className="square-credit-checklist">
+                  <li>
+                    Ring the full ticket in Square for{" "}
+                    <strong>
+                      {formatMoney(squareCreditHandoffPlan.saleTotalMinorUnits, squareCreditHandoffPlan.currency)}
+                    </strong>
+                    .
+                  </li>
+                  <li>
+                    Record{" "}
+                    <strong>
+                      {formatMoney(
+                        squareCreditHandoffPlan.creditRedeemedMinorUnits,
+                        squareCreditHandoffPlan.currency,
+                      )}
+                    </strong>{" "}
+                    as {squareCreditHandoffPlan.squarePaymentMethodLabel}.
+                  </li>
+                  <li>
+                    Collect{" "}
+                    <strong>
+                      {formatMoney(
+                        squareCreditHandoffPlan.squareAmountDueMinorUnits,
+                        squareCreditHandoffPlan.currency,
+                      )}
+                    </strong>{" "}
+                    with the customer's remaining tender in Square.
+                  </li>
+                  <li>
+                    Sync keeps WordPress as the final customer-credit ledger authority.
+                  </li>
+                </ol>
               </div>
               {showCreditLedger ? (
                 <div className="ledger-preview" aria-label="Offline credit ledger preview">

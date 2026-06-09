@@ -198,8 +198,8 @@ final class InventorySearchShortcode {
 			'game'      => $this->request_value( 'tcg_inventory_game', $attributes['game'] ?? '' ),
 			'sort'      => $this->request_value( 'tcg_inventory_sort', $attributes['sort'] ?? 'relevance' ),
 			'visibility' => 'public',
-			'page'      => 1,
-			'page_size' => min( 48, max( 1, (int) ( $attributes['limit'] ?? 24 ) ) ),
+			'page'      => $this->request_positive_int( 'tcg_inventory_page', $attributes['page'] ?? 1, 1, 9999 ),
+			'page_size' => $this->request_positive_int( 'tcg_inventory_page_size', $attributes['limit'] ?? 24, 1, 48 ),
 			'status'    => 'available',
 		);
 	}
@@ -256,8 +256,20 @@ final class InventorySearchShortcode {
 		return is_scalar( $fallback ) ? $this->clean_request_value( (string) $fallback ) : '';
 	}
 
+	private function request_positive_int( string $key, mixed $fallback, int $min, int $max ): int {
+		$value = $this->request_value( $key, $fallback );
+		$int   = (int) $value;
+
+		return min( $max, max( $min, $int ) );
+	}
+
 	private function is_inventory_page_context(): bool {
-		if ( isset( $_GET['tcg_inventory_q'] ) || isset( $_GET['tcg_inventory_game'] ) || isset( $_GET['tcg_inventory_sort'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if (
+			isset( $_GET['tcg_inventory_q'] )
+			|| isset( $_GET['tcg_inventory_game'] )
+			|| isset( $_GET['tcg_inventory_sort'] )
+			|| isset( $_GET['tcg_inventory_page'] )
+		) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return true;
 		}
 

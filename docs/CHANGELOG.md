@@ -6,6 +6,25 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Version `0.186.0` adds operational checkout and browse polish across the
+  connected systems: Square store-credit handoff now requires a ticket total,
+  receipt/reference, and cashier confirmation; the LAN server returns and
+  posts those reconciliation fields to WordPress credit metadata; kiosk pickup
+  reservations now carry the LAN order ID into staged local holds; and the
+  offline app hydrates PIN/user access from the LAN policy when available.
+- Offline inventory intake now records ScryDex pricing provenance in queued LAN
+  payloads, including catalog source, observed timestamp, suggested price,
+  final staff price, and override reason when staff changes the ScryDex
+  suggestion.
+- Public inventory search now supports server-rendered pagination with
+  next/previous links and visible result ranges while preserving branded card
+  art, price, stock, condition, variant, and product links.
+- Customer account portal output now includes recent event registrations beside
+  store credit and card purchase history, with customer-safe labels for status,
+  payment, check-in, game, format, and entry fee.
+- ScryDex catalog export pages now use deterministic per-table primary-key
+  ordering and include an export manifest so full catalog downloads are
+  reproducible and easier to audit.
 - LAN ScryDex reference search now preserves WordPress/ScryDex price points in
   the local `store-sync.sqlite` reference cache, and offline intake updates the
   draft price from the selected condition/version when price points are

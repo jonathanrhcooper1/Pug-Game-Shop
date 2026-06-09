@@ -152,6 +152,9 @@ export type CustomerCreditSquarePosHandoffPlan = {
   currency: "USD"
   squarePaymentMethodLabel: "Pug Store Credit"
   squareHandoffMode: SquarePosCreditHandoffMode
+  squareReceiptReference?: string
+  squareCashierConfirmed?: boolean
+  squareRecordedAtUtc?: string
   squareInstruction: string
   pugLedgerAuthority: true
   squareCreditBalanceAuthority: false
@@ -3645,6 +3648,10 @@ export function buildCustomerCreditRedemptionOperation(
     occurredAtLocal?: string
     queuedAtUtc?: string
     reason?: string
+    saleTotalMinorUnits?: number
+    squareReceiptReference?: string
+    squareCashierConfirmed?: boolean
+    squareHandoffMode?: SquarePosCreditHandoffMode
   } = {},
 ): OfflineOperationEnvelope {
   const occurredAtLocal = options.occurredAtLocal ?? new Date().toISOString()
@@ -3665,9 +3672,13 @@ export function buildCustomerCreditRedemptionOperation(
     queued_at_utc: queuedAtUtc,
     payload_json: JSON.stringify({
       amount_minor_units: amountMinorUnits,
+      sale_total_minor_units: Math.max(0, Math.trunc(options.saleTotalMinorUnits ?? amountMinorUnits)),
       customer_public_id: credit.customerPublicId ?? `customer-${credit.customerId}`,
       currency: credit.currency,
       available_credit_snapshot_minor_units: credit.availableMinorUnits,
+      square_receipt_reference: String(options.squareReceiptReference ?? "").trim(),
+      square_cashier_confirmed: options.squareCashierConfirmed ?? false,
+      square_handoff_mode: options.squareHandoffMode ?? "custom_payment_method",
       sync_intent: "offline_credit_redemption",
     }),
     authorization_context_json: JSON.stringify({

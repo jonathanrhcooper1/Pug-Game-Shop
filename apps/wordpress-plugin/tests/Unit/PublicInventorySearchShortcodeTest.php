@@ -92,6 +92,8 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$source = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/PublicSite/InventorySearchShortcode.php' );
 
 		$this->assert_contains( "'settings' => Settings::all()", $source );
+		$this->assert_contains( "tcg_inventory_page", $source );
+		$this->assert_contains( "tcg_inventory_page_size", $source );
 		$this->assert_contains( '.tcg-public-inventory {', $source );
 		$this->assert_contains( 'BrandingSettings::css_variable_string( Settings::all() )', $source );
 	}

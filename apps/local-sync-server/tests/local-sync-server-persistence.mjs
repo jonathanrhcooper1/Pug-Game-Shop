@@ -83,6 +83,8 @@ try {
     customer_public_id: createdCustomer.customer.customer_public_id,
     amount_minor_units: 800,
     sale_total_minor_units: 3000,
+    square_receipt_reference: "SQ-PERSIST-1001",
+    square_cashier_confirmed: true,
     reason: "restart credit use",
   })
   assert.equal(creditRedemption.status, "ok")

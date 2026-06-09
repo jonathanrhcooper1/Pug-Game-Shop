@@ -38,6 +38,10 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 		$json      = (string) json_encode( $payload );
 
 		$this->assert_same( 'public_inventory_search', $payload['resource'] );
+		$this->assert_same( 1, $payload['page'] );
+		$this->assert_same( 24, $payload['page_size'] );
+		$this->assert_same( 1, $payload['total_pages'] );
+		$this->assert_false( $payload['has_next_page'] );
 		$this->assert_same( 1, count( $payload['groups'] ) );
 		$this->assert_same( 2, $payload['groups'][0]['quantity'] );
 		$this->assert_same( '125.00', $payload['groups'][0]['price'] );
@@ -56,7 +60,7 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 				$this->row( 1001, 'secret-barcode-a' ),
 				$this->row( 1002, 'secret-barcode-b' ),
 			),
-			2,
+			50,
 			array(
 				'product_url_callback' => static fn (): string => 'https://example.test/product/charizard/',
 			)
@@ -67,6 +71,11 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 		$this->assert_contains( 'Browse The Pug inventory', $html );
 		$this->assert_contains( 'Search Inventory', $html );
 		$this->assert_contains( 'tcg_inventory_cache_bust', $html );
+		$this->assert_contains( 'tcg_inventory_page', $html );
+		$this->assert_contains( 'tcg_inventory_page_size', $html );
+		$this->assert_contains( 'Showing 1-2 of 50 matching items', $html );
+		$this->assert_contains( 'Page 1 of 3', $html );
+		$this->assert_contains( 'Next page', $html );
 		$this->assert_contains( 'data-tcg-inventory-cache-bust', $html );
 		$this->assert_contains( 'Date.now()', $html );
 		$this->assert_contains( 'Charizard', $html );
