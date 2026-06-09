@@ -3,6 +3,49 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline Inventory Search Parity
+
+### What Changed
+
+- Expanded offline app inventory filtering to include card number, set code,
+  condition, provider card ID, provider variant ID, variant, finish, language,
+  and Square catalog item/variation IDs.
+- Preserved existing local provider/variant/image metadata when WordPress pull
+  refreshes update an existing offline inventory row.
+
+### Why
+
+Staff searches should not appear to miss cards that the LAN server can find,
+especially when searching by set number, condition, provider IDs, selected card
+version, or POS/Square mapping IDs during intake and inventory reconciliation.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline pull/cache contract to assert inventory filtering by card
+  number, condition/status, Square variation ID, and variant finish.
+
+### Verification
+
+- `node apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Revert the offline app search/filter changes to return to the older
+  name/set/barcode/public-id/location-only filtering behavior.
+
 ## 2026-06-09 - Variant-Aware Offline Inventory Intake
 
 ### What Changed

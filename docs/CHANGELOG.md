@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Offline app inventory search now matches more of the LAN/server search
+  surface, including card number, set code, condition, provider IDs, selected
+  variant metadata, and Square catalog mapping IDs, while website pull refreshes
+  preserve existing local variant/image metadata.
 - Inventory intake through the offline app and LAN server now preserves
   selected ScryDex variant metadata, including provider/reference variant IDs,
   finish, language, raw/graded mode, and variant-specific image URLs through

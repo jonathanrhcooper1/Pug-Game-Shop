@@ -2672,7 +2672,23 @@ export function filterInventoryItems(
         return true
       }
 
-      return [item.cardName, item.setName, item.barcode, item.publicId, item.location]
+      return [
+        item.cardName,
+        item.setName,
+        item.number,
+        item.setCode,
+        item.condition,
+        item.barcode,
+        item.publicId,
+        item.providerCardId,
+        item.providerVariantId,
+        item.variant,
+        item.finish,
+        item.language,
+        item.squareCatalogItemId,
+        item.squareCatalogVariationId,
+        item.location,
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalized)
@@ -3840,9 +3856,17 @@ export function applyOfflinePullInventoryRecordsToCache(
       id: existing?.id ?? nextId++,
       publicId: record.public_id,
       rowVersion: record.row_version,
+      providerCardId: existing?.providerCardId,
+      referenceVariantId: existing?.referenceVariantId,
+      providerVariantId: existing?.providerVariantId,
       cardName: record.card_name,
       setName: record.set_name,
       number: record.card_number,
+      setCode: existing?.setCode,
+      variant: existing?.variant,
+      finish: existing?.finish,
+      language: existing?.language,
+      rawOrGraded: existing?.rawOrGraded,
       condition: record.condition || existing?.condition || "Raw",
       barcode: record.barcode || existing?.barcode || record.public_id,
       price: formatMoney(record.sale_price_minor_units, "USD"),
@@ -3850,6 +3874,8 @@ export function applyOfflinePullInventoryRecordsToCache(
       currency: "USD",
       location: record.location_label || existing?.location || "Unassigned",
       status: record.status,
+      imageUrl: existing?.imageUrl,
+      backImageUrl: existing?.backImageUrl,
       squareCatalogItemId: record.square_catalog_item_id || existing?.squareCatalogItemId,
       squareCatalogVariationId: record.square_catalog_variation_id || existing?.squareCatalogVariationId,
       externalSyncState: record.external_sync_state || existing?.externalSyncState || "pending",

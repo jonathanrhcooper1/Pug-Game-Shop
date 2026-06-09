@@ -53,6 +53,7 @@ try {
     customerCreditLedgerEntriesForCustomer,
     customerCreditPendingMinorUnitsFromOperations,
     buildPendingCustomerCreditLedgerEntries,
+    filterInventoryItems,
     findInventoryItemByScan,
     findCustomerCreditSnapshot,
     inventoryQuantityDeltaFromInput,
@@ -71,9 +72,15 @@ try {
       id: 7,
       publicId: "inv-1001",
       rowVersion: 10,
+      providerCardId: "scrydex-pokemon-base-004",
+      providerVariantId: "scrydex-pokemon-base-004-holo",
       cardName: "Charizard",
       setName: "Base Set",
       number: "4/102",
+      setCode: "BASE",
+      variant: "Unlimited Holo",
+      finish: "Holofoil",
+      language: "English",
       condition: "NM",
       barcode: "PKM-BASE-004-HOLO",
       price: "$125.00",
@@ -408,6 +415,11 @@ try {
   assert.equal(findInventoryItemByScan(result.items, "PKM-JGL-060-YLW").publicId, "inv-2002")
   assert.equal(findInventoryItemByScan(result.items, " inv-1001 ").barcode, "PKM-BASE-004-HOLO")
   assert.equal(findInventoryItemByScan(result.items, "charizard"), null)
+  assert.equal(filterInventoryItems(result.items, "60/64")[0].publicId, "inv-2002")
+  assert.equal(filterInventoryItems(result.items, "LP", "available")[0].publicId, "inv-2002")
+  assert.equal(filterInventoryItems(result.items, "LP", "reserved")[0].publicId, "inv-1001")
+  assert.equal(filterInventoryItems(result.items, "SQUARE-VARIATION-1001")[0].publicId, "inv-1001")
+  assert.equal(filterInventoryItems(existingItems, "holofoil")[0].publicId, "inv-1001")
   assert.equal(inventoryQuantityDeltaFromInput("+12"), 12)
   assert.equal(inventoryQuantityDeltaFromInput("-2"), -2)
   assert.equal(inventoryQuantityDeltaFromInput("0"), null)
