@@ -3,6 +3,47 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Offline App UI Version Alignment
+
+### What Changed
+
+- Updated the offline app UI version constant from `0.186.0` to `0.189.0`.
+- Added a UI shell contract assertion that the visible app version matches
+  `apps/offline-app/package.json`.
+- Updated the changelog.
+
+### Why
+
+The Windows app package, root project, and offline app package are now at
+`0.189.0`, but the UI still displayed the older version. The app shell should
+not show stale version metadata during demos, support, or store setup.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `apps/offline-app/tests/ui-shell-contract.mjs`.
+
+### Verification
+
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the prior displayed app version.
+- No database rollback is required.
+
 ## 2026-06-09 - Full Local Test Matrix Verification
 
 ### What Changed

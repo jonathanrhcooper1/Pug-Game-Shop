@@ -191,7 +191,7 @@ const ACCESS_SECTIONS = [
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
-const OFFLINE_APP_VERSION = "0.186.0"
+const OFFLINE_APP_VERSION = "0.189.0"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {

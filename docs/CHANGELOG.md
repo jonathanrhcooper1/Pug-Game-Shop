@@ -6,6 +6,8 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- The offline app UI version badge now matches the packaged app version, and
+  the UI shell contract asserts that alignment.
 - The production ScryDex index runner now returns secret-safe card page
   summaries for each set import, including scoped expansion ID, page number,
   provider row count, normalized row counts, persistence status, and transaction

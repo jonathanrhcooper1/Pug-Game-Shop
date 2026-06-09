@@ -9,7 +9,13 @@ const appRoot = path.resolve(__dirname, "..")
 const appSource = await readFile(path.join(appRoot, "src/App.tsx"), "utf8")
 const workspaceSource = await readFile(path.join(appRoot, "src/data/offlineWorkspace.ts"), "utf8")
 const styles = await readFile(path.join(appRoot, "src/styles.css"), "utf8")
+const packageJson = JSON.parse(await readFile(path.join(appRoot, "package.json"), "utf8"))
 const appSurface = `${appSource}\n${workspaceSource}`
+
+assert.ok(
+  appSource.includes(`const OFFLINE_APP_VERSION = "${packageJson.version}"`),
+  "Offline app UI version constant must match package.json",
+)
 
 for (const requiredText of [
   "Offline Inventory Command",
