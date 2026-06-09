@@ -6,6 +6,18 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- ScryDex card imports now normalize the live API shape where prices are nested
+  under each `variants[].prices[]` entry. The importer now stores those
+  condition/variant price points, ties them to the generated provider variant
+  ID, and keeps the primary card price populated even when no top-level price
+  field is present.
+- ScryDex HTTP requests now use the documented `page_size` pagination
+  parameter while continuing to read ScryDex's `page_size`, `count`, and
+  `total_count` response metadata for resume/continuation decisions.
+- Staff card lookup/intake now carries variant-specific image URLs and latest
+  condition/variant price points from the WordPress catalog cache and ScryDex
+  fallback responses into the intake form, so staff can choose the exact card
+  version before adding inventory.
 - ScryDex catalog imports now run as an enterprise full-game indexer from the
   admin page: expansions are pulled first, cards are indexed by expansion, and
   pagination continues until ScryDex returns fewer than the requested page size.

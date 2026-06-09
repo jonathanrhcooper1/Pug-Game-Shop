@@ -133,6 +133,15 @@ final class ScryDexCardNormalizerTest extends TestCase {
 							'front' => 'https://images.scrydex.com/pokemon/sv1-1/reverse-front',
 							'back'  => 'https://images.scrydex.com/pokemon/card-back',
 						),
+						'prices'  => array(
+							array(
+								'condition' => 'NM',
+								'type'      => 'raw',
+								'low'       => 0.01,
+								'market'    => 0.21,
+								'currency'  => 'USD',
+							),
+						),
 					),
 				),
 				'prices'       => array(
@@ -147,6 +156,7 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$card   = $result->card();
 		$price  = $result->price();
 		$variant = $result->variants()[0] ?? array();
+		$price_points = $result->price_points();
 
 		$this->assert_true( $result->is_valid() );
 		$this->assert_same( 'Scarlet & Violet', $card['set_name'] );
@@ -162,6 +172,80 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( 'SV1-001-reverse-holo', $variant['provider_variant_id'] );
 		$this->assert_same( 'https://images.scrydex.com/pokemon/sv1-1/reverse-front', $variant['front_image_url'] );
 		$this->assert_same( 'https://images.scrydex.com/pokemon/card-back', $variant['back_image_url'] );
+		$this->assert_same( 2, count( $price_points ) );
+		$this->assert_same( 'SV1-001-reverse-holo', $price_points[1]['provider_variant_id'] );
+		$this->assert_same( 'nm', $price_points[1]['condition_code'] );
+		$this->assert_same( '0.2100', $price_points[1]['market_price'] );
+	}
+
+	public function test_normalizes_live_scrydex_variant_prices_without_top_level_price(): void {
+		$result = ( new ScryDexCardNormalizer() )->normalize_card(
+			array(
+				'id'        => 'me4-1',
+				'game'      => 'pokemon',
+				'name'      => 'Weedle',
+				'expansion' => array(
+					'id'           => 'me4',
+					'name'         => 'Chaos Rising',
+					'code'         => 'CRI',
+					'release_date' => '2026/05/22',
+				),
+				'images'    => array(
+					array(
+						'type'  => 'front',
+						'large' => 'https://images.scrydex.com/pokemon/me4-1/large',
+					),
+				),
+				'variants'  => array(
+					array(
+						'name'   => 'normal',
+						'prices' => array(
+							array(
+								'condition' => 'NM',
+								'type'      => 'raw',
+								'low'       => 0.01,
+								'market'    => 0.08,
+								'currency'  => 'USD',
+							),
+							array(
+								'condition' => 'LP',
+								'type'      => 'raw',
+								'low'       => 0.05,
+								'market'    => 0.08,
+								'currency'  => 'USD',
+							),
+						),
+					),
+					array(
+						'name'   => 'reverseHolofoil',
+						'prices' => array(
+							array(
+								'condition' => 'NM',
+								'type'      => 'raw',
+								'low'       => 0.01,
+								'market'    => 0.21,
+								'currency'  => 'USD',
+							),
+						),
+					),
+				),
+			)
+		);
+		$variants     = $result->variants();
+		$price_points = $result->price_points();
+		$price        = $result->price();
+
+		$this->assert_true( $result->is_valid() );
+		$this->assert_same( 2, count( $variants ) );
+		$this->assert_same( 3, count( $price_points ) );
+		$this->assert_same( $variants[0]['provider_variant_id'], $price_points[0]['provider_variant_id'] );
+		$this->assert_same( 'nm', $price_points[0]['condition_code'] );
+		$this->assert_same( '0.0800', $price_points[0]['market_price'] );
+		$this->assert_same( '0.0100', $price_points[0]['low_price'] );
+		$this->assert_same( $variants[1]['provider_variant_id'], $price_points[2]['provider_variant_id'] );
+		$this->assert_same( '0.2100', $price_points[2]['market_price'] );
+		$this->assert_true( is_array( $price ) );
+		$this->assert_same( '0.0800', $price['market_price'] );
 	}
 
 	/**

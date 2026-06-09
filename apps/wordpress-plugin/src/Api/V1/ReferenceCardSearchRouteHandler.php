@@ -74,6 +74,13 @@ final class ReferenceCardSearchRouteHandler {
 			);
 		}
 
+		$price_points       = $this->fetch_price_points( $query, $rows );
+		$price_point_status = is_array( $price_points ) ? 'ready' : 'deferred';
+
+		if ( ! is_array( $price_points ) ) {
+			$price_points = $this->empty_price_point_index();
+		}
+
 		$stock_summaries      = $this->fetch_stock_summaries( $query, $rows );
 		$stock_summary_status = is_array( $stock_summaries ) ? 'ready' : 'deferred';
 
@@ -101,7 +108,7 @@ final class ReferenceCardSearchRouteHandler {
 			'code'        => 'reference_search_read_ready',
 			'callback'    => 'search_reference_cards',
 			'data'        => array(
-				'cards'        => $this->present_rows( $rows, $variants_by_reference, $stock_summaries ),
+				'cards'        => $this->present_rows( $rows, $variants_by_reference, $stock_summaries, $price_points ),
 				'query'        => (string) $request['query'],
 				'game'         => (string) $request['game'],
 				'source'       => 'wordpress_catalog_cache',
@@ -115,6 +122,7 @@ final class ReferenceCardSearchRouteHandler {
 					'live_provider_request'     => false,
 					'scrydex_credentials_scope' => 'wordpress_server_settings',
 					'stock_summary_status'      => $stock_summary_status,
+					'price_point_status'        => $price_point_status,
 				),
 			),
 			'meta'        => $this->ready_meta( $query, count( $rows ), $total ),
@@ -190,6 +198,7 @@ final class ReferenceCardSearchRouteHandler {
 		$cards_table    = $table_prefix . 'tcg_reference_cards';
 		$variants_table = $table_prefix . 'tcg_reference_variants';
 		$prices_table   = $table_prefix . 'tcg_provider_price_observations';
+		$price_points_table = $table_prefix . 'tcg_provider_price_points';
 		$inventory_table = $table_prefix . 'tcg_inventory_items';
 		$like          = '%' . addcslashes( $query, "\\_%" ) . '%';
 		$where_parts   = array(
@@ -247,6 +256,7 @@ final class ReferenceCardSearchRouteHandler {
 			'cards_table'         => $cards_table,
 			'variants_table'      => $variants_table,
 			'prices_table'        => $prices_table,
+			'price_points_table'  => $price_points_table,
 			'inventory_table'     => $inventory_table,
 			'select_sql_template' => $select,
 			'select_prepare_args' => array_merge( $where_args, array( $limit, $offset ) ),
@@ -336,6 +346,96 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
+	 * @param array<string, mixed>       $query Query plan.
+	 * @param list<array<string, mixed>> $rows Reference card rows.
+	 * @return array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>}|false
+	 */
+	private function fetch_price_points( array $query, array $rows ): array|false {
+		if ( ! method_exists( $this->database, 'prepare' ) || ! method_exists( $this->database, 'get_results' ) ) {
+			return false;
+		}
+
+		$reference_ids     = array();
+		$provider_card_ids = array();
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$reference_id = $this->positive_reference_id( $row['reference_card_id'] ?? null );
+			if ( null !== $reference_id ) {
+				$reference_ids[] = $reference_id;
+			}
+
+			$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+			if ( '' !== $provider_card_id ) {
+				$provider_card_ids[] = $provider_card_id;
+			}
+		}
+
+		$reference_ids     = array_values( array_unique( $reference_ids ) );
+		$provider_card_ids = array_values( array_unique( $provider_card_ids ) );
+
+		if ( array() === $reference_ids && array() === $provider_card_ids ) {
+			return $this->empty_price_point_index();
+		}
+
+		$where_parts = array();
+		$where_args  = array();
+
+		if ( array() !== $reference_ids ) {
+			$where_parts[] = 'price_points.reference_card_id IN (' . implode( ', ', array_fill( 0, count( $reference_ids ), '%d' ) ) . ')';
+			$where_args    = array_merge( $where_args, $reference_ids );
+		}
+
+		if ( array() !== $provider_card_ids ) {
+			$where_parts[] = 'price_points.provider_card_id IN (' . implode( ', ', array_fill( 0, count( $provider_card_ids ), '%s' ) ) . ')';
+			$where_args    = array_merge( $where_args, $provider_card_ids );
+		}
+
+		$template = "
+			SELECT
+				price_points.provider_price_point_id,
+				price_points.reference_card_id,
+				price_points.reference_variant_id,
+				price_points.provider_name,
+				price_points.provider_card_id,
+				price_points.provider_variant_id,
+				price_points.game,
+				price_points.condition_code,
+				price_points.raw_or_graded,
+				price_points.grading_company,
+				price_points.grade,
+				price_points.market_price,
+				price_points.low_price,
+				price_points.mid_price,
+				price_points.high_price,
+				price_points.currency,
+				price_points.source_observed_at,
+				price_points.provider_updated_at,
+				price_points.observed_at
+			FROM {$query['price_points_table']} price_points
+			WHERE (" . implode( ' OR ', $where_parts ) . ')
+			ORDER BY price_points.observed_at DESC, price_points.provider_price_point_id DESC
+		';
+		$prepared = $this->database->prepare(
+			$template, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$where_args
+		);
+		$rows     = $this->database->get_results(
+			$prepared, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$this->array_a_output_type()
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return false;
+		}
+
+		return $this->build_price_point_index( $rows );
+	}
+
+	/**
 	 * @param array<string, mixed> $query Query plan.
 	 * @param list<array<string, mixed>> $rows Reference card rows.
 	 * @return array<int, list<array<string, mixed>>>|false
@@ -363,6 +463,7 @@ final class ReferenceCardSearchRouteHandler {
 		$placeholders = implode( ', ', array_fill( 0, count( $reference_ids ), '%d' ) );
 		$template     = "
 			SELECT
+				reference_variant_id,
 				reference_card_id,
 				provider_variant_id,
 				variant,
@@ -370,6 +471,8 @@ final class ReferenceCardSearchRouteHandler {
 				parallel_name,
 				edition,
 				language,
+				front_image_url,
+				back_image_url,
 				raw_or_graded_support,
 				normalized_attributes_json
 			FROM {$query['variants_table']}
@@ -453,14 +556,16 @@ final class ReferenceCardSearchRouteHandler {
 	private function present_rows(
 		array $rows,
 		array $variants_by_reference = array(),
-		array $stock_summaries = array()
+		array $stock_summaries = array(),
+		array $price_points = array()
 	): array {
 		return array_values(
 			array_map(
 				fn ( array $row ): array => $this->present_row(
 					$row,
 					$variants_by_reference[ (int) ( $row['reference_card_id'] ?? 0 ) ] ?? array(),
-					$this->stock_summary_for_row( $row, $stock_summaries )
+					$this->stock_summary_for_row( $row, $stock_summaries ),
+					$this->price_points_for_row( $row, $price_points )
 				),
 				array_filter( $rows, 'is_array' )
 			)
@@ -519,7 +624,8 @@ final class ReferenceCardSearchRouteHandler {
 		$provider_cards    = $this->present_provider_rows(
 			$page_plan->reference_rows(),
 			$this->provider_prices_by_card( $page_plan ),
-			$variants_by_card
+			$variants_by_card,
+			$this->provider_price_points_by_card( $page_plan )
 		);
 		$normalizer_errors = $page_plan->errors();
 
@@ -650,9 +756,10 @@ final class ReferenceCardSearchRouteHandler {
 	 * @param list<array<string, mixed>>               $rows Normalized provider rows.
 	 * @param array<string, array<string, mixed>>      $prices_by_card Provider prices by card ID.
 	 * @param array<string, list<array<string, mixed>>> $variants_by_card Provider variants by card ID.
+	 * @param array<string, list<array<string, mixed>>> $price_points_by_card Provider price points by card ID.
 	 * @return list<array<string, mixed>>
 	 */
-	private function present_provider_rows( array $rows, array $prices_by_card, array $variants_by_card ): array {
+	private function present_provider_rows( array $rows, array $prices_by_card, array $variants_by_card, array $price_points_by_card = array() ): array {
 		$presented = array();
 
 		foreach ( $rows as $row ) {
@@ -691,6 +798,7 @@ final class ReferenceCardSearchRouteHandler {
 				'stock_total_count'         => 0,
 				'stock_by_condition'        => array(),
 				'variants'                  => $variants_by_card[ $provider_card_id ] ?? array(),
+				'price_points'              => $price_points_by_card[ $provider_card_id ] ?? array(),
 				'live_provider_request'     => true,
 				'credentials_in_response'   => false,
 			);
@@ -734,6 +842,28 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
+	 * @return array<string, list<array<string, mixed>>>
+	 */
+	private function provider_price_points_by_card( ScryDexSyncPagePlan $page_plan ): array {
+		$indexed = array();
+
+		foreach ( $page_plan->price_point_rows() as $row ) {
+			$key = $this->text( $row['provider_card_id'] ?? '' );
+			if ( '' === $key ) {
+				continue;
+			}
+
+			$indexed[ $key ][] = $this->present_price_point_row( $row );
+		}
+
+		foreach ( $indexed as $key => $rows ) {
+			$indexed[ $key ] = $this->sorted_price_points( $rows );
+		}
+
+		return $indexed;
+	}
+
+	/**
 	 * @param array<string, mixed> $row Normalized provider variant row.
 	 * @return array<string, mixed>
 	 */
@@ -745,6 +875,8 @@ final class ReferenceCardSearchRouteHandler {
 			'parallel_name'         => $this->text( $row['parallel_name'] ?? '' ),
 			'edition'               => $this->text( $row['edition'] ?? '' ),
 			'language'              => $this->text( $row['language'] ?? '' ),
+			'front_image_url'       => $this->url( $row['front_image_url'] ?? '' ),
+			'back_image_url'        => $this->url( $row['back_image_url'] ?? '' ),
 			'raw_or_graded_support' => $this->text( $row['raw_or_graded_support'] ?? 'both' ),
 			'attributes'            => $this->json_object( $row['normalized_attributes_json'] ?? null ),
 		);
@@ -778,7 +910,7 @@ final class ReferenceCardSearchRouteHandler {
 	 * @param array<string, mixed> $row Reference card row.
 	 * @return array<string, mixed>
 	 */
-	private function present_row( array $row, array $variants = array(), array $stock_summary = array() ): array {
+	private function present_row( array $row, array $variants = array(), array $stock_summary = array(), array $price_points = array() ): array {
 		$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
 		$front_image_url  = $this->url( $row['front_image_url'] ?? '' );
 		$market_price     = $this->decimal_string( $row['market_price'] ?? null );
@@ -816,6 +948,7 @@ final class ReferenceCardSearchRouteHandler {
 			'stock_total_count'         => (int) $stock_summary['stock_total_count'],
 			'stock_by_condition'        => $this->stock_by_condition( $stock_summary['stock_by_condition'] ?? array() ),
 			'variants'                  => array_values( $variants ),
+			'price_points'              => array_values( $price_points ),
 			'live_provider_request'     => false,
 			'credentials_in_response'   => false,
 		);
@@ -829,14 +962,45 @@ final class ReferenceCardSearchRouteHandler {
 		$attributes = $this->json_object( $row['normalized_attributes_json'] ?? null );
 
 		return array(
+			'reference_variant_id'  => (int) ( $row['reference_variant_id'] ?? 0 ),
 			'provider_variant_id'   => $this->text( $row['provider_variant_id'] ?? '' ),
 			'variant'               => $this->text( $row['variant'] ?? '' ),
 			'finish'                => $this->text( $row['finish'] ?? '' ),
 			'parallel_name'         => $this->text( $row['parallel_name'] ?? '' ),
 			'edition'               => $this->text( $row['edition'] ?? '' ),
 			'language'              => $this->text( $row['language'] ?? '' ),
+			'front_image_url'       => $this->url( $row['front_image_url'] ?? '' ),
+			'back_image_url'        => $this->url( $row['back_image_url'] ?? '' ),
 			'raw_or_graded_support' => $this->text( $row['raw_or_graded_support'] ?? 'both' ),
 			'attributes'            => $attributes,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Provider price-point row.
+	 * @return array<string, mixed>
+	 */
+	private function present_price_point_row( array $row ): array {
+		return array(
+			'provider_price_point_id' => (int) ( $row['provider_price_point_id'] ?? 0 ),
+			'reference_card_id'       => (int) ( $row['reference_card_id'] ?? 0 ),
+			'reference_variant_id'    => (int) ( $row['reference_variant_id'] ?? 0 ),
+			'provider_name'           => $this->text( $row['provider_name'] ?? 'scrydex' ),
+			'provider_card_id'        => $this->text( $row['provider_card_id'] ?? '' ),
+			'provider_variant_id'     => $this->text( $row['provider_variant_id'] ?? '' ),
+			'game'                    => $this->slug( $row['game'] ?? '' ),
+			'condition_code'          => strtoupper( $this->text( $row['condition_code'] ?? '' ) ),
+			'raw_or_graded'           => $this->text( $row['raw_or_graded'] ?? 'raw' ),
+			'grading_company'         => $this->text( $row['grading_company'] ?? '' ),
+			'grade'                   => $this->text( $row['grade'] ?? '' ),
+			'market_price'            => $this->decimal_string( $row['market_price'] ?? null ),
+			'low_price'               => $this->decimal_string( $row['low_price'] ?? null ),
+			'mid_price'               => $this->decimal_string( $row['mid_price'] ?? null ),
+			'high_price'              => $this->decimal_string( $row['high_price'] ?? null ),
+			'currency'                => $this->currency( $row['currency'] ?? null ),
+			'source_observed_at_utc'  => $this->utc_timestamp( $row['source_observed_at'] ?? null ),
+			'provider_updated_at_utc' => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
+			'observed_at_utc'         => $this->utc_timestamp( $row['observed_at'] ?? null ),
 		);
 	}
 
@@ -855,9 +1019,116 @@ final class ReferenceCardSearchRouteHandler {
 			'cards_table'                     => (string) ( $query['cards_table'] ?? '' ),
 			'variants_table'                  => (string) ( $query['variants_table'] ?? '' ),
 			'prices_table'                    => (string) ( $query['prices_table'] ?? '' ),
+			'price_points_table'              => (string) ( $query['price_points_table'] ?? '' ),
 			'inventory_table'                 => (string) ( $query['inventory_table'] ?? '' ),
 			'row_count'                       => $row_count,
 			'total'                           => $total,
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $price_rows Provider price-point aggregate rows.
+	 * @return array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>}
+	 */
+	private function build_price_point_index( array $price_rows ): array {
+		$index = $this->empty_price_point_index();
+		$seen  = array();
+
+		foreach ( $price_rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$presented        = $this->present_price_point_row( $row );
+			$reference_id     = $this->positive_reference_id( $row['reference_card_id'] ?? null );
+			$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+			$key              = implode(
+				'|',
+				array(
+					$provider_card_id,
+					$this->text( $row['provider_variant_id'] ?? '' ),
+					strtoupper( $this->text( $row['condition_code'] ?? '' ) ),
+					$this->text( $row['raw_or_graded'] ?? 'raw' ),
+					$this->text( $row['grading_company'] ?? '' ),
+					$this->text( $row['grade'] ?? '' ),
+				)
+			);
+
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+
+			$seen[ $key ] = true;
+
+			if ( null !== $reference_id ) {
+				$index['by_reference'][ $reference_id ][] = $presented;
+			}
+
+			if ( '' !== $provider_card_id ) {
+				$index['by_provider'][ $provider_card_id ][] = $presented;
+			}
+		}
+
+		return $index;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference card row.
+	 * @param array<string, mixed> $price_points Price points indexed by reference and provider.
+	 * @return list<array<string,mixed>>
+	 */
+	private function price_points_for_row( array $row, array $price_points ): array {
+		$reference_id = $this->positive_reference_id( $row['reference_card_id'] ?? null );
+
+		if ( null !== $reference_id && isset( $price_points['by_reference'][ $reference_id ] ) ) {
+			return $this->sorted_price_points( $price_points['by_reference'][ $reference_id ] );
+		}
+
+		$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+
+		if ( '' !== $provider_card_id && isset( $price_points['by_provider'][ $provider_card_id ] ) ) {
+			return $this->sorted_price_points( $price_points['by_provider'][ $provider_card_id ] );
+		}
+
+		return array();
+	}
+
+	/**
+	 * @param list<array<string,mixed>> $points Price points.
+	 * @return list<array<string,mixed>>
+	 */
+	private function sorted_price_points( array $points ): array {
+		usort(
+			$points,
+			static function ( array $left, array $right ): int {
+				$left_variant  = '' !== (string) ( $left['provider_variant_id'] ?? '' ) || 0 < (int) ( $left['reference_variant_id'] ?? 0 );
+				$right_variant = '' !== (string) ( $right['provider_variant_id'] ?? '' ) || 0 < (int) ( $right['reference_variant_id'] ?? 0 );
+
+				if ( $left_variant !== $right_variant ) {
+					return $left_variant ? -1 : 1;
+				}
+
+				$left_condition  = '' !== (string) ( $left['condition_code'] ?? '' );
+				$right_condition = '' !== (string) ( $right['condition_code'] ?? '' );
+
+				if ( $left_condition !== $right_condition ) {
+					return $left_condition ? -1 : 1;
+				}
+
+				return strcmp( (string) ( $right['observed_at_utc'] ?? '' ), (string) ( $left['observed_at_utc'] ?? '' ) );
+			}
+		);
+
+		return array_values( $points );
+	}
+
+	/**
+	 * @return array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>}
+	 */
+	private function empty_price_point_index(): array {
+		return array(
+			'by_reference' => array(),
+			'by_provider'  => array(),
 		);
 	}
 

@@ -50,11 +50,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			array(
 				'q'        => $query,
 				'page'     => (string) max( 1, $page ),
-				'pageSize' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
 				'cursor'   => trim( $cursor ),
 			)
 		);
-		unset( $params['page_size'] );
 
 		$params = array_filter(
 			$params,
@@ -106,11 +105,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			array(
 				'q'        => $query,
 				'page'     => (string) max( 1, $page ),
-				'pageSize' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
 				'cursor'   => trim( $cursor ),
 			)
 		);
-		unset( $params['page_size'] );
 
 		$params = array_filter(
 			$params,
@@ -142,11 +140,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			array(
 				'q'        => $query,
 				'page'     => (string) max( 1, $page ),
-				'pageSize' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
+				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
 				'cursor'   => trim( $cursor ),
 			)
 		);
-		unset( $params['page_size'] );
 
 		$params = array_filter(
 			$params,

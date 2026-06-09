@@ -138,7 +138,7 @@ final class ScryDexCardNormalizer {
 	): array {
 		$points = array();
 
-		foreach ( $this->price_payloads( $raw ) as $payload ) {
+		foreach ( $this->price_payloads( $raw, $provider_card_id ) as $payload ) {
 			$row = $this->price_point_row( $payload, $provider_card_id, $game, $provider_updated_at );
 			if ( null !== $row ) {
 				$points[] = $row;
@@ -413,7 +413,7 @@ final class ScryDexCardNormalizer {
 	 * @param array<string, mixed> $raw Raw provider card.
 	 * @return list<array<string, mixed>>
 	 */
-	private function price_payloads( array $raw ): array {
+	private function price_payloads( array $raw, string $provider_card_id ): array {
 		$payloads = array();
 
 		foreach ( array( 'market_price', 'price' ) as $key ) {
@@ -429,24 +429,62 @@ final class ScryDexCardNormalizer {
 
 		$prices = $raw['prices'] ?? null;
 		if ( is_array( $prices ) ) {
-			if ( array_is_list( $prices ) ) {
-				foreach ( $prices as $price ) {
-					if ( is_array( $price ) ) {
-						$payloads[] = $price;
-					}
+			$payloads = array_merge( $payloads, $this->rows_from_price_collection( $prices, $raw ) );
+		}
+
+		foreach ( $this->variant_sources( $raw ) as $variant_source ) {
+			$variant_prices = $variant_source['prices'] ?? null;
+			if ( ! is_array( $variant_prices ) ) {
+				continue;
+			}
+
+			$variant = $this->variant_row( $variant_source, $provider_card_id );
+			if ( null === $variant ) {
+				continue;
+			}
+
+			foreach ( $this->rows_from_price_collection( $variant_prices, $raw ) as $price ) {
+				$payloads[] = array_merge(
+					array(
+						'provider_variant_id' => $variant['provider_variant_id'],
+						'variant'             => $variant['variant'],
+						'finish'              => $variant['finish'],
+					),
+					$price
+				);
+			}
+		}
+
+		return $payloads;
+	}
+
+	/**
+	 * @param array<int|string, mixed> $prices Provider price collection.
+	 * @param array<string, mixed>     $raw Raw provider card.
+	 * @return list<array<string, mixed>>
+	 */
+	private function rows_from_price_collection( array $prices, array $raw ): array {
+		$payloads = array();
+
+		if ( array_is_list( $prices ) ) {
+			foreach ( $prices as $price ) {
+				if ( is_array( $price ) ) {
+					$payloads[] = $price;
 				}
-			} else {
-				foreach ( $prices as $key => $price ) {
-					if ( is_array( $price ) ) {
-						$payloads[] = is_string( $key ) ? array_merge( array( 'condition' => $key ), $price ) : $price;
-					} elseif ( is_numeric( $price ) ) {
-						$payloads[] = array(
-							'condition'    => is_string( $key ) ? $key : null,
-							'market_price' => $price,
-							'currency'     => $raw['currency'] ?? 'USD',
-						);
-					}
-				}
+			}
+
+			return $payloads;
+		}
+
+		foreach ( $prices as $key => $price ) {
+			if ( is_array( $price ) ) {
+				$payloads[] = is_string( $key ) ? array_merge( array( 'condition' => $key ), $price ) : $price;
+			} elseif ( is_numeric( $price ) ) {
+				$payloads[] = array(
+					'condition'    => is_string( $key ) ? $key : null,
+					'market_price' => $price,
+					'currency'     => $raw['currency'] ?? 'USD',
+				);
 			}
 		}
 

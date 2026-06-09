@@ -3,6 +3,106 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Live ScryDex Card Import Probe and Variant Price Fix
+
+### What Changed
+
+- Ran a live Postman-style ScryDex probe against
+  `/pokemon/v1/expansions/me4/cards?page=1&page_size=3&include=prices` and
+  verified the API returns cards, images, variants, and nested variant prices.
+- Updated the ScryDex card normalizer to read `variants[].prices[]`, store
+  variant/condition price points, and link each price point to the same
+  provider variant ID used by the reference variant row.
+- Aligned ScryDex provider pagination URLs with the documented `page_size`
+  parameter.
+
+### Why
+
+Production was receiving expansions while card/price indexing was still not
+usable enough for inventory intake. The live API response proved cards were
+available, but prices were nested below variants rather than at the card root,
+so the importer needed to normalize that exact provider shape.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. Existing catalog tables already support provider variant IDs,
+  condition codes, and price point rows.
+
+### Tests Added
+
+- Added normalizer coverage for the live ScryDex nested variant-price shape.
+- Verified live ScryDex sample through the plugin PHP normalizer:
+  3 card rows, 5 variants, 3 primary prices, 12 price points, 0 errors.
+- Verified live ScryDex sample through the persistence write planner:
+  3 reference inserts, 5 variant upserts, 3 price observations, 12 price
+  points, valid query plan, 0 query errors.
+- Full PHP suite: `972 tests, 0 failures`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.166.0` if the live-shape price import causes
+  unexpected catalog price behavior.
+- No database rollback is required because this revision does not change
+  schema.
+- Existing imported card, variant, and price-point rows remain compatible with
+  rollback; re-run ScryDex indexing after redeploying the fixed build to refill
+  any missing price points.
+
+## 2026-06-09 - Variant-Aware Card Lookup Intake
+
+### What Changed
+
+- Extended reference-card search responses to include variant IDs, variant
+  front/back image URLs, and latest provider price points by variant and
+  condition.
+- Updated the staff card lookup UI to show a variant/version selector and carry
+  the selected variant image, condition, quantity, and price point into the
+  inventory intake form.
+- Sorted price points so variant-specific and condition-specific prices are
+  preferred over generic card-level prices.
+
+### Why
+
+Staff intake needs to add the exact card version, not just the first normalized
+variant. ScryDex can provide images and prices at card, variant, and condition
+levels, so the lookup response and UI need to preserve that context all the way
+to inventory creation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. This uses schema version `14` from the prior reference variant image
+  migration.
+
+### Tests Added
+
+- Expanded reference-card search coverage for cached catalog variant images,
+  cached provider price points, ScryDex fallback variant images, and ScryDex
+  fallback condition price points.
+- Full PHP suite: `972 tests, 0 failures`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.166.0` if the new lookup/intake selector needs
+  to be removed.
+- No database rollback is required because this revision does not change schema.
+- Existing ScryDex catalog and inventory rows remain compatible with this
+  rollback.
+
 ## 2026-06-09 - ScryDex Production Catalog Import Fixes
 
 ### What Changed
