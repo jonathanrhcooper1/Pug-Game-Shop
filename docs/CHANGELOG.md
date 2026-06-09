@@ -6,6 +6,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- WordPress inventory admin now includes a Square POS Mapping dashboard fed by
+  staff inventory search results, showing POS-visible counts, ready Square
+  variation mappings, duplicate barcode/SKU issues, missing scan IDs, missing
+  Square variations, and reconciliation-only authority notes.
 - LAN Square POS inventory planning now returns a manager-readable readiness
   summary with POS-visible counts, mapped Square pull feed rows, review items,
   next actions, and reconciliation-only authority labels while keeping payment

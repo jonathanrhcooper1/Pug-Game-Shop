@@ -3,6 +3,59 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Website Square POS Mapping Dashboard
+
+### What Changed
+
+- Added a WordPress inventory admin Square POS Mapping panel beside Staff
+  Search.
+- Added presenter logic that summarizes POS-visible inventory rows into ready
+  Square variation mappings and review rows for duplicate barcode/SKU values,
+  missing barcode/SKU scan IDs, and missing Square catalog variation IDs.
+- Updated the admin search JavaScript so live staff inventory search results
+  immediately refresh Square readiness metrics, ready pull-feed rows, and
+  manager next actions.
+
+### Why
+
+The website is the inventory authority and Square should pull/reconcile against
+clean, uniquely scannable inventory rows. Managers need to see which cards are
+ready for POS mapping and which need data cleanup without requiring the local
+app first.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added presenter coverage for Square ready/review counts, hidden POS rows,
+  duplicate scan IDs, and mapping errors.
+- Added admin source coverage to keep the Square mapping dashboard wired to
+  staff inventory search results.
+
+### Verification
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert this revision to remove the website Square POS Mapping panel and
+  return inventory admin to Staff Search, Card Lookup, Staff Intake, and
+  readiness sections only.
+- No database migrations or production data changes are involved.
+
 ## 2026-06-09 - Square POS Inventory Readiness Panel
 
 ### What Changed

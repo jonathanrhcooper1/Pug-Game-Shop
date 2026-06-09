@@ -61,6 +61,27 @@ final class InventoryAdminWorkspaceUiTest extends TestCase {
 		$this->assert_contains( 'toFixed(2)', $source );
 	}
 
+	public function test_square_mapping_dashboard_uses_staff_inventory_search_results(): void {
+		$source = $this->source();
+
+		foreach (
+			array(
+				'Square POS Mapping',
+				'tcg-store-square-mapping-readiness',
+				'updateSquareMapping(items)',
+				'square_catalog_variation_id_required_for_inventory_pull',
+				'duplicate_barcode_or_sku',
+				'Square inventory authority:',
+				'Ready Square pull feed',
+				'POS mapping review',
+				'Square variation',
+				'payments remain delegated',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
+	}
+
 	public function test_intake_form_keeps_lookup_context_fields_and_quantity_batching(): void {
 		$source = $this->source();
 

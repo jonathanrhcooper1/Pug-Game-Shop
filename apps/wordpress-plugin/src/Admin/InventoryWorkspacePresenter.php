@@ -147,6 +147,111 @@ final class InventoryWorkspacePresenter {
 	}
 
 	/**
+	 * @param array<string, mixed> $search_panel Staff search panel model.
+	 * @return array<string, mixed>
+	 */
+	public function square_mapping_panel( array $search_panel ): array {
+		$ready = true === ( $search_panel['ready'] ?? false );
+
+		return array(
+			'ready'        => $ready,
+			'status'       => $ready ? 'ready' : 'locked',
+			'status_label' => $ready
+				? 'Ready to review Square POS mappings from staff search results'
+				: 'Locked until staff inventory search is available',
+			'notes'        => $ready
+				? 'Search inventory to review POS-visible rows, Square variation mappings, duplicate scan IDs, and reconciliation-only Square count readiness.'
+				: 'Square POS mapping review uses staff inventory search data and does not perform Square network writes.',
+			'summary'      => $this->square_mapping_summary( array() ),
+		);
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $inventory_rows Staff inventory rows.
+	 * @return array<string, mixed>
+	 */
+	public function square_mapping_summary( array $inventory_rows ): array {
+		$inventory_rows = array_values(
+			array_filter(
+				$inventory_rows,
+				static fn ( mixed $row ): bool => is_array( $row )
+			)
+		);
+		$scan_counts  = array_count_values(
+			array_filter(
+				array_map( array( $this, 'square_scan_identity' ), $inventory_rows ),
+				static fn ( string $value ): bool => '' !== $value
+			)
+		);
+		$ready_items  = array();
+		$review_items = array();
+		$hidden_count = 0;
+
+		foreach ( $inventory_rows as $row ) {
+			$pos_visibility = $this->visibility_value( $row['pos_visibility'] ?? 'hidden' );
+			if ( 'visible' !== $pos_visibility ) {
+				++$hidden_count;
+				continue;
+			}
+
+			$scan_identity = $this->square_scan_identity( $row );
+			$errors        = array();
+
+			if ( '' === $scan_identity ) {
+				$errors[] = 'barcode_or_sku_required';
+			}
+
+			if ( '' !== $scan_identity && (int) ( $scan_counts[ $scan_identity ] ?? 0 ) > 1 ) {
+				$errors[] = 'duplicate_barcode_or_sku';
+			}
+
+			if ( '' === $this->safe_text( $row['square_catalog_variation_id'] ?? '' ) ) {
+				$errors[] = 'square_catalog_variation_id_required_for_inventory_pull';
+			}
+
+			$item = array(
+				'public_id'                   => $this->safe_text( $row['public_id'] ?? '' ),
+				'card_name'                   => $this->safe_text( $row['card_name'] ?? '' ),
+				'set_code'                    => $this->safe_text( $row['set_code'] ?? '' ),
+				'condition_code'              => $this->safe_text( $row['condition_code'] ?? '' ),
+				'barcode'                     => $this->safe_text( $row['barcode'] ?? '' ),
+				'sku'                         => $this->safe_text( $row['sku'] ?? '' ),
+				'scan_identity'               => $scan_identity,
+				'square_catalog_item_id'      => $this->safe_text( $row['square_catalog_item_id'] ?? '' ),
+				'square_catalog_variation_id' => $this->safe_text( $row['square_catalog_variation_id'] ?? '' ),
+				'status'                      => $this->safe_text( $row['status'] ?? '' ),
+				'pos_visibility'              => $pos_visibility,
+				'errors'                      => $errors,
+				'next_action'                 => $this->square_mapping_next_action( $errors ),
+			);
+
+			if ( array() === $errors ) {
+				$ready_items[] = $item;
+			} else {
+				$review_items[] = $item;
+			}
+		}
+
+		return array(
+			'total_rows'                    => count( $inventory_rows ),
+			'pos_visible_count'             => count( $ready_items ) + count( $review_items ),
+			'pos_hidden_or_staff_only_count' => $hidden_count,
+			'ready_count'                   => count( $ready_items ),
+			'review_count'                  => count( $review_items ),
+			'duplicate_scan_identity_count' => count(
+				array_filter(
+					$scan_counts,
+					static fn ( int $count ): bool => $count > 1
+				)
+			),
+			'square_inventory_authority'    => 'tcg_store_platform',
+			'square_counts_used_for'        => 'pos_reconciliation_and_exception_detection',
+			'ready_items'                   => array_slice( $ready_items, 0, 10 ),
+			'review_items'                  => array_slice( $review_items, 0, 10 ),
+		);
+	}
+
+	/**
 	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
 	 * @param array<string, mixed> $dependency_payload Inventory route dependency payload.
 	 * @param array<string, mixed> $query Submitted admin query values.
@@ -673,6 +778,36 @@ final class InventoryWorkspacePresenter {
 		$value = strtolower( $this->text_value( $value, 20 ) );
 
 		return in_array( $value, array( 'hidden', 'visible', 'staff_only' ), true ) ? $value : 'hidden';
+	}
+
+	/**
+	 * @param array<string, mixed> $row Inventory row.
+	 */
+	private function square_scan_identity( array $row ): string {
+		$sku     = $this->safe_text( $row['sku'] ?? '' );
+		$barcode = $this->safe_text( $row['barcode'] ?? '' );
+
+		return '' !== $sku ? $sku : $barcode;
+	}
+
+	private function square_mapping_next_action( array $errors ): string {
+		if ( in_array( 'duplicate_barcode_or_sku', $errors, true ) ) {
+			return 'Assign a unique barcode/SKU before Square can match this row.';
+		}
+
+		if ( in_array( 'square_catalog_variation_id_required_for_inventory_pull', $errors, true ) ) {
+			return 'Create or link a Square catalog variation for this website inventory row.';
+		}
+
+		if ( in_array( 'barcode_or_sku_required', $errors, true ) ) {
+			return 'Add a barcode/SKU so Square POS can scan and reconcile the item.';
+		}
+
+		return 'Ready for Square count reconciliation; payment capture remains delegated.';
+	}
+
+	private function safe_text( mixed $value ): string {
+		return $this->text_value( $value, 191 );
 	}
 
 	/**

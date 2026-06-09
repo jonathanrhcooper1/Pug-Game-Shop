@@ -190,6 +190,81 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_true( in_array( 100, $panel['page_sizes'], true ) );
 	}
 
+	public function test_square_mapping_panel_tracks_ready_review_and_duplicate_pos_rows(): void {
+		$presenter = new InventoryWorkspacePresenter();
+		$panel     = $presenter->square_mapping_panel(
+			array(
+				'ready' => true,
+			)
+		);
+		$summary   = $presenter->square_mapping_summary(
+			array(
+				array(
+					'public_id'                   => 'inventory-ready',
+					'card_name'                   => 'Charizard',
+					'set_code'                    => 'BASE',
+					'condition_code'              => 'LP',
+					'barcode'                     => 'PUG-READY-001',
+					'sku'                         => 'PUG-READY-001',
+					'square_catalog_item_id'      => 'SQUARE-ITEM-1',
+					'square_catalog_variation_id' => 'SQUARE-VARIATION-1',
+					'status'                      => 'available',
+					'pos_visibility'              => 'visible',
+				),
+				array(
+					'public_id'      => 'inventory-missing-square',
+					'card_name'      => 'Pikachu',
+					'set_code'       => 'JGL',
+					'condition_code' => 'NM',
+					'barcode'        => 'PUG-MISSING-001',
+					'status'         => 'available',
+					'pos_visibility' => 'visible',
+				),
+				array(
+					'public_id'                   => 'inventory-duplicate-a',
+					'card_name'                   => 'Mew',
+					'barcode'                     => 'PUG-DUP-001',
+					'square_catalog_variation_id' => 'SQUARE-VARIATION-2',
+					'status'                      => 'available',
+					'pos_visibility'              => 'visible',
+				),
+				array(
+					'public_id'                   => 'inventory-duplicate-b',
+					'card_name'                   => 'Mewtwo',
+					'barcode'                     => 'PUG-DUP-001',
+					'square_catalog_variation_id' => 'SQUARE-VARIATION-3',
+					'status'                      => 'available',
+					'pos_visibility'              => 'visible',
+				),
+				array(
+					'public_id'      => 'inventory-hidden',
+					'card_name'      => 'Hidden Row',
+					'barcode'        => 'PUG-HIDDEN-001',
+					'status'         => 'available',
+					'pos_visibility' => 'hidden',
+				),
+			)
+		);
+
+		$this->assert_true( $panel['ready'] );
+		$this->assert_contains( 'Square POS mappings', $panel['status_label'] );
+		$this->assert_same( 'tcg_store_platform', $summary['square_inventory_authority'] );
+		$this->assert_same( 'pos_reconciliation_and_exception_detection', $summary['square_counts_used_for'] );
+		$this->assert_same( 5, $summary['total_rows'] );
+		$this->assert_same( 4, $summary['pos_visible_count'] );
+		$this->assert_same( 1, $summary['pos_hidden_or_staff_only_count'] );
+		$this->assert_same( 1, $summary['ready_count'] );
+		$this->assert_same( 3, $summary['review_count'] );
+		$this->assert_same( 1, $summary['duplicate_scan_identity_count'] );
+		$this->assert_same( 'Charizard', $summary['ready_items'][0]['card_name'] );
+		$this->assert_true(
+			in_array( 'square_catalog_variation_id_required_for_inventory_pull', $summary['review_items'][0]['errors'], true )
+		);
+		$this->assert_true(
+			in_array( 'duplicate_barcode_or_sku', $summary['review_items'][1]['errors'], true )
+		);
+	}
+
 	public function test_lookup_panel_reports_locked_default_state_and_sanitizes_query(): void {
 		$presenter    = new InventoryWorkspacePresenter();
 		$bootstrap    = ( new InventoryRouteBootstrapStatusPresenter() )->health_payload( false );
