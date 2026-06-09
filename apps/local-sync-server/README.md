@@ -42,11 +42,29 @@ instead of each keeping an isolated local authority.
 ```sh
 npm --prefix apps/local-sync-server run start
 npm --prefix apps/local-sync-server run test
+npm run local-sync:smoke
 ```
 
 Default URL: `http://127.0.0.1:8787`
 
 Default manager PIN: `1420`
+
+## Store Workstation Smoke
+
+After starting the server on the central in-store machine, run this from any
+workstation that should reach it:
+
+```sh
+set LOCAL_SYNC_SERVER_URL=http://127.0.0.1:8787
+set LOCAL_SYNC_EXPECT_WEBSITE_URL=https://vbf.2a7.myftpupload.com
+npm run local-sync:smoke
+```
+
+Use the central machine's LAN IP in `LOCAL_SYNC_SERVER_URL` when checking another
+computer. The smoke reads `/health`, `/setup/status`, and `/devices/status`, then
+writes one local smoke heartbeat through `/devices/heartbeat`. It does not mutate
+WordPress, call Square, capture payments, print credentials, or print raw
+provider responses.
 
 ## Responsibilities
 

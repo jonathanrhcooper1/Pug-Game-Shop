@@ -3,6 +3,62 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Local Sync Operator Smoke Command
+
+### What Changed
+
+- Added `npm run local-sync:smoke`.
+- Added `scripts/local-sync-smoke.mjs`, a local-only workstation smoke that:
+  - reads ignored local env files
+  - checks `/health`
+  - checks `/setup/status`
+  - writes one harmless smoke heartbeat through `/devices/heartbeat`
+  - checks `/devices/status`
+  - verifies the configured website binding when `LOCAL_SYNC_EXPECT_WEBSITE_URL`
+    or `PUG_WORDPRESS_URL` is present
+  - prints only summarized, secret-free output
+- Documented workstation usage in the local sync server README.
+- Added packaging contract coverage for the new smoke command.
+
+### Why
+
+The store needs a quick way to verify that a central LAN sync server is reachable
+from each employee/kiosk workstation before trusting inventory intake, kiosk
+pickup, customer credit, or event workflows.
+
+### Files Affected
+
+- `package.json`
+- `scripts/local-sync-smoke.mjs`
+- `scripts/tests/local-sync-smoke-contract.mjs`
+- `apps/local-sync-server/README.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `scripts/tests/local-sync-smoke-contract.mjs`
+
+### Verification
+
+- `node scripts/local-sync-smoke.mjs --dry-run`: passed.
+- `node scripts/tests/local-sync-smoke-contract.mjs`: passed.
+- `node scripts/local-sync-smoke.mjs`: passed against
+  `http://127.0.0.1:8787`, wrote only a local smoke heartbeat, reported
+  `mutatesWordPress: false`, `capturesPayments: false`,
+  `credentialsPrinted: false`, and `rawResponsePrinted: false`.
+
+### Rollback Notes
+
+- Revert this revision to remove the operator smoke command and README entry.
+- If already run locally, the only persistent side effect is a local
+  `codex-local-sync-smoke-*` client heartbeat row in the LAN SQLite database;
+  no WordPress or Square rollback is required.
+
 ## 2026-06-09 - Local Sync Multi-Client Smoke Coverage
 
 ### What Changed

@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Added a local sync operator smoke command for store workstations to verify a
+  running LAN server, configured website binding, device presence, and
+  secret-free heartbeat handling without mutating WordPress or Square.
 - Local sync server testing now includes a multi-client LAN smoke that simulates
   two employee stations plus a customer kiosk sharing one pickup queue, blocking
   duplicate holds, and marking stale local devices offline.
