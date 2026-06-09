@@ -533,7 +533,7 @@ export function createLocalSyncStore(options = {}) {
     })
   }
 
-  function createInventoryIntake(token, input = {}) {
+  async function createInventoryIntake(token, input = {}) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
     if (session.status !== "ok") {
@@ -627,10 +627,12 @@ export function createLocalSyncStore(options = {}) {
       source: "queued",
     }))
 
+    const operations = []
+
     for (const item of items) {
       inventoryItems.push(item)
       saveInventoryItem(database, item, now)
-      appendQueueOperation(database, queue, "inventory_intake", item.public_id, {
+      const operation = appendQueueOperation(database, queue, "inventory_intake", item.public_id, {
         item: publicInventoryItem(item),
         actor_id: session.user.id,
         sync_intent: "offline_inventory_intake",
@@ -645,19 +647,35 @@ export function createLocalSyncStore(options = {}) {
         },
         wordpress_acceptance_required: true,
       }, now)
+      operations.push(operation)
     }
+
+    const autoSyncResults = []
+
+    if (wordpressInventoryPush) {
+      for (const operation of operations) {
+        autoSyncResults.push(await pushInventoryIntakeOperation(operation))
+      }
+    }
+
+    const publicItems = items.map(publicInventoryItem)
 
     return {
       status: "ok",
-      item: publicInventoryItem(items[0]),
-      items: items.map(publicInventoryItem),
+      item: publicItems[0],
+      items: publicItems,
       quantity_added: items.length,
       wordpress_acceptance_required: true,
+      wordpress_auto_sync_performed: autoSyncResults.length > 0,
+      wordpress_accepted_count: autoSyncResults.filter((result) => result.status === "accepted").length,
+      wordpress_retry_count: autoSyncResults.filter((result) => result.status === "retry").length,
+      auto_sync_results: autoSyncResults,
+      local_queue_depth: pendingQueueOperations(queue).length,
       label_print_deferred: true,
     }
   }
 
-  function finalizeSquarePosSale(token, input = {}) {
+  async function finalizeSquarePosSale(token, input = {}) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
     if (session.status !== "ok") {
@@ -738,6 +756,14 @@ export function createLocalSyncStore(options = {}) {
       operations.push(operation)
     }
 
+    const autoSyncResults = []
+
+    if (wordpressInventorySalePush) {
+      for (const operation of operations) {
+        autoSyncResults.push(await pushSquareSaleOperation(operation))
+      }
+    }
+
     return {
       status: "ok",
       action: "square_pos_sale_finalized",
@@ -752,6 +778,11 @@ export function createLocalSyncStore(options = {}) {
       square_receipt_reference: squareReceiptReference,
       square_order_id: squareOrderId,
       wordpress_acceptance_required: true,
+      wordpress_auto_sync_performed: autoSyncResults.length > 0,
+      wordpress_accepted_count: autoSyncResults.filter((result) => result.status === "accepted").length,
+      wordpress_retry_count: autoSyncResults.filter((result) => result.status === "retry").length,
+      auto_sync_results: autoSyncResults,
+      local_queue_depth: pendingQueueOperations(queue).length,
       source_of_truth: "tcg_store_platform",
       square_payment_capture_supported: false,
       plugin_square_payment_capture_supported: false,
@@ -1556,6 +1587,138 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function pushInventoryIntakeOperation(operation) {
+    if (!wordpressInventoryPush) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: "wordpress_inventory_push_unavailable",
+        message: "WordPress inventory push is not configured on this LAN server.",
+      }
+    }
+
+    const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
+
+    if (!item) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "rejected",
+        code: "local_inventory_item_missing",
+      }
+    }
+
+    const pushResult = await wordpressInventoryPush({ operation, item })
+
+    if (pushResult.status !== "ok") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: pushResult.code,
+        message: pushResult.message,
+        wordpress_code: pushResult.wordpress_code ?? "",
+        http_status: pushResult.http_status ?? 0,
+        errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+      }
+    }
+
+    const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+
+    if (localItem) {
+      localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "pending_intake"
+      localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id)
+      localItem.source = "accepted"
+      localItem.external_sync_state = "synced"
+      localItem.row_version += 1
+      saveInventoryItem(database, localItem, now)
+    }
+
+    deleteQueueOperation(database, queue, operation.operation_id)
+
+    return {
+      operation_id: operation.operation_id,
+      operation_type: operation.operation_type,
+      entity_id: operation.entity_id,
+      status: "accepted",
+      code: pushResult.code,
+      wordpress_code: pushResult.wordpress_code,
+      wordpress_inventory: pushResult.inventory,
+      woocommerce_product_sync: pushResult.woocommerce_product_sync,
+    }
+  }
+
+  async function pushSquareSaleOperation(operation) {
+    if (!wordpressInventorySalePush) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: "wordpress_inventory_sale_push_unavailable",
+        message: "WordPress inventory sale push is not configured on this LAN server.",
+      }
+    }
+
+    const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
+
+    if (!item) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "rejected",
+        code: "local_inventory_item_missing",
+      }
+    }
+
+    const pushResult = await wordpressInventorySalePush({ operation, item })
+
+    if (pushResult.status !== "ok") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: pushResult.code,
+        message: pushResult.message,
+        wordpress_code: pushResult.wordpress_code ?? "",
+        http_status: pushResult.http_status ?? 0,
+        errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+      }
+    }
+
+    const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+
+    if (localItem) {
+      localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "sold"
+      localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id) || localItem.wordpress_public_id
+      localItem.source = "accepted"
+      localItem.external_sync_state = "synced"
+      localItem.row_version += 1
+      saveInventoryItem(database, localItem, now)
+    }
+
+    deleteQueueOperation(database, queue, operation.operation_id)
+
+    return {
+      operation_id: operation.operation_id,
+      operation_type: operation.operation_type,
+      entity_id: operation.entity_id,
+      status: "accepted",
+      code: pushResult.code,
+      wordpress_code: pushResult.wordpress_code,
+      wordpress_inventory: pushResult.inventory,
+      woocommerce_product_sync: pushResult.woocommerce_product_sync,
+      square_payment_capture_supported: false,
+      payment_capture_authority: "official_woocommerce_square_extension",
+    }
+  }
+
   async function pushQueuedOperations(token) {
     const session = requireWorkspaceAccess(token, "Sync")
 
@@ -1594,138 +1757,11 @@ export function createLocalSyncStore(options = {}) {
     const coveredKioskReservationOperationIds = new Set()
 
     for (const operation of inventoryOperations) {
-      if (!wordpressInventoryPush) {
-        results.push({
-          operation_id: operation.operation_id,
-          operation_type: operation.operation_type,
-          entity_id: operation.entity_id,
-          status: "retry",
-          code: "wordpress_inventory_push_unavailable",
-          message: "WordPress inventory push is not configured on this LAN server.",
-        })
-        continue
-      }
-
-      const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
-
-      if (!item) {
-        results.push({
-          operation_id: operation.operation_id,
-          operation_type: operation.operation_type,
-          entity_id: operation.entity_id,
-          status: "rejected",
-          code: "local_inventory_item_missing",
-        })
-        continue
-      }
-
-      const pushResult = await wordpressInventoryPush({ operation, item })
-
-      if (pushResult.status !== "ok") {
-        results.push({
-          operation_id: operation.operation_id,
-          operation_type: operation.operation_type,
-          entity_id: operation.entity_id,
-          status: "retry",
-          code: pushResult.code,
-          message: pushResult.message,
-          wordpress_code: pushResult.wordpress_code ?? "",
-          http_status: pushResult.http_status ?? 0,
-          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
-        })
-        continue
-      }
-
-      const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
-
-      if (localItem) {
-        localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "pending_intake"
-        localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id)
-        localItem.source = "accepted"
-        localItem.row_version += 1
-        saveInventoryItem(database, localItem, now)
-      }
-
-      deleteQueueOperation(database, queue, operation.operation_id)
-      results.push({
-        operation_id: operation.operation_id,
-        operation_type: operation.operation_type,
-        entity_id: operation.entity_id,
-        status: "accepted",
-        code: pushResult.code,
-        wordpress_code: pushResult.wordpress_code,
-        wordpress_inventory: pushResult.inventory,
-        woocommerce_product_sync: pushResult.woocommerce_product_sync,
-      })
+      results.push(await pushInventoryIntakeOperation(operation))
     }
 
     for (const operation of squareSaleOperations) {
-      if (!wordpressInventorySalePush) {
-        results.push({
-          operation_id: operation.operation_id,
-          operation_type: operation.operation_type,
-          entity_id: operation.entity_id,
-          status: "retry",
-          code: "wordpress_inventory_sale_push_unavailable",
-          message: "WordPress inventory sale push is not configured on this LAN server.",
-        })
-        continue
-      }
-
-      const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
-
-      if (!item) {
-        results.push({
-          operation_id: operation.operation_id,
-          operation_type: operation.operation_type,
-          entity_id: operation.entity_id,
-          status: "rejected",
-          code: "local_inventory_item_missing",
-        })
-        continue
-      }
-
-      const pushResult = await wordpressInventorySalePush({ operation, item })
-
-      if (pushResult.status !== "ok") {
-        results.push({
-          operation_id: operation.operation_id,
-          operation_type: operation.operation_type,
-          entity_id: operation.entity_id,
-          status: "retry",
-          code: pushResult.code,
-          message: pushResult.message,
-          wordpress_code: pushResult.wordpress_code ?? "",
-          http_status: pushResult.http_status ?? 0,
-          errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
-        })
-        continue
-      }
-
-      const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
-
-      if (localItem) {
-        localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "sold"
-        localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id) || localItem.wordpress_public_id
-        localItem.source = "accepted"
-        localItem.external_sync_state = "synced"
-        localItem.row_version += 1
-        saveInventoryItem(database, localItem, now)
-      }
-
-      deleteQueueOperation(database, queue, operation.operation_id)
-      results.push({
-        operation_id: operation.operation_id,
-        operation_type: operation.operation_type,
-        entity_id: operation.entity_id,
-        status: "accepted",
-        code: pushResult.code,
-        wordpress_code: pushResult.wordpress_code,
-        wordpress_inventory: pushResult.inventory,
-        woocommerce_product_sync: pushResult.woocommerce_product_sync,
-        square_payment_capture_supported: false,
-        payment_capture_authority: "official_woocommerce_square_extension",
-      })
+      results.push(await pushSquareSaleOperation(operation))
     }
 
     for (const operation of eventRegistrationOperations) {

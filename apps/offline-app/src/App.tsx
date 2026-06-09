@@ -118,6 +118,7 @@ import {
   type LocalSyncDeviceHeartbeatResult,
   type LocalSyncDeviceStatusResult,
   type LocalSyncEventSnapshot,
+  type LocalSyncAutoSyncOperationResult,
   type LocalSyncInventoryItem,
   type LocalSyncKioskOrder,
   type LocalSyncKioskOrderStatus,
@@ -1124,6 +1125,27 @@ function inventoryStatusFromWordPressPushResult(
   return INVENTORY_STATUS_FILTERS.includes(wordpressStatus as InventoryStatus)
     ? wordpressStatus as InventoryStatus
     : null
+}
+
+function localSyncPushResultFromAutoSync(
+  results: LocalSyncAutoSyncOperationResult[],
+): Extract<LocalSyncPushResult, { status: "ok" }> {
+  const acceptedCount = results.filter((result) => result.status === "accepted").length
+  const retryCount = results.filter((result) => result.status === "retry").length
+  const rejectedCount = results.filter((result) => result.status === "rejected").length
+
+  return {
+    status: "ok",
+    operation_count: results.length,
+    accepted_count: acceptedCount,
+    retry_count: retryCount,
+    rejected_count: rejectedCount,
+    unsupported_operation_count: 0,
+    results: results as Extract<LocalSyncPushResult, { status: "ok" }>["results"],
+    wordpress_push_connected: true,
+    credentials_synced_to_client: false,
+    local_queue_depth: retryCount + rejectedCount,
+  }
 }
 
 function lanSyncPullMessage(result: LocalSyncPullResult | null) {
@@ -3543,7 +3565,40 @@ export function App() {
     let autoPublishDetail =
       "Queued locally; the LAN server will publish it when the website connector is available."
 
-    if (effectiveAccess.includes("Sync")) {
+    if (intakeResult.wordpress_auto_sync_performed) {
+      const autoPushResult = localSyncPushResultFromAutoSync(intakeResult.auto_sync_results)
+      const intakePublicIds = new Set(nextItems.map((item) => item.publicId))
+      const acceptedIntakeResults = autoPushResult.results.filter(
+        (result) => result.status === "accepted" && intakePublicIds.has(result.entity_id),
+      )
+      const acceptedPublicIds = new Set(acceptedIntakeResults.map((result) => result.entity_id))
+      const wooSyncedCount = acceptedIntakeResults.filter(
+        (result) => result.woocommerce_product_sync?.synced,
+      ).length
+
+      displayedNextItems = nextItems.map((item) =>
+        acceptedPublicIds.has(item.publicId)
+          ? {
+              ...item,
+              status: inventoryStatusFromWordPressPushResult(autoPushResult, item.publicId) ?? item.status,
+              source: "accepted",
+              rowVersion: item.rowVersion + 1,
+            }
+          : item,
+      )
+      displayedIntakeReceipts = applyLocalInventoryIntakePushResults(
+        intakeReceipts,
+        autoPushResult.results,
+      ).receipts
+
+      if (acceptedIntakeResults.length > 0 && wooSyncedCount > 0) {
+        autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; ${wooSyncedCount} WooCommerce product sync(s) completed.`
+      } else if (acceptedIntakeResults.length > 0) {
+        autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; WooCommerce publish is still pending review in the sync status screen.`
+      } else if (autoPushResult.retry_count > 0) {
+        autoPublishDetail = "Saved locally; website publish will retry from the LAN queue."
+      }
+    } else if (effectiveAccess.includes("Sync")) {
       const autoPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
 
       if (autoPushResult.status === "ok") {

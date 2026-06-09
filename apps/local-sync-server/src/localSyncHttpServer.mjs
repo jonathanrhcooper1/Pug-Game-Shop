@@ -146,11 +146,11 @@ export function createLocalSyncHttpServer(options = {}) {
       }
 
       if (request.method === "POST" && url.pathname === "/pos/square/sales/finalize") {
-        return sendStoreResult(response, store.finalizeSquarePosSale(token, await readJson(request)))
+        return sendStoreResult(response, await store.finalizeSquarePosSale(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/inventory/intake") {
-        return sendStoreResult(response, store.createInventoryIntake(token, await readJson(request)))
+        return sendStoreResult(response, await store.createInventoryIntake(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/inventory/reservations") {

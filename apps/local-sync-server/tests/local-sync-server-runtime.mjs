@@ -139,6 +139,17 @@ const server = createLocalSyncHttpServer({
         assert.equal(item.pos_visibility, "staff_only")
       }
 
+      if (item.card_name === "Local Only Pull Guard") {
+        return {
+          status: "blocked",
+          code: "wordpress_inventory_push_fixture_unavailable",
+          message: "Fixture keeps this local row queued so pull preservation can be verified.",
+          errors: ["fixture_offline_fallback"],
+          credentials_synced_to_client: false,
+          authorization_header_printed: false,
+        }
+      }
+
       return {
         status: "ok",
         code: "wordpress_inventory_item_created",
@@ -652,9 +663,15 @@ try {
   assert.equal(intake.item.kiosk_visibility, "visible")
   assert.equal(intake.item.pos_visibility, "staff_only")
   assert.equal(intake.item.barcode, "PUG-SMOKE-MEWTWO-01")
-  assert.equal(intake.item.status, "pending_intake")
-  assert.equal(intake.item.source, "queued")
+  assert.equal(intake.item.status, "available")
+  assert.equal(intake.item.source, "accepted")
   assert.equal(intake.wordpress_acceptance_required, true)
+  assert.equal(intake.wordpress_auto_sync_performed, true)
+  assert.equal(intake.wordpress_accepted_count, 2)
+  assert.equal(intake.wordpress_retry_count, 0)
+  assert.equal(intake.auto_sync_results.length, 2)
+  assert.equal(intake.local_queue_depth, 0)
+  assert.equal(wordpressInventoryPushCalls, 2)
 
   const duplicateIntake = await fetchJson(`${baseUrl}/inventory/intake`, {
     method: "POST",
@@ -682,8 +699,8 @@ try {
     token: managerToken,
   })
   assert.equal(pushedIntake.status, "ok")
-  assert.equal(pushedIntake.operation_count, 2)
-  assert.equal(pushedIntake.accepted_count, 2)
+  assert.equal(pushedIntake.operation_count, 0)
+  assert.equal(pushedIntake.accepted_count, 0)
   assert.equal(pushedIntake.retry_count, 0)
   assert.equal(pushedIntake.rejected_count, 0)
   assert.equal(pushedIntake.unsupported_operation_count, 0)
@@ -691,7 +708,7 @@ try {
   assert.equal(pushedIntake.credentials_synced_to_client, false)
   assert.equal(pushedIntake.local_queue_depth, 0)
   assert.equal(wordpressInventoryPushCalls, 2)
-  assert.ok(pushedIntake.results.every((result) => result.status === "accepted"))
+  assert.equal(pushedIntake.results.length, 0)
 
   const acceptedIntakeInventory = await fetchJson(`${baseUrl}/inventory/search?q=mewtwo`)
   assert.equal(acceptedIntakeInventory.status, "ok")
@@ -724,6 +741,10 @@ try {
     },
   })
   assert.equal(pendingLocalOnlyIntake.status, "ok")
+  assert.equal(pendingLocalOnlyIntake.wordpress_auto_sync_performed, true)
+  assert.equal(pendingLocalOnlyIntake.wordpress_accepted_count, 0)
+  assert.equal(pendingLocalOnlyIntake.wordpress_retry_count, 1)
+  assert.equal(pendingLocalOnlyIntake.local_queue_depth, 1)
 
   wordpressInventoryPullRows = [
     {
@@ -1099,8 +1120,8 @@ try {
   })
   assert.equal(pushedEventRegistration.status, "ok")
   assert.equal(pushedEventRegistration.operation_count, 5)
-  assert.equal(pushedEventRegistration.accepted_count, 4)
-  assert.equal(pushedEventRegistration.retry_count, 0)
+  assert.equal(pushedEventRegistration.accepted_count, 3)
+  assert.equal(pushedEventRegistration.retry_count, 1)
   assert.equal(pushedEventRegistration.unsupported_operation_count, 1)
   assert.equal(pushedEventRegistration.wordpress_inventory_push_connected, true)
   assert.equal(pushedEventRegistration.wordpress_event_registration_push_connected, true)
@@ -1108,7 +1129,7 @@ try {
   assert.equal(pushedEventRegistration.wordpress_kiosk_order_push_connected, true)
   assert.equal(wordpressEventRegistrationPushCalls, 1)
   assert.equal(wordpressEventCheckinPushCalls, 1)
-  assert.equal(wordpressInventoryPushCalls, 3)
+  assert.equal(wordpressInventoryPushCalls, 4)
   assert.equal(wordpressKioskOrderPushCalls, 1)
   assert.ok(
     pushedEventRegistration.results.some(
@@ -1122,7 +1143,10 @@ try {
   )
   assert.ok(
     pushedEventRegistration.results.some(
-      (result) => result.operation_type === "inventory_intake" && result.status === "accepted",
+      (result) =>
+        result.operation_type === "inventory_intake" &&
+        result.status === "retry" &&
+        result.code === "wordpress_inventory_push_fixture_unavailable",
     ),
   )
   assert.ok(
@@ -1150,12 +1174,19 @@ try {
   assert.equal(squareSale.finalized_count, 1)
   assert.equal(squareSale.items[0].barcode, "PUG-WP-CHARIZARD")
   assert.equal(squareSale.items[0].status, "sold")
-  assert.equal(squareSale.items[0].source, "queued")
+  assert.equal(squareSale.items[0].source, "accepted")
+  assert.equal(squareSale.items[0].external_sync_state, "synced")
   assert.equal(squareSale.operations[0].operation_type, "square_pos_sale")
   assert.equal(squareSale.square_receipt_reference, "SQ-SALE-CHARIZARD-25000")
   assert.equal(squareSale.wordpress_acceptance_required, true)
+  assert.equal(squareSale.wordpress_auto_sync_performed, true)
+  assert.equal(squareSale.wordpress_accepted_count, 1)
+  assert.equal(squareSale.wordpress_retry_count, 0)
+  assert.equal(squareSale.auto_sync_results.length, 1)
+  assert.equal(squareSale.auto_sync_results[0].status, "accepted")
   assert.equal(squareSale.square_payment_capture_supported, false)
   assert.equal(squareSale.payment_capture_authority, "official_woocommerce_square_extension")
+  assert.equal(wordpressInventorySalePushCalls, 1)
 
   const pushedSquareSale = await fetchJson(`${baseUrl}/sync/push`, {
     method: "POST",
@@ -1163,16 +1194,17 @@ try {
   })
   assert.equal(pushedSquareSale.status, "ok")
   assert.equal(pushedSquareSale.operation_count, 1)
-  assert.equal(pushedSquareSale.accepted_count, 1)
+  assert.equal(pushedSquareSale.accepted_count, 0)
+  assert.equal(pushedSquareSale.retry_count, 1)
   assert.equal(pushedSquareSale.unsupported_operation_count, 1)
   assert.equal(pushedSquareSale.wordpress_inventory_sale_push_connected, true)
   assert.equal(wordpressInventorySalePushCalls, 1)
   assert.ok(
     pushedSquareSale.results.some(
       (result) =>
-        result.operation_type === "square_pos_sale" &&
-        result.status === "accepted" &&
-        result.wordpress_inventory.status === "sold",
+        result.operation_type === "inventory_intake" &&
+        result.status === "retry" &&
+        result.code === "wordpress_inventory_push_fixture_unavailable",
     ),
   )
 
@@ -1253,13 +1285,21 @@ try {
     token: managerToken,
   })
   assert.equal(pushedCustomerAndCredit.status, "ok")
-  assert.equal(pushedCustomerAndCredit.operation_count, 3)
+  assert.equal(pushedCustomerAndCredit.operation_count, 4)
   assert.equal(pushedCustomerAndCredit.accepted_count, 3)
-  assert.equal(pushedCustomerAndCredit.retry_count, 0)
+  assert.equal(pushedCustomerAndCredit.retry_count, 1)
   assert.equal(pushedCustomerAndCredit.wordpress_customer_push_connected, true)
   assert.equal(pushedCustomerAndCredit.wordpress_credit_push_connected, true)
   assert.equal(wordpressCustomerUpsertPushCalls, 1)
   assert.equal(wordpressCreditPushCalls, 2)
+  assert.ok(
+    pushedCustomerAndCredit.results.some(
+      (result) =>
+        result.operation_type === "inventory_intake" &&
+        result.status === "retry" &&
+        result.code === "wordpress_inventory_push_fixture_unavailable",
+    ),
+  )
   assert.ok(
     pushedCustomerAndCredit.results.some(
       (result) => result.operation_type === "customer_upsert" && result.status === "accepted",

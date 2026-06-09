@@ -3,6 +3,67 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Online-First LAN Inventory And Square Sale Sync
+
+### What Changed
+
+- Changed local inventory intake to attempt the configured WordPress inventory
+  push immediately after creating local queue rows, while keeping failed pushes
+  queued for offline retry.
+- Changed exact Square POS sale finalization to attempt the configured
+  WordPress mark-sold push immediately after scanning inventory and recording
+  the Square receipt/order reference.
+- Reused the same push helpers for automatic online push and manual
+  `/sync/push`, so accepted/retry behavior is consistent across both paths.
+- Extended the offline app local-sync contract with auto-sync result counts and
+  updated the Add Inventory UI to display WordPress/WooCommerce acceptance from
+  the server response instead of requiring a separate manual Sync action.
+
+### Why
+
+The store workflow needs to feel online/live when the website is reachable, but
+still work when the LAN or website connection drops. The previous behavior made
+inventory intake and Square sale finalization wait for a manual sync push. This
+change makes the Add Inventory and exact Square sold flow update the website
+immediately when online, while preserving the queued retry path for offline
+operation.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated LAN runtime coverage so successful intake auto-publishes immediately,
+  an intentionally unavailable WordPress inventory push stays queued for retry,
+  and Square sale finalization immediately marks exact scanned inventory sold.
+- Updated offline app contract coverage for auto-sync response fields.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+
+### Rollback Notes
+
+- Revert the local sync server changes to return intake and Square sale
+  finalization to manual `/sync/push` only.
+- No database rollback is required.
+
 ## 2026-06-09 - Production Storefront Click-Through And Shelf Polish
 
 ### What Changed

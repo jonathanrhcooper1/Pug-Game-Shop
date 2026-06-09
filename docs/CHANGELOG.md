@@ -6,6 +6,14 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Local inventory intake and exact Square POS sale finalization are now
+  online-first: when the LAN server has WordPress push connectors configured,
+  it immediately attempts the WordPress/WooCommerce update and reports accepted,
+  retry, and queue-depth counts while preserving the offline queue fallback when
+  the website is unavailable.
+- The offline app Add Inventory flow now consumes the LAN server's auto-sync
+  result directly, so staff see whether WordPress/WooCommerce accepted the item
+  without needing a separate manual Sync action.
 - Product shelf cards now replace WooCommerce's default gray placeholder image
   with a branded PUG gradient tile when no real product image exists, keeping
   Sealed, Graded, and Accessories visually aligned with the home page.

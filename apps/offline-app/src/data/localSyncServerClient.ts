@@ -231,11 +231,46 @@ export type LocalSyncReservationResult = LocalSyncResult<{
   wordpress_acceptance_required: true
 }>
 
+export type LocalSyncAutoSyncOperationResult = {
+  operation_id: string
+  operation_type: string
+  entity_id: string
+  status: "accepted" | "retry" | "rejected"
+  code?: string
+  message?: string
+  wordpress_code?: string
+  http_status?: number
+  errors?: string[]
+  wordpress_inventory?: {
+    public_id: string
+    sku: string
+    barcode: string
+    status: LocalSyncInventoryItem["status"]
+    price_change_log_persisted?: boolean
+  }
+  woocommerce_product_sync?: {
+    requested: boolean
+    synced: boolean
+    status: string
+    product_ids: number[]
+    errors: string[]
+    payment_capture_deferred: boolean
+    square_inventory_deferred: boolean
+  }
+  square_payment_capture_supported?: false
+  payment_capture_authority?: "official_woocommerce_square_extension"
+}
+
 export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
   item: LocalSyncInventoryItem
   items: LocalSyncInventoryItem[]
   quantity_added: number
   wordpress_acceptance_required: true
+  wordpress_auto_sync_performed: boolean
+  wordpress_accepted_count: number
+  wordpress_retry_count: number
+  auto_sync_results: LocalSyncAutoSyncOperationResult[]
+  local_queue_depth: number
   label_print_deferred: true
 }>
 
@@ -737,6 +772,11 @@ export type LocalSyncSquarePosSaleFinalizeResult = LocalSyncResult<{
   square_receipt_reference: string
   square_order_id: string
   wordpress_acceptance_required: true
+  wordpress_auto_sync_performed: boolean
+  wordpress_accepted_count: number
+  wordpress_retry_count: number
+  auto_sync_results: LocalSyncAutoSyncOperationResult[]
+  local_queue_depth: number
   source_of_truth: "tcg_store_platform"
   square_payment_capture_supported: false
   plugin_square_payment_capture_supported: false

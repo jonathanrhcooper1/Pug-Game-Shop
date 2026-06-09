@@ -58,7 +58,7 @@ try {
   })
   assert.equal(firstReservation.status, "ok")
 
-  const intake = firstStore.createInventoryIntake(cashierAuth.session.token, {
+  const intake = await firstStore.createInventoryIntake(cashierAuth.session.token, {
     card_name: "Persistent Dragonite",
     set_name: "Fossil",
     condition: "LP",
