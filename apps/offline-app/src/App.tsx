@@ -18,6 +18,7 @@ import {
   buildOfflineConflictResolutionRequestBody,
   buildOfflinePullRefreshPreview,
   buildOfflinePullRequestBody,
+  buildOneWebsiteConnectorSetupPlan,
   applyOfflinePushResultToQueue,
   applyOfflinePullConflictRecordsToCache,
   applyOfflinePullCustomerCreditRecordsToCache,
@@ -113,6 +114,7 @@ import {
   type LocalSyncInventoryItem,
   type LocalSyncPullResult,
   type LocalSyncPushResult,
+  type LocalSyncSetupStatusResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
@@ -230,6 +232,14 @@ type PairingRouteCheckState = {
   method: "GET"
   detail: string
   rawPairingCodeTransmitted: false
+  credentialsSyncedToApp: false
+}
+
+type LanSetupProbeState = {
+  status: "idle" | "loading" | "ready" | "warning" | "blocked"
+  endpoint: string
+  detail: string
+  oneWebsiteMode: true
   credentialsSyncedToApp: false
 }
 
@@ -475,6 +485,48 @@ function safeSummaryValue(value: unknown) {
 
 function countLabel(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
+}
+
+function connectorOriginKey(value: string) {
+  try {
+    const url = new URL(value)
+
+    return `${url.protocol}//${url.host}`.toLowerCase()
+  } catch {
+    return value.trim().replace(/\/+$/, "").toLowerCase()
+  }
+}
+
+function lanSetupProbeMessage(
+  result: Extract<LocalSyncSetupStatusResult, { status: "ok" }>,
+  expectedWebsiteUrl: string,
+) {
+  if (!result.website_configured || result.setup_required) {
+    return {
+      status: "blocked" as const,
+      detail: `${result.server_url} is running, but it is not configured for a WordPress website yet.`,
+    }
+  }
+
+  const expectedOrigin = connectorOriginKey(expectedWebsiteUrl)
+  const actualOrigin = connectorOriginKey(result.website_url)
+
+  if (expectedOrigin !== actualOrigin) {
+    return {
+      status: "warning" as const,
+      detail:
+        `LAN server website mismatch: app expects ${expectedWebsiteUrl}, ` +
+        `server reports ${result.website_url}.`,
+    }
+  }
+
+  return {
+    status: "ready" as const,
+    detail:
+      `${result.server_url} is bound to ${result.website_url}; pull ` +
+      `${result.wordpress_pull_configured ? "on" : "off"}, push ` +
+      `${result.wordpress_push_configured ? "on" : "off"}.`,
+  }
 }
 
 function queuedOperationCount(
@@ -1043,6 +1095,13 @@ export function App() {
     rawPairingCodeTransmitted: false,
     credentialsSyncedToApp: false,
   })
+  const [lanSetupProbe, setLanSetupProbe] = useState<LanSetupProbeState>({
+    status: "idle",
+    endpoint: "",
+    detail: "LAN setup probe has not run for this website.",
+    oneWebsiteMode: true,
+    credentialsSyncedToApp: false,
+  })
   const [pairingTokenRequest, setPairingTokenRequest] = useState<PairingTokenRequestState>({
     status: "idle",
     endpoint: "",
@@ -1059,6 +1118,10 @@ export function App() {
     pairedDeviceStorage.records,
   )
   const activeProfile = findConnectorProfile(connectorProfiles, activeProfileId)
+  const oneWebsiteSetupPlan = useMemo(
+    () => buildOneWebsiteConnectorSetupPlan(activeProfile),
+    [activeProfile],
+  )
   const localSyncClient = useMemo(
     () => createLocalSyncServerClient(localSyncServerDisplayUrl(activeProfile)),
     [activeProfile],
@@ -1645,6 +1708,56 @@ export function App() {
     setLocalSyncStatus(nextStatus)
 
     return nextStatus
+  }
+
+  async function handleProbeLanSetup() {
+    const endpoint = `${localSyncClient.serverUrl}${oneWebsiteSetupPlan.setupStatusPath}`
+
+    setLanSetupProbe({
+      status: "loading",
+      endpoint,
+      detail: "Checking LAN server website binding.",
+      oneWebsiteMode: true,
+      credentialsSyncedToApp: false,
+    })
+
+    const result = await localSyncClient.getSetupStatus()
+
+    if (result.status !== "ok") {
+      setLanSetupProbe({
+        status: "blocked",
+        endpoint,
+        detail: result.message,
+        oneWebsiteMode: true,
+        credentialsSyncedToApp: false,
+      })
+      setActiveSection("Settings")
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN setup unavailable" : "LAN setup blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    const probeMessage = lanSetupProbeMessage(result, oneWebsiteSetupPlan.websiteUrl)
+
+    setLanSetupProbe({
+      status: probeMessage.status,
+      endpoint,
+      detail: probeMessage.detail,
+      oneWebsiteMode: result.one_website_mode,
+      credentialsSyncedToApp: result.credentials_synced_to_client,
+    })
+    setActiveSection("Settings")
+    setActivityMessage({
+      title:
+        probeMessage.status === "ready"
+          ? "LAN setup ready"
+          : probeMessage.status === "warning"
+            ? "LAN setup mismatch"
+            : "LAN setup blocked",
+      detail: probeMessage.detail,
+    })
   }
 
   async function refreshLanEventSnapshots(options: { announce?: boolean } = {}) {
@@ -3015,6 +3128,13 @@ export function App() {
 
     setActiveProfileId(nextProfile.id)
     setConnectorDraft(connectorProfileDraftFromProfile(nextProfile))
+    setLanSetupProbe({
+      status: "idle",
+      endpoint: "",
+      detail: "LAN setup probe has not run for this website.",
+      oneWebsiteMode: true,
+      credentialsSyncedToApp: false,
+    })
     setActiveSection("Settings")
     setActivityMessage({
       title: "Connector profile selected",
@@ -3035,6 +3155,13 @@ export function App() {
     setConnectorDraftIssues([])
     setConnectorValidation(null)
     setConnectorTestReport(null)
+    setLanSetupProbe({
+      status: "idle",
+      endpoint: "",
+      detail: "LAN setup probe has not run for this website.",
+      oneWebsiteMode: true,
+      credentialsSyncedToApp: false,
+    })
     setPairingPlan(null)
     setActiveSection("Settings")
     setActivityMessage({
@@ -3067,6 +3194,13 @@ export function App() {
     setConnectorValidation(validation)
     setConnectorTestReport(report)
     setPairingPlan(null)
+    setLanSetupProbe({
+      status: "idle",
+      endpoint: "",
+      detail: "LAN setup probe has not run for this website.",
+      oneWebsiteMode: true,
+      credentialsSyncedToApp: false,
+    })
     setActiveSection("Settings")
     setActivityMessage({
       title: validation.status === "rejected" ? "Website saved with issues" : "Website connection saved",
@@ -3604,7 +3738,9 @@ export function App() {
         throw new Error("Manifest endpoint did not return JSON.")
       }
 
-      const validation = validateConnectorManifest(liveManifest)
+      const validation = validateConnectorManifest(liveManifest, {
+        localSyncServerUrl: localSyncServerDisplayUrl(draftResult.profile),
+      })
       const preparedRequest =
         preparedPairingRequests.find((request) => request.profileId === validation.profile.id) ??
         null
@@ -5555,12 +5691,23 @@ export function App() {
                   <small>{connectorHealth.restBasePath}; setup saved locally for this device</small>
                 </div>
                 <div>
+                  <span className="micro-label">Setup mode</span>
+                  <strong>One website install</strong>
+                  <small>
+                    {oneWebsiteSetupPlan.profileSelection}; {oneWebsiteSetupPlan.syncPath.join(" -> ")}
+                  </small>
+                </div>
+                <div>
                   <span className="micro-label">LAN sync</span>
                   <strong>{localSyncClient.serverUrl}</strong>
                   <small>
                     {localSyncStatus?.status === "ok"
                       ? `${localSyncStatus.local_database}; ${localSyncStatus.queue_depth} queued; pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
                       : "Local middleman server; run npm start in apps/local-sync-server"}
+                  </small>
+                  <small>
+                    Setup probe: {lanSetupProbe.status}; {lanSetupProbe.detail}
+                    {lanSetupProbe.endpoint ? ` ${lanSetupProbe.endpoint}` : ""}
                   </small>
                 </div>
                 <div>
@@ -6052,6 +6199,14 @@ export function App() {
                 >
                   <Icon name="database" />
                   <span>Validate Local Preview</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!managerControlsUnlocked || lanSetupProbe.status === "loading"}
+                  onClick={() => void handleProbeLanSetup()}
+                >
+                  <Icon name="database" />
+                  <span>{lanSetupProbe.status === "loading" ? "Probing LAN" : "Probe LAN Server"}</span>
                 </button>
                 <button type="button" disabled={!managerControlsUnlocked} onClick={handleSaveConnectorDraft}>
                   <Icon name="check" />

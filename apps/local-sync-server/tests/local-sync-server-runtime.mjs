@@ -13,6 +13,10 @@ let wordpressKioskOrderPushCalls = 0
 let wordpressInventoryPullRows = []
 
 const server = createLocalSyncHttpServer({
+  storeId: "Pug Game Shop",
+  serverUrl: "http://127.0.0.1:8787",
+  websiteUrl: "https://vbf.2a7.myftpupload.com/",
+  restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",
     websiteCatalogFallback: async ({ query, game, limit }) => {
@@ -251,6 +255,30 @@ try {
 
   assert.equal(health.status, "ok")
   assert.equal(health.local_database, "store-sync.sqlite")
+  assert.equal(health.topology, "lan_middleman_server")
+  assert.equal(health.setup_screen_mode, "single_configurable_website")
+  assert.equal(health.one_website_mode, true)
+  assert.equal(health.website_configured, true)
+  assert.equal(health.setup_status_path, "/setup/status")
+
+  const setupStatus = await fetchJson(`${baseUrl}/setup/status`)
+
+  assert.equal(setupStatus.status, "ok")
+  assert.equal(setupStatus.action, "local_sync_server_setup_status")
+  assert.equal(setupStatus.setup_screen_mode, "single_configurable_website")
+  assert.equal(setupStatus.one_website_mode, true)
+  assert.equal(setupStatus.setup_required, false)
+  assert.equal(setupStatus.website_configured, true)
+  assert.equal(setupStatus.website_url, "https://vbf.2a7.myftpupload.com/")
+  assert.equal(setupStatus.wordpress_rest_base, "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1")
+  assert.equal(setupStatus.local_database, "store-sync.sqlite")
+  assert.equal(setupStatus.wordpress_pull_configured, true)
+  assert.equal(setupStatus.wordpress_push_configured, true)
+  assert.equal(setupStatus.scrydex_catalog_proxy_configured, true)
+  assert.equal(setupStatus.credentials_synced_to_client, false)
+  assert.equal(setupStatus.raw_credentials_returned, false)
+  assert.equal(setupStatus.direct_mysql_access, false)
+  assertNoSecrets(setupStatus)
 
   const managerAuth = await fetchJson(`${baseUrl}/auth/pin`, {
     method: "POST",

@@ -61,6 +61,35 @@ export type LocalSyncAccessPolicyResult = LocalSyncResult<{
   pin_credentials_returned: false
 }>
 
+export type LocalSyncSetupStatusResult = LocalSyncResult<{
+  action: "local_sync_server_setup_status"
+  schema_version: 1
+  topology: "lan_middleman_server"
+  setup_screen_mode: "single_configurable_website"
+  one_website_mode: true
+  store_id: string
+  server_url: string
+  setup_status_path: "/setup/status"
+  website_url: string
+  website_configured: boolean
+  setup_required: boolean
+  rest_base_path: "/wp-json/tcg-store/v1" | string
+  wordpress_rest_base: string
+  local_database: "store-sync.sqlite"
+  wordpress_pull_configured: boolean
+  wordpress_push_configured: boolean
+  wordpress_inventory_push_configured: boolean
+  wordpress_event_registration_push_configured: boolean
+  wordpress_event_checkin_push_configured: boolean
+  wordpress_customer_push_configured: boolean
+  wordpress_credit_push_configured: boolean
+  wordpress_kiosk_order_push_configured: boolean
+  scrydex_catalog_proxy_configured: boolean
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+  direct_mysql_access: false
+}>
+
 export type LocalSyncInventoryItem = {
   public_id: string
   row_version: number
@@ -377,6 +406,7 @@ export type LocalSyncFetch = (
 
 export type LocalSyncServerClient = {
   serverUrl: string
+  getSetupStatus: () => Promise<LocalSyncSetupStatusResult>
   authWithPin: (pin: string, options?: { ttlMinutes?: number }) => Promise<LocalSyncAuthResult>
   getAccessPolicy: (sessionToken: string) => Promise<LocalSyncAccessPolicyResult>
   addUser: (
@@ -476,6 +506,8 @@ export function createLocalSyncServerClient(
 
   return {
     serverUrl: baseUrl,
+    getSetupStatus: () =>
+      requestLocalSync(fetcher, baseUrl, "/setup/status") as Promise<LocalSyncSetupStatusResult>,
     authWithPin: (pin, options = {}) =>
       requestLocalSync(fetcher, baseUrl, "/auth/pin", {
         method: "POST",

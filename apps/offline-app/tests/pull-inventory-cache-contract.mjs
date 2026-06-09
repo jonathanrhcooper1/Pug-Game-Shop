@@ -31,6 +31,7 @@ try {
     applyOfflinePushResultToQueue,
     buildCustomerCreditRedemptionOperation,
     buildConnectorManifestPreview,
+    buildOneWebsiteConnectorSetupPlan,
     buildEventCheckinOperation,
     buildEventRegistrationOperation,
     buildOfflineEventQueuePreviewEntries,
@@ -56,6 +57,7 @@ try {
     offlineSessionStorageKey,
     restoreOfflineSessionStorageSnapshot,
     summarizeOfflinePushResult,
+    upsertConnectorProfile,
     upsertCustomerCreditSnapshot,
     validateConnectorManifest,
   } = await import(pathToFileURL(modulePath))
@@ -439,6 +441,32 @@ try {
   const manifestValidation = validateConnectorManifest(manifestPreview)
   assert.notEqual(manifestValidation.status, "rejected")
   assert.equal(manifestValidation.profile.id, manifestPreview.connector_identity.profile_id)
+  assert.equal(offlineWorkspaceSeed.connectorProfiles.length, 1)
+
+  const setupPlan = buildOneWebsiteConnectorSetupPlan(offlineWorkspaceSeed.connectorProfiles[0])
+  assert.equal(setupPlan.action, "one_website_connector_setup_plan")
+  assert.equal(setupPlan.profileSelection, "disabled_single_installation")
+  assert.equal(setupPlan.localSyncServerUrl, "http://127.0.0.1:8787")
+  assert.equal(setupPlan.setupStatusPath, "/setup/status")
+  assert.deepEqual(setupPlan.syncPath, ["offline_app", "local_sync_server", "wordpress_woocommerce_plugin"])
+  assert.equal(setupPlan.credentialsSyncedToApp, false)
+  assert.equal(setupPlan.directWordPressAccess, false)
+  assert.equal(setupPlan.directMysqlAccess, false)
+
+  const replacementProfile = {
+    ...offlineWorkspaceSeed.connectorProfiles[0],
+    id: "another-company-staging",
+    companyName: "Another Company",
+    companyShortName: "Another",
+    wordpress: {
+      ...offlineWorkspaceSeed.connectorProfiles[0].wordpress,
+      host: "another-company.example.test",
+    },
+  }
+  const oneWebsiteProfiles = upsertConnectorProfile(offlineWorkspaceSeed.connectorProfiles, replacementProfile)
+  assert.equal(oneWebsiteProfiles.length, 1)
+  assert.equal(oneWebsiteProfiles[0].id, "another-company-staging")
+  assert.equal(oneWebsiteProfiles[0].wordpress.host, "another-company.example.test")
 
   const quantityAdjustmentOperation = buildInventoryUpdateOperation(existingItems[0], {
     operationKind: "quantity",

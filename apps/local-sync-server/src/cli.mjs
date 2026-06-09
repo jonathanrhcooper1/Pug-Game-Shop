@@ -11,6 +11,7 @@ import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 const host = process.env.PUG_LOCAL_SYNC_HOST ?? "127.0.0.1"
 const port = process.env.PUG_LOCAL_SYNC_PORT ?? "8787"
 const databasePath = process.env.PUG_LOCAL_SYNC_DB
+const serverUrl = process.env.PUG_LOCAL_SYNC_PUBLIC_URL ?? `http://${host}:${port}`
 const websiteCatalogFallback = createWordPressCatalogFallback({
   websiteUrl: process.env.PUG_WORDPRESS_URL,
   restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
@@ -84,6 +85,10 @@ const wordpressKioskOrderPush = createWordPressKioskOrderPush({
 const server = await listenLocalSyncHttpServer({
   host,
   port,
+  serverUrl,
+  websiteUrl: process.env.PUG_WORDPRESS_URL,
+  restBasePath: process.env.PUG_WORDPRESS_REST_BASE,
+  localDatabase: "store-sync.sqlite",
   storeOptions: {
     databasePath,
     websiteCatalogFallback,

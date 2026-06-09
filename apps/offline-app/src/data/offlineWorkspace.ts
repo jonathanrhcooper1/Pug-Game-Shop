@@ -211,6 +211,8 @@ export type StoreConnectorProfile = {
   localSync: {
     topology: "lan_middleman_server"
     serverUrl: string
+    setupStatusPath: "/setup/status"
+    oneWebsiteMode: true
     localDatabase: "store-sync.sqlite"
     credentialsSyncedToApp: false
   }
@@ -243,6 +245,23 @@ export type ConnectorProfileDraftResult = {
   issues: string[]
 }
 
+export type OneWebsiteConnectorSetupPlan = {
+  action: "one_website_connector_setup_plan"
+  profileId: string
+  companyName: string
+  websiteUrl: string
+  localSyncServerUrl: string
+  topology: "lan_middleman_server"
+  setupStatusPath: "/setup/status"
+  setupScreenMode: "single_configurable_website"
+  profileSelection: "disabled_single_installation"
+  syncPath: ["offline_app", "local_sync_server", "wordpress_woocommerce_plugin"]
+  credentialsSyncedToApp: false
+  directWordPressAccess: false
+  directMysqlAccess: false
+  squarePaymentCaptureSupported: false
+}
+
 export const CONNECTOR_PROFILE_STORAGE_KEY = "tcg-store-offline-connector-profiles-v1"
 export const PREPARED_PAIRING_STORAGE_KEY = "tcg-store-offline-prepared-pairings-v1"
 export const PAIRED_DEVICE_STORAGE_KEY = "tcg-store-offline-paired-devices-v1"
@@ -252,6 +271,8 @@ export const OFFLINE_SESSION_STORAGE_KEY_PREFIX = `${OFFLINE_SESSION_STORAGE_KEY
 export type ConnectorProfileStorageSnapshot = {
   action: "offline_connector_profiles_local_storage"
   schema_version: 1
+  one_website_mode: true
+  profile_selection_disabled: true
   profiles: StoreConnectorProfile[]
   active_profile_id: string
   saved_at_utc: string
@@ -840,6 +861,8 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       localSync: {
         topology: "lan_middleman_server",
         serverUrl: "http://127.0.0.1:8787",
+        setupStatusPath: "/setup/status",
+        oneWebsiteMode: true,
         localDatabase: "store-sync.sqlite",
         credentialsSyncedToApp: false,
       },
@@ -851,41 +874,6 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       },
       scrydex: {
         teamLabel: "Configured in WordPress",
-        credentialStorage: "wordpress_server_settings",
-        credentialsSyncedToApp: false,
-      },
-    },
-    {
-      id: "demo-company-development",
-      companyName: "Demo Company",
-      companyShortName: "Demo",
-      environment: "development",
-      status: "sandbox_only",
-      wordpress: {
-        scheme: "https",
-        host: "demo-company.local",
-        restBasePath: "/wp-json/tcg-store/v1",
-        authMode: "offline_device_token",
-        credentialStorage: "desktop_secure_store",
-        devicePairingRequired: true,
-        networkRequestsDeferred: true,
-        routeConnectedPushReady: true,
-        canonicalInventoryWritesEnabled: true,
-      },
-      localSync: {
-        topology: "lan_middleman_server",
-        serverUrl: "http://127.0.0.1:8787",
-        localDatabase: "store-sync.sqlite",
-        credentialsSyncedToApp: false,
-      },
-      square: {
-        inventoryAuthority: "tcg_store_platform",
-        paymentAuthority: "official_woocommerce_square_extension",
-        providerWritesDeferred: true,
-        sandboxRequired: true,
-      },
-      scrydex: {
-        teamLabel: "Per-company WordPress setting",
         credentialStorage: "wordpress_server_settings",
         credentialsSyncedToApp: false,
       },
@@ -1613,6 +1601,25 @@ export function localSyncServerDisplayUrl(profile: StoreConnectorProfile) {
   return profile.localSync.serverUrl
 }
 
+export function buildOneWebsiteConnectorSetupPlan(profile: StoreConnectorProfile): OneWebsiteConnectorSetupPlan {
+  return {
+    action: "one_website_connector_setup_plan",
+    profileId: profile.id,
+    companyName: profile.companyName,
+    websiteUrl: connectorDisplayUrl(profile),
+    localSyncServerUrl: localSyncServerDisplayUrl(profile),
+    topology: profile.localSync.topology,
+    setupStatusPath: profile.localSync.setupStatusPath,
+    setupScreenMode: "single_configurable_website",
+    profileSelection: "disabled_single_installation",
+    syncPath: ["offline_app", "local_sync_server", "wordpress_woocommerce_plugin"],
+    credentialsSyncedToApp: false,
+    directWordPressAccess: false,
+    directMysqlAccess: false,
+    squarePaymentCaptureSupported: false,
+  }
+}
+
 export function connectorManifestUrl(profile: StoreConnectorProfile) {
   return `${connectorDisplayUrl(profile)}${profile.wordpress.restBasePath}/offline/connector-manifest`
 }
@@ -1753,6 +1760,8 @@ export function buildConnectorProfileFromDraft(
       localSync: {
         topology: "lan_middleman_server",
         serverUrl: localSyncServerUrl,
+        setupStatusPath: "/setup/status",
+        oneWebsiteMode: true,
         localDatabase: "store-sync.sqlite",
         credentialsSyncedToApp: false,
       },
@@ -1776,13 +1785,9 @@ export function upsertConnectorProfile(
   profiles: StoreConnectorProfile[],
   profile: StoreConnectorProfile,
 ): StoreConnectorProfile[] {
-  const existingIndex = profiles.findIndex((item) => item.id === profile.id)
+  void profiles
 
-  if (existingIndex === -1) {
-    return [...profiles, profile]
-  }
-
-  return profiles.map((item, index) => (index === existingIndex ? profile : item))
+  return sanitizeConnectorProfiles([profile])
 }
 
 export function buildConnectorProfileStorageSnapshot(
@@ -1796,6 +1801,8 @@ export function buildConnectorProfileStorageSnapshot(
   return {
     action: "offline_connector_profiles_local_storage",
     schema_version: 1,
+    one_website_mode: true,
+    profile_selection_disabled: true,
     profiles: safeProfiles,
     active_profile_id: activeProfile.id,
     saved_at_utc: options.savedAtUtc ?? new Date().toISOString(),
@@ -2120,6 +2127,10 @@ export function connectorHealthSummary(profile: StoreConnectorProfile) {
     environment: profile.environment,
     website: connectorDisplayUrl(profile),
     restBasePath: profile.wordpress.restBasePath,
+    oneWebsiteMode: profile.localSync.oneWebsiteMode,
+    setupScreenMode: "single_configurable_website",
+    setupStatusPath: profile.localSync.setupStatusPath,
+    localSyncServer: localSyncServerDisplayUrl(profile),
     status: connectorStatusLabel(profile.status),
     paymentAuthority: profile.square.paymentAuthority,
     squareInventoryAuthority: profile.square.inventoryAuthority,
@@ -2247,6 +2258,7 @@ export function buildConnectorManifestPreview(
 
 export function validateConnectorManifest(
   manifest: OfflineConnectorManifest,
+  options: { localSyncServerUrl?: string } = {},
 ): ConnectorManifestValidation {
   const issues: string[] = []
   const site = parseManifestSite(manifest.wordpress.site_url)
@@ -2381,7 +2393,7 @@ export function validateConnectorManifest(
     ) ||
     manifest.square.payment_authority !== "official_woocommerce_square_extension"
   const status = rejected ? "rejected" : issues.length > 0 || manifest.status === "degraded" ? "warning" : "accepted"
-  const profile = connectorProfileFromManifest(manifest, site)
+  const profile = connectorProfileFromManifest(manifest, site, options.localSyncServerUrl)
 
   return {
     status,
@@ -2423,6 +2435,11 @@ export function buildConnectorTestReport(
       label: "Route map",
       status: validation.routeCount >= 3 && validation.endpointCount === validation.routeCount ? "pass" : "warning",
       detail: `${profile.wordpress.restBasePath}/offline/pull and /offline/push are planned for ${connectorDisplayUrl(profile)}.`,
+    },
+    {
+      label: "LAN server binding",
+      status: profile.localSync.oneWebsiteMode && profile.localSync.setupStatusPath === "/setup/status" ? "pass" : "blocked",
+      detail: `${localSyncServerDisplayUrl(profile)}${profile.localSync.setupStatusPath} must report the same WordPress website before local sync runs.`,
     },
     {
       label: "Pairing readiness",
@@ -2504,7 +2521,7 @@ export function buildDevicePairingRequestPlan(
       device_mode: "staff",
       mode: "staff",
       platform: "windows",
-      app_version: "0.156.0",
+      app_version: "0.162.0",
       location_id: device.locationId,
       manager_id: device.managerId,
       capabilities: device.capabilities,
@@ -2620,6 +2637,7 @@ function normalizeScanValue(value: string) {
 function connectorProfileFromManifest(
   manifest: OfflineConnectorManifest,
   site: { scheme: ConnectorScheme; host: string } | null,
+  localSyncServerUrl = "http://127.0.0.1:8787",
 ): StoreConnectorProfile {
   const environment = cleanConnectorEnvironment(manifest.environment)
   const safeSite = site ?? { scheme: "https" as const, host: "offline.local" }
@@ -2652,7 +2670,9 @@ function connectorProfileFromManifest(
     },
     localSync: {
       topology: "lan_middleman_server",
-      serverUrl: "http://127.0.0.1:8787",
+      serverUrl: normalizeLocalSyncServerUrl(localSyncServerUrl),
+      setupStatusPath: "/setup/status",
+      oneWebsiteMode: true,
       localDatabase: "store-sync.sqlite",
       credentialsSyncedToApp: false,
     },
@@ -3082,6 +3102,8 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
       localSync: {
         topology: "lan_middleman_server",
         serverUrl: localSyncServerUrl,
+        setupStatusPath: "/setup/status",
+        oneWebsiteMode: true,
         localDatabase: "store-sync.sqlite",
         credentialsSyncedToApp: false,
       },
@@ -3100,7 +3122,7 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
     })
   }
 
-  return safeProfiles.length > 0 ? safeProfiles : offlineWorkspaceSeed.connectorProfiles
+  return safeProfiles.length > 0 ? [safeProfiles[0]] : offlineWorkspaceSeed.connectorProfiles.slice(0, 1)
 }
 
 function sanitizePreparedPairingRequests(

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 
 import {
+  buildLocalSyncSetupStatus,
   buildLocalSyncServerContract,
   LOCAL_SYNC_SERVER_ENDPOINTS,
   planLocalClientConnection,
@@ -15,6 +16,9 @@ const contract = buildLocalSyncServerContract({
 
 assert.equal(contract.action, "local_sync_server_contract")
 assert.equal(contract.topology, "lan_middleman_server")
+assert.equal(contract.setup_screen_mode, "single_configurable_website")
+assert.equal(contract.one_website_mode, true)
+assert.equal(contract.setup_status_path, "/setup/status")
 assert.equal(contract.authorities.global_source_of_truth, "wordpress_woocommerce_plugin")
 assert.equal(contract.authorities.local_offline_authority, "local_sync_server")
 assert.equal(contract.authorities.client_authority, "none_clients_request_locks")
@@ -26,10 +30,18 @@ assert.equal(contract.safety.pin_credentials_stored_as_hashes, true)
 assert.equal(contract.safety.manager_required_for_user_access_changes, true)
 assert.equal(contract.safety.square_payment_capture_supported, false)
 assert.equal(contract.safety.live_credentials_blocked_in_local_server, true)
+assert.equal(contract.safety.one_website_configuration_required, true)
+assert.equal(contract.safety.setup_status_returns_credentials, false)
 assert.equal(contract.safety.scrydex_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, true)
+assert.equal(contract.setup_status.action, "local_sync_server_setup_status")
+assert.equal(contract.setup_status.website_url, "https://vbf.2a7.myftpupload.com/")
+assert.equal(contract.setup_status.wordpress_rest_base, "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1")
+assert.equal(contract.setup_status.credentials_synced_to_client, false)
 assert.ok(contract.responsibilities.includes("prevent_local_double_sell_between_employee_and_kiosk_clients"))
 assert.ok(contract.responsibilities.includes("queue_kiosk_pickup_orders_with_first_and_last_name"))
+assert.ok(contract.responsibilities.includes("publish_secret_free_one_website_setup_status"))
+assert.ok(contract.responsibilities.includes("bind_clients_to_configured_lan_server_before_sync"))
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_lookup_from_local_cache_before_wordpress_proxy"))
@@ -39,6 +51,7 @@ assert.ok(contract.responsibilities.includes("enforce_manager_required_user_acce
 
 for (const endpoint of [
   "GET /health",
+  "GET /setup/status",
   "POST /auth/pin",
   "GET /users/access-policy",
   "POST /users",
@@ -68,9 +81,12 @@ const kiosk = planLocalClientConnection({
   serverUrl: contract.server_url,
   websiteUrl: contract.website_url,
 })
+assert.equal(kiosk.one_website_mode, true)
+assert.equal(kiosk.setup_status_path, "/setup/status")
 assert.deepEqual(kiosk.allowed_write_paths, ["/kiosk/orders"])
 assert.equal(kiosk.direct_wordpress_access, false)
 assert.equal(kiosk.direct_square_payment_capture, false)
+assert.equal(kiosk.credentials_synced_to_client, false)
 
 const employee = planLocalClientConnection({
   mode: "employee",
@@ -82,5 +98,15 @@ assert.ok(employee.allowed_write_paths.includes("/customers"))
 assert.ok(employee.allowed_write_paths.includes("/events/registrations"))
 assert.ok(employee.allowed_write_paths.includes("/events/check-ins"))
 assert.equal(employee.local_cache_source, "local_sync_server")
+
+const missingWebsiteSetup = buildLocalSyncSetupStatus({
+  serverUrl: "http://192.168.1.20:8787",
+})
+assert.equal(missingWebsiteSetup.one_website_mode, true)
+assert.equal(missingWebsiteSetup.setup_required, true)
+assert.equal(missingWebsiteSetup.website_configured, false)
+assert.equal(missingWebsiteSetup.website_url, "")
+assert.equal(missingWebsiteSetup.raw_credentials_returned, false)
+assert.equal(missingWebsiteSetup.direct_mysql_access, false)
 
 console.log("PASS local sync server contract")

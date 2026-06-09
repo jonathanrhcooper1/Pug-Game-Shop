@@ -1,9 +1,26 @@
 import { createServer } from "node:http"
 
 import { createLocalSyncStore } from "./localSyncStore.mjs"
+import { buildLocalSyncSetupStatus } from "./localSyncServerContract.mjs"
 
 export function createLocalSyncHttpServer(options = {}) {
-  const store = options.store ?? createLocalSyncStore(options.storeOptions)
+  const storeOptions = options.storeOptions ?? {}
+  const store = options.store ?? createLocalSyncStore(storeOptions)
+  const setupStatus = options.setupStatus ?? buildLocalSyncSetupStatus({
+    storeId: options.storeId,
+    serverUrl: options.serverUrl,
+    websiteUrl: options.websiteUrl,
+    restBasePath: options.restBasePath,
+    localDatabase: options.localDatabase,
+    wordpressPullConfigured: typeof storeOptions.wordpressInventoryPull === "function",
+    wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
+    wordpressEventRegistrationPushConnected: typeof storeOptions.wordpressEventRegistrationPush === "function",
+    wordpressEventCheckinPushConnected: typeof storeOptions.wordpressEventCheckinPush === "function",
+    wordpressCreditPushConnected: typeof storeOptions.wordpressCreditPush === "function",
+    wordpressCustomerPushConnected: typeof storeOptions.wordpressCustomerUpsertPush === "function",
+    wordpressKioskOrderPushConnected: typeof storeOptions.wordpressKioskOrderPush === "function",
+    scrydexCatalogProxyConfigured: typeof storeOptions.websiteCatalogFallback === "function",
+  })
 
   return createServer(async (request, response) => {
     try {
@@ -20,7 +37,16 @@ export function createLocalSyncHttpServer(options = {}) {
           service: "pug_local_sync_server",
           local_database: "store-sync.sqlite",
           contract_version: 1,
+          topology: "lan_middleman_server",
+          setup_screen_mode: "single_configurable_website",
+          one_website_mode: true,
+          website_configured: setupStatus.website_configured,
+          setup_status_path: "/setup/status",
         })
+      }
+
+      if (request.method === "GET" && url.pathname === "/setup/status") {
+        return sendJson(response, 200, setupStatus)
       }
 
       if (request.method === "POST" && url.pathname === "/auth/pin") {
