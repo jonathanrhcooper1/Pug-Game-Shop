@@ -880,10 +880,10 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   ],
   connectorProfiles: [
     {
-      id: "pug-game-shop-staging",
+      id: "pug-game-shop-production",
       companyName: "Pug Game Shop",
       companyShortName: "Pug",
-      environment: "staging",
+      environment: "production",
       status: "needs_pairing",
       wordpress: {
         scheme: "https",
@@ -908,7 +908,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
         inventoryAuthority: "tcg_store_platform",
         paymentAuthority: "official_woocommerce_square_extension",
         providerWritesDeferred: true,
-        sandboxRequired: true,
+        sandboxRequired: false,
       },
       scrydex: {
         teamLabel: "Configured in WordPress",
@@ -1684,18 +1684,18 @@ export function connectorManifestUnavailableGuidance(detail: string) {
   const normalized = detail.toLowerCase()
 
   if (normalized.includes("http 404") || normalized.includes("not found")) {
-    return "WordPress REST is reachable, but TCG Store connector routes are not registered. Install and activate the staging plugin package, then confirm offline route gates before pairing."
+    return "WordPress REST is reachable, but TCG Store connector routes are not registered. Install and activate the production plugin package, then confirm offline route gates before pairing."
   }
 
   if (normalized.includes("timed out")) {
-    return "The website did not answer the public manifest request in time. Recheck staging hosting availability before pairing this device."
+    return "The website did not answer the public manifest request in time. Recheck hosting availability before pairing this device."
   }
 
   if (normalized.includes("json")) {
     return "The endpoint responded, but not with a connector manifest. Confirm the plugin route is active and not replaced by a theme, cache, or security page."
   }
 
-  return "Validate the local preview, then install or activate the staging plugin package before attempting device pairing."
+  return "Validate the local preview, then install or activate the WordPress plugin package before attempting device pairing."
 }
 
 function connectorRestUrl(
@@ -1738,7 +1738,7 @@ export function createEmptyConnectorProfileDraft(): ConnectorProfileDraft {
     companyShortName: "",
     siteUrl: "",
     localSyncServerUrl: "http://127.0.0.1:8787",
-    environment: "staging",
+    environment: "production",
     scrydexTeamLabel: "Configured in WordPress",
     canonicalInventoryWritesEnabled: false,
   }
@@ -1871,7 +1871,7 @@ export function restoreConnectorProfileStorageSnapshot(
   fallbackProfiles: StoreConnectorProfile[],
 ): ConnectorProfileStorageRestoreResult {
   const fallback = sanitizeConnectorProfiles(fallbackProfiles)
-  const fallbackActiveProfileId = fallback[0]?.id ?? "pug-game-shop-staging"
+  const fallbackActiveProfileId = fallback[0]?.id ?? "pug-game-shop-production"
 
   if (!rawValue) {
     return {
@@ -3129,7 +3129,15 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
     }
 
     const scheme = profile.wordpress.scheme === "http" ? "http" : "https"
-    const environment = cleanConnectorEnvironment(profile.environment)
+    const storedEnvironment = cleanConnectorEnvironment(profile.environment)
+    const isPugProductionHost =
+      profile.wordpress.host.toLowerCase() === "vbf.2a7.myftpupload.com" &&
+      profile.companyName.toLowerCase() === "pug game shop"
+    const environment = isPugProductionHost ? "production" : storedEnvironment
+    const profileId =
+      isPugProductionHost && profile.id === "pug-game-shop-staging"
+        ? "pug-game-shop-production"
+        : profile.id
     const routeConnectedPushReady = true
     const localSyncServerUrl = normalizeLocalSyncServerUrl(
       profile.localSync?.serverUrl ?? "http://127.0.0.1:8787",
@@ -3141,7 +3149,7 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
 
     safeProfiles.push({
       ...profile,
-      id: safeConnectorId(profile.id, profile.companyName, environment, profile.wordpress.host),
+      id: safeConnectorId(profileId, profile.companyName, environment, profile.wordpress.host),
       environment,
       status: profile.status === "ready" || profile.status === "sandbox_only" ? profile.status : "needs_pairing",
       wordpress: {

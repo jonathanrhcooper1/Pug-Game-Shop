@@ -413,7 +413,7 @@ try {
     },
   )
   assert.equal(labelJob.action, "offline_label_print_job")
-  assert.equal(labelJob.jobId, "label-pug-game-shop-staging-inv-1001-20260608123500")
+  assert.equal(labelJob.jobId, "label-pug-game-shop-production-inv-1001-20260608123500")
   assert.equal(labelJob.inventoryPublicId, "inv-1001")
   assert.equal(labelJob.barcode, "PKM-BASE-004-HOLO")
   assert.equal(labelJob.format, "barcode-price-location")
@@ -422,7 +422,7 @@ try {
   assert.ok(labelJob.payloadText.includes("Location Case A3"))
   assert.ok(
     connectorManifestUnavailableGuidance("Manifest endpoint returned HTTP 404.").includes(
-      "Install and activate the staging plugin package",
+      "Install and activate the production plugin package",
     ),
   )
   assert.ok(
@@ -524,7 +524,7 @@ try {
       },
     ],
     {
-      profileId: "pug-game-shop-staging",
+      profileId: "pug-game-shop-production",
       companyName: "Pug Game Shop",
       localSyncServerUrl: "http://127.0.0.1:8787",
       queuedAtUtc: "2026-06-08T12:40:00Z",

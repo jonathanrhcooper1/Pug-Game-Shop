@@ -4258,14 +4258,14 @@ export function App() {
         endpoint,
         method: "POST",
         detail:
-          "Production device pairing is manually gated; use staging until the production deployment checklist is approved.",
+          "Production device pairing is manually gated; use the LAN sync server until production device-token issuance is approved.",
         rawPairingCodeTransmitted: false,
         rawTokenReturned: false,
         credentialsSyncedToApp: false,
       })
       setActivityMessage({
         title: "Production pairing blocked",
-        detail: "No production token request was sent.",
+        detail: "No production token request was sent; LAN sync can still use the configured website connector.",
       })
       return
     }

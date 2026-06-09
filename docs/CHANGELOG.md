@@ -6,6 +6,9 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Added a SQLite-backed LAN local sync server package with 4-digit PIN auth,
+  manager-gated user access, local inventory intake queueing, kiosk holds,
+  customer credit/event workflows, and WordPress catalog proxy lookup.
 - Reference-card lookup prices now present as two-decimal money values in API
   responses and admin intake/search results, while database precision remains
   four decimals.

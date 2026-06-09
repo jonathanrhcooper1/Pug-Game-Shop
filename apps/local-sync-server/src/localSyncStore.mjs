@@ -20,6 +20,13 @@ const CLIENT_DEVICE_MODES = Object.freeze(["employee", "manager", "kiosk"])
 const CLIENT_DEVICE_SETUP_STATUSES = Object.freeze(["setup_required", "configuring", "ready", "error"])
 const CLIENT_DEVICE_NETWORK_STATUSES = Object.freeze(["online", "offline", "degraded"])
 const DEFAULT_HEARTBEAT_TIMEOUT_SECONDS = 90
+const SEED_REFERENCE_CARD_IDS = Object.freeze([
+  "scrydex-pokemon-base-004",
+  "scrydex-pokemon-jungle-060",
+  "scrydex-pokemon-evs-094",
+  "scrydex-pokemon-sv2-203",
+  "scrydex-magic-dom-224",
+])
 
 export const DEFAULT_LOCAL_SYNC_DATABASE_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -50,6 +57,10 @@ export function createLocalSyncStore(options = {}) {
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
+
+  if (options.removeSeedReferenceCards === true) {
+    removeSeedReferenceCards(database)
+  }
 
   const users = loadUsers(database)
   const sessions = new Map()
@@ -300,7 +311,7 @@ export function createLocalSyncStore(options = {}) {
     const fallbackResult = websiteCatalogFallback
       ? await websiteCatalogFallback({ query: needle, game: normalizedGame, limit: 8 })
       : null
-    const fallbackCards = normalizeReferenceCardsFromFallback(fallbackResult, normalizedGame, now)
+    const fallbackCards = normalizeReferenceCardsFromFallback(fallbackResult, normalizedGame, now, needle)
 
     for (const card of fallbackCards) {
       upsertReferenceCard(referenceCards, card)
@@ -1751,6 +1762,14 @@ function seedLocalSyncDatabase(database, now) {
   }
 }
 
+function removeSeedReferenceCards(database) {
+  const statement = database.prepare("DELETE FROM reference_cards WHERE provider_card_id = ?")
+
+  for (const providerCardId of SEED_REFERENCE_CARD_IDS) {
+    statement.run(providerCardId)
+  }
+}
+
 function ensureLocalSyncColumn(database, tableName, columnName, definition) {
   const columns = database.prepare(`PRAGMA table_info(${tableName})`).all()
   const hasColumn = columns.some((column) => column.name === columnName)
@@ -2889,10 +2908,11 @@ function searchReferenceCards(referenceCards, needle, game) {
         ]),
       ].some((value) => String(value).toLowerCase().includes(needle)),
     )
+    .sort((left, right) => referenceSearchScore(right, needle) - referenceSearchScore(left, needle))
     .slice(0, 8)
 }
 
-function normalizeReferenceCardsFromFallback(result, game, now) {
+function normalizeReferenceCardsFromFallback(result, game, now, needle = "") {
   if (!result || typeof result !== "object") {
     return []
   }
@@ -2910,7 +2930,63 @@ function normalizeReferenceCardsFromFallback(result, game, now) {
   return candidateCards
     .map((card) => normalizeReferenceCard(card, game, now, "wordpress_catalog_cache"))
     .filter((card) => card.provider_card_id && card.card_name)
+    .sort((left, right) => referenceSearchScore(right, needle) - referenceSearchScore(left, needle))
     .slice(0, 8)
+}
+
+function referenceSearchScore(card, needle) {
+  const normalizedNeedle = cleanScryDexQuery(needle)
+  const cardName = cleanScryDexQuery(card.card_name)
+  const setName = cleanScryDexQuery(card.set_name)
+  const identifiers = cleanScryDexQuery([
+    card.provider_card_id,
+    card.set_code,
+    card.card_number,
+    card.printed_number,
+    card.suggested_barcode,
+  ].join(" "))
+  const variants = cleanScryDexQuery(
+    (card.variants ?? [])
+      .flatMap((variant) => [
+        variant.provider_variant_id,
+        variant.variant,
+        variant.finish,
+        variant.parallel_name,
+        variant.edition,
+        variant.language,
+      ])
+      .join(" "),
+  )
+
+  if (!normalizedNeedle) {
+    return 0
+  }
+
+  if (cardName === normalizedNeedle) {
+    return 1000
+  }
+
+  if (cardName.startsWith(normalizedNeedle)) {
+    return 900
+  }
+
+  if (cardName.includes(normalizedNeedle)) {
+    return 800
+  }
+
+  if (identifiers.includes(normalizedNeedle)) {
+    return 500
+  }
+
+  if (variants.includes(normalizedNeedle)) {
+    return 350
+  }
+
+  if (setName.includes(normalizedNeedle)) {
+    return 100
+  }
+
+  return 0
 }
 
 function normalizeReferenceCard(card, fallbackGame = "pokemon", now = () => new Date(), catalogSource = "wordpress_catalog_cache") {

@@ -1,6 +1,6 @@
 # Local Sync Server
 
-The local sync server is the in-store middleman for employee apps and kiosk
+The local sync server is the in-store LAN middleman for employee apps and kiosk
 clients.
 
 WordPress/WooCommerce remains the global source of truth. The local sync server
@@ -8,7 +8,36 @@ holds the shared LAN cache, local reservation locks, and offline operation queue
 when the internet is unavailable. Employee and kiosk apps connect to this server
 instead of each keeping an isolated local authority.
 
-Primary responsibilities:
+## Runtime
+
+- Requires Node 22.13+ or the current Node 24 line so `node:sqlite` is
+  available without an extra native npm dependency.
+- `npm start` starts the local HTTP server on `127.0.0.1:8787` by default.
+- Configuration is read from process env plus optional ignored local files:
+  repository `.env.local-sync`, app `.env.local`, then repository `.env.local`.
+- Set `LOCAL_SYNC_SQLITE_PATH` or `PUG_LOCAL_SYNC_DB` to choose the durable
+  SQLite database location. If omitted, the server writes
+  `apps/local-sync-server/store-sync.sqlite`.
+- Set `PUG_WORDPRESS_URL=https://your-site.example` to enable website catalog
+  fallback for missing ScryDex/reference card lookups.
+- Set `PUG_WORDPRESS_USERNAME` and `PUG_WORDPRESS_APP_PASSWORD` to use a
+  WordPress Application Password server-side. Credentials are never returned to
+  clients.
+- WordPress writes are disabled unless `LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true`.
+- The production CLI removes the canned reference-card seed rows unless
+  `LOCAL_SYNC_ALLOW_DEMO_REFERENCE_CARDS=true`, so live lookups prefer the
+  WordPress catalog.
+
+```sh
+npm --prefix apps/local-sync-server run start
+npm --prefix apps/local-sync-server run test
+```
+
+Default URL: `http://127.0.0.1:8787`
+
+Default manager PIN: `1420`
+
+## Responsibilities
 
 - Serve shared cached inventory, customer credit, event, and conflict data.
 - Verify 4-digit staff/manager PIN sessions against cached user access policy.
@@ -18,49 +47,7 @@ Primary responsibilities:
   presence for the LAN.
 - Enforce manager approval for user/access changes and store-credit adds.
 - Queue inventory, customer, credit, event, and kiosk pickup operations.
-- Push local operations to WordPress and pull canonical changes back.
+- Pull canonical inventory changes from WordPress when online.
+- Push local operations to WordPress only when the explicit push guard is on.
 - Keep ScryDex credentials on WordPress/server settings, not in clients.
 - Never capture Square payments; only support Square POS handoff metadata.
-
-Current runtime:
-
-- Requires Node 22.13+ or the current Node 24 line so `node:sqlite` is
-  available without an extra native npm dependency.
-- `npm start` starts the local HTTP server on `127.0.0.1:8787` by default.
-- Set `PUG_LOCAL_SYNC_DB=C:\path\to\store-sync.sqlite` to choose the durable
-  SQLite database location. If omitted, the server writes
-  `apps/local-sync-server/store-sync.sqlite`.
-- Set `PUG_WORDPRESS_URL=https://your-staging-site.example` to enable the
-  website catalog fallback for missing ScryDex/reference card lookups. The
-  server calls `/wp-json/tcg-store/v1/reference/search`; clients still receive
-  only secret-free card data.
-- `POST /auth/pin` verifies cached 4-digit PIN users.
-- `POST /devices/heartbeat` lets each employee, manager, or kiosk app instance
-  report a stable `device_id`, setup status, network status, app version, and
-  capabilities. The response is credential-free and returns the computed
-  online/offline state for that device.
-- `GET /devices/status` returns all known client devices with online/offline
-  counts, setup-ready/setup-required counts, and mode counts for status screens.
-- `GET /users/access-policy`, `POST /users`, and
-  `PATCH /users/{id}/access` are manager-session protected.
-- `GET /inventory/search`, `GET /scrydex/cards/search`,
-  `POST /inventory/intake`, `POST /inventory/reservations`, and
-  `POST /kiosk/orders` provide the first shared LAN inventory/order surface,
-  including local-reference-first ScryDex lookup, `PUG_WORDPRESS_URL` catalog
-  fallback on cache miss, and locally queued card intake rows that
-  remain pending until WordPress accepts them.
-- `GET /customers/search`, `POST /customers`, `POST /credit/adjustments`,
-  and `POST /credit/redemptions` provide the first shared LAN customer-credit
-  surface with manager approval for credit adds and Square POS handoff metadata
-  for credit use.
-- `GET /events`, `POST /events/registrations`, and
-  `POST /events/check-ins` provide the first shared LAN event registration and
-  check-in surface while WordPress remains the final event authority.
-- Staff PIN users, access policy changes, local inventory reservation locks,
-  local inventory intake rows, kiosk pickup orders, local customers, pending
-  credit ledger entries, event snapshots, client heartbeat rows, and operation
-  queue rows persist across server restarts.
-
-The current SQLite schema is a development runtime for the LAN middleman. Live
-WordPress pull/push workers, richer event registration tables, conflict tables,
-and full installer packaging are still upcoming layers.

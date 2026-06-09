@@ -3,6 +3,71 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - LAN Local Sync Server Foundation
+
+### What Changed
+
+- Added and configured `apps/local-sync-server`, a Node LAN middleman server
+  for the local employee app and kiosk clients.
+- Implemented setup/status, 4-digit PIN login, manager-gated user management,
+  local inventory search/intake, ScryDex lookup through the WordPress catalog,
+  kiosk orders, customers, credit adjustments/redemptions, events, pull/push
+- summaries, and SQLite-backed local persistence.
+- Added production CLI env loading from ignored local env files, generic
+  WordPress Application Password aliases, a guarded WordPress push switch, and
+  CLI-only cleanup of canned ScryDex seed rows so live lookup uses the
+  WordPress catalog.
+- Added local reference relevance sorting so card-name matches appear ahead of
+  set-name-only matches in employee intake search.
+- Verified the rendered offline app can sign in with PIN `1420`, search the
+  WordPress-backed card catalog, load card images/prices, select a catalog card,
+  and queue a local inventory intake item through the LAN server.
+- Preserved the full local sync server contract/runtime/persistence/WordPress
+  adapter test suite.
+- Added root `local-sync:start` and `local-sync:test` scripts.
+
+### Why
+
+The desktop app already expected a single local LAN server so multiple in-store
+employee/kiosk instances can stay synchronized while the website remains the
+source of truth. The missing server meant many app buttons could only preview
+or report unavailable local sync.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for WordPress. The LAN server uses the existing local SQLite schema at
+  `apps/local-sync-server/store-sync.sqlite` or `LOCAL_SYNC_SQLITE_PATH`.
+
+### Tests Added
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `npm --prefix apps/offline-app run test:package-contract`
+- Browser smoke against `http://127.0.0.1:1420` and
+  `http://127.0.0.1:8787`.
+
+### Rollback Notes
+
+- Stop the local sync server and keep the offline app in browser-only preview
+  mode. Remove `LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true` if it was enabled. No
+  WordPress database rollback is required for these local server/app changes.
+
 ## 2026-06-09 - Two-Decimal Reference Lookup Pricing
 
 ### What Changed
