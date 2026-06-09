@@ -47,6 +47,8 @@ const inventoryDefaultKioskVisibility =
   firstEnv("PUG_WORDPRESS_INVENTORY_KIOSK_VISIBILITY", "LOCAL_SYNC_INVENTORY_KIOSK_VISIBILITY") ?? "visible"
 const inventoryDefaultPosVisibility =
   firstEnv("PUG_WORDPRESS_INVENTORY_POS_VISIBILITY", "LOCAL_SYNC_INVENTORY_POS_VISIBILITY") ?? "visible"
+const squareLocationId = firstEnv("PUG_SQUARE_LOCATION_ID", "LOCAL_SYNC_SQUARE_LOCATION_ID")
+const squareEnvironment = firstEnv("PUG_SQUARE_ENVIRONMENT", "LOCAL_SYNC_SQUARE_ENVIRONMENT") ?? "sandbox"
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const eventsAuthHeader = firstEnv("PUG_WORDPRESS_EVENTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
@@ -153,6 +155,8 @@ const server = await listenLocalSyncHttpServer({
     wordpressCreditPush,
     wordpressCustomerUpsertPush,
     wordpressKioskOrderPush,
+    squareLocationId,
+    squareEnvironment,
   },
 })
 const address = server.address()

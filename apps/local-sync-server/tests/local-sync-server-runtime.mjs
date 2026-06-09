@@ -640,6 +640,37 @@ try {
   assert.equal(pulledCharizardInventory.items[0].square_catalog_variation_id, "SQUARE-VARIATION-42")
   assert.equal(pulledCharizardInventory.items[0].external_sync_state, "square_synced")
 
+  const staffSquarePlan = await fetchJson(`${baseUrl}/pos/square/inventory-pull-plan`, {
+    method: "POST",
+    token: cashierAuth.session.token,
+    body: {
+      square_location_id: "L-SANDBOX-1",
+    },
+    expectedStatus: 409,
+  })
+  assert.equal(staffSquarePlan.status, "blocked")
+  assert.equal(staffSquarePlan.code, "manager_required")
+
+  const squarePlan = await fetchJson(`${baseUrl}/pos/square/inventory-pull-plan`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      square_location_id: "L-SANDBOX-1",
+      limit: 25,
+    },
+  })
+  assert.equal(squarePlan.status, "ok")
+  assert.equal(squarePlan.action, "square_pos_inventory_pull_plan")
+  assert.equal(squarePlan.planner_status, "conflict")
+  assert.equal(squarePlan.requires_manager_review, true)
+  assert.equal(squarePlan.mapped_count, 1)
+  assert.ok(squarePlan.unresolved_count > 0)
+  assert.equal(squarePlan.request_plan.path, "/v2/inventory/counts/batch-retrieve")
+  assert.deepEqual(squarePlan.request_plan.body.catalog_object_ids, ["SQUARE-VARIATION-42"])
+  assert.deepEqual(squarePlan.request_plan.body.location_ids, ["L-SANDBOX-1"])
+  assert.equal(squarePlan.plugin_square_payment_capture_supported, false)
+  assert.equal(squarePlan.credentials_synced_to_client, false)
+
   const preservedPendingIntake = await fetchJson(`${baseUrl}/inventory/search?q=PUG-PULL-GUARD`)
   assert.equal(preservedPendingIntake.items[0].status, "pending_intake")
   assert.equal(preservedPendingIntake.items[0].source, "queued")

@@ -31,6 +31,7 @@ assert.equal(contract.safety.wordpress_acceptance_required_for_final_inventory_s
 assert.equal(contract.safety.pin_credentials_stored_as_hashes, true)
 assert.equal(contract.safety.manager_required_for_user_access_changes, true)
 assert.equal(contract.safety.square_payment_capture_supported, false)
+assert.equal(contract.safety.square_pos_inventory_pull_plan_manager_only, true)
 assert.equal(contract.safety.live_credentials_blocked_in_local_server, true)
 assert.equal(contract.safety.one_website_configuration_required, true)
 assert.equal(contract.safety.setup_status_returns_credentials, false)
@@ -54,6 +55,7 @@ assert.ok(contract.responsibilities.includes("bind_clients_to_configured_lan_ser
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_lookup_from_local_cache_before_wordpress_proxy"))
+assert.ok(contract.responsibilities.includes("serve_square_pos_barcode_inventory_plan_without_square_payment_capture"))
 assert.ok(contract.responsibilities.includes("serve_cached_staff_pin_and_access_policy"))
 assert.ok(contract.responsibilities.includes("store_pin_credentials_as_hashes_not_cleartext"))
 assert.ok(contract.responsibilities.includes("enforce_manager_required_user_access_changes"))
@@ -69,6 +71,7 @@ for (const endpoint of [
   "PATCH /users/:user_id/access",
   "GET /inventory/search",
   "GET /scrydex/cards/search",
+  "POST /pos/square/inventory-pull-plan",
   "POST /kiosk/orders",
   "GET /customers/search",
   "POST /customers",

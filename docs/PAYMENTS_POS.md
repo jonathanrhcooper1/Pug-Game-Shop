@@ -141,6 +141,13 @@ mapping status on the selected-card detail panel. These fields are mapping and
 reconciliation inputs only; they do not enable payment capture in the custom
 plugin.
 
+The local sync server exposes `POST /pos/square/inventory-pull-plan` for
+manager diagnostics. It runs the same barcode/SKU planner against cached local
+inventory, reports mapped and unresolved rows, and returns the deferred
+`/v2/inventory/counts/batch-retrieve` request shape without contacting Square.
+The offline app Settings screen uses this route for the **Plan POS Pull**
+control.
+
 ## Square Inventory Sync Request Planning
 
 The WordPress plugin mirrors the API-client adapter with a PHP request planner.

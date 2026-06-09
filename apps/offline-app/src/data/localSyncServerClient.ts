@@ -471,6 +471,25 @@ export type LocalSyncPushResult = LocalSyncResult<{
   local_queue_depth: number
 }>
 
+export type LocalSyncSquarePosInventoryPullPlanResult = LocalSyncResult<{
+  action: "square_pos_inventory_pull_plan"
+  planner_status: "ready" | "conflict" | "rejected" | "skipped"
+  code: string
+  ready: boolean
+  requires_manager_review: boolean
+  mapped_count: number
+  unresolved_count: number
+  request_plan: Record<string, unknown> | null
+  barcode_mappings: Record<string, unknown>[]
+  unresolved_mappings: Record<string, unknown>[]
+  payment_delegation: Record<string, unknown> | null
+  plugin_square_payment_capture_supported: false
+  square_payment_capture_supported: false
+  source_of_truth: "tcg_store_platform"
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
 export type LocalSyncFetch = (
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -584,6 +603,10 @@ export type LocalSyncServerClient = {
   ) => Promise<LocalSyncEventCheckinResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
   pullWebsiteInventory: (sessionToken: string) => Promise<LocalSyncPullResult>
+  planSquarePosInventoryPull: (
+    sessionToken: string,
+    input?: { squareLocationId?: string; updatedAfter?: string; limit?: number },
+  ) => Promise<LocalSyncSquarePosInventoryPullPlanResult>
   pushQueuedOperations: (sessionToken: string) => Promise<LocalSyncPushResult>
 }
 
@@ -762,6 +785,16 @@ export function createLocalSyncServerClient(
         method: "POST",
         sessionToken,
       }) as Promise<LocalSyncPullResult>,
+    planSquarePosInventoryPull: (sessionToken, input = {}) =>
+      requestLocalSync(fetcher, baseUrl, "/pos/square/inventory-pull-plan", {
+        method: "POST",
+        sessionToken,
+        body: {
+          square_location_id: input.squareLocationId ?? "",
+          updated_after: input.updatedAfter ?? "",
+          limit: input.limit ?? 1000,
+        },
+      }) as Promise<LocalSyncSquarePosInventoryPullPlanResult>,
     pushQueuedOperations: (sessionToken) =>
       requestLocalSync(fetcher, baseUrl, "/sync/push", {
         method: "POST",

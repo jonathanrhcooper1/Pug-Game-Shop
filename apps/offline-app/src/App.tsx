@@ -122,6 +122,7 @@ import {
   type LocalSyncPullResult,
   type LocalSyncPushResult,
   type LocalSyncSetupStatusResult,
+  type LocalSyncSquarePosInventoryPullPlanResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
@@ -1065,6 +1066,8 @@ export function App() {
   const [localSyncSessionToken, setLocalSyncSessionToken] = useState("")
   const [localSyncSessionExpiresAtUtc, setLocalSyncSessionExpiresAtUtc] = useState("")
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
+  const [squarePosPlan, setSquarePosPlan] =
+    useState<LocalSyncSquarePosInventoryPullPlanResult | null>(null)
   const [localDeviceHeartbeat, setLocalDeviceHeartbeat] =
     useState<LocalSyncDeviceHeartbeatResult | null>(null)
   const [localDeviceStatus, setLocalDeviceStatus] =
@@ -2080,6 +2083,37 @@ export function App() {
     setLocalSyncStatus(nextStatus)
 
     return nextStatus
+  }
+
+  async function handlePlanSquarePosInventoryPull() {
+    if (!localSyncSessionToken) {
+      setActiveSection("Settings")
+      setActivityMessage({
+        title: "Manager session required",
+        detail: "Unlock with a manager PIN before running the Square POS inventory-readiness plan.",
+      })
+      return
+    }
+
+    const plan = await localSyncClient.planSquarePosInventoryPull(localSyncSessionToken)
+
+    setSquarePosPlan(plan)
+    setActiveSection("Settings")
+
+    if (plan.status !== "ok") {
+      setActivityMessage({
+        title: "Square POS plan blocked",
+        detail: plan.message,
+      })
+      return
+    }
+
+    setActivityMessage({
+      title: plan.ready ? "Square POS plan ready" : "Square POS mapping review needed",
+      detail:
+        `${plan.mapped_count} mapped barcode/SKU row(s), ${plan.unresolved_count} unmapped row(s). ` +
+        `Payment capture supported by this app: ${plan.square_payment_capture_supported ? "yes" : "no"}.`,
+    })
   }
 
   async function refreshLocalDeviceStatus() {
@@ -6357,8 +6391,25 @@ export function App() {
                 </div>
                 <div>
                   <span className="micro-label">Square</span>
-                  <strong>Inventory pulls from plugin</strong>
-                  <small>Payments stay in WooCommerce Square</small>
+                  <strong>
+                    {squarePosPlan?.status === "ok"
+                      ? `${squarePosPlan.mapped_count} mapped / ${squarePosPlan.unresolved_count} review`
+                      : "Inventory pulls from plugin"}
+                  </strong>
+                  <small>
+                    {squarePosPlan?.status === "ok"
+                      ? `${squarePosPlan.planner_status}; payment capture supported: no`
+                      : "Payments stay in WooCommerce Square"}
+                  </small>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={sessionRole !== "manager"}
+                    onClick={() => void handlePlanSquarePosInventoryPull()}
+                  >
+                    <Icon name="sync" />
+                    <span>Plan POS Pull</span>
+                  </button>
                 </div>
                 <div>
                   <span className="micro-label">ScryDex</span>

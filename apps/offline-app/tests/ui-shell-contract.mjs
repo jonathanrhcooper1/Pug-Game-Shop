@@ -554,6 +554,9 @@ for (const interactionMarker of [
   "staff_quantity_adjustment",
   "POS mapping",
   "Pending Square mapping",
+  "Plan POS Pull",
+  "handlePlanSquarePosInventoryPull",
+  "payment capture supported: no",
 ]) {
   assert.ok(appSource.includes(interactionMarker), `Missing interaction marker: ${interactionMarker}`)
 }

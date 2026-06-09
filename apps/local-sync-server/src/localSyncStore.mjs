@@ -4,6 +4,8 @@ import { dirname, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
 
+import { planSquareBarcodeSkuInventoryPull } from "../../../packages/api-client/src/squareInventoryAdapter.mjs"
+
 export const ACCESS_SECTIONS = Object.freeze([
   "Inventory",
   "Kiosk",
@@ -54,6 +56,8 @@ export function createLocalSyncStore(options = {}) {
     typeof options.wordpressCustomerUpsertPush === "function" ? options.wordpressCustomerUpsertPush : null
   const wordpressKioskOrderPush =
     typeof options.wordpressKioskOrderPush === "function" ? options.wordpressKioskOrderPush : null
+  const squareLocationId = cleanExternalId(options.squareLocationId) || "LOCAL-SQUARE-POS"
+  const squareEnvironment = cleanSquareEnvironment(options.squareEnvironment)
   const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
   migrateLocalSyncDatabase(database)
   seedLocalSyncDatabase(database, now)
@@ -276,6 +280,51 @@ export function createLocalSyncStore(options = {}) {
       status: "ok",
       items: items.map(publicInventoryItem),
       local_cache_source: "local_sync_server",
+    }
+  }
+
+  function planSquarePosInventoryPull(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const plan = planSquareBarcodeSkuInventoryPull(
+      inventoryItems.map(squareInventoryRowForPlanner),
+      {
+        environment: cleanSquareEnvironment(input.environment) || squareEnvironment,
+        credentialEnvironment: "sandbox",
+        squareLocationId: cleanExternalId(input.square_location_id) || squareLocationId,
+        updatedAfter: cleanIsoTimestamp(input.updated_after),
+        limit: boundedInt(input.limit, 1, 1000, 1000),
+      },
+    )
+    const barcodeMappings = Array.isArray(plan.details?.barcodeMappings)
+      ? plan.details.barcodeMappings
+      : []
+    const unresolvedMappings = Array.isArray(plan.details?.unresolvedMappings)
+      ? plan.details.unresolvedMappings
+      : []
+
+    return {
+      status: "ok",
+      action: "square_pos_inventory_pull_plan",
+      planner_status: plan.status,
+      code: plan.code,
+      ready: plan.status === "ready",
+      requires_manager_review: plan.status === "conflict",
+      mapped_count: barcodeMappings.length,
+      unresolved_count: unresolvedMappings.length,
+      request_plan: plan.details?.requestPlan ?? null,
+      barcode_mappings: barcodeMappings,
+      unresolved_mappings: unresolvedMappings,
+      payment_delegation: plan.details?.paymentDelegation ?? null,
+      plugin_square_payment_capture_supported: false,
+      square_payment_capture_supported: false,
+      source_of_truth: "tcg_store_platform",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
     }
   }
 
@@ -1562,6 +1611,7 @@ export function createLocalSyncStore(options = {}) {
     listEvents,
     createSession,
     listAccessPolicy,
+    planSquarePosInventoryPull,
     recordDeviceHeartbeat,
     reserveInventory,
     pullWebsiteInventory,
@@ -2647,6 +2697,19 @@ function localInventoryItemFromWordPress(row) {
   }
 }
 
+function squareInventoryRowForPlanner(item) {
+  return {
+    public_id: cleanPublicId(item.public_id),
+    barcode: cleanBarcode(item.barcode),
+    sku: cleanBarcode(item.barcode),
+    square_catalog_item_id: cleanExternalId(item.square_catalog_item_id),
+    square_catalog_variation_id: cleanExternalId(item.square_catalog_variation_id),
+    status: localInventoryStatus(item.status) ?? "conflict",
+    pos_visibility: cleanVisibility(item.pos_visibility, "visible"),
+    row_version: boundedInt(item.row_version, 1, 999999999, 1),
+  }
+}
+
 function publicCustomer(customer) {
   return {
     customer_public_id: customer.customer_public_id,
@@ -2934,6 +2997,12 @@ function cleanExternalSyncState(value) {
   const status = String(value ?? "").trim().toLowerCase()
 
   return ["pending", "synced", "square_synced", "failed", "conflict"].includes(status) ? status : "pending"
+}
+
+function cleanSquareEnvironment(value) {
+  const environment = String(value ?? "").trim().toLowerCase()
+
+  return ["sandbox", "test", "local", "staging"].includes(environment) ? environment : "sandbox"
 }
 
 function cleanPublicId(value) {

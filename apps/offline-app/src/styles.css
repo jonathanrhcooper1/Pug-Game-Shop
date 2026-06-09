@@ -2211,6 +2211,12 @@ h2 {
   height: 17px;
 }
 
+.compact-command {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .inventory-search-status {
   grid-column: 2 / -1;
   display: grid;

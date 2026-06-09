@@ -3,6 +3,72 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Manager Square POS Inventory Pull Plan
+
+### What Changed
+
+- Added a manager-only LAN endpoint,
+  `POST /pos/square/inventory-pull-plan`, that runs the Square barcode/SKU
+  inventory-readiness planner against cached local inventory.
+- Added optional local sync env keys for sandbox/test Square planning:
+  `PUG_SQUARE_ENVIRONMENT` and `PUG_SQUARE_LOCATION_ID`.
+- Added a local app client method and a Settings screen **Plan POS Pull**
+  control that displays mapped versus review-needed rows.
+- Kept Square network calls, custom plugin payment capture, and raw credential
+  exposure disabled.
+
+### Why
+
+The store needs a concrete connector diagnostic showing whether website-backed
+inventory rows have enough barcode/SKU and Square catalog mapping data for
+Square POS inventory reads and reconciliation.
+
+### Files Affected
+
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the local sync server contract and runtime tests for the new manager
+  endpoint.
+- Extended the offline app local-sync client and UI shell contracts.
+
+### Verification
+
+- `npm.cmd --prefix apps\local-sync-server run test`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- Browser smoke at `http://127.0.0.1:1420/` verified manager unlock, the
+  **Plan POS Pull** control, mapped/review count display, no console warnings,
+  and no horizontal overflow on desktop or a 390px mobile viewport.
+
+### Rollback Notes
+
+- Revert the local sync server endpoint/contract, offline app client/UI, and
+  related tests/docs.
+- Existing cached Square mapping fields remain safe; the route only reads them.
+- No Square provider writes, payment capture, customer credit, or WordPress
+  inventory mutations occur through this diagnostic.
+
 ## 2026-06-09 - Square POS Mapping Persistence and Local Cache
 
 ### What Changed

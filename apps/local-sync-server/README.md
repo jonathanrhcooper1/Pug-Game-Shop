@@ -32,6 +32,9 @@ instead of each keeping an isolated local authority.
   `PUG_WORDPRESS_INVENTORY_POS_VISIBILITY` to choose default visibility for
   accepted intake items. Staff can still override visibility per item from the
   local app.
+- Set `PUG_SQUARE_ENVIRONMENT=sandbox` and `PUG_SQUARE_LOCATION_ID` to shape
+  the manager-only Square POS barcode/SKU inventory-readiness plan. This
+  diagnostic never calls Square and never captures payments.
 - The production CLI removes the canned reference-card seed rows unless
   `LOCAL_SYNC_ALLOW_DEMO_REFERENCE_CARDS=true`, so live lookups prefer the
   WordPress catalog.
@@ -58,4 +61,6 @@ Default manager PIN: `1420`
 - Pull canonical inventory changes from WordPress when online.
 - Push local operations to WordPress only when the explicit push guard is on.
 - Keep ScryDex credentials on WordPress/server settings, not in clients.
+- Serve a manager-only Square POS inventory-readiness plan from cached
+  barcode/SKU mappings without making Square network requests.
 - Never capture Square payments; only support Square POS handoff metadata.
