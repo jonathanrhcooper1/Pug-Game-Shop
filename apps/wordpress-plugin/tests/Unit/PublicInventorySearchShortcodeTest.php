@@ -14,6 +14,7 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 	public function test_shortcode_contract_registers_public_inventory_search(): void {
 		$this->assert_same( 'tcg_inventory_search', InventorySearchShortcode::SHORTCODE );
 		$this->assert_same( 'tcg-store-public-inventory', InventorySearchShortcode::STYLE_HANDLE );
+		$this->assert_same( 'tcg-store-public-storefront-links', InventorySearchShortcode::SCRIPT_HANDLE );
 
 		$contracts = InventorySearchShortcode::hook_contracts();
 		$map       = array();
@@ -26,7 +27,9 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
 		$this->assert_same( 'mark_inventory_pages_uncacheable', $map['action wp'] );
 		$this->assert_same( 'mark_inventory_pages_uncacheable', $map['action send_headers'] );
+		$this->assert_same( 'redirect_legacy_shop_page', $map['action template_redirect'] );
 		$this->assert_same( 'filter_inventory_no_cache_headers', $map['filter wp_headers'] );
+		$this->assert_same( 'return_to_singles_shop_url', $map['filter woocommerce_return_to_shop_redirect'] );
 	}
 
 	public function test_inventory_query_parameters_mark_page_as_inventory_context(): void {
@@ -98,6 +101,17 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_contains( '.tcg-public-inventory {', $source );
 		$this->assert_contains( 'BrandingSettings::css_variable_string( Settings::all() )', $source );
 		$this->assert_contains( 'dark-storefront', $source );
+		$this->assert_contains( 'assets/js/public-storefront-links.js', $source );
+	}
+
+	public function test_public_storefront_links_script_rewrites_theme_footer_shop_links(): void {
+		$script = (string) file_get_contents( dirname( __DIR__, 2 ) . '/assets/js/public-storefront-links.js' );
+
+		$this->assert_contains( '/shop-singles/', $script );
+		$this->assert_contains( '/shop-sealed-products/', $script );
+		$this->assert_contains( '/shop-graded-cards/', $script );
+		$this->assert_contains( '/shop-accessories/', $script );
+		$this->assert_contains( 'rewriteFooterShopLinks', $script );
 	}
 
 	public function test_public_inventory_css_matches_dark_storefront_theme(): void {
@@ -105,6 +119,8 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 
 		$this->assert_contains( 'radial-gradient(circle at 85% 20%', $css );
 		$this->assert_contains( '.tcg-public-inventory__empty-actions', $css );
+		$this->assert_contains( '.tcg-storefront-shelf__hero', $css );
+		$this->assert_contains( 'body.page .content-card:has(.tcg-public-inventory)', $css );
 		$this->assert_contains( '.tcg-public-inventory__empty-actions a:visited', $css );
 		$this->assert_contains( 'color: #05080b !important', $css );
 		$this->assert_contains( 'color: #f8fbff', $css );

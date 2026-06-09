@@ -17,6 +17,7 @@ use TCGStorePlatform\Version;
 final class InventorySearchShortcode {
 	public const SHORTCODE    = 'tcg_inventory_search';
 	public const STYLE_HANDLE = 'tcg-store-public-inventory';
+	public const SCRIPT_HANDLE = 'tcg-store-public-storefront-links';
 
 	private InventorySearchPresenter $presenter;
 
@@ -29,7 +30,9 @@ final class InventorySearchShortcode {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp', array( $this, 'mark_inventory_pages_uncacheable' ) );
 		add_action( 'send_headers', array( $this, 'mark_inventory_pages_uncacheable' ), PHP_INT_MAX );
+		add_action( 'template_redirect', array( $this, 'redirect_legacy_shop_page' ), 1 );
 		add_filter( 'wp_headers', array( $this, 'filter_inventory_no_cache_headers' ), PHP_INT_MAX );
+		add_filter( 'woocommerce_return_to_shop_redirect', array( $this, 'return_to_singles_shop_url' ) );
 	}
 
 	/**
@@ -58,11 +61,29 @@ final class InventorySearchShortcode {
 				'callback' => 'mark_inventory_pages_uncacheable',
 			),
 			array(
+				'type'     => 'action',
+				'hook'     => 'template_redirect',
+				'callback' => 'redirect_legacy_shop_page',
+			),
+			array(
 				'type'     => 'filter',
 				'hook'     => 'wp_headers',
 				'callback' => 'filter_inventory_no_cache_headers',
 			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'woocommerce_return_to_shop_redirect',
+				'callback' => 'return_to_singles_shop_url',
+			),
 		);
+	}
+
+	public function return_to_singles_shop_url( string $url = '' ): string {
+		if ( ! function_exists( 'home_url' ) ) {
+			return $url;
+		}
+
+		return home_url( '/shop-singles/' );
 	}
 
 	/**
@@ -94,6 +115,39 @@ final class InventorySearchShortcode {
 		}
 
 		$this->send_inventory_no_cache_headers();
+	}
+
+	public function redirect_legacy_shop_page(): void {
+		if ( function_exists( 'is_admin' ) && is_admin() ) {
+			return;
+		}
+
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return;
+		}
+
+		$should_redirect = false;
+
+		if ( function_exists( 'is_shop' ) && is_shop() ) {
+			$should_redirect = true;
+		}
+
+		if ( function_exists( 'is_page' ) && is_page( 'shop' ) ) {
+			$should_redirect = true;
+		}
+
+		if ( ! $should_redirect ) {
+			$path = trim( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$path = parse_url( $path, PHP_URL_PATH );
+			$should_redirect = '/shop' === rtrim( (string) $path, '/' );
+		}
+
+		if ( ! $should_redirect || ! function_exists( 'wp_safe_redirect' ) || ! function_exists( 'home_url' ) ) {
+			return;
+		}
+
+		wp_safe_redirect( home_url( '/shop-singles/' ), 301 );
+		exit;
 	}
 
 	/**
@@ -184,6 +238,16 @@ final class InventorySearchShortcode {
 			wp_add_inline_style(
 				self::STYLE_HANDLE,
 				'.tcg-public-inventory {' . BrandingSettings::css_variable_string( Settings::all() ) . '}'
+			);
+		}
+
+		if ( function_exists( 'wp_enqueue_script' ) ) {
+			wp_enqueue_script(
+				self::SCRIPT_HANDLE,
+				$this->asset_url( 'assets/js/public-storefront-links.js' ),
+				array(),
+				Version::PLUGIN . '-storefront-links',
+				true
 			);
 		}
 	}

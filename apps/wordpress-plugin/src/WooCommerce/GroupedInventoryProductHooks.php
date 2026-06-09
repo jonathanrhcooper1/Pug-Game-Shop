@@ -19,6 +19,7 @@ final class GroupedInventoryProductHooks {
 	public function register(): void {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'woocommerce_product_get_image', array( $this, 'product_image' ), 10, 5 );
+		add_filter( 'woocommerce_single_product_image_thumbnail_html', array( $this, 'single_product_image_html' ), 10, 2 );
 		add_action( 'woocommerce_before_add_to_cart_button', array( $this, 'render_condition_selector' ), 15 );
 		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'validate_add_to_cart' ), 10, 5 );
 		add_filter( 'woocommerce_add_cart_item_data', array( $this, 'reserve_add_to_cart_inventory' ), 10, 4 );
@@ -38,6 +39,7 @@ final class GroupedInventoryProductHooks {
 		return array(
 			array( 'type' => 'action', 'hook' => 'wp_enqueue_scripts', 'callback' => 'enqueue_assets' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_product_get_image', 'callback' => 'product_image' ),
+			array( 'type' => 'filter', 'hook' => 'woocommerce_single_product_image_thumbnail_html', 'callback' => 'single_product_image_html' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_before_add_to_cart_button', 'callback' => 'render_condition_selector' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_add_to_cart_validation', 'callback' => 'validate_add_to_cart' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_add_cart_item_data', 'callback' => 'reserve_add_to_cart_inventory' ),
@@ -74,6 +76,28 @@ final class GroupedInventoryProductHooks {
 		}
 
 		return '<img src="' . $this->esc_url( $image_url ) . '" alt="" class="tcg-woocommerce-card-image wp-post-image" loading="lazy" />';
+	}
+
+	public function single_product_image_html( mixed $html, mixed $post_thumbnail_id ): string {
+		unset( $post_thumbnail_id );
+
+		$product = $this->current_product();
+		if ( null === $product || ! $this->is_grouped_inventory_product( $product ) ) {
+			return (string) $html;
+		}
+
+		$image_url = $this->url( $product->get_meta( '_tcg_front_image_url', true ) );
+		if ( '' === $image_url ) {
+			return (string) $html;
+		}
+
+		$alt = $this->esc_attr( $product->get_name() );
+		$url = $this->esc_url( $image_url );
+
+		return '<div data-thumb="' . $url . '" data-thumb-alt="' . $alt . '" class="woocommerce-product-gallery__image tcg-woocommerce-card-gallery-image">'
+			. '<a href="' . $url . '">'
+			. '<img src="' . $url . '" alt="' . $alt . '" class="tcg-woocommerce-card-image wp-post-image" loading="eager" decoding="async" data-large_image="' . $url . '" />'
+			. '</a></div>';
 	}
 
 	public function render_condition_selector(): void {
@@ -560,5 +584,9 @@ final class GroupedInventoryProductHooks {
 
 	private function esc_url( string $url ): string {
 		return function_exists( 'esc_url' ) ? esc_url( $url ) : htmlspecialchars( $url, ENT_QUOTES, 'UTF-8' );
+	}
+
+	private function esc_attr( string $text ): string {
+		return function_exists( 'esc_attr' ) ? esc_attr( $text ) : htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
 	}
 }

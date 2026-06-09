@@ -31,10 +31,12 @@ const menu = {
   items: [
     { type: "home", label: "Home" },
     { type: "page", slug: "shop-singles", label: "Singles" },
-    { type: "page", slug: "shop-sealed-products", label: "Sealed Products" },
-    { type: "page", slug: "shop-graded-cards", label: "Graded Cards" },
+    { type: "page", slug: "shop-sealed-products", label: "Sealed" },
+    { type: "page", slug: "shop-graded-cards", label: "Graded" },
     { type: "page", slug: "shop-accessories", label: "Accessories" },
     { type: "page", slug: "events", label: "Events" },
+    { type: "custom", url: "/buying/", label: "Buying" },
+    { type: "custom", url: "/contact/", label: "Contact" },
   ],
   excludedPageSlugs: ["shop"],
 }
@@ -202,6 +204,13 @@ foreach ($menu_items_payload as $item_payload) {
 \tif ('home' === $type) {
 \t\t$item_args['menu-item-type'] = 'custom';
 \t\t$item_args['menu-item-url'] = home_url('/');
+\t} elseif ('custom' === $type) {
+\t\t$url = trim((string) ($item_payload['url'] ?? ''));
+\t\tif ('' === $url || 0 !== strpos($url, '/')) {
+\t\t\tcontinue;
+\t\t}
+\t\t$item_args['menu-item-type'] = 'custom';
+\t\t$item_args['menu-item-url'] = home_url($url);
 \t} elseif ('page' === $type) {
 \t\t$slug = sanitize_title((string) ($item_payload['slug'] ?? ''));
 \t\t$page = get_page_by_path($slug, OBJECT, 'page');

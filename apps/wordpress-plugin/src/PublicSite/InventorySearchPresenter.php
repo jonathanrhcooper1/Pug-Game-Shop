@@ -70,7 +70,7 @@ final class InventorySearchPresenter {
 			$html .= '<h3>' . $this->esc_html( 'No singles are live online yet.' ) . '</h3>';
 			$html .= '<p>' . $this->esc_html( 'Cards will appear here after inventory is added with online visibility set to visible and status set to available.' ) . '</p>';
 			$html .= '<div class="tcg-public-inventory__empty-actions">';
-			$html .= '<a href="/shop/">' . $this->esc_html( 'Browse all products' ) . '</a>';
+			$html .= '<a href="/shop-singles/">' . $this->esc_html( 'Browse singles' ) . '</a>';
 			$html .= '<a href="/contact/">' . $this->esc_html( 'Ask about a card' ) . '</a>';
 			$html .= '</div>';
 			$html .= '</section>';
@@ -143,7 +143,7 @@ final class InventorySearchPresenter {
 		$html  = '<form class="tcg-public-inventory__search" method="get">';
 		$html .= '<label><span>' . $this->esc_html( 'Search' ) . '</span><input type="search" name="tcg_inventory_q" value="' . $this->esc_attr( $query ) . '" placeholder="' . $this->esc_attr( 'Card name, set, or number' ) . '" /></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Game' ) . '</span><select name="tcg_inventory_game">';
-		foreach ( array( '' => 'All games', 'pokemon' => 'Pokemon', 'magic' => 'Magic', 'lorcana' => 'Lorcana', 'one-piece' => 'One Piece' ) as $value => $label ) {
+		foreach ( array( '' => 'All games', 'pokemon' => 'Pokemon', 'magicthegathering' => 'Magic: The Gathering', 'lorcana' => 'Lorcana', 'onepiece' => 'One Piece' ) as $value => $label ) {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $game === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
 		}
 		$html .= '</select></label>';
@@ -215,7 +215,7 @@ final class InventorySearchPresenter {
 
 		$html .= '</div>';
 		$html .= '<div class="tcg-public-inventory__card-body">';
-		$html .= '<p class="tcg-public-inventory__game">' . $this->esc_html( (string) ( $group['game'] ?? '' ) ) . '</p>';
+		$html .= '<p class="tcg-public-inventory__game">' . $this->esc_html( $this->game_label( (string) ( $group['game'] ?? '' ) ) ) . '</p>';
 		$html .= '<h3>' . $this->esc_html( (string) ( $group['name'] ?? '' ) ) . '</h3>';
 		$html .= '<p>' . $this->esc_html( implode( ' / ', $details ) ) . '</p>';
 		$html .= $this->render_attribute_chips( $group );
@@ -225,7 +225,7 @@ final class InventorySearchPresenter {
 		$html .= '</div>';
 
 		if ( '' !== (string) ( $group['product_url'] ?? '' ) ) {
-			$html .= '<a class="tcg-public-inventory__button" href="' . $this->esc_url( (string) $group['product_url'] ) . '">' . $this->esc_html( 'View card' ) . '</a>';
+			$html .= '<a class="tcg-public-inventory__button" href="' . $this->esc_url( (string) $group['product_url'] ) . '">' . $this->esc_html( 'Choose condition' ) . '</a>';
 		}
 
 		$html .= '</div></article>';
@@ -332,7 +332,20 @@ final class InventorySearchPresenter {
 	}
 
 	private function display_money( mixed $value, mixed $currency ): string {
-		return $this->money( $value ) . ' ' . strtoupper( $this->clean_string( $currency ) ?: 'USD' );
+		$currency = strtoupper( $this->clean_string( $currency ) ?: 'USD' );
+		$amount   = $this->money( $value );
+
+		return 'USD' === $currency ? '$' . $amount : $amount . ' ' . $currency;
+	}
+
+	private function game_label( string $game ): string {
+		$game = strtolower( trim( $game ) );
+
+		return match ( $game ) {
+			'magicthegathering', 'magic', 'mtg' => 'Magic: The Gathering',
+			'one-piece', 'onepiece' => 'One Piece',
+			default => '' === $game ? 'Card Game' : ucwords( str_replace( '-', ' ', $game ) ),
+		};
 	}
 
 	private function money( mixed $value ): string {

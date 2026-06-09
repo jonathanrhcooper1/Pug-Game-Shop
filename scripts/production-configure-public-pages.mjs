@@ -26,41 +26,34 @@ const requiredEnv = {
 
 const pages = [
   {
-    slug: "shop",
-    title: "Shop",
-    expectedShortcode: null,
-    content:
-      '<!-- wp:heading -->\n<h2>Shop The Pug</h2>\n<!-- /wp:heading -->\n<!-- wp:paragraph -->\n<p>Browse singles, sealed product, graded cards, accessories, and fresh arrivals.</p>\n<!-- /wp:paragraph -->\n<!-- wp:buttons -->\n<div class="wp-block-buttons"><!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-singles/">Singles</a></div>\n<!-- /wp:button -->\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-sealed-products/">Sealed</a></div>\n<!-- /wp:button -->\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-graded-cards/">Graded</a></div>\n<!-- /wp:button -->\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/shop-accessories/">Accessories</a></div>\n<!-- /wp:button --></div>\n<!-- /wp:buttons -->',
-  },
-  {
     slug: "shop-singles",
     title: "Shop Singles",
     content:
-      '<!-- wp:paragraph -->\n<p>Search live singles inventory by game, set, card name, condition, and price.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[tcg_inventory_search limit="24"]\n<!-- /wp:shortcode -->',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--singles"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Live singles inventory</p><h2>Singles vault</h2><p>Search real-time card inventory by game, set, card name, condition, price, and in-stock quantity. Choose a card to select the exact condition/version before checkout.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a><a href="/events/">Events</a></nav><div class="tcg-storefront-shelf__stats"><div class="tcg-storefront-shelf__stat"><span>Online</span><strong>Live stock</strong></div><div class="tcg-storefront-shelf__stat"><span>Cards</span><strong>Images + prices</strong></div><div class="tcg-storefront-shelf__stat"><span>Checkout</span><strong>Exact copy</strong></div></div></section>[tcg_inventory_search limit="36"]</div>',
   },
   {
     slug: "shop-sealed-products",
     title: "Shop Sealed Products",
     content:
-      '<!-- wp:paragraph -->\n<p>Sealed boxes, packs, and bundles appear here once products are categorized for online sale.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--sealed"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Boxes, packs, bundles</p><h2>Sealed product</h2><p>Fresh sealed product, preorders, bundles, and display-ready drops grouped away from singles so shoppers can move fast.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]</div>',
   },
   {
     slug: "shop-graded-cards",
     title: "Shop Graded Cards",
     content:
-      '<!-- wp:paragraph -->\n<p>Graded cards added through intake publish here automatically when they are made visible online.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[products category="graded-cards" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--graded"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Slabs and showcase cards</p><h2>Graded cards</h2><p>Certified cards added through intake publish here when they are made visible online, with grades and cert details preserved in inventory.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[products category="graded-cards" limit="24" columns="4" orderby="date" order="DESC"]</div>',
   },
   {
     slug: "shop-accessories",
     title: "Shop Accessories",
     content:
-      '<!-- wp:paragraph -->\n<p>Sleeves, deck boxes, binders, and play gear appear here once accessories are categorized for online sale.</p>\n<!-- /wp:paragraph -->\n<!-- wp:shortcode -->\n[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]\n<!-- /wp:shortcode -->',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--accessories"><section class="tcg-storefront-shelf__hero"><p class="tcg-storefront-shelf__kicker">Gear for play nights</p><h2>Accessories</h2><p>Sleeves, deck boxes, binders, dice, mats, and table gear live here once they are categorized for online sale.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a></nav></section>[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]</div>',
   },
   {
     slug: "card-inventory",
     title: "Card Inventory",
     content:
-      '<!-- wp:shortcode -->\n[tcg_inventory_search limit="24"]\n<!-- /wp:shortcode -->',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--singles">[tcg_inventory_search limit="36"]</div>',
   },
   {
     slug: "events",

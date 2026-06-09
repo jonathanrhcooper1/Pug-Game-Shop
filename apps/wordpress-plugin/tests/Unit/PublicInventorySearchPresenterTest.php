@@ -84,10 +84,10 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 		$this->assert_contains( 'tcg-public-inventory__media', $html );
 		$this->assert_contains( 'tcg-public-inventory__chips', $html );
 		$this->assert_contains( 'Base Set / 4/102 / NM / Holo', $html );
-		$this->assert_contains( '125.00 USD', $html );
+		$this->assert_contains( '$125.00', $html );
 		$this->assert_contains( '2 in stock', $html );
 		$this->assert_contains( 'https://images.example.test/charizard.png', $html );
-		$this->assert_contains( 'View card', $html );
+		$this->assert_contains( 'Choose condition', $html );
 		$this->assert_not_contains( 'secret-barcode', $html );
 	}
 
@@ -102,7 +102,7 @@ final class PublicInventorySearchPresenterTest extends TestCase {
 		$this->assert_contains( 'No singles are live online yet.', $html );
 		$this->assert_contains( 'online visibility set to visible', $html );
 		$this->assert_contains( 'status set to available', $html );
-		$this->assert_contains( '/shop/', $html );
+		$this->assert_contains( '/shop-singles/', $html );
 		$this->assert_contains( '/contact/', $html );
 	}
 

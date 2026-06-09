@@ -6,6 +6,17 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Production storefront pages now use the custom Pug commerce shelves only:
+  Singles, Sealed, Graded, Accessories, Events, Buying, and Contact, with the
+  legacy WooCommerce `/shop/` route redirected to Singles and theme footer shop
+  links rewritten to the same custom shelves.
+- Public Singles now has 48 visible live card products seeded from the ScryDex
+  catalog, 12 each for Pokemon, Magic: The Gathering, Lorcana, and One Piece,
+  with card images, two-decimal pricing, condition/version selection, and exact
+  WooCommerce product links.
+- Public Singles and product-detail UI received a fuller dark arcade storefront
+  treatment, full-width responsive layout, mobile no-overflow behavior, and
+  ScryDex remote images on both listings and single product galleries.
 - Production and staging plugin install/upload scripts now rebuild the
   WordPress plugin package from the current working tree by default unless a
   custom zip path is explicitly provided, preventing stale versioned zips from

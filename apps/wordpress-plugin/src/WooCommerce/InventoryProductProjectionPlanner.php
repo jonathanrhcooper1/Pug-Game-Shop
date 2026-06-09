@@ -591,7 +591,7 @@ final class InventoryProductProjectionPlanner {
 
 	private function game_category_slug( string $game ): string {
 		return match ( $game ) {
-			'magic', 'mtg' => 'magic-the-gathering',
+			'magic', 'mtg', 'magicthegathering' => 'magic-the-gathering',
 			'one-piece', 'onepiece' => 'one-piece',
 			default => $game,
 		};
@@ -823,7 +823,7 @@ final class InventoryProductProjectionPlanner {
 	private function product_name( array $row, string $card_name ): string {
 		$parts = array_filter(
 			array(
-				$this->string_value( $row, array( 'game' ) ),
+				$this->game_label( $this->string_value( $row, array( 'game' ) ) ),
 				$card_name,
 				$this->string_value( $row, array( 'set_name' ) ),
 				$this->string_value( $row, array( 'card_number' ) ),
@@ -832,6 +832,16 @@ final class InventoryProductProjectionPlanner {
 		);
 
 		return $this->bounded_text( implode( ' - ', $parts ), 120 );
+	}
+
+	private function game_label( string $game ): string {
+		$game = strtolower( trim( $game ) );
+
+		return match ( $game ) {
+			'magicthegathering', 'magic', 'mtg' => 'Magic: The Gathering',
+			'one-piece', 'onepiece' => 'One Piece',
+			default => '' === $game ? '' : ucwords( str_replace( '-', ' ', $game ) ),
+		};
 	}
 
 	/**

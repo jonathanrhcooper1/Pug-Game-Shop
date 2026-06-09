@@ -14,6 +14,21 @@
   box-shadow: 0 18px 42px rgba(10, 38, 57, 0.12);
 }
 
+.tcg-woocommerce-card-gallery-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(38, 217, 240, 0.16), transparent 34%),
+    linear-gradient(180deg, #ffffff, #eef8fc);
+  border-radius: 8px;
+}
+
+.tcg-woocommerce-card-gallery-image a {
+  display: block;
+  width: 100%;
+}
+
 .tcg-inventory-options,
 .tcg-inventory-options__empty {
   box-sizing: border-box;

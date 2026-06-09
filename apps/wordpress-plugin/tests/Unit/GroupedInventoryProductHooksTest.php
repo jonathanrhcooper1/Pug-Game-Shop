@@ -22,6 +22,7 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 
 		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
 		$this->assert_same( 'product_image', $map['filter woocommerce_product_get_image'] );
+		$this->assert_same( 'single_product_image_html', $map['filter woocommerce_single_product_image_thumbnail_html'] );
 		$this->assert_same( 'render_condition_selector', $map['action woocommerce_before_add_to_cart_button'] );
 		$this->assert_same( 'validate_add_to_cart', $map['filter woocommerce_add_to_cart_validation'] );
 		$this->assert_same( 'reserve_add_to_cart_inventory', $map['filter woocommerce_add_cart_item_data'] );
@@ -49,6 +50,8 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'WpdbReservationStorage',
 				'woocommerce-card-product.css',
 				'tcg-store-woocommerce-card-product',
+				'woocommerce_single_product_image_thumbnail_html',
+				'tcg-woocommerce-card-gallery-image',
 				'price_snapshot_minor_units',
 				'SerializedOrderLineMetadataPlanner',
 				'convert_to_sale',
@@ -69,6 +72,7 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'tcg-inventory-options__selected',
 				'tcg-inventory-options__price',
 				'tcg-inventory-options__stock',
+				'tcg-woocommerce-card-gallery-image',
 				'grid-template-columns',
 				'overflow-wrap: anywhere',
 				'@media (max-width: 640px)',

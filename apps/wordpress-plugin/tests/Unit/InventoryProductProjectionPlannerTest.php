@@ -28,7 +28,7 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( 'create_product', $operation['operation'] );
 		$this->assert_same( 'simple', $product['type'] );
 		$this->assert_same( 'publish', $product['status'] );
-		$this->assert_same( 'pokemon - Charizard - Base Set - 4', $product['name'] );
+		$this->assert_same( 'Pokemon - Charizard - Base Set - 4', $product['name'] );
 		$this->assert_same( 'PKM-BASE-004-HOLO', $product['sku'] );
 		$this->assert_same( '125.00', $product['regular_price'] );
 		$this->assert_same( true, $product['manage_stock'] );

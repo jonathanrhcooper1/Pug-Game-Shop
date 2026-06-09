@@ -3,6 +3,114 @@
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
 
+## 2026-06-09 - Production Storefront Click-Through And Singles Launch Polish
+
+### What Changed
+
+- Reconfigured production commerce pages so the public header exposes the custom
+  shelves only: Home, Singles, Sealed, Graded, Accessories, Events, Buying, and
+  Contact.
+- Removed the visible legacy Shop path by redirecting `/shop/` to
+  `/shop-singles/`, pointing WooCommerce empty-cart return links to Singles,
+  and rewriting theme footer shop links to the custom shelves from the plugin
+  layer.
+- Improved the Singles storefront UI with a full-width dark arcade layout,
+  responsive filters, game labels, card images, two-decimal prices, and a
+  "Choose condition" path to WooCommerce product detail pages.
+- Updated WooCommerce grouped card products so single-product pages render the
+  ScryDex remote card image as the main gallery image and use clean display game
+  labels/categories.
+- Seeded production with 48 visible card products from the ScryDex-backed
+  reference catalog: 12 Pokemon, 12 Magic: The Gathering, 12 Lorcana, and
+  12 One Piece cards.
+
+### Why
+
+The staging theme push left the public storefront visually close to the desired
+brand, but the commerce paths still needed to be reconnected to the card
+inventory system. The public Singles page needed enough real inventory to
+verify search/filter/product flows, and old generic Shop links needed to stop
+surfacing in the shopper experience.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/assets/js/public-storefront-links.js`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `scripts/production-configure-commerce-menu.mjs`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-seed-visible-card-inventory.mjs`
+- `scripts/tests/production-commerce-menu-contract.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added/updated unit coverage for public storefront link assets, Singles
+  filter labels, dark storefront CSS hooks, WooCommerce remote gallery images,
+  and grouped product game/category display.
+- Added a guarded production seed helper that can populate visible public card
+  inventory from existing ScryDex reference rows and sync the matching
+  WooCommerce products.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1005 tests, 0 failures.
+- `php -l src/PublicSite/InventorySearchShortcode.php`: passed.
+- `node --check apps/wordpress-plugin/assets/js/public-storefront-links.js`:
+  passed.
+- `npm run package:wordpress`: built
+  `dist/tcg-store-platform-0.194.0.zip`.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed.
+- Production package installs completed for `0.193.0` and `0.194.0`, each with
+  database and `wp-content` backups.
+- `npm run production:verify-public-shortcodes` with expected plugin
+  `0.194.0`: passed.
+- `npm run production:verify-reference-search` with expected plugin `0.194.0`:
+  passed using the WordPress catalog cache, with images and two-decimal prices.
+- Production ScryDex index runs completed for Lorcana and One Piece before the
+  visible seed.
+- `npm run production:seed-visible-card-inventory`: synced 48 visible
+  WooCommerce card products, 12 per game.
+- Browser click-through verified Home, Singles, Sealed, Graded, Accessories,
+  Events, Buying, Contact, `/shop/` redirect, public search, all four game
+  filters, product detail image/condition UI, add-to-cart/remove-from-cart, and
+  empty-cart Return to shop.
+- Mobile browser check verified the Singles page has 48 cards and no horizontal
+  overflow at 390px width.
+
+### Rollback Notes
+
+- Restore the production plugin from the backup created before the latest
+  package install if storefront behavior regresses:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T220537Z.sql`
+  and
+  `$HOME/tcg-production-backups/pug-production-wp-content-20260609T220537Z.tgz`.
+- Earlier plugin install backup:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T220038Z.sql`
+  with paired `wp-content` archive.
+- Lorcana/One Piece catalog import backups are available at the production
+  ScryDex index backup timestamps from 2026-06-09T215522Z and
+  2026-06-09T215620Z.
+- No database schema migration rollback is required. To remove the demo public
+  inventory without a full restore, hide or delete the deterministic seeded
+  inventory rows and resync WooCommerce products.
+
 ## 2026-06-09 - Fresh Plugin Package Install Guard
 
 ### What Changed
