@@ -22,6 +22,11 @@ All notable changes follow Semantic Versioning.
   across ScryDex/reference cache, WordPress inventory creation, WooCommerce
   product projection, Square-sale inventory adjustment, customer credit, kiosk
   inventory, local pickup fulfillment, and production reference search.
+- Refined the employee Trade-Ins screen into a counter-style offer flow with
+  customer name/phone lookup, per-card trade percentage and payout controls,
+  running offer totals, Save Quote, Customer Accepts, and Customer Declines
+  actions. Declined offers are stored for later lookup by customer phone,
+  name, staff, receipt/order id, card, or set.
 - Fixed resolved local app conflicts continuing to show as open after reboot by
   deriving the sync summary status from the live conflict queue.
 - Fixed grouped WooCommerce singles options so blank raw singles and explicit

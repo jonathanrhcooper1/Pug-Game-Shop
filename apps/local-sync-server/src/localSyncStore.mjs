@@ -1345,6 +1345,7 @@ export function createLocalSyncStore(options = {}) {
       const order = {
       order_id: `trade-${randomUUID()}`,
       customer_name: cleanName(input.customer_name ?? input.customerName) || "Walk-in customer",
+      customer_phone: cleanPhone(input.customer_phone ?? input.customerPhone),
       customer_public_id: cleanPublicId(input.customer_public_id ?? input.customerPublicId),
       status: "draft",
       staff_user_id: session.user.id,
@@ -3024,6 +3025,7 @@ function migrateLocalSyncDatabase(database) {
     CREATE TABLE IF NOT EXISTS trade_in_orders (
       order_id TEXT PRIMARY KEY,
       customer_name TEXT NOT NULL,
+      customer_phone TEXT NOT NULL DEFAULT '',
       customer_public_id TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL,
       staff_user_id TEXT NOT NULL DEFAULT '',
@@ -3168,6 +3170,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "fulfillment_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "fulfillment_orders", "source", "TEXT NOT NULL DEFAULT 'wordpress'")
   ensureLocalSyncColumn(database, "fulfillment_orders", "picked_item_ids_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "trade_in_orders", "customer_phone", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "trade_in_orders", "customer_public_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "trade_in_orders", "staff_user_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "trade_in_orders", "notes", "TEXT NOT NULL DEFAULT ''")
@@ -3533,7 +3536,7 @@ function loadFulfillmentOrders(database) {
 function loadTradeInOrders(database) {
   return database
     .prepare(`
-      SELECT order_id, customer_name, customer_public_id, status, staff_user_id,
+      SELECT order_id, customer_name, customer_phone, customer_public_id, status, staff_user_id,
         notes, items_json, cash_total_minor_units, credit_total_minor_units,
         combined_total_minor_units, converted_at_utc, converted_by_user_id,
         created_at_utc, updated_at_utc
@@ -3544,6 +3547,7 @@ function loadTradeInOrders(database) {
     .map((row) => ({
       order_id: cleanPublicId(row.order_id),
       customer_name: cleanName(row.customer_name) || "Walk-in customer",
+      customer_phone: cleanPhone(row.customer_phone),
       customer_public_id: cleanPublicId(row.customer_public_id),
       status: cleanTradeInStatus(row.status) || "draft",
       staff_user_id: cleanPublicId(row.staff_user_id),
@@ -3757,14 +3761,15 @@ function saveTradeInOrder(database, order) {
   database
     .prepare(`
       INSERT INTO trade_in_orders (
-        order_id, customer_name, customer_public_id, status, staff_user_id,
+        order_id, customer_name, customer_phone, customer_public_id, status, staff_user_id,
         notes, items_json, cash_total_minor_units, credit_total_minor_units,
         combined_total_minor_units, converted_at_utc, converted_by_user_id,
         created_at_utc, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_id) DO UPDATE SET
         customer_name = excluded.customer_name,
+        customer_phone = excluded.customer_phone,
         customer_public_id = excluded.customer_public_id,
         status = excluded.status,
         staff_user_id = excluded.staff_user_id,
@@ -3780,6 +3785,7 @@ function saveTradeInOrder(database, order) {
     .run(
       order.order_id,
       order.customer_name,
+      cleanPhone(order.customer_phone),
       cleanPublicId(order.customer_public_id),
       cleanTradeInStatus(order.status) || "draft",
       cleanPublicId(order.staff_user_id),
@@ -5123,6 +5129,7 @@ function publicTradeInOrder(order, users = []) {
   return {
     order_id: cleanPublicId(order.order_id),
     customer_name: cleanName(order.customer_name) || "Walk-in customer",
+    customer_phone: cleanPhone(order.customer_phone),
     customer_public_id: cleanPublicId(order.customer_public_id),
     status: cleanTradeInStatus(order.status) || "draft",
     staff_user_id: staffUserId,
@@ -5201,6 +5208,7 @@ function tradeInOrderMatchesNeedle(order, needle, users = []) {
   const searchable = [
     publicOrder.order_id,
     publicOrder.customer_name,
+    publicOrder.customer_phone,
     publicOrder.customer_public_id,
     publicOrder.staff_user_id,
     publicOrder.staff_user_name,
@@ -5544,6 +5552,14 @@ function cleanEmail(value) {
   const email = String(value ?? "").trim().toLowerCase().slice(0, 120)
 
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ""
+}
+
+function cleanPhone(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^\d+().\-\s]/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 40)
 }
 
 function cleanRole(value) {

@@ -531,6 +531,7 @@ export type LocalSyncTradeInItem = {
 export type LocalSyncTradeInOrder = {
   order_id: string
   customer_name: string
+  customer_phone: string
   customer_public_id: string
   status: LocalSyncTradeInOrderStatus
   staff_user_id: string
@@ -1180,6 +1181,7 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input: {
       customerName: string
+      customerPhone?: string
       customerPublicId?: string
       notes?: string
       items: Array<{
@@ -1508,6 +1510,7 @@ export function createLocalSyncServerClient(
         sessionToken,
         body: {
           customer_name: input.customerName,
+          customer_phone: input.customerPhone ?? "",
           customer_public_id: input.customerPublicId ?? "",
           notes: input.notes ?? "",
           items: input.items.map((item) => ({

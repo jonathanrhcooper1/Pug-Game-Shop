@@ -1,5 +1,46 @@
 # Revision Log
 
+## 2026-06-14 - Trade-In Counter UI And Phone Lookup
+
+### What Changed
+
+- Reworked the local employee Trade-Ins screen into a counter/POS-style offer workflow.
+- Added customer phone capture to local trade-in orders and saved-offer lookup.
+- Added Save Quote, Customer Accepts, and Customer Declines actions to the current trade offer.
+- Saved declined offers remain searchable by name, phone, staff, receipt/order id, card, and set.
+
+### Why
+
+- Staff need trade-ins to behave like a customer-facing counter transaction, not an admin draft form.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite adds `customer_phone` to `trade_in_orders` if missing.
+
+### Tests Added
+
+- Existing local trade-in server tests now exercise the migrated table with the new phone field available.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd --prefix apps/offline-app run build`: passed.
+- Live browser smoke test saved a declined trade-in offer with customer name, phone, staff, order id, rejected status, and credit total visible in the saved offer list.
+
+### Rollback Notes
+
+- Reverting this pass removes the improved counter UI and phone lookup field. The additive `customer_phone` SQLite column can remain unused without affecting existing trade-in records.
+
 ## 2026-06-14 - Production Release Verification And Packaging
 
 ### What Changed

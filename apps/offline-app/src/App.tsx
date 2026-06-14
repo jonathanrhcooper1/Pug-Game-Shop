@@ -1859,6 +1859,7 @@ export function App() {
   const [intakeGrade, setIntakeGrade] = useState("")
   const [intakeCertNumber, setIntakeCertNumber] = useState("")
   const [tradeInCustomerName, setTradeInCustomerName] = useState("")
+  const [tradeInCustomerPhone, setTradeInCustomerPhone] = useState("")
   const [tradeInPayoutType, setTradeInPayoutType] = useState<TradeInPayoutType>("credit")
   const [tradeInPercentageBasisPoints, setTradeInPercentageBasisPoints] = useState(6000)
   const [tradeInDraftItems, setTradeInDraftItems] = useState<TradeInDraftItem[]>([])
@@ -5133,7 +5134,7 @@ export function App() {
     setTradeInSyncStatus("ready")
   }
 
-  async function handleSaveTradeInDraft() {
+  async function handleSaveTradeInDraft(nextStatus: LocalSyncTradeInOrder["status"] = "draft") {
     if (!localSyncSessionToken) {
       setActiveSection("Trade-Ins")
       setTradeInSyncStatus("blocked")
@@ -5156,6 +5157,7 @@ export function App() {
     setTradeInSyncStatus("saving")
     const result = await localSyncClient.createTradeInOrder(localSyncSessionToken, {
       customerName: tradeInCustomerName.trim() || "Walk-in customer",
+      customerPhone: tradeInCustomerPhone.trim(),
       items: tradeInDraftItems.map((item) => ({
         id: item.id,
         productType: item.productType,
@@ -5182,12 +5184,40 @@ export function App() {
       return
     }
 
-    setServerTradeInOrders((orders) => [result.order, ...orders.filter((order) => order.order_id !== result.order.order_id)])
+    let savedOrder = result.order
+    if (nextStatus !== "draft") {
+      const statusResult = await localSyncClient.updateTradeInOrderStatus(
+        localSyncSessionToken,
+        result.order.order_id,
+        nextStatus,
+      )
+
+      if (statusResult.status === "ok") {
+        savedOrder = statusResult.order
+      } else {
+        setActivityMessage({
+          title: "Trade-in offer saved",
+          detail: `${result.order.customer_name} offer ${result.order.order_id} saved, but status update was blocked: ${statusResult.message}`,
+        })
+      }
+    }
+
+    setServerTradeInOrders((orders) => [savedOrder, ...orders.filter((order) => order.order_id !== savedOrder.order_id)])
     setTradeInDraftItems([])
     setTradeInSyncStatus("ready")
     setActivityMessage({
-      title: "Trade-in draft saved",
-      detail: `${result.order.customer_name} draft ${result.order.order_id} saved to the shared middleman queue. It is not sellable inventory yet.`,
+      title:
+        nextStatus === "approved"
+          ? "Trade-in offer accepted"
+          : nextStatus === "rejected"
+            ? "Trade-in offer declined"
+            : "Trade-in draft saved",
+      detail:
+        nextStatus === "approved"
+          ? `${savedOrder.customer_name} accepted offer ${savedOrder.order_id}. Mark paid before converting accepted items to sellable inventory.`
+          : nextStatus === "rejected"
+            ? `${savedOrder.customer_name} declined offer ${savedOrder.order_id}. The offer is saved for lookup by name, phone, receipt, staff, or card.`
+            : `${savedOrder.customer_name} draft ${savedOrder.order_id} saved to the shared middleman queue. It is not sellable inventory yet.`,
     })
   }
 
@@ -8611,62 +8641,84 @@ export function App() {
 
             <section className="trade-in-panel" aria-label="Trade-in and buy-in workspace">
               <div className="section-heading">
-                <h2>Trade-Ins / Buy-Ins</h2>
-                <span>Draft customer intake before inventory conversion</span>
+                <h2>Trade-In Counter</h2>
+                <span>Add cards like a POS order, show the cash/credit offer, then record accepted or declined.</span>
+              </div>
+              <div className="trade-in-flow-steps" aria-label="Trade-in workflow">
+                <span>1. Find customer</span>
+                <span>2. Add cards</span>
+                <span>3. Quote offer</span>
+                <span>4. Accept or decline</span>
               </div>
               <div className="trade-in-toolbar">
-                <label htmlFor="trade-in-customer-name">
-                  <span className="micro-label">Customer</span>
-                  <input
-                    id="trade-in-customer-name"
-                    value={tradeInCustomerName}
-                    onChange={(event) => setTradeInCustomerName(event.target.value)}
-                    placeholder="Customer name or account"
-                  />
-                </label>
-                <label htmlFor="trade-in-percentage">
-                  <span className="micro-label">Trade percentage</span>
-                  <select
-                    id="trade-in-percentage"
-                    value={tradeInPercentageBasisPoints}
-                    onChange={(event) => setTradeInPercentageBasisPoints(Number(event.target.value))}
-                  >
-                    {TRADE_IN_PERCENTAGE_OPTIONS.map((basisPoints) => (
-                      <option value={basisPoints} key={basisPoints}>
-                        {basisPoints / 100}%
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <fieldset className="trade-in-payout-toggle">
-                  <legend className="micro-label">Payout</legend>
-                  <label>
+                <div className="trade-in-customer-card">
+                  <span className="micro-label">Customer lookup</span>
+                  <label htmlFor="trade-in-customer-name">
+                    <span>Name</span>
                     <input
-                      type="radio"
-                      name="trade-in-payout"
-                      checked={tradeInPayoutType === "credit"}
-                      onChange={() => setTradeInPayoutType("credit")}
+                      id="trade-in-customer-name"
+                      value={tradeInCustomerName}
+                      onChange={(event) => setTradeInCustomerName(event.target.value)}
+                      placeholder="First and last name"
                     />
-                    <span>Store credit</span>
                   </label>
-                  <label>
+                  <label htmlFor="trade-in-customer-phone">
+                    <span>Phone</span>
                     <input
-                      type="radio"
-                      name="trade-in-payout"
-                      checked={tradeInPayoutType === "cash"}
-                      onChange={() => setTradeInPayoutType("cash")}
+                      id="trade-in-customer-phone"
+                      inputMode="tel"
+                      value={tradeInCustomerPhone}
+                      onChange={(event) => setTradeInCustomerPhone(event.target.value)}
+                      placeholder="Phone for saved offer lookup"
                     />
-                    <span>Cash</span>
                   </label>
-                </fieldset>
+                  <small>Use name and/or phone so declined offers can be found when a customer comes back.</small>
+                </div>
                 <div className="trade-in-preview-card">
-                  <span className="micro-label">Selected card value</span>
+                  <span className="micro-label">Selected card quote</span>
                   <strong>{formatMoney(tradeInPreviewValueMinorUnits, "USD")}</strong>
                   <small>
                     {tradeInCurrentCardName.trim() || "No card selected"} at {tradeInPercentageBasisPoints / 100}%.
                   </small>
+                  <div className="trade-in-card-controls">
+                    <label htmlFor="trade-in-percentage">
+                      <span className="micro-label">Trade %</span>
+                      <select
+                        id="trade-in-percentage"
+                        value={tradeInPercentageBasisPoints}
+                        onChange={(event) => setTradeInPercentageBasisPoints(Number(event.target.value))}
+                      >
+                        {TRADE_IN_PERCENTAGE_OPTIONS.map((basisPoints) => (
+                          <option value={basisPoints} key={basisPoints}>
+                            {basisPoints / 100}%
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <fieldset className="trade-in-payout-toggle">
+                      <legend className="micro-label">Payout</legend>
+                      <label>
+                        <input
+                          type="radio"
+                          name="trade-in-payout"
+                          checked={tradeInPayoutType === "credit"}
+                          onChange={() => setTradeInPayoutType("credit")}
+                        />
+                        <span>Store credit</span>
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="trade-in-payout"
+                          checked={tradeInPayoutType === "cash"}
+                          onChange={() => setTradeInPayoutType("cash")}
+                        />
+                        <span>Cash</span>
+                      </label>
+                    </fieldset>
+                  </div>
                   <button type="button" onClick={handleStageTradeInItem}>
-                    Stage Current Card
+                    Add Card to Offer
                   </button>
                 </div>
               </div>
@@ -8708,6 +8760,34 @@ export function App() {
                   <span className="micro-label">Combined total</span>
                   <strong>{formatMoney(tradeInCombinedTotalMinorUnits, "USD")}</strong>
                 </div>
+              </div>
+
+              <div className="trade-in-offer-actions" aria-label="Trade-in offer actions">
+                <div>
+                  <span className="micro-label">Current customer offer</span>
+                  <strong>{formatMoney(tradeInCombinedTotalMinorUnits, "USD")}</strong>
+                  <small>
+                    {tradeInDraftItems.length} line item(s). Save as a quote, record customer acceptance, or keep a
+                    declined offer on file for later lookup.
+                  </small>
+                </div>
+                <button type="button" onClick={() => void handleSaveTradeInDraft()}>
+                  Save Quote
+                </button>
+                <button
+                  type="button"
+                  className="accept-command"
+                  onClick={() => void handleSaveTradeInDraft("approved")}
+                >
+                  Customer Accepts
+                </button>
+                <button
+                  type="button"
+                  className="decline-command"
+                  onClick={() => void handleSaveTradeInDraft("rejected")}
+                >
+                  Customer Declines
+                </button>
               </div>
 
               <div className="trade-in-draft-list" aria-label="Draft trade-in line items">
@@ -8792,7 +8872,8 @@ export function App() {
                   })
                 ) : (
                   <p className="panel-empty">
-                    No trade-in lines yet. Search/select a card in Inventory, choose payout settings here, then stage it.
+                    No cards in this offer yet. Search/select a card in Inventory, choose the per-card percentage and
+                    payout, then add it to this offer.
                   </p>
                 )}
               </div>
@@ -8804,7 +8885,7 @@ export function App() {
                     <strong>{serverTradeInOrders.length} trade-in order(s)</strong>
                   </div>
                   <label className="trade-in-record-search" htmlFor="trade-in-record-search">
-                    <span className="micro-label">Lookup transaction</span>
+                    <span className="micro-label">Lookup saved offer</span>
                     <input
                       id="trade-in-record-search"
                       value={tradeInRecordSearch}
@@ -8814,7 +8895,7 @@ export function App() {
                           void refreshTradeInOrders()
                         }
                       }}
-                      placeholder="Customer, staff, receipt, card, set"
+                      placeholder="Name, phone, staff, receipt, card, set"
                     />
                   </label>
                   <label className="trade-in-record-search" htmlFor="trade-in-staff-filter">
@@ -8856,6 +8937,7 @@ export function App() {
                           {order.item_count} item(s) / saved {formatUtcLabel(order.updated_at_utc)}
                         </small>
                         <small>
+                          {order.customer_phone ? `Phone ${order.customer_phone} / ` : ""}
                           Processed by {order.staff_user_name || order.staff_user_id || "Unknown staff"} / receipt{" "}
                           {order.order_id}
                         </small>
