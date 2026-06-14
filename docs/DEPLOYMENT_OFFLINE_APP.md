@@ -18,6 +18,23 @@ and the expected installer artifact is an unsigned `.exe`.
 
 ## Build Commands
 
+## Development And Demo Launcher
+
+During development, double-click `Start-Pug-Store.cmd` at the repository root.
+It starts or reuses the LAN sync server and local app, waits for both health
+checks, then opens:
+
+- Employee app: `http://127.0.0.1:1420/`
+- Customer kiosk: `http://127.0.0.1:1420/?mode=kiosk`
+
+Double-click `Stop-Pug-Store.cmd` to stop only the processes started by that
+launcher. The same commands are available as `npm run demo:start` and
+`npm run demo:stop`.
+
+The release deployment remains installer-based. The employee and kiosk
+experiences are packaged as the Tauri Windows application, while the LAN
+middleman is packaged separately for the store's central host computer.
+
 Validate the packaging contract:
 
 ```sh

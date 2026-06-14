@@ -31,6 +31,24 @@ final class SettingsPageSourceTest extends TestCase {
 		}
 	}
 
+	public function test_store_operations_settings_are_exposed_to_managers(): void {
+		$source = $this->settings_page_source();
+
+		foreach (
+			array(
+				'Store operations',
+				'Grading companies',
+				'Customer credit policy',
+				'Fulfillment notifications',
+				'Keep customer credit local-store only.',
+				'Enable staff audio notification for new pickup orders.',
+				'Test sound',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
+	}
+
 	private function settings_page_source(): string {
 		$path = dirname( __DIR__, 2 ) . '/src/Settings/SettingsPage.php';
 

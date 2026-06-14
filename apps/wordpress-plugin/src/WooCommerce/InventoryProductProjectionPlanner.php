@@ -53,6 +53,7 @@ final class InventoryProductProjectionPlanner {
 			'operation'                 => $requires_product_creation ? 'create_product' : 'update_product',
 			'product_id'                => $product_id,
 			'requires_product_creation' => $requires_product_creation,
+			'square_sync'               => $this->square_sync_request(),
 			'product'                   => $this->product_payload( $inventory_row, $product_id, $card_name, $sku, (string) $price, $currency ),
 		);
 
@@ -99,8 +100,8 @@ final class InventoryProductProjectionPlanner {
 		$seed            = $rows[0];
 		$group_key       = $this->product_group_key( $seed );
 		$idempotency_key = $this->group_idempotency_key( $group_key, $rows, $context );
-		$product_id      = $this->group_product_id( $rows );
 		$visible_rows    = $this->available_visible_rows( $rows );
+		$product_id      = $this->group_product_id( $visible_rows, $rows );
 
 		if ( array() === $visible_rows && null === $product_id ) {
 			return InventoryProductProjectionPlan::skipped(
@@ -125,6 +126,19 @@ final class InventoryProductProjectionPlanner {
 		$card_name = $this->string_value( $seed, array( 'card_name', 'name' ) );
 		$sku       = $this->group_sku( $seed, $group_key );
 		$currency  = $this->currency( $seed['sale_currency'] ?? $context['store_currency'] ?? 'USD' );
+
+		if ( array() === $visible_rows && null !== $product_id ) {
+			return $this->plan_group_stockout(
+				$seed,
+				$product_id,
+				$group_key,
+				$idempotency_key,
+				$card_name,
+				$currency,
+				count( $rows )
+			);
+		}
+
 		$options   = $this->group_options( $visible_rows, $currency );
 		$price     = $this->lowest_option_price( $options );
 		$errors    = $this->group_errors( $card_name, $sku, $currency, $price, $context );
@@ -142,6 +156,7 @@ final class InventoryProductProjectionPlanner {
 			'operation'                 => $requires_product_creation ? 'create_product' : 'update_product',
 			'product_id'                => $product_id,
 			'requires_product_creation' => $requires_product_creation,
+			'square_sync'               => $this->square_sync_request(),
 			'product'                   => $this->group_product_payload(
 				$seed,
 				$product_id,
@@ -178,6 +193,68 @@ final class InventoryProductProjectionPlanner {
 		);
 	}
 
+	private function plan_group_stockout(
+		array $seed,
+		int $product_id,
+		string $group_key,
+		string $idempotency_key,
+		string $card_name,
+		string $currency,
+		int $row_count
+	): InventoryProductProjectionPlan {
+		$operation = array(
+			'operation'                 => 'mark_grouped_product_out_of_stock',
+			'product_id'                => $product_id,
+			'requires_product_creation' => false,
+			'square_sync'               => $this->square_sync_request(),
+			'product'                   => array(
+				'id'                 => $product_id,
+				'manage_stock'       => true,
+				'stock_quantity'     => 0,
+				'stock_status'       => 'outofstock',
+				'catalog_visibility' => 'hidden',
+				'meta_data'          => $this->meta_data(
+					array(
+						'_tcg_serialized_inventory'   => '1',
+						'_tcg_inventory_product_mode' => 'grouped_card',
+						'_tcg_inventory_group_key'    => $group_key,
+						'_tcg_card_name'              => $card_name,
+						'_tcg_game'                   => $this->string_value( $seed, array( 'game' ) ),
+						'_tcg_set_name'               => $this->string_value( $seed, array( 'set_name' ) ),
+						'_tcg_set_code'               => $this->string_value( $seed, array( 'set_code' ) ),
+						'_tcg_card_number'            => $this->string_value( $seed, array( 'card_number' ) ),
+						'_tcg_sale_currency'          => $currency,
+						'_tcg_group_stock_quantity'   => '0',
+						'_tcg_inventory_options_json' => '[]',
+						'_tcg_projection_state'       => 'stockout',
+						'_tcg_source_of_truth'        => 'tcg_store_platform',
+					)
+				),
+			),
+		);
+
+		return InventoryProductProjectionPlan::ready(
+			'woocommerce_grouped_product_stockout_ready',
+			$idempotency_key,
+			array( $operation ),
+			array(
+				$this->audit_event(
+					'woocommerce.grouped_product_stockout_ready',
+					$group_key,
+					array(
+						'row_count'                    => $row_count,
+						'available_visible_row_count'  => 0,
+						'product_operation_count'      => 1,
+						'woocommerce_write_deferred'   => true,
+						'network_request_deferred'     => true,
+					)
+				),
+			),
+			false,
+			array( 'no_available_visible_inventory_rows' )
+		);
+	}
+
 	private function plan_unavailable_row(
 		string $status,
 		string $online_visibility,
@@ -200,6 +277,7 @@ final class InventoryProductProjectionPlanner {
 				'operation'                 => 'mark_product_out_of_stock',
 				'product_id'                => $product_id,
 				'requires_product_creation' => false,
+				'square_sync'               => $this->square_sync_request(),
 				'product'                   => array(
 					'id'                 => $product_id,
 					'manage_stock'       => true,
@@ -375,7 +453,26 @@ final class InventoryProductProjectionPlanner {
 	/**
 	 * @param list<array<string, mixed>> $rows Inventory rows.
 	 */
-	private function group_product_id( array $rows ): ?int {
+	private function group_product_id( array $preferred_rows, array $fallback_rows ): ?int {
+		$product_id = $this->first_group_product_id( $preferred_rows );
+
+		if ( null !== $product_id ) {
+			return $product_id;
+		}
+
+		usort(
+			$fallback_rows,
+			fn ( array $left, array $right ): int => ( $this->positive_int( $right['inventory_id'] ?? null ) ?? 0 )
+				<=> ( $this->positive_int( $left['inventory_id'] ?? null ) ?? 0 )
+		);
+
+		return $this->first_group_product_id( $fallback_rows );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 */
+	private function first_group_product_id( array $rows ): ?int {
 		foreach ( $rows as $row ) {
 			$product_id = $this->positive_int( $row['woocommerce_product_id'] ?? null );
 
@@ -598,6 +695,18 @@ final class InventoryProductProjectionPlanner {
 	}
 
 	/**
+	 * @return array{enabled:true,taxonomy:string,term:string,extension:string}
+	 */
+	private function square_sync_request(): array {
+		return array(
+			'enabled'   => true,
+			'taxonomy'  => 'wc_square_synced',
+			'term'      => 'yes',
+			'extension' => 'woocommerce-square',
+		);
+	}
+
+	/**
 	 * @param list<array<string, mixed>> $options Option payloads.
 	 */
 	private function group_short_description( array $row, array $options ): string {
@@ -720,7 +829,6 @@ final class InventoryProductProjectionPlanner {
 							$this->string_value( $row, array( 'variant' ) ),
 							$this->string_value( $row, array( 'finish' ) ),
 							$this->string_value( $row, array( 'language' ) ),
-							$this->string_value( $row, array( 'raw_or_graded' ) ),
 							$price,
 						)
 					)

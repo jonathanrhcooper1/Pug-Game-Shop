@@ -10,7 +10,7 @@ import {
 const contract = buildLocalSyncServerContract({
   storeId: "Pug Game Shop",
   serverUrl: "http://192.168.1.20:8787/",
-  websiteUrl: "https://vbf.2a7.myftpupload.com/",
+  websiteUrl: "https://j84.285.myftpupload.com/",
   syncIntervalSeconds: 20,
 })
 
@@ -21,6 +21,12 @@ assert.equal(contract.one_website_mode, true)
 assert.equal(contract.setup_status_path, "/setup/status")
 assert.equal(contract.device_heartbeat_path, "/devices/heartbeat")
 assert.equal(contract.device_status_path, "/devices/status")
+assert.equal(contract.discovery.protocol, "pug-local-sync-discovery-v1")
+assert.equal(contract.discovery.transport, "udp")
+assert.equal(contract.discovery.port, 8788)
+assert.equal(contract.discovery.manual_fallback_supported, true)
+assert.equal(contract.discovery.raw_credentials_returned, false)
+assert.equal(contract.discovery.credentials_synced_to_client, false)
 assert.equal(contract.authorities.global_source_of_truth, "wordpress_woocommerce_plugin")
 assert.equal(contract.authorities.local_offline_authority, "local_sync_server")
 assert.equal(contract.authorities.client_authority, "none_clients_request_locks")
@@ -43,11 +49,13 @@ assert.equal(contract.safety.setup_status_returns_credentials, false)
 assert.equal(contract.safety.setup_config_manager_only, true)
 assert.equal(contract.safety.setup_config_accepts_credentials, false)
 assert.equal(contract.safety.device_status_returns_credentials, false)
+assert.equal(contract.safety.lan_discovery_returns_credentials, false)
+assert.equal(contract.safety.manual_middleman_url_fallback_supported, true)
 assert.equal(contract.safety.scrydex_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, true)
 assert.equal(contract.setup_status.action, "local_sync_server_setup_status")
-assert.equal(contract.setup_status.website_url, "https://vbf.2a7.myftpupload.com/")
-assert.equal(contract.setup_status.wordpress_rest_base, "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1")
+assert.equal(contract.setup_status.website_url, "https://j84.285.myftpupload.com/")
+assert.equal(contract.setup_status.wordpress_rest_base, "https://j84.285.myftpupload.com/wp-json/tcg-store/v1")
 assert.equal(contract.setup_status.credentials_synced_to_client, false)
 assert.equal(contract.setup_status.client_presence_enabled, true)
 assert.equal(contract.setup_status.device_heartbeat_path, "/devices/heartbeat")
@@ -61,6 +69,7 @@ assert.ok(contract.responsibilities.includes("allow_manager_to_update_secret_fre
 assert.ok(contract.responsibilities.includes("track_employee_and_kiosk_device_heartbeats"))
 assert.ok(contract.responsibilities.includes("publish_online_offline_client_presence"))
 assert.ok(contract.responsibilities.includes("report_client_setup_status_without_credentials"))
+assert.ok(contract.responsibilities.includes("advertise_lan_middleman_with_manual_url_fallback"))
 assert.ok(contract.responsibilities.includes("bind_clients_to_configured_lan_server_before_sync"))
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
@@ -91,6 +100,9 @@ for (const endpoint of [
   "GET /customers/search",
   "POST /customers",
   "POST /inventory/reservations",
+  "GET /trade-ins/orders",
+  "POST /trade-ins/orders",
+  "PATCH /trade-ins/orders/:order_id/status",
   "GET /kiosk/orders",
   "POST /credit/adjustments",
   "PATCH /kiosk/orders/:order_id/status",

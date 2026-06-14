@@ -11,10 +11,12 @@ import {
 
 export const ACCESS_SECTIONS = Object.freeze([
   "Inventory",
+  "Trade-Ins",
   "Kiosk",
   "Queue",
   "Events",
   "Customers",
+  "Reports",
   "Sync",
   "Status",
   "Conflicts",
@@ -50,9 +52,14 @@ export function createLocalSyncStore(options = {}) {
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressEventsPull = typeof options.wordpressEventsPull === "function" ? options.wordpressEventsPull : null
+  const wordpressFulfillmentPull =
+    typeof options.wordpressFulfillmentPull === "function" ? options.wordpressFulfillmentPull : null
+  const wordpressReportsPull = typeof options.wordpressReportsPull === "function" ? options.wordpressReportsPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
   const wordpressInventorySalePush =
     typeof options.wordpressInventorySalePush === "function" ? options.wordpressInventorySalePush : null
+  const wordpressFulfillmentStatusPush =
+    typeof options.wordpressFulfillmentStatusPush === "function" ? options.wordpressFulfillmentStatusPush : null
   const wordpressEventRegistrationPush =
     typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
   const wordpressEventCheckinPush =
@@ -81,10 +88,13 @@ export function createLocalSyncStore(options = {}) {
   }
 
   const users = loadUsers(database)
+  persistCurrentAccessSchema(database, users, now)
   const sessions = new Map()
   const inventoryItems = loadInventoryItems(database)
   const queue = loadQueue(database)
   const kioskOrders = loadKioskOrders(database)
+  const fulfillmentOrders = loadFulfillmentOrders(database)
+  const tradeInOrders = loadTradeInOrders(database)
   const customers = loadCustomers(database)
   const creditLedgerEntries = loadCreditLedgerEntries(database)
   const eventSnapshots = loadEventSnapshots(database)
@@ -152,7 +162,7 @@ export function createLocalSyncStore(options = {}) {
       return sessionResult
     }
 
-    if (sessionResult.user.role !== "manager") {
+    if (!["manager", "owner"].includes(sessionResult.user.role)) {
       return blocked("manager_required", "A manager PIN session is required.")
     }
 
@@ -166,7 +176,7 @@ export function createLocalSyncStore(options = {}) {
       return sessionResult
     }
 
-    if (sessionResult.user.role !== "manager" && !sessionResult.user.access.includes(workspace)) {
+    if (!["manager", "owner"].includes(sessionResult.user.role) && !sessionResult.user.access.includes(workspace)) {
       return blocked("workspace_access_required", `This PIN cannot access ${workspace}.`)
     }
 
@@ -208,6 +218,10 @@ export function createLocalSyncStore(options = {}) {
       configuredAtUtc: now().toISOString(),
       configSource: "manager_app_settings",
       wordpressConnectorRestartRequired: true,
+      creditApprovalThresholdMinorUnits:
+        input.creditApprovalThresholdMinorUnits ??
+        input.credit_approval_threshold_minor_units ??
+        setupConfig.creditApprovalThresholdMinorUnits,
     })
 
     if (!nextConfig.websiteUrl) {
@@ -238,7 +252,7 @@ export function createLocalSyncStore(options = {}) {
     const name = cleanName(input.name)
     const pin = String(input.pin ?? "")
     const role = cleanRole(input.role)
-    const access = role === "manager" ? [...ACCESS_SECTIONS] : cleanAccess(input.access)
+    const access = ["manager", "owner"].includes(role) ? [...ACCESS_SECTIONS] : cleanAccess(input.access)
 
     if (!name || !/^\d{4}$/.test(pin) || access.length === 0) {
       return blocked("invalid_user", "Name, unique 4-digit PIN, role, and access are required.")
@@ -285,14 +299,14 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const role = cleanRole(input.role ?? user.role)
-    const managerCount = users.filter((candidate) => candidate.role === "manager").length
+    const managerCount = users.filter((candidate) => ["manager", "owner"].includes(candidate.role)).length
 
-    if (user.role === "manager" && role === "staff" && managerCount <= 1) {
+    if (["manager", "owner"].includes(user.role) && role === "staff" && managerCount <= 1) {
       return blocked("last_manager", "At least one manager PIN must remain active.")
     }
 
     user.role = role
-    user.access = role === "manager" ? [...ACCESS_SECTIONS] : cleanAccess(input.access ?? user.access)
+    user.access = ["manager", "owner"].includes(role) ? [...ACCESS_SECTIONS] : cleanAccess(input.access ?? user.access)
 
     if (user.access.length === 0) {
       return blocked("access_required", "Staff users need access to at least one workspace.")
@@ -453,7 +467,7 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
-  async function searchScryDexCards(token, { query = "", game = "pokemon" } = {}) {
+  async function searchScryDexCards(token, { query = "", game = "pokemon", setFilter = "", limit = "all" } = {}) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
     if (session.status !== "ok") {
@@ -462,12 +476,14 @@ export function createLocalSyncStore(options = {}) {
 
     const needle = cleanScryDexQuery(query)
     const normalizedGame = cleanGame(game)
+    const normalizedSetFilter = cleanScryDexSearchText(setFilter)
+    const resultLimit = boundedScryDexSearchLimit(limit)
 
     if (!needle) {
       return blocked("scrydex_query_required", "Enter a card name, set, or number before searching ScryDex.")
     }
 
-    const cachedCards = searchReferenceCards(referenceCards, needle, normalizedGame)
+    const cachedCards = searchReferenceCards(referenceCards, needle, normalizedGame, normalizedSetFilter, resultLimit)
 
     if (cachedCards.length > 0) {
       return {
@@ -475,6 +491,8 @@ export function createLocalSyncStore(options = {}) {
         cards: cachedCards.map((card) => enrichScryDexCard(card, inventoryItems)),
         query: needle,
         game: normalizedGame,
+        set_filter: normalizedSetFilter,
+        result_limit: resultLimit ?? "all",
         source: "wordpress_catalog_cache",
         lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
         local_reference_cache_hit: true,
@@ -487,9 +505,16 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const fallbackResult = websiteCatalogFallback
-      ? await websiteCatalogFallback({ query: needle, game: normalizedGame, limit: 8 })
+      ? await websiteCatalogFallback({ query: needle, game: normalizedGame, limit: resultLimit ?? 250 })
       : null
-    const fallbackCards = normalizeReferenceCardsFromFallback(fallbackResult, normalizedGame, now, needle)
+    const fallbackCards = normalizeReferenceCardsFromFallback(
+      fallbackResult,
+      normalizedGame,
+      now,
+      needle,
+      normalizedSetFilter,
+      resultLimit,
+    )
 
     for (const card of fallbackCards) {
       upsertReferenceCard(referenceCards, card)
@@ -503,6 +528,8 @@ export function createLocalSyncStore(options = {}) {
       cards,
       query: needle,
       game: normalizedGame,
+      set_filter: normalizedSetFilter,
+      result_limit: resultLimit ?? "all",
       source: fallbackCards.length > 0 ? "wordpress_proxy" : "local_reference_cache",
       lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       local_reference_cache_hit: false,
@@ -553,9 +580,18 @@ export function createLocalSyncStore(options = {}) {
     const finish = cleanName(input.finish)
     const language = cleanName(input.language) || "EN"
     const rawOrGraded = cleanRawOrGraded(input.raw_or_graded)
+    const gradingCompany = cleanName(input.grading_company)
+    const grade = cleanName(input.grade)
+    const certNumber = cleanName(input.cert_number)
     const condition = cleanCondition(input.condition ?? input.condition_code)
     const barcodeBase = cleanBarcode(input.barcode) || `PUG-${randomUUID().slice(0, 8).toUpperCase()}`
-    const priceMinorUnits = Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units))
+    const requestedPriceMinorUnits = roundSalePriceMinorUnits(
+      Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units)),
+    )
+    const minimumSalePriceMinorUnits = Math.max(
+      0,
+      minorUnits(input.minimum_sale_price_minor_units ?? input.minimum_price_minor_units ?? requestedPriceMinorUnits),
+    )
     const location = cleanName(input.location ?? input.location_label) || "Intake Queue"
     const imageUrl = cleanHttpUrl(input.image_url)
     const backImageUrl = cleanHttpUrl(input.back_image_url)
@@ -563,22 +599,29 @@ export function createLocalSyncStore(options = {}) {
     const kioskVisibility = cleanVisibility(input.kiosk_visibility, "visible")
     const posVisibility = cleanVisibility(input.pos_visibility, "visible")
     const quantity = boundedInt(input.quantity ?? input.quantity_added, 1, 200, 1)
-    const suggestedPriceMinorUnits = Math.max(
+    const suggestedPriceMinorUnits = roundSalePriceMinorUnits(Math.max(
       0,
-      minorUnits(input.suggested_price_minor_units ?? input.market_price_minor_units ?? priceMinorUnits),
-    )
-    const finalPriceMinorUnits = Math.max(0, minorUnits(input.final_price_minor_units ?? priceMinorUnits))
+      minorUnits(input.suggested_price_minor_units ?? input.market_price_minor_units ?? requestedPriceMinorUnits),
+    ))
+    const autoPriceMinorUnits = roundSalePriceMinorUnits(Math.max(
+      0,
+      minorUnits(input.auto_price_minor_units ?? input.repriced_minor_units ?? suggestedPriceMinorUnits),
+    ))
+    const finalPriceMinorUnits = roundSalePriceMinorUnits(Math.max(
+      minimumSalePriceMinorUnits,
+      minorUnits(input.final_price_minor_units ?? requestedPriceMinorUnits),
+    ))
     const priceSource =
       cleanName(input.price_source ?? input.pricing_source) ||
       (providerCardId || referenceVariantId || providerVariantId ? "scrydex_catalog" : "manual_intake")
     const priceObservedAtUtc =
       cleanIsoTimestamp(input.price_observed_at_utc ?? input.catalog_synced_at_utc) || now().toISOString()
     const priceOverrideReason =
-      finalPriceMinorUnits !== suggestedPriceMinorUnits
+      finalPriceMinorUnits !== suggestedPriceMinorUnits || finalPriceMinorUnits !== requestedPriceMinorUnits
         ? cleanReason(input.price_override_reason ?? "staff_price_override")
         : cleanOptionalReason(input.price_override_reason)
 
-    if (!cardName || priceMinorUnits <= 0) {
+    if (!cardName || finalPriceMinorUnits <= 0) {
       return blocked("invalid_inventory_intake", "Card name and positive price are required for local intake.")
     }
 
@@ -610,9 +653,17 @@ export function createLocalSyncStore(options = {}) {
       finish,
       language,
       raw_or_graded: rawOrGraded,
+      grading_company: rawOrGraded === "graded" ? gradingCompany : "",
+      grade: rawOrGraded === "graded" ? grade : "",
+      cert_number: rawOrGraded === "graded" ? certNumber : "",
       condition,
       barcode,
-      price_minor_units: priceMinorUnits,
+      price_minor_units: finalPriceMinorUnits,
+      market_price_minor_units: suggestedPriceMinorUnits,
+      minimum_sale_price_minor_units: minimumSalePriceMinorUnits,
+      auto_price_minor_units: autoPriceMinorUnits,
+      pricing_source: priceSource,
+      price_observed_at_utc: priceObservedAtUtc,
       currency: "USD",
       location,
       status: "pending_intake",
@@ -640,6 +691,8 @@ export function createLocalSyncStore(options = {}) {
           source: priceSource,
           observed_at_utc: priceObservedAtUtc,
           suggested_price_minor_units: suggestedPriceMinorUnits,
+          auto_price_minor_units: autoPriceMinorUnits,
+          minimum_sale_price_minor_units: minimumSalePriceMinorUnits,
           final_price_minor_units: finalPriceMinorUnits,
           override_reason: priceOverrideReason,
           reference_variant_id: referenceVariantId,
@@ -847,6 +900,12 @@ export function createLocalSyncStore(options = {}) {
       first_name: firstName,
       last_name: lastName,
       status: "queued",
+      payment_status: "pay_at_store",
+      square_receipt_reference: "",
+      square_order_id: "",
+      paid_at_utc: "",
+      paid_by_user_id: "",
+      picked_item_ids: [],
       reservation_ids: reservations.map((reservation) => reservation.reservation_id),
       items: selectedItems.map(kioskOrderItemSnapshot),
       created_at_utc: now().toISOString(),
@@ -912,6 +971,17 @@ export function createLocalSyncStore(options = {}) {
       return blocked("invalid_kiosk_order_status", "Use queued, accepted, pulling, ready, or completed for kiosk pickup status.")
     }
 
+    if (["ready", "completed"].includes(nextStatus) && order.payment_status !== "paid") {
+      return blocked("kiosk_payment_required", "Confirm the Square payment before marking this order ready or completed.")
+    }
+
+    if (
+      ["ready", "completed"].includes(nextStatus) &&
+      cleanPickedItemIds(order.picked_item_ids, order.items).length < cleanKioskOrderItems(order.items).length
+    ) {
+      return blocked("kiosk_items_not_picked", "Check off every card before marking this order ready or completed.")
+    }
+
     order.status = nextStatus
     order.updated_at_utc = now().toISOString()
     saveKioskOrder(database, order)
@@ -922,6 +992,428 @@ export function createLocalSyncStore(options = {}) {
       shared_queue_source: "local_sync_server",
       wordpress_status_sync_deferred: true,
       inventory_mutation_performed: false,
+    }
+  }
+
+  function updateKioskOrderPicks(token, orderId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const order = kioskOrders.find((candidate) => candidate.order_id === cleanPublicId(orderId))
+
+    if (!order) {
+      return blocked("kiosk_order_not_found", "No shared kiosk pickup order matched that order ID.")
+    }
+
+    order.picked_item_ids = cleanPickedItemIds(input.picked_item_ids ?? input.pickedItemIds, order.items)
+    if (order.picked_item_ids.length > 0 && ["queued", "accepted"].includes(order.status)) {
+      order.status = "pulling"
+    }
+    order.updated_at_utc = now().toISOString()
+    saveKioskOrder(database, order)
+
+    return {
+      status: "ok",
+      order: publicKioskOrder(order),
+      shared_queue_source: "local_sync_server",
+      inventory_mutation_performed: false,
+    }
+  }
+
+  async function updateKioskOrderPayment(token, orderId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const order = kioskOrders.find((candidate) => candidate.order_id === cleanPublicId(orderId))
+
+    if (!order) {
+      return blocked("kiosk_order_not_found", "No shared kiosk pickup order matched that order ID.")
+    }
+
+    if (order.payment_status === "paid") {
+      return {
+        status: "ok",
+        order: publicKioskOrder(order),
+        payment_notification: "already_paid",
+        square_payment_capture_performed: false,
+        inventory_sale_finalized: true,
+      }
+    }
+
+    const squareReceiptReference = cleanExternalId(
+      input.square_receipt_reference ?? input.squareReceiptReference,
+    )
+    const squareOrderId = cleanExternalId(input.square_order_id ?? input.squareOrderId)
+
+    if (!squareReceiptReference || input.cashier_confirmed !== true) {
+      return blocked(
+        "square_payment_confirmation_required",
+        "Enter the Square receipt or ticket reference and confirm the cashier completed payment.",
+      )
+    }
+
+    const saleResult = await finalizeSquarePosSale(token, {
+      inventory_public_ids: cleanKioskOrderItems(order.items).map((item) => item.public_id),
+      square_receipt_reference: squareReceiptReference,
+      square_order_id: squareOrderId,
+      sale_total_minor_units: publicKioskOrder(order).total_minor_units,
+    })
+
+    if (saleResult.status !== "ok") {
+      return saleResult
+    }
+
+    order.payment_status = "paid"
+    order.square_receipt_reference = squareReceiptReference
+    order.square_order_id = squareOrderId
+    order.paid_at_utc = now().toISOString()
+    order.paid_by_user_id = session.user.id
+    order.status = order.picked_item_ids.length > 0 ? "pulling" : "accepted"
+    order.updated_at_utc = now().toISOString()
+    saveKioskOrder(database, order)
+
+    return {
+      status: "ok",
+      order: publicKioskOrder(order),
+      sale: saleResult,
+      payment_notification: "paid_at_store_confirmed",
+      square_payment_capture_performed: false,
+      inventory_sale_finalized: true,
+    }
+  }
+
+  async function listFulfillmentOrders(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const limit = boundedInt(input.limit, 1, 100, 25)
+    const statuses = cleanFulfillmentStatusList(input.statuses)
+    const refreshRequested = input.refresh !== false && input.refresh !== "false" && input.refresh !== "0"
+    let wordpressPullResult = null
+    let wordpressPullBlocked = null
+
+    if (refreshRequested && wordpressFulfillmentPull) {
+      wordpressPullResult = await wordpressFulfillmentPull({
+        limit,
+        statuses: statuses.length > 0 ? statuses : ["processing", "completed", "on-hold"],
+      })
+
+      if (wordpressPullResult.status === "ok") {
+        for (const order of wordpressPullResult.orders ?? []) {
+          const normalizedOrder = localFulfillmentOrderFromWordPress(order, now)
+
+          if (!normalizedOrder) {
+            continue
+          }
+
+          const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === normalizedOrder.order_id)
+
+          if (existingIndex >= 0) {
+            fulfillmentOrders[existingIndex] = {
+              ...fulfillmentOrders[existingIndex],
+              ...normalizedOrder,
+              source: "wordpress",
+              updated_at_utc: now().toISOString(),
+            }
+            saveFulfillmentOrder(database, fulfillmentOrders[existingIndex])
+          } else {
+            fulfillmentOrders.push(normalizedOrder)
+            saveFulfillmentOrder(database, normalizedOrder)
+          }
+        }
+      } else {
+        wordpressPullBlocked = {
+          code: wordpressPullResult.code,
+          message: wordpressPullResult.message,
+          http_status: wordpressPullResult.http_status ?? 0,
+        }
+      }
+    }
+
+    const orders = fulfillmentOrders
+      .filter((order) => statuses.length === 0 || statuses.includes(cleanFulfillmentStatus(order.fulfillment_status)))
+      .sort((a, b) => String(b.created_at_utc).localeCompare(String(a.created_at_utc)))
+      .slice(0, limit)
+      .map(publicFulfillmentOrder)
+
+    return {
+      status: "ok",
+      orders,
+      order_count: orders.length,
+      total_order_count: fulfillmentOrders.length,
+      shared_queue_source: "local_sync_server",
+      website_pickup_source: "woocommerce_local_pickup",
+      payment_required_before_fulfillment: true,
+      wordpress_refresh_performed: Boolean(wordpressPullResult),
+      wordpress_refresh_blocked: wordpressPullBlocked,
+      wordpress_fulfillment_pull_connected: Boolean(wordpressFulfillmentPull),
+      wordpress_fulfillment_status_push_connected: Boolean(wordpressFulfillmentStatusPush),
+      credentials_synced_to_client: false,
+    }
+  }
+
+  async function updateFulfillmentOrderStatus(token, orderId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const numericOrderId = positiveInt(orderId)
+    const requestedStatus = cleanFulfillmentStatus(input.status)
+
+    if (!numericOrderId) {
+      return blocked("fulfillment_order_id_required", "A WooCommerce order ID is required.")
+    }
+
+    if (!requestedStatus) {
+      return blocked("invalid_fulfillment_status", "Use awaiting_pull, pulling, ready_for_pickup, or completed.")
+    }
+
+    const existingOrder = fulfillmentOrders.find((candidate) => candidate.order_id === numericOrderId)
+    const localFallback = existingOrder ?? {
+      order_id: numericOrderId,
+      order_number: String(numericOrderId),
+      customer_name: "Website pickup customer",
+      order_status: "processing",
+      fulfillment_status: requestedStatus,
+      payment_status: "paid",
+      shipping_method_id: "local_pickup",
+      shipping_method_title: "Local pickup",
+      local_pickup: true,
+      item_count: 0,
+      total_minor_units: 0,
+      currency: "USD",
+      paid_at_utc: "",
+      created_at_utc: now().toISOString(),
+      updated_at_utc: now().toISOString(),
+      items: [],
+      source: "queued",
+      picked_item_ids: [],
+    }
+
+    if (
+      ["ready_for_pickup", "completed"].includes(requestedStatus) &&
+      cleanPickedItemIds(localFallback.picked_item_ids, localFallback.items).length <
+        cleanFulfillmentOrderItems(localFallback.items).length
+    ) {
+      return blocked("fulfillment_items_not_picked", "Check off every card before marking this order ready or completed.")
+    }
+
+    let pushResult = null
+    let statusSyncDeferred = false
+
+    if (wordpressFulfillmentStatusPush) {
+      pushResult = await wordpressFulfillmentStatusPush({
+        orderId: numericOrderId,
+        status: requestedStatus,
+      })
+    }
+
+    let nextOrder = {
+      ...localFallback,
+      fulfillment_status: requestedStatus,
+      updated_at_utc: now().toISOString(),
+      source: pushResult?.status === "ok" ? "wordpress" : "queued",
+    }
+
+    if (pushResult?.status === "ok" && pushResult.order) {
+      nextOrder = localFulfillmentOrderFromWordPress(pushResult.order, now) ?? nextOrder
+      nextOrder.picked_item_ids = cleanPickedItemIds(localFallback.picked_item_ids, nextOrder.items)
+      nextOrder.updated_at_utc = now().toISOString()
+      nextOrder.source = "wordpress"
+    } else {
+      statusSyncDeferred = true
+      appendQueueOperation(database, queue, "woocommerce_fulfillment_status", `wc-order-${numericOrderId}`, {
+        order_id: numericOrderId,
+        status: requestedStatus,
+        actor_id: session.user.id,
+        sync_intent: "woocommerce_pickup_fulfillment_status",
+      }, now)
+    }
+
+    const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === numericOrderId)
+    if (existingIndex >= 0) {
+      fulfillmentOrders[existingIndex] = nextOrder
+    } else {
+      fulfillmentOrders.push(nextOrder)
+    }
+    saveFulfillmentOrder(database, nextOrder)
+
+    return {
+      status: "ok",
+      order: publicFulfillmentOrder(nextOrder),
+      shared_queue_source: "local_sync_server",
+      wordpress_status_sync_deferred: statusSyncDeferred,
+      wordpress_status_sync_performed: pushResult?.status === "ok",
+      wordpress_status_sync_blocked:
+        pushResult && pushResult.status !== "ok"
+          ? {
+              code: pushResult.code,
+              message: pushResult.message,
+              http_status: pushResult.http_status ?? 0,
+            }
+          : null,
+      inventory_mutation_performed: false,
+      payment_capture_performed: false,
+      credentials_synced_to_client: false,
+    }
+  }
+
+  function updateFulfillmentOrderPicks(token, orderId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const numericOrderId = positiveInt(orderId)
+    const order = fulfillmentOrders.find((candidate) => candidate.order_id === numericOrderId)
+
+    if (!order) {
+      return blocked("fulfillment_order_not_found", "No paid website pickup order matched that ID.")
+    }
+
+    order.picked_item_ids = cleanPickedItemIds(input.picked_item_ids ?? input.pickedItemIds, order.items)
+    if (order.picked_item_ids.length > 0 && order.fulfillment_status === "awaiting_pull") {
+      order.fulfillment_status = "pulling"
+    }
+    order.updated_at_utc = now().toISOString()
+    saveFulfillmentOrder(database, order)
+
+    return {
+      status: "ok",
+      order: publicFulfillmentOrder(order),
+      shared_queue_source: "local_sync_server",
+      wordpress_status_sync_deferred: true,
+      inventory_mutation_performed: false,
+    }
+  }
+
+  function listTradeInOrders(token, { limit = 50, statuses = [], query = "", staffUserId = "", customer = "" } = {}) {
+    const session = requireWorkspaceAccess(token, "Trade-Ins")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const allowedStatuses = cleanTradeInStatusList(statuses)
+    const needle = String(query ?? "").trim().toLowerCase()
+    const customerNeedle = String(customer ?? "").trim().toLowerCase()
+    const staffNeedle = cleanPublicId(staffUserId)
+    const rows = tradeInOrders
+      .filter((order) => allowedStatuses.length === 0 || allowedStatuses.includes(order.status))
+      .filter((order) => !staffNeedle || cleanPublicId(order.staff_user_id) === staffNeedle)
+      .filter((order) => !customerNeedle || cleanName(order.customer_name).toLowerCase().includes(customerNeedle))
+      .filter((order) => !needle || tradeInOrderMatchesNeedle(order, needle, users))
+      .sort((a, b) => String(b.updated_at_utc).localeCompare(String(a.updated_at_utc)))
+      .slice(0, boundedInt(limit, 1, 200, 50))
+
+    return {
+      status: "ok",
+      orders: rows.map((order) => publicTradeInOrder(order, users)),
+      order_count: rows.length,
+      total_order_count: tradeInOrders.length,
+      shared_queue_source: "local_sync_server",
+      sellable_inventory_created_by_draft: false,
+      credentials_synced_to_client: false,
+    }
+  }
+
+  function createTradeInOrder(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Trade-Ins")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const items = cleanTradeInItems(input.items)
+
+    if (items.length === 0) {
+      return blocked("trade_in_items_required", "Add at least one card before saving a trade-in draft.")
+    }
+
+      const order = {
+      order_id: `trade-${randomUUID()}`,
+      customer_name: cleanName(input.customer_name ?? input.customerName) || "Walk-in customer",
+      customer_public_id: cleanPublicId(input.customer_public_id ?? input.customerPublicId),
+      status: "draft",
+      staff_user_id: session.user.id,
+      notes: cleanOptionalReason(input.notes),
+      items,
+      cash_total_minor_units: tradeInTotalMinorUnits(items, "cash"),
+      credit_total_minor_units: tradeInTotalMinorUnits(items, "credit"),
+      combined_total_minor_units: tradeInTotalMinorUnits(items, "cash") + tradeInTotalMinorUnits(items, "credit"),
+      converted_at_utc: "",
+      converted_by_user_id: "",
+      created_at_utc: now().toISOString(),
+      updated_at_utc: now().toISOString(),
+    }
+
+    tradeInOrders.push(order)
+    saveTradeInOrder(database, order)
+
+      return {
+        status: "ok",
+        order: publicTradeInOrder(order, users),
+        sellable_inventory_created: false,
+        shared_queue_source: "local_sync_server",
+        credentials_synced_to_client: false,
+    }
+  }
+
+  function updateTradeInOrderStatus(token, orderId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Trade-Ins")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const publicId = cleanPublicId(orderId)
+    const nextStatus = cleanTradeInStatus(input.status)
+    const order = tradeInOrders.find((candidate) => candidate.order_id === publicId)
+
+    if (!order) {
+      return blocked("trade_in_order_not_found", "No trade-in order matched that ID.")
+    }
+
+    if (!nextStatus) {
+      return blocked("invalid_trade_in_status", "Use draft, review, approved, paid, converted, rejected, or completed.")
+    }
+
+    const transition = tradeInStatusTransition(order, nextStatus)
+
+    if (transition.status !== "ok") {
+      return blocked(transition.code, transition.message, {
+        order: publicTradeInOrder(order, users),
+        sellable_inventory_created: false,
+      })
+    }
+
+    order.status = nextStatus
+    order.notes = cleanOptionalReason(input.notes ?? order.notes)
+    if (nextStatus === "converted" && !order.converted_at_utc) {
+      order.converted_at_utc = now().toISOString()
+      order.converted_by_user_id = session.user.id
+    }
+    order.updated_at_utc = now().toISOString()
+    saveTradeInOrder(database, order)
+
+    return {
+      status: "ok",
+      order: publicTradeInOrder(order, users),
+      sellable_inventory_created: false,
+      shared_queue_source: "local_sync_server",
+      credentials_synced_to_client: false,
     }
   }
 
@@ -1118,10 +1610,10 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function createCreditAdjustment(token, input = {}) {
-    const manager = requireManager(token)
+    const session = requireWorkspaceAccess(token, "Customers")
 
-    if (manager.status !== "ok") {
-      return manager
+    if (session.status !== "ok") {
+      return session
     }
 
     const customer = findCustomer(customers, input)
@@ -1135,6 +1627,15 @@ export function createLocalSyncStore(options = {}) {
 
     if (amountMinorUnits === 0) {
       return blocked("invalid_credit_amount", "Credit adjustment amount must be non-zero.")
+    }
+
+    const threshold = setupConfig.creditApprovalThresholdMinorUnits
+    const managerApproved = ["manager", "owner"].includes(session.user.role)
+    if ((amountMinorUnits < 0 || Math.abs(amountMinorUnits) > threshold) && !managerApproved) {
+      return blocked(
+        "manager_credit_approval_required",
+        `A manager PIN is required for corrections or credit adjustments over ${formatMoney(threshold, "USD")}.`,
+      )
     }
 
     const balanceAfterMinorUnits = customer.credit_balance_minor_units + amountMinorUnits
@@ -1154,7 +1655,17 @@ export function createLocalSyncStore(options = {}) {
       amountMinorUnits,
       balanceAfterMinorUnits,
       reason,
-      source: "manager_adjustment",
+      source: managerApproved ? "manager_adjustment" : "staff_threshold_adjustment",
+      staffUserId: session.user.id,
+      referenceId: cleanExternalId(input.reference_id ?? input.referenceId) || "manual-credit-adjustment",
+      lineItems: [
+        {
+          type: amountMinorUnits > 0 ? "credit_given" : "adjustment",
+          label: reason,
+          amount_minor_units: amountMinorUnits,
+          reference_id: cleanExternalId(input.reference_id ?? input.referenceId) || "manual-credit-adjustment",
+        },
+      ],
       now,
     })
     creditLedgerEntries.push(ledgerEntry)
@@ -1162,7 +1673,9 @@ export function createLocalSyncStore(options = {}) {
     appendQueueOperation(database, queue, "credit_adjustment", ledgerEntry.entry_id, {
       customer: publicCustomer(customer),
       ledger_entry: publicCreditLedgerEntry(ledgerEntry),
-      manager_user_id: manager.user.id,
+      actor_user_id: session.user.id,
+      manager_user_id: managerApproved ? session.user.id : "",
+      approval_threshold_minor_units: threshold,
       sync_intent: "offline_credit_adjustment",
     }, now)
 
@@ -1170,7 +1683,9 @@ export function createLocalSyncStore(options = {}) {
       status: "ok",
       customer: publicCustomer(customer),
       ledger_entry: publicCreditLedgerEntry(ledgerEntry),
-      manager_approved: true,
+      manager_approved: managerApproved,
+      approval_required: Math.abs(amountMinorUnits) > threshold || amountMinorUnits < 0,
+      approval_threshold_minor_units: threshold,
       wordpress_acceptance_required: true,
     }
   }
@@ -1238,6 +1753,17 @@ export function createLocalSyncStore(options = {}) {
       balanceAfterMinorUnits,
       reason,
       source: "employee_redemption",
+      staffUserId: session.user.id,
+      referenceId: squareReceiptReference,
+      lineItems: [
+        {
+          type: "credit_used",
+          label: `Square sale ${squareReceiptReference}`,
+          amount_minor_units: -amountMinorUnits,
+          sale_total_minor_units: saleTotalMinorUnits,
+          square_receipt_reference: squareReceiptReference,
+        },
+      ],
       now,
     })
     const squareHandoff = buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits, {
@@ -1387,6 +1913,7 @@ export function createLocalSyncStore(options = {}) {
       persistence_mode: "sqlite",
       queue_depth: pendingQueueOperations(queue).length,
       kiosk_order_count: kioskOrders.length,
+      fulfillment_order_count: fulfillmentOrders.length,
       inventory_count: inventoryItems.length,
       reference_card_count: referenceCards.length,
       customer_count: customers.length,
@@ -1400,12 +1927,15 @@ export function createLocalSyncStore(options = {}) {
       setup_required_client_device_count: deviceSummary.setup_required_count,
       heartbeat_timeout_seconds: heartbeatTimeoutSeconds,
       active_session_count: sessions.size,
-      wordpress_pull_connected: Boolean(wordpressInventoryPull || wordpressEventsPull),
+      wordpress_pull_connected: Boolean(wordpressInventoryPull || wordpressEventsPull || wordpressFulfillmentPull),
       wordpress_inventory_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_events_pull_connected: Boolean(wordpressEventsPull),
+      wordpress_fulfillment_pull_connected: Boolean(wordpressFulfillmentPull),
+      wordpress_reports_pull_connected: Boolean(wordpressReportsPull),
       wordpress_push_connected: Boolean(
         wordpressInventoryPush ||
           wordpressInventorySalePush ||
+          wordpressFulfillmentStatusPush ||
           wordpressEventRegistrationPush ||
           wordpressEventCheckinPush ||
           wordpressCreditPush ||
@@ -1414,6 +1944,7 @@ export function createLocalSyncStore(options = {}) {
       ),
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_inventory_sale_push_connected: Boolean(wordpressInventorySalePush),
+      wordpress_fulfillment_status_push_connected: Boolean(wordpressFulfillmentStatusPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
@@ -1425,22 +1956,66 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function getManagerReport(token, { report = "inventory", filters = {} } = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    if (!wordpressReportsPull) {
+      return blocked("wordpress_reports_pull_unavailable", "WordPress reports pull is not configured on this LAN server.")
+    }
+
+    const result = await wordpressReportsPull({ report, filters })
+
+    if (result.status !== "ok") {
+      return {
+        status: "blocked",
+        code: result.code ?? "wordpress_reports_pull_failed",
+        message: result.message ?? "WordPress reports pull did not complete.",
+        http_status: result.http_status ?? 0,
+        report: result.report ?? localReportKey(report),
+        credentials_synced_to_client: false,
+      }
+    }
+
+    return {
+      status: "ok",
+      action: "manager_report_pulled",
+      report: result.report ?? localReportKey(report),
+      report_status: result.report_status ?? "planned",
+      code: result.code ?? "wordpress_reports_pull_ok",
+      http_status: result.http_status ?? 200,
+      plan: result.plan ?? {},
+      rows: Array.isArray(result.rows) ? result.rows : [],
+      meta: result.meta ?? {},
+      dashboard_plan: result.dashboard_plan ?? null,
+      csv_header: result.csv_header ?? "",
+      wordpress_reports_pull_connected: true,
+      credentials_synced_to_client: false,
+      authorization_header_printed: false,
+    }
+  }
+
   async function pullWebsiteInventory(token, input = {}) {
-    const session = requireWorkspaceAccess(token, "Sync")
+    const session = requireSession(token)
 
     if (session.status !== "ok") {
       return session
     }
 
-    if (!wordpressInventoryPull && !wordpressEventsPull) {
+    if (!wordpressInventoryPull && !wordpressEventsPull && !wordpressFulfillmentPull) {
       return blocked("wordpress_pull_unavailable", "WordPress pull is not configured on this LAN server.")
     }
 
     const requestedDomains = pullDomains(input.domains ?? input.domain)
     const shouldPullInventory = requestedDomains.has("inventory") && Boolean(wordpressInventoryPull)
     const shouldPullEvents = requestedDomains.has("events") && Boolean(wordpressEventsPull)
+    const shouldPullFulfillment = requestedDomains.has("fulfillment") && Boolean(wordpressFulfillmentPull)
     let inventoryPullResult = null
     let eventPullResult = null
+    let fulfillmentPullResult = null
 
     const appliedItems = []
     let insertedCount = 0
@@ -1561,6 +2136,56 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
+    const appliedFulfillmentOrders = []
+    let fulfillmentInsertedCount = 0
+    let fulfillmentUpdatedCount = 0
+    let fulfillmentIgnoredCount = 0
+
+    if (shouldPullFulfillment) {
+      fulfillmentPullResult = await wordpressFulfillmentPull({
+        limit: input.fulfillment_limit ?? input.fulfillmentLimit ?? input.page_size ?? input.pageSize,
+        statuses: input.fulfillment_statuses ?? input.fulfillmentStatuses ?? [],
+      })
+
+      if (fulfillmentPullResult.status !== "ok") {
+        return {
+          status: "blocked",
+          code: fulfillmentPullResult.code ?? "wordpress_fulfillment_pull_failed",
+          message: fulfillmentPullResult.message ?? "WordPress fulfillment pull did not complete.",
+          http_status: fulfillmentPullResult.http_status ?? 0,
+          credentials_synced_to_client: false,
+        }
+      }
+
+      for (const row of fulfillmentPullResult.orders ?? []) {
+        const pulledOrder = localFulfillmentOrderFromWordPress(row, now)
+
+        if (!pulledOrder) {
+          fulfillmentIgnoredCount += 1
+          continue
+        }
+
+        const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === pulledOrder.order_id)
+
+        if (existingIndex >= 0) {
+          fulfillmentOrders[existingIndex] = {
+            ...fulfillmentOrders[existingIndex],
+            ...pulledOrder,
+            source: fulfillmentOrders[existingIndex].source === "queued" ? "queued" : "wordpress",
+            updated_at_utc: now().toISOString(),
+          }
+          saveFulfillmentOrder(database, fulfillmentOrders[existingIndex])
+          appliedFulfillmentOrders.push(publicFulfillmentOrder(fulfillmentOrders[existingIndex]))
+          fulfillmentUpdatedCount += 1
+        } else {
+          fulfillmentOrders.push(pulledOrder)
+          saveFulfillmentOrder(database, pulledOrder)
+          appliedFulfillmentOrders.push(publicFulfillmentOrder(pulledOrder))
+          fulfillmentInsertedCount += 1
+        }
+      }
+    }
+
     return {
       status: "ok",
       pulled_count: (inventoryPullResult?.items ?? []).length,
@@ -1575,14 +2200,27 @@ export function createLocalSyncStore(options = {}) {
       events_updated_count: eventsUpdatedCount,
       events_ignored_count: eventsIgnoredCount,
       events: appliedEvents,
+      fulfillment_pulled_count: (fulfillmentPullResult?.orders ?? []).length,
+      fulfillment_applied_count: appliedFulfillmentOrders.length,
+      fulfillment_inserted_count: fulfillmentInsertedCount,
+      fulfillment_updated_count: fulfillmentUpdatedCount,
+      fulfillment_ignored_count: fulfillmentIgnoredCount,
+      fulfillment_orders: appliedFulfillmentOrders,
       meta: inventoryPullResult?.meta ?? null,
       events_meta: eventPullResult?.meta ?? null,
+      fulfillment_meta: fulfillmentPullResult
+        ? {
+            order_count: fulfillmentPullResult.order_count ?? (fulfillmentPullResult.orders ?? []).length,
+          }
+        : null,
       wordpress_pull_connected: true,
       wordpress_inventory_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_events_pull_connected: Boolean(wordpressEventsPull),
+      wordpress_fulfillment_pull_connected: Boolean(wordpressFulfillmentPull),
       credentials_synced_to_client: false,
       local_inventory_count: inventoryItems.length,
       local_event_count: eventSnapshots.length,
+      local_fulfillment_order_count: fulfillmentOrders.length,
       local_queue_depth: pendingQueueOperations(queue).length,
     }
   }
@@ -1720,7 +2358,7 @@ export function createLocalSyncStore(options = {}) {
   }
 
   async function pushQueuedOperations(token) {
-    const session = requireWorkspaceAccess(token, "Sync")
+    const session = requireSession(token)
 
     if (session.status !== "ok") {
       return session
@@ -1729,6 +2367,7 @@ export function createLocalSyncStore(options = {}) {
     if (
       !wordpressInventoryPush &&
       !wordpressInventorySalePush &&
+      !wordpressFulfillmentStatusPush &&
       !wordpressEventRegistrationPush &&
       !wordpressEventCheckinPush &&
       !wordpressCreditPush &&
@@ -1741,6 +2380,9 @@ export function createLocalSyncStore(options = {}) {
     const pendingOperations = pendingQueueOperations(queue)
     const inventoryOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_intake")
     const squareSaleOperations = pendingOperations.filter((operation) => operation.operation_type === "square_pos_sale")
+    const fulfillmentStatusOperations = pendingOperations.filter(
+      (operation) => operation.operation_type === "woocommerce_fulfillment_status",
+    )
     const eventRegistrationOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "event_registration",
     )
@@ -1762,6 +2404,66 @@ export function createLocalSyncStore(options = {}) {
 
     for (const operation of squareSaleOperations) {
       results.push(await pushSquareSaleOperation(operation))
+    }
+
+    for (const operation of fulfillmentStatusOperations) {
+      if (!wordpressFulfillmentStatusPush) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: "wordpress_fulfillment_status_push_unavailable",
+          message: "WordPress fulfillment status push is not configured on this LAN server.",
+        })
+        continue
+      }
+
+      const orderId = positiveInt(operation.payload?.order_id ?? operation.entity_id)
+      const nextStatus = cleanFulfillmentStatus(operation.payload?.status)
+      const pushResult = await wordpressFulfillmentStatusPush({
+        orderId,
+        status: nextStatus,
+        operationId: operation.operation_id,
+      })
+
+      if (pushResult.status !== "ok") {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "retry",
+          code: pushResult.code,
+          message: pushResult.message,
+          wordpress_code: pushResult.wordpress_code ?? "",
+          http_status: pushResult.http_status ?? 0,
+        })
+        continue
+      }
+
+      const pushedOrder = localFulfillmentOrderFromWordPress(pushResult.order, now)
+      if (pushedOrder) {
+        const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === pushedOrder.order_id)
+        if (existingIndex >= 0) {
+          fulfillmentOrders[existingIndex] = pushedOrder
+        } else {
+          fulfillmentOrders.push(pushedOrder)
+        }
+        saveFulfillmentOrder(database, pushedOrder)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      results.push({
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "accepted",
+        code: pushResult.code,
+        wordpress_code: pushResult.wordpress_code,
+        wordpress_fulfillment_order: pushResult.order,
+        inventory_mutation_performed: false,
+        payment_capture_performed: false,
+      })
     }
 
     for (const operation of eventRegistrationOperations) {
@@ -2173,11 +2875,14 @@ export function createLocalSyncStore(options = {}) {
     createEventRegistration,
     createInventoryIntake,
     createKioskOrder,
+    createTradeInOrder,
     finalizeSquarePosSale,
     deviceStatus,
     getSetupConfig,
     listEvents,
     listKioskOrders,
+    listTradeInOrders,
+    getManagerReport,
     createSession,
     listAccessPolicy,
     planSquarePosInventoryPull,
@@ -2189,9 +2894,15 @@ export function createLocalSyncStore(options = {}) {
     searchInventory,
     searchScryDexCards,
     syncStatus,
+    listFulfillmentOrders,
     pushQueuedOperations,
     updateSetupConfig,
+    updateFulfillmentOrderPicks,
+    updateFulfillmentOrderStatus,
+    updateKioskOrderPayment,
+    updateKioskOrderPicks,
     updateKioskOrderStatus,
+    updateTradeInOrderStatus,
     updateUserAccess,
   }
 }
@@ -2218,7 +2929,7 @@ function migrateLocalSyncDatabase(database) {
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('staff', 'manager')),
+      role TEXT NOT NULL CHECK (role IN ('staff', 'manager', 'owner')),
       access_json TEXT NOT NULL,
       pin_salt TEXT NOT NULL,
       pin_hash TEXT NOT NULL,
@@ -2242,6 +2953,9 @@ function migrateLocalSyncDatabase(database) {
       finish TEXT NOT NULL DEFAULT '',
       language TEXT NOT NULL DEFAULT 'EN',
       raw_or_graded TEXT NOT NULL DEFAULT 'raw',
+      grading_company TEXT NOT NULL DEFAULT '',
+      grade TEXT NOT NULL DEFAULT '',
+      cert_number TEXT NOT NULL DEFAULT '',
       condition TEXT NOT NULL,
       barcode TEXT NOT NULL,
       price_minor_units INTEGER NOT NULL,
@@ -2274,10 +2988,54 @@ function migrateLocalSyncDatabase(database) {
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
       status TEXT NOT NULL,
+      payment_status TEXT NOT NULL DEFAULT 'pay_at_store',
+      square_receipt_reference TEXT NOT NULL DEFAULT '',
+      square_order_id TEXT NOT NULL DEFAULT '',
+      paid_at_utc TEXT NOT NULL DEFAULT '',
+      paid_by_user_id TEXT NOT NULL DEFAULT '',
+      picked_item_ids_json TEXT NOT NULL DEFAULT '[]',
       reservation_ids_json TEXT NOT NULL,
       items_json TEXT NOT NULL DEFAULT '[]',
       created_at_utc TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS fulfillment_orders (
+      order_id INTEGER PRIMARY KEY,
+      order_number TEXT NOT NULL DEFAULT '',
+      customer_name TEXT NOT NULL DEFAULT '',
+      order_status TEXT NOT NULL DEFAULT 'processing',
+      fulfillment_status TEXT NOT NULL DEFAULT 'awaiting_pull',
+      payment_status TEXT NOT NULL DEFAULT 'paid',
+      shipping_method_id TEXT NOT NULL DEFAULT '',
+      shipping_method_title TEXT NOT NULL DEFAULT '',
+      local_pickup INTEGER NOT NULL DEFAULT 1,
+      item_count INTEGER NOT NULL DEFAULT 0,
+      total_minor_units INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      paid_at_utc TEXT NOT NULL DEFAULT '',
+      created_at_utc TEXT NOT NULL DEFAULT '',
+      updated_at_utc TEXT NOT NULL DEFAULT '',
+      items_json TEXT NOT NULL DEFAULT '[]',
+      picked_item_ids_json TEXT NOT NULL DEFAULT '[]',
+      source TEXT NOT NULL DEFAULT 'wordpress'
+    );
+
+    CREATE TABLE IF NOT EXISTS trade_in_orders (
+      order_id TEXT PRIMARY KEY,
+      customer_name TEXT NOT NULL,
+      customer_public_id TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL,
+      staff_user_id TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      items_json TEXT NOT NULL DEFAULT '[]',
+      cash_total_minor_units INTEGER NOT NULL DEFAULT 0,
+      credit_total_minor_units INTEGER NOT NULL DEFAULT 0,
+      combined_total_minor_units INTEGER NOT NULL DEFAULT 0,
+      converted_at_utc TEXT NOT NULL DEFAULT '',
+      converted_by_user_id TEXT NOT NULL DEFAULT '',
+      created_at_utc TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS customers (
@@ -2301,11 +3059,15 @@ function migrateLocalSyncDatabase(database) {
       customer_public_id TEXT NOT NULL,
       entry_type TEXT NOT NULL,
       amount_minor_units INTEGER NOT NULL,
+      balance_before_minor_units INTEGER NOT NULL DEFAULT 0,
       balance_after_minor_units INTEGER NOT NULL,
       currency TEXT NOT NULL,
       status TEXT NOT NULL,
       reason TEXT NOT NULL,
       source TEXT NOT NULL,
+      staff_user_id TEXT NOT NULL DEFAULT '',
+      reference_id TEXT NOT NULL DEFAULT '',
+      line_items_json TEXT NOT NULL DEFAULT '[]',
       created_at_utc TEXT NOT NULL,
       FOREIGN KEY (customer_public_id) REFERENCES customers(customer_public_id)
     );
@@ -2369,6 +3131,7 @@ function migrateLocalSyncDatabase(database) {
     );
   `)
 
+  ensureLocalSyncUserRoleConstraint(database)
   ensureLocalSyncColumn(database, "inventory_items", "provider_card_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "wordpress_public_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "reference_variant_id", "INTEGER NULL")
@@ -2381,6 +3144,9 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "finish", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "language", "TEXT NOT NULL DEFAULT 'EN'")
   ensureLocalSyncColumn(database, "inventory_items", "raw_or_graded", "TEXT NOT NULL DEFAULT 'raw'")
+  ensureLocalSyncColumn(database, "inventory_items", "grading_company", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "grade", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "cert_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "image_url", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "back_image_url", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "online_visibility", "TEXT NOT NULL DEFAULT 'visible'")
@@ -2391,6 +3157,32 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
   ensureLocalSyncColumn(database, "kiosk_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "kiosk_orders", "updated_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "kiosk_orders", "payment_status", "TEXT NOT NULL DEFAULT 'pay_at_store'")
+  ensureLocalSyncColumn(database, "kiosk_orders", "square_receipt_reference", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "kiosk_orders", "square_order_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "kiosk_orders", "paid_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "kiosk_orders", "paid_by_user_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "kiosk_orders", "picked_item_ids_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "fulfillment_orders", "order_number", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "fulfillment_orders", "updated_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "fulfillment_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "fulfillment_orders", "source", "TEXT NOT NULL DEFAULT 'wordpress'")
+  ensureLocalSyncColumn(database, "fulfillment_orders", "picked_item_ids_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "trade_in_orders", "customer_public_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "staff_user_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "notes", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "trade_in_orders", "cash_total_minor_units", "INTEGER NOT NULL DEFAULT 0")
+  ensureLocalSyncColumn(database, "trade_in_orders", "credit_total_minor_units", "INTEGER NOT NULL DEFAULT 0")
+  ensureLocalSyncColumn(database, "trade_in_orders", "combined_total_minor_units", "INTEGER NOT NULL DEFAULT 0")
+  ensureLocalSyncColumn(database, "trade_in_orders", "converted_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "converted_by_user_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "updated_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "credit_ledger_entries", "balance_before_minor_units", "INTEGER NOT NULL DEFAULT 0")
+  ensureLocalSyncColumn(database, "credit_ledger_entries", "staff_user_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "credit_ledger_entries", "reference_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "credit_ledger_entries", "line_items_json", "TEXT NOT NULL DEFAULT '[]'")
+  database.exec("UPDATE users SET role = 'owner' WHERE id = 'preview-manager'")
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "reference_cards", "price_points_json", "TEXT NOT NULL DEFAULT '[]'")
@@ -2399,6 +3191,35 @@ function migrateLocalSyncDatabase(database) {
     UPDATE operation_queue
     SET sync_status = 'local_only'
     WHERE operation_type = 'user_access_upsert' AND sync_status = 'pending'
+  `)
+}
+
+function ensureLocalSyncUserRoleConstraint(database) {
+  const row = database
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'")
+    .get()
+
+  if (String(row?.sql ?? "").includes("'owner'")) {
+    return
+  }
+
+  database.exec(`
+    CREATE TABLE users_role_migration (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('staff', 'manager', 'owner')),
+      access_json TEXT NOT NULL,
+      pin_salt TEXT NOT NULL,
+      pin_hash TEXT NOT NULL,
+      updated_at_utc TEXT NOT NULL
+    );
+    INSERT INTO users_role_migration (
+      id, name, role, access_json, pin_salt, pin_hash, updated_at_utc
+    )
+    SELECT id, name, role, access_json, pin_salt, pin_hash, updated_at_utc
+    FROM users;
+    DROP TABLE users;
+    ALTER TABLE users_role_migration RENAME TO users;
   `)
 }
 
@@ -2469,10 +3290,16 @@ function loadUsers(database) {
       id: row.id,
       name: row.name,
       role: cleanRole(row.role),
-      access: cleanAccess(parseJson(row.access_json, [])),
+      access: normalizeUserAccessForCurrentSchema(cleanRole(row.role), parseJson(row.access_json, [])),
       pinSalt: row.pin_salt,
       pinHash: row.pin_hash,
     }))
+}
+
+function persistCurrentAccessSchema(database, users, now) {
+  for (const user of users) {
+    saveUser(database, user, now)
+  }
 }
 
 function loadInventoryItems(database) {
@@ -2480,7 +3307,7 @@ function loadInventoryItems(database) {
     .prepare(`
       SELECT public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
         reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
-        variant, finish, language, raw_or_graded, condition, barcode, price_minor_units,
+        variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, source
@@ -2505,6 +3332,9 @@ function loadInventoryItems(database) {
       finish: cleanName(row.finish),
       language: cleanName(row.language) || "EN",
       raw_or_graded: cleanRawOrGraded(row.raw_or_graded),
+      grading_company: cleanName(row.grading_company),
+      grade: cleanName(row.grade),
+      cert_number: cleanName(row.cert_number),
       condition: row.condition,
       barcode: row.barcode,
       price_minor_units: Number(row.price_minor_units),
@@ -2610,6 +3440,7 @@ function publicSetupConfig(config) {
     config_source: config.configSource,
     configured_at_utc: config.configuredAtUtc,
     wordpress_connector_restart_required: config.wordpressConnectorRestartRequired,
+    credit_approval_threshold_minor_units: config.creditApprovalThresholdMinorUnits,
     credentials_synced_to_client: false,
     raw_credentials_returned: false,
     raw_credentials_accepted: false,
@@ -2637,7 +3468,9 @@ function loadQueue(database) {
 function loadKioskOrders(database) {
   return database
     .prepare(`
-      SELECT order_id, first_name, last_name, status, reservation_ids_json, items_json, created_at_utc, updated_at_utc
+      SELECT order_id, first_name, last_name, status, payment_status, square_receipt_reference,
+        square_order_id, paid_at_utc, paid_by_user_id, picked_item_ids_json,
+        reservation_ids_json, items_json, created_at_utc, updated_at_utc
       FROM kiosk_orders
       ORDER BY created_at_utc DESC, order_id
     `)
@@ -2647,11 +3480,84 @@ function loadKioskOrders(database) {
       first_name: row.first_name,
       last_name: row.last_name,
       status: cleanKioskOrderStatus(row.status),
+      payment_status: cleanKioskPaymentStatus(row.payment_status),
+      square_receipt_reference: cleanExternalId(row.square_receipt_reference),
+      square_order_id: cleanExternalId(row.square_order_id),
+      paid_at_utc: cleanIsoTimestamp(row.paid_at_utc),
+      paid_by_user_id: cleanPublicId(row.paid_by_user_id),
+      picked_item_ids: cleanPickedItemIds(parseJson(row.picked_item_ids_json, []), parseJson(row.items_json, [])),
       reservation_ids: parseJson(row.reservation_ids_json, []),
       items: cleanKioskOrderItems(parseJson(row.items_json, [])),
       created_at_utc: row.created_at_utc,
       updated_at_utc: row.updated_at_utc || row.created_at_utc,
     }))
+}
+
+function loadFulfillmentOrders(database) {
+  return database
+    .prepare(`
+      SELECT order_id, order_number, customer_name, order_status, fulfillment_status,
+        payment_status, shipping_method_id, shipping_method_title, local_pickup,
+        item_count, total_minor_units, currency, paid_at_utc, created_at_utc,
+        updated_at_utc, items_json, picked_item_ids_json, source
+      FROM fulfillment_orders
+      ORDER BY created_at_utc DESC, order_id DESC
+    `)
+    .all()
+    .map((row) => ({
+      order_id: positiveInt(row.order_id),
+      order_number: cleanName(row.order_number) || String(row.order_id),
+      customer_name: cleanName(row.customer_name),
+      order_status: cleanOrderStatus(row.order_status),
+      fulfillment_status: cleanFulfillmentStatus(row.fulfillment_status) || "awaiting_pull",
+      payment_status: cleanName(row.payment_status) || "paid",
+      shipping_method_id: cleanName(row.shipping_method_id),
+      shipping_method_title: cleanName(row.shipping_method_title),
+      local_pickup: Number(row.local_pickup) === 1,
+      item_count: boundedInt(row.item_count, 0, 9999, 0),
+      total_minor_units: Math.max(0, minorUnits(row.total_minor_units)),
+      currency: cleanCurrency(row.currency),
+      paid_at_utc: cleanIsoTimestamp(row.paid_at_utc),
+      created_at_utc: cleanIsoTimestamp(row.created_at_utc),
+      updated_at_utc: cleanIsoTimestamp(row.updated_at_utc) || cleanIsoTimestamp(row.created_at_utc),
+      items: cleanFulfillmentOrderItems(parseJson(row.items_json, [])),
+      picked_item_ids: cleanPickedItemIds(
+        parseJson(row.picked_item_ids_json, []),
+        cleanFulfillmentOrderItems(parseJson(row.items_json, [])),
+      ),
+      source: cleanFulfillmentOrderSource(row.source),
+    }))
+    .filter((order) => order.order_id > 0)
+}
+
+function loadTradeInOrders(database) {
+  return database
+    .prepare(`
+      SELECT order_id, customer_name, customer_public_id, status, staff_user_id,
+        notes, items_json, cash_total_minor_units, credit_total_minor_units,
+        combined_total_minor_units, converted_at_utc, converted_by_user_id,
+        created_at_utc, updated_at_utc
+      FROM trade_in_orders
+      ORDER BY updated_at_utc DESC, order_id DESC
+    `)
+    .all()
+    .map((row) => ({
+      order_id: cleanPublicId(row.order_id),
+      customer_name: cleanName(row.customer_name) || "Walk-in customer",
+      customer_public_id: cleanPublicId(row.customer_public_id),
+      status: cleanTradeInStatus(row.status) || "draft",
+      staff_user_id: cleanPublicId(row.staff_user_id),
+      notes: cleanOptionalReason(row.notes),
+      items: cleanTradeInItems(parseJson(row.items_json, [])),
+      cash_total_minor_units: Math.max(0, minorUnits(row.cash_total_minor_units)),
+      credit_total_minor_units: Math.max(0, minorUnits(row.credit_total_minor_units)),
+      combined_total_minor_units: Math.max(0, minorUnits(row.combined_total_minor_units)),
+      converted_at_utc: cleanIsoTimestamp(row.converted_at_utc),
+      converted_by_user_id: cleanPublicId(row.converted_by_user_id),
+      created_at_utc: cleanIsoTimestamp(row.created_at_utc),
+      updated_at_utc: cleanIsoTimestamp(row.updated_at_utc) || cleanIsoTimestamp(row.created_at_utc),
+    }))
+    .filter((order) => order.order_id)
 }
 
 function loadCustomers(database) {
@@ -2687,7 +3593,8 @@ function loadCreditLedgerEntries(database) {
   return database
     .prepare(`
       SELECT entry_id, customer_public_id, entry_type, amount_minor_units,
-        balance_after_minor_units, currency, status, reason, source, created_at_utc
+        balance_before_minor_units, balance_after_minor_units, currency, status,
+        reason, source, staff_user_id, reference_id, line_items_json, created_at_utc
       FROM credit_ledger_entries
       ORDER BY created_at_utc DESC, entry_id
     `)
@@ -2697,11 +3604,15 @@ function loadCreditLedgerEntries(database) {
       customer_public_id: row.customer_public_id,
       entry_type: row.entry_type,
       amount_minor_units: Number(row.amount_minor_units),
+      balance_before_minor_units: Number(row.balance_before_minor_units),
       balance_after_minor_units: Number(row.balance_after_minor_units),
       currency: row.currency,
       status: row.status,
       reason: row.reason,
       source: row.source,
+      staff_user_id: cleanPublicId(row.staff_user_id),
+      reference_id: cleanExternalId(row.reference_id),
+      line_items: cleanCreditLedgerLineItems(parseJson(row.line_items_json, [])),
       created_at_utc: row.created_at_utc,
     }))
 }
@@ -2761,12 +3672,12 @@ function saveInventoryItem(database, item, now) {
       INSERT INTO inventory_items (
         public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
         reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
-        variant, finish, language, raw_or_graded, condition, barcode, price_minor_units,
+        variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         wordpress_public_id = excluded.wordpress_public_id,
         row_version = excluded.row_version,
@@ -2783,6 +3694,9 @@ function saveInventoryItem(database, item, now) {
         finish = excluded.finish,
         language = excluded.language,
         raw_or_graded = excluded.raw_or_graded,
+        grading_company = excluded.grading_company,
+        grade = excluded.grade,
+        cert_number = excluded.cert_number,
         condition = excluded.condition,
         barcode = excluded.barcode,
         price_minor_units = excluded.price_minor_units,
@@ -2817,6 +3731,9 @@ function saveInventoryItem(database, item, now) {
       cleanName(item.finish),
       cleanName(item.language) || "EN",
       cleanRawOrGraded(item.raw_or_graded),
+      cleanName(item.grading_company),
+      cleanName(item.grade),
+      cleanName(item.cert_number),
       item.condition,
       item.barcode,
       item.price_minor_units,
@@ -2833,6 +3750,48 @@ function saveInventoryItem(database, item, now) {
       cleanExternalSyncState(item.external_sync_state),
       item.source,
       now().toISOString(),
+    )
+}
+
+function saveTradeInOrder(database, order) {
+  database
+    .prepare(`
+      INSERT INTO trade_in_orders (
+        order_id, customer_name, customer_public_id, status, staff_user_id,
+        notes, items_json, cash_total_minor_units, credit_total_minor_units,
+        combined_total_minor_units, converted_at_utc, converted_by_user_id,
+        created_at_utc, updated_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(order_id) DO UPDATE SET
+        customer_name = excluded.customer_name,
+        customer_public_id = excluded.customer_public_id,
+        status = excluded.status,
+        staff_user_id = excluded.staff_user_id,
+        notes = excluded.notes,
+        items_json = excluded.items_json,
+        cash_total_minor_units = excluded.cash_total_minor_units,
+        credit_total_minor_units = excluded.credit_total_minor_units,
+        combined_total_minor_units = excluded.combined_total_minor_units,
+        converted_at_utc = excluded.converted_at_utc,
+        converted_by_user_id = excluded.converted_by_user_id,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run(
+      order.order_id,
+      order.customer_name,
+      cleanPublicId(order.customer_public_id),
+      cleanTradeInStatus(order.status) || "draft",
+      cleanPublicId(order.staff_user_id),
+      cleanOptionalReason(order.notes),
+      JSON.stringify(cleanTradeInItems(order.items)),
+      Math.max(0, minorUnits(order.cash_total_minor_units)),
+      Math.max(0, minorUnits(order.credit_total_minor_units)),
+      Math.max(0, minorUnits(order.combined_total_minor_units)),
+      cleanIsoTimestamp(order.converted_at_utc),
+      cleanPublicId(order.converted_by_user_id),
+      order.created_at_utc,
+      order.updated_at_utc,
     )
 }
 
@@ -2928,13 +3887,21 @@ function saveKioskOrder(database, order) {
   database
     .prepare(`
       INSERT INTO kiosk_orders (
-        order_id, first_name, last_name, status, reservation_ids_json, items_json, created_at_utc, updated_at_utc
+        order_id, first_name, last_name, status, payment_status, square_receipt_reference,
+        square_order_id, paid_at_utc, paid_by_user_id, picked_item_ids_json,
+        reservation_ids_json, items_json, created_at_utc, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_id) DO UPDATE SET
         first_name = excluded.first_name,
         last_name = excluded.last_name,
         status = excluded.status,
+        payment_status = excluded.payment_status,
+        square_receipt_reference = excluded.square_receipt_reference,
+        square_order_id = excluded.square_order_id,
+        paid_at_utc = excluded.paid_at_utc,
+        paid_by_user_id = excluded.paid_by_user_id,
+        picked_item_ids_json = excluded.picked_item_ids_json,
         reservation_ids_json = excluded.reservation_ids_json,
         items_json = excluded.items_json,
         updated_at_utc = excluded.updated_at_utc
@@ -2944,10 +3911,67 @@ function saveKioskOrder(database, order) {
       order.first_name,
       order.last_name,
       cleanKioskOrderStatus(order.status),
+      cleanKioskPaymentStatus(order.payment_status),
+      cleanExternalId(order.square_receipt_reference),
+      cleanExternalId(order.square_order_id),
+      cleanIsoTimestamp(order.paid_at_utc),
+      cleanPublicId(order.paid_by_user_id),
+      JSON.stringify(cleanPickedItemIds(order.picked_item_ids, order.items)),
       JSON.stringify(order.reservation_ids),
       JSON.stringify(cleanKioskOrderItems(order.items)),
       order.created_at_utc,
       order.updated_at_utc || order.created_at_utc,
+    )
+}
+
+function saveFulfillmentOrder(database, order) {
+  database
+    .prepare(`
+      INSERT INTO fulfillment_orders (
+        order_id, order_number, customer_name, order_status, fulfillment_status,
+        payment_status, shipping_method_id, shipping_method_title, local_pickup,
+        item_count, total_minor_units, currency, paid_at_utc, created_at_utc,
+        updated_at_utc, items_json, picked_item_ids_json, source
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(order_id) DO UPDATE SET
+        order_number = excluded.order_number,
+        customer_name = excluded.customer_name,
+        order_status = excluded.order_status,
+        fulfillment_status = excluded.fulfillment_status,
+        payment_status = excluded.payment_status,
+        shipping_method_id = excluded.shipping_method_id,
+        shipping_method_title = excluded.shipping_method_title,
+        local_pickup = excluded.local_pickup,
+        item_count = excluded.item_count,
+        total_minor_units = excluded.total_minor_units,
+        currency = excluded.currency,
+        paid_at_utc = excluded.paid_at_utc,
+        created_at_utc = excluded.created_at_utc,
+        updated_at_utc = excluded.updated_at_utc,
+        items_json = excluded.items_json,
+        picked_item_ids_json = excluded.picked_item_ids_json,
+        source = excluded.source
+    `)
+    .run(
+      positiveInt(order.order_id),
+      cleanName(order.order_number) || String(positiveInt(order.order_id)),
+      cleanName(order.customer_name),
+      cleanOrderStatus(order.order_status),
+      cleanFulfillmentStatus(order.fulfillment_status) || "awaiting_pull",
+      cleanName(order.payment_status) || "paid",
+      cleanName(order.shipping_method_id),
+      cleanName(order.shipping_method_title),
+      order.local_pickup === false ? 0 : 1,
+      boundedInt(order.item_count ?? order.items?.length, 0, 9999, 0),
+      Math.max(0, minorUnits(order.total_minor_units)),
+      cleanCurrency(order.currency),
+      cleanIsoTimestamp(order.paid_at_utc),
+      cleanIsoTimestamp(order.created_at_utc),
+      cleanIsoTimestamp(order.updated_at_utc) || cleanIsoTimestamp(order.created_at_utc),
+      JSON.stringify(cleanFulfillmentOrderItems(order.items)),
+      JSON.stringify(cleanPickedItemIds(order.picked_item_ids, order.items)),
+      cleanFulfillmentOrderSource(order.source),
     )
 }
 
@@ -2996,24 +4020,35 @@ function saveCreditLedgerEntry(database, entry) {
     .prepare(`
       INSERT INTO credit_ledger_entries (
         entry_id, customer_public_id, entry_type, amount_minor_units,
-        balance_after_minor_units, currency, status, reason, source, created_at_utc
+        balance_before_minor_units, balance_after_minor_units, currency, status,
+        reason, source, staff_user_id, reference_id, line_items_json, created_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(entry_id) DO UPDATE SET
+        amount_minor_units = excluded.amount_minor_units,
+        balance_before_minor_units = excluded.balance_before_minor_units,
+        balance_after_minor_units = excluded.balance_after_minor_units,
         status = excluded.status,
         reason = excluded.reason,
-        source = excluded.source
+        source = excluded.source,
+        staff_user_id = excluded.staff_user_id,
+        reference_id = excluded.reference_id,
+        line_items_json = excluded.line_items_json
     `)
     .run(
       entry.entry_id,
       entry.customer_public_id,
       entry.entry_type,
       entry.amount_minor_units,
+      Math.max(0, minorUnits(entry.balance_before_minor_units ?? (entry.balance_after_minor_units - entry.amount_minor_units))),
       entry.balance_after_minor_units,
       entry.currency,
       entry.status,
       entry.reason,
       entry.source,
+      cleanPublicId(entry.staff_user_id),
+      cleanExternalId(entry.reference_id),
+      JSON.stringify(cleanCreditLedgerLineItems(entry.line_items)),
       entry.created_at_utc,
     )
 }
@@ -3115,14 +4150,14 @@ function seedUsers() {
       name: "Front Counter Staff",
       pin: "1234",
       role: "staff",
-      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
+      access: ["Inventory", "Trade-Ins", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
       salt: "seed-staff-front-counter",
     }),
     buildSeedUser({
       id: "preview-manager",
       name: "Preview Manager",
       pin: "1420",
-      role: "manager",
+      role: "owner",
       access: [...ACCESS_SECTIONS],
       salt: "seed-preview-manager",
     }),
@@ -3342,6 +4377,9 @@ function publicInventoryItem(item) {
     finish: cleanName(item.finish),
     language: cleanName(item.language) || "EN",
     raw_or_graded: cleanRawOrGraded(item.raw_or_graded),
+    grading_company: cleanName(item.grading_company),
+    grade: cleanName(item.grade),
+    cert_number: cleanName(item.cert_number),
     condition: item.condition,
     barcode: item.barcode,
     price_minor_units: item.price_minor_units,
@@ -3392,6 +4430,9 @@ function localInventoryItemFromWordPress(row) {
     finish: cleanName(row.finish),
     language: cleanName(row.language) || "EN",
     raw_or_graded: cleanRawOrGraded(row.raw_or_graded),
+    grading_company: cleanName(row.grading_company),
+    grade: cleanName(row.grade),
+    cert_number: cleanName(row.cert_number),
     condition: cleanCondition(row.condition_code ?? row.condition),
     barcode: cleanBarcode(row.barcode ?? row.sku) || publicId,
     price_minor_units: priceMinorUnits,
@@ -3852,6 +4893,127 @@ function cleanKioskOrderStatus(value) {
   return "queued"
 }
 
+function cleanKioskPaymentStatus(value) {
+  return value === "paid" ? "paid" : "pay_at_store"
+}
+
+function cleanTradeInItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item, index) => {
+      const marketMidMinorUnits = Math.max(
+        0,
+        minorUnits(item.market_mid_minor_units ?? item.marketMidMinorUnits ?? item.market_price_minor_units),
+      )
+      const percentageBasisPoints = cleanTradeInPercentageBasisPoints(
+        item.trade_in_percentage_basis_points ?? item.percentageBasisPoints,
+      )
+      const calculatedFinalValueMinorUnits = tradeInValueMinorUnits(marketMidMinorUnits, percentageBasisPoints)
+      const manualFinalValueMinorUnits = cleanTradeInFinalValueMinorUnits(
+        item.final_value_minor_units ?? item.finalValueMinorUnits,
+      )
+
+      return {
+        item_id: cleanPublicId(item.item_id ?? item.id) || `trade-item-${index + 1}`,
+        product_type: cleanRawOrGraded(item.product_type ?? item.productType ?? item.raw_or_graded),
+        card_name: cleanName(item.card_name ?? item.cardName),
+        set_name: cleanName(item.set_name ?? item.setName),
+        condition: cleanCondition(item.condition),
+        grading_company: cleanName(item.grading_company ?? item.gradingCompany),
+        grade: cleanName(item.grade),
+        cert_number: cleanName(item.cert_number ?? item.certNumber),
+        market_mid_minor_units: marketMidMinorUnits,
+        trade_in_percentage_basis_points: percentageBasisPoints,
+        calculated_final_value_minor_units: calculatedFinalValueMinorUnits,
+        final_value_minor_units: manualFinalValueMinorUnits ?? calculatedFinalValueMinorUnits,
+        final_value_manually_set: null !== manualFinalValueMinorUnits,
+        payout_type: cleanTradeInPayoutType(item.payout_type ?? item.payoutType),
+        image_url: cleanHttpUrl(item.image_url ?? item.imageUrl),
+      }
+    })
+    .filter((item) => item.card_name && item.market_mid_minor_units > 0)
+}
+
+function cleanTradeInStatus(value) {
+  const status = String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_")
+
+  return ["draft", "review", "approved", "paid", "converted", "rejected", "completed"].includes(status)
+    ? status
+    : ""
+}
+
+function cleanTradeInStatusList(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [...new Set(value.map(cleanTradeInStatus).filter(Boolean))]
+}
+
+function cleanTradeInPayoutType(value) {
+  return String(value ?? "").trim().toLowerCase() === "cash" ? "cash" : "credit"
+}
+
+function cleanTradeInPercentageBasisPoints(value) {
+  const parsed = boundedInt(value, 0, 10000, 6000)
+
+  return parsed % 500 === 0 ? parsed : Math.round(parsed / 500) * 500
+}
+
+function cleanTradeInFinalValueMinorUnits(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null
+  }
+
+  return Math.max(0, minorUnits(value))
+}
+
+function tradeInValueMinorUnits(marketMidMinorUnits, percentageBasisPoints) {
+  const raw = Math.floor((Math.max(0, minorUnits(marketMidMinorUnits)) * cleanTradeInPercentageBasisPoints(percentageBasisPoints)) / 10000)
+
+  return Math.floor(raw / 100) * 100
+}
+
+function tradeInTotalMinorUnits(items, payoutType) {
+  return cleanTradeInItems(items)
+    .filter((item) => item.payout_type === payoutType)
+    .reduce((total, item) => total + item.final_value_minor_units, 0)
+}
+
+function cleanPickedItemIds(value, items = []) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const allowed = new Set(
+    (Array.isArray(items) ? items : [])
+      .flatMap((item) => cleanPickedItemIdentities(item))
+      .filter(Boolean),
+  )
+
+  return [...new Set(value.map(cleanPublicId).filter((id) => id && allowed.has(id)))]
+}
+
+function cleanPickedItemIdentity(item) {
+  return cleanPickedItemIdentities(item)[0] ?? ""
+}
+
+function cleanPickedItemIdentities(item) {
+  const identities = []
+  for (const candidate of [item?.public_id, item?.inventory_id, item?.reservation_id, item?.order_item_id]) {
+    const id = cleanPublicId(candidate)
+    if (id && id !== "0" && !identities.includes(id)) {
+      identities.push(id)
+    }
+  }
+
+  return identities
+}
+
 function kioskOrderStatusSlug(value) {
   return String(value ?? "")
     .trim()
@@ -3870,6 +5032,13 @@ function publicKioskOrder(order) {
     last_name: cleanName(order.last_name),
     customer_name: cleanName(`${order.first_name ?? ""} ${order.last_name ?? ""}`),
     status: cleanKioskOrderStatus(order.status),
+    payment_status: cleanKioskPaymentStatus(order.payment_status),
+    square_receipt_reference: cleanExternalId(order.square_receipt_reference),
+    square_order_id: cleanExternalId(order.square_order_id),
+    paid_at_utc: cleanIsoTimestamp(order.paid_at_utc) || "",
+    picked_item_ids: cleanPickedItemIds(order.picked_item_ids, items),
+    picked_item_count: cleanPickedItemIds(order.picked_item_ids, items).length,
+    all_items_picked: items.length > 0 && cleanPickedItemIds(order.picked_item_ids, items).length === items.length,
     reservation_ids: Array.isArray(order.reservation_ids) ? order.reservation_ids.map(cleanPublicId).filter(Boolean) : [],
     items,
     item_count: items.length,
@@ -3878,6 +5047,236 @@ function publicKioskOrder(order) {
     created_at_utc: cleanIsoTimestamp(order.created_at_utc) || "",
     updated_at_utc: cleanIsoTimestamp(order.updated_at_utc) || cleanIsoTimestamp(order.created_at_utc) || "",
   }
+}
+
+function localFulfillmentOrderFromWordPress(order, now = () => new Date()) {
+  const orderId = positiveInt(order?.order_id)
+  const items = cleanFulfillmentOrderItems(order?.items)
+
+  if (!orderId || items.length === 0) {
+    return null
+  }
+
+  const createdAtUtc = cleanIsoTimestamp(order.created_at_utc) || now().toISOString()
+
+  return {
+    order_id: orderId,
+    order_number: cleanName(order.order_number) || String(orderId),
+    customer_name: cleanName(order.customer_name) || "Website pickup customer",
+    order_status: cleanOrderStatus(order.order_status),
+    fulfillment_status: cleanFulfillmentStatus(order.fulfillment_status) || "awaiting_pull",
+    payment_status: cleanName(order.payment_status) || "paid",
+    shipping_method_id: cleanName(order.shipping_method_id),
+    shipping_method_title: cleanName(order.shipping_method_title) || "Local pickup",
+    local_pickup: order.local_pickup !== false,
+    item_count: boundedInt(order.item_count ?? items.length, 0, 9999, items.length),
+    total_minor_units: Math.max(0, minorUnits(order.total_minor_units)),
+    currency: cleanCurrency(order.currency),
+    paid_at_utc: cleanIsoTimestamp(order.paid_at_utc),
+    created_at_utc: createdAtUtc,
+    updated_at_utc: now().toISOString(),
+    items,
+    source: "wordpress",
+    picked_item_ids: cleanPickedItemIds(order.picked_item_ids, items),
+  }
+}
+
+function publicFulfillmentOrder(order) {
+  const items = cleanFulfillmentOrderItems(order.items)
+  const totalMinorUnits =
+    Math.max(0, minorUnits(order.total_minor_units)) ||
+    items.reduce((total, item) => total + item.price_minor_units * Math.max(1, item.quantity), 0)
+
+  return {
+    order_id: positiveInt(order.order_id),
+    order_number: cleanName(order.order_number) || String(positiveInt(order.order_id)),
+    customer_name: cleanName(order.customer_name),
+    order_status: cleanOrderStatus(order.order_status),
+    fulfillment_status: cleanFulfillmentStatus(order.fulfillment_status) || "awaiting_pull",
+    payment_status: cleanName(order.payment_status) || "paid",
+    shipping_method_id: cleanName(order.shipping_method_id),
+    shipping_method_title: cleanName(order.shipping_method_title),
+    local_pickup: order.local_pickup !== false,
+    item_count: boundedInt(order.item_count ?? items.length, 0, 9999, items.length),
+    total_minor_units: totalMinorUnits,
+    currency: cleanCurrency(order.currency),
+    paid_at_utc: cleanIsoTimestamp(order.paid_at_utc) || "",
+    created_at_utc: cleanIsoTimestamp(order.created_at_utc) || "",
+    updated_at_utc: cleanIsoTimestamp(order.updated_at_utc) || cleanIsoTimestamp(order.created_at_utc) || "",
+    items,
+    picked_item_ids: cleanPickedItemIds(order.picked_item_ids, items),
+    picked_item_count: cleanPickedItemIds(order.picked_item_ids, items).length,
+    all_items_picked: items.length > 0 && cleanPickedItemIds(order.picked_item_ids, items).length === items.length,
+    source: cleanFulfillmentOrderSource(order.source),
+    payment_required_before_fulfillment: true,
+    inventory_mutation_performed_by_status: false,
+  }
+}
+
+function publicTradeInOrder(order, users = []) {
+  const items = cleanTradeInItems(order.items)
+  const cashTotalMinorUnits = tradeInTotalMinorUnits(items, "cash")
+  const creditTotalMinorUnits = tradeInTotalMinorUnits(items, "credit")
+  const staffUserId = cleanPublicId(order.staff_user_id)
+  const staffUser = users.find((user) => cleanPublicId(user.id) === staffUserId)
+
+  return {
+    order_id: cleanPublicId(order.order_id),
+    customer_name: cleanName(order.customer_name) || "Walk-in customer",
+    customer_public_id: cleanPublicId(order.customer_public_id),
+    status: cleanTradeInStatus(order.status) || "draft",
+    staff_user_id: staffUserId,
+    staff_user_name: staffUser ? cleanName(staffUser.name) : "",
+    notes: cleanOptionalReason(order.notes),
+    items,
+    item_count: items.length,
+    cash_total_minor_units: cashTotalMinorUnits,
+    credit_total_minor_units: creditTotalMinorUnits,
+    combined_total_minor_units: cashTotalMinorUnits + creditTotalMinorUnits,
+    currency: "USD",
+    converted_at_utc: cleanIsoTimestamp(order.converted_at_utc),
+    converted_by_user_id: cleanPublicId(order.converted_by_user_id),
+    created_at_utc: cleanIsoTimestamp(order.created_at_utc),
+    updated_at_utc: cleanIsoTimestamp(order.updated_at_utc) || cleanIsoTimestamp(order.created_at_utc),
+    sellable_inventory_created: false,
+  }
+}
+
+function tradeInStatusTransition(order, nextStatus) {
+  const currentStatus = cleanTradeInStatus(order.status) || "draft"
+
+  if (currentStatus === nextStatus) {
+    if (nextStatus === "converted") {
+      return {
+        status: "blocked",
+        code: "trade_in_already_converted",
+        message: "This trade-in has already been marked converted. Duplicate conversion is blocked.",
+      }
+    }
+
+    return { status: "ok" }
+  }
+
+  if (["rejected", "completed"].includes(currentStatus)) {
+    return {
+      status: "blocked",
+      code: "trade_in_terminal_status",
+      message: "Rejected and completed trade-in records are terminal transaction records.",
+    }
+  }
+
+  if (currentStatus === "converted" && nextStatus !== "completed") {
+    return {
+      status: "blocked",
+      code: "trade_in_already_converted",
+      message: "Converted trade-ins can only be moved to completed history.",
+    }
+  }
+
+  if (nextStatus === "converted" && !["approved", "paid"].includes(currentStatus)) {
+    return {
+      status: "blocked",
+      code: "trade_in_conversion_requires_approval",
+      message: "Trade-ins must be approved or paid before conversion can be recorded.",
+    }
+  }
+
+  if (nextStatus === "paid" && !["approved", "paid"].includes(currentStatus)) {
+    return {
+      status: "blocked",
+      code: "trade_in_payment_requires_approval",
+      message: "Approve the trade-in before marking it paid.",
+    }
+  }
+
+  return { status: "ok" }
+}
+
+function tradeInOrderMatchesNeedle(order, needle, users = []) {
+  if (!needle) {
+    return true
+  }
+
+  const publicOrder = publicTradeInOrder(order, users)
+  const searchable = [
+    publicOrder.order_id,
+    publicOrder.customer_name,
+    publicOrder.customer_public_id,
+    publicOrder.staff_user_id,
+    publicOrder.staff_user_name,
+    publicOrder.status,
+    publicOrder.notes,
+    ...publicOrder.items.flatMap((item) => [
+      item.item_id,
+      item.product_type,
+      item.card_name,
+      item.set_name,
+      item.condition,
+      item.grading_company,
+      item.grade,
+      item.cert_number,
+      item.payout_type,
+    ]),
+  ]
+    .map((value) => String(value ?? "").toLowerCase())
+    .join(" ")
+
+  return searchable.includes(needle)
+}
+
+function cleanFulfillmentOrderItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => ({
+      order_item_id: positiveInt(item.order_item_id ?? item.orderItemId),
+      inventory_id: positiveInt(item.inventory_id ?? item.inventoryId),
+      reservation_id: positiveInt(item.reservation_id ?? item.reservationId),
+      barcode: cleanBarcode(item.barcode),
+      card_name: cleanName(item.card_name ?? item.cardName),
+      set_name: cleanName(item.set_name ?? item.setName),
+      condition: cleanCondition(item.condition ?? item.condition_code),
+      price_minor_units: Math.max(0, minorUnits(item.price_minor_units ?? item.priceMinorUnits)),
+      currency: cleanCurrency(item.currency),
+      quantity: boundedInt(item.quantity, 1, 999, 1),
+    }))
+    .filter((item) => item.inventory_id > 0 || item.reservation_id > 0 || item.card_name)
+}
+
+function cleanFulfillmentStatus(value) {
+  const status = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_ -]+/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  return ["awaiting_pull", "pulling", "ready_for_pickup", "completed"].includes(status) ? status : ""
+}
+
+function cleanFulfillmentStatusList(value) {
+  const raw = Array.isArray(value) ? value : String(value ?? "").split(",")
+
+  return raw.map(cleanFulfillmentStatus).filter(Boolean)
+}
+
+function cleanOrderStatus(value) {
+  return String(value ?? "processing")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_ -]+/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64) || "processing"
+}
+
+function cleanFulfillmentOrderSource(value) {
+  const source = String(value ?? "").trim().toLowerCase()
+
+  return ["wordpress", "queued"].includes(source) ? source : "wordpress"
 }
 
 function publicCustomer(customer) {
@@ -3906,11 +5305,15 @@ function publicCreditLedgerEntry(entry) {
     customer_public_id: entry.customer_public_id,
     entry_type: entry.entry_type,
     amount_minor_units: entry.amount_minor_units,
+    balance_before_minor_units: entry.balance_before_minor_units,
     balance_after_minor_units: entry.balance_after_minor_units,
     currency: entry.currency,
     status: entry.status,
     reason: entry.reason,
     source: entry.source,
+    staff_user_id: cleanPublicId(entry.staff_user_id),
+    reference_id: cleanExternalId(entry.reference_id),
+    line_items: cleanCreditLedgerLineItems(entry.line_items),
     created_at_utc: entry.created_at_utc,
   }
 }
@@ -3994,6 +5397,9 @@ function buildCreditLedgerEntry({
   balanceAfterMinorUnits,
   reason,
   source,
+  staffUserId = "",
+  referenceId = "",
+  lineItems = [],
   now,
 }) {
   return {
@@ -4001,13 +5407,33 @@ function buildCreditLedgerEntry({
     customer_public_id: customer.customer_public_id,
     entry_type: entryType,
     amount_minor_units: amountMinorUnits,
+    balance_before_minor_units: Math.max(0, balanceAfterMinorUnits - amountMinorUnits),
     balance_after_minor_units: balanceAfterMinorUnits,
     currency: customer.credit_currency,
     status: "pending_sync",
     reason,
     source,
+    staff_user_id: cleanPublicId(staffUserId),
+    reference_id: cleanExternalId(referenceId),
+    line_items: cleanCreditLedgerLineItems(lineItems),
     created_at_utc: now().toISOString(),
   }
+}
+
+function cleanCreditLedgerLineItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items.slice(0, 50).map((item, index) => ({
+    line_item_id: cleanExternalId(item.line_item_id ?? item.lineItemId) || `line-${index + 1}`,
+    type: cleanName(item.type) || "ledger_line",
+    label: cleanReason(item.label ?? item.description ?? item.reason) || "Ledger line item",
+    amount_minor_units: minorUnits(item.amount_minor_units ?? item.amountMinorUnits),
+    reference_id: cleanExternalId(item.reference_id ?? item.referenceId),
+    sale_total_minor_units: Math.max(0, minorUnits(item.sale_total_minor_units ?? item.saleTotalMinorUnits)),
+    square_receipt_reference: cleanExternalId(item.square_receipt_reference ?? item.squareReceiptReference),
+  }))
 }
 
 function buildSquareCreditHandoff(customer, amountMinorUnits, saleTotalMinorUnits, options = {}) {
@@ -4094,6 +5520,22 @@ function cleanAccess(access) {
   return [...new Set(access.filter((section) => ACCESS_SECTIONS.includes(section)))]
 }
 
+function normalizeUserAccessForCurrentSchema(role, access) {
+  if (["manager", "owner"].includes(cleanRole(role))) {
+    return [...ACCESS_SECTIONS]
+  }
+
+  const cleaned = cleanAccess(access)
+  const legacyFrontCounterAccess = ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"]
+  const hadLegacyFrontCounterAccess = legacyFrontCounterAccess.every((section) => cleaned.includes(section))
+
+  if (hadLegacyFrontCounterAccess && !cleaned.includes("Trade-Ins")) {
+    return cleanAccess([...cleaned, "Trade-Ins"])
+  }
+
+  return cleaned
+}
+
 function cleanName(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 80)
 }
@@ -4105,7 +5547,7 @@ function cleanEmail(value) {
 }
 
 function cleanRole(value) {
-  return value === "manager" ? "manager" : "staff"
+  return value === "owner" ? "owner" : value === "manager" ? "manager" : "staff"
 }
 
 function cleanClientDeviceMode(value) {
@@ -4256,6 +5698,12 @@ function cleanSetupConfig(value = {}) {
     wordpressConnectorRestartRequired: Boolean(
       value.wordpressConnectorRestartRequired ?? value.wordpress_connector_restart_required,
     ),
+    creditApprovalThresholdMinorUnits: boundedInt(
+      value.creditApprovalThresholdMinorUnits ?? value.credit_approval_threshold_minor_units,
+      0,
+      1_000_000,
+      2500,
+    ),
   }
 }
 
@@ -4308,12 +5756,15 @@ function nullableNonNegativeInt(value) {
 function pullDomains(value) {
   const raw = Array.isArray(value) ? value : String(value ?? "").split(",")
   const domains = new Set(
-    raw.map((entry) => String(entry ?? "").trim().toLowerCase()).filter((entry) => ["inventory", "events"].includes(entry)),
+    raw
+      .map((entry) => String(entry ?? "").trim().toLowerCase())
+      .filter((entry) => ["inventory", "events", "fulfillment"].includes(entry)),
   )
 
   if (domains.size === 0) {
     domains.add("inventory")
     domains.add("events")
+    domains.add("fulfillment")
   }
 
   return domains
@@ -4333,26 +5784,37 @@ function cleanScryDexSearchText(value) {
 
 function cleanGame(value) {
   const game = String(value ?? "").trim().toLowerCase()
+  const aliases = {
+    magic: "magicthegathering",
+    mtg: "magicthegathering",
+    "magic-the-gathering": "magicthegathering",
+    onepiece: "onepiece",
+    "one-piece": "onepiece",
+    "one-piece-card-game": "onepiece",
+  }
+  const normalizedGame = aliases[game] ?? game
 
-  return ["pokemon", "magic", "lorcana", "one-piece"].includes(game) ? game : "pokemon"
+  return ["pokemon", "magicthegathering", "lorcana", "onepiece"].includes(normalizedGame)
+    ? normalizedGame
+    : "pokemon"
 }
 
-function searchReferenceCards(referenceCards, needle, game) {
+function searchReferenceCards(referenceCards, needle, game, setFilter = "", limit = null) {
   const includeVariantOnlyMatches = isVariantFocusedScryDexQuery(needle)
-
-  return referenceCards
+  const matches = referenceCards
     .filter((card) => card.game === game)
+    .filter((card) => referenceCardMatchesSetFilter(card, setFilter))
     .map((card) => ({
       card,
       score: referenceSearchScore(card, needle, { includeVariantOnlyMatches }),
     }))
     .filter((entry) => entry.score > 0)
     .sort((left, right) => right.score - left.score)
-    .slice(0, 8)
-    .map((entry) => entry.card)
+
+  return (limit ? matches.slice(0, limit) : matches).map((entry) => entry.card)
 }
 
-function normalizeReferenceCardsFromFallback(result, game, now, needle = "") {
+function normalizeReferenceCardsFromFallback(result, game, now, needle = "", setFilter = "", limit = null) {
   if (!result || typeof result !== "object") {
     return []
   }
@@ -4367,15 +5829,37 @@ function normalizeReferenceCardsFromFallback(result, game, now, needle = "") {
           ? result.data.items
           : []
 
-  return candidateCards
+  const matches = candidateCards
     .map((card) => normalizeReferenceCard(card, game, now, "wordpress_catalog_cache"))
     .filter((card) => card.provider_card_id && card.card_name)
+    .filter((card) => referenceCardMatchesSetFilter(card, setFilter))
     .sort(
       (left, right) =>
         referenceSearchScore(right, needle, { includeVariantOnlyMatches: true }) -
         referenceSearchScore(left, needle, { includeVariantOnlyMatches: true }),
     )
-    .slice(0, 8)
+
+  return limit ? matches.slice(0, limit) : matches
+}
+
+function referenceCardMatchesSetFilter(card, setFilter) {
+  const normalizedFilter = cleanScryDexSearchText(setFilter)
+
+  if (!normalizedFilter) {
+    return true
+  }
+
+  return cleanScryDexSearchText([card.set_name, card.set_code].join(" ")).includes(normalizedFilter)
+}
+
+function boundedScryDexSearchLimit(value) {
+  const raw = String(value ?? "all").trim().toLowerCase()
+
+  if (!raw || raw === "all" || raw === "0") {
+    return null
+  }
+
+  return boundedInt(raw, 1, 250, 250)
 }
 
 function referenceSearchScore(card, needle, options = {}) {
@@ -4765,6 +6249,16 @@ function minorUnits(value) {
   return Number.isFinite(parsed) ? Math.trunc(parsed) : 0
 }
 
+function roundSalePriceMinorUnits(value) {
+  const safeValue = Math.max(0, minorUnits(value))
+
+  if (safeValue <= 100 || safeValue % 100 === 0) {
+    return safeValue
+  }
+
+  return Math.ceil(safeValue / 100) * 100
+}
+
 function minorUnitsFromDecimal(value) {
   const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
 
@@ -4809,4 +6303,26 @@ function blocked(code, message, extra = {}) {
     message,
     ...extra,
   }
+}
+
+function localReportKey(value) {
+  const key = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_ -]+/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  return [
+    "customers",
+    "sales",
+    "inventory",
+    "trade_ins",
+    "fulfillment",
+    "scrydex",
+    "square_reconciliation",
+    "audit",
+  ].includes(key)
+    ? key
+    : "inventory"
 }

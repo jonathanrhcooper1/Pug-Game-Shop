@@ -6,8 +6,8 @@ const fallbackQueries = []
 const store = createLocalSyncStore({
   databasePath: ":memory:",
   removeSeedReferenceCards: true,
-  websiteCatalogFallback: async ({ query, game }) => {
-    fallbackQueries.push(query)
+  websiteCatalogFallback: async ({ query, game, limit }) => {
+    fallbackQueries.push({ query, game, limit })
 
     if (query === "bug catcher") {
       return {
@@ -87,6 +87,37 @@ const store = createLocalSyncStore({
       }
     }
 
+    if (query === "bulk") {
+      return {
+        status: "ok",
+        live_provider_request_performed: true,
+        cards: Array.from({ length: 10 }, (_, index) => {
+          const sequence = index + 1
+          const beta = sequence > 5
+
+          return {
+            id: `scrydex-pokemon-bulk-${sequence}`,
+            game,
+            name: `Bulk Result ${sequence}`,
+            set: {
+              name: beta ? "Beta Test Set" : "Alpha Test Set",
+              code: beta ? "BTS" : "ATS",
+            },
+            number: String(sequence),
+            printedNumber: `${sequence}/10`,
+            sku: `BULK-${sequence}`,
+            market_price: {
+              amount: "1.00",
+              currency: "USD",
+            },
+            images: {
+              large: `https://images.scrydex.example/pokemon/bulk-${sequence}/large`,
+            },
+          }
+        }),
+      }
+    }
+
     return {
       status: "ok",
       live_provider_request_performed: true,
@@ -128,7 +159,53 @@ try {
   assert.equal(variantFocusedSearch.local_reference_cache_hit, true)
   assert.equal(variantFocusedSearch.cards[0].card_name, "Bug Catcher")
 
-  assert.deepEqual(fallbackQueries, ["bug catcher", "pikachu"])
+  const broadSearch = await store.searchScryDexCards(auth.session.token, {
+    query: "bulk",
+    game: "pokemon",
+  })
+  assert.equal(broadSearch.status, "ok")
+  assert.equal(broadSearch.source, "wordpress_proxy")
+  assert.equal(broadSearch.cards.length, 10)
+  assert.equal(broadSearch.result_limit, "all")
+
+  const filteredBroadSearch = await store.searchScryDexCards(auth.session.token, {
+    query: "bulk",
+    game: "pokemon",
+    setFilter: "beta",
+  })
+  assert.equal(filteredBroadSearch.status, "ok")
+  assert.equal(filteredBroadSearch.source, "wordpress_catalog_cache")
+  assert.equal(filteredBroadSearch.cards.length, 5)
+  assert.equal(filteredBroadSearch.cards.every((card) => card.set_name === "Beta Test Set"), true)
+
+  const magicIntake = await store.createInventoryIntake(auth.session.token, {
+    card_name: "Mox Jasper",
+    set_name: "Tarkir: Dragonstorm",
+    game: "magicthegathering",
+    condition: "NM",
+    price_minor_units: 1556,
+    online_visibility: "visible",
+  })
+  assert.equal(magicIntake.status, "ok")
+  assert.equal(magicIntake.item.game, "magicthegathering")
+  assert.equal(magicIntake.item.price_minor_units, 1600)
+
+  const magicAliasIntake = await store.createInventoryIntake(auth.session.token, {
+    card_name: "Mox Jasper",
+    set_name: "Tarkir: Dragonstorm Promos",
+    game: "magic",
+    condition: "NM",
+    price_minor_units: 2000,
+    online_visibility: "visible",
+  })
+  assert.equal(magicAliasIntake.status, "ok")
+  assert.equal(magicAliasIntake.item.game, "magicthegathering")
+
+  assert.deepEqual(fallbackQueries, [
+    { query: "bug catcher", game: "pokemon", limit: 250 },
+    { query: "pikachu", game: "pokemon", limit: 250 },
+    { query: "bulk", game: "pokemon", limit: 250 },
+  ])
 
   console.log("PASS ScryDex reference search relevance")
 } finally {

@@ -20,6 +20,7 @@ final class InventorySearchRequestParser {
 		$text_query = trim( (string) ( $query['q'] ?? ( $query['query'] ?? '' ) ) );
 		$game       = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
 		$set_filter = trim( (string) ( $query['set'] ?? ( $query['set_name'] ?? ( $query['set_filter'] ?? '' ) ) ) );
+		$raw_or_graded = strtolower( trim( (string) ( $query['raw_or_graded'] ?? ( $query['product_type'] ?? '' ) ) ) );
 		$visibility = strtolower( trim( (string) ( $query['visibility'] ?? 'public' ) ) );
 		$sort       = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
 		$page       = $this->positive_int( $query['page'] ?? 1, 'page', $errors, 1 );
@@ -39,6 +40,11 @@ final class InventorySearchRequestParser {
 
 		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
 			$errors[] = 'game_invalid';
+		}
+
+		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
+			$errors[]     = 'raw_or_graded_invalid';
+			$raw_or_graded = '';
 		}
 
 		if ( ! in_array( $visibility, self::VISIBILITY, true ) ) {
@@ -70,7 +76,8 @@ final class InventorySearchRequestParser {
 				$sort,
 				$page,
 				$page_size,
-				$set_filter
+				$set_filter,
+				$raw_or_graded
 			)
 		);
 	}

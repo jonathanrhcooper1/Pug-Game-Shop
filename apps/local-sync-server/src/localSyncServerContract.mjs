@@ -1,4 +1,4 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 3
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 4
 export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 3
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
@@ -18,9 +18,17 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/pos/square/sales/finalize", purpose: "Staff Square receipt handoff that marks exact scanned inventory sold" },
   { method: "POST", path: "/inventory/intake", purpose: "Employee inventory intake queue" },
   { method: "POST", path: "/inventory/reservations", purpose: "Local reservation lock request" },
+  { method: "GET", path: "/trade-ins/orders", purpose: "Shared local trade-in and buy-in draft queue list" },
+  { method: "POST", path: "/trade-ins/orders", purpose: "Staff trade-in and buy-in draft creation" },
+  { method: "PATCH", path: "/trade-ins/orders/:order_id/status", purpose: "Staff trade-in review, approval, payout, and conversion status update" },
   { method: "GET", path: "/kiosk/orders", purpose: "Shared LAN kiosk pickup queue list" },
   { method: "POST", path: "/kiosk/orders", purpose: "Customer pickup order from kiosk clients" },
   { method: "PATCH", path: "/kiosk/orders/:order_id/status", purpose: "Staff pickup ticket status update" },
+  { method: "PATCH", path: "/kiosk/orders/:order_id/picks", purpose: "Shared per-card kiosk pick checklist update" },
+  { method: "PATCH", path: "/kiosk/orders/:order_id/payment", purpose: "Cashier-confirmed Square payment and exact inventory sale finalization" },
+  { method: "GET", path: "/fulfillment/orders", purpose: "Paid WooCommerce local-pickup fulfillment queue list" },
+  { method: "PATCH", path: "/fulfillment/orders/:order_id/status", purpose: "Staff WooCommerce pickup fulfillment status update" },
+  { method: "PATCH", path: "/fulfillment/orders/:order_id/picks", purpose: "Shared per-card WooCommerce pickup checklist update" },
   { method: "GET", path: "/customers/search", purpose: "Shared local customer and credit cache search" },
   { method: "POST", path: "/customers", purpose: "Employee customer creation queue" },
   { method: "POST", path: "/credit/adjustments", purpose: "Manager-approved store credit add/correction" },
@@ -36,7 +44,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
 export const LOCAL_CLIENT_MODES = Object.freeze(["employee", "manager", "kiosk"])
 
 export function buildLocalSyncServerContract(options = {}) {
-  const websiteUrl = normalizeUrl(options.websiteUrl ?? "https://vbf.2a7.myftpupload.com/")
+  const websiteUrl = normalizeUrl(options.websiteUrl ?? "https://j84.285.myftpupload.com/")
   const serverUrl = normalizeUrl(options.serverUrl ?? "http://pug-local-sync:8787/")
   const syncIntervalSeconds = boundedInt(options.syncIntervalSeconds, 5, 3600, 30)
   const setupStatus = buildLocalSyncSetupStatus({
@@ -58,6 +66,14 @@ export function buildLocalSyncServerContract(options = {}) {
     setup_status_path: "/setup/status",
     device_heartbeat_path: "/devices/heartbeat",
     device_status_path: "/devices/status",
+    discovery: {
+      protocol: "pug-local-sync-discovery-v1",
+      transport: "udp",
+      port: 8788,
+      manual_fallback_supported: true,
+      raw_credentials_returned: false,
+      credentials_synced_to_client: false,
+    },
     setup_status: setupStatus,
     local_database: options.localDatabase ?? "store-sync.sqlite",
     sync_interval_seconds: syncIntervalSeconds,
@@ -76,6 +92,7 @@ export function buildLocalSyncServerContract(options = {}) {
       "track_employee_and_kiosk_device_heartbeats",
       "publish_online_offline_client_presence",
       "report_client_setup_status_without_credentials",
+      "advertise_lan_middleman_with_manual_url_fallback",
       "bind_clients_to_configured_lan_server_before_sync",
       "serve_scrydex_reference_lookup_without_client_credentials",
       "serve_scrydex_lookup_from_local_cache_before_wordpress_proxy",
@@ -91,6 +108,11 @@ export function buildLocalSyncServerContract(options = {}) {
       "queue_kiosk_pickup_orders_with_first_and_last_name",
       "share_kiosk_pickup_orders_across_employee_and_kiosk_clients",
       "allow_staff_to_update_kiosk_pickup_status_without_inventory_mutation",
+      "record_cashier_confirmed_square_payment_without_capturing_payment",
+      "mark_exact_kiosk_inventory_sold_after_square_confirmation",
+      "share_per_card_pick_checklists_across_employee_clients",
+      "pull_paid_woocommerce_local_pickup_orders_into_fulfillment",
+      "allow_staff_to_update_woocommerce_pickup_fulfillment_status_without_inventory_mutation",
       "pull_canonical_changes_from_wordpress_when_online",
       "push_local_operations_to_wordpress_when_online",
       "keep_scry_dex_credentials_on_wordpress_only",
@@ -103,6 +125,8 @@ export function buildLocalSyncServerContract(options = {}) {
       pin_credentials_stored_as_hashes: true,
       manager_required_for_user_access_changes: true,
       kiosk_status_updates_mutate_inventory: false,
+      woocommerce_pickup_status_updates_mutate_inventory: false,
+      paid_website_pickup_required_before_fulfillment: true,
       square_payment_capture_supported: false,
       square_payment_handoff_only: true,
       square_pos_inventory_pull_plan_manager_only: true,
@@ -116,6 +140,8 @@ export function buildLocalSyncServerContract(options = {}) {
       setup_config_manager_only: true,
       setup_config_accepts_credentials: false,
       device_status_returns_credentials: false,
+      lan_discovery_returns_credentials: false,
+      manual_middleman_url_fallback_supported: true,
       scrydex_credentials_synced_to_clients: false,
       scrydex_lookup_uses_server_side_credentials_only: true,
     },
@@ -129,8 +155,9 @@ export function buildLocalSyncSetupStatus(options = {}) {
   const wordpressRestBase = websiteUrl ? `${websiteUrl.replace(/\/$/, "")}${restBasePath}` : ""
   const wordpressPushConfigured = Boolean(
       options.wordpressPushConfigured ??
-        options.wordpressInventoryPushConnected ??
+      options.wordpressInventoryPushConnected ??
         options.wordpressInventorySalePushConnected ??
+        options.wordpressFulfillmentStatusPushConnected ??
         options.wordpressEventRegistrationPushConnected ??
       options.wordpressEventCheckinPushConnected ??
       options.wordpressCreditPushConnected ??
@@ -160,10 +187,18 @@ export function buildLocalSyncSetupStatus(options = {}) {
     config_source: options.configSource ?? "server_environment",
     configured_at_utc: options.configuredAtUtc ?? "",
     wordpress_connector_restart_required: Boolean(options.wordpressConnectorRestartRequired),
+    credit_approval_threshold_minor_units: boundedInt(
+      options.creditApprovalThresholdMinorUnits,
+      0,
+      1_000_000,
+      2500,
+    ),
     wordpress_pull_configured: Boolean(options.wordpressPullConfigured),
     wordpress_push_configured: wordpressPushConfigured,
     wordpress_inventory_push_configured: Boolean(options.wordpressInventoryPushConnected),
     wordpress_inventory_sale_push_configured: Boolean(options.wordpressInventorySalePushConnected),
+    wordpress_fulfillment_pull_configured: Boolean(options.wordpressFulfillmentPullConnected),
+    wordpress_fulfillment_status_push_configured: Boolean(options.wordpressFulfillmentStatusPushConnected),
     wordpress_event_registration_push_configured: Boolean(options.wordpressEventRegistrationPushConnected),
     wordpress_event_checkin_push_configured: Boolean(options.wordpressEventCheckinPushConnected),
     wordpress_customer_push_configured: Boolean(options.wordpressCustomerPushConnected),

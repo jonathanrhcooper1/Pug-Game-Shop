@@ -409,6 +409,7 @@ async function cleanupWordPressSmoke(smokePayload, wooCommerceProductIds = []) {
           woocommerceProductsMatched: Number(parsed?.woocommerce_products_matched ?? 0),
           woocommerceProductsDeleted: Number(parsed?.woocommerce_products_deleted ?? 0),
           matchedVisibility: parsed?.matched_visibility ?? null,
+          diagnostics: parsed?.diagnostics ?? null,
           runnerRemoved: false,
           credentialsPrinted: false,
           stderrTail: tailForLog(execution.stderr),
@@ -438,44 +439,63 @@ function cleanupLocalSmoke(smokePayload) {
     }
   }
 
-  let database
+  const maxAttempts = 5
 
-  try {
-    database = new DatabaseSync(localDatabasePath)
-    const itemRows = database
-      .prepare("SELECT public_id FROM inventory_items WHERE barcode = ?")
-      .all(smokePayload.barcode)
-    const entityIds = itemRows.map((row) => String(row.public_id ?? "")).filter(Boolean)
-    let queueRowsDeleted = 0
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let database
 
-    for (const entityId of entityIds) {
+    try {
+      database = new DatabaseSync(localDatabasePath)
+      database.exec("PRAGMA busy_timeout = 5000")
+      const itemRows = database
+        .prepare("SELECT public_id FROM inventory_items WHERE barcode = ?")
+        .all(smokePayload.barcode)
+      const entityIds = itemRows.map((row) => String(row.public_id ?? "")).filter(Boolean)
+      let queueRowsDeleted = 0
+
+      for (const entityId of entityIds) {
+        queueRowsDeleted += Number(
+          database.prepare("DELETE FROM operation_queue WHERE entity_id = ?").run(entityId).changes ?? 0,
+        )
+      }
+
       queueRowsDeleted += Number(
-        database.prepare("DELETE FROM operation_queue WHERE entity_id = ?").run(entityId).changes ?? 0,
+        database.prepare("DELETE FROM operation_queue WHERE payload_json LIKE ?").run(`%${smokePayload.barcode}%`).changes ??
+          0,
       )
-    }
 
-    queueRowsDeleted += Number(
-      database.prepare("DELETE FROM operation_queue WHERE payload_json LIKE ?").run(`%${smokePayload.barcode}%`).changes ??
-        0,
-    )
+      const inventoryRowsDeleted = Number(
+        database.prepare("DELETE FROM inventory_items WHERE barcode = ?").run(smokePayload.barcode).changes ?? 0,
+      )
 
-    const inventoryRowsDeleted = Number(
-      database.prepare("DELETE FROM inventory_items WHERE barcode = ?").run(smokePayload.barcode).changes ?? 0,
-    )
+      return {
+        status: "ok",
+        inventoryRowsDeleted,
+        queueRowsDeleted,
+        attempts: attempt,
+        serverRestartRecommended: inventoryRowsDeleted > 0,
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown local cleanup error."
 
-    return {
-      status: "ok",
-      inventoryRowsDeleted,
-      queueRowsDeleted,
-      serverRestartRecommended: inventoryRowsDeleted > 0,
+      if (attempt >= maxAttempts || !/locked|busy/i.test(message)) {
+        return {
+          status: "cleanup_failed",
+          message,
+          attempts: attempt,
+        }
+      }
+
+      waitSync(250 * attempt)
+    } finally {
+      database?.close()
     }
-  } catch (error) {
-    return {
-      status: "cleanup_failed",
-      message: error instanceof Error ? error.message : "Unknown local cleanup error.",
-    }
-  } finally {
-    database?.close()
+  }
+
+  return {
+    status: "cleanup_failed",
+    message: "Unknown local cleanup error.",
+    attempts: maxAttempts,
   }
 }
 
@@ -586,7 +606,6 @@ if (!$wpdb instanceof wpdb) {
 	exit(1);
 }
 $barcode = strtoupper(trim((string) ($payload['barcode'] ?? '')));
-$card_name = trim((string) ($payload['card_name'] ?? ''));
 $product_ids = array_values(array_unique(array_filter(array_map('absint', (array) ($payload['product_ids'] ?? array())))));
 if ('' === $barcode || !preg_match('/^CODEX-LSYNC-[A-Z0-9]{8,64}$/', $barcode)) {
 	echo wp_json_encode(array('status' => 'error', 'message' => 'barcode_invalid'));
@@ -613,27 +632,20 @@ foreach ((array) $product_meta_ids as $product_meta_id) {
 	}
 }
 $product_ids = array_values(array_unique(array_filter(array_map('absint', $product_ids))));
-$woocommerce_products_matched = count($product_ids);
-$woocommerce_products_deleted = 0;
-foreach ($product_ids as $product_id) {
-	if ('product' !== get_post_type($product_id)) {
-		continue;
-	}
-	$deleted = wp_delete_post($product_id, true);
-	if ($deleted) {
-		++$woocommerce_products_deleted;
-	}
-}
 $rows = $wpdb->get_results(
 	$wpdb->prepare(
 		"SELECT inventory_id, public_id, barcode, sku, card_name, status, online_visibility, kiosk_visibility, pos_visibility FROM {$inventory_table} WHERE barcode = %s OR sku = %s",
-		array($barcode, $barcode)
+		$barcode,
+		$barcode
 	),
 	ARRAY_A
 );
+$cleanup_last_error = (string) $wpdb->last_error;
 $matched = array();
 foreach ((array) $rows as $row) {
-	if ($card_name === (string) ($row['card_name'] ?? '')) {
+	$row_barcode = strtoupper(trim((string) ($row['barcode'] ?? '')));
+	$row_sku = strtoupper(trim((string) ($row['sku'] ?? '')));
+	if ($barcode === $row_barcode || $barcode === $row_sku) {
 		$matched[] = $row;
 	}
 }
@@ -656,6 +668,17 @@ if (!empty($ids)) {
 		)
 	);
 }
+$woocommerce_products_matched = count($product_ids);
+$woocommerce_products_deleted = 0;
+foreach ($product_ids as $product_id) {
+	if ('product' !== get_post_type($product_id)) {
+		continue;
+	}
+	$deleted = wp_delete_post($product_id, true);
+	if ($deleted) {
+		++$woocommerce_products_deleted;
+	}
+}
 $first = $matched[0] ?? array();
 echo wp_json_encode(array(
 	'action' => 'production_local_sync_inventory_smoke_cleanup',
@@ -670,6 +693,11 @@ echo wp_json_encode(array(
 		'online' => (string) ($first['online_visibility'] ?? ''),
 		'kiosk' => (string) ($first['kiosk_visibility'] ?? ''),
 		'pos' => (string) ($first['pos_visibility'] ?? ''),
+	),
+	'diagnostics' => array(
+		'inventory_table' => $inventory_table,
+		'barcode_length' => strlen($barcode),
+		'row_query_error' => $cleanup_last_error,
 	),
 	'credentialsPrinted' => false,
 ));
@@ -868,6 +896,10 @@ function shellQuote(value) {
 
 function timestampForRemoteName(date) {
   return date.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "Z")
+}
+
+function waitSync(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds)
 }
 
 function tailForLog(value, maxLength = 500) {

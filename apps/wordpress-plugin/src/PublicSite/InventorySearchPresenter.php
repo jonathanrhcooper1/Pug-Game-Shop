@@ -61,6 +61,7 @@ final class InventorySearchPresenter {
 		$html .= '<p>' . $this->esc_html( 'Search live card inventory with images, condition, quantity, and online pricing.' ) . '</p></div>';
 		$html .= '</section>';
 		$html .= $this->render_form( $query, $game, $set_filter, $sort, $page_size );
+		$html .= $this->render_quick_game_filters( $query, $game, $set_filter, $sort, $page_size );
 
 		if ( 'blocked' === (string) ( $payload['status'] ?? '' ) ) {
 			$html .= '<p class="tcg-public-inventory__notice">' . $this->esc_html( (string) ( $payload['message'] ?? 'Inventory search is temporarily unavailable.' ) ) . '</p>';
@@ -89,6 +90,29 @@ final class InventorySearchPresenter {
 		}
 
 		$html .= '</div>';
+
+		return $html;
+	}
+
+	private function render_quick_game_filters( string $query, string $active_game, string $set_filter, string $sort, int $page_size ): string {
+		$games = array(
+			''                   => 'All games',
+			'pokemon'            => 'Pokemon',
+			'magicthegathering'  => 'MTG',
+			'lorcana'            => 'Lorcana',
+			'onepiece'           => 'One Piece',
+		);
+		$html  = '<nav class="tcg-public-inventory__quick-filters" aria-label="' . $this->esc_attr( 'Quick game filters' ) . '">';
+		$html .= '<span>' . $this->esc_html( 'Filter by game' ) . '</span>';
+
+		foreach ( $games as $value => $label ) {
+			$is_active = $active_game === $value;
+			$html     .= '<a href="' . $this->esc_url( $this->page_url( $query, $value, $set_filter, $sort, 1, $page_size ) ) . '"';
+			$html     .= $is_active ? ' aria-current="page"' : '';
+			$html     .= '>' . $this->esc_html( $label ) . '</a>';
+		}
+
+		$html .= '</nav>';
 
 		return $html;
 	}
@@ -143,7 +167,7 @@ final class InventorySearchPresenter {
 		$html  = '<form class="tcg-public-inventory__search" method="get">';
 		$html .= '<label><span>' . $this->esc_html( 'Search' ) . '</span><input type="search" name="tcg_inventory_q" value="' . $this->esc_attr( $query ) . '" placeholder="' . $this->esc_attr( 'Card name, set, or number' ) . '" /></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Game' ) . '</span><select name="tcg_inventory_game">';
-		foreach ( array( '' => 'All games', 'pokemon' => 'Pokemon', 'magicthegathering' => 'Magic: The Gathering', 'lorcana' => 'Lorcana', 'onepiece' => 'One Piece' ) as $value => $label ) {
+		foreach ( array( '' => 'All games', 'pokemon' => 'Pokemon', 'magicthegathering' => 'MTG', 'lorcana' => 'Lorcana', 'onepiece' => 'One Piece', 'riftbound' => 'Riftbound' ) as $value => $label ) {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $game === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
 		}
 		$html .= '</select></label>';
@@ -342,7 +366,7 @@ final class InventorySearchPresenter {
 		$game = strtolower( trim( $game ) );
 
 		return match ( $game ) {
-			'magicthegathering', 'magic', 'mtg' => 'Magic: The Gathering',
+			'magicthegathering', 'magic', 'magic-the-gathering', 'mtg' => 'MTG',
 			'one-piece', 'onepiece' => 'One Piece',
 			default => '' === $game ? 'Card Game' : ucwords( str_replace( '-', ' ', $game ) ),
 		};

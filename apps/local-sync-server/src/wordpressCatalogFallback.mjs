@@ -8,70 +8,126 @@ export function createWordPressCatalogFallback(options = {}) {
     return null
   }
 
-  return async function wordpressCatalogFallback({ query = "", game = "pokemon", limit = 8 } = {}) {
-    const endpoint = new URL(`${endpointBase}/reference/search`)
-    endpoint.searchParams.set("q", String(query ?? "").trim())
-    endpoint.searchParams.set("game", String(game ?? "").trim())
-    endpoint.searchParams.set("limit", String(boundedLimit(limit)))
+  return async function wordpressCatalogFallback({ query = "", game = "pokemon", limit = 250 } = {}) {
+    const requestedLimit = boundedLimit(limit)
+    const primaryResult = await fetchCatalogFallbackPage({
+      endpointBase,
+      fetcher,
+      timeoutMs,
+      authorizationHeader,
+      query,
+      game,
+      limit: requestedLimit,
+      retriedWithLegacyLimit: false,
+    })
 
-    const controller = typeof AbortController === "function" ? new AbortController() : null
-    const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
-
-    try {
-      const response = await fetcher(endpoint, {
-        headers: cleanHeaders({
-          accept: "application/json",
-          authorization: authorizationHeader,
-        }),
-        signal: controller?.signal,
+    if (primaryResult.retry_with_legacy_limit === true && requestedLimit > 50) {
+      return fetchCatalogFallbackPage({
+        endpointBase,
+        fetcher,
+        timeoutMs,
+        authorizationHeader,
+        query,
+        game,
+        limit: 50,
+        retriedWithLegacyLimit: true,
       })
+    }
 
-      if (!response?.ok) {
-        return {
-          status: "blocked",
-          code: "wordpress_catalog_proxy_http_error",
-          http_status: Number(response?.status ?? 0),
-          cards: [],
-          live_provider_request_performed: false,
-          credentials_synced_to_client: false,
-          auth_configured: Boolean(authorizationHeader),
-          authorization_header_printed: false,
-          endpoint: secretSafeEndpoint(endpoint),
-        }
-      }
+    return primaryResult
+  }
+}
 
-      const body = await response.json()
-      const cards = cardsFromWordPressCatalogResponse(body)
+async function fetchCatalogFallbackPage({
+  endpointBase,
+  fetcher,
+  timeoutMs,
+  authorizationHeader,
+  query = "",
+  game = "pokemon",
+  limit = 250,
+  retriedWithLegacyLimit = false,
+} = {}) {
+  const endpoint = new URL(`${endpointBase}/reference/search`)
+  endpoint.searchParams.set("q", String(query ?? "").trim())
+  endpoint.searchParams.set("game", String(game ?? "").trim())
+  endpoint.searchParams.set("limit", String(boundedLimit(limit)))
 
-      return {
-        status: "ok",
-        cards,
-        live_provider_request_performed: Boolean(
-          body?.live_provider_request_performed ??
-            body?.data?.meta?.live_provider_request ??
-            body?.meta?.live_provider_request,
-        ),
-        credentials_synced_to_client: false,
-        auth_configured: Boolean(authorizationHeader),
-        authorization_header_printed: false,
-        endpoint: secretSafeEndpoint(endpoint),
-      }
-    } catch (error) {
+  const controller = typeof AbortController === "function" ? new AbortController() : null
+  const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
+
+  try {
+    const response = await fetcher(endpoint, {
+      headers: cleanHeaders({
+        accept: "application/json",
+        authorization: authorizationHeader,
+      }),
+      signal: controller?.signal,
+    })
+    const body = await safeCatalogJson(response)
+
+    if (!response?.ok) {
       return {
         status: "blocked",
-        code: "wordpress_catalog_proxy_unavailable",
-        message: error instanceof Error ? error.message : "WordPress catalog proxy unavailable.",
+        code: "wordpress_catalog_proxy_http_error",
+        http_status: Number(response?.status ?? 0),
         cards: [],
+        retry_with_legacy_limit: catalogPageSizeTooLarge(body),
         live_provider_request_performed: false,
         credentials_synced_to_client: false,
         auth_configured: Boolean(authorizationHeader),
         authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
       }
-    } finally {
-      if (timeout) {
-        clearTimeout(timeout)
+    }
+
+    if (catalogPageSizeTooLarge(body)) {
+      return {
+        status: "blocked",
+        code: "wordpress_catalog_proxy_page_size_too_large",
+        http_status: Number(response?.status ?? 0),
+        cards: [],
+        retry_with_legacy_limit: true,
+        live_provider_request_performed: false,
+        credentials_synced_to_client: false,
+        auth_configured: Boolean(authorizationHeader),
+        authorization_header_printed: false,
+        endpoint: secretSafeEndpoint(endpoint),
       }
+    }
+
+    const cards = cardsFromWordPressCatalogResponse(body)
+
+    return {
+      status: "ok",
+      cards,
+      requested_limit: boundedLimit(limit),
+      retried_with_legacy_limit: retriedWithLegacyLimit,
+      live_provider_request_performed: Boolean(
+        body?.live_provider_request_performed ??
+          body?.data?.meta?.live_provider_request ??
+          body?.meta?.live_provider_request,
+      ),
+      credentials_synced_to_client: false,
+      auth_configured: Boolean(authorizationHeader),
+      authorization_header_printed: false,
+      endpoint: secretSafeEndpoint(endpoint),
+    }
+  } catch (error) {
+    return {
+      status: "blocked",
+      code: "wordpress_catalog_proxy_unavailable",
+      message: error instanceof Error ? error.message : "WordPress catalog proxy unavailable.",
+      cards: [],
+      live_provider_request_performed: false,
+      credentials_synced_to_client: false,
+      auth_configured: Boolean(authorizationHeader),
+      authorization_header_printed: false,
+      endpoint: secretSafeEndpoint(endpoint),
+    }
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout)
     }
   }
 }
@@ -142,6 +198,24 @@ export function cardsFromWordPressCatalogResponse(body) {
   return candidates.filter((card) => card && typeof card === "object")
 }
 
+async function safeCatalogJson(response) {
+  try {
+    return typeof response?.json === "function" ? await response.json() : null
+  } catch {
+    return null
+  }
+}
+
+function catalogPageSizeTooLarge(body) {
+  const errors = [
+    ...(Array.isArray(body?.errors) ? body.errors : []),
+    ...(Array.isArray(body?.data?.errors) ? body.data.errors : []),
+    ...(Array.isArray(body?.meta?.errors) ? body.meta.errors : []),
+  ].map((error) => String(error))
+
+  return errors.includes("page_size_too_large")
+}
+
 function secretSafeEndpoint(endpoint) {
   const safe = new URL(endpoint.toString())
   safe.searchParams.delete("token")
@@ -162,9 +236,9 @@ function isSafeAuthorizationHeader(value) {
 }
 
 function boundedLimit(value) {
-  const limit = Number.parseInt(String(value ?? "8"), 10)
+  const limit = Number.parseInt(String(value ?? "250"), 10)
 
-  return Number.isFinite(limit) ? Math.min(50, Math.max(1, limit)) : 8
+  return Number.isFinite(limit) ? Math.min(250, Math.max(1, limit)) : 250
 }
 
 function boundedTimeout(value) {

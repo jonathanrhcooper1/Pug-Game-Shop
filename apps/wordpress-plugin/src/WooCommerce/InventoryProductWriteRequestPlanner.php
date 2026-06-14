@@ -14,6 +14,7 @@ final class InventoryProductWriteRequestPlanner {
 		'create_product',
 		'update_product',
 		'mark_product_out_of_stock',
+		'mark_grouped_product_out_of_stock',
 	);
 
 	/**

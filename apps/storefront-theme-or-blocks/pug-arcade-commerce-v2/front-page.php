@@ -20,10 +20,10 @@ if (function_exists('wc_get_products')) {
 }
 
 $categories = array(
-    array('name' => 'Magic: The Gathering', 'slug' => 'magic-the-gathering', 'tag' => 'Commander, sealed, singles', 'color' => 'cyan'),
-    array('name' => 'Pokemon', 'slug' => 'pokemon', 'tag' => 'Boosters, boxes, collections', 'color' => 'gold'),
-    array('name' => 'Lorcana', 'slug' => 'lorcana', 'tag' => 'Illumineer staples', 'color' => 'pink'),
-    array('name' => 'Riftbound', 'slug' => 'riftbound', 'tag' => 'Nexus nights and drops', 'color' => 'blue'),
+    array('name' => 'MTG', 'game' => 'magicthegathering', 'tag' => 'Commander, sealed, singles', 'color' => 'cyan'),
+    array('name' => 'Pokemon', 'game' => 'pokemon', 'tag' => 'Boosters, boxes, collections', 'color' => 'gold'),
+    array('name' => 'Lorcana', 'game' => 'lorcana', 'tag' => 'Illumineer staples', 'color' => 'pink'),
+    array('name' => 'Riftbound', 'game' => 'riftbound', 'tag' => 'Nexus nights and drops', 'color' => 'blue'),
 );
 ?>
 
@@ -54,7 +54,7 @@ $categories = array(
                 </div>
                 <div class="loadout-stack">
                     <?php foreach ($categories as $index => $category) : ?>
-                        <a class="loadout-card loadout-<?php echo esc_attr($category['color']); ?>" href="<?php echo esc_url(pug_arcade_category_url($category['slug'])); ?>" style="--i: <?php echo esc_attr($index); ?>">
+                        <a class="loadout-card loadout-<?php echo esc_attr($category['color']); ?>" href="<?php echo esc_url(pug_arcade_singles_game_url($category['game'])); ?>" style="--i: <?php echo esc_attr($index); ?>">
                             <span><?php echo esc_html($category['name']); ?></span>
                             <small><?php echo esc_html($category['tag']); ?></small>
                         </a>
@@ -134,7 +134,7 @@ $categories = array(
         </div>
         <div class="category-grid">
             <?php foreach ($categories as $category) : ?>
-                <a class="category-tile category-<?php echo esc_attr($category['color']); ?>" href="<?php echo esc_url(pug_arcade_category_url($category['slug'])); ?>">
+                <a class="category-tile category-<?php echo esc_attr($category['color']); ?>" href="<?php echo esc_url(pug_arcade_singles_game_url($category['game'])); ?>">
                     <span><?php echo esc_html($category['name']); ?></span>
                     <small><?php echo esc_html($category['tag']); ?></small>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>

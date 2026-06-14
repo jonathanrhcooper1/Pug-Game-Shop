@@ -1,12 +1,17 @@
 use keyring::{Entry, Error as KeyringError};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::io::ErrorKind;
+use std::net::{SocketAddr, UdpSocket};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::Manager;
 
 const OFFLINE_DATABASE_FILE: &str = "offline.sqlite";
 const DEVICE_TOKEN_KEYRING_SERVICE: &str = "Pug Game Shop Offline Device Tokens";
+const LOCAL_SYNC_DISCOVERY_PROTOCOL: &str = "pug-local-sync-discovery-v1";
+const LOCAL_SYNC_DISCOVERY_PORT: u16 = 8788;
 const SQLITE_QUEUE_TABLE: &str = "operation_queue";
 const SQLITE_QUEUE_CREATE_TABLE_SQL: &str = concat!(
     "CREATE TABLE IF NOT EXISTS operation_queue (",
@@ -347,6 +352,131 @@ struct OfflineSyncConflictRecord {
     operation_type: String,
     manager_override: bool,
     updated_at_utc: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct DiscoverLocalSyncServersRequest {
+    timeout_ms: Option<u64>,
+    discovery_port: Option<u16>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LocalSyncDiscoveryPayload {
+    status: Option<String>,
+    protocol: Option<String>,
+    service: Option<String>,
+    topology: Option<String>,
+    store_id: Option<String>,
+    hostname: Option<String>,
+    server_url: Option<String>,
+    website_url: Option<String>,
+    health_path: Option<String>,
+    setup_status_path: Option<String>,
+    manual_fallback_supported: Option<bool>,
+    raw_credentials_returned: Option<bool>,
+    credentials_synced_to_client: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct LocalSyncDiscoveredServer {
+    protocol: &'static str,
+    service: String,
+    topology: String,
+    store_id: String,
+    hostname: String,
+    server_url: String,
+    website_url: String,
+    health_path: String,
+    setup_status_path: String,
+    manual_fallback_supported: bool,
+    raw_credentials_returned: bool,
+    credentials_synced_to_app: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct DiscoverLocalSyncServersResponse {
+    status: &'static str,
+    protocol: &'static str,
+    discovery_port: u16,
+    timeout_ms: u64,
+    server_count: usize,
+    servers: Vec<LocalSyncDiscoveredServer>,
+    manual_fallback_supported: bool,
+    raw_credentials_returned: bool,
+    credentials_synced_to_app: bool,
+}
+
+#[tauri::command]
+fn discover_local_sync_servers(
+    request: Option<DiscoverLocalSyncServersRequest>,
+) -> Result<DiscoverLocalSyncServersResponse, String> {
+    let timeout_ms = request
+        .as_ref()
+        .and_then(|request| request.timeout_ms)
+        .unwrap_or(900)
+        .clamp(150, 3_000);
+    let discovery_port = request
+        .as_ref()
+        .and_then(|request| request.discovery_port)
+        .filter(|port| *port > 0)
+        .unwrap_or(LOCAL_SYNC_DISCOVERY_PORT);
+    let socket = UdpSocket::bind("0.0.0.0:0")
+        .map_err(|_| "local_sync_discovery_socket_unavailable".to_string())?;
+
+    socket
+        .set_broadcast(true)
+        .map_err(|_| "local_sync_discovery_broadcast_unavailable".to_string())?;
+    socket
+        .set_read_timeout(Some(Duration::from_millis(125)))
+        .map_err(|_| "local_sync_discovery_timeout_unavailable".to_string())?;
+
+    let request_body = serde_json::json!({
+        "protocol": LOCAL_SYNC_DISCOVERY_PROTOCOL,
+        "client": "pug_store_offline_app",
+        "raw_credentials_requested": false,
+    })
+    .to_string();
+    let request_bytes = request_body.as_bytes();
+
+    for target in [
+        format!("255.255.255.255:{discovery_port}"),
+        format!("127.0.0.1:{discovery_port}"),
+    ] {
+        let _ = socket.send_to(request_bytes, target);
+    }
+
+    let started = Instant::now();
+    let timeout = Duration::from_millis(timeout_ms);
+    let mut buffer = [0_u8; 4096];
+    let mut seen_urls = HashSet::new();
+    let mut servers = Vec::new();
+
+    while started.elapsed() < timeout {
+        match socket.recv_from(&mut buffer) {
+            Ok((size, source)) => {
+                if let Some(server) = local_sync_discovered_server(&buffer[..size], source) {
+                    if seen_urls.insert(server.server_url.clone()) {
+                        servers.push(server);
+                    }
+                }
+            }
+            Err(error)
+                if error.kind() == ErrorKind::WouldBlock || error.kind() == ErrorKind::TimedOut => {}
+            Err(_) => break,
+        }
+    }
+
+    Ok(DiscoverLocalSyncServersResponse {
+        status: "local_sync_discovery_completed",
+        protocol: LOCAL_SYNC_DISCOVERY_PROTOCOL,
+        discovery_port,
+        timeout_ms,
+        server_count: servers.len(),
+        servers,
+        manual_fallback_supported: true,
+        raw_credentials_returned: false,
+        credentials_synced_to_app: false,
+    })
 }
 
 #[tauri::command]
@@ -1962,10 +2092,99 @@ fn validate_operation(operation: &OfflineOperationEnvelope) -> Result<(), String
     Ok(())
 }
 
+fn local_sync_discovered_server(
+    payload: &[u8],
+    source: SocketAddr,
+) -> Option<LocalSyncDiscoveredServer> {
+    let response: LocalSyncDiscoveryPayload = serde_json::from_slice(payload).ok()?;
+
+    if response.status.as_deref() != Some("ok")
+        || response.protocol.as_deref() != Some(LOCAL_SYNC_DISCOVERY_PROTOCOL)
+        || response.service.as_deref() != Some("pug_local_sync_server")
+        || response.topology.as_deref() != Some("lan_middleman_server")
+        || response.raw_credentials_returned.unwrap_or(true)
+        || response.credentials_synced_to_client.unwrap_or(true)
+    {
+        return None;
+    }
+
+    let mut server_url = response.server_url.unwrap_or_default();
+
+    if !valid_local_sync_server_url(&server_url) {
+        server_url = format!("http://{}:8787", source.ip());
+    }
+
+    if !valid_local_sync_server_url(&server_url) {
+        return None;
+    }
+
+    Some(LocalSyncDiscoveredServer {
+        protocol: LOCAL_SYNC_DISCOVERY_PROTOCOL,
+        service: "pug_local_sync_server".to_string(),
+        topology: "lan_middleman_server".to_string(),
+        store_id: clean_discovery_text(response.store_id, "pug-game-shop"),
+        hostname: clean_discovery_text(response.hostname, "local-sync-host"),
+        server_url,
+        website_url: clean_discovery_url(response.website_url).unwrap_or_default(),
+        health_path: clean_discovery_path(response.health_path, "/health"),
+        setup_status_path: clean_discovery_path(response.setup_status_path, "/setup/status"),
+        manual_fallback_supported: response.manual_fallback_supported.unwrap_or(true),
+        raw_credentials_returned: false,
+        credentials_synced_to_app: false,
+    })
+}
+
+fn valid_local_sync_server_url(value: &str) -> bool {
+    value.starts_with("https://")
+        || value.starts_with("http://")
+        || value.starts_with("http://localhost")
+        || value.starts_with("http://127.0.0.1")
+}
+
+fn clean_discovery_url(value: Option<String>) -> Option<String> {
+    let trimmed = value.unwrap_or_default().trim().trim_end_matches('/').to_string();
+
+    if valid_local_sync_server_url(&trimmed) {
+        Some(trimmed)
+    } else {
+        None
+    }
+}
+
+fn clean_discovery_path(value: Option<String>, fallback: &'static str) -> String {
+    let trimmed = value.unwrap_or_default().trim().to_string();
+
+    if trimmed.starts_with('/') && trimmed.len() <= 80 {
+        trimmed
+    } else {
+        fallback.to_string()
+    }
+}
+
+fn clean_discovery_text(value: Option<String>, fallback: &'static str) -> String {
+    let cleaned: String = value
+        .unwrap_or_default()
+        .chars()
+        .filter(|character| {
+            character.is_ascii_alphanumeric()
+                || matches!(*character, ' ' | '-' | '_' | '.' | ':' | '/')
+        })
+        .take(120)
+        .collect();
+    let trimmed = cleaned.trim();
+
+    if trimmed.is_empty() {
+        fallback.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
+            discover_local_sync_servers,
             queue_offline_operation,
             list_offline_operations,
             mark_offline_operations_synced,
@@ -2059,7 +2278,7 @@ mod tests {
     fn valid_pair_offline_device_request() -> PairOfflineDeviceRequest {
         PairOfflineDeviceRequest {
             endpoint:
-                "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/devices/register"
+                "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/devices/register"
                     .to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
             body: PairOfflineDeviceBody {
@@ -2109,7 +2328,7 @@ mod tests {
 
     fn valid_pull_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/pull"
+            endpoint: "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/pull"
                 .to_string(),
             route: "pull".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
@@ -2128,7 +2347,7 @@ mod tests {
 
     fn valid_push_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/push"
+            endpoint: "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/push"
                 .to_string(),
             route: "push".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
@@ -2165,7 +2384,7 @@ mod tests {
 
     fn valid_conflict_resolution_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1/offline/conflicts/conflict-inv-1004-location/resolve"
+            endpoint: "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/conflicts/conflict-inv-1004-location/resolve"
                 .to_string(),
             route: "conflict_resolution".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),

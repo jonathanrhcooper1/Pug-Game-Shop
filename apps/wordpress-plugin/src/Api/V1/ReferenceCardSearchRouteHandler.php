@@ -166,9 +166,9 @@ final class ReferenceCardSearchRouteHandler {
 			$page_size = 25;
 		}
 
-		if ( $page_size > 50 ) {
+		if ( $page_size > 250 ) {
 			$errors[]  = 'page_size_too_large';
-			$page_size = 50;
+			$page_size = 250;
 		}
 
 		return array(

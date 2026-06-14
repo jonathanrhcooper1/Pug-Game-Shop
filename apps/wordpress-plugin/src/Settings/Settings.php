@@ -27,6 +27,9 @@ final class Settings {
 			'offline_pairing_authorization' => OfflinePairingAuthorizationSettings::defaults(),
 			'offline_route_runtime'         => OfflineRouteRuntimeSettings::defaults(),
 			'inventory_route_runtime'       => InventoryRouteRuntimeSettings::defaults(),
+			'grading_companies'             => GradingCompanySettings::defaults(),
+			'customer_credit'               => CustomerCreditSettings::defaults(),
+			'fulfillment_notifications'     => FulfillmentNotificationSettings::defaults(),
 			'scrydex_provider'              => ScryDexProviderSettings::defaults(),
 			'scrydex_usage_budget'          => ScryDexUsageBudgetSettings::defaults(),
 			'scrydex_schedule'              => ScryDexScheduleSettings::defaults(),
@@ -55,6 +58,15 @@ final class Settings {
 		);
 		$settings['inventory_route_runtime']       = InventoryRouteRuntimeSettings::sanitize(
 			$settings['inventory_route_runtime'] ?? array()
+		);
+		$settings['grading_companies']             = GradingCompanySettings::sanitize(
+			$settings['grading_companies'] ?? array()
+		);
+		$settings['customer_credit']               = CustomerCreditSettings::sanitize(
+			$settings['customer_credit'] ?? array()
+		);
+		$settings['fulfillment_notifications']     = FulfillmentNotificationSettings::sanitize(
+			$settings['fulfillment_notifications'] ?? array()
 		);
 		$settings['scrydex_provider']              = ScryDexProviderSettings::sanitize(
 			$settings['scrydex_provider'] ?? array(),
@@ -113,6 +125,24 @@ final class Settings {
 		$inventory_route_runtime       = InventoryRouteRuntimeSettings::sanitize(
 			$value['inventory_route_runtime'] ?? array()
 		);
+		$grading_companies             = GradingCompanySettings::sanitize(
+			$value['grading_companies'] ?? ( $existing['grading_companies'] ?? array() ),
+			is_array( $existing['grading_companies'] ?? null )
+				? $existing['grading_companies']
+				: GradingCompanySettings::defaults()
+		);
+		$customer_credit               = CustomerCreditSettings::sanitize(
+			$value['customer_credit'] ?? ( $existing['customer_credit'] ?? array() ),
+			is_array( $existing['customer_credit'] ?? null )
+				? $existing['customer_credit']
+				: CustomerCreditSettings::defaults()
+		);
+		$fulfillment_notifications     = FulfillmentNotificationSettings::sanitize(
+			$value['fulfillment_notifications'] ?? ( $existing['fulfillment_notifications'] ?? array() ),
+			is_array( $existing['fulfillment_notifications'] ?? null )
+				? $existing['fulfillment_notifications']
+				: FulfillmentNotificationSettings::defaults()
+		);
 		$scrydex_provider              = ScryDexProviderSettings::sanitize(
 			$value['scrydex_provider'] ?? ( $existing['scrydex_provider'] ?? array() ),
 			is_array( $existing['scrydex_provider'] ?? null )
@@ -145,6 +175,9 @@ final class Settings {
 			'offline_pairing_authorization' => $offline_pairing_authorization,
 			'offline_route_runtime'         => $offline_route_runtime,
 			'inventory_route_runtime'       => $inventory_route_runtime,
+			'grading_companies'             => $grading_companies,
+			'customer_credit'               => $customer_credit,
+			'fulfillment_notifications'     => $fulfillment_notifications,
 			'scrydex_provider'              => $scrydex_provider,
 			'scrydex_usage_budget'          => $scrydex_usage_budget,
 			'scrydex_schedule'              => $scrydex_schedule,

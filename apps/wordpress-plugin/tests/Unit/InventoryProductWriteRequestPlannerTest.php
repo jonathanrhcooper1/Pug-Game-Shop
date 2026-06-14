@@ -74,6 +74,25 @@ final class InventoryProductWriteRequestPlannerTest extends TestCase {
 		$this->assert_same( 'outofstock', $stockout->request_plan()['requests'][0]['body']['stock_status'] );
 	}
 
+	public function test_planner_prepares_grouped_stockout_request_for_existing_product(): void {
+		$row                           = $this->available_row();
+		$row['status']                 = 'sold';
+		$row['reference_card_id']      = 777;
+		$row['woocommerce_product_id'] = 1001;
+		$row['sale_price_minor_units'] = null;
+
+		$plan = ( new InventoryProductWriteRequestPlanner() )->plan(
+			( new InventoryProductProjectionPlanner() )->plan_group( array( $row ) )
+		);
+
+		$this->assert_same( InventoryProductWriteRequestPlan::READY, $plan->status() );
+		$this->assert_same( 'mark_grouped_product_out_of_stock', $plan->request_plan()['requests'][0]['operation'] );
+		$this->assert_same( 'PUT', $plan->request_plan()['requests'][0]['method'] );
+		$this->assert_same( '/wp-json/wc/v3/products/1001', $plan->request_plan()['requests'][0]['path'] );
+		$this->assert_same( 0, $plan->request_plan()['requests'][0]['body']['stock_quantity'] );
+		$this->assert_same( 'outofstock', $plan->request_plan()['requests'][0]['body']['stock_status'] );
+	}
+
 	public function test_planner_skips_hidden_unmapped_projection_without_requests(): void {
 		$row                      = $this->available_row();
 		$row['online_visibility'] = 'hidden';

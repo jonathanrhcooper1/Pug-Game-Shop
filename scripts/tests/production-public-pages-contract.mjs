@@ -28,6 +28,7 @@ for (const requiredMarker of [
   "production_public_pages_configure_dry_run",
   "production_public_pages_configured",
   "Singles vault",
+  'limit="48"',
   "tcg-storefront-shelf",
   "expectedShortcode",
   "shop-singles",

@@ -146,6 +146,9 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_contains( '.tcg-storefront-shelf__hero', $css );
 		$this->assert_contains( '.tcg-storefront-shelf__hero-copy', $css );
 		$this->assert_contains( '.tcg-storefront-shelf__badge', $css );
+		$this->assert_contains( '.tcg-storefront-shelf .tcg-public-inventory__hero', $css );
+		$this->assert_contains( '.tcg-public-inventory__quick-filters', $css );
+		$this->assert_contains( 'box-shadow: none', $css );
 		$this->assert_contains( 'width: 100%;', $css );
 		$this->assert_contains( 'max-width: 100%;', $css );
 		$this->assert_contains( 'body.page .content-card:has(.tcg-public-inventory)', $css );

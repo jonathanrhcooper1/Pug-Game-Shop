@@ -91,6 +91,7 @@ import {
   type EventSnapshot,
   type IconName,
   type InventoryItem,
+  type InventoryProductTypeFilter,
   type InventoryStatus,
   type LocalInventoryIntakeSyncReceipt,
   type OfflineOperationEnvelope,
@@ -119,11 +120,15 @@ import {
   type LocalSyncDeviceStatusResult,
   type LocalSyncEventSnapshot,
   type LocalSyncAutoSyncOperationResult,
+  type LocalSyncFulfillmentOrder,
+  type LocalSyncFulfillmentOrderStatus,
   type LocalSyncInventoryItem,
   type LocalSyncKioskOrder,
   type LocalSyncKioskOrderStatus,
+  type LocalSyncManagerReportResult,
   type LocalSyncPullResult,
   type LocalSyncPushResult,
+  type LocalSyncReportKey,
   type LocalSyncSetupStatusResult,
   type LocalSyncSquarePosInventoryCountReconciliationResult,
   type LocalSyncSquarePosInventoryPullPlanResult,
@@ -131,6 +136,7 @@ import {
   type LocalSyncScryDexPricePoint,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
+  type LocalSyncTradeInOrder,
   type LocalSyncUser,
 } from "./data/localSyncServerClient"
 import {
@@ -145,6 +151,10 @@ import {
   createTauriOfflineSyncAdapter,
   type OfflineSyncCommandResponse,
 } from "./data/tauriOfflineSyncAdapter"
+import {
+  createTauriLocalSyncDiscoveryAdapter,
+  type LocalSyncDiscoveredServer,
+} from "./data/tauriLocalSyncDiscoveryAdapter"
 import { createTauriQueueAdapter } from "./data/tauriQueueAdapter"
 import { createTauriSecureStoreAdapter } from "./data/tauriSecureStoreAdapter"
 import thePugBrandLogo from "./assets/the-pug-brand-logo.webp"
@@ -166,7 +176,7 @@ type AppIconName =
   | "trash"
 
 type ViewMode = "list" | "grid"
-type AppSessionRole = "locked" | "staff" | "manager"
+type AppSessionRole = "locked" | "staff" | "manager" | "owner"
 type InventoryVisibility = LocalSyncInventoryItem["online_visibility"]
 const INVENTORY_STATUS_FILTERS = [
   "all",
@@ -176,24 +186,42 @@ const INVENTORY_STATUS_FILTERS = [
   "sold",
   "conflict",
 ] as const
+const INVENTORY_PRODUCT_TYPE_FILTERS: Array<{ value: InventoryProductTypeFilter; label: string }> = [
+  { value: "all", label: "All inventory" },
+  { value: "raw", label: "Singles" },
+  { value: "graded", label: "Graded Cards" },
+]
 const INVENTORY_VISIBILITY_OPTIONS: Array<{ value: InventoryVisibility; label: string }> = [
   { value: "visible", label: "Visible" },
   { value: "staff_only", label: "Staff only" },
   { value: "hidden", label: "Hidden" },
 ]
+const TRADE_IN_PERCENTAGE_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 500)
+const REPORT_OPTIONS: Array<{ key: LocalSyncReportKey; label: string; focus: string }> = [
+  { key: "sales", label: "Sales", focus: "Online vs in-store, gross/net, channel mix" },
+  { key: "inventory", label: "Inventory", focus: "Value, sell-through, aging, stock risk" },
+  { key: "trade_ins", label: "Trade-Ins", focus: "Employee intake, cash vs credit, conversion" },
+  { key: "customers", label: "Customers", focus: "Credit balances, activity, top customers" },
+  { key: "fulfillment", label: "Fulfillment", focus: "Pickup queue timing and staff completion" },
+  { key: "square_reconciliation", label: "Square/POS", focus: "POS sales, mappings, reconciliation" },
+  { key: "scrydex", label: "ScryDex", focus: "Sync history, price changes, failed pulls" },
+  { key: "audit", label: "Audit", focus: "Overrides, ledger corrections, staff actions" },
+]
 const ACCESS_SECTIONS = [
   "Inventory",
+  "Trade-Ins",
   "Kiosk",
   "Queue",
   "Events",
   "Customers",
+  "Reports",
   "Sync",
   "Status",
   "Conflicts",
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
-const OFFLINE_APP_VERSION = "0.189.0"
+const OFFLINE_APP_VERSION = "0.202.0"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
@@ -205,9 +233,11 @@ type OfflineAppUser = {
 }
 
 type KioskTicketStatus = LocalSyncKioskOrderStatus
+type WebsitePickupTicketStatus = LocalSyncFulfillmentOrderStatus
 
 type KioskTicketItem = {
   publicId: string
+  pickIds?: string[]
   cardName: string
   setName: string
   condition: string
@@ -226,6 +256,51 @@ type KioskOrderTicket = {
   reservationIds: string[]
   createdAtUtc: string
   status: KioskTicketStatus
+  paymentStatus: "pay_at_store" | "paid"
+  squareReceiptReference: string
+  paidAtUtc: string
+  pickedItemIds: string[]
+  allItemsPicked: boolean
+}
+
+type WebsitePickupTicket = {
+  orderId: number
+  orderNumber: string
+  customerName: string
+  itemCount: number
+  totalMinorUnits: number
+  totalLabel: string
+  items: KioskTicketItem[]
+  reservationIds: string[]
+  createdAtUtc: string
+  paidAtUtc: string
+  status: WebsitePickupTicketStatus
+  orderStatus: string
+  source: "wordpress" | "queued"
+  pickedItemIds: string[]
+  allItemsPicked: boolean
+}
+
+type ActiveFulfillmentTicket =
+  | { source: "kiosk"; orderId: string }
+  | { source: "website"; orderId: number }
+
+type TradeInPayoutType = "cash" | "credit"
+
+type TradeInDraftItem = {
+  id: string
+  productType: "raw" | "graded"
+  cardName: string
+  setName: string
+  condition: string
+  gradingCompany: string
+  grade: string
+  certNumber: string
+  marketMidMinorUnits: number
+  percentageBasisPoints: number
+  finalValueMinorUnits: number
+  payoutType: TradeInPayoutType
+  imageUrl: string
 }
 
 type ActivityMessage = {
@@ -254,6 +329,14 @@ type LanSyncLastResult = {
   generatedAtLabel: string
   pullMessage: string
   pushMessage: string
+}
+
+type LocalSyncDiscoveryState = {
+  status: "idle" | "searching" | "ready" | "blocked"
+  detail: string
+  servers: LocalSyncDiscoveredServer[]
+  rawCredentialsReturned: false
+  credentialsSyncedToApp: false
 }
 
 type QueueExportStatus = {
@@ -344,6 +427,15 @@ type DesktopSyncExecutionState = {
 
 type InventoryUpdateOptions = Parameters<typeof buildInventoryUpdateOperation>[1]
 
+type ConflictReviewStorageRestoreResult = {
+  openConflicts: ConflictItem[]
+  reviewedConflicts: ConflictItem[]
+  restored: boolean
+  issues: string[]
+}
+
+const CONFLICT_REVIEW_STORAGE_KEY_PREFIX = "pug-offline-conflict-review:"
+
 function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
   if (typeof window === "undefined") {
     return restoreConnectorProfileStorageSnapshot(null, offlineWorkspaceSeed.connectorProfiles)
@@ -398,6 +490,142 @@ function loadOfflineSessionStorage(profileId: string): OfflineSessionStorageRest
   return restoreOfflineSessionStorageSnapshot(
     window.localStorage.getItem(OFFLINE_SESSION_STORAGE_KEY),
     { profileId, allowLegacyProfile: true },
+  )
+}
+
+function conflictReviewStorageKey(profileId: string): string {
+  const cleanProfileId = profileId
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return `${CONFLICT_REVIEW_STORAGE_KEY_PREFIX}${cleanProfileId || "default"}`
+}
+
+function loadConflictReviewStorage(
+  profileId: string,
+  seedConflicts: ConflictItem[],
+): ConflictReviewStorageRestoreResult {
+  if (typeof window === "undefined") {
+    return {
+      openConflicts: seedConflicts,
+      reviewedConflicts: [],
+      restored: false,
+      issues: [],
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(conflictReviewStorageKey(profileId)) ?? "null",
+    ) as {
+      action?: string
+      schema_version?: number
+      profile_id?: string
+      resolved_conflict_ids?: unknown[]
+      reviewed_conflicts?: unknown[]
+      directMysqlAccess?: boolean
+      credentialsSyncedToApp?: boolean
+    } | null
+
+    if (
+      !parsed ||
+      parsed.action !== "offline_conflict_review_local_storage" ||
+      parsed.schema_version !== 1 ||
+      parsed.profile_id !== profileId ||
+      parsed.directMysqlAccess !== false ||
+      parsed.credentialsSyncedToApp !== false
+    ) {
+      return {
+        openConflicts: seedConflicts,
+        reviewedConflicts: [],
+        restored: false,
+        issues: parsed ? ["conflict_review_storage_invalid"] : [],
+      }
+    }
+
+    const resolvedIds = new Set(
+      (Array.isArray(parsed.resolved_conflict_ids) ? parsed.resolved_conflict_ids : [])
+        .map((id) => (typeof id === "string" ? id.trim() : ""))
+        .filter(Boolean),
+    )
+    const reviewedConflicts = sanitizeStoredConflictItems(parsed.reviewed_conflicts ?? [], seedConflicts)
+      .filter((conflict) => resolvedIds.has(conflict.conflictId))
+    const reviewedById = new Map(reviewedConflicts.map((conflict) => [conflict.conflictId, conflict]))
+    const seedReviewed = seedConflicts
+      .filter((conflict) => resolvedIds.has(conflict.conflictId) && !reviewedById.has(conflict.conflictId))
+
+    return {
+      openConflicts: seedConflicts.filter((conflict) => !resolvedIds.has(conflict.conflictId)),
+      reviewedConflicts: [...reviewedConflicts, ...seedReviewed],
+      restored: resolvedIds.size > 0,
+      issues: [],
+    }
+  } catch {
+    return {
+      openConflicts: seedConflicts,
+      reviewedConflicts: [],
+      restored: false,
+      issues: ["conflict_review_storage_parse_failed"],
+    }
+  }
+}
+
+function sanitizeStoredConflictItems(
+  records: unknown[],
+  seedConflicts: ConflictItem[],
+): ConflictItem[] {
+  const seedById = new Map(seedConflicts.map((conflict) => [conflict.conflictId, conflict]))
+
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  return records
+    .map((record) => {
+      if (!record || typeof record !== "object") {
+        return null
+      }
+
+      const conflictId = typeof (record as { conflictId?: unknown }).conflictId === "string"
+        ? (record as { conflictId: string }).conflictId.trim()
+        : ""
+
+      if (!conflictId) {
+        return null
+      }
+
+      return seedById.get(conflictId) ?? (record as ConflictItem)
+    })
+    .filter((conflict): conflict is ConflictItem => Boolean(conflict))
+}
+
+function persistConflictReviewStorage(profileId: string, reviewedConflicts: ConflictItem[]) {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  const resolvedConflictIds = reviewedConflicts
+    .map((conflict) => conflict.conflictId)
+    .filter(Boolean)
+
+  if (resolvedConflictIds.length === 0) {
+    window.localStorage.removeItem(conflictReviewStorageKey(profileId))
+    return
+  }
+
+  window.localStorage.setItem(
+    conflictReviewStorageKey(profileId),
+    JSON.stringify({
+      action: "offline_conflict_review_local_storage",
+      schema_version: 1,
+      profile_id: profileId,
+      resolved_conflict_ids: resolvedConflictIds,
+      reviewed_conflicts: reviewedConflicts,
+      saved_at_utc: new Date().toISOString(),
+      directMysqlAccess: false,
+      credentialsSyncedToApp: false,
+    }),
   )
 }
 
@@ -549,6 +777,27 @@ function safeSummaryValue(value: unknown) {
 
 function countLabel(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`
+}
+
+function gameDisplayLabel(value?: string) {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "")
+
+  if (["magicthegathering", "magic", "mtg"].includes(normalized)) {
+    return "MTG"
+  }
+
+  if (normalized === "onepiece") {
+    return "One Piece"
+  }
+
+  if (!normalized) {
+    return "Trading card"
+  }
+
+  return String(value)
+    .trim()
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
 function statusToneFromRemoteState(status: string): StatusTone {
@@ -866,11 +1115,23 @@ function customerCreditLedgerEntryFromLocalSync(
     }).format(new Date(entry.created_at_utc)),
     description: entry.reason || entry.entry_type,
     amountMinorUnits: entry.amount_minor_units,
+    balanceBeforeMinorUnits: entry.balance_before_minor_units,
     balanceAfterMinorUnits: entry.balance_after_minor_units,
     currency: entry.currency,
     status: entry.status,
     sourceLabel: entry.status === "pending_sync" ? "LAN queue" : "Website cache",
     operationId: entry.entry_id,
+    staffUserId: entry.staff_user_id,
+    referenceId: entry.reference_id,
+    lineItems: entry.line_items.map((line) => ({
+      lineItemId: line.line_item_id,
+      type: line.type,
+      label: line.label,
+      amountMinorUnits: line.amount_minor_units,
+      referenceId: line.reference_id,
+      saleTotalMinorUnits: line.sale_total_minor_units,
+      squareReceiptReference: line.square_receipt_reference,
+    })),
   }
 }
 
@@ -935,6 +1196,9 @@ function inventoryItemFromLocalSync(
     finish: item.finish,
     language: item.language,
     rawOrGraded: item.raw_or_graded,
+    gradingCompany: item.grading_company ?? "",
+    grade: item.grade ?? "",
+    certNumber: item.cert_number ?? "",
     condition: item.condition,
     barcode: item.barcode,
     price: formatMoney(item.price_minor_units, item.currency),
@@ -988,6 +1252,39 @@ function formatScryDexVariant(variant: LocalSyncScryDexVariant) {
   ]
     .filter(Boolean)
     .join(" / ")
+}
+
+function scryDexSetFilterValue(card: LocalSyncScryDexCard) {
+  return `${card.set_code || "unknown"}::${card.set_name || "Unknown set"}`
+}
+
+function scryDexSetOptionsFromCards(cards: LocalSyncScryDexCard[]) {
+  const optionsByValue = new Map<string, { value: string; label: string; count: number }>()
+
+  for (const card of cards) {
+    const value = scryDexSetFilterValue(card)
+    const label = card.set_code
+      ? `${card.set_name || "Unknown set"} (${card.set_code})`
+      : card.set_name || "Unknown set"
+    const existing = optionsByValue.get(value)
+
+    optionsByValue.set(value, {
+      value,
+      label,
+      count: (existing?.count ?? 0) + 1,
+    })
+  }
+
+  return [...optionsByValue.values()]
+    .sort((left, right) => left.label.localeCompare(right.label))
+    .map((option) => ({
+      value: option.value,
+      label: `${option.label} - ${option.count}`,
+    }))
+}
+
+function scryDexCardMatchesSetFilter(card: LocalSyncScryDexCard, setFilter: string) {
+  return !setFilter || scryDexSetFilterValue(card) === setFilter
 }
 
 function scryDexVariantId(cardId: string, variant: LocalSyncScryDexVariant, index: number) {
@@ -1051,6 +1348,49 @@ function scryDexIntakePriceMinorUnits(
   return variantPoint ? pricePointMinorUnits(variantPoint) : card.market_price_minor_units
 }
 
+function autoRetailPriceMinorUnits(marketMinorUnits: number, markupBasisPoints = 1000) {
+  const safeMarketMinorUnits = Number.isFinite(marketMinorUnits)
+    ? Math.max(0, Math.trunc(marketMinorUnits))
+    : 0
+
+  const rawMinorUnits = Math.round(safeMarketMinorUnits * (10_000 + markupBasisPoints) / 10_000)
+
+  return roundSalePriceMinorUnits(rawMinorUnits)
+}
+
+function roundSalePriceMinorUnits(amountMinorUnits: number) {
+  const safeAmountMinorUnits = Number.isFinite(amountMinorUnits)
+    ? Math.max(0, Math.trunc(amountMinorUnits))
+    : 0
+
+  if (safeAmountMinorUnits <= 100 || safeAmountMinorUnits % 100 === 0) {
+    return safeAmountMinorUnits
+  }
+
+  return Math.ceil(safeAmountMinorUnits / 100) * 100
+}
+
+function tradeInValueMinorUnits(marketMidMinorUnits: number, percentageBasisPoints: number) {
+  const safeMarketMidMinorUnits = Number.isFinite(marketMidMinorUnits)
+    ? Math.max(0, Math.trunc(marketMidMinorUnits))
+    : 0
+  const safePercentageBasisPoints = Number.isFinite(percentageBasisPoints)
+    ? Math.max(0, Math.trunc(percentageBasisPoints))
+    : 0
+  const rawMinorUnits = Math.floor(safeMarketMidMinorUnits * safePercentageBasisPoints / 10_000)
+
+  return Math.floor(rawMinorUnits / 100) * 100
+}
+
+function finalRetailPriceMinorUnits(autoMinorUnits: number, minimumMinorUnits: number) {
+  const safeAutoMinorUnits = Number.isFinite(autoMinorUnits) ? Math.max(0, Math.trunc(autoMinorUnits)) : 0
+  const safeMinimumMinorUnits = Number.isFinite(minimumMinorUnits)
+    ? Math.max(0, Math.trunc(minimumMinorUnits))
+    : 0
+
+  return Math.max(safeAutoMinorUnits, safeMinimumMinorUnits)
+}
+
 function inventoryVersionLabel(item: InventoryItem) {
   return [
     item.variant,
@@ -1059,6 +1399,109 @@ function inventoryVersionLabel(item: InventoryItem) {
   ]
     .filter(Boolean)
     .join(" / ") || "Default version"
+}
+
+type InventoryConditionGroup = {
+  condition: string
+  items: InventoryItem[]
+  stockCount: number
+  priceLabel: string
+}
+
+type InventoryDisplayGroup = {
+  key: string
+  representative: InventoryItem
+  items: InventoryItem[]
+  conditions: InventoryConditionGroup[]
+  activeStockCount: number
+  priceLabel: string
+  locationLabel: string
+}
+
+function inventoryPrintingKey(item: InventoryItem) {
+  return [
+    item.game ?? "",
+    item.cardName,
+    item.setName,
+    item.setCode ?? "",
+    item.number,
+    item.variant ?? "",
+    item.finish ?? "",
+    item.language ?? "",
+    item.rawOrGraded ?? "raw",
+  ]
+    .map((value) => String(value).trim().toLowerCase())
+    .join("|")
+}
+
+function inventoryPriceRange(items: InventoryItem[]) {
+  const prices = [...new Set(items.map((item) => item.priceMinorUnits))].sort((left, right) => left - right)
+
+  if (prices.length === 0) {
+    return "$0.00"
+  }
+
+  if (prices.length === 1) {
+    return formatMoney(prices[0], "USD")
+  }
+
+  return `${formatMoney(prices[0], "USD")} - ${formatMoney(prices[prices.length - 1], "USD")}`
+}
+
+function groupInventoryItems(items: InventoryItem[], selectedId?: number): InventoryDisplayGroup[] {
+  const groups = new Map<string, InventoryItem[]>()
+
+  for (const item of items) {
+    const key = inventoryPrintingKey(item)
+    groups.set(key, [...(groups.get(key) ?? []), item])
+  }
+
+  return [...groups.entries()].map(([key, groupedItems]) => {
+    const selectedItem = groupedItems.find((item) => item.id === selectedId)
+    const representative =
+      selectedItem ??
+      groupedItems.find((item) => item.status === "available") ??
+      groupedItems[0]
+    const conditions = [...new Set(groupedItems.map((item) => item.condition))]
+      .sort()
+      .map((condition) => {
+        const conditionItems = groupedItems.filter((item) => item.condition === condition)
+
+        return {
+          condition,
+          items: conditionItems,
+          stockCount: conditionItems.filter((item) => item.status !== "sold").length,
+          priceLabel: inventoryPriceRange(conditionItems),
+        }
+      })
+    const activeItems = groupedItems.filter((item) => item.status !== "sold")
+    const locations = [...new Set(activeItems.map((item) => item.location).filter(Boolean))]
+
+    return {
+      key,
+      representative,
+      items: groupedItems,
+      conditions,
+      activeStockCount: activeItems.length,
+      priceLabel: inventoryPriceRange(activeItems.length > 0 ? activeItems : groupedItems),
+      locationLabel:
+        locations.length === 0
+          ? "No location"
+          : locations.length === 1
+            ? locations[0]
+            : `${locations.length} locations`,
+    }
+  })
+}
+
+function inventoryItemForCondition(group: InventoryDisplayGroup, condition: string) {
+  const conditionGroup = group.conditions.find((candidate) => candidate.condition === condition)
+
+  return (
+    conditionGroup?.items.find((item) => item.status === "available") ??
+    conditionGroup?.items[0] ??
+    group.representative
+  )
 }
 
 function inventoryVisibilityLabel(value?: InventoryVisibility) {
@@ -1077,6 +1520,28 @@ function inventoryVisibilitySummary(item: InventoryItem) {
   return `Online ${inventoryVisibilityLabel(item.onlineVisibility)}, kiosk ${inventoryVisibilityLabel(
     item.kioskVisibility,
   )}, POS ${inventoryVisibilityLabel(item.posVisibility)}`
+}
+
+function initialCustomerKioskMode() {
+  const configuredMode = String(import.meta.env.VITE_PUG_APP_MODE ?? "").toLowerCase()
+  if (configuredMode === "kiosk" || configuredMode === "customer-kiosk") {
+    return true
+  }
+
+  if (typeof window === "undefined") {
+    return false
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const mode = params.get("mode")?.toLowerCase()
+  const path = window.location.pathname.replace(/\/+$/, "").toLowerCase()
+  const hash = window.location.hash.replace(/^#/, "").toLowerCase()
+
+  return mode === "kiosk" || hash === "kiosk" || path.endsWith("/kiosk")
+}
+
+function employeeSectionLabel(label: string) {
+  return label === "Kiosk" ? "Fulfillment" : label
 }
 
 function kioskTicketFromLocalSyncOrder(order: LocalSyncKioskOrder): KioskOrderTicket {
@@ -1098,7 +1563,89 @@ function kioskTicketFromLocalSyncOrder(order: LocalSyncKioskOrder): KioskOrderTi
     reservationIds: order.reservation_ids,
     createdAtUtc: order.created_at_utc,
     status: order.status,
+    paymentStatus: order.payment_status,
+    squareReceiptReference: order.square_receipt_reference,
+    paidAtUtc: order.paid_at_utc,
+    pickedItemIds: order.picked_item_ids,
+    allItemsPicked: order.all_items_picked,
   }
+}
+
+function websitePickupTicketFromLocalSyncOrder(order: LocalSyncFulfillmentOrder): WebsitePickupTicket {
+  return {
+    orderId: order.order_id,
+    orderNumber: order.order_number || String(order.order_id),
+    customerName: order.customer_name || "Website pickup customer",
+    itemCount: order.item_count,
+    totalMinorUnits: order.total_minor_units,
+    totalLabel: formatMoney(order.total_minor_units, "USD"),
+    items: order.items.map((item) => {
+      const pickIds = [
+        item.inventory_id,
+        item.reservation_id,
+        item.order_item_id,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter((value, index, values) => value !== "" && value !== "0" && values.indexOf(value) === index)
+
+      return {
+        publicId: pickIds[0] ?? String(item.order_item_id || item.inventory_id || item.reservation_id),
+        pickIds,
+        cardName: item.card_name,
+        setName: item.set_name,
+        condition: item.condition,
+        barcode: item.barcode,
+        location: `Woo order #${order.order_number || order.order_id}`,
+        price: formatMoney(item.price_minor_units, "USD"),
+      }
+    }),
+    reservationIds: order.items
+      .map((item) => String(item.reservation_id || ""))
+      .filter(Boolean),
+    createdAtUtc: order.created_at_utc,
+    paidAtUtc: order.paid_at_utc,
+    status: order.fulfillment_status,
+    orderStatus: order.order_status,
+    source: order.source,
+    pickedItemIds: order.picked_item_ids,
+    allItemsPicked: order.all_items_picked,
+  }
+}
+
+function ticketItemIsPicked(ticket: KioskOrderTicket | WebsitePickupTicket | null, item: KioskTicketItem) {
+  if (!ticket) {
+    return false
+  }
+
+  const acceptedIds = item.pickIds && item.pickIds.length > 0 ? item.pickIds : [item.publicId]
+
+  return acceptedIds.some((id) => ticket.pickedItemIds.includes(id))
+}
+
+function fulfillmentTicketSearchText(ticket: KioskOrderTicket | WebsitePickupTicket) {
+  const orderNumber = "orderNumber" in ticket ? ticket.orderNumber : ""
+  const orderStatus = "orderStatus" in ticket ? ticket.orderStatus : ""
+  const source = "source" in ticket ? ticket.source : "kiosk"
+  const squareReceiptReference = "squareReceiptReference" in ticket ? ticket.squareReceiptReference : ""
+
+  return [
+    ticket.orderId,
+    orderNumber,
+    orderStatus,
+    source,
+    ticket.customerName,
+    ticket.totalLabel,
+    squareReceiptReference,
+    ...ticket.items.flatMap((item) => [
+      item.cardName,
+      item.setName,
+      item.condition,
+      item.barcode,
+      item.location,
+    ]),
+  ]
+    .join(" ")
+    .toLowerCase()
 }
 
 function lanSyncPushMessage(result: LocalSyncPushResult | null) {
@@ -1201,9 +1748,11 @@ function mergeLocalSyncEventSnapshots(
 
 export function App() {
   const workspace = offlineWorkspaceSeed
+  const [customerKioskMode] = useState(() => initialCustomerKioskMode())
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
   const devicePairingAdapter = useMemo(() => createTauriDevicePairingAdapter(), [])
   const offlineSyncAdapter = useMemo(() => createTauriOfflineSyncAdapter(), [])
+  const localSyncDiscoveryAdapter = useMemo(() => createTauriLocalSyncDiscoveryAdapter(), [])
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
@@ -1214,6 +1763,7 @@ export function App() {
   const conflictPanelRef = useRef<HTMLElement>(null)
   const creditPanelRef = useRef<HTMLElement>(null)
   const connectorPanelRef = useRef<HTMLElement>(null)
+  const kioskCartRef = useRef<HTMLElement>(null)
   const connectorProfileStorageRef = useRef<ConnectorProfileStorageRestoreResult | null>(null)
   if (connectorProfileStorageRef.current === null) {
     connectorProfileStorageRef.current = loadConnectorProfileStorage()
@@ -1236,6 +1786,14 @@ export function App() {
     )
   }
   const offlineSessionStorage = offlineSessionStorageRef.current
+  const conflictReviewStorageRef = useRef<ConflictReviewStorageRestoreResult | null>(null)
+  if (conflictReviewStorageRef.current === null) {
+    conflictReviewStorageRef.current = loadConflictReviewStorage(
+      connectorProfileStorage.activeProfileId,
+      workspace.conflicts,
+    )
+  }
+  const conflictReviewStorage = conflictReviewStorageRef.current
   const [inventoryItems, setInventoryItems] = useState(workspace.inventoryItems)
   const [customerCreditDirectory, setCustomerCreditDirectory] = useState(
     workspace.customerCreditDirectory,
@@ -1245,8 +1803,10 @@ export function App() {
   )
   const [eventSnapshots, setEventSnapshots] = useState(workspace.eventSnapshots)
   const [connectorProfiles, setConnectorProfiles] = useState(connectorProfileStorage.profiles)
-  const [openConflicts, setOpenConflicts] = useState(workspace.conflicts)
-  const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>([])
+  const [openConflicts, setOpenConflicts] = useState(conflictReviewStorage.openConflicts)
+  const [reviewedConflicts, setReviewedConflicts] = useState<ConflictItem[]>(
+    conflictReviewStorage.reviewedConflicts,
+  )
   const [queuedOperations, setQueuedOperations] = useState<OfflineOperationEnvelope[]>(
     offlineSessionStorage.queuedOperations,
   )
@@ -1265,6 +1825,8 @@ export function App() {
   )
   const [squareReceiptReference, setSquareReceiptReference] = useState("")
   const [squareCashierConfirmed, setSquareCashierConfirmed] = useState(false)
+  const [squareSoldReference, setSquareSoldReference] = useState("")
+  const [squareSoldOrderId, setSquareSoldOrderId] = useState("")
   const [newCustomerFirstName, setNewCustomerFirstName] = useState("")
   const [newCustomerLastName, setNewCustomerLastName] = useState("")
   const [newCustomerEmail, setNewCustomerEmail] = useState("")
@@ -1287,13 +1849,27 @@ export function App() {
   const [intakeCondition, setIntakeCondition] = useState("LP")
   const [intakeBarcode, setIntakeBarcode] = useState("")
   const [intakePriceInput, setIntakePriceInput] = useState("0.00")
+  const [intakeMinimumPriceInput, setIntakeMinimumPriceInput] = useState("0.00")
   const [intakeLocation, setIntakeLocation] = useState("Intake Queue")
   const [intakeOnlineVisibility, setIntakeOnlineVisibility] = useState<InventoryVisibility>("visible")
   const [intakeKioskVisibility, setIntakeKioskVisibility] = useState<InventoryVisibility>("visible")
   const [intakePosVisibility, setIntakePosVisibility] = useState<InventoryVisibility>("visible")
+  const [intakeProductType, setIntakeProductType] = useState<"raw" | "graded">("raw")
+  const [intakeGradingCompany, setIntakeGradingCompany] = useState("PSA")
+  const [intakeGrade, setIntakeGrade] = useState("")
+  const [intakeCertNumber, setIntakeCertNumber] = useState("")
+  const [tradeInCustomerName, setTradeInCustomerName] = useState("")
+  const [tradeInPayoutType, setTradeInPayoutType] = useState<TradeInPayoutType>("credit")
+  const [tradeInPercentageBasisPoints, setTradeInPercentageBasisPoints] = useState(6000)
+  const [tradeInDraftItems, setTradeInDraftItems] = useState<TradeInDraftItem[]>([])
+  const [tradeInRecordSearch, setTradeInRecordSearch] = useState("")
+  const [tradeInStaffFilter, setTradeInStaffFilter] = useState("")
+  const [serverTradeInOrders, setServerTradeInOrders] = useState<LocalSyncTradeInOrder[]>([])
+  const [tradeInSyncStatus, setTradeInSyncStatus] = useState<"idle" | "saving" | "ready" | "blocked">("idle")
   const [scryDexQuery, setScryDexQuery] = useState("")
   const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
   const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
+  const [scryDexSetFilter, setScryDexSetFilter] = useState("")
   const [selectedScryDexCardId, setSelectedScryDexCardId] = useState("")
   const [selectedScryDexVariantId, setSelectedScryDexVariantId] = useState("")
   const [scryDexLookupStatus, setScryDexLookupStatus] = useState<
@@ -1313,6 +1889,7 @@ export function App() {
   const [localSyncSessionToken, setLocalSyncSessionToken] = useState("")
   const [localSyncSessionExpiresAtUtc, setLocalSyncSessionExpiresAtUtc] = useState("")
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
+  const [localSyncLastCheckedAtUtc, setLocalSyncLastCheckedAtUtc] = useState("")
   const [squarePosPlan, setSquarePosPlan] =
     useState<LocalSyncSquarePosInventoryPullPlanResult | null>(null)
   const [squareCountsInput, setSquareCountsInput] = useState(
@@ -1365,6 +1942,16 @@ export function App() {
     useState<LocalSyncDeviceHeartbeatResult | null>(null)
   const [localDeviceStatus, setLocalDeviceStatus] =
     useState<LocalSyncDeviceStatusResult | null>(null)
+  const [managerReportKey, setManagerReportKey] = useState<LocalSyncReportKey>("sales")
+  const [managerReportDateFrom, setManagerReportDateFrom] = useState("")
+  const [managerReportDateTo, setManagerReportDateTo] = useState("")
+  const [managerReportStaffFilter, setManagerReportStaffFilter] = useState("")
+  const [managerReportChannelFilter, setManagerReportChannelFilter] = useState("")
+  const [managerReportGameFilter, setManagerReportGameFilter] = useState("")
+  const [managerReportStatus, setManagerReportStatus] = useState<StatusTone>("idle")
+  const [managerReportDetail, setManagerReportDetail] = useState("Choose filters, then pull live manager data.")
+  const [managerReportResult, setManagerReportResult] =
+    useState<LocalSyncManagerReportResult | null>(null)
   const [loginPin, setLoginPin] = useState("")
   const [loginIssue, setLoginIssue] = useState("")
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30)
@@ -1375,7 +1962,7 @@ export function App() {
       name: "Front Counter Staff",
       pin: "1234",
       role: "staff",
-      access: ["Inventory", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
+      access: ["Inventory", "Trade-Ins", "Kiosk", "Queue", "Events", "Customers", "Sync", "Status"],
     },
     {
       id: "manager-default",
@@ -1386,9 +1973,9 @@ export function App() {
     },
     {
       id: "preview-manager",
-      name: "Preview Manager",
+      name: "Preview Owner",
       pin: "1420",
-      role: "manager",
+      role: "owner",
       access: [...ACCESS_SECTIONS],
     },
   ])
@@ -1397,17 +1984,32 @@ export function App() {
   const [newUserRole, setNewUserRole] = useState<Exclude<AppSessionRole, "locked">>("staff")
   const [newUserAccess, setNewUserAccess] = useState<AccessSection[]>([
     "Inventory",
+    "Trade-Ins",
     "Kiosk",
     "Queue",
     "Status",
   ])
   const [kioskFirstName, setKioskFirstName] = useState("")
   const [kioskLastName, setKioskLastName] = useState("")
+  const [kioskSearchQuery, setKioskSearchQuery] = useState("")
+  const [kioskGameFilter, setKioskGameFilter] = useState("all")
+  const [kioskSetFilter, setKioskSetFilter] = useState("all")
   const [kioskCartIds, setKioskCartIds] = useState<number[]>([])
+  const [kioskCartInView, setKioskCartInView] = useState(true)
   const [kioskOrderTickets, setKioskOrderTickets] = useState<KioskOrderTicket[]>([])
+  const [websitePickupTickets, setWebsitePickupTickets] = useState<WebsitePickupTicket[]>([])
+  const [fulfillmentHistorySearch, setFulfillmentHistorySearch] = useState("")
+  const [activeFulfillmentTicket, setActiveFulfillmentTicket] =
+    useState<ActiveFulfillmentTicket | null>(null)
+  const [fulfillmentSquareReference, setFulfillmentSquareReference] = useState("")
+  const [fulfillmentSquareOrderId, setFulfillmentSquareOrderId] = useState("")
+  const [creditApprovalThresholdMinorUnits, setCreditApprovalThresholdMinorUnits] = useState(2500)
+  const [creditApprovalThresholdInput, setCreditApprovalThresholdInput] = useState("25.00")
+  const operationalSyncRunningRef = useRef(false)
   const [activeProfileId, setActiveProfileId] = useState(connectorProfileStorage.activeProfileId)
   const activeSessionProfileRef = useRef(connectorProfileStorage.activeProfileId)
   const [statusFilter, setStatusFilter] = useState<InventoryStatus | "all">("all")
+  const [productTypeFilter, setProductTypeFilter] = useState<InventoryProductTypeFilter>("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [quantityDeltaInput, setQuantityDeltaInput] = useState("1")
@@ -1499,6 +2101,13 @@ export function App() {
     oneWebsiteMode: true,
     credentialsSyncedToApp: false,
   })
+  const [localSyncDiscovery, setLocalSyncDiscovery] = useState<LocalSyncDiscoveryState>({
+    status: "idle",
+    detail: "Desktop LAN discovery has not run. Manual server URL setup is always available.",
+    servers: [],
+    rawCredentialsReturned: false,
+    credentialsSyncedToApp: false,
+  })
   const [pairingTokenRequest, setPairingTokenRequest] = useState<PairingTokenRequestState>({
     status: "idle",
     endpoint: "",
@@ -1537,6 +2146,11 @@ export function App() {
     ? "available; device tokens can be persisted through the Tauri desktop secure-store commands"
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
   const selectedItem = findInventoryItem(inventoryItems, selectedId)
+  const scryDexSetOptions = useMemo(() => scryDexSetOptionsFromCards(scryDexCards), [scryDexCards])
+  const visibleScryDexCards = useMemo(
+    () => scryDexCards.filter((card) => scryDexCardMatchesSetFilter(card, scryDexSetFilter)),
+    [scryDexCards, scryDexSetFilter],
+  )
   const selectedScryDexCard = scryDexCards.find((card) => card.provider_card_id === selectedScryDexCardId) ?? null
   const selectedScryDexVariant =
     selectedScryDexCard?.variants.find(
@@ -1587,14 +2201,57 @@ export function App() {
     ? queueOperationReviewSummary(selectedQueuedOperation)
     : ""
   const filteredItems = useMemo(() => {
-    return filterInventoryItems(inventoryItems, query, statusFilter)
-  }, [query, statusFilter, inventoryItems])
+    return filterInventoryItems(inventoryItems, query, statusFilter, productTypeFilter)
+  }, [query, statusFilter, productTypeFilter, inventoryItems])
+  const filteredInventoryGroups = useMemo(
+    () => groupInventoryItems(filteredItems, selectedId),
+    [filteredItems, selectedId],
+  )
+  const selectedInventoryGroup = useMemo(
+    () =>
+      groupInventoryItems(inventoryItems, selectedId).find((group) =>
+        group.items.some((item) => item.id === selectedId),
+      ) ?? null,
+    [inventoryItems, selectedId],
+  )
+  const kioskFilteredItems = useMemo(() => {
+    return filterInventoryItems(inventoryItems, kioskSearchQuery, "available")
+  }, [inventoryItems, kioskSearchQuery])
   const kioskVisibleItems = useMemo(
     () =>
-      filteredItems.filter(
-        (item) => item.status === "available" && (item.kioskVisibility ?? "visible") === "visible",
+      kioskFilteredItems.filter(
+        (item) =>
+          item.status === "available" &&
+          (item.kioskVisibility ?? "visible") === "visible" &&
+          (kioskGameFilter === "all" || (item.game ?? "").toLowerCase() === kioskGameFilter) &&
+          (kioskSetFilter === "all" || item.setName === kioskSetFilter),
       ),
-    [filteredItems],
+    [kioskFilteredItems, kioskGameFilter, kioskSetFilter],
+  )
+  const kioskGameOptions = useMemo(
+    () =>
+      [...new Set(
+        inventoryItems
+          .filter((item) => item.status === "available" && (item.kioskVisibility ?? "visible") === "visible")
+          .map((item) => (item.game ?? "").toLowerCase())
+          .filter(Boolean),
+      )].sort(),
+    [inventoryItems],
+  )
+  const kioskSetOptions = useMemo(
+    () =>
+      [...new Set(
+        inventoryItems
+          .filter(
+            (item) =>
+              item.status === "available" &&
+              (item.kioskVisibility ?? "visible") === "visible" &&
+              (kioskGameFilter === "all" || (item.game ?? "").toLowerCase() === kioskGameFilter),
+          )
+          .map((item) => item.setName)
+          .filter(Boolean),
+      )].sort(),
+    [inventoryItems, kioskGameFilter],
   )
   const kioskCartItems = useMemo(
     () =>
@@ -1608,17 +2265,31 @@ export function App() {
     0,
   )
   const kioskCartTotalLabel = formatMoney(kioskCartTotalMinorUnits, "USD")
+  const activeKioskFulfillmentTicket =
+    activeFulfillmentTicket?.source === "kiosk"
+      ? kioskOrderTickets.find((ticket) => ticket.orderId === activeFulfillmentTicket.orderId) ?? null
+      : null
+  const activeWebsiteFulfillmentTicket =
+    activeFulfillmentTicket?.source === "website"
+      ? websitePickupTickets.find((ticket) => ticket.orderId === activeFulfillmentTicket.orderId) ?? null
+      : null
   const kioskCustomerName = [kioskFirstName, kioskLastName]
     .map((value) => value.trim())
     .filter(Boolean)
     .join(" ")
   const kioskCustomerReady = kioskFirstName.trim() !== "" && kioskLastName.trim() !== ""
   const sessionIsUnlocked = sessionRole !== "locked"
-  const managerControlsUnlocked = sessionRole === "manager" && !managerSettingsLocked
+  const managerControlsUnlocked = ["manager", "owner"].includes(sessionRole) && !managerSettingsLocked
+  const ownerControlsUnlocked = sessionRole === "owner" && !managerSettingsLocked
   const activeOfflineUser = offlineUsers.find((user) => user.id === sessionUserId) ?? null
-  const effectiveAccess = sessionRole === "manager"
-    ? ACCESS_SECTIONS
-    : activeOfflineUser?.access ?? []
+  const effectiveAccess =
+    sessionRole === "owner"
+      ? ACCESS_SECTIONS
+      : sessionRole === "manager"
+        ? ACCESS_SECTIONS.filter((section) => !["Sync", "Status", "Conflicts"].includes(section))
+        : (activeOfflineUser?.access ?? []).filter(
+            (section) => !["Sync", "Status", "Conflicts", "Settings"].includes(section),
+          )
   const scannedInventoryItem = useMemo(
     () => findInventoryItemByScan(inventoryItems, query),
     [inventoryItems, query],
@@ -1664,6 +2335,14 @@ export function App() {
       return {
         ...item,
         value: new Intl.NumberFormat("en-US").format(localSyncStatus.reference_card_count),
+      }
+    }
+
+    if (item.label === "Open conflicts") {
+      return {
+        ...item,
+        value: String(openConflicts.length),
+        tone: openConflicts.length > 0 ? "warning" : "success",
       }
     }
 
@@ -1731,11 +2410,25 @@ export function App() {
       : localSyncStatus
         ? localSyncStatus.message
         : "Use Sync Now or the Settings probe to verify the LAN middleman server."
+  const liveConnectionModeLabel =
+    localSyncStatus?.status === "ok" && localSyncStatus.wordpress_push_connected
+      ? "Online"
+      : localSyncStatus?.status === "ok"
+        ? "Online (local cache)"
+        : "Offline fallback"
+  const liveLastSyncLabel =
+    desktopSyncExecution.status === "synced"
+      ? "Just now"
+      : lanSyncLastResult?.generatedAtLabel
+        ? lanSyncLastResult.generatedAtLabel
+        : localSyncLastCheckedAtUtc
+          ? formatUtcLabel(localSyncLastCheckedAtUtc)
+          : workspace.device.lastSyncLabel
   const scryDexLookupOrderLabel =
     localSyncStatus?.status === "ok" && localSyncStatus.scrydex_lookup_order.length > 0
       ? localSyncStatus.scrydex_lookup_order.join(" -> ")
       : "local_reference_cache -> wordpress_catalog_proxy -> scrydex_provider"
-  const scryDexCurrentStockCount = scryDexCards.reduce(
+  const scryDexCurrentStockCount = visibleScryDexCards.reduce(
     (total, card) => total + card.stock_total_count,
     0,
   )
@@ -1757,6 +2450,17 @@ export function App() {
       : selectedScryDexCard?.catalog_source === "wordpress_catalog_cache"
         ? "Website catalog cache"
         : "Catalog source pending"
+  const activeKioskOrderTickets = kioskOrderTickets.filter((ticket) => ticket.status !== "completed")
+  const activeWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status !== "completed")
+  const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ticket.status === "completed")
+  const completedWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status === "completed")
+  const fulfillmentHistoryNeedle = fulfillmentHistorySearch.trim().toLowerCase()
+  const searchableCompletedKioskOrderTickets = completedKioskOrderTickets.filter((ticket) =>
+    fulfillmentTicketSearchText(ticket).includes(fulfillmentHistoryNeedle),
+  )
+  const searchableCompletedWebsitePickupTickets = completedWebsitePickupTickets.filter((ticket) =>
+    fulfillmentTicketSearchText(ticket).includes(fulfillmentHistoryNeedle),
+  )
   const scryDexLookupTone = statusToneFromRemoteState(scryDexLookupStatus)
   const queueStatusTone =
     queuedOperations.length > 0 || (localSyncStatus?.status === "ok" && localSyncStatus.queue_depth > 0)
@@ -1831,7 +2535,7 @@ export function App() {
         scryDexLookupStatus === "searching"
           ? "Searching"
           : scryDexLookupStatus === "ready"
-            ? `${countLabel(scryDexCards.length, "result")}; ${countLabel(scryDexCurrentStockCount, "stock copy")}`
+          ? `${countLabel(visibleScryDexCards.length, "visible result")}; ${countLabel(scryDexCards.length, "total result")}; ${countLabel(scryDexCurrentStockCount, "stock copy")}`
             : scryDexLookupStatus === "blocked"
               ? "Blocked"
               : "Idle",
@@ -1890,8 +2594,8 @@ export function App() {
       title: "ScryDex lookup status",
       detail:
         `${scryDexLookupDetail} Lookup order: ${scryDexLookupOrderLabel}; ${
-          scryDexCards.length > 0
-            ? `${countLabel(scryDexCards.length, "card")} visible with image and stock summary.`
+          visibleScryDexCards.length > 0
+            ? `${countLabel(visibleScryDexCards.length, "card")} visible with image and stock summary.`
             : "no result set loaded yet."
         }`,
       tone: scryDexLookupTone,
@@ -1950,6 +2654,16 @@ export function App() {
       : cleanSquareReceiptReference.length < 3
         ? "Use at least 3 characters for the Square reference."
         : ""
+  const cleanSquareSoldReference = squareSoldReference.trim().replace(/\s+/g, " ")
+  const cleanSquareSoldOrderId = squareSoldOrderId.trim().replace(/\s+/g, " ")
+  const squareSoldReferenceIssue =
+    selectedItem.status !== "available" && selectedItem.status !== "reserved"
+      ? `${selectedItem.cardName} is ${statusLabel(selectedItem.status).toLowerCase()} and cannot be finalized as a Square sale.`
+      : cleanSquareSoldReference === ""
+        ? "Enter the Square receipt, ticket, or order reference before marking this item sold."
+        : cleanSquareSoldReference.length < 3
+          ? "Use at least 3 characters for the Square sale reference."
+          : ""
   const creditRedemptionMinorUnits = creditRedemptionInputToMinorUnits(creditRedemptionInput)
   const creditRedemptionIssue =
     squareSaleTotalIssue
@@ -1978,6 +2692,13 @@ export function App() {
         : creditAdjustmentMinorUnits <= 0
           ? "Credit add must be greater than $0.00."
           : ""
+  const creditAdjustmentNeedsManagerApproval =
+    creditAdjustmentMinorUnits !== null &&
+    Math.abs(creditAdjustmentMinorUnits) > creditApprovalThresholdMinorUnits
+  const creditAdjustmentCanSubmit =
+    !creditAdjustmentIssue &&
+    Boolean(localSyncSessionToken) &&
+    (!creditAdjustmentNeedsManagerApproval || ["manager", "owner"].includes(sessionRole))
   const creditRedemptionAmountLabel = formatMoney(
     creditRedemptionMinorUnits ?? 0,
     customerCredit.currency,
@@ -1998,6 +2719,13 @@ export function App() {
       ? "Enter a whole-number quantity change from -99 to 99, excluding 0."
       : ""
   const intakePriceMinorUnits = creditRedemptionInputToMinorUnits(intakePriceInput)
+  const intakeMinimumPriceMinorUnits = creditRedemptionInputToMinorUnits(intakeMinimumPriceInput)
+  const intakeMarketPriceMinorUnits = selectedScryDexIntakePriceMinorUnits || intakePriceMinorUnits || 0
+  const intakeAutoPriceMinorUnits = autoRetailPriceMinorUnits(intakeMarketPriceMinorUnits)
+  const intakeFinalPriceMinorUnits = finalRetailPriceMinorUnits(
+    intakeAutoPriceMinorUnits,
+    intakeMinimumPriceMinorUnits ?? 0,
+  )
   const parsedIntakeQuantity = Number.parseInt(intakeQuantityInput, 10)
   const intakeQuantity = Number.isFinite(parsedIntakeQuantity)
     ? Math.min(200, Math.max(1, parsedIntakeQuantity))
@@ -2006,23 +2734,75 @@ export function App() {
     intakeCardName.trim() === ""
       ? "Enter a card name before adding local inventory."
       : intakePriceMinorUnits === null
-        ? "Use a valid dollar amount with up to two decimals."
+        ? "Use a valid current market price with up to two decimals."
         : intakePriceMinorUnits <= 0
-          ? "Inventory price must be greater than $0.00."
-          : intakeQuantity === null
-            ? "Enter a quantity from 1 to 200."
-            : ""
+          ? "Current market price must be greater than $0.00."
+          : intakeMinimumPriceMinorUnits === null
+            ? "Use a valid minimum sale price with up to two decimals."
+            : intakeQuantity === null
+              ? "Enter a quantity from 1 to 200."
+              : intakeProductType === "graded" && intakeGradingCompany.trim() === ""
+                ? "Choose or enter a grading company before adding graded inventory."
+                : intakeProductType === "graded" && intakeGrade.trim() === ""
+                  ? "Enter the card grade before adding graded inventory."
+              : ""
   const selectedScryDexQueueQuantity = intakeQuantity ?? 1
   const selectedScryDexIntakeSummary = selectedScryDexCard
     ? `${selectedScryDexQueueQuantity} ${selectedScryDexQueueQuantity === 1 ? "copy" : "copies"} as ${intakeCondition || "RAW"} at ${formatMoney(
-        selectedScryDexIntakePriceMinorUnits,
+        intakeFinalPriceMinorUnits,
         selectedScryDexCard.currency,
-      )}`
+      )}; market ${formatMoney(intakeMarketPriceMinorUnits, selectedScryDexCard.currency)} + 10%, floor ${formatMoney(intakeMinimumPriceMinorUnits ?? 0, selectedScryDexCard.currency)}`
     : ""
   const intakeVisibilitySummary = `Online ${intakeOnlineVisibility.replace("_", " ")}, kiosk ${intakeKioskVisibility.replace(
     "_",
     " ",
   )}, POS ${intakePosVisibility.replace("_", " ")}`
+  const tradeInSourceIsIntake = intakeCardName.trim() !== ""
+  const tradeInCurrentCardName = tradeInSourceIsIntake ? intakeCardName.trim() : selectedItem.cardName
+  const tradeInCurrentSetName = tradeInSourceIsIntake ? intakeSetName.trim() : selectedItem.setName
+  const tradeInCurrentCondition = tradeInSourceIsIntake ? intakeCondition : selectedItem.condition
+  const tradeInCurrentProductType = tradeInSourceIsIntake
+    ? intakeProductType
+    : selectedItem.rawOrGraded === "graded"
+      ? "graded"
+      : "raw"
+  const tradeInCurrentGradingCompany = tradeInSourceIsIntake
+    ? intakeGradingCompany.trim()
+    : (selectedItem.gradingCompany ?? "")
+  const tradeInCurrentGrade = tradeInSourceIsIntake ? intakeGrade.trim() : (selectedItem.grade ?? "")
+  const tradeInCurrentCertNumber = tradeInSourceIsIntake ? intakeCertNumber.trim() : (selectedItem.certNumber ?? "")
+  const tradeInCurrentImageUrl = tradeInSourceIsIntake ? selectedScryDexImageUrl : selectedInventoryImageUrl
+  const tradeInCurrentMarketMinorUnits =
+    intakeMarketPriceMinorUnits > 0 ? intakeMarketPriceMinorUnits : selectedItem.priceMinorUnits
+  const tradeInPreviewValueMinorUnits = tradeInValueMinorUnits(
+    tradeInCurrentMarketMinorUnits,
+    tradeInPercentageBasisPoints,
+  )
+  const tradeInCashTotalMinorUnits = tradeInDraftItems
+    .filter((item) => item.payoutType === "cash")
+    .reduce((total, item) => total + item.finalValueMinorUnits, 0)
+  const tradeInCreditTotalMinorUnits = tradeInDraftItems
+    .filter((item) => item.payoutType === "credit")
+    .reduce((total, item) => total + item.finalValueMinorUnits, 0)
+  const tradeInCombinedTotalMinorUnits = tradeInCashTotalMinorUnits + tradeInCreditTotalMinorUnits
+  const kioskInventoryPullConnected =
+    localSyncStatus?.status === "ok" &&
+    (localSyncStatus.wordpress_inventory_pull_connected ??
+      localSyncStatus.wordpress_pull_connected)
+  const kioskInventoryStatusLabel = !localSyncStatus
+    ? "Connecting to live inventory"
+    : kioskInventoryPullConnected
+      ? "Live inventory connected"
+      : localSyncStatus.status === "ok"
+        ? "Local inventory available"
+        : "Offline fallback active"
+  const kioskInventoryStatusTone = !localSyncStatus
+    ? "connecting"
+    : kioskInventoryPullConnected
+      ? "live"
+      : localSyncStatus.status === "ok"
+        ? "local"
+        : "offline"
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -2085,6 +2865,69 @@ export function App() {
   }, [query, localSyncClient])
 
   useEffect(() => {
+    if (!customerKioskMode && activeSection !== "Kiosk") {
+      return
+    }
+
+    const normalizedQuery = kioskSearchQuery.trim()
+    let cancelled = false
+    const timeoutId = window.setTimeout(() => {
+      void localSyncClient.searchInventory(normalizedQuery).then((result) => {
+        if (cancelled || result.status !== "ok") {
+          return
+        }
+
+        setInventoryItems((items) => mergeLocalSyncInventoryItems(items, result.items))
+      })
+    }, normalizedQuery.length > 0 ? 220 : 0)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [customerKioskMode, activeSection, kioskSearchQuery, localSyncClient])
+
+  useEffect(() => {
+    if (!customerKioskMode) {
+      return
+    }
+
+    let cancelled = false
+
+    const refreshKioskConnection = () => {
+      void localSyncClient.getSyncStatus().then((result) => {
+        if (!cancelled) {
+          setLocalSyncStatus(result)
+          setLocalSyncLastCheckedAtUtc(new Date().toISOString())
+        }
+      })
+    }
+
+    refreshKioskConnection()
+    const intervalId = window.setInterval(refreshKioskConnection, 15_000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [customerKioskMode, localSyncClient])
+
+  useEffect(() => {
+    if (!customerKioskMode || !kioskCartRef.current) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setKioskCartInView(entry.isIntersecting),
+      { threshold: 0.15 },
+    )
+
+    observer.observe(kioskCartRef.current)
+
+    return () => observer.disconnect()
+  }, [customerKioskMode])
+
+  useEffect(() => {
     if (scannedInventoryItem && scannedInventoryItem.id !== selectedId) {
       setSelectedId(scannedInventoryItem.id)
       return
@@ -2099,7 +2942,7 @@ export function App() {
   }, [filteredItems, scannedInventoryItem, selectedId])
 
   useEffect(() => {
-    if (!sessionIsUnlocked) {
+    if (!sessionIsUnlocked && !customerKioskMode) {
       return
     }
 
@@ -2114,6 +2957,7 @@ export function App() {
     }
   }, [
     sessionIsUnlocked,
+    customerKioskMode,
     sessionRole,
     sessionUserId,
     activeSection,
@@ -2121,6 +2965,19 @@ export function App() {
     activePairedDevice?.devicePublicId,
     localSyncClient,
   ])
+
+  useEffect(() => {
+    if (!sessionIsUnlocked || !localSyncSessionToken || customerKioskMode) {
+      return
+    }
+
+    void runOperationalAutoSync()
+    const syncIntervalId = window.setInterval(() => {
+      void runOperationalAutoSync()
+    }, 15_000)
+
+    return () => window.clearInterval(syncIntervalId)
+  }, [sessionIsUnlocked, localSyncSessionToken, customerKioskMode, localSyncClient])
 
   useEffect(() => {
     setConnectorValidation((currentValidation) =>
@@ -2192,6 +3049,10 @@ export function App() {
     const nextSession = loadOfflineSessionStorage(activeProfile.id)
     setQueuedOperations(nextSession.queuedOperations)
     setSyncAttempts(nextSession.syncAttempts)
+    const nextConflictReview = loadConflictReviewStorage(activeProfile.id, workspace.conflicts)
+    setOpenConflicts(nextConflictReview.openConflicts)
+    setReviewedConflicts(nextConflictReview.reviewedConflicts)
+    setShowConflictHistory(nextConflictReview.reviewedConflicts.length > 0)
     setStagedOperation(null)
     setStagedPushBatch(null)
     setStagedPushRequest(null)
@@ -2208,7 +3069,7 @@ export function App() {
       title: nextSession.restored ? "Company queue restored" : "Company workspace ready",
       detail: nextSession.restored
         ? `${nextSession.queuedOperations.length} queued operation(s) and ${nextSession.syncAttempts.length} sync attempt(s) restored for ${activeProfile.companyName}.`
-        : `${activeProfile.companyName} has a separate local queue on this device.`,
+        : `${activeProfile.companyName} has a separate local queue on this device. ${nextConflictReview.restored ? `${nextConflictReview.reviewedConflicts.length} resolved conflict(s) stayed hidden after reload.` : ""}`,
     })
   }, [activeProfile.id, activeProfile.companyName])
 
@@ -2389,12 +3250,18 @@ export function App() {
     return () => window.clearTimeout(timerId)
   }, [localSyncSessionExpiresAtUtc, sessionRole])
 
+  useEffect(() => {
+    if (!sessionIsUnlocked) {
+      setLoginPin("")
+    }
+  }, [sessionIsUnlocked])
+
   function isAccessSection(label: string): label is AccessSection {
     return ACCESS_SECTIONS.includes(label as AccessSection)
   }
 
   function accessFromLocalSyncUser(user: LocalSyncUser): AccessSection[] {
-    return user.role === "manager"
+    return ["manager", "owner"].includes(user.role)
       ? [...ACCESS_SECTIONS]
       : user.access.filter(isAccessSection)
   }
@@ -2425,7 +3292,51 @@ export function App() {
   }
 
   function canAccessSection(label: string) {
+    if (label === "Reports" && !["manager", "owner"].includes(sessionRole)) {
+      return false
+    }
+
     return isAccessSection(label) && effectiveAccess.includes(label)
+  }
+
+  async function handleRefreshManagerReport() {
+    if (!["manager", "owner"].includes(sessionRole)) {
+      setManagerReportStatus("blocked")
+      setManagerReportDetail("Reports require a manager or owner PIN.")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setManagerReportStatus("blocked")
+      setManagerReportDetail("A valid local sync server session token is required.")
+      return
+    }
+
+    setManagerReportStatus("working")
+    setManagerReportDetail(`Pulling ${managerReportKey.replace("_", " ")} report from the LAN server.`)
+
+    const result = await localSyncClient.getManagerReport(localSyncSessionToken, managerReportKey, {
+      dateFrom: managerReportDateFrom || undefined,
+      dateTo: managerReportDateTo || undefined,
+      staffUserId: managerReportStaffFilter || undefined,
+      channel: managerReportChannelFilter || undefined,
+      game: managerReportGameFilter || undefined,
+      page: 1,
+      pageSize: 50,
+    })
+
+    setManagerReportResult(result)
+
+    if (result.status !== "ok") {
+      setManagerReportStatus("blocked")
+      setManagerReportDetail(result.message)
+      return
+    }
+
+    setManagerReportStatus(result.wordpress_reports_pull_connected ? "ready" : "warning")
+    setManagerReportDetail(
+      `${result.report.replace("_", " ")} report ready with ${result.rows.length} row(s); CSV header ${result.csv_header || "pending"}.`,
+    )
   }
 
   function handlePinDigit(digit: string) {
@@ -2442,6 +3353,37 @@ export function App() {
     setLoginPin("")
     setLoginIssue("")
     setKioskOrderTickets([])
+    setWebsitePickupTickets([])
+  }
+
+  function resetLocalSyncSessionForPin(title = "PIN session required") {
+    setSessionRole("locked")
+    setSessionUserId("")
+    setLocalSyncSessionToken("")
+    setLocalSyncSessionExpiresAtUtc("")
+    setManagerSettingsLocked(true)
+    setLoginPin("")
+    setLoginIssue("Enter your 4-digit PIN to reconnect to the local sync server.")
+    setActivityMessage({
+      title,
+      detail:
+        "The local sync server rejected the saved session token. This can happen after the server restarts or the PIN session expires.",
+    })
+  }
+
+  function handleBlockedLocalSyncSession(
+    result: { status: string; code?: string; message?: string },
+    title = "PIN session required",
+  ) {
+    if (
+      result.status !== "blocked" ||
+      !["session_required", "session_expired", "user_missing"].includes(result.code ?? "")
+    ) {
+      return false
+    }
+
+    resetLocalSyncSessionForPin(title)
+    return true
   }
 
   function upsertLocalSyncUser(authResult: Extract<LocalSyncAuthResult, { status: "ok" }>) {
@@ -2459,11 +3401,11 @@ export function App() {
   }
 
   function startOfflineUserSession(user: OfflineAppUser, detail: string) {
-    const firstAllowedSection = user.role === "manager" ? "Settings" : (user.access[0] ?? "Inventory")
+    const firstAllowedSection = user.role === "owner" ? "Inventory" : (user.access[0] ?? "Inventory")
 
     setSessionRole(user.role)
     setSessionUserId(user.id)
-    setManagerSettingsLocked(user.role !== "manager")
+    setManagerSettingsLocked(!["manager", "owner"].includes(user.role))
     setActiveSection(firstAllowedSection)
     setLoginPin("")
     setLoginIssue("")
@@ -2474,25 +3416,40 @@ export function App() {
   }
 
   function currentClientDeviceMode() {
-    if (sessionRole === "manager") {
+    if (customerKioskMode) {
+      return "kiosk"
+    }
+
+    if (["manager", "owner"].includes(sessionRole)) {
       return "manager"
     }
 
-    return activeSection === "Kiosk" ? "kiosk" : "employee"
+    return "employee"
   }
 
   function currentClientDeviceCapabilities(): AccessSection[] {
-    if (sessionRole === "manager") {
+    if (customerKioskMode) {
+      return ["Kiosk", "Status"]
+    }
+
+    if (sessionRole === "owner") {
       return [...ACCESS_SECTIONS]
     }
 
-    return activeOfflineUser?.access ?? ["Inventory", "Kiosk", "Queue", "Status"]
+    if (sessionRole === "manager") {
+      return ACCESS_SECTIONS.filter((section) => !["Sync", "Status", "Conflicts"].includes(section))
+    }
+
+    return (activeOfflineUser?.access ?? ["Inventory", "Kiosk", "Queue"]).filter(
+      (section) => !["Sync", "Status", "Conflicts", "Settings"].includes(section),
+    )
   }
 
   async function refreshLocalSyncStatus() {
     const nextStatus = await localSyncClient.getSyncStatus()
 
     setLocalSyncStatus(nextStatus)
+    setLocalSyncLastCheckedAtUtc(new Date().toISOString())
 
     return nextStatus
   }
@@ -2503,13 +3460,16 @@ export function App() {
         setActiveSection("Kiosk")
         setActivityMessage({
           title: "Kiosk queue needs login",
-          detail: "Unlock with a staff or manager PIN before loading the shared LAN pickup queue.",
+          detail: "Unlock with an employee, manager, or owner PIN before loading the shared pickup queue.",
         })
       }
       return null
     }
 
-    const result = await localSyncClient.listKioskOrders(localSyncSessionToken, { limit: 25 })
+    const [result, websitePickupResult] = await Promise.all([
+      localSyncClient.listKioskOrders(localSyncSessionToken, { limit: 25 }),
+      localSyncClient.listFulfillmentOrders(localSyncSessionToken, { limit: 25, refresh: true }),
+    ])
 
     if (result.status !== "ok") {
       if (showMessage) {
@@ -2524,15 +3484,74 @@ export function App() {
 
     setKioskOrderTickets(result.orders.map(kioskTicketFromLocalSyncOrder))
 
+    if (websitePickupResult.status === "ok") {
+      setWebsitePickupTickets(websitePickupResult.orders.map(websitePickupTicketFromLocalSyncOrder))
+    } else if (showMessage) {
+      setActivityMessage({
+        title: websitePickupResult.status === "unavailable" ? "Website pickup unavailable" : "Website pickup blocked",
+        detail: websitePickupResult.message,
+      })
+    }
+
     if (showMessage) {
       setActiveSection("Kiosk")
       setActivityMessage({
         title: "Shared pickup queue loaded",
-        detail: `${result.order_count} pickup order(s) loaded from ${localSyncClient.serverUrl}; credentials copied to client: no.`,
+        detail: `${result.order_count} kiosk pickup order(s) and ${
+          websitePickupResult.status === "ok" ? websitePickupResult.order_count : 0
+        } paid website pickup order(s) loaded from ${localSyncClient.serverUrl}; credentials copied to client: no.`,
       })
     }
 
     return result
+  }
+
+  async function runOperationalAutoSync() {
+    if (!localSyncSessionToken || operationalSyncRunningRef.current) {
+      return
+    }
+
+    operationalSyncRunningRef.current = true
+
+    try {
+      const pushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
+      if (handleBlockedLocalSyncSession(pushResult, "Automatic sync locked")) {
+        return
+      }
+
+      const pullResult = await localSyncClient.pullWebsiteInventory(localSyncSessionToken)
+      if (handleBlockedLocalSyncSession(pullResult, "Automatic sync locked")) {
+        return
+      }
+
+      const [inventoryResult, eventResult, kioskResult, fulfillmentResult, statusResult] =
+        await Promise.all([
+          localSyncClient.searchInventory(""),
+          localSyncClient.listEvents(),
+          localSyncClient.listKioskOrders(localSyncSessionToken, { limit: 50 }),
+          localSyncClient.listFulfillmentOrders(localSyncSessionToken, { limit: 50, refresh: true }),
+          localSyncClient.getSyncStatus(),
+        ])
+
+      if (inventoryResult.status === "ok") {
+        setInventoryItems((items) => mergeLocalSyncInventoryItems(items, inventoryResult.items))
+      }
+      if (eventResult.status === "ok") {
+        setEventSnapshots(eventResult.events.map(eventSnapshotFromLocalSync))
+      }
+      if (kioskResult.status === "ok") {
+        setKioskOrderTickets(kioskResult.orders.map(kioskTicketFromLocalSyncOrder))
+      }
+      if (fulfillmentResult.status === "ok") {
+        setWebsitePickupTickets(
+          fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder),
+        )
+      }
+      setLocalSyncStatus(statusResult)
+      setLocalSyncLastCheckedAtUtc(new Date().toISOString())
+    } finally {
+      operationalSyncRunningRef.current = false
+    }
   }
 
   async function handlePlanSquarePosInventoryPull() {
@@ -2645,9 +3664,111 @@ export function App() {
     })
 
     setLocalDeviceHeartbeat(heartbeatResult)
+    setLocalSyncLastCheckedAtUtc(new Date().toISOString())
     void refreshLocalDeviceStatus()
 
     return heartbeatResult
+  }
+
+  async function handleDiscoverLocalSyncServers() {
+    if (!managerControlsUnlocked) {
+      setLocalSyncDiscovery({
+        status: "blocked",
+        detail: "Manager unlock is required before changing the local server connection.",
+        servers: [],
+        rawCredentialsReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActiveSection("Settings")
+      return
+    }
+
+    if (!localSyncDiscoveryAdapter) {
+      setLocalSyncDiscovery({
+        status: "blocked",
+        detail:
+          "Desktop LAN discovery is only available in the installed Windows app. Enter the middleman server URL manually in this preview.",
+        servers: [],
+        rawCredentialsReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Manual server setup required",
+        detail: "Browser preview cannot use LAN broadcast discovery; the installed app can auto-detect the middleman host.",
+      })
+      setActiveSection("Settings")
+      return
+    }
+
+    setLocalSyncDiscovery({
+      status: "searching",
+      detail: "Searching this LAN for Pug local sync middleman servers.",
+      servers: [],
+      rawCredentialsReturned: false,
+      credentialsSyncedToApp: false,
+    })
+
+    try {
+      const result = await localSyncDiscoveryAdapter.discoverLocalSyncServers()
+      const firstServer = result.servers[0]
+
+      setLocalSyncDiscovery({
+        status: result.server_count > 0 ? "ready" : "blocked",
+        detail:
+          result.server_count > 0
+            ? `${result.server_count} local sync server${result.server_count === 1 ? "" : "s"} found.`
+            : "No local sync server responded. Start the middleman host or enter its URL manually.",
+        servers: result.servers,
+        rawCredentialsReturned: result.raw_credentials_returned,
+        credentialsSyncedToApp: result.credentials_synced_to_app,
+      })
+
+      if (firstServer) {
+        setConnectorDraft((draft) => ({
+          ...draft,
+          localSyncServerUrl: firstServer.server_url,
+          siteUrl: firstServer.website_url || draft.siteUrl,
+        }))
+      }
+
+      setActivityMessage({
+        title: firstServer ? "Local server discovered" : "Local server not found",
+        detail: firstServer
+          ? `${firstServer.hostname} at ${firstServer.server_url}; website ${firstServer.website_url || "not reported"}.`
+          : "Manual setup remains available if broadcast discovery is blocked by the network.",
+      })
+    } catch (error) {
+      setLocalSyncDiscovery({
+        status: "blocked",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Local sync discovery failed. Enter the middleman server URL manually.",
+        servers: [],
+        rawCredentialsReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setActivityMessage({
+        title: "Local discovery failed",
+        detail: "Manual middleman URL setup remains available.",
+      })
+    }
+  }
+
+  function handleApplyDiscoveredLocalSyncServer(server: LocalSyncDiscoveredServer) {
+    if (!managerControlsUnlocked) {
+      return
+    }
+
+    setConnectorDraft((draft) => ({
+      ...draft,
+      localSyncServerUrl: server.server_url,
+      siteUrl: server.website_url || draft.siteUrl,
+    }))
+    setActivityMessage({
+      title: "Local server applied",
+      detail: `${server.hostname} is selected as the LAN middleman; run Probe LAN Server to verify the website binding.`,
+    })
   }
 
   async function handleProbeLanSetup() {
@@ -2731,7 +3852,7 @@ export function App() {
 
   async function handlePinLogin() {
     if (!/^\d{4}$/.test(loginPin)) {
-      setLoginIssue("Enter a valid 4-digit staff or manager PIN.")
+      setLoginIssue("Enter a valid 4-digit employee, manager, or owner PIN.")
       setLoginPin("")
       return
     }
@@ -2756,6 +3877,14 @@ export function App() {
       setLocalSyncSessionToken(authResult.session.token)
       setLocalSyncSessionExpiresAtUtc(authResult.session.expiresAtUtc)
       void refreshLocalSyncStatus()
+      void localSyncClient.getSetupStatus().then((setupResult) => {
+        if (setupResult.status === "ok") {
+          setCreditApprovalThresholdMinorUnits(setupResult.credit_approval_threshold_minor_units)
+          setCreditApprovalThresholdInput(
+            creditRedemptionInputFromMinorUnits(setupResult.credit_approval_threshold_minor_units),
+          )
+        }
+      })
       if (sessionUser.access.includes("Kiosk")) {
         void localSyncClient
           .listKioskOrders(authResult.session.token, { limit: 25 })
@@ -2767,8 +3896,8 @@ export function App() {
       }
       startOfflineUserSession(
         sessionUser,
-        sessionUser.role === "manager"
-          ? `Manager session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); website setup and user access can be unlocked.${policyDetail}`
+        ["manager", "owner"].includes(sessionUser.role)
+          ? `${sessionUser.role === "owner" ? "Owner" : "Manager"} session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); operational settings and user access can be unlocked.${policyDetail}`
           : `${sessionUser.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s).${policyDetail}`,
       )
       return
@@ -2820,9 +3949,9 @@ export function App() {
     }
 
     const targetUser = offlineUsers.find((user) => user.id === userId)
-    const managerCount = offlineUsers.filter((user) => user.role === "manager").length
+    const managerCount = offlineUsers.filter((user) => ["manager", "owner"].includes(user.role)).length
 
-    if (targetUser?.role === "manager" && role === "staff" && managerCount <= 1) {
+    if (["manager", "owner"].includes(targetUser?.role ?? "") && role === "staff" && managerCount <= 1) {
       setActivityMessage({
         title: "Manager PIN required",
         detail: "Keep at least one manager PIN active for settings and access control.",
@@ -2830,7 +3959,7 @@ export function App() {
       return
     }
 
-    const nextAccess = role === "manager" ? [...ACCESS_SECTIONS] : (targetUser?.access ?? [])
+    const nextAccess = ["manager", "owner"].includes(role) ? [...ACCESS_SECTIONS] : (targetUser?.access ?? [])
     const serverResult = await localSyncClient.updateUserAccess(localSyncSessionToken, userId, {
       role,
       access: nextAccess,
@@ -2881,7 +4010,7 @@ export function App() {
 
     const targetUser = offlineUsers.find((user) => user.id === userId)
 
-    if (targetUser?.role === "manager") {
+    if (["manager", "owner"].includes(targetUser?.role ?? "")) {
       setActivityMessage({
         title: "Manager access retained",
         detail: "Manager PINs keep access to every workspace.",
@@ -2949,7 +4078,7 @@ export function App() {
   async function handleAddOfflineUser() {
     const cleanName = newUserName.trim()
     const cleanPin = newUserPin.trim()
-    const access = newUserRole === "manager" ? [...ACCESS_SECTIONS] : newUserAccess
+    const access = ["manager", "owner"].includes(newUserRole) ? [...ACCESS_SECTIONS] : newUserAccess
 
     if (!managerControlsUnlocked) {
       setActivityMessage({
@@ -3010,7 +4139,7 @@ export function App() {
     setNewUserName("")
     setNewUserPin("")
     setNewUserRole("staff")
-    setNewUserAccess(["Inventory", "Kiosk", "Queue"])
+    setNewUserAccess(["Inventory", "Trade-Ins", "Kiosk", "Queue"])
     setActivityMessage({
       title: "Offline user added",
       detail: `${nextUser.name} can sign in through ${localSyncClient.serverUrl} with a 4-digit PIN and access ${nextUser.access.join(", ")}.`,
@@ -3057,7 +4186,7 @@ export function App() {
     if (!canAccessSection(label)) {
       setActivityMessage({
         title: "Access restricted",
-        detail: `${activeOfflineUser?.name ?? "This PIN"} does not have access to ${label}. Ask a manager to update Users & Access.`,
+        detail: `${activeOfflineUser?.name ?? "This PIN"} does not have access to ${employeeSectionLabel(label)}. Ask a manager to update Users & Access.`,
       })
       return
     }
@@ -3479,8 +4608,95 @@ export function App() {
     )
   }
 
+  async function handleSquareSaleFinalize() {
+    if (squareSoldReferenceIssue) {
+      setActivityMessage({
+        title: "Square sale blocked",
+        detail: squareSoldReferenceIssue,
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with an employee, manager, or owner PIN before finalizing Square POS sold inventory.",
+      })
+      return
+    }
+
+    const saleResult = await localSyncClient.finalizeSquarePosSale(localSyncSessionToken, {
+      inventoryPublicIds: [selectedItem.publicId],
+      barcodes: [selectedItem.barcode],
+      squareReceiptReference: cleanSquareSoldReference,
+      squareOrderId: cleanSquareSoldOrderId,
+      saleTotalMinorUnits: selectedItem.priceMinorUnits,
+    })
+
+    if (saleResult.status !== "ok") {
+      setActivityMessage({
+        title: saleResult.status === "unavailable" ? "LAN server unavailable" : "Square sale blocked",
+        detail:
+          saleResult.status === "unavailable"
+            ? saleResult.message
+            : `${saleResult.message} WordPress remains the final inventory authority.`,
+      })
+      return
+    }
+
+    const acceptedItems = saleResult.items ?? []
+    const updatedItem = acceptedItems.find(
+      (item) => item.public_id === selectedItem.publicId || item.barcode === selectedItem.barcode,
+    )
+
+    if (updatedItem) {
+      setInventoryItems((items) =>
+        items.map((item) =>
+          item.publicId === selectedItem.publicId || item.barcode === selectedItem.barcode
+            ? inventoryItemFromLocalSync(updatedItem, item.id)
+            : item,
+        ),
+      )
+    } else {
+      setInventoryItems((items) =>
+        items.map((item) =>
+          item.publicId === selectedItem.publicId || item.barcode === selectedItem.barcode
+            ? {
+                ...item,
+                status: "sold",
+                source: saleResult.wordpress_accepted_count > 0 ? "accepted" : "queued",
+                externalSyncState: saleResult.wordpress_accepted_count > 0 ? "synced" : "pending",
+                rowVersion: item.rowVersion + 1,
+              }
+            : item,
+        ),
+      )
+    }
+
+    setSquareSoldReference("")
+    setSquareSoldOrderId("")
+    void refreshLocalSyncStatus()
+
+    const syncDetail =
+      saleResult.wordpress_auto_sync_performed && saleResult.wordpress_accepted_count > 0
+        ? "WordPress accepted the sold status and WooCommerce inventory was updated; payment stayed in Square POS."
+        : saleResult.wordpress_retry_count > 0
+          ? "Sold locally and queued for website retry because the WordPress push did not accept yet."
+          : "Sold locally; run sync once the website connector is available."
+
+    setActivityMessage({
+      title: "Square sale finalized",
+      detail: `${selectedItem.cardName} sold against ${saleResult.square_receipt_reference}. ${syncDetail}`,
+    })
+  }
+
   async function handleInventoryIntake() {
-    if (intakeIssue || intakePriceMinorUnits === null || intakeQuantity === null) {
+    if (
+      intakeIssue ||
+      intakePriceMinorUnits === null ||
+      intakeMinimumPriceMinorUnits === null ||
+      intakeQuantity === null
+    ) {
       setActivityMessage({
         title: "Inventory intake blocked",
         detail: intakeIssue || "Enter valid card intake details.",
@@ -3491,7 +4707,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "LAN server session required",
-        detail: "Sign in with a staff or manager PIN before adding local inventory.",
+        detail: "Sign in with an employee, manager, or owner PIN before adding inventory.",
       })
       return
     }
@@ -3501,7 +4717,7 @@ export function App() {
       setName: intakeSetName.trim() || "Manual Intake",
       condition: intakeCondition.trim() || "RAW",
       barcode: intakeBarcode.trim(),
-      priceMinorUnits: intakePriceMinorUnits,
+      priceMinorUnits: intakeFinalPriceMinorUnits,
       location: intakeLocation.trim() || "Intake Queue",
       quantity: intakeQuantity,
       providerCardId: selectedScryDexCard?.provider_card_id,
@@ -3514,7 +4730,13 @@ export function App() {
       variant: selectedScryDexVariant?.variant,
       finish: selectedScryDexVariant?.finish,
       language: selectedScryDexVariant?.language,
-      rawOrGraded: selectedScryDexVariant?.raw_or_graded_support === "graded" ? "graded" : "raw",
+      rawOrGraded:
+        intakeProductType === "graded" || selectedScryDexVariant?.raw_or_graded_support === "graded"
+          ? "graded"
+          : "raw",
+      gradingCompany: intakeProductType === "graded" ? intakeGradingCompany.trim() : "",
+      grade: intakeProductType === "graded" ? intakeGrade.trim() : "",
+      certNumber: intakeProductType === "graded" ? intakeCertNumber.trim() : "",
       imageUrl: selectedScryDexImageUrl,
       backImageUrl: selectedScryDexVariant?.back_image_url,
       priceSource: selectedScryDexCard
@@ -3524,13 +4746,15 @@ export function App() {
         selectedScryDexCard?.price_observed_at_utc ??
         selectedScryDexCard?.catalog_synced_at_utc ??
         null,
-      suggestedPriceMinorUnits: selectedScryDexIntakePriceMinorUnits || intakePriceMinorUnits,
-      finalPriceMinorUnits: intakePriceMinorUnits,
+      suggestedPriceMinorUnits: intakeMarketPriceMinorUnits,
+      autoPriceMinorUnits: intakeAutoPriceMinorUnits,
+      minimumSalePriceMinorUnits: intakeMinimumPriceMinorUnits,
+      finalPriceMinorUnits: intakeFinalPriceMinorUnits,
       priceOverrideReason:
-        selectedScryDexCard &&
-        selectedScryDexIntakePriceMinorUnits > 0 &&
-        selectedScryDexIntakePriceMinorUnits !== intakePriceMinorUnits
-          ? "staff_price_override_from_scrydex_suggestion"
+        intakeFinalPriceMinorUnits > intakeAutoPriceMinorUnits
+          ? "minimum_sale_price_floor"
+          : intakeFinalPriceMinorUnits !== intakeMarketPriceMinorUnits
+            ? "tcg_market_plus_10_percent"
           : "",
       onlineVisibility: intakeOnlineVisibility,
       kioskVisibility: intakeKioskVisibility,
@@ -3646,14 +4870,17 @@ export function App() {
     setInventoryItems((items) => [...displayedNextItems, ...items])
     setLocalInventoryIntakeReceipts((receipts) => [...displayedIntakeReceipts, ...receipts].slice(0, 50))
     setSelectedId(nextItem.id)
-    setQuery(nextItem.barcode)
+    setQuery(nextItem.cardName)
     setIntakeCardName("")
     setIntakeSetName("")
     setIntakeCondition("LP")
     setIntakeBarcode("")
     setIntakePriceInput("0.00")
+    setIntakeMinimumPriceInput("0.00")
     setIntakeLocation("Intake Queue")
     setIntakeQuantityInput("1")
+    setIntakeGrade("")
+    setIntakeCertNumber("")
     void refreshLocalSyncStatus()
     setActivityMessage({
       title: "Inventory added",
@@ -3669,6 +4896,7 @@ export function App() {
       setScryDexLookupStatus("blocked")
       setScryDexLookupDetail("Enter a card, set, or number.")
       setScryDexCards([])
+      setScryDexSetFilter("")
       setSelectedScryDexCardId("")
       setSelectedScryDexVariantId("")
       return
@@ -3678,6 +4906,7 @@ export function App() {
       setScryDexLookupStatus("blocked")
       setScryDexLookupDetail("Staff PIN session required.")
       setScryDexCards([])
+      setScryDexSetFilter("")
       setSelectedScryDexCardId("")
       setSelectedScryDexVariantId("")
       return
@@ -3685,17 +4914,30 @@ export function App() {
 
     setScryDexLookupStatus("searching")
     setScryDexLookupDetail("Searching")
+    setScryDexSetFilter("")
 
     const result = await localSyncClient.searchScryDexCards(
       localSyncSessionToken,
       normalizedQuery,
       scryDexGame,
+      { limit: "all" },
     )
 
     if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "Catalog search locked")) {
+        setScryDexLookupStatus("blocked")
+        setScryDexLookupDetail("PIN session expired. Enter your 4-digit PIN, then search again.")
+        setScryDexCards([])
+        setScryDexSetFilter("")
+        setSelectedScryDexCardId("")
+        setSelectedScryDexVariantId("")
+        return
+      }
+
       setScryDexLookupStatus("blocked")
       setScryDexLookupDetail(result.message)
       setScryDexCards([])
+      setScryDexSetFilter("")
       setSelectedScryDexCardId("")
       setSelectedScryDexVariantId("")
       return
@@ -3713,7 +4955,21 @@ export function App() {
     )
     setScryDexLookupStatus("ready")
     setScryDexLookupDetail(
-      `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} from ${result.source}.`,
+      `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} from ${result.source}; use set filter to narrow printings.`,
+    )
+  }
+
+  function handleScryDexSetFilterChange(nextFilter: string) {
+    setScryDexSetFilter(nextFilter)
+
+    const firstVisible = scryDexCards.find((card) => scryDexCardMatchesSetFilter(card, nextFilter)) ?? null
+    const firstVariant = firstVisible?.variants[0] ?? null
+
+    setSelectedScryDexCardId(firstVisible?.provider_card_id ?? "")
+    setSelectedScryDexVariantId(
+      firstVisible && firstVariant
+        ? scryDexVariantId(firstVisible.provider_card_id, firstVariant, 0)
+        : "",
     )
   }
 
@@ -3724,7 +4980,11 @@ export function App() {
       ? scryDexVariantId(card.provider_card_id, firstVariant, 0)
       : ""
 
+    setActiveSection("Inventory")
+    setScryDexGame(card.game)
+    setScryDexQuery("")
     setSelectedScryDexVariantId(variantId)
+    setIntakeProductType(firstVariant?.raw_or_graded_support === "graded" ? "graded" : intakeProductType)
     setIntakeCardName(card.card_name)
     setIntakeSetName(card.set_name)
     setIntakeBarcode("")
@@ -3733,9 +4993,239 @@ export function App() {
         scryDexIntakePriceMinorUnits(card, firstVariant, intakeCondition),
       ),
     )
+    setScryDexLookupDetail(
+      `Selected ${card.card_name}; full result list is still available above and intake fields are ready.`,
+    )
+    window.requestAnimationFrame(() => {
+      const field = document.getElementById("intake-card-name")
+
+      field?.scrollIntoView({ block: "center", behavior: "smooth" })
+      if (field instanceof HTMLInputElement) {
+        field.focus({ preventScroll: true })
+        field.select()
+      }
+    })
     setActivityMessage({
       title: "ScryDex reference selected",
       detail: `${card.card_name} ${card.printed_number} is ready for local intake review; leave barcode blank to auto-generate a unique copy code.`,
+    })
+  }
+
+  function handleStageTradeInItem() {
+    if (tradeInCurrentCardName.trim() === "") {
+      setActiveSection("Trade-Ins")
+      setActivityMessage({
+        title: "Trade-in needs a card",
+        detail: "Search or enter the card name before staging it for trade-in review.",
+      })
+      return
+    }
+
+    if (tradeInCurrentMarketMinorUnits <= 0) {
+      setActiveSection("Trade-Ins")
+      setActivityMessage({
+        title: "Trade-in needs market mid",
+        detail: "Enter or select a market price before calculating cash or credit value.",
+      })
+      return
+    }
+
+    const nextItem: TradeInDraftItem = {
+      id: `trade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      productType: tradeInCurrentProductType,
+      cardName: tradeInCurrentCardName.trim(),
+      setName: tradeInCurrentSetName.trim(),
+      condition: tradeInCurrentCondition,
+      gradingCompany: tradeInCurrentProductType === "graded" ? tradeInCurrentGradingCompany : "",
+      grade: tradeInCurrentProductType === "graded" ? tradeInCurrentGrade : "",
+      certNumber: tradeInCurrentProductType === "graded" ? tradeInCurrentCertNumber : "",
+      marketMidMinorUnits: tradeInCurrentMarketMinorUnits,
+      percentageBasisPoints: tradeInPercentageBasisPoints,
+      finalValueMinorUnits: tradeInValueMinorUnits(tradeInCurrentMarketMinorUnits, tradeInPercentageBasisPoints),
+      payoutType: tradeInPayoutType,
+      imageUrl: tradeInCurrentImageUrl,
+    }
+
+    setTradeInDraftItems((items) => [...items, nextItem])
+    setActiveSection("Trade-Ins")
+    setActivityMessage({
+      title: "Trade-in line staged",
+      detail: `${nextItem.cardName} is staged at ${tradeInPercentageBasisPoints / 100}% for ${formatMoney(
+        tradeInValueMinorUnits(nextItem.marketMidMinorUnits, nextItem.percentageBasisPoints),
+        "USD",
+      )} ${nextItem.payoutType}. It is not sellable inventory until approved and converted.`,
+    })
+  }
+
+  function handleRemoveTradeInItem(itemId: string) {
+    setTradeInDraftItems((items) => items.filter((item) => item.id !== itemId))
+  }
+
+  function handleTradeInLinePercentageChange(itemId: string, basisPoints: number) {
+    setTradeInDraftItems((items) =>
+      items.map((item) => {
+        if (item.id !== itemId) {
+          return item
+        }
+
+        const nextPercentage = Math.max(0, Math.min(10000, basisPoints))
+
+        return {
+          ...item,
+          percentageBasisPoints: nextPercentage,
+          finalValueMinorUnits: tradeInValueMinorUnits(item.marketMidMinorUnits, nextPercentage),
+        }
+      }),
+    )
+  }
+
+  function handleTradeInLinePayoutChange(itemId: string, payoutType: TradeInPayoutType) {
+    setTradeInDraftItems((items) =>
+      items.map((item) => (item.id === itemId ? { ...item, payoutType } : item)),
+    )
+  }
+
+  function handleTradeInLineFinalValueChange(itemId: string, value: string) {
+    const parsedMinorUnits = creditRedemptionInputToMinorUnits(value)
+
+    if (parsedMinorUnits === null) {
+      return
+    }
+
+    setTradeInDraftItems((items) =>
+      items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              finalValueMinorUnits: parsedMinorUnits,
+            }
+          : item,
+      ),
+    )
+  }
+
+  async function refreshTradeInOrders() {
+    if (!localSyncSessionToken) {
+      setTradeInSyncStatus("blocked")
+      setActivityMessage({
+        title: "Trade-in queue needs login",
+        detail: "Unlock with an employee, manager, or owner PIN before loading shared trade-in drafts.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.listTradeInOrders(localSyncSessionToken, {
+      limit: 100,
+      query: tradeInRecordSearch,
+      staffUserId: tradeInStaffFilter,
+    })
+
+    if (result.status !== "ok") {
+      setTradeInSyncStatus("blocked")
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Trade-in queue blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setServerTradeInOrders(result.orders)
+    setTradeInSyncStatus("ready")
+  }
+
+  async function handleSaveTradeInDraft() {
+    if (!localSyncSessionToken) {
+      setActiveSection("Trade-Ins")
+      setTradeInSyncStatus("blocked")
+      setActivityMessage({
+        title: "Trade-in save needs login",
+        detail: "Unlock with an employee, manager, or owner PIN before saving shared trade-in drafts.",
+      })
+      return
+    }
+
+    if (tradeInDraftItems.length === 0) {
+      setActiveSection("Trade-Ins")
+      setActivityMessage({
+        title: "No trade-in lines",
+        detail: "Stage at least one card before saving a shared trade-in draft.",
+      })
+      return
+    }
+
+    setTradeInSyncStatus("saving")
+    const result = await localSyncClient.createTradeInOrder(localSyncSessionToken, {
+      customerName: tradeInCustomerName.trim() || "Walk-in customer",
+      items: tradeInDraftItems.map((item) => ({
+        id: item.id,
+        productType: item.productType,
+        cardName: item.cardName,
+        setName: item.setName,
+        condition: item.condition,
+        gradingCompany: item.gradingCompany,
+        grade: item.grade,
+        certNumber: item.certNumber,
+        marketMidMinorUnits: item.marketMidMinorUnits,
+        percentageBasisPoints: item.percentageBasisPoints,
+        finalValueMinorUnits: item.finalValueMinorUnits,
+        payoutType: item.payoutType,
+        imageUrl: item.imageUrl,
+      })),
+    })
+
+    if (result.status !== "ok") {
+      setTradeInSyncStatus("blocked")
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Trade-in save blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setServerTradeInOrders((orders) => [result.order, ...orders.filter((order) => order.order_id !== result.order.order_id)])
+    setTradeInDraftItems([])
+    setTradeInSyncStatus("ready")
+    setActivityMessage({
+      title: "Trade-in draft saved",
+      detail: `${result.order.customer_name} draft ${result.order.order_id} saved to the shared middleman queue. It is not sellable inventory yet.`,
+    })
+  }
+
+  async function handleTradeInStatus(orderId: string, status: LocalSyncTradeInOrder["status"]) {
+    if (!localSyncSessionToken) {
+      return
+    }
+
+    const result = await localSyncClient.updateTradeInOrderStatus(localSyncSessionToken, orderId, status)
+
+    if (result.status !== "ok") {
+      setActivityMessage({ title: "Trade-in status blocked", detail: result.message })
+      return
+    }
+
+    setServerTradeInOrders((orders) =>
+      orders.map((order) => (order.order_id === result.order.order_id ? result.order : order)),
+    )
+  }
+
+  function handleLoadTradeInItemForInventory(item: TradeInDraftItem) {
+    setIntakeProductType(item.productType)
+    setIntakeCardName(item.cardName)
+    setIntakeSetName(item.setName)
+    setIntakeCondition(item.condition)
+    setIntakeGradingCompany(item.gradingCompany || "PSA")
+    setIntakeGrade(item.grade)
+    setIntakeCertNumber(item.certNumber)
+    setIntakePriceInput(creditRedemptionInputFromMinorUnits(item.marketMidMinorUnits))
+    setIntakeMinimumPriceInput(
+      creditRedemptionInputFromMinorUnits(
+        Math.max(tradeInValueMinorUnits(item.marketMidMinorUnits, item.percentageBasisPoints), 100),
+      ),
+    )
+    setActiveSection("Inventory")
+    setActivityMessage({
+      title: "Trade-in loaded for inventory",
+      detail: `${item.cardName} is copied into inventory intake. Add Inventory only after manager approval/payment is complete.`,
     })
   }
 
@@ -3797,6 +5287,7 @@ export function App() {
       title: "Kiosk cart updated",
       detail: `${item.cardName} is in the local kiosk pickup cart; website inventory remains authoritative when sync accepts the order.`,
     })
+
   }
 
   function handleKioskRemoveItem(itemId: number) {
@@ -3816,7 +5307,7 @@ export function App() {
       setActiveSection("Kiosk")
       setActivityMessage({
         title: "Kiosk queue needs login",
-        detail: "Unlock with a staff or manager PIN before updating the shared pickup queue.",
+        detail: "Unlock with an employee, manager, or owner PIN before updating the shared pickup queue.",
       })
       return
     }
@@ -3836,11 +5327,181 @@ export function App() {
     setKioskOrderTickets((tickets) =>
       tickets.map((ticket) => (ticket.orderId === orderId ? updatedTicket : ticket)),
     )
+    if (nextStatus === "completed") {
+      setActiveFulfillmentTicket((ticket) =>
+        ticket?.source === "kiosk" && ticket.orderId === orderId ? null : ticket,
+      )
+    }
+    void refreshKioskOrderTickets(false)
     setActiveSection("Kiosk")
     setActivityMessage({
       title: "Kiosk ticket updated",
       detail: `${orderId} is now ${statusLabelMap[nextStatus].toLowerCase()} in the shared LAN pickup queue. Inventory was not mutated by this status update.`,
     })
+  }
+
+  async function handleOpenKioskPicking(ticket: KioskOrderTicket) {
+    setActiveFulfillmentTicket({ source: "kiosk", orderId: ticket.orderId })
+    setFulfillmentSquareReference(ticket.squareReceiptReference)
+    setFulfillmentSquareOrderId("")
+
+    if (["queued", "accepted"].includes(ticket.status)) {
+      await handleKioskTicketStatus(ticket.orderId, "pulling")
+    }
+  }
+
+  async function handleKioskPickToggle(ticket: KioskOrderTicket, itemId: string) {
+    if (!localSyncSessionToken) {
+      return
+    }
+
+    const pickedItemIds = ticket.pickedItemIds.includes(itemId)
+      ? ticket.pickedItemIds.filter((id) => id !== itemId)
+      : [...ticket.pickedItemIds, itemId]
+    const result = await localSyncClient.updateKioskOrderPicks(
+      localSyncSessionToken,
+      ticket.orderId,
+      pickedItemIds,
+    )
+
+    if (result.status !== "ok") {
+      setActivityMessage({ title: "Pick checklist blocked", detail: result.message })
+      return
+    }
+
+    const updatedTicket = kioskTicketFromLocalSyncOrder(result.order)
+    setKioskOrderTickets((tickets) =>
+      tickets.map((candidate) => candidate.orderId === ticket.orderId ? updatedTicket : candidate),
+    )
+  }
+
+  async function handleConfirmKioskPayment(ticket: KioskOrderTicket) {
+    if (!localSyncSessionToken) {
+      return
+    }
+
+    const reference = fulfillmentSquareReference.trim()
+    if (reference.length < 3) {
+      setActivityMessage({
+        title: "Square reference required",
+        detail: "Enter the Square receipt, ticket, or transaction reference before confirming payment.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.confirmKioskOrderPayment(
+      localSyncSessionToken,
+      ticket.orderId,
+      {
+        squareReceiptReference: reference,
+        squareOrderId: fulfillmentSquareOrderId.trim(),
+        cashierConfirmed: true,
+      },
+    )
+
+    if (result.status !== "ok") {
+      setActivityMessage({ title: "Payment confirmation blocked", detail: result.message })
+      return
+    }
+
+    const updatedTicket = kioskTicketFromLocalSyncOrder(result.order)
+    setKioskOrderTickets((tickets) =>
+      tickets.map((candidate) => candidate.orderId === ticket.orderId ? updatedTicket : candidate),
+    )
+    const finalizedSale = result.sale
+    if (finalizedSale?.status === "ok") {
+      setInventoryItems((items) =>
+        items.map((item) =>
+          finalizedSale.items.some((soldItem) => soldItem.public_id === item.publicId)
+            ? { ...item, status: "sold", source: "queued" }
+            : item,
+        ),
+      )
+    }
+    void runOperationalAutoSync()
+    setActivityMessage({
+      title: "Paid in Square",
+      detail: `${ticket.customerName}'s order is paid and its exact card copies were marked sold everywhere the sync connector accepted.`,
+    })
+  }
+
+  async function handleWebsitePickupTicketStatus(orderId: number, nextStatus: WebsitePickupTicketStatus) {
+    const statusLabelMap: Record<WebsitePickupTicketStatus, string> = {
+      awaiting_pull: "Awaiting Pull",
+      pulling: "Pulling",
+      ready_for_pickup: "Ready for Pickup",
+      completed: "Completed",
+    }
+
+    if (!localSyncSessionToken) {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: "Fulfillment needs login",
+        detail: "Unlock with an employee, manager, or owner PIN before updating paid website pickup orders.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.updateFulfillmentOrderStatus(localSyncSessionToken, orderId, nextStatus)
+
+    if (result.status !== "ok") {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Website pickup blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    const updatedTicket = websitePickupTicketFromLocalSyncOrder(result.order)
+    setWebsitePickupTickets((tickets) =>
+      tickets.map((ticket) => (ticket.orderId === orderId ? updatedTicket : ticket)),
+    )
+    if (nextStatus === "completed") {
+      setActiveFulfillmentTicket((ticket) =>
+        ticket?.source === "website" && ticket.orderId === orderId ? null : ticket,
+      )
+    }
+    void refreshKioskOrderTickets(false)
+    setActiveSection("Kiosk")
+    setActivityMessage({
+      title: "Website pickup updated",
+      detail: `Woo order #${updatedTicket.orderNumber} is now ${statusLabelMap[
+        nextStatus
+      ].toLowerCase()}. Inventory and payment were not changed by this fulfillment status update.`,
+    })
+  }
+
+  async function handleOpenWebsitePicking(ticket: WebsitePickupTicket) {
+    setActiveFulfillmentTicket({ source: "website", orderId: ticket.orderId })
+    if (ticket.status === "awaiting_pull") {
+      await handleWebsitePickupTicketStatus(ticket.orderId, "pulling")
+    }
+  }
+
+  async function handleWebsitePickToggle(ticket: WebsitePickupTicket, itemId: string) {
+    if (!localSyncSessionToken) {
+      return
+    }
+
+    const pickedItemIds = ticket.pickedItemIds.includes(itemId)
+      ? ticket.pickedItemIds.filter((id) => id !== itemId)
+      : [...ticket.pickedItemIds, itemId]
+    const result = await localSyncClient.updateFulfillmentOrderPicks(
+      localSyncSessionToken,
+      ticket.orderId,
+      pickedItemIds,
+    )
+
+    if (result.status !== "ok") {
+      setActivityMessage({ title: "Pick checklist blocked", detail: result.message })
+      return
+    }
+
+    const updatedTicket = websitePickupTicketFromLocalSyncOrder(result.order)
+    setWebsitePickupTickets((tickets) =>
+      tickets.map((candidate) => candidate.orderId === ticket.orderId ? updatedTicket : candidate),
+    )
   }
 
   async function handleKioskSubmitOrder() {
@@ -3903,19 +5564,26 @@ export function App() {
       reservationIds: kioskOrder.order.reservation_ids,
       createdAtUtc: kioskOrder.order.created_at_utc,
       status: kioskOrder.order.status,
+      paymentStatus: kioskOrder.order.payment_status,
+      squareReceiptReference: kioskOrder.order.square_receipt_reference,
+      paidAtUtc: kioskOrder.order.paid_at_utc,
+      pickedItemIds: kioskOrder.order.picked_item_ids,
+      allItemsPicked: kioskOrder.order.all_items_picked,
     }
 
-    for (const item of availableItems) {
-      await stageOfflineOperation(
-        buildInventoryReservationOperation(item, {
-          actorId: workspace.device.managerId,
-          deviceId: activePairedDevice?.devicePublicId,
-          locationId: workspace.device.locationId,
-          holdReason: `kiosk pickup order ${kioskOrder.order.order_id} for ${kioskCustomerName}`,
-        }),
-        "Kiosk pickup hold staged",
-        `${item.cardName} is queued for ${kioskCustomerName}; order ${kioskOrder.order.order_id} can be pulled after website sync acceptance.`,
-      )
+    if (!customerKioskMode) {
+      for (const item of availableItems) {
+        await stageOfflineOperation(
+          buildInventoryReservationOperation(item, {
+            actorId: workspace.device.managerId,
+            deviceId: activePairedDevice?.devicePublicId,
+            locationId: workspace.device.locationId,
+            holdReason: `kiosk pickup order ${kioskOrder.order.order_id} for ${kioskCustomerName}`,
+          }),
+          "Kiosk pickup hold staged",
+          `${item.cardName} is queued for ${kioskCustomerName}; order ${kioskOrder.order.order_id} can be pulled after website sync acceptance.`,
+        )
+      }
     }
 
     const stagedIds = new Set(availableItems.map((item) => item.id))
@@ -3935,10 +5603,12 @@ export function App() {
     setKioskCartIds([])
     setKioskFirstName("")
     setKioskLastName("")
-    setActiveSection("Queue")
+    setActiveSection(customerKioskMode ? "Kiosk" : "Queue")
     setActivityMessage({
-      title: "Kiosk order queued",
-      detail: `${availableItems.length} card(s) locked by ${localSyncClient.serverUrl} for ${kioskCustomerName}; order ${kioskOrder.order.order_id} is ready for staff pull and website sync acceptance.`,
+      title: customerKioskMode ? "Pickup order sent" : "Kiosk order queued",
+      detail: customerKioskMode
+        ? `${availableItems.length} card(s) are held for ${kioskCustomerName}. Staff can pull order ${kioskOrder.order.order_id} from Order Fulfillment.`
+        : `${availableItems.length} card(s) locked by ${localSyncClient.serverUrl} for ${kioskCustomerName}; order ${kioskOrder.order.order_id} is ready for staff pull and website sync acceptance.`,
     })
   }
 
@@ -3988,7 +5658,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "LAN server session required",
-        detail: "Sign in with a staff or manager PIN before registering event attendees.",
+        detail: "Sign in with an employee, manager, or owner PIN before registering event attendees.",
       })
       return
     }
@@ -4054,7 +5724,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "LAN server session required",
-        detail: "Sign in with a staff or manager PIN before checking in event attendees.",
+        detail: "Sign in with an employee, manager, or owner PIN before checking in event attendees.",
       })
       return
     }
@@ -4140,7 +5810,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "LAN server session required",
-        detail: "Sign in with a staff or manager PIN before creating customers.",
+        detail: "Sign in with an employee, manager, or owner PIN before creating customers.",
       })
       return
     }
@@ -4204,8 +5874,8 @@ export function App() {
 
     if (!localSyncSessionToken) {
       setActivityMessage({
-        title: "Manager PIN required",
-        detail: "Sign in with a manager PIN before adding store credit.",
+        title: "PIN session required",
+        detail: "Sign in before adding store credit.",
       })
       return
     }
@@ -4250,8 +5920,45 @@ export function App() {
     setActivityMessage({
       title: "Credit add queued",
       detail:
-        `${formatMoney(creditAdjustmentMinorUnits, nextCreditSnapshot.currency)} added locally by manager approval; ` +
+        `${formatMoney(creditAdjustmentMinorUnits, nextCreditSnapshot.currency)} added locally ${
+          adjustmentResult.manager_approved ? "with manager approval" : "within the staff approval limit"
+        }; ` +
         "WordPress posts the final ledger entry after sync acceptance.",
+    })
+  }
+
+  async function handleSaveCreditApprovalThreshold() {
+    if (!managerControlsUnlocked || !localSyncSessionToken) {
+      return
+    }
+
+    const threshold = creditRedemptionInputToMinorUnits(creditApprovalThresholdInput)
+    if (threshold === null || threshold < 0) {
+      setActivityMessage({
+        title: "Credit limit invalid",
+        detail: "Enter a valid non-negative dollar amount for the staff approval limit.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.configureSetup(localSyncSessionToken, {
+      storeId: activeProfile.id,
+      serverUrl: localSyncClient.serverUrl,
+      websiteUrl: connectorDisplayUrl(activeProfile),
+      restBasePath: "/wp-json/tcg-store/v1",
+      creditApprovalThresholdMinorUnits: threshold,
+    })
+
+    if (result.status !== "ok") {
+      setActivityMessage({ title: "Credit limit not saved", detail: result.message })
+      return
+    }
+
+    setCreditApprovalThresholdMinorUnits(threshold)
+    setCreditApprovalThresholdInput(creditRedemptionInputFromMinorUnits(threshold))
+    setActivityMessage({
+      title: "Credit approval limit saved",
+      detail: `Employees can add up to ${formatMoney(threshold, "USD")} without a manager PIN. Corrections and larger adjustments still require a manager.`,
     })
   }
 
@@ -4278,7 +5985,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "LAN server session required",
-        detail: "Sign in with a staff or manager PIN before using customer credit.",
+        detail: "Sign in with an employee, manager, or owner PIN before using customer credit.",
       })
       return
     }
@@ -4412,7 +6119,7 @@ export function App() {
     setConnectorTestReport(report)
     setPairingPlan(null)
 
-    if (localSyncSessionToken && sessionRole === "manager") {
+    if (localSyncSessionToken && ["manager", "owner"].includes(sessionRole)) {
       const setupClient = createLocalSyncServerClient(localSyncServerDisplayUrl(profile))
       const setupResult = await setupClient.configureSetup(localSyncSessionToken, {
         storeId: profile.companyShortName,
@@ -4827,9 +6534,12 @@ export function App() {
         eventSnapshots,
         completed ? pull.pull_event_records : [],
       )
+      const resolvedConflictIds = new Set(reviewedConflicts.map((conflict) => conflict.conflictId))
       const conflictCacheApplyResult = applyOfflinePullConflictRecordsToCache(
         openConflicts,
-        completed ? pull.pull_conflict_records : [],
+        completed
+          ? pull.pull_conflict_records.filter((record) => !resolvedConflictIds.has(record.conflict_id))
+          : [],
       )
       const pushSummaryResult = push
         ? summarizeOfflinePushResult({
@@ -5451,7 +7161,15 @@ export function App() {
 
   function moveConflictToReviewed(conflict: ConflictItem) {
     setOpenConflicts((conflicts) => conflicts.filter((item) => item.conflictId !== conflict.conflictId))
-    setReviewedConflicts((conflicts) => [conflict, ...conflicts])
+    setReviewedConflicts((conflicts) => {
+      const nextConflicts = [
+        conflict,
+        ...conflicts.filter((item) => item.conflictId !== conflict.conflictId),
+      ]
+      persistConflictReviewStorage(activeProfile.id, nextConflicts)
+
+      return nextConflicts
+    })
     setShowConflictHistory(true)
   }
 
@@ -5585,13 +7303,232 @@ export function App() {
     )
   }
 
+  if (customerKioskMode) {
+    return (
+      <main className="offline-shell kiosk-standalone-shell">
+        <header className="kiosk-standalone-header">
+          <div className="brand-lockup">
+            <img className="brand-crest" src={thePugBrandLogo} alt="" />
+            <span>
+              <strong>The Pug</strong>
+              <small>Customer pickup kiosk</small>
+            </span>
+          </div>
+          <div
+            className={`kiosk-live-status ${kioskInventoryStatusTone}`}
+            aria-label="Kiosk sync status"
+          >
+            <span>Inventory status</span>
+            <strong>{kioskInventoryStatusLabel}</strong>
+          </div>
+        </header>
+
+        <section className="kiosk-panel is-customer-kiosk" aria-label="Customer kiosk pickup order">
+          <div className="kiosk-storefront-hero">
+            <div>
+              <h1>Find cards in stock</h1>
+              <p>Search the same live singles inventory available on The Pug website, then send your list to the counter.</p>
+            </div>
+            <div className="kiosk-storefront-total">
+              <span>Your pickup list</span>
+              <strong>{kioskCartItems.length} cards</strong>
+              <small>{kioskCartTotalLabel}</small>
+            </div>
+          </div>
+          <div className="kiosk-filter-bar" aria-label="Kiosk inventory filters">
+            <label htmlFor="customer-kiosk-search">
+              <span>Search</span>
+              <input
+                id="customer-kiosk-search"
+                value={kioskSearchQuery}
+                onChange={(event) => setKioskSearchQuery(event.target.value)}
+                placeholder="Card name, set, condition, or number"
+              />
+            </label>
+            <label>
+              <span>Game</span>
+              <select
+                value={kioskGameFilter}
+                onChange={(event) => {
+                  setKioskGameFilter(event.target.value)
+                  setKioskSetFilter("all")
+                }}
+              >
+                <option value="all">All games</option>
+                {kioskGameOptions.map((game) => (
+                  <option value={game} key={game}>{gameDisplayLabel(game)}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Set / Expansion</span>
+              <select value={kioskSetFilter} onChange={(event) => setKioskSetFilter(event.target.value)}>
+                <option value="all">All sets</option>
+                {kioskSetOptions.map((setName) => (
+                  <option value={setName} key={setName}>{setName}</option>
+                ))}
+              </select>
+            </label>
+            <div className="kiosk-result-count">
+              <span>Available</span>
+              <strong>{kioskVisibleItems.length}</strong>
+            </div>
+          </div>
+          <div className="kiosk-layout">
+            <div className="kiosk-inventory-list kiosk-card-grid" aria-label="Kiosk inventory results">
+              {kioskVisibleItems.map((item) => (
+                <article className="kiosk-card" key={item.id}>
+                  <div className="kiosk-card-art" aria-hidden="true">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt="" loading="lazy" />
+                    ) : (
+                      <Icon name="card" />
+                    )}
+                  </div>
+                  <div className="kiosk-card-copy">
+                    <span className="kiosk-card-game">{gameDisplayLabel(item.game)}</span>
+                    <strong>{item.cardName}</strong>
+                    <small>
+                      {item.setName} / {item.number || item.setCode || "Card"} / {item.condition}
+                    </small>
+                  </div>
+                  <div className="kiosk-card-price">
+                    <strong>{item.price}</strong>
+                    <span>In stock</span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={kioskCartIds.includes(item.id)}
+                    onClick={() => handleKioskAddItem(item)}
+                  >
+                    {kioskCartIds.includes(item.id) ? "Selected" : "Add"}
+                  </button>
+                </article>
+              ))}
+              {kioskVisibleItems.length === 0 ? (
+                <p className="panel-empty">No in-stock cards match that search.</p>
+              ) : null}
+            </div>
+            <aside ref={kioskCartRef} className="kiosk-cart" aria-label="Kiosk selected cards">
+              <header className="kiosk-cart-header">
+                <div>
+                  <span>Pickup list</span>
+                  <small>
+                    {kioskCartItems.length} {kioskCartItems.length === 1 ? "card" : "cards"} selected
+                  </small>
+                </div>
+                <strong>{kioskCartTotalLabel}</strong>
+              </header>
+              {kioskCartItems.length > 0 ? (
+                <div className="kiosk-cart-items">
+                  {kioskCartItems.map((item) => (
+                    <article className="kiosk-cart-item" key={item.id}>
+                      <div className="kiosk-cart-thumbnail" aria-hidden="true">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" />
+                        ) : (
+                          <Icon name="card" />
+                        )}
+                      </div>
+                      <div className="kiosk-cart-item-copy">
+                        <span>{gameDisplayLabel(item.game)}</span>
+                        <strong>{item.cardName}</strong>
+                        <small>
+                          {item.setName} / {item.number || item.setCode || "Card"} / {item.condition}
+                        </small>
+                      </div>
+                      <div className="kiosk-cart-item-actions">
+                        <strong>{item.price}</strong>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${item.cardName} from pickup list`}
+                          title={`Remove ${item.cardName}`}
+                          onClick={() => handleKioskRemoveItem(item.id)}
+                        >
+                          <Icon name="trash" />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="kiosk-cart-empty">
+                  <Icon name="card" />
+                  <strong>Your list is empty</strong>
+                  <small>Select an in-stock card to start a pickup order.</small>
+                </div>
+              )}
+              <section className="kiosk-checkout">
+                <div className="kiosk-checkout-heading">
+                  <strong>Send to the counter</strong>
+                  <small>Tell our team who is picking up this order.</small>
+                </div>
+                <div className="kiosk-customer-name-fields">
+                  <label htmlFor="kiosk-first-name">
+                    <span>First name</span>
+                    <input
+                      id="kiosk-first-name"
+                      value={kioskFirstName}
+                      onChange={(event) => setKioskFirstName(event.target.value)}
+                      placeholder="First"
+                    />
+                  </label>
+                  <label htmlFor="kiosk-last-name">
+                    <span>Last name</span>
+                    <input
+                      id="kiosk-last-name"
+                      value={kioskLastName}
+                      onChange={(event) => setKioskLastName(event.target.value)}
+                      placeholder="Last"
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  disabled={!kioskCustomerReady || kioskCartItems.length === 0}
+                  onClick={() => void handleKioskSubmitOrder()}
+                >
+                  <Icon name="check" />
+                  <span>Send to Counter</span>
+                </button>
+                {activityMessage.title === "Pickup order sent" ? (
+                  <small className="kiosk-cart-message" aria-live="polite">
+                    Pickup order sent. Please see a team member at the counter.
+                  </small>
+                ) : null}
+              </section>
+            </aside>
+            {kioskCartItems.length > 0 && !kioskCartInView ? (
+              <button
+                className="kiosk-cart-jump"
+                type="button"
+                onClick={() =>
+                  kioskCartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                <Icon name="card" />
+                <span>
+                  <strong>
+                    {kioskCartItems.length} {kioskCartItems.length === 1 ? "card" : "cards"}
+                  </strong>
+                  <small>{kioskCartTotalLabel}</small>
+                </span>
+                <b>View list</b>
+              </button>
+            ) : null}
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   if (!sessionIsUnlocked) {
     return (
       <main className="offline-shell login-shell">
         <div className="app-window-bar" aria-label="Desktop app window">
           <div className="window-brand">
             <img src={thePugBrandLogo} alt="" />
-            <span>The Pug Offline</span>
+            <span>The Pug Store App</span>
           </div>
           <div className="window-controls" aria-hidden="true">
             <span />
@@ -5600,17 +7537,31 @@ export function App() {
           </div>
         </div>
         <section className="login-workspace" aria-label="Offline app login">
-          <div className="login-card">
+          <form
+            className="login-card"
+            autoComplete="off"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handlePinLogin()
+            }}
+          >
             <img src={thePugBrandLogo} alt="" />
             <span className="micro-label">Website-connected local app</span>
             <h1>Enter PIN</h1>
             <div className="login-fields">
               <label>
-                <span className="micro-label">4-digit staff or manager PIN</span>
+                <span className="micro-label">4-digit employee, manager, or owner PIN</span>
                 <input
+                  id="pug-employee-pin"
+                  name="pug-pin-entry"
+                  className="pin-entry-input"
                   inputMode="numeric"
                   maxLength={4}
-                  type="password"
+                  type="text"
+                  autoComplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
                   value={loginPin}
                   onChange={(event) => {
                     setLoginIssue("")
@@ -5634,7 +7585,7 @@ export function App() {
             </div>
             <div className="pin-display" aria-live="polite">
               <span>{"*".repeat(loginPin.length).padEnd(4, "-")}</span>
-              {loginIssue ? <small>{loginIssue}</small> : <small>Use your manager-issued PIN.</small>}
+              {loginIssue ? <small>{loginIssue}</small> : <small>Use your assigned store PIN.</small>}
             </div>
             <div className="pin-pad" aria-label="PIN keypad">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
@@ -5648,14 +7599,13 @@ export function App() {
               <button type="button" onClick={() => handlePinDigit("0")}>
                 0
               </button>
-              <button type="button" onClick={() => void handlePinLogin()}>
+              <button type="submit">
                 Go
               </button>
             </div>
             <div className="login-actions">
               <button
-                type="button"
-                onClick={() => void handlePinLogin()}
+                type="submit"
               >
                 <Icon name="check" />
                 <span>Unlock App</span>
@@ -5671,7 +7621,7 @@ export function App() {
                 <span>Clear PIN</span>
               </button>
             </div>
-          </div>
+          </form>
         </section>
       </main>
     )
@@ -5682,7 +7632,7 @@ export function App() {
       <div className="app-window-bar" aria-label="Desktop app window">
         <div className="window-brand">
           <img src={thePugBrandLogo} alt="" />
-          <span>The Pug Offline</span>
+          <span>The Pug Store App</span>
         </div>
         <div className="window-controls" aria-hidden="true">
           <span />
@@ -5701,42 +7651,45 @@ export function App() {
             </span>
           </div>
           <nav>
-            {workspace.navItems.map((item) => (
+            {workspace.navItems.filter((item) => canAccessSection(item.label)).map((item) => (
               <button
                 className={[
                   "nav-item",
                   item.label === activeSection ? "is-active" : "",
-                  canAccessSection(item.label) ? "" : "is-locked",
+                  "",
                 ].filter(Boolean).join(" ")}
                 type="button"
-                aria-label={item.label}
-                disabled={!canAccessSection(item.label)}
+                aria-label={employeeSectionLabel(item.label)}
                 key={item.label}
                 onClick={() => handleNavSelection(item.label)}
               >
                 <Icon name={item.icon} />
-                <span>{item.label}</span>
+                <span>{employeeSectionLabel(item.label)}</span>
                 {item.label === "Queue" ? <strong>{queueBadgeCount}</strong> : null}
                 {item.label === "Events" ? <strong>{eventBadgeCount}</strong> : null}
                 {item.label === "Conflicts" ? <strong>{conflictBadgeCount}</strong> : null}
               </button>
             ))}
           </nav>
-          <div className="route-stack" aria-label="Sync endpoints">
-            {workspace.syncRoutes.map((route) => (
-              <span key={route}>{route.replace("/wp-json/tcg-store/v1", "")}</span>
-            ))}
-          </div>
-          <div className="local-db-card">
-            <Icon name="database" />
-            <span>LAN Sync Server</span>
-            <strong>{localSyncClient.serverUrl}</strong>
-            <small>
-              {localSyncStatus?.status === "ok"
-                ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}; ${localSyncPullStatusLabel}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
-                : "store-sync.sqlite; check server"}
-            </small>
-          </div>
+          {sessionRole === "owner" ? (
+            <>
+              <div className="route-stack" aria-label="Sync endpoints">
+                {workspace.syncRoutes.map((route) => (
+                  <span key={route}>{route.replace("/wp-json/tcg-store/v1", "")}</span>
+                ))}
+              </div>
+              <div className="local-db-card">
+                <Icon name="database" />
+                <span>LAN Sync Server</span>
+                <strong>{localSyncClient.serverUrl}</strong>
+                <small>
+                  {localSyncStatus?.status === "ok"
+                    ? `${localSyncStatus.local_database}; queue ${localSyncStatus.queue_depth}; ${localSyncPullStatusLabel}; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}`
+                    : "store-sync.sqlite; check server"}
+                </small>
+              </div>
+            </>
+          ) : null}
         </aside>
 
         <section className="workspace">
@@ -5745,21 +7698,23 @@ export function App() {
               <span className="micro-label">
                 {workspace.device.storeLabel} / {activeProfile.environment}
               </span>
-              <h1>Offline Inventory Command</h1>
+              <h1>Store Operations</h1>
             </div>
             <div className="top-actions" aria-label="Offline sync status">
+              {["manager", "owner"].includes(sessionRole) ? (
               <button className="site-setup-card" type="button" onClick={handleOpenWebsiteSetup}>
                 <span>Website</span>
                 <strong>{activeProfile.companyName}</strong>
                 <small>{connectorDisplayUrl(activeProfile)}</small>
               </button>
+              ) : null}
               <div className="connection-pill" aria-label="Offline mode active">
                 <Icon name="wifi" />
-                <span>{workspace.device.modeLabel}</span>
+                <span>{liveConnectionModeLabel}</span>
               </div>
               <div className="sync-time">
                 <span>Last sync</span>
-                <strong>{workspace.device.lastSyncLabel}</strong>
+                <strong>{liveLastSyncLabel}</strong>
               </div>
               <button
                 className="sync-now"
@@ -5789,7 +7744,7 @@ export function App() {
 
           <section className="active-workspace-pill" aria-label="Active workspace">
             <span className="micro-label">Active workspace</span>
-            <strong>{activeSection}</strong>
+            <strong>{employeeSectionLabel(activeSection)}</strong>
           </section>
 
           <section
@@ -5800,7 +7755,7 @@ export function App() {
             <section className="workflow-status" aria-live="polite" ref={workflowPanelRef}>
               <div>
                 <span className="micro-label">Active workspace</span>
-                <strong>{activeSection}</strong>
+                <strong>{employeeSectionLabel(activeSection)}</strong>
               </div>
               <p>
                 <b>{activityMessage.title}</b>
@@ -6110,6 +8065,16 @@ export function App() {
                       {status === "all" ? "All" : statusLabel(status)}
                     </button>
                   ))}
+                  {INVENTORY_PRODUCT_TYPE_FILTERS.map((filter) => (
+                    <button
+                      type="button"
+                      className={productTypeFilter === filter.value ? "is-active" : ""}
+                      onClick={() => setProductTypeFilter(filter.value)}
+                      key={filter.value}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
                 </div>
               ) : null}
 
@@ -6120,7 +8085,10 @@ export function App() {
                     <input
                       id="scrydex-card-query"
                       value={scryDexQuery}
-                      onChange={(event) => setScryDexQuery(event.target.value)}
+                      onChange={(event) => {
+                        setScryDexQuery(event.target.value)
+                        setScryDexSetFilter("")
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
                           event.preventDefault()
@@ -6135,12 +8103,31 @@ export function App() {
                     <select
                       id="scrydex-game"
                       value={scryDexGame}
-                      onChange={(event) => setScryDexGame(event.target.value as LocalSyncScryDexCard["game"])}
+                      onChange={(event) => {
+                        setScryDexGame(event.target.value as LocalSyncScryDexCard["game"])
+                        setScryDexSetFilter("")
+                      }}
                     >
                       <option value="pokemon">Pokemon</option>
-                      <option value="magic">Magic</option>
-                      <option value="lorcana">Lorcana</option>
-                      <option value="one-piece">One Piece</option>
+                        <option value="magicthegathering">MTG</option>
+                        <option value="lorcana">Lorcana</option>
+                        <option value="onepiece">One Piece</option>
+                    </select>
+                  </label>
+                  <label htmlFor="scrydex-set-filter">
+                    <span className="micro-label">Set / Expansion</span>
+                    <select
+                      id="scrydex-set-filter"
+                      value={scryDexSetFilter}
+                      onChange={(event) => handleScryDexSetFilterChange(event.target.value)}
+                      disabled={scryDexSetOptions.length === 0}
+                    >
+                      <option value="">All sets</option>
+                      {scryDexSetOptions.map((option) => (
+                        <option value={option.value} key={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <div>
@@ -6160,9 +8147,9 @@ export function App() {
                       <span>Search Catalog</span>
                     </button>
                   </div>
-                  {scryDexCards.length > 0 ? (
+                  {visibleScryDexCards.length > 0 ? (
                     <div className="scrydex-result-list" aria-label="ScryDex card results">
-                      {scryDexCards.map((card) => (
+                      {visibleScryDexCards.map((card) => (
                         <article
                           className={
                             card.provider_card_id === selectedScryDexCardId
@@ -6299,8 +8286,21 @@ export function App() {
                     placeholder="Set name"
                   />
                 </label>
+                <label htmlFor="intake-product-type">
+                  <span className="micro-label">Product type</span>
+                  <select
+                    id="intake-product-type"
+                    value={intakeProductType}
+                    onChange={(event) => setIntakeProductType(event.target.value as "raw" | "graded")}
+                  >
+                    <option value="raw">Singles</option>
+                    <option value="graded">Graded Cards</option>
+                  </select>
+                </label>
                 <label htmlFor="intake-condition">
-                  <span className="micro-label">Condition</span>
+                  <span className="micro-label">
+                    {intakeProductType === "graded" ? "Display condition" : "Condition"}
+                  </span>
                   <select
                     id="intake-condition"
                     value={intakeCondition}
@@ -6314,6 +8314,43 @@ export function App() {
                     <option value="RAW">Raw</option>
                   </select>
                 </label>
+                {intakeProductType === "graded" ? (
+                  <>
+                    <label htmlFor="intake-grading-company">
+                      <span className="micro-label">Grading company</span>
+                      <select
+                        id="intake-grading-company"
+                        value={intakeGradingCompany}
+                        onChange={(event) => setIntakeGradingCompany(event.target.value)}
+                      >
+                        <option value="PSA">PSA</option>
+                        <option value="CGC">CGC</option>
+                        <option value="BGS">Beckett/BGS</option>
+                        <option value="SGC">SGC</option>
+                        <option value="TAG">TAG</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </label>
+                    <label htmlFor="intake-grade">
+                      <span className="micro-label">Grade</span>
+                      <input
+                        id="intake-grade"
+                        value={intakeGrade}
+                        onChange={(event) => setIntakeGrade(event.target.value)}
+                        placeholder="10, 9.5, 8"
+                      />
+                    </label>
+                    <label htmlFor="intake-cert-number">
+                      <span className="micro-label">Certification #</span>
+                      <input
+                        id="intake-cert-number"
+                        value={intakeCertNumber}
+                        onChange={(event) => setIntakeCertNumber(event.target.value)}
+                        placeholder="Optional"
+                      />
+                    </label>
+                  </>
+                ) : null}
                 <label htmlFor="intake-quantity">
                   <span className="micro-label">Quantity</span>
                   <input
@@ -6341,7 +8378,7 @@ export function App() {
                   />
                 </label>
                 <label htmlFor="intake-price">
-                  <span className="micro-label">Price</span>
+                  <span className="micro-label">Current market</span>
                   <input
                     id="intake-price"
                     inputMode="decimal"
@@ -6359,6 +8396,34 @@ export function App() {
                     placeholder="0.00"
                   />
                 </label>
+                <label htmlFor="intake-minimum-price">
+                  <span className="micro-label">Minimum sale</span>
+                  <input
+                    id="intake-minimum-price"
+                    inputMode="decimal"
+                    value={intakeMinimumPriceInput}
+                    onBlur={() => {
+                      const parsed = creditRedemptionInputToMinorUnits(intakeMinimumPriceInput)
+
+                      if (parsed !== null) {
+                        setIntakeMinimumPriceInput(creditRedemptionInputFromMinorUnits(parsed))
+                      }
+                    }}
+                    onChange={(event) =>
+                      setIntakeMinimumPriceInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
+                    placeholder="0.00"
+                  />
+                </label>
+                <div className="intake-pricing-summary" aria-label="Automatic pricing summary">
+                  <span className="micro-label">Auto pricing</span>
+                  <strong>{formatMoney(intakeFinalPriceMinorUnits, "USD")}</strong>
+                  <small>
+                    Current {formatMoney(intakeMarketPriceMinorUnits, "USD")} + 10% ={" "}
+                    {formatMoney(intakeAutoPriceMinorUnits, "USD")}; floor{" "}
+                    {formatMoney(intakeMinimumPriceMinorUnits ?? 0, "USD")}.
+                  </small>
+                </div>
                 <label htmlFor="intake-location">
                   <span className="micro-label">Location</span>
                   <input
@@ -6422,7 +8487,10 @@ export function App() {
               </div>
 
               <div className="table-meta">
-                <span>{filteredItems.length} cached results</span>
+                <span>
+                  {filteredInventoryGroups.length} card printing
+                  {filteredInventoryGroups.length === 1 ? "" : "s"} / {filteredItems.length} physical copies
+                </span>
                 <strong>{activeProfile.companyName} website authority after sync acceptance</strong>
               </div>
 
@@ -6440,43 +8508,73 @@ export function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredItems.map((item) => (
+                      {filteredInventoryGroups.map((group) => {
+                        const item = group.representative
+
+                        return (
                         <tr
-                          key={item.id}
-                          className={item.id === selectedId ? "is-selected" : ""}
+                          key={group.key}
+                          className={group.items.some((candidate) => candidate.id === selectedId) ? "is-selected" : ""}
                           onClick={() => setSelectedId(item.id)}
                         >
                           <td>
                             <span className="card-title">{item.cardName}</span>
-                            <small>{item.barcode}</small>
+                            <small>{item.number} / {inventoryVersionLabel(item)}</small>
                           </td>
                           <td>{item.setName}</td>
-                          <td>{item.condition}</td>
-                          <td>{item.price}</td>
-                          <td>{item.location}</td>
+                          <td>
+                            <div className="inventory-condition-stock">
+                              {group.conditions.map((condition) => (
+                                <button
+                                  type="button"
+                                  className={item.condition === condition.condition ? "is-active" : ""}
+                                  key={condition.condition}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setSelectedId(inventoryItemForCondition(group, condition.condition).id)
+                                  }}
+                                >
+                                  <strong>{condition.condition}</strong>
+                                  <span>{condition.stockCount}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                          <td>{group.priceLabel}</td>
+                          <td>{group.locationLabel}</td>
                           <td>
                             <span className={`status-dot ${item.status}`}>
-                              {statusLabel(item.status)}
+                              {group.activeStockCount} in stock
                             </span>
                           </td>
                         </tr>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
-                  {filteredItems.length === 0 ? (
+                  {filteredInventoryGroups.length === 0 ? (
                     <p className="empty-table">No cached cards match this scan.</p>
                   ) : null}
                 </div>
               ) : (
                 <div className="inventory-card-grid" aria-label="Inventory grid">
-                  {filteredItems.map((item) => (
-                    <button
-                      className={item.id === selectedId ? "inventory-card is-selected" : "inventory-card"}
-                      type="button"
-                      onClick={() => setSelectedId(item.id)}
-                      key={item.id}
+                  {filteredInventoryGroups.map((group) => {
+                    const item = group.representative
+                    const selected = group.items.some((candidate) => candidate.id === selectedId)
+
+                    return (
+                    <article
+                      className={selected ? "inventory-card is-selected" : "inventory-card"}
+                      key={group.key}
                     >
-                      <span className={`status-dot ${item.status}`}>{statusLabel(item.status)}</span>
+                      <button
+                        className="inventory-card-main"
+                        type="button"
+                        onClick={() => setSelectedId(item.id)}
+                      >
+                      <span className={`status-dot ${item.status}`}>
+                        {group.activeStockCount} in stock
+                      </span>
                       <div className="inventory-card-art" aria-hidden="true">
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt="" loading="lazy" />
@@ -6486,14 +8584,355 @@ export function App() {
                       </div>
                       <strong>{item.cardName}</strong>
                       <small>{item.setName}</small>
-                      <span className="inventory-card-price">{item.price}</span>
-                    </button>
-                  ))}
-                  {filteredItems.length === 0 ? (
+                      <span className="inventory-card-price">{group.priceLabel}</span>
+                      </button>
+                      <div className="inventory-card-conditions" aria-label={`${item.cardName} condition stock`}>
+                        {group.conditions.map((condition) => (
+                          <button
+                            type="button"
+                            className={item.condition === condition.condition ? "is-active" : ""}
+                            key={condition.condition}
+                            onClick={() => setSelectedId(inventoryItemForCondition(group, condition.condition).id)}
+                          >
+                            <strong>{condition.condition}</strong>
+                            <span>{condition.stockCount}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </article>
+                    )
+                  })}
+                  {filteredInventoryGroups.length === 0 ? (
                     <p className="empty-table">No cached cards match this scan.</p>
                   ) : null}
                 </div>
               )}
+            </section>
+
+            <section className="trade-in-panel" aria-label="Trade-in and buy-in workspace">
+              <div className="section-heading">
+                <h2>Trade-Ins / Buy-Ins</h2>
+                <span>Draft customer intake before inventory conversion</span>
+              </div>
+              <div className="trade-in-toolbar">
+                <label htmlFor="trade-in-customer-name">
+                  <span className="micro-label">Customer</span>
+                  <input
+                    id="trade-in-customer-name"
+                    value={tradeInCustomerName}
+                    onChange={(event) => setTradeInCustomerName(event.target.value)}
+                    placeholder="Customer name or account"
+                  />
+                </label>
+                <label htmlFor="trade-in-percentage">
+                  <span className="micro-label">Trade percentage</span>
+                  <select
+                    id="trade-in-percentage"
+                    value={tradeInPercentageBasisPoints}
+                    onChange={(event) => setTradeInPercentageBasisPoints(Number(event.target.value))}
+                  >
+                    {TRADE_IN_PERCENTAGE_OPTIONS.map((basisPoints) => (
+                      <option value={basisPoints} key={basisPoints}>
+                        {basisPoints / 100}%
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <fieldset className="trade-in-payout-toggle">
+                  <legend className="micro-label">Payout</legend>
+                  <label>
+                    <input
+                      type="radio"
+                      name="trade-in-payout"
+                      checked={tradeInPayoutType === "credit"}
+                      onChange={() => setTradeInPayoutType("credit")}
+                    />
+                    <span>Store credit</span>
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="trade-in-payout"
+                      checked={tradeInPayoutType === "cash"}
+                      onChange={() => setTradeInPayoutType("cash")}
+                    />
+                    <span>Cash</span>
+                  </label>
+                </fieldset>
+                <div className="trade-in-preview-card">
+                  <span className="micro-label">Selected card value</span>
+                  <strong>{formatMoney(tradeInPreviewValueMinorUnits, "USD")}</strong>
+                  <small>
+                    {tradeInCurrentCardName.trim() || "No card selected"} at {tradeInPercentageBasisPoints / 100}%.
+                  </small>
+                  <button type="button" onClick={handleStageTradeInItem}>
+                    Stage Current Card
+                  </button>
+                </div>
+              </div>
+
+              <div className={`trade-in-sync-card ${tradeInSyncStatus}`}>
+                <div>
+                  <span className="micro-label">Shared trade-in queue</span>
+                  <strong>
+                    {tradeInSyncStatus === "saving"
+                      ? "Saving"
+                      : tradeInSyncStatus === "ready"
+                        ? "Connected"
+                        : tradeInSyncStatus === "blocked"
+                          ? "Needs attention"
+                          : "Ready"}
+                  </strong>
+                  <small>
+                    Drafts save to the LAN middleman so multiple employee stations see the same review queue.
+                  </small>
+                </div>
+                <button type="button" onClick={() => void handleSaveTradeInDraft()}>
+                  Save Draft to Server
+                </button>
+                <button type="button" onClick={() => void refreshTradeInOrders()}>
+                  Refresh Trade-Ins
+                </button>
+              </div>
+
+              <div className="trade-in-total-strip" aria-label="Trade-in totals">
+                <div>
+                  <span className="micro-label">Cash total</span>
+                  <strong>{formatMoney(tradeInCashTotalMinorUnits, "USD")}</strong>
+                </div>
+                <div>
+                  <span className="micro-label">Credit total</span>
+                  <strong>{formatMoney(tradeInCreditTotalMinorUnits, "USD")}</strong>
+                </div>
+                <div>
+                  <span className="micro-label">Combined total</span>
+                  <strong>{formatMoney(tradeInCombinedTotalMinorUnits, "USD")}</strong>
+                </div>
+              </div>
+
+              <div className="trade-in-draft-list" aria-label="Draft trade-in line items">
+                {tradeInDraftItems.length > 0 ? (
+                  tradeInDraftItems.map((item) => {
+                    const calculatedValueMinorUnits = tradeInValueMinorUnits(
+                      item.marketMidMinorUnits,
+                      item.percentageBasisPoints,
+                    )
+                    const valueMinorUnits = item.finalValueMinorUnits
+
+                    return (
+                      <article className="trade-in-draft-card" key={item.id}>
+                        <div className="trade-in-draft-art" aria-hidden="true">
+                          {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <Icon name="card" />}
+                        </div>
+                        <div>
+                          <span className="micro-label">
+                            {item.productType === "graded" ? "Graded card" : "Single"}
+                          </span>
+                          <strong>{item.cardName}</strong>
+                          <small>
+                            {item.setName || "Set pending"} / {item.condition}
+                            {item.productType === "graded"
+                              ? ` / ${item.gradingCompany} ${item.grade}${item.certNumber ? ` / ${item.certNumber}` : ""}`
+                              : ""}
+                          </small>
+                        </div>
+                        <div>
+                          <span className="micro-label">Market mid</span>
+                          <strong>{formatMoney(item.marketMidMinorUnits, "USD")}</strong>
+                          <small>Default floor {formatMoney(calculatedValueMinorUnits, "USD")}</small>
+                        </div>
+                        <div className="trade-in-line-controls" aria-label={`${item.cardName} trade-in line controls`}>
+                          <label>
+                            <span className="micro-label">Line %</span>
+                            <select
+                              value={item.percentageBasisPoints}
+                              onChange={(event) =>
+                                handleTradeInLinePercentageChange(item.id, Number(event.target.value))
+                              }
+                            >
+                              {TRADE_IN_PERCENTAGE_OPTIONS.map((basisPoints) => (
+                                <option value={basisPoints} key={basisPoints}>
+                                  {basisPoints / 100}%
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span className="micro-label">Payout</span>
+                            <select
+                              value={item.payoutType}
+                              onChange={(event) =>
+                                handleTradeInLinePayoutChange(item.id, event.target.value as TradeInPayoutType)
+                              }
+                            >
+                              <option value="credit">Credit</option>
+                              <option value="cash">Cash</option>
+                            </select>
+                          </label>
+                          <label>
+                            <span className="micro-label">Final value</span>
+                            <input
+                              inputMode="decimal"
+                              value={creditRedemptionInputFromMinorUnits(valueMinorUnits)}
+                              onChange={(event) => handleTradeInLineFinalValueChange(item.id, event.target.value)}
+                            />
+                          </label>
+                          <small>Manual final value allowed without manager approval.</small>
+                        </div>
+                        <div className="trade-in-draft-actions">
+                          <button type="button" onClick={() => handleLoadTradeInItemForInventory(item)}>
+                            Convert to Inventory
+                          </button>
+                          <button type="button" onClick={() => handleRemoveTradeInItem(item.id)}>
+                            Remove
+                          </button>
+                        </div>
+                      </article>
+                    )
+                  })
+                ) : (
+                  <p className="panel-empty">
+                    No trade-in lines yet. Search/select a card in Inventory, choose payout settings here, then stage it.
+                  </p>
+                )}
+              </div>
+
+              <div className="trade-in-draft-list" aria-label="Shared saved trade-in orders">
+                <div className="fulfillment-source-heading">
+                  <div>
+                    <span className="micro-label">Shared saved drafts</span>
+                    <strong>{serverTradeInOrders.length} trade-in order(s)</strong>
+                  </div>
+                  <label className="trade-in-record-search" htmlFor="trade-in-record-search">
+                    <span className="micro-label">Lookup transaction</span>
+                    <input
+                      id="trade-in-record-search"
+                      value={tradeInRecordSearch}
+                      onChange={(event) => setTradeInRecordSearch(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          void refreshTradeInOrders()
+                        }
+                      }}
+                      placeholder="Customer, staff, receipt, card, set"
+                    />
+                  </label>
+                  <label className="trade-in-record-search" htmlFor="trade-in-staff-filter">
+                    <span className="micro-label">Processed by</span>
+                    <select
+                      id="trade-in-staff-filter"
+                      value={tradeInStaffFilter}
+                      onChange={(event) => setTradeInStaffFilter(event.target.value)}
+                    >
+                      <option value="">All staff</option>
+                      {offlineUsers
+                        .map((user) => (
+                          <option value={user.id} key={user.id}>
+                            {user.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </div>
+                {serverTradeInOrders.length > 0 ? (
+                  serverTradeInOrders.map((order) => {
+                    const isTerminalTradeIn = order.status === "rejected" || order.status === "completed"
+                    const canConvertTradeIn = order.status === "approved" || order.status === "paid"
+                    const canCompleteTradeIn = order.status === "converted"
+
+                    return (
+                    <article className="trade-in-draft-card is-order" key={order.order_id}>
+                      <div className="trade-in-draft-art" aria-hidden="true">
+                        {order.items[0]?.image_url ? (
+                          <img src={order.items[0].image_url} alt="" loading="lazy" />
+                        ) : (
+                          <Icon name="card" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="micro-label">{order.status}</span>
+                        <strong>{order.customer_name}</strong>
+                        <small>
+                          {order.item_count} item(s) / saved {formatUtcLabel(order.updated_at_utc)}
+                        </small>
+                        <small>
+                          Processed by {order.staff_user_name || order.staff_user_id || "Unknown staff"} / receipt{" "}
+                          {order.order_id}
+                        </small>
+                        {order.converted_at_utc ? (
+                          <small>
+                            Converted {formatUtcLabel(order.converted_at_utc)}
+                            {order.converted_by_user_id ? ` by ${order.converted_by_user_id}` : ""}
+                          </small>
+                        ) : null}
+                      </div>
+                      <div>
+                        <span className="micro-label">Cash</span>
+                        <strong>{formatMoney(order.cash_total_minor_units, order.currency)}</strong>
+                      </div>
+                      <div>
+                        <span className="micro-label">Credit</span>
+                        <strong>{formatMoney(order.credit_total_minor_units, order.currency)}</strong>
+                      </div>
+                      <div className="trade-in-draft-actions">
+                        <button
+                          type="button"
+                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          onClick={() => void handleTradeInStatus(order.order_id, "review")}
+                        >
+                          Review
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          onClick={() => void handleTradeInStatus(order.order_id, "approved")}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          onClick={() => void handleTradeInStatus(order.order_id, "paid")}
+                        >
+                          Paid
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canConvertTradeIn}
+                          onClick={() => void handleTradeInStatus(order.order_id, "converted")}
+                        >
+                          Converted
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!canCompleteTradeIn}
+                          onClick={() => void handleTradeInStatus(order.order_id, "completed")}
+                        >
+                          Complete
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          onClick={() => void handleTradeInStatus(order.order_id, "rejected")}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </article>
+                    )
+                  })
+                ) : (
+                  <p className="panel-empty">No shared trade-in orders loaded from the LAN server.</p>
+                )}
+              </div>
+
+              <div className="trade-in-status-note">
+                <strong>Workflow boundary</strong>
+                <small>
+                  Draft trade-in lines are separate from sellable inventory. Convert only after review, approval,
+                  and cash/credit payout are complete.
+                </small>
+              </div>
             </section>
 
             <aside className="detail-panel" aria-label="Selected card details">
@@ -6533,6 +8972,40 @@ export function App() {
                 </span>
                 <h2>{selectedItem.cardName}</h2>
                 <p>{selectedItem.setName}</p>
+                {selectedItem.rawOrGraded === "graded" ? (
+                  <div className="detail-catalog-context" aria-label="Graded card details">
+                    <span>Graded inventory</span>
+                    <strong>
+                      {[selectedItem.gradingCompany, selectedItem.grade].filter(Boolean).join(" ") || "Grade pending"}
+                    </strong>
+                    <small>
+                      {selectedItem.certNumber ? `Cert ${selectedItem.certNumber}` : "Certification number optional"}
+                    </small>
+                  </div>
+                ) : null}
+                {selectedInventoryGroup ? (
+                  <div className="detail-condition-selector" aria-label="Condition and stock selection">
+                    <span>Condition / stock</span>
+                    <div>
+                      {selectedInventoryGroup.conditions.map((condition) => (
+                        <button
+                          type="button"
+                          className={selectedItem.condition === condition.condition ? "is-active" : ""}
+                          key={condition.condition}
+                          onClick={() =>
+                            setSelectedId(
+                              inventoryItemForCondition(selectedInventoryGroup, condition.condition).id,
+                            )
+                          }
+                        >
+                          <strong>{condition.condition}</strong>
+                          <small>{condition.stockCount} {condition.stockCount === 1 ? "copy" : "copies"}</small>
+                          <span>{condition.priceLabel}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {selectedScryDexCard ? (
                   <div className="detail-catalog-context" aria-label="Separate selected catalog intake draft">
                     <span>Catalog intake draft</span>
@@ -6545,8 +9018,31 @@ export function App() {
               </div>
               <dl className="detail-list">
                 <div>
+                  <dt>Product type</dt>
+                  <dd>{selectedItem.rawOrGraded === "graded" ? "Graded Cards" : "Singles"}</dd>
+                </div>
+                {selectedItem.rawOrGraded === "graded" ? (
+                  <>
+                    <div>
+                      <dt>Grading company</dt>
+                      <dd>{selectedItem.gradingCompany || "Not set"}</dd>
+                    </div>
+                    <div>
+                      <dt>Grade</dt>
+                      <dd>{selectedItem.grade || "Not set"}</dd>
+                    </div>
+                    <div>
+                      <dt>Certification #</dt>
+                      <dd>{selectedItem.certNumber || "Not set"}</dd>
+                    </div>
+                  </>
+                ) : null}
+                <div>
                   <dt>Website ID</dt>
-                  <dd>{selectedItem.publicId}</dd>
+                  <dd>
+                    <small>Selected copy</small>
+                    {selectedItem.publicId}
+                  </dd>
                 </div>
                 <div>
                   <dt>Barcode</dt>
@@ -6584,6 +9080,43 @@ export function App() {
                 </div>
               </dl>
               <div className="detail-actions">
+                <div className="square-sale-finalize-controls" aria-label="Square POS sold inventory handoff">
+                  <label htmlFor="square-sold-reference">
+                    <span className="micro-label">Square ref</span>
+                    <input
+                      id="square-sold-reference"
+                      value={squareSoldReference}
+                      onChange={(event) => setSquareSoldReference(event.target.value)}
+                      placeholder="Receipt or ticket"
+                    />
+                  </label>
+                  <label htmlFor="square-sold-order-id">
+                    <span className="micro-label">Order ID</span>
+                    <input
+                      id="square-sold-order-id"
+                      value={squareSoldOrderId}
+                      onChange={(event) => setSquareSoldOrderId(event.target.value)}
+                      placeholder="Optional"
+                    />
+                  </label>
+                  <div>
+                    <span>Selected scan</span>
+                    <strong>{selectedItem.barcode}</strong>
+                    <small>
+                      Finalizes {selectedItem.price}; payment capture stays in Square POS.
+                    </small>
+                  </div>
+                  {squareSoldReferenceIssue ? <small>{squareSoldReferenceIssue}</small> : null}
+                  <button
+                    className="wide-action"
+                    type="button"
+                    disabled={Boolean(squareSoldReferenceIssue) || !localSyncSessionToken}
+                    onClick={() => void handleSquareSaleFinalize()}
+                  >
+                    <Icon name="tag" />
+                    <span>Finalize Square Sale</span>
+                  </button>
+                </div>
                 <div className="inventory-adjustment-controls" aria-label="Inventory adjustment details">
                   <label htmlFor="quantity-delta">
                     <span className="micro-label">Qty delta</span>
@@ -6673,60 +9206,215 @@ export function App() {
               ) : null}
             </aside>
 
-            <section className="kiosk-panel" aria-label="Customer kiosk pickup order" ref={kioskPanelRef}>
+            <section
+              className={`kiosk-panel fulfillment-panel ${
+                activeKioskFulfillmentTicket || activeWebsiteFulfillmentTicket ? "is-picking" : ""
+              }`}
+              aria-label="Order fulfillment queue"
+              ref={kioskPanelRef}
+            >
               <div className="section-heading">
-                <h2>Kiosk Pickup</h2>
+                <h2>
+                  {activeKioskFulfillmentTicket || activeWebsiteFulfillmentTicket
+                    ? "Pick Order"
+                    : "Order Fulfillment"}
+                </h2>
                 <span>
-                  {kioskCartItems.length} selected; {kioskCartTotalLabel}
+                  {activeKioskFulfillmentTicket
+                    ? activeKioskFulfillmentTicket.customerName
+                    : activeWebsiteFulfillmentTicket
+                      ? `Woo order #${activeWebsiteFulfillmentTicket.orderNumber}`
+                      : `${activeKioskOrderTickets.length + activeWebsitePickupTickets.length} active pickup ticket${
+                          activeKioskOrderTickets.length + activeWebsitePickupTickets.length === 1 ? "" : "s"
+                        }`}
                 </span>
               </div>
+              {activeKioskFulfillmentTicket || activeWebsiteFulfillmentTicket ? (
+                <div className="fulfillment-pick-screen">
+                  <header>
+                    <button type="button" onClick={() => setActiveFulfillmentTicket(null)}>
+                      <span>Back to Queue</span>
+                    </button>
+                    <div>
+                      <span className="micro-label">
+                        {activeKioskFulfillmentTicket ? "Pay at store" : "Paid website pickup"}
+                      </span>
+                      <strong>
+                        {activeKioskFulfillmentTicket?.customerName ??
+                          activeWebsiteFulfillmentTicket?.customerName}
+                      </strong>
+                      <small>
+                        {(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.totalLabel}
+                        {" / "}
+                        {(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.itemCount} card(s)
+                      </small>
+                    </div>
+                    <div className="fulfillment-progress">
+                      <span>Picked</span>
+                      <strong>
+                        {(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.pickedItemIds.length}
+                        /{(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.itemCount}
+                      </strong>
+                    </div>
+                  </header>
+
+                  {activeKioskFulfillmentTicket ? (
+                    <section className={`fulfillment-payment ${activeKioskFulfillmentTicket.paymentStatus}`}>
+                      <div>
+                        <span className="micro-label">Payment</span>
+                        <strong>
+                          {activeKioskFulfillmentTicket.paymentStatus === "paid"
+                            ? "Paid in Square"
+                            : "Payment due at counter"}
+                        </strong>
+                        <small>
+                          {activeKioskFulfillmentTicket.paymentStatus === "paid"
+                            ? `Receipt ${activeKioskFulfillmentTicket.squareReceiptReference}`
+                            : "Complete the sale in Square, then confirm the receipt here."}
+                        </small>
+                      </div>
+                      {activeKioskFulfillmentTicket.paymentStatus !== "paid" ? (
+                        <>
+                          <label>
+                            <span>Square receipt / ticket</span>
+                            <input
+                              value={fulfillmentSquareReference}
+                              onChange={(event) => setFulfillmentSquareReference(event.target.value)}
+                              placeholder="Required"
+                            />
+                          </label>
+                          <label>
+                            <span>Square order ID</span>
+                            <input
+                              value={fulfillmentSquareOrderId}
+                              onChange={(event) => setFulfillmentSquareOrderId(event.target.value)}
+                              placeholder="Optional"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => void handleConfirmKioskPayment(activeKioskFulfillmentTicket)}
+                          >
+                            Confirm Paid in Square
+                          </button>
+                        </>
+                      ) : null}
+                    </section>
+                  ) : null}
+
+                  <div className="fulfillment-pick-list">
+                    {(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.items.map((item) => {
+                      const ticket = activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket
+                      const checked = ticketItemIsPicked(ticket, item)
+                      const inventoryItem = inventoryItems.find(
+                        (candidate) =>
+                          candidate.publicId === item.publicId ||
+                          (item.pickIds ?? []).includes(candidate.publicId ?? "") ||
+                          candidate.barcode === item.barcode,
+                      )
+
+                      return (
+                        <label className={checked ? "is-picked" : ""} key={item.publicId}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              activeKioskFulfillmentTicket
+                                ? void handleKioskPickToggle(activeKioskFulfillmentTicket, item.publicId)
+                                : activeWebsiteFulfillmentTicket
+                                  ? void handleWebsitePickToggle(
+                                      activeWebsiteFulfillmentTicket,
+                                      item.pickIds?.[0] ?? item.publicId,
+                                    )
+                                  : undefined
+                            }
+                          />
+                          <span className="fulfillment-pick-check" aria-hidden="true">
+                            {checked ? "OK" : ""}
+                          </span>
+                          <span className="fulfillment-pick-art" aria-hidden="true">
+                            {inventoryItem?.imageUrl ? (
+                              <img src={inventoryItem.imageUrl} alt="" loading="lazy" />
+                            ) : (
+                              <Icon name="card" />
+                            )}
+                          </span>
+                          <span className="fulfillment-pick-copy">
+                            <strong>{item.cardName}</strong>
+                            <small>{item.setName} / {item.condition}</small>
+                            <code>{item.barcode}</code>
+                            {item.pickIds && item.pickIds.length > 1 ? (
+                              <small>Pick refs {item.pickIds.join(" / ")}</small>
+                            ) : null}
+                          </span>
+                          <span className="fulfillment-pick-location">
+                            <small>Pull from</small>
+                            <strong>{item.location}</strong>
+                            <span>{item.price}</span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+
+                  <footer>
+                    <small>Every card must be checked before this order can be marked ready.</small>
+                    <button
+                      type="button"
+                      disabled={
+                        !(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.allItemsPicked ||
+                        Boolean(
+                          activeKioskFulfillmentTicket &&
+                          activeKioskFulfillmentTicket.paymentStatus !== "paid",
+                        )
+                      }
+                      onClick={() =>
+                        activeKioskFulfillmentTicket
+                          ? void handleKioskTicketStatus(activeKioskFulfillmentTicket.orderId, "ready")
+                          : activeWebsiteFulfillmentTicket
+                            ? void handleWebsitePickupTicketStatus(
+                                activeWebsiteFulfillmentTicket.orderId,
+                                "ready_for_pickup",
+                              )
+                            : undefined
+                      }
+                    >
+                      Mark Ready for Pickup
+                    </button>
+                  </footer>
+                </div>
+              ) : null}
               <div className="kiosk-hero">
                 <div>
-                  <span className="micro-label">Customer kiosk mode</span>
-                  <strong>Browse inventory and request pickup</strong>
+                  <span className="micro-label">Employee pull queue</span>
+                  <strong>Kiosk and local-pickup orders land here</strong>
                   <small>
-                    Kiosk-visible inventory only. Orders reserve through the LAN sync server first,
-                    then the website confirms final inventory status after sync acceptance.
+                    Customer kiosk requests reserve the exact local card copy first. Paid website
+                    local-pickup orders use WooCommerce payment and then feed this same pull process.
                   </small>
                 </div>
                 <div>
-                  <span className="micro-label">Local authority</span>
+                  <span className="micro-label">Customer screen</span>
                   <strong>LAN middleman server</strong>
-                  <small>All employee stations and kiosks share the same in-store cache and queue.</small>
+                  <small>
+                    Open the customer kiosk at /?mode=kiosk on the kiosk machine. It only shows
+                    available, kiosk-visible inventory.
+                  </small>
                 </div>
-              </div>
-              <div className="kiosk-customer-fields" aria-label="Kiosk customer name">
-                <label htmlFor="kiosk-first-name">
-                  <span className="micro-label">First name</span>
-                  <input
-                    id="kiosk-first-name"
-                    value={kioskFirstName}
-                    onChange={(event) => setKioskFirstName(event.target.value)}
-                    placeholder="First"
-                  />
-                </label>
-                <label htmlFor="kiosk-last-name">
-                  <span className="micro-label">Last name</span>
-                  <input
-                    id="kiosk-last-name"
-                    value={kioskLastName}
-                    onChange={(event) => setKioskLastName(event.target.value)}
-                    placeholder="Last"
-                  />
-                </label>
-                <button type="button" onClick={() => void handleKioskSubmitOrder()}>
-                  <Icon name="check" />
-                  <span>Submit Pickup Order</span>
-                </button>
               </div>
               <div className="kiosk-summary-strip" aria-label="Kiosk order readiness">
                 <div>
-                  <span className="micro-label">Customer</span>
-                  <strong>{kioskCustomerReady ? kioskCustomerName : "Name required"}</strong>
+                  <span className="micro-label">Queue source</span>
+                  <strong>Local sync server</strong>
                 </div>
                 <div>
-                  <span className="micro-label">Pickup total</span>
-                  <strong>{kioskCartTotalLabel}</strong>
+                  <span className="micro-label">Open tickets</span>
+                  <strong>
+                    {
+                      activeKioskOrderTickets.length +
+                      activeWebsitePickupTickets.length
+                    } active
+                  </strong>
                 </div>
                 <div>
                   <span className="micro-label">Website inventory authority</span>
@@ -6737,73 +9425,26 @@ export function App() {
                   </strong>
                 </div>
               </div>
-              <div className="kiosk-layout">
-                <div className="kiosk-inventory-list" aria-label="Kiosk inventory results">
-                  {kioskVisibleItems.slice(0, 12).map((item) => (
-                    <article className="kiosk-card" key={item.id}>
-                      <div className="kiosk-card-art" aria-hidden="true">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt="" loading="lazy" />
-                        ) : (
-                          <Icon name="card" />
-                        )}
-                      </div>
-                      <div>
-                        <span className={`status-dot ${item.status}`}>{statusLabel(item.status)}</span>
-                        <strong>{item.cardName}</strong>
-                        <small>
-                          {item.setName}; {item.condition}; {item.location}
-                        </small>
-                      </div>
-                      <span>{item.price}</span>
-                      <button
-                        type="button"
-                        disabled={kioskCartIds.includes(item.id)}
-                        onClick={() => handleKioskAddItem(item)}
-                      >
-                        {kioskCartIds.includes(item.id) ? "Selected" : "Add"}
-                      </button>
-                    </article>
-                  ))}
-                  {kioskVisibleItems.length === 0 ? (
-                    <p className="panel-empty">No kiosk inventory matches this search.</p>
-                  ) : null}
-                </div>
-                <div className="kiosk-cart" aria-label="Kiosk selected cards">
-                  <div className="kiosk-cart-header">
-                    <span className="micro-label">Pickup cart</span>
-                    <strong>{kioskCartTotalLabel}</strong>
-                  </div>
-                  {kioskCartItems.length > 0 ? (
-                    kioskCartItems.map((item) => (
-                      <div key={item.id}>
-                        <strong>{item.cardName}</strong>
-                        <small>
-                          {item.setName}; {item.price}; {item.location}
-                        </small>
-                        <button type="button" onClick={() => handleKioskRemoveItem(item.id)}>
-                          Remove
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p>Select available cards for staff to pull.</p>
-                  )}
-                </div>
-              </div>
               <div className="kiosk-ticket-list" aria-label="Recent kiosk pickup tickets">
                 <div className="kiosk-ticket-toolbar">
                   <div>
-                    <span className="micro-label">Recent pickup tickets</span>
-                    <strong>Shared pickup queue</strong>
+                    <span className="micro-label">Pickup queue</span>
+                    <strong>Shared order fulfillment</strong>
                   </div>
+                  <a className="kiosk-launch-link" href="?mode=kiosk" target="_blank" rel="noreferrer">
+                    Customer Kiosk
+                  </a>
                   <button type="button" onClick={() => void refreshKioskOrderTickets(true)}>
-                    Refresh Pickup Queue
+                    Refresh Fulfillment
                   </button>
                 </div>
-                {kioskOrderTickets.length > 0 ? (
+                {activeKioskOrderTickets.length > 0 ? (
                   <>
-                    {kioskOrderTickets.map((ticket) => (
+                    <div className="fulfillment-source-heading">
+                      <span className="micro-label">Customer kiosk</span>
+                      <strong>{activeKioskOrderTickets.length} active in-store request(s)</strong>
+                    </div>
+                    {activeKioskOrderTickets.map((ticket) => (
                       <article key={ticket.orderId}>
                         <div>
                           <strong>{ticket.orderId}</strong>
@@ -6811,7 +9452,10 @@ export function App() {
                             {ticket.customerName}; {ticket.itemCount} card(s); {ticket.totalLabel}
                           </small>
                           <span className={`kiosk-ticket-status ${ticket.status}`}>
-                            Staff pull status: {ticket.status}
+                            Fulfillment status: {ticket.status}
+                          </span>
+                          <span className={`kiosk-payment-status ${ticket.paymentStatus}`}>
+                            {ticket.paymentStatus === "paid" ? "Paid in Square" : "Pay at store"}
                           </span>
                         </div>
                         <div className="kiosk-ticket-detail">
@@ -6834,14 +9478,19 @@ export function App() {
                           <div className="kiosk-ticket-actions" aria-label="Kiosk pull controls">
                             <button
                               type="button"
-                              disabled={!["queued", "accepted"].includes(ticket.status)}
-                              onClick={() => void handleKioskTicketStatus(ticket.orderId, "pulling")}
+                              disabled={ticket.status === "completed"}
+                              onClick={() => void handleOpenKioskPicking(ticket)}
                             >
-                              Start Pull
+                              {ticket.status === "pulling" ? "Continue Picking" : "Pick Order"}
                             </button>
                             <button
                               type="button"
-                              disabled={ticket.status === "ready" || ticket.status === "completed"}
+                              disabled={
+                                !ticket.allItemsPicked ||
+                                ticket.paymentStatus !== "paid" ||
+                                ticket.status === "ready" ||
+                                ticket.status === "completed"
+                              }
                               onClick={() => void handleKioskTicketStatus(ticket.orderId, "ready")}
                             >
                               Ready for Pickup
@@ -6859,9 +9508,314 @@ export function App() {
                     ))}
                   </>
                 ) : (
-                  <p className="panel-empty">No shared pickup tickets loaded from the LAN server.</p>
+                  <p className="panel-empty">No customer kiosk pickup tickets loaded from the LAN server.</p>
+                )}
+                {activeWebsitePickupTickets.length > 0 ? (
+                  <>
+                    <div className="fulfillment-source-heading">
+                      <span className="micro-label">Website local pickup</span>
+                      <strong>{activeWebsitePickupTickets.length} active paid WooCommerce pickup order(s)</strong>
+                    </div>
+                    {activeWebsitePickupTickets.map((ticket) => (
+                      <article key={`website-${ticket.orderId}`}>
+                        <div>
+                          <strong>Woo order #{ticket.orderNumber}</strong>
+                          <small>
+                            {ticket.customerName}; {ticket.itemCount} item(s); {ticket.totalLabel};{" "}
+                            {ticket.orderStatus}
+                          </small>
+                          <span className={`kiosk-ticket-status ${ticket.status}`}>
+                            Fulfillment status: {ticket.status.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <div className="kiosk-ticket-detail">
+                          <small>Paid {ticket.paidAtUtc ? formatUtcLabel(ticket.paidAtUtc) : "before fulfillment"}</small>
+                          <small>Queued {formatUtcLabel(ticket.createdAtUtc)}</small>
+                          <small>
+                            Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
+                            {ticket.reservationIds.length > 3 ? "..." : ""}
+                          </small>
+                          <div className="kiosk-ticket-items">
+                            {ticket.items.slice(0, 4).map((item) => (
+                              <small key={`${ticket.orderId}-${item.publicId}`}>
+                                {item.cardName}; {item.condition}; {item.barcode}; {item.price}
+                              </small>
+                            ))}
+                            {ticket.items.length > 4 ? (
+                              <small>+{ticket.items.length - 4} more item(s)</small>
+                            ) : null}
+                          </div>
+                          <div className="kiosk-ticket-actions" aria-label="Website pickup pull controls">
+                            <button
+                              type="button"
+                              disabled={ticket.status === "completed"}
+                              onClick={() => void handleOpenWebsitePicking(ticket)}
+                            >
+                              {ticket.status === "pulling" ? "Continue Picking" : "Pick Order"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                !ticket.allItemsPicked ||
+                                ticket.status === "ready_for_pickup" ||
+                                ticket.status === "completed"
+                              }
+                              onClick={() => void handleWebsitePickupTicketStatus(ticket.orderId, "ready_for_pickup")}
+                            >
+                              Ready for Pickup
+                            </button>
+                            <button
+                              type="button"
+                              disabled={ticket.status === "completed"}
+                              onClick={() => void handleWebsitePickupTicketStatus(ticket.orderId, "completed")}
+                            >
+                              Complete Pickup
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </>
+                ) : (
+                  <p className="panel-empty">No paid website pickup orders loaded from WooCommerce.</p>
+                )}
+                <div className="fulfillment-source-heading">
+                  <span className="micro-label">Completed pickup history</span>
+                  <strong>
+                    {completedKioskOrderTickets.length + completedWebsitePickupTickets.length} completed order(s)
+                  </strong>
+                </div>
+                <label className="fulfillment-history-search" htmlFor="fulfillment-history-search">
+                  <span className="micro-label">Search completed</span>
+                  <input
+                    id="fulfillment-history-search"
+                    value={fulfillmentHistorySearch}
+                    onChange={(event) => setFulfillmentHistorySearch(event.target.value)}
+                    placeholder="Customer, order, receipt, barcode"
+                  />
+                </label>
+                {searchableCompletedKioskOrderTickets.length + searchableCompletedWebsitePickupTickets.length > 0 ? (
+                  <div className="completed-fulfillment-list" aria-label="Completed pickup order history">
+                    {searchableCompletedKioskOrderTickets.map((ticket) => (
+                      <article key={`completed-kiosk-${ticket.orderId}`}>
+                        <div>
+                          <strong>{ticket.customerName}</strong>
+                          <small>
+                            Kiosk order {ticket.orderId}; {ticket.itemCount} card(s); {ticket.totalLabel}
+                          </small>
+                          <span className={`kiosk-payment-status ${ticket.paymentStatus}`}>
+                            {ticket.squareReceiptReference || "No receipt stored"}
+                          </span>
+                        </div>
+                        <div className="kiosk-ticket-items">
+                          {ticket.items.slice(0, 4).map((item) => (
+                            <small key={`completed-${ticket.orderId}-${item.publicId}`}>
+                              {item.cardName}; {item.condition}; {item.barcode}
+                            </small>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                    {searchableCompletedWebsitePickupTickets.map((ticket) => (
+                      <article key={`completed-website-${ticket.orderId}`}>
+                        <div>
+                          <strong>{ticket.customerName}</strong>
+                          <small>
+                            Woo order #{ticket.orderNumber}; {ticket.itemCount} item(s); {ticket.totalLabel}
+                          </small>
+                          <span className="kiosk-ticket-status completed">
+                            {ticket.orderStatus.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <div className="kiosk-ticket-items">
+                          {ticket.items.slice(0, 4).map((item) => (
+                            <small key={`completed-woo-${ticket.orderId}-${item.publicId}`}>
+                              {item.cardName}; {item.condition}; {item.barcode}
+                            </small>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="panel-empty">No completed pickup orders match that search.</p>
                 )}
               </div>
+            </section>
+
+            <section className="reports-panel" aria-label="Manager reports dashboard">
+              <div className="section-heading section-heading-actions">
+                <div>
+                  <h2>Business Reports</h2>
+                  <span>Manager graph dashboard and live website report pull</span>
+                </div>
+                <button type="button" onClick={() => void handleRefreshManagerReport()}>
+                  <Icon name="sync" />
+                  <span>Refresh Report</span>
+                </button>
+              </div>
+
+              <div className="reports-filter-grid" aria-label="Report filters">
+                <label htmlFor="manager-report-type">
+                  <span className="micro-label">Report</span>
+                  <select
+                    id="manager-report-type"
+                    value={managerReportKey}
+                    onChange={(event) => setManagerReportKey(event.target.value as LocalSyncReportKey)}
+                  >
+                    {REPORT_OPTIONS.map((option) => (
+                      <option value={option.key} key={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="manager-report-from">
+                  <span className="micro-label">Date from</span>
+                  <input
+                    id="manager-report-from"
+                    type="date"
+                    value={managerReportDateFrom}
+                    onChange={(event) => setManagerReportDateFrom(event.target.value)}
+                  />
+                </label>
+                <label htmlFor="manager-report-to">
+                  <span className="micro-label">Date to</span>
+                  <input
+                    id="manager-report-to"
+                    type="date"
+                    value={managerReportDateTo}
+                    onChange={(event) => setManagerReportDateTo(event.target.value)}
+                  />
+                </label>
+                <label htmlFor="manager-report-staff">
+                  <span className="micro-label">Employee</span>
+                  <select
+                    id="manager-report-staff"
+                    value={managerReportStaffFilter}
+                    onChange={(event) => setManagerReportStaffFilter(event.target.value)}
+                  >
+                    <option value="">All employees</option>
+                    {offlineUsers.map((user) => (
+                      <option value={user.id} key={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label htmlFor="manager-report-channel">
+                  <span className="micro-label">Channel</span>
+                  <select
+                    id="manager-report-channel"
+                    value={managerReportChannelFilter}
+                    onChange={(event) => setManagerReportChannelFilter(event.target.value)}
+                  >
+                    <option value="">All channels</option>
+                    <option value="online">Online</option>
+                    <option value="in_store">In store</option>
+                    <option value="square_pos">Square POS</option>
+                    <option value="kiosk">Kiosk pickup</option>
+                  </select>
+                </label>
+                <label htmlFor="manager-report-game">
+                  <span className="micro-label">Game</span>
+                  <select
+                    id="manager-report-game"
+                    value={managerReportGameFilter}
+                    onChange={(event) => setManagerReportGameFilter(event.target.value)}
+                  >
+                    <option value="">All games</option>
+                    <option value="magicthegathering">MTG</option>
+                    <option value="pokemon">Pokemon</option>
+                    <option value="lorcana">Lorcana</option>
+                    <option value="onepiece">One Piece</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className={`reports-status-card ${managerReportStatus}`} aria-label="Report pull status">
+                <span className="micro-label">Report pull</span>
+                <strong>{managerReportStatus === "working" ? "Pulling live data" : "Ready for manager review"}</strong>
+                <small>{managerReportDetail}</small>
+              </div>
+
+              <div className="reports-dashboard-grid" aria-label="Business report summary cards">
+                {REPORT_OPTIONS.slice(0, 4).map((option) => (
+                  <article className="reports-summary-card" key={option.key}>
+                    <span className="micro-label">{option.label}</span>
+                    <strong>{option.focus}</strong>
+                    <small>
+                      {option.key === managerReportKey
+                        ? "Selected for live pull through the LAN middleman."
+                        : "Available to compare with the selected report."}
+                    </small>
+                  </article>
+                ))}
+              </div>
+
+              <div className="reports-chart-grid" aria-label="Report comparison graphs">
+                <article className="reports-chart-card">
+                  <span className="micro-label">Employee intake vs sales</span>
+                  <strong>Compare who added inventory, processed trade-ins, and closed sales</strong>
+                  <div className="reports-chart-bars" aria-hidden="true">
+                    <span style={{ width: "82%" }}></span>
+                    <span style={{ width: "64%" }}></span>
+                    <span style={{ width: "48%" }}></span>
+                  </div>
+                  <small>Filters: employee, date range, product type, game, source.</small>
+                </article>
+                <article className="reports-chart-card">
+                  <span className="micro-label">Online vs in-store</span>
+                  <strong>Track WooCommerce, Square POS, and kiosk pickup by channel</strong>
+                  <div className="reports-chart-bars" aria-hidden="true">
+                    <span style={{ width: "74%" }}></span>
+                    <span style={{ width: "58%" }}></span>
+                    <span style={{ width: "37%" }}></span>
+                  </div>
+                  <small>Payment capture stays in Square; inventory authority stays with WordPress.</small>
+                </article>
+                <article className="reports-chart-card">
+                  <span className="micro-label">Trade-in cash vs credit</span>
+                  <strong>Review payout mix, final values, and conversion to inventory</strong>
+                  <div className="reports-chart-bars" aria-hidden="true">
+                    <span style={{ width: "68%" }}></span>
+                    <span style={{ width: "43%" }}></span>
+                  </div>
+                  <small>Line values use stored final values, not recalculated prices.</small>
+                </article>
+              </div>
+
+              <div className="reports-kpi-grid" aria-label="Retail KPI cards">
+                <article className="reports-kpi-card">
+                  <span className="micro-label">Inventory health</span>
+                  <strong>Sell-through, aging, low stock, reserved stock</strong>
+                  <small>Use for reorder and pricing decisions.</small>
+                </article>
+                <article className="reports-kpi-card">
+                  <span className="micro-label">Customer credit</span>
+                  <strong>Credit given, credit used, balances, ledger exceptions</strong>
+                  <small>Local-store credit remains separate from public coupons.</small>
+                </article>
+                <article className="reports-kpi-card">
+                  <span className="micro-label">Operations audit</span>
+                  <strong>Overrides, receipts, ready-for-pickup, report exports</strong>
+                  <small>Manager-only audit trail for accountability.</small>
+                </article>
+              </div>
+
+              {managerReportResult?.status === "ok" ? (
+                <div className="connector-test-report pass" aria-label="Latest report payload">
+                  <div className="connector-test-heading">
+                    <span className="micro-label">Latest live result</span>
+                    <strong>{managerReportResult.report.replace("_", " ")} report</strong>
+                    <small>
+                      {managerReportResult.rows.length} row(s); WordPress reports pull{" "}
+                      {managerReportResult.wordpress_reports_pull_connected ? "connected" : "not connected"}; raw
+                      credentials synced to app: no.
+                    </small>
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             <section className="queue-panel" aria-label="Sync queue" ref={queuePanelRef}>
@@ -7359,7 +10313,7 @@ export function App() {
                   <button
                     className="secondary-command compact-command"
                     type="button"
-                    disabled={sessionRole !== "manager"}
+                    disabled={!["manager", "owner"].includes(sessionRole)}
                     onClick={() => void handlePlanSquarePosInventoryPull()}
                   >
                     <Icon name="sync" />
@@ -7472,7 +10426,7 @@ export function App() {
                   <button
                     className="secondary-command compact-command"
                     type="button"
-                    disabled={sessionRole !== "manager"}
+                    disabled={!["manager", "owner"].includes(sessionRole)}
                     onClick={() => void handleReconcileSquarePosCounts()}
                   >
                     <Icon name="check" />
@@ -7649,7 +10603,7 @@ export function App() {
                   <input
                     id="session-timeout-minutes"
                     inputMode="numeric"
-                    disabled={sessionRole !== "manager"}
+                    disabled={!["manager", "owner"].includes(sessionRole)}
                     value={sessionTimeoutMinutes}
                     onChange={(event) => {
                       const nextValue = Number.parseInt(event.target.value, 10)
@@ -7660,9 +10614,29 @@ export function App() {
                     }}
                   />
                 </label>
+                <label htmlFor="credit-approval-threshold">
+                  <span className="micro-label">Employee credit limit</span>
+                  <input
+                    id="credit-approval-threshold"
+                    inputMode="decimal"
+                    disabled={!managerControlsUnlocked}
+                    value={creditApprovalThresholdInput}
+                    onChange={(event) =>
+                      setCreditApprovalThresholdInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
+                  />
+                </label>
                 <button
                   type="button"
-                  disabled={sessionRole !== "manager"}
+                  disabled={!managerControlsUnlocked}
+                  onClick={() => void handleSaveCreditApprovalThreshold()}
+                >
+                  <Icon name="check" />
+                  <span>Save Credit Limit</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!["manager", "owner"].includes(sessionRole)}
                   onClick={() => setManagerSettingsLocked((locked) => !locked)}
                 >
                   <Icon name="settings" />
@@ -7691,14 +10665,14 @@ export function App() {
                       <div className="user-access-identity">
                         <strong>{user.name}</strong>
                         <small>
-                          {user.role === "manager" ? "Manager PIN" : "Staff PIN"}{" "}
+                          {user.role === "owner" ? "Owner PIN" : user.role === "manager" ? "Manager PIN" : "Employee PIN"}{" "}
                           {user.pin ? "*".repeat(user.pin.length) : "configured on LAN server"}
                         </small>
                       </div>
                       <label>
                         <span className="micro-label">Role</span>
                         <select
-                          disabled={!managerControlsUnlocked}
+                          disabled={!managerControlsUnlocked || (user.role === "owner" && !ownerControlsUnlocked)}
                           value={user.role}
                           onChange={(event) =>
                             void handleOfflineUserRoleChange(
@@ -7707,8 +10681,9 @@ export function App() {
                             )
                           }
                         >
-                          <option value="staff">Staff</option>
+                          <option value="staff">Employee</option>
                           <option value="manager">Manager</option>
+                          {ownerControlsUnlocked || user.role === "owner" ? <option value="owner">Owner</option> : null}
                         </select>
                       </label>
                       <div className="access-chip-grid" aria-label={`${user.name} access`}>
@@ -7716,8 +10691,8 @@ export function App() {
                           <label className="access-chip" key={section}>
                             <input
                               type="checkbox"
-                              disabled={!managerControlsUnlocked || user.role === "manager"}
-                              checked={user.role === "manager" || user.access.includes(section)}
+                              disabled={!managerControlsUnlocked || ["manager", "owner"].includes(user.role)}
+                              checked={["manager", "owner"].includes(user.role) || user.access.includes(section)}
                               onChange={() => void handleOfflineUserAccessToggle(user.id, section)}
                             />
                             <span>{section}</span>
@@ -7760,12 +10735,15 @@ export function App() {
                         const nextRole = event.target.value as Exclude<AppSessionRole, "locked">
                         setNewUserRole(nextRole)
                         setNewUserAccess(
-                          nextRole === "manager" ? [...ACCESS_SECTIONS] : ["Inventory", "Kiosk", "Queue"],
+                          ["manager", "owner"].includes(nextRole)
+                            ? [...ACCESS_SECTIONS]
+                            : ["Inventory", "Kiosk", "Queue"],
                         )
                       }}
                     >
-                      <option value="staff">Staff</option>
+                      <option value="staff">Employee</option>
                       <option value="manager">Manager</option>
+                      {ownerControlsUnlocked ? <option value="owner">Owner</option> : null}
                     </select>
                   </label>
                   <div className="access-chip-grid" aria-label="New user allowed workspaces">
@@ -7773,8 +10751,8 @@ export function App() {
                       <label className="access-chip" key={section}>
                         <input
                           type="checkbox"
-                          disabled={!managerControlsUnlocked || newUserRole === "manager"}
-                          checked={newUserRole === "manager" || newUserAccess.includes(section)}
+                          disabled={!managerControlsUnlocked || ["manager", "owner"].includes(newUserRole)}
+                          checked={["manager", "owner"].includes(newUserRole) || newUserAccess.includes(section)}
                           onChange={() => toggleNewUserAccess(section)}
                         />
                         <span>{section}</span>
@@ -8016,10 +10994,57 @@ export function App() {
                   <Icon name="database" />
                   <span>{lanSetupProbe.status === "loading" ? "Probing LAN" : "Probe LAN Server"}</span>
                 </button>
+                <button
+                  type="button"
+                  disabled={!managerControlsUnlocked || localSyncDiscovery.status === "searching"}
+                  onClick={() => void handleDiscoverLocalSyncServers()}
+                >
+                  <Icon name="search" />
+                  <span>
+                    {localSyncDiscovery.status === "searching"
+                      ? "Finding Server"
+                      : "Find Local Server"}
+                  </span>
+                </button>
                 <button type="button" disabled={!managerControlsUnlocked} onClick={() => void handleSaveConnectorDraft()}>
                   <Icon name="check" />
                   <span>Save Website Connection</span>
                 </button>
+              </div>
+              <div className="local-discovery-panel" aria-label="Local sync server discovery">
+                <header>
+                  <div>
+                    <span className="micro-label">Middleman discovery</span>
+                    <strong>{localSyncDiscovery.status}</strong>
+                  </div>
+                  <small>Manual URL setup remains available.</small>
+                </header>
+                <p>{localSyncDiscovery.detail}</p>
+                {localSyncDiscovery.servers.length > 0 ? (
+                  <div className="local-discovery-list">
+                    {localSyncDiscovery.servers.map((server) => (
+                      <article key={server.server_url}>
+                        <div>
+                          <strong>{server.hostname}</strong>
+                          <span>{server.server_url}</span>
+                          <small>{server.website_url || "Website URL not reported"}</small>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!managerControlsUnlocked}
+                          onClick={() => handleApplyDiscoveredLocalSyncServer(server)}
+                        >
+                          <Icon name="check" />
+                          <span>Use</span>
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+                <small>
+                  Raw credentials returned: {localSyncDiscovery.rawCredentialsReturned ? "yes" : "no"};
+                  credentials synced to app: {localSyncDiscovery.credentialsSyncedToApp ? "yes" : "no"}.
+                </small>
               </div>
             </section>
 
@@ -8196,9 +11221,9 @@ export function App() {
                   {creditRedemptionIssue ? <small>{creditRedemptionIssue}</small> : null}
                 </div>
               </div>
-              <div className="credit-redemption-control" aria-label="Manager customer credit add">
+              <div className="credit-redemption-control" aria-label="Customer credit add">
                 <label htmlFor="credit-adjustment-amount">
-                  <span className="micro-label">Manager credit add</span>
+                  <span className="micro-label">Add store credit</span>
                   <input
                     id="credit-adjustment-amount"
                     inputMode="decimal"
@@ -8227,11 +11252,17 @@ export function App() {
                 </label>
                 <div>
                   <span className="micro-label">Approval</span>
-                  <strong>{managerControlsUnlocked ? "Manager unlocked" : "Manager PIN required"}</strong>
+                  <strong>
+                    {creditAdjustmentNeedsManagerApproval
+                      ? ["manager", "owner"].includes(sessionRole)
+                        ? "Manager approved"
+                        : "Manager PIN required"
+                      : `Employee limit ${formatMoney(creditApprovalThresholdMinorUnits, "USD")}`}
+                  </strong>
                   {creditAdjustmentIssue ? <small>{creditAdjustmentIssue}</small> : null}
                   <button
                     type="button"
-                    disabled={!managerControlsUnlocked}
+                    disabled={!creditAdjustmentCanSubmit}
                     onClick={() => void handleCreditAdjustment()}
                   >
                     <Icon name="check" />
@@ -8239,7 +11270,12 @@ export function App() {
                   </button>
                 </div>
               </div>
-              <div className="square-credit-handoff" aria-label="Square POS credit handoff">
+              <div
+                className={`square-credit-handoff owner-only-detail ${
+                  sessionRole === "owner" ? "" : "is-hidden"
+                }`}
+                aria-label="Square POS credit handoff"
+              >
                 <div>
                   <span className="micro-label">Square POS handoff</span>
                   <strong>
@@ -8348,13 +11384,35 @@ export function App() {
                               {entry.occurredAtLabel}; {entry.sourceLabel}
                               {entry.operationId ? `; ${entry.operationId}` : ""}
                             </small>
+                            <small>
+                              {entry.staffUserId ? `Staff ${entry.staffUserId}` : "Staff pending"}
+                              {entry.referenceId ? `; ref ${entry.referenceId}` : ""}
+                            </small>
+                            {entry.lineItems && entry.lineItems.length > 0 ? (
+                              <ul className="ledger-line-item-list">
+                                {entry.lineItems.map((line) => (
+                                  <li key={line.lineItemId}>
+                                    <span>{line.label}</span>
+                                    <strong>{formatMoney(line.amountMinorUnits, entry.currency)}</strong>
+                                    <small>
+                                      {[line.type, line.squareReceiptReference, line.referenceId]
+                                        .filter(Boolean)
+                                        .join(" / ")}
+                                    </small>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
                           </div>
                           <div>
                             <strong>
                               {formatMoney(entry.amountMinorUnits, entry.currency)}
                             </strong>
                             <small>
-                              Balance {formatMoney(entry.balanceAfterMinorUnits, entry.currency)}
+                              Before {formatMoney(entry.balanceBeforeMinorUnits, entry.currency)}
+                            </small>
+                            <small>
+                              After {formatMoney(entry.balanceAfterMinorUnits, entry.currency)}
                             </small>
                           </div>
                         </article>

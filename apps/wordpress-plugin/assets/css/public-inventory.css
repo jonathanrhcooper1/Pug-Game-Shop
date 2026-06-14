@@ -14,7 +14,7 @@
   --pug-success: var(--tcg-success, #168a55);
   color: #f8fbff;
   font-family: inherit;
-  margin-top: 18px;
+  margin-top: 0;
 }
 
 body:has(.tcg-public-inventory),
@@ -24,21 +24,35 @@ body:has(.tcg-storefront-shelf) {
 
 body.page .site-main.content-shell:has(.tcg-public-inventory),
 body.page .site-main.content-shell:has(.tcg-storefront-shelf) {
-  width: min(1760px, calc(100vw - 24px));
-  max-width: min(1760px, calc(100vw - 24px));
+  width: min(1880px, calc(100vw - 16px));
+  max-width: min(1880px, calc(100vw - 16px));
   margin-inline: auto;
-  padding-inline: clamp(10px, 2vw, 28px);
+  padding-inline: clamp(8px, 1.5vw, 24px);
 }
 
 body.page .content-card:has(.tcg-public-inventory),
 body.page .content-card:has(.tcg-storefront-shelf) {
   width: 100%;
   max-width: none;
-  padding: clamp(18px, 2.5vw, 34px);
-  background:
-    linear-gradient(135deg, rgba(6, 10, 18, 0.96), rgba(9, 25, 43, 0.94) 54%, rgba(6, 10, 18, 0.98)),
-    repeating-linear-gradient(90deg, rgba(96, 214, 255, 0.08) 0 1px, transparent 1px 54px);
-  border-color: rgba(96, 214, 255, 0.2);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+body.page .content-card:has(.tcg-public-inventory) .entry-title,
+body.page .content-card:has(.tcg-storefront-shelf) .entry-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+body.page .entry-content:has(.tcg-public-inventory),
+body.page .entry-content:has(.tcg-storefront-shelf) {
+  margin: 0;
 }
 
 body.page .entry-content:has(.tcg-public-inventory),
@@ -64,9 +78,9 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(210px, 320px);
   gap: clamp(18px, 3vw, 34px);
-  min-height: 320px;
+  min-height: clamp(420px, 58vh, 680px);
   align-items: end;
-  padding: clamp(24px, 4vw, 56px);
+  padding: clamp(28px, 5vw, 76px);
   overflow: hidden;
   background:
     linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 44px),
@@ -170,6 +184,10 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   border-radius: 8px;
   font-weight: 900;
   text-decoration: none;
+}
+
+.tcg-storefront-shelf .tcg-public-inventory__hero {
+  display: none;
 }
 
 .tcg-storefront-shelf--singles .tcg-storefront-shelf__nav a[href="/shop-singles/"],
@@ -492,6 +510,51 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
 }
 
+.tcg-public-inventory__quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 10px;
+  color: rgba(248, 251, 255, 0.74);
+  background: rgba(6, 13, 25, 0.78);
+  border: 1px solid rgba(126, 212, 255, 0.16);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__quick-filters span {
+  margin-right: 4px;
+  color: var(--pug-gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__quick-filters a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  color: #e5fbff;
+  background: rgba(16, 34, 62, 0.78);
+  border: 1px solid rgba(126, 212, 255, 0.18);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tcg-public-inventory__quick-filters a[aria-current="page"],
+.tcg-public-inventory__quick-filters a:hover,
+.tcg-public-inventory__quick-filters a:focus {
+  color: #05080b;
+  background: linear-gradient(135deg, var(--pug-gold), #fff198 48%, var(--pug-cyan));
+  border-color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+}
+
 .tcg-public-inventory__search label {
   display: grid;
   gap: 5px;
@@ -565,8 +628,8 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
 
 .tcg-public-inventory__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: clamp(14px, 1.5vw, 22px);
 }
 
 .tcg-public-inventory__card {
@@ -579,11 +642,13 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   border: 1px solid rgba(185, 244, 255, 0.16);
   border-radius: 8px;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.25);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .tcg-public-inventory__card:hover {
   border-color: rgba(38, 217, 240, 0.55);
   box-shadow: 0 18px 45px rgba(5, 8, 11, 0.16);
+  transform: translateY(-2px);
 }
 
 .tcg-public-inventory__media {
@@ -812,7 +877,7 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   body.page .content-card:has(.tcg-storefront-shelf) {
     width: 100%;
     max-width: none;
-    padding: 12px;
+    padding: 0;
   }
 
   .tcg-storefront-shelf__hero {
@@ -845,6 +910,23 @@ body.page .entry-content:has(.tcg-storefront-shelf) {
   .tcg-public-inventory__hero,
   .tcg-public-inventory__search {
     grid-template-columns: 1fr;
+  }
+
+  .tcg-public-inventory__search button,
+  .tcg-public-inventory__button {
+    width: 100%;
+  }
+
+  .tcg-public-inventory__quick-filters {
+    align-items: stretch;
+  }
+
+  .tcg-public-inventory__quick-filters span {
+    width: 100%;
+  }
+
+  .tcg-public-inventory__quick-filters a {
+    flex: 1 1 calc(50% - 8px);
   }
 
   .tcg-public-inventory__logo,

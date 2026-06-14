@@ -12,6 +12,7 @@ export type IconName =
   | "history"
 
 export type InventoryStatus = "available" | "reserved" | "sold" | "conflict" | "pending_intake"
+export type InventoryProductTypeFilter = "all" | "raw" | "graded"
 export type InventorySource = "cached" | "queued" | "accepted"
 export type QueueTone = "success" | "warning" | "neutral"
 export type ConnectorEnvironment = "development" | "staging" | "production"
@@ -40,6 +41,9 @@ export type InventoryItem = {
   finish?: string
   language?: string
   rawOrGraded?: "raw" | "graded"
+  gradingCompany?: string
+  grade?: string
+  certNumber?: string
   condition: string
   barcode: string
   price: string
@@ -130,11 +134,23 @@ export type CustomerCreditLedgerEntry = {
   occurredAtLabel: string
   description: string
   amountMinorUnits: number
+  balanceBeforeMinorUnits: number
   balanceAfterMinorUnits: number
   currency: "USD"
   status: "cached" | "pending_sync" | "accepted"
   sourceLabel: string
   operationId?: string
+  staffUserId?: string
+  referenceId?: string
+  lineItems?: Array<{
+    lineItemId: string
+    type: string
+    label: string
+    amountMinorUnits: number
+    referenceId?: string
+    saleTotalMinorUnits?: number
+    squareReceiptReference?: string
+  }>
 }
 
 export type SquarePosCreditHandoffMode =
@@ -883,11 +899,13 @@ export const operationEnvelopeFields = [
 export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   navItems: [
     { label: "Inventory", icon: "box", active: true },
+    { label: "Trade-Ins", icon: "card" },
     { label: "Sync", icon: "sync" },
     { label: "Status", icon: "history" },
     { label: "Kiosk", icon: "scan" },
     { label: "Queue", icon: "queue" },
     { label: "Events", icon: "event" },
+    { label: "Reports", icon: "history" },
     { label: "Conflicts", icon: "alert" },
     { label: "Customers", icon: "customer" },
     { label: "Settings", icon: "settings" },
@@ -906,7 +924,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       status: "needs_pairing",
       wordpress: {
         scheme: "https",
-        host: "vbf.2a7.myftpupload.com",
+        host: "j84.285.myftpupload.com",
         restBasePath: "/wp-json/tcg-store/v1",
         authMode: "offline_device_token",
         credentialStorage: "desktop_secure_store",
@@ -1113,10 +1131,22 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       occurredAtLabel: "Jun 7, 4:18 PM",
       description: "Buylist payout approved",
       amountMinorUnits: 5000,
+      balanceBeforeMinorUnits: 19600,
       balanceAfterMinorUnits: 24600,
       currency: "USD",
       status: "cached",
       sourceLabel: "Website cache",
+      staffUserId: "staff-front-counter",
+      referenceId: "buylist-001",
+      lineItems: [
+        {
+          lineItemId: "buylist-001-line-1",
+          type: "credit_given",
+          label: "Charizard VMAX trade-in",
+          amountMinorUnits: 5000,
+          referenceId: "buylist-001",
+        },
+      ],
     },
     {
       entryId: "ledger-91-purchase-002",
@@ -1124,10 +1154,23 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       occurredAtLabel: "Jun 6, 2:42 PM",
       description: "Singles purchase redemption",
       amountMinorUnits: -1800,
+      balanceBeforeMinorUnits: 21400,
       balanceAfterMinorUnits: 19600,
       currency: "USD",
       status: "cached",
       sourceLabel: "Website cache",
+      staffUserId: "staff-front-counter",
+      referenceId: "SQ-1002",
+      lineItems: [
+        {
+          lineItemId: "purchase-002-line-1",
+          type: "credit_used",
+          label: "Singles purchase",
+          amountMinorUnits: -1800,
+          referenceId: "SQ-1002",
+          squareReceiptReference: "SQ-1002",
+        },
+      ],
     },
     {
       entryId: "ledger-104-league-001",
@@ -1135,10 +1178,13 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       occurredAtLabel: "Jun 5, 7:05 PM",
       description: "League prize credit",
       amountMinorUnits: 7250,
+      balanceBeforeMinorUnits: 0,
       balanceAfterMinorUnits: 7250,
       currency: "USD",
       status: "cached",
       sourceLabel: "Website cache",
+      staffUserId: "manager-owner",
+      referenceId: "event-prize-001",
     },
     {
       entryId: "ledger-117-purchase-001",
@@ -1146,10 +1192,13 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       occurredAtLabel: "Jun 4, 1:11 PM",
       description: "Store credit redemption",
       amountMinorUnits: -1200,
+      balanceBeforeMinorUnits: 1200,
       balanceAfterMinorUnits: 0,
       currency: "USD",
       status: "cached",
       sourceLabel: "Website cache",
+      staffUserId: "staff-front-counter",
+      referenceId: "SQ-1001",
     },
   ],
   eventSnapshots: [
@@ -1590,6 +1639,7 @@ export function buildPendingCustomerCreditLedgerEntries(
       }
 
       pendingTotalMinorUnits += amountMinorUnits
+      const balanceAfterMinorUnits = Math.max(0, credit.availableMinorUnits - pendingTotalMinorUnits)
 
       return {
         entryId: `pending-${operation.client_operation_id}`,
@@ -1597,11 +1647,21 @@ export function buildPendingCustomerCreditLedgerEntries(
         occurredAtLabel: creditLedgerDateLabel(operation.queued_at_utc),
         description: "Offline credit redemption",
         amountMinorUnits: -amountMinorUnits,
-        balanceAfterMinorUnits: Math.max(0, credit.availableMinorUnits - pendingTotalMinorUnits),
+        balanceBeforeMinorUnits: balanceAfterMinorUnits + amountMinorUnits,
+        balanceAfterMinorUnits,
         currency: credit.currency,
         status: "pending_sync",
         sourceLabel: "Local queue",
         operationId: operation.client_operation_id,
+        lineItems: [
+          {
+            lineItemId: `line-${operation.client_operation_id}`,
+            type: "credit_used",
+            label: "Pending credit use",
+            amountMinorUnits: -amountMinorUnits,
+            referenceId: operation.client_operation_id,
+          },
+        ],
       }
     })
 }
@@ -2671,11 +2731,13 @@ export function filterInventoryItems(
   items: InventoryItem[],
   query: string,
   statusFilter: InventoryStatus | "all" = "all",
+  productTypeFilter: InventoryProductTypeFilter = "all",
 ) {
   const normalized = query.trim().toLowerCase()
 
   return items
     .filter((item) => statusFilter === "all" || item.status === statusFilter)
+    .filter((item) => productTypeFilter === "all" || (item.rawOrGraded ?? "raw") === productTypeFilter)
     .filter((item) => {
       if (!normalized) {
         return true
@@ -2697,6 +2759,10 @@ export function filterInventoryItems(
         item.squareCatalogItemId,
         item.squareCatalogVariationId,
         item.location,
+        item.rawOrGraded,
+        item.gradingCompany,
+        item.grade,
+        item.certNumber,
       ]
         .join(" ")
         .toLowerCase()
@@ -3168,6 +3234,10 @@ function safeConnectorId(
 
 function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConnectorProfile[] {
   const safeProfiles: StoreConnectorProfile[] = []
+  const legacyPugHosts = new Set([
+    "vbf.2a7.myftpupload.com",
+    "0gt.f64.myftpupload.com",
+  ])
 
   for (const profile of profiles) {
     if (
@@ -3186,10 +3256,15 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
       continue
     }
 
-    const scheme = profile.wordpress.scheme === "http" ? "http" : "https"
+    const originalHost = profile.wordpress.host.toLowerCase()
+    const correctedHost =
+      profile.companyName.toLowerCase() === "pug game shop" && legacyPugHosts.has(originalHost)
+        ? "j84.285.myftpupload.com"
+        : profile.wordpress.host
+    const scheme = profile.wordpress.scheme === "http" && correctedHost !== "j84.285.myftpupload.com" ? "http" : "https"
     const storedEnvironment = cleanConnectorEnvironment(profile.environment)
     const isPugProductionHost =
-      profile.wordpress.host.toLowerCase() === "vbf.2a7.myftpupload.com" &&
+      correctedHost.toLowerCase() === "j84.285.myftpupload.com" &&
       profile.companyName.toLowerCase() === "pug game shop"
     const environment = isPugProductionHost ? "production" : storedEnvironment
     const profileId =
@@ -3207,12 +3282,13 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
 
     safeProfiles.push({
       ...profile,
-      id: safeConnectorId(profileId, profile.companyName, environment, profile.wordpress.host),
+      id: safeConnectorId(profileId, profile.companyName, environment, correctedHost),
       environment,
       status: profile.status === "ready" || profile.status === "sandbox_only" ? profile.status : "needs_pairing",
       wordpress: {
         ...profile.wordpress,
         scheme,
+        host: correctedHost,
         restBasePath: "/wp-json/tcg-store/v1",
         authMode: "offline_device_token",
         credentialStorage: "desktop_secure_store",

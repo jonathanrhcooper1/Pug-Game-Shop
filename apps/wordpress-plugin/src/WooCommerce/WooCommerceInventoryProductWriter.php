@@ -45,17 +45,23 @@ final class WooCommerceInventoryProductWriter {
 			}
 
 			$this->apply_payload( $product, $product_payload );
+			$product_id  = (int) $product->save();
+			$square_sync = $this->apply_square_sync_status( $product_id, $operation['square_sync'] ?? null );
 
 			return array(
-				'status'     => 'written',
-				'code'       => 'woocommerce_product_written',
-				'operation'  => $operation_type,
-				'product_id' => (int) $product->save(),
+				'status'      => 'written',
+				'code'        => 'woocommerce_product_written',
+				'operation'   => $operation_type,
+				'product_id'  => $product_id,
+				'square_sync' => $square_sync,
 			);
-		} catch ( Throwable ) {
+		} catch ( Throwable $exception ) {
 			return array(
-				'status' => 'failed',
-				'code'   => 'woocommerce_product_writer_failed',
+				'status'         => 'failed',
+				'code'           => 'woocommerce_product_writer_failed',
+				'failure_type'   => $this->text( get_class( $exception ) ),
+				'failure_code'   => $this->text( method_exists( $exception, 'getErrorCode' ) ? $exception->getErrorCode() : $exception->getCode() ),
+				'failure_reason' => $this->failure_reason( $exception->getMessage() ),
 			);
 		}
 	}
@@ -117,6 +123,60 @@ final class WooCommerceInventoryProductWriter {
 
 			$product->update_meta_data( $key, $this->text( $row['value'] ?? '' ) );
 		}
+	}
+
+	/**
+	 * @param mixed $square_sync Planned official WooCommerce Square sync marker.
+	 * @return array<string, mixed>
+	 */
+	private function apply_square_sync_status( int $product_id, mixed $square_sync ): array {
+		if ( $product_id <= 0 || ! is_array( $square_sync ) || true !== ( $square_sync['enabled'] ?? false ) ) {
+			return array(
+				'status' => 'skipped',
+				'code'   => 'square_sync_not_requested',
+			);
+		}
+
+		$taxonomy = $this->taxonomy_key( $square_sync['taxonomy'] ?? 'wc_square_synced' );
+		$term     = $this->term_slug( $square_sync['term'] ?? 'yes' );
+
+		if ( '' === $taxonomy || '' === $term ) {
+			return array(
+				'status' => 'skipped',
+				'code'   => 'square_sync_request_invalid',
+			);
+		}
+
+		if ( ! function_exists( 'taxonomy_exists' ) || ! taxonomy_exists( $taxonomy ) || ! function_exists( 'wp_set_post_terms' ) ) {
+			return array(
+				'status'   => 'deferred',
+				'code'     => 'square_sync_taxonomy_unavailable',
+				'taxonomy' => $taxonomy,
+				'term'     => $term,
+			);
+		}
+
+		if ( function_exists( 'term_exists' ) && ! term_exists( $term, $taxonomy ) && function_exists( 'wp_insert_term' ) ) {
+			wp_insert_term( $term, $taxonomy, array( 'slug' => $term ) );
+		}
+
+		$result = wp_set_post_terms( $product_id, array( $term ), $taxonomy, false );
+
+		if ( function_exists( 'is_wp_error' ) && is_wp_error( $result ) ) {
+			return array(
+				'status'   => 'failed',
+				'code'     => 'square_sync_taxonomy_term_failed',
+				'taxonomy' => $taxonomy,
+				'term'     => $term,
+			);
+		}
+
+		return array(
+			'status'   => 'synced',
+			'code'     => 'square_sync_taxonomy_term_set',
+			'taxonomy' => $taxonomy,
+			'term'     => $term,
+		);
 	}
 
 	/**
@@ -200,6 +260,13 @@ final class WooCommerceInventoryProductWriter {
 		}
 	}
 
+	private function failure_reason( mixed $value ): string {
+		$value = strtolower( $this->text( $value ) );
+		$value = preg_replace( '/[^a-z0-9]+/', '_', $value ) ?? '';
+
+		return trim( substr( $value, 0, 120 ), '_' );
+	}
+
 	private function positive_int( mixed $value ): ?int {
 		if ( is_int( $value ) && $value > 0 ) {
 			return $value;
@@ -218,5 +285,9 @@ final class WooCommerceInventoryProductWriter {
 
 	private function term_slug( mixed $value ): string {
 		return strtolower( preg_replace( '/[^a-z0-9-]+/', '-', trim( (string) $value ) ) ?? '' );
+	}
+
+	private function taxonomy_key( mixed $value ): string {
+		return strtolower( preg_replace( '/[^a-z0-9_]+/', '_', trim( (string) $value ) ) ?? '' );
 	}
 }

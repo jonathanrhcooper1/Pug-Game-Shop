@@ -173,7 +173,9 @@ export function createWordPressInventorySalePush(options = {}) {
 }
 
 export function inventoryIntakeBody(item = {}, options = {}) {
-  const priceMinorUnits = boundedMinorUnits(item.price_minor_units)
+  const priceMinorUnits = roundSalePriceMinorUnits(item.price_minor_units)
+  const minimumSalePriceMinorUnits = roundSalePriceMinorUnits(item.minimum_sale_price_minor_units ?? priceMinorUnits)
+  const marketPriceMinorUnits = boundedMinorUnits(item.market_price_minor_units ?? item.auto_price_minor_units ?? priceMinorUnits)
   const locationId = positiveInt(item.location_id ?? options.defaultLocationId)
   const activeLocationConfigured = locationId !== null
   const onlineVisibility = cleanVisibility(item.online_visibility, options.defaultOnlineVisibility ?? "visible")
@@ -197,13 +199,16 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     language: cleanText(item.language || "EN"),
     status: activeLocationConfigured ? "available" : "pending_intake",
     raw_or_graded: cleanRawOrGraded(item.raw_or_graded),
+    grading_company: cleanText(item.grading_company),
+    grade: cleanText(item.grade),
+    cert_number: cleanText(item.cert_number),
     condition_code: cleanText(item.condition || "RAW"),
     barcode: cleanBarcode(item.barcode),
     sku: cleanBarcode(item.barcode),
     sale_currency: "USD",
-    minimum_sale_price_minor_units: priceMinorUnits,
+    minimum_sale_price_minor_units: minimumSalePriceMinorUnits,
     sale_price_minor_units: priceMinorUnits,
-    market_price_minor_units: priceMinorUnits,
+    market_price_minor_units: marketPriceMinorUnits,
     online_visibility: onlineVisibility,
     kiosk_visibility: cleanVisibility(item.kiosk_visibility, options.defaultKioskVisibility ?? "visible"),
     pos_visibility: cleanVisibility(item.pos_visibility, options.defaultPosVisibility ?? "visible"),
@@ -256,8 +261,44 @@ function woocommerceProductSyncResponse(body) {
           .filter((value) => value !== null)
       : [],
     errors: Array.isArray(sync.errors) ? sync.errors.map((value) => String(value)) : [],
+    execution: safeWooCommerceExecution(sync.execution),
     payment_capture_deferred: sync.payment_capture_deferred !== false,
     square_inventory_deferred: sync.square_inventory_deferred !== false,
+  }
+}
+
+function safeWooCommerceExecution(value) {
+  if (!value || typeof value !== "object") {
+    return {
+      status: "",
+      operation_results: [],
+      write_request_code: "",
+    }
+  }
+
+  return {
+    status: String(value.status ?? ""),
+    projection_code: String(value.projection_code ?? ""),
+    write_request_code: String(value.woocommerce_write_request_code ?? ""),
+    operation_results: Array.isArray(value.operation_results)
+      ? value.operation_results.map((row) => safeWooCommerceOperationResult(row))
+      : [],
+  }
+}
+
+function safeWooCommerceOperationResult(value) {
+  if (!value || typeof value !== "object") {
+    return {}
+  }
+
+  return {
+    status: String(value.status ?? ""),
+    code: String(value.code ?? ""),
+    operation: String(value.operation ?? ""),
+    product_id: positiveInt(value.product_id),
+    failure_type: String(value.failure_type ?? ""),
+    failure_code: String(value.failure_code ?? ""),
+    failure_reason: String(value.failure_reason ?? ""),
   }
 }
 
@@ -333,6 +374,16 @@ function boundedMinorUnits(value) {
   return Number.isFinite(parsed) ? Math.max(0, Math.min(99_999_999, parsed)) : 0
 }
 
+function roundSalePriceMinorUnits(value) {
+  const amount = boundedMinorUnits(value)
+
+  if (amount <= 100 || amount % 100 === 0) {
+    return amount
+  }
+
+  return Math.ceil(amount / 100) * 100
+}
+
 function positiveInt(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10)
 
@@ -352,9 +403,20 @@ function boundedTimeout(value) {
 }
 
 function cleanGame(value) {
-  const game = String(value ?? "pokemon").trim()
+  const game = String(value ?? "pokemon").trim().toLowerCase()
+  const aliases = {
+    magic: "magicthegathering",
+    mtg: "magicthegathering",
+    "magic-the-gathering": "magicthegathering",
+    onepiece: "onepiece",
+    "one-piece": "onepiece",
+    "one-piece-card-game": "onepiece",
+  }
+  const normalizedGame = aliases[game] ?? game
 
-  return ["pokemon", "magic", "lorcana", "one-piece"].includes(game) ? game : "pokemon"
+  return ["pokemon", "magicthegathering", "lorcana", "onepiece"].includes(normalizedGame)
+    ? normalizedGame
+    : "pokemon"
 }
 
 function cleanText(value) {

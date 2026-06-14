@@ -8,6 +8,9 @@
 namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Settings\BrandingSettings;
+use TCGStorePlatform\Settings\CustomerCreditSettings;
+use TCGStorePlatform\Settings\FulfillmentNotificationSettings;
+use TCGStorePlatform\Settings\GradingCompanySettings;
 use TCGStorePlatform\Settings\OfflinePairingAuthorizationSettings;
 use TCGStorePlatform\Settings\OfflineRouteRuntimeSettings;
 use TCGStorePlatform\Settings\ScryDexProviderSettings;
@@ -43,6 +46,9 @@ final class SettingsTest extends TestCase {
 		$this->assert_true( isset( $defaults['offline_pairing_authorization'] ) );
 		$this->assert_true( isset( $defaults['offline_route_runtime'] ) );
 		$this->assert_true( isset( $defaults['inventory_route_runtime'] ) );
+		$this->assert_true( isset( $defaults['grading_companies'] ) );
+		$this->assert_true( isset( $defaults['customer_credit'] ) );
+		$this->assert_true( isset( $defaults['fulfillment_notifications'] ) );
 		$this->assert_true( isset( $defaults['scrydex_provider'] ) );
 		$this->assert_true( isset( $defaults['scrydex_usage_budget'] ) );
 		$this->assert_true( isset( $defaults['scrydex_schedule'] ) );
@@ -50,6 +56,9 @@ final class SettingsTest extends TestCase {
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_search_route_enabled'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_false( $defaults['inventory_route_runtime']['staff_mark_sold_route_enabled'] );
+		$this->assert_same( GradingCompanySettings::defaults(), $defaults['grading_companies'] );
+		$this->assert_same( CustomerCreditSettings::defaults(), $defaults['customer_credit'] );
+		$this->assert_same( FulfillmentNotificationSettings::defaults(), $defaults['fulfillment_notifications'] );
 		$this->assert_same( ScryDexProviderSettings::defaults(), $defaults['scrydex_provider'] );
 		$this->assert_same( ScryDexUsageBudgetSettings::defaults(), $defaults['scrydex_usage_budget'] );
 		$this->assert_same( ScryDexScheduleSettings::defaults(), $defaults['scrydex_schedule'] );
@@ -118,6 +127,34 @@ final class SettingsTest extends TestCase {
 		$this->assert_true( $result['inventory_route_runtime']['staff_create_route_enabled'] );
 		$this->assert_true( $result['inventory_route_runtime']['staff_mark_sold_route_enabled'] );
 		$this->assert_false( $result['inventory_route_runtime']['public_search_route_enabled'] );
+	}
+
+	public function test_store_policy_settings_are_sanitized(): void {
+		$result = Settings::sanitize(
+			array(
+				'grading_companies'         => array(
+					'companies' => "PSA\nCGC\nPSA\nCustom Slab",
+				),
+				'customer_credit'           => array(
+					'local_store_only'                       => true,
+					'online_redemption_enabled'              => true,
+					'manager_approval_threshold_minor_units' => '-1',
+				),
+				'fulfillment_notifications' => array(
+					'audio_enabled'              => false,
+					'ready_pickup_email_enabled' => false,
+					'notification_sound_url'     => 'javascript:alert(1)',
+				),
+			)
+		);
+
+		$this->assert_same( array( 'PSA', 'CGC', 'Custom Slab', 'Other' ), $result['grading_companies']['companies'] );
+		$this->assert_true( $result['customer_credit']['local_store_only'] );
+		$this->assert_false( $result['customer_credit']['online_redemption_enabled'] );
+		$this->assert_same( 0, $result['customer_credit']['manager_approval_threshold_minor_units'] );
+		$this->assert_false( $result['fulfillment_notifications']['audio_enabled'] );
+		$this->assert_false( $result['fulfillment_notifications']['ready_pickup_email_enabled'] );
+		$this->assert_same( '', $result['fulfillment_notifications']['notification_sound_url'] );
 	}
 
 	public function test_offline_route_runtime_settings_are_sanitized(): void {

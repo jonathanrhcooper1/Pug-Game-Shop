@@ -1,7 +1,1166 @@
 # Revision Log
 
+## 2026-06-14 - Production Release Verification And Packaging
+
+### What Changed
+
+- Completed the final production release pass for the website plugin, storefront theme, local middleman server, employee app, and customer kiosk.
+- Fixed the local app conflict summary so resolved conflicts do not continue to show after restart.
+- Fixed WooCommerce grouped singles option keys so the same card/set/printing is grouped with independent condition choices instead of duplicate raw-card rows.
+- Fixed local trade-in order persistence by aligning the SQLite insert placeholder count with the trade-in order columns.
+- Normalized storefront menu links to HTTPS on the production domain.
+- Rebuilt installable production artifacts for the WordPress plugin, storefront theme, local server, employee app, kiosk package, and Windows app installer.
+- Added the final website/app/kiosk clickthrough report with production deployment caveats.
+
+### Why
+
+- The production package needed one final end-to-end pass proving active syncs, pickup fulfillment, graded inventory, trade-ins, reports, and release artifacts work together before handoff.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+- `docs/FINAL_CLICKTHROUGH_2026-06-14.md`
+
+### Migrations Added
+
+- No new WordPress migration was added in this final patch.
+- Existing local SQLite migration guards for trade-in conversion fields and credit-ledger audit fields were verified by the full test suite.
+
+### Tests Added
+
+- Added a WordPress unit test proving blank raw singles rows and explicit raw singles rows merge into one grouped product option.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:local -- --filter InventoryProductProjectionPlannerTest`: passed; runner reported 1033 tests, 0 failures.
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd test`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `node scripts/production-verify-active-syncs.mjs`: passed.
+- `npm.cmd run production:verify-reference-search`: passed.
+- `npm.cmd run build:offline-app:windows`: passed.
+- `npm.cmd run package:production-release`: passed.
+- `npm.cmd run package:wordpress-theme`: passed.
+- Browser clickthrough covered production Home, Singles, filtered Singles, Sealed, Graded, Accessories, Events, Buying, Cart, a Charizard product detail page, mobile Singles/Product/Kiosk, and all local app sections.
+
+### Rollback Notes
+
+- If the release must be rolled back, reinstall the previous plugin/theme ZIPs and restart the local middleman server from the prior package. The final SQLite column guards are additive and can remain unused without destroying trade-in, credit, or inventory data.
+
+## 2026-06-14 - Customer Credit Ledger Line Details
+
+### What Changed
+
+- Added local middleman ledger fields for balance before, staff user, reference id, and exact line items.
+- Added local SQLite migration guards for existing `credit_ledger_entries` databases.
+- Updated local credit adjustment entries to include staff, before/after balance, reference, and a credit-given/adjustment line item.
+- Updated Square POS credit redemption entries to include staff, before/after balance, Square receipt reference, sale total, and credit-used line item.
+- Updated the employee app ledger preview to show staff/reference, exact line items, and before/after balances.
+
+### Why
+
+- Store credit needs an auditable line-item ledger so managers can see exactly what caused each credit/cash movement and which staff member handled it.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite adds `balance_before_minor_units`, `staff_user_id`, `reference_id`, and `line_items_json` to `credit_ledger_entries` if missing.
+- WordPress schema was not changed in this pass.
+
+### Tests Added
+
+- Local sync runtime tests now assert balance before/after, staff user, references, and line-item details for credit adjustments and Square POS credit redemptions.
+- App UI contracts now assert the visible ledger line-item display and before/after balance markers.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:persistence`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:local -- --filter StoreReportsPlannerTest`: passed; local runner reported 1032 tests, 0 failures.
+
+### Rollback Notes
+
+- Reverting this pass removes richer local ledger detail display and local ledger audit columns. Existing columns can remain unused; customer balances and WordPress ledger data are not destroyed.
+
+## 2026-06-14 - Inventory Intake Grouping And WooCommerce Sync Verification
+
+### What Changed
+
+- Updated the employee app after-intake filter to search by card name instead of the generated barcode.
+- This keeps same-card/same-printing inventory visible as one grouped card with condition stock selectors after adding NM, LP, or other condition copies.
+- Verified the local inventory push path still requests WordPress inventory creation and WooCommerce product sync when visibility allows it.
+
+### Why
+
+- Staff need to see one card printing with condition choices, not a filtered one-barcode view that makes newly added conditions look like separate cards.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required.
+
+### Tests Added
+
+- App UI contract now asserts the post-intake inventory filter uses the card name.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-push`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`: passed.
+
+### Rollback Notes
+
+- Reverting this pass restores barcode-focused filtering after intake. It does not affect saved inventory or WooCommerce products.
+
+## 2026-06-14 - Trade-In Transaction Lifecycle Guards
+
+### What Changed
+
+- Added local middleman trade-in conversion audit fields: `converted_at_utc` and `converted_by_user_id`.
+- Added local SQLite migration guards for existing `trade_in_orders` databases.
+- Enforced trade-in status transitions so rejected/completed records are terminal, paid requires approval, conversion requires approved/paid, and duplicate conversion is blocked.
+- Exposed Convert, Complete, and Reject actions in the employee app alongside Review, Approve, and Paid.
+- Displayed conversion timestamp/user on shared trade-in transaction cards.
+
+### Why
+
+- Trade-ins must remain separate transaction records until intentionally converted, and staff need a reliable audit trail showing who processed and converted each trade/buy-in.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite adds `converted_at_utc` and `converted_by_user_id` columns to `trade_in_orders` if missing.
+- WordPress schema was not changed in this pass.
+
+### Tests Added
+
+- Local sync trade-in tests now verify blocked premature paid status, approved/paid/converted/completed progression, duplicate conversion blocking, terminal status protection, and conversion audit fields.
+- App contracts now assert conversion action/status UI markers and client response fields.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+
+### Rollback Notes
+
+- Reverting this pass removes lifecycle guards and app buttons. Existing local SQLite columns can remain unused; they do not affect sellable inventory or WordPress data.
+
+## 2026-06-14 - Graded Inventory Search Visibility
+
+### What Changed
+
+- Added an app inventory type filter for All inventory, Singles, and Graded Cards.
+- Expanded app inventory search matching to include product type, grading company, grade, and certification number.
+- Added selected-card graded metadata to the app detail panel.
+- Added a server-side `raw_or_graded` filter to WordPress staff inventory search requests, query planning, and prepared SQL.
+- Added a WordPress staff inventory search dropdown for Singles vs Graded Cards and displayed grade, grading company, and certification details in results.
+
+### Why
+
+- Graded-card intake existed in the data and product projection layers, but staff needed an obvious way to find, verify, and operate on graded inventory separately from normal singles.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. Existing inventory schema already stores `raw_or_graded`, grading company, grade, and certification number.
+
+### Tests Added
+
+- App UI/workspace contracts now assert graded inventory filter/detail markers and the shared inventory product-type filter export.
+- WordPress parser, planner, query-builder, and admin-presenter tests now cover the `raw_or_graded` staff inventory filter.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- PHP syntax checks for changed WordPress files: passed.
+- `npm.cmd run test:local -- --filter InventorySearch`: passed; local runner reported 1032 tests, 0 failures.
+
+### Rollback Notes
+
+- Reverting this entry removes the graded filter UI/API path but does not alter inventory data, WooCommerce products, or schema.
+
+## 2026-06-14 - Manager Reports Graph Dashboard
+
+### What Changed
+
+- Added a manager-only Business Reports admin screen with a filter bar for date,
+  staff, channel, game, product type, condition, grading company, and source.
+- Added a LAN middleman `GET /reports/{report}` proxy and WordPress reports
+  connector so manager/owner app sessions can pull report plans through the
+  local server without exposing website credentials to app clients.
+- Added graph-ready KPI cards, a Manager Decision Board, a Graph Dashboard,
+  Comparison Builder, Report Matrix, Retail KPI Library, CSV export links, and
+  a REST/app data contract for paired local apps.
+- Expanded the report planner with employee intake versus sales, online versus
+  in-store sales, trade-in cash versus credit, inventory profitability,
+  fulfillment timing, ScryDex sync health, Square/POS reconciliation, and audit
+  reporting structures.
+- Added retail KPI formulas for sell-through rate, inventory turnover, days and
+  weeks on hand, stock-to-sales ratio, GMROI, average order value, and credit
+  redemption rate.
+
+### Why
+
+- Managers need a polished reports area that compares employees, channels,
+  inventory health, trade-ins, fulfillment, and sync health instead of only raw
+  table exports.
+- The local app needs a stable reports contract it can request when a manager is
+  authenticated, while still keeping reports private and paginated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ReportsController.php`
+- `apps/wordpress-plugin/src/Reports/StoreReportsPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/StoreReportsPlannerTest.php`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressReportsPull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-reports-pull.mjs`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. This pass adds report planning, manager UI,
+  and REST contract metadata against the existing inventory, WooCommerce,
+  customer credit, buylist/trade-in, ScryDex, Square/POS, and audit tables.
+
+### Tests Added
+
+- Store report planner tests now verify graph filters, comparison sets, retail
+  KPIs, manager-only data contracts, admin UI markers, and report/export
+  contracts.
+- Local sync tests now verify WordPress report pulling, manager-only LAN report
+  access, secret-safe responses, and app client report contract typing.
+
+### Verification
+
+- `npm.cmd run test:local`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+
+### Rollback Notes
+
+- Reverting these changes removes the manager reports dashboard UI and expanded
+  report metadata plus the local reports proxy, but does not alter store data or
+  database schema.
+
+## 2026-06-14 - Trade-In Line Value Controls
+
+### What Changed
+
+- Kept Inventory as the sellable inventory intake/search screen and Trade-Ins
+  as the separate customer trade/buy-in workflow.
+- Added independent per-card trade-in line controls in the app for payout
+  percentage, cash/credit payout type, and manually editable final value.
+- Removed trade-in value preview/staging controls from the Inventory screen so
+  existing inventory intake stays separate from customer trade/buy-in work.
+- Updated Trade-Ins staging to use the currently selected inventory card when
+  the intake form is empty, preserving the separate workflow while making the
+  staff path usable from inventory search/list selection.
+- Tightened the Trade-Ins screen layout so shared draft lookup, processed-by
+  filters, and saved drafts wrap cleanly without horizontal overflow.
+- Updated the LAN middleman trade-in sanitizer to preserve each line's manual
+  final value while also storing the calculated default value from market mid
+  and percentage.
+- Updated trade-in totals to use each line's stored final value instead of
+  recalculating all lines from one global percentage.
+
+### Why
+
+- Each card in a trade/buy-in can deserve a different percentage and final value.
+  Staff need to adjust those values at line level without turning the inventory
+  screen into a trade-in workflow.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. Trade-in item JSON now carries additional
+  line-value fields through the existing local middleman order payload.
+
+### Tests Added
+
+- Local sync trade-in tests now verify a manual final value is preserved and
+  totals use the manual value while retaining the calculated default value.
+- Offline app UI contract now protects the per-line percentage/final-value
+  controls and manual-value guidance.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+
+## 2026-06-14 - Local App Reports Screen
+
+### What Changed
+
+- Added Reports as a manager/owner app workspace and navigation target.
+- Added date, employee, channel, game, and report-type filters to the local app.
+- Added graph-style comparison cards for employee intake versus sales, online
+  versus in-store sales, and trade-in cash versus credit.
+- Added KPI cards for inventory health, customer credit, and operations audit.
+- Wired the Reports screen to the LAN middleman `getManagerReport` client so an
+  authenticated manager can pull website report data without exposing
+  WordPress credentials in the app.
+- Tightened the selected-card preview frame so Inventory and Graded Cards
+  intake do not generate horizontal overflow in the local app.
+
+### Why
+
+- Managers need the same reports work available from the local app, not only
+  from the WordPress admin screen.
+- The report UI needs to support store decisions like employee accountability,
+  channel comparison, inventory health, and trade-in payout review.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. This adds a manager app surface over the
+  existing LAN reports endpoint and report planner contracts.
+
+### Tests Added
+
+- Offline app UI contract now protects the Reports navigation, manager graph
+  dashboard text, comparison cards, KPI cards, Reports styling hooks, and LAN
+  report pull handler.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`: passed.
+
+### Rollback Notes
+
+- Reverting this section removes the local app Reports screen only. WordPress
+  admin reports and the LAN reports proxy remain independent unless their
+  earlier changes are also reverted.
+
+## 2026-06-14 - Pickup Fulfillment Status Fix
+
+### What Changed
+
+- Preserved locally checked fulfillment item IDs after a successful WordPress
+  Ready for Pickup status push.
+- Refreshed the shared fulfillment queues after kiosk or website pickup status
+  changes so staff see updates without a hard reload.
+- Cleared the active picking drawer when kiosk or website pickup orders are
+  completed so they move into completed/searchable history immediately.
+- Added app contract markers for the Ready for Pickup handler, pick checklist
+  update route, status update route, queue refresh, and active drawer clearing.
+
+### Why
+
+- The app could appear to lose picked-card state after WordPress accepted the
+  Ready for Pickup update because WordPress status responses do not carry the
+  app's local picked checklist.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-fulfillment.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. This preserves existing fulfillment
+  payload state during status synchronization.
+
+### Tests Added
+
+- Local sync fulfillment test now verifies picked item IDs, picked count, and
+  all-items-picked state survive a successful Ready for Pickup WordPress push.
+- Offline app UI contract now verifies the button flow calls the fulfillment
+  status route, pick checklist route, queue refresh, and active picker cleanup.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:fulfillment`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:local -- --filter FulfillmentOrderControllerTest`: passed
+  through the full local plugin runner with 1032 tests, bootstrap smoke, and
+  PHP lint.
+
+### Rollback Notes
+
+- Reverting this section restores the previous behavior where a successful
+  WordPress fulfillment status response can overwrite local picked checklist
+  state and staff may need to refresh manually to see completed history.
+
+### Rollback Notes
+
+- Reverting this change returns trade-in lines to calculated-only values. Saved
+  line payloads with manual values remain harmless but would no longer be used by
+  the app/server totals after rollback.
+
+## 2026-06-14 - Trade-In Transaction Attribution and Lookup
+
+### What Changed
+
+- Added searchable trade-in/buy-in transaction lookup across order id, customer,
+  staff id/name, card, set, condition, grade, grading company, payout type, and
+  notes in the LAN middleman server.
+- Returned `staff_user_name` with each shared trade-in record and kept
+  `staff_user_id` as the reportable immutable processor identity.
+- Added Trade-Ins app controls for transaction search and staff filtering, and
+  each saved draft now shows "Processed by" plus the receipt/order id.
+- Added a storefront HTTPS normalization filter for same-site production links
+  on `j84.285.myftpupload.com`.
+
+### Why
+
+- Trade-ins and inventory work need to be attributable to the logged-in staff
+  member so managers can audit who processed each customer transaction and use
+  it in reports.
+- Staff need to look up prior trade/buy-in records like transactions instead of
+  relying on a flat unresolved queue.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress schema migration was required. Existing local middleman
+  `trade_in_orders.staff_user_id` data is reused and enriched at read time with
+  the current staff display name.
+
+### Tests Added
+
+- Local sync trade-in tests now verify staff id/name are returned and saved
+  trade-in records can be found by customer, staff, receipt/order id, and item
+  text.
+- Offline app UI shell contract now protects transaction lookup, staff filters,
+  and "Processed by" display.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:offline-app`: passed, including Rust/Tauri command tests.
+- `npm.cmd run test:packaging`: passed.
+
+### Rollback Notes
+
+- Reverting these changes removes the new lookup filters and staff-name display,
+  but existing trade-in order rows keep their `staff_user_id` values.
+- No data rollback is required.
+
+## 2026-06-14 - App Intake Search, Graded Sync, Fulfillment Completion
+
+### What Changed
+
+- Updated offline app ScryDex lookup so inventory intake requests all matching
+  local candidates, keeps the full result list visible after staff choose Use
+  Card, and supports Set / Expansion filtering for broad names like Swamp or
+  Demonic Tutor.
+- Added app-side graded-card intake controls and passed grading company, grade,
+  and certification number through the LAN server storage and WordPress
+  inventory push payload.
+- Reworked the app sync banner to derive Online / Online local-cache / Offline
+  fallback from current LAN and WordPress connector checks, with last-sync time
+  refreshed by heartbeat, status, kiosk, and auto-sync runs.
+- Split Order Fulfillment into active pickup work and searchable completed
+  history by customer, order, receipt, barcode, and card text.
+- Fixed fulfillment pick identity cleanup so checked cards can be recorded by
+  public id, inventory id, reservation id, or WooCommerce order item id.
+- Rebuilt the production release bundle with the updated local middleman server
+  and app source.
+
+### Why
+
+- Staff inventory intake needs to show every matching printing and narrow by
+  set instead of hiding candidates after one selection.
+- Graded-card inventory must travel through the same app-to-website sync path
+  as singles.
+- The employee app was displaying stale/offline status even when the LAN server
+  and production WordPress connector were healthy.
+- Fulfillment needs a clean active queue plus completed lookup instead of an
+  ever-growing unresolved stack.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `scripts/production-run-local-pickup-fulfillment-smoke.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite compatibility migrations add `grading_company`,
+  `grade`, and `cert_number` columns when an existing local database is opened.
+- No WordPress schema migration was required for this chunk.
+
+### Tests Added
+
+- Production pickup fulfillment smoke now explicitly syncs the pick checklist
+  before marking pickup orders ready/completed.
+- Local sync fulfillment coverage now verifies checked item persistence through
+  the ready-for-pickup flow.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run package:production-release`: rebuilt
+  `dist/the-pug-production-release-0.202.0.zip`.
+- `npm.cmd run production:verify-active-syncs`: passed; verified ScryDex
+  catalog/search, public shop shortcodes, local inventory push, WooCommerce
+  product projection with Square-sale handling, customer credit/customer/event/
+  kiosk workflows, and local pickup fulfillment.
+
+### Rollback Notes
+
+- Restore the prior app installer and local middleman server ZIP from the
+  previous release package if the new app/fulfillment behavior must be reverted.
+- No WordPress data rollback is required for this chunk.
+- If a local SQLite database was opened with the new graded columns, older code
+  can ignore those extra columns.
+
+## 2026-06-14 - Store Operations, Trade-In Calculator, Reports Foundation
+
+### What Changed
+
+- Added platform settings for grading-company lists, customer-credit policy,
+  and fulfillment notifications.
+- Exposed the store-operations settings on the WordPress settings page for
+  manager-level configuration.
+- Updated staff inventory intake UI to show Singles / Graded Cards product
+  types and graded-specific fields for grading company, grade, and
+  certification number.
+- Added `BuylistTradeInValuePlanner` for market-mid based trade-in math:
+  selectable 0% to 100% percentages in 5% increments, round-down-to-whole-dollar
+  values, per-item cash/credit payout, and logged manager override reasons.
+- Added `BuylistReceiptPresenter` so trade-in receipts use stored line-item
+  values instead of recalculating later.
+- Added manager-only report planning and REST scaffolding for customers, sales,
+  inventory, trade-ins, fulfillment, ScryDex/API, Square reconciliation, and
+  audit exports.
+- Wired fulfillment ready-for-pickup email sending to the new notification
+  setting.
+
+### Why
+
+- Graded cards and store credit need configurable production controls instead
+  of hardcoded assumptions.
+- Trade-in values must be consistent between staff UI, receipts, ledger, and
+  reports.
+- Reports and exports need a manager-only contract before heavier SQL execution
+  is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/GradingCompanySettings.php`
+- `apps/wordpress-plugin/src/Settings/CustomerCreditSettings.php`
+- `apps/wordpress-plugin/src/Settings/FulfillmentNotificationSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistTradeInValuePlanner.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistReceiptPresenter.php`
+- `apps/wordpress-plugin/src/Reports/StoreReportsPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/ReportsController.php`
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/*`
+
+### Migrations Added
+
+- None. Existing inventory and buylist schemas already include graded company,
+  grade, and certification-number fields.
+
+### Tests Added
+
+- Store policy settings sanitizer/source coverage.
+- Trade-in value planning tests for market-mid rounding, mixed cash/credit,
+  manager overrides, 5% percentage increments, and receipt totals.
+- Report planner and manager-only controller contract tests.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`: 1030 tests, 0 failures.
+- `php apps/wordpress-plugin/tests/lint.php`: 646 PHP files checked, 0 failures.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run test:offline-app`: passed, including 22 Rust/Tauri tests.
+- `npm.cmd run package:wordpress`: created
+  `dist/tcg-store-platform-0.202.0.zip`.
+- `npm.cmd run package:local-sync-server`: created
+  `dist/pug-local-sync-middleman-server.zip`.
+- `npm.cmd run production:install-package`: installed plugin `0.202.0` on
+  production after a one-file hot patch corrected early REST registration.
+- `npm.cmd run production:verify-reference-search`: passed.
+- `npm.cmd run production:verify-public-shortcodes`: passed.
+- `PUG_PROD_CONFIRM_LOCAL_SYNC_INVENTORY_SMOKE=run-production-local-sync-inventory-smoke npm.cmd run production:local-sync-inventory-smoke`:
+  passed and cleaned up the hidden test row.
+- Production route check: reports route and ScryDex catalog status route are
+  registered.
+
+### Production Backups
+
+- Database backup: `$HOME/tcg-production-backups/pug-production-before-plugin-20260614T061246Z.sql`
+- wp-content backup: `$HOME/tcg-production-backups/pug-production-wp-content-20260614T061246Z.tgz`
+
+### Rollback Notes
+
+- Reinstall the prior plugin ZIP to remove these store-operation settings and
+  planner/controller classes.
+- No schema rollback is required for this chunk.
+- If a ready-pickup email policy is misconfigured, disable the email setting in
+  WordPress settings rather than rolling back code.
+
+### Known Remaining Work
+
+- The local app does not yet have a dedicated live trade-in screen consuming the
+  5% increment planner contract.
+- No existing gas-line module/spec was found in the repository; unrelated gas
+  logic was not invented.
+
+## 2026-06-14 - Corrected Production Connector, Rounding, Fulfillment
+
+### What Changed
+
+- Updated local app and LAN sync defaults to use the corrected production
+  WordPress REST URL over HTTPS.
+- Added `PriceRounding` as the centralized PHP helper for sale and trade-in
+  rounding rules, and mirrored the sale rounding behavior in the employee app
+  and LAN sync server.
+- Configured the local sync environment for the live Main Store location
+  (`location_id = 1`) and verified normal app intake creates accepted WordPress
+  inventory instead of remaining pending.
+- Added a WooCommerce `Ready for pickup` status registration path and one-time
+  ready-for-pickup customer email logic for fulfillment updates.
+
+### Why
+
+- WordPress application passwords on the corrected site authenticate over HTTPS,
+  so HTTP REST pushes were rejected even though the plugin was active.
+- Staff intake pricing needed to follow the store policy consistently before
+  inventory is published to WooCommerce.
+- Pending intake was caused by missing location/runtime connector setup, not by
+  the card lookup itself.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Pricing/PriceRounding.php`
+- `apps/wordpress-plugin/src/Pricing/PricingCalculator.php`
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/wordpress-plugin/tests/Unit/PricingCalculatorTest.php`
+- `apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/*`
+- `.env.local-sync` and `.env.production.local` locally only; secrets are not
+  committed.
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Pricing tests for sale-price round-up and trade-in round-down examples.
+- LAN/WordPress inventory push tests for sale-price rounding.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`: 1019 tests, 0 failures.
+- `php apps/wordpress-plugin/tests/lint.php`: 637 PHP files, 0 failures.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run production:install-package`: installed and activated plugin
+  `0.202.0` on the corrected site with database and wp-content backups.
+- Live smoke: app -> LAN sync -> HTTPS WordPress inventory intake accepted one
+  test item, status `available`, rounded 101 cents to 200 cents.
+
+### Rollback Notes
+
+- Restore the plugin backup created by the installer or reinstall the previous
+  plugin ZIP from WordPress if the new fulfillment/pricing behavior must be
+  reverted.
+- Restore the database backup only if live inventory smoke rows or settings
+  must be removed wholesale; otherwise remove the smoke inventory rows in admin.
+- Revert the local `.env.local-sync` URL/location changes only when intentionally
+  pointing the app back to a different WordPress site.
+
+## 2026-06-10 - Grouped Local Inventory With Condition Stock
+
+- Why: Adding the same printing in NM and LP correctly created two serialized
+  physical inventory copies, but the employee app incorrectly presented them
+  as two different cards.
+- Changed: Grouped matching game/card/set/collector-number/printing records in
+  the employee inventory list and grid, added aggregate stock and price ranges,
+  added condition quantity selectors, and kept the selected condition mapped to
+  one available serialized copy for barcode, location, hold, Square sale, and
+  adjustment workflows.
+- Files affected: Offline app UI, styles, UI contracts, and release logs.
+- Migrations: None. Serialized copy records remain unchanged.
+- Tests: Offline app TypeScript, UI/package contracts, production build, and
+  browser verification with multiple conditions for one printing.
+- Rollback: Restore per-copy inventory list rendering and remove the grouped
+  condition selectors. No inventory data rollback is required.
+
+## 2026-06-10 - Product Images, Singles Links, And Pick Rows
+
+- Why: Remote ScryDex art was visible in Singles search but WooCommerce fell
+  back to placeholders on card detail and cart surfaces; game cards opened
+  category archives instead of filtered Singles; and employee picking rows
+  were too dense for quick fulfillment.
+- Changed: Added a direct grouped-card product gallery fallback and cart
+  thumbnail hook, including lazy canonical-inventory image recovery for legacy
+  serialized products, routed home game cards to filtered Singles URLs, normalized
+  Magic display labels to MTG, and redesigned pick rows with cached card art,
+  barcode, pull location, price, and clearer completion state.
+- Files affected: WooCommerce grouped-product hooks/styles/tests, public
+  inventory presenter/tests, storefront theme home/functions, offline app
+  UI/styles/contracts, and release logs.
+- Migrations: None.
+- Tests: WordPress plugin unit suite, PHP syntax checks, offline app contracts
+  and production build, followed by live product, cart, home-link, and
+  responsive pick-screen verification.
+- Rollback: Revert the new WooCommerce gallery/cart hooks, restore category
+  URLs and prior labels, and restore the former fulfillment row markup/styles.
+
+## 2026-06-10 - Local system launcher
+
+- Why: Store demos and development need one command to start the LAN
+  middleman, employee app, and customer kiosk before signed installers are
+  produced.
+- Changed: Added `Start-Pug-Store.cmd`, `Stop-Pug-Store.cmd`, guarded
+  PowerShell launch/shutdown scripts, npm aliases, and deployment guidance.
+- Files affected: root command wrappers, `scripts/start-pug-store.ps1`,
+  `scripts/stop-pug-store.ps1`, `package.json`,
+  `docs/DEPLOYMENT_OFFLINE_APP.md`, and release logs.
+- Migrations: None.
+- Tests: Launcher reuse/health smoke plus existing local app and LAN server
+  suites.
+- Rollback: Remove the launcher files and npm aliases. Installed or manually
+  running services are unaffected because shutdown only targets recorded,
+  command-verified launcher processes.
+
+## 2026-06-10 - Full-screen customer kiosk connectivity
+
+- Why: The customer gallery inherited the employee app's named grid area,
+  reducing its width and showing an inaccurate offline label before kiosk
+  status was loaded.
+- Changed: Reset the standalone kiosk layout to a full-display flex surface,
+  removed the 48-card display cap, and added independent 15-second sync-status
+  polling with live, local, connecting, and offline labels.
+- Files affected: `apps/offline-app/src/App.tsx`,
+  `apps/offline-app/src/styles.css`, and release logs.
+- Migrations: None.
+- Tests: Offline app build/contracts plus desktop and mobile Browser layout,
+  status, search, cart, overflow, and console checks.
+- Rollback: Revert the kiosk shell overrides, status polling effect, and full
+  `kioskVisibleItems` rendering.
+
+## 2026-06-10 - Customer pickup tray redesign
+
+- Why: Added cards were rendered as unstructured text rows, and the tray
+  appeared after the entire gallery on smaller kiosk displays.
+- Changed: Added thumbnail-based order rows, concise card metadata and price
+  hierarchy, icon removal controls, a separated customer-details checkout
+  area, responsive tray ordering, and a persistent mobile pickup-summary
+  action for returning to the list after adding cards.
+- Files affected: `apps/offline-app/src/App.tsx`,
+  `apps/offline-app/src/styles.css`, and release logs.
+- Migrations: None.
+- Tests: Offline app build/contracts and desktop/mobile Browser interaction,
+  layout, remove-control, overflow, and console verification.
+- Rollback: Restore the prior simple pickup-list markup and remove the
+  kiosk-cart-specific responsive styles and mobile pickup-summary action.
+
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
+
+## 2026-06-09 - Customer Kiosk And Paid Pickup Fulfillment Split
+
+### What Changed
+
+- Added a dedicated customer-only kiosk app surface at `?mode=kiosk` so the
+  customer screen can browse only in-stock kiosk-visible inventory, build a
+  first/last-name pickup request, and submit it without a staff PIN.
+- Changed the employee app's visible Kiosk section into Order Fulfillment,
+  keeping staff-only PIN access and showing customer kiosk requests separately
+  from paid website local-pickup orders.
+- Added WordPress REST endpoints for paid WooCommerce local-pickup fulfillment:
+  `GET /wp-json/tcg-store/v1/fulfillment/orders` and
+  `PATCH /wp-json/tcg-store/v1/fulfillment/orders/{order_id}/status`.
+- Added a LAN middleman fulfillment connector that pulls paid WooCommerce
+  pickup orders, caches them in SQLite, exposes `/fulfillment/orders`, and
+  retries staff status updates when WordPress is temporarily unavailable.
+- Extended normal LAN website pull sync to include fulfillment orders alongside
+  inventory and events.
+- Removed the production staging banner flags from the live site configuration;
+  the separate public `noindex` meta remains to be traced outside the staging
+  banner module.
+
+### Why
+
+The kiosk is a customer-facing request screen, not the employee workflow. Paid
+website pickup orders need to enter the same staff pull queue after WooCommerce
+payment succeeds, while kiosk requests should reserve local copies first and be
+pulled by staff. Keeping status updates separate from payment and inventory
+mutation prevents accidental payment capture or double inventory changes during
+fulfillment.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php`
+- `apps/local-sync-server/src/wordpressFulfillmentPull.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/wordpress-fulfillment-pull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-fulfillment.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local sync server SQLite table `fulfillment_orders`, created by the
+  middleman server migration. No WordPress database migration was added.
+
+### Tests Added
+
+- WordPress fulfillment route unit contract coverage.
+- LAN WordPress fulfillment connector parsing and status-push test.
+- LAN server fulfillment route test for paid pickup pull, status update,
+  secret redaction, and status/count reporting.
+- Offline app client/UI contract markers for fulfillment routes and the
+  two-source Order Fulfillment panel.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php --filter FulfillmentOrderControllerTest`
+- `php -l apps\wordpress-plugin\src\Api\V1\FulfillmentOrderController.php`
+- `php -l apps\wordpress-plugin\src\Bootstrap\Plugin.php`
+- `node apps\local-sync-server\tests\wordpress-fulfillment-pull.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-fulfillment.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-runtime.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-contract.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-multi-client.mjs`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert the WordPress fulfillment controller registration and redeploy the
+  previous plugin package to remove the REST routes.
+- Revert the local sync server fulfillment connector/store/route changes and
+  restart the LAN middleman server. The local `fulfillment_orders` table can be
+  left in place safely, or removed from a copied SQLite database if a clean
+  rollback image is required.
+- Revert the offline app fulfillment UI/client changes to restore the prior
+  kiosk-only employee tab.
+- No payment data or WooCommerce payment capture is changed by this revision.
+
+## 2026-06-09 - Offline App Catalog Result Expansion And Set Filter
+
+### What Changed
+
+- Removed the 8-result cap from the LAN middleman ScryDex reference-card search
+  for local-cache hits.
+- Added `limit` and `set`/`set_filter` query support to the local
+  `/scrydex/cards/search` endpoint.
+- Raised the WordPress reference-card search intake ceiling to 250 rows for
+  website catalog fallback lookups.
+- Added a compatibility retry that falls back to a 50-row website catalog
+  request if the live WordPress plugin has not yet been updated for 250-row
+  lookups.
+- Added a Set / Expansion filter to the offline app catalog lookup so broad
+  searches can show all returned cards while staff narrow by set before intake.
+- Preserved the selected-card handoff behavior: Use Card clears the lookup,
+  hides the result list, fills card name/set/price, and focuses the intake card
+  field.
+- Verified the production local-sync Square sale smoke after cleanup fixes.
+
+### Why
+
+Staff inventory intake needs to see every relevant printing returned by the
+local/website catalog instead of only the top 8 results. A set filter keeps
+large searches usable while preserving the database-first lookup flow: local
+reference cache first, website catalog proxy second, provider fallback only when
+needed.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision changes lookup behavior and UI only.
+
+### Tests Added
+
+- Local sync ScryDex reference search now asserts broad searches can return more
+  than 8 cards and set filtering narrows cached results.
+- Offline app shell and client contracts now guard the Set / Expansion filter
+  and URLSearchParams-based catalog search request.
+- WordPress route unit coverage now verifies 250-row reference lookup requests.
+
+### Tests Run
+
+- `node apps\local-sync-server\tests\scrydex-reference-search.mjs`
+- `node apps\local-sync-server\tests\wordpress-catalog-fallback.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-runtime.mjs`
+- `node apps\local-sync-server\tests\wordpress-inventory-push.mjs`
+- `node apps\local-sync-server\tests\wordpress-inventory-sale-push.mjs`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `php apps\wordpress-plugin\tests\run.php --filter InventorySearchRouteHandlerFactoryTest`
+- `npm.cmd run production:local-sync-square-sale-smoke`
+- Browser QA at `http://127.0.0.1:1420/`: searched Pokemon `a`, confirmed 25
+  results, filtered to `Pokemon TCG Classic - Charizard`, confirmed 4 visible
+  results, then used a card into intake with search cleared and fields filled.
+
+### Rollback Notes
+
+- Revert the local sync server, offline app, and WordPress route changes to
+  restore the previous 8-result/50-row behavior.
+- No database rollback is required.
+- If a release build has already been deployed, redeploy the prior plugin/app
+  package and restart the LAN middleman server.
+
+## 2026-06-09 - Square-Ready Woo Products, LAN Discovery, And Auto Pricing Floors
+
+### What Changed
+
+- Marked WooCommerce card product operations with the official WooCommerce
+  Square extension taxonomy request `wc_square_synced=yes`.
+- Updated the WooCommerce CRUD product writer to set that taxonomy on saved
+  products when WooCommerce Square has registered it, while deferring safely if
+  the extension/taxonomy is unavailable.
+- Replaced grouped card product image zoom/lightbox markup with a static ScryDex
+  image wrapper so clicking the product image no longer blocks the rest of the
+  product page.
+- Added LAN UDP discovery to the local sync middleman server and a Tauri command
+  plus offline app setup UI to discover/apply the local server without exposing
+  credentials.
+- Added intake pricing fields for current market, market plus 10 percent,
+  minimum sale floor, final sale price, and pricing source through the offline
+  app, middleman, and WordPress push payload.
+- Added a Windows service manifest and package contract for the local sync
+  middleman bundle.
+
+### Why
+
+Square for WooCommerce expects synced products to have unique SKUs and the
+extension's per-product "Sync with Square" flag enabled. The plugin already
+creates SKU/stock/price/product records; this revision makes new generated card
+products Square-ready through the extension's own taxonomy while preserving the
+Pug system as the exact serialized inventory authority. The app/server discovery
+and pricing-floor work support the production store flow where employee stations
+should connect to the LAN middleman quickly and add inventory at current market
+plus margin without violating staff-set minimum sale prices.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/WooCommerceInventoryProductWriterTest.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/local-sync-server/src/localSyncDiscovery.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/local-sync-discovery.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/config/windows-service.manifest.json`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src/data/tauriLocalSyncDiscoveryAdapter.ts`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/config/windows-package.manifest.json`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `scripts/package-local-sync-server.mjs`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added LAN discovery unit coverage for the middleman UDP responder and
+  no-credential discovery payload.
+- Added offline app contract coverage for Tauri discovery command registration,
+  discovery adapter wiring, setup UI markers, and Windows package manifest
+  discovery metadata.
+- Added WooCommerce product writer coverage for setting the official Square
+  sync taxonomy flag on generated products.
+- Added local sync runtime coverage for pricing-floor payloads flowing through
+  intake and WordPress inventory push.
+- Added local sync middleman package contract coverage.
+
+### Verification
+
+- `php -l apps\wordpress-plugin\src\WooCommerce\WooCommerceInventoryProductWriter.php`: passed.
+- `php -l apps\wordpress-plugin\src\WooCommerce\InventoryProductProjectionPlanner.php`: passed.
+- `php -l apps\wordpress-plugin\src\WooCommerce\GroupedInventoryProductHooks.php`: passed.
+- `php apps\wordpress-plugin\tests\run.php`: passed, 1011 tests, 0 failures.
+- `npm.cmd --prefix apps\local-sync-server test`: passed.
+- `npm.cmd --prefix apps\offline-app run typecheck`: passed.
+- `node apps\offline-app\tests\tauri-command-contract.mjs`: passed.
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`: passed.
+- `node apps\offline-app\tests\ui-shell-contract.mjs`: passed.
+- `node apps\offline-app\tests\windows-package-contract.mjs`: passed.
+- `node scripts\tests\local-sync-server-package-contract.mjs`: passed and built
+  `dist\pug-local-sync-middleman-server.zip`.
+- `node scripts\tests\wordpress-package-contract.mjs`: passed and built
+  `dist\tcg-store-platform-0.201.0.zip`.
+- `npm.cmd run test:offline-app:rust`: passed after cleaning generated Tauri
+  target artifacts to resolve a disk-space-only compile failure.
+- `cargo metadata --manifest-path apps\offline-app\src-tauri\Cargo.toml --format-version 1 --no-deps`: passed and reports `tcg-store-offline@0.201.0`.
+
+### Rollback Notes
+
+- Reinstall the prior production plugin package if the product image or Square
+  taxonomy compatibility causes storefront/admin issues.
+- Disable or revert the `square_sync` operation metadata and writer taxonomy
+  assignment if WooCommerce Square changes the expected sync marker.
+- Revert the LAN discovery additions to require manual middleman URLs only.
+- Revert the app/server pricing-floor changes to return intake to the previous
+  single sale-price field behavior.
+- No database rollback is required for this revision.
 
 ## 2026-06-09 - Online-First LAN Inventory And Square Sale Sync
 

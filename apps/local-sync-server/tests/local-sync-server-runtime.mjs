@@ -14,11 +14,12 @@ let wordpressKioskOrderPushCalls = 0
 let wordpressInventoryPullRows = []
 let wordpressEventsPullCalls = 0
 let wordpressEventPullRows = []
+let wordpressReportsPullCalls = 0
 
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
   serverUrl: "http://127.0.0.1:8787",
-  websiteUrl: "https://vbf.2a7.myftpupload.com/",
+  websiteUrl: "https://j84.285.myftpupload.com/",
   restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",
@@ -27,7 +28,7 @@ const server = createLocalSyncHttpServer({
 
       assert.equal(query, "moonbreon")
       assert.equal(game, "pokemon")
-      assert.equal(limit, 8)
+      assert.equal(limit, 250)
 
       return {
         status: "ok",
@@ -137,6 +138,10 @@ const server = createLocalSyncHttpServer({
         assert.equal(item.online_visibility, "hidden")
         assert.equal(item.kiosk_visibility, "visible")
         assert.equal(item.pos_visibility, "staff_only")
+        assert.equal(item.price_minor_units, 5000)
+        assert.equal(item.minimum_sale_price_minor_units, 5000)
+        assert.equal(item.market_price_minor_units, 3000)
+        assert.equal(item.auto_price_minor_units, 3300)
       }
 
       if (item.card_name === "Local Only Pull Guard") {
@@ -344,6 +349,40 @@ const server = createLocalSyncHttpServer({
         authorization_header_printed: false,
       }
     },
+    wordpressReportsPull: async ({ report, filters }) => {
+      wordpressReportsPullCalls += 1
+
+      assert.equal(report, "sales")
+      assert.equal(filters.channel, "square_pos")
+      assert.equal(filters.staff_user_id, "22")
+
+      return {
+        status: "ok",
+        code: "wordpress_reports_pull_ok",
+        report: "sales",
+        plan: {
+          report: "sales",
+          capability: "view_reports",
+          public: false,
+        },
+        rows: [
+          {
+            channel: "square_pos",
+            gross_sales: "125.00",
+          },
+        ],
+        meta: {
+          csv_header: "\"Channel\",\"Gross Sales\"\n",
+        },
+        dashboard_plan: {
+          capability: "view_reports",
+          public: false,
+        },
+        csv_header: "\"Channel\",\"Gross Sales\"\n",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
   },
 })
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
@@ -378,8 +417,8 @@ try {
   assert.equal(setupStatus.one_website_mode, true)
   assert.equal(setupStatus.setup_required, false)
   assert.equal(setupStatus.website_configured, true)
-  assert.equal(setupStatus.website_url, "https://vbf.2a7.myftpupload.com/")
-  assert.equal(setupStatus.wordpress_rest_base, "https://vbf.2a7.myftpupload.com/wp-json/tcg-store/v1")
+  assert.equal(setupStatus.website_url, "https://j84.285.myftpupload.com/")
+  assert.equal(setupStatus.wordpress_rest_base, "https://j84.285.myftpupload.com/wp-json/tcg-store/v1")
   assert.equal(setupStatus.local_database, "store-sync.sqlite")
   assert.equal(setupStatus.wordpress_pull_configured, true)
   assert.equal(setupStatus.wordpress_push_configured, true)
@@ -404,7 +443,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://vbf.2a7.myftpupload.com/",
+      website_url: "https://j84.285.myftpupload.com/",
       capabilities: ["Inventory", "Kiosk", "Customers", "Sync", "Status", "Settings"],
       heartbeat_interval_seconds: 20,
     },
@@ -512,6 +551,21 @@ try {
   assert.equal(updatedSetupStatus.config_source, "manager_app_settings")
   assert.equal(updatedSetupStatus.wordpress_connector_restart_required, true)
   assertNoSecrets(updatedSetupStatus)
+
+  const managerSalesReport = await fetchJson(`${baseUrl}/reports/sales?channel=square_pos&staff_user_id=22`, {
+    token: managerToken,
+  })
+  assert.equal(managerSalesReport.status, "ok")
+  assert.equal(managerSalesReport.action, "manager_report_pulled")
+  assert.equal(managerSalesReport.report, "sales")
+  assert.equal(managerSalesReport.plan.capability, "view_reports")
+  assert.equal(managerSalesReport.dashboard_plan.public, false)
+  assert.equal(managerSalesReport.rows.length, 1)
+  assert.equal(managerSalesReport.csv_header, "\"Channel\",\"Gross Sales\"\n")
+  assert.equal(managerSalesReport.wordpress_reports_pull_connected, true)
+  assert.equal(managerSalesReport.credentials_synced_to_client, false)
+  assert.equal(managerSalesReport.authorization_header_printed, false)
+  assertNoSecrets(managerSalesReport)
 
   const policy = await fetchJson(`${baseUrl}/users/access-policy`, {
     token: managerToken,
@@ -640,6 +694,10 @@ try {
       raw_or_graded: "raw",
       image_url: "https://images.example.test/mewtwo.png",
       back_image_url: "https://images.example.test/mewtwo-back.png",
+      suggested_price_minor_units: 3000,
+      auto_price_minor_units: 3300,
+      minimum_sale_price_minor_units: 5000,
+      final_price_minor_units: 5000,
       online_visibility: "hidden",
       kiosk_visibility: "visible",
       pos_visibility: "staff_only",
@@ -662,6 +720,7 @@ try {
   assert.equal(intake.item.online_visibility, "hidden")
   assert.equal(intake.item.kiosk_visibility, "visible")
   assert.equal(intake.item.pos_visibility, "staff_only")
+  assert.equal(intake.item.price_minor_units, 5000)
   assert.equal(intake.item.barcode, "PUG-SMOKE-MEWTWO-01")
   assert.equal(intake.item.status, "available")
   assert.equal(intake.item.source, "accepted")
@@ -686,13 +745,12 @@ try {
   assert.equal(duplicateIntake.status, "blocked")
   assert.equal(duplicateIntake.code, "duplicate_barcode")
 
-  const blockedPush = await fetchJson(`${baseUrl}/sync/push`, {
+  const staffPush = await fetchJson(`${baseUrl}/sync/push`, {
     method: "POST",
     token: cashierAuth.session.token,
-    expectedStatus: 409,
   })
-  assert.equal(blockedPush.status, "blocked")
-  assert.equal(blockedPush.code, "workspace_access_required")
+  assert.equal(staffPush.status, "ok")
+  assert.equal(staffPush.operation_count, 0)
 
   const pushedIntake = await fetchJson(`${baseUrl}/sync/push`, {
     method: "POST",
@@ -1033,6 +1091,14 @@ try {
   assert.ok(staffAuth.user.access.includes("Customers"))
   assert.ok(staffAuth.user.access.includes("Events"))
 
+  const staffSalesReport = await fetchJson(`${baseUrl}/reports/sales?channel=square_pos&staff_user_id=22`, {
+    token: staffAuth.session.token,
+    expectedStatus: 409,
+  })
+  assert.equal(staffSalesReport.status, "blocked")
+  assert.equal(staffSalesReport.code, "manager_required")
+  assertNoSecrets(staffSalesReport)
+
   const sharedKioskQueue = await fetchJson(`${baseUrl}/kiosk/orders?limit=10`, {
     token: staffAuth.session.token,
   })
@@ -1244,7 +1310,20 @@ try {
     expectedStatus: 409,
   })
   assert.equal(staffCreditAdjustment.status, "blocked")
-  assert.equal(staffCreditAdjustment.code, "manager_required")
+  assert.equal(staffCreditAdjustment.code, "manager_credit_approval_required")
+
+  const staffThresholdCreditAdjustment = await fetchJson(`${baseUrl}/credit/adjustments`, {
+    method: "POST",
+    token: staffAuth.session.token,
+    body: {
+      customer_public_id: createdCustomer.customer.customer_public_id,
+      amount_minor_units: 2000,
+      reason: "employee adjustment within configured limit",
+    },
+  })
+  assert.equal(staffThresholdCreditAdjustment.status, "ok")
+  assert.equal(staffThresholdCreditAdjustment.manager_approved, false)
+  assert.equal(staffThresholdCreditAdjustment.approval_required, false)
 
   const creditAdjustment = await fetchJson(`${baseUrl}/credit/adjustments`, {
     method: "POST",
@@ -1257,8 +1336,14 @@ try {
   })
   assert.equal(creditAdjustment.status, "ok")
   assert.equal(creditAdjustment.manager_approved, true)
-  assert.equal(creditAdjustment.customer.credit.balance_minor_units, 3000)
+  assert.equal(creditAdjustment.customer.credit.balance_minor_units, 5000)
   assert.equal(creditAdjustment.ledger_entry.status, "pending_sync")
+  assert.equal(creditAdjustment.ledger_entry.balance_before_minor_units, 2000)
+  assert.equal(creditAdjustment.ledger_entry.balance_after_minor_units, 5000)
+  assert.equal(creditAdjustment.ledger_entry.staff_user_id, managerAuth.user.id)
+  assert.equal(creditAdjustment.ledger_entry.reference_id, "manual-credit-adjustment")
+  assert.equal(creditAdjustment.ledger_entry.line_items[0].type, "credit_given")
+  assert.equal(creditAdjustment.ledger_entry.line_items[0].amount_minor_units, 3000)
 
   const creditRedemption = await fetchJson(`${baseUrl}/credit/redemptions`, {
     method: "POST",
@@ -1273,25 +1358,31 @@ try {
     },
   })
   assert.equal(creditRedemption.status, "ok")
-  assert.equal(creditRedemption.customer.credit.balance_minor_units, 2000)
+  assert.equal(creditRedemption.customer.credit.balance_minor_units, 4000)
   assert.equal(creditRedemption.square_payment_capture_supported, false)
   assert.equal(creditRedemption.square_handoff.square_payment_method_label, "Pug Store Credit")
   assert.equal(creditRedemption.square_handoff.square_amount_due_minor_units, 3500)
   assert.equal(creditRedemption.square_handoff.square_receipt_reference, "SQ-TEST-4500")
   assert.equal(creditRedemption.square_handoff.square_cashier_confirmed, true)
+  assert.equal(creditRedemption.ledger_entry.balance_before_minor_units, 5000)
+  assert.equal(creditRedemption.ledger_entry.balance_after_minor_units, 4000)
+  assert.equal(creditRedemption.ledger_entry.staff_user_id, staffAuth.user.id)
+  assert.equal(creditRedemption.ledger_entry.reference_id, "SQ-TEST-4500")
+  assert.equal(creditRedemption.ledger_entry.line_items[0].type, "credit_used")
+  assert.equal(creditRedemption.ledger_entry.line_items[0].square_receipt_reference, "SQ-TEST-4500")
 
   const pushedCustomerAndCredit = await fetchJson(`${baseUrl}/sync/push`, {
     method: "POST",
     token: managerToken,
   })
   assert.equal(pushedCustomerAndCredit.status, "ok")
-  assert.equal(pushedCustomerAndCredit.operation_count, 4)
-  assert.equal(pushedCustomerAndCredit.accepted_count, 3)
+  assert.equal(pushedCustomerAndCredit.operation_count, 5)
+  assert.equal(pushedCustomerAndCredit.accepted_count, 4)
   assert.equal(pushedCustomerAndCredit.retry_count, 1)
   assert.equal(pushedCustomerAndCredit.wordpress_customer_push_connected, true)
   assert.equal(pushedCustomerAndCredit.wordpress_credit_push_connected, true)
   assert.equal(wordpressCustomerUpsertPushCalls, 1)
-  assert.equal(wordpressCreditPushCalls, 2)
+  assert.equal(wordpressCreditPushCalls, 3)
   assert.ok(
     pushedCustomerAndCredit.results.some(
       (result) =>
@@ -1309,7 +1400,7 @@ try {
     pushedCustomerAndCredit.results.filter(
       (result) =>
         ["credit_adjustment", "credit_redemption"].includes(result.operation_type) && result.status === "accepted",
-    ).length === 2,
+    ).length === 3,
   )
 
   const acceptedCustomerSearch = await fetchJson(`${baseUrl}/customers/search?q=local.customer`)
@@ -1323,7 +1414,7 @@ try {
     acceptedCustomerSearch.credit_ledger_entries.filter(
       (entry) => entry.customer_public_id === createdCustomer.customer.customer_public_id && entry.status === "accepted",
     ).length,
-    2,
+    3,
   )
 
   const overspendRedemption = await fetchJson(`${baseUrl}/credit/redemptions`, {
@@ -1370,6 +1461,8 @@ try {
   assert.equal(syncStatus.wordpress_customer_push_connected, true)
   assert.equal(syncStatus.wordpress_credit_push_connected, true)
   assert.equal(syncStatus.wordpress_kiosk_order_push_connected, true)
+  assert.equal(syncStatus.wordpress_reports_pull_connected, true)
+  assert.equal(wordpressReportsPullCalls, 1)
 
   console.log("PASS local sync server runtime")
 } finally {

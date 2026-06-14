@@ -59,6 +59,24 @@ const activeBody = inventoryIntakeBody(item, { defaultLocationId: "7" })
 assert.equal(activeBody.status, "available")
 assert.equal(activeBody.location_id, 7)
 
+const magicBody = inventoryIntakeBody({
+  ...item,
+  game: "magicthegathering",
+  provider_card_id: "TDM-246",
+  card_name: "Mox Jasper",
+})
+
+assert.equal(magicBody.game, "magicthegathering")
+
+const magicAliasBody = inventoryIntakeBody({
+  ...item,
+  game: "magic",
+  provider_card_id: "TDM-246",
+  card_name: "Mox Jasper",
+})
+
+assert.equal(magicAliasBody.game, "magicthegathering")
+
 const hiddenBody = inventoryIntakeBody(
   {
     ...item,
@@ -90,6 +108,15 @@ assert.equal(defaultHiddenBody.kiosk_visibility, "staff_only")
 assert.equal(defaultHiddenBody.pos_visibility, "hidden")
 assert.equal(defaultHiddenBody.sync_woocommerce_product, false)
 assert.equal("production_write_approval" in defaultHiddenBody, false)
+
+const roundedPriceBody = inventoryIntakeBody({
+  ...item,
+  price_minor_units: 425,
+  minimum_sale_price_minor_units: 101,
+})
+
+assert.equal(roundedPriceBody.sale_price_minor_units, 500)
+assert.equal(roundedPriceBody.minimum_sale_price_minor_units, 200)
 
 let observedRequest = null
 const push = createWordPressInventoryPush({

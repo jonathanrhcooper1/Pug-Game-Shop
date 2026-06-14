@@ -23,7 +23,8 @@ final class InventorySearchQueryPlannerTest extends TestCase {
 			'price_desc',
 			2,
 			24,
-			'Base'
+			'Base',
+			'graded'
 		);
 
 		$plan     = ( new InventorySearchQueryPlanner() )->plan( $request, 'wp_' );
@@ -38,7 +39,9 @@ final class InventorySearchQueryPlannerTest extends TestCase {
 		$this->assert_same( 'visible', $where['online_visibility'] );
 		$this->assert_same( array( 'card_name', 'set_name', 'set_code', 'card_number' ), $where['text_query']['columns'] );
 		$this->assert_same( 'Base', $plan->filters()['set_filter'] );
+		$this->assert_same( 'graded', $plan->filters()['raw_or_graded'] );
 		$this->assert_same( array( 'set_name', 'set_code' ), $where['set_filter']['columns'] );
+		$this->assert_same( 'graded', $where['raw_or_graded'] );
 		$this->assert_same( 'DESC', $plan->order_by()['sale_price'] );
 		$this->assert_same( 24, $plan->limit() );
 		$this->assert_same( 24, $plan->offset() );

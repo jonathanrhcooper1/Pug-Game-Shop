@@ -45,7 +45,7 @@ try {
     network_status: "online",
     setup_status: "ready",
     server_url: "http://127.0.0.1:8787",
-    website_url: "https://vbf.2a7.myftpupload.com/",
+    website_url: "https://j84.285.myftpupload.com/",
     capabilities: ["Inventory", "Customers", "Sync", "Status"],
   })
   assert.equal(firstHeartbeat.status, "ok")

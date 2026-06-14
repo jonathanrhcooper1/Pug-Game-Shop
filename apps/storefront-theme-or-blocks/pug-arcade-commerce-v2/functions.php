@@ -11,6 +11,37 @@ define('PUG_ARCADE_VERSION', '1.0.0');
 define('PUG_ARCADE_DIR', get_template_directory());
 define('PUG_ARCADE_URI', get_template_directory_uri());
 
+function pug_arcade_secure_site_url($url)
+{
+    $url = (string) $url;
+
+    if ('' === $url || !function_exists('wp_parse_url')) {
+        return $url;
+    }
+
+    $host = wp_parse_url($url, PHP_URL_HOST);
+    $should_force_https = is_ssl() || 'j84.285.myftpupload.com' === $host;
+
+    if ($should_force_https && 0 === strpos($url, 'http://')) {
+        return 'https://' . substr($url, 7);
+    }
+
+    return $url;
+}
+
+add_filter('home_url', 'pug_arcade_secure_site_url', 20);
+add_filter('site_url', 'pug_arcade_secure_site_url', 20);
+
+function pug_arcade_secure_nav_menu_link($atts)
+{
+    if (is_array($atts) && isset($atts['href'])) {
+        $atts['href'] = pug_arcade_secure_site_url((string) $atts['href']);
+    }
+
+    return $atts;
+}
+add_filter('nav_menu_link_attributes', 'pug_arcade_secure_nav_menu_link', 20);
+
 function pug_arcade_asset_version($path)
 {
     $file = PUG_ARCADE_DIR . $path;
@@ -140,6 +171,14 @@ function pug_arcade_shop_url()
 function pug_arcade_page_url($slug)
 {
     return home_url('/' . trim(sanitize_title($slug), '/') . '/');
+}
+
+function pug_arcade_singles_game_url($game)
+{
+    return add_query_arg(
+        array('tcg_inventory_game' => sanitize_key($game)),
+        pug_arcade_page_url('shop-singles')
+    );
 }
 
 function pug_arcade_category_url($slug)

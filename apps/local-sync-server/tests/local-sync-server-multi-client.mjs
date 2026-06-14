@@ -7,7 +7,7 @@ let currentTime = new Date("2026-06-09T14:00:00.000Z")
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
   serverUrl: "http://127.0.0.1:8787",
-  websiteUrl: "https://vbf.2a7.myftpupload.com/",
+  websiteUrl: "https://j84.285.myftpupload.com/",
   restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",
@@ -33,7 +33,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://vbf.2a7.myftpupload.com/",
+      website_url: "https://j84.285.myftpupload.com/",
       capabilities: ["Inventory", "Kiosk", "Queue", "Customers", "Sync", "Status"],
     },
   })
@@ -54,7 +54,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://vbf.2a7.myftpupload.com/",
+      website_url: "https://j84.285.myftpupload.com/",
       capabilities: ["Kiosk", "Status"],
     },
   })
@@ -75,7 +75,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://vbf.2a7.myftpupload.com/",
+      website_url: "https://j84.285.myftpupload.com/",
       capabilities: ["Inventory", "Kiosk", "Queue", "Status"],
     },
   })
@@ -109,7 +109,7 @@ try {
     body: { pin: "1420", ttlMinutes: 15 },
   })
   assert.equal(managerAuth.status, "ok")
-  assert.equal(managerAuth.user.role, "manager")
+  assert.equal(managerAuth.user.role, "owner")
   assert.ok(managerAuth.user.access.includes("Kiosk"))
   assertNoSecrets(managerAuth)
 
@@ -213,7 +213,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://vbf.2a7.myftpupload.com/",
+      website_url: "https://j84.285.myftpupload.com/",
     },
   })
 

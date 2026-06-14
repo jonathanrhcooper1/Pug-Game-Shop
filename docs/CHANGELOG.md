@@ -1,11 +1,177 @@
 # Changelog
 
+- Added one-click Windows development/demo launch and shutdown commands. The
+  launcher starts or reuses the LAN sync server and local app, verifies both
+  endpoints, opens employee and customer-kiosk views, and only stops processes
+  that it owns.
+- Customer kiosk now occupies the full display instead of inheriting an
+  implicit app-grid column, renders the complete filtered inventory gallery,
+  and independently polls LAN/WordPress inventory connectivity so its badge
+  distinguishes live inventory from local or offline fallback.
+- Redesigned the customer pickup tray with card thumbnails, concise card
+  details, item prices, icon remove controls, a dedicated customer-details
+  section, and responsive placement ahead of the gallery on smaller screens.
+
 All notable changes follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Final production release pass for 0.202.0 verified the active sync chain
+  across ScryDex/reference cache, WordPress inventory creation, WooCommerce
+  product projection, Square-sale inventory adjustment, customer credit, kiosk
+  inventory, local pickup fulfillment, and production reference search.
+- Fixed resolved local app conflicts continuing to show as open after reboot by
+  deriving the sync summary status from the live conflict queue.
+- Fixed grouped WooCommerce singles options so blank raw singles and explicit
+  raw singles merge into one card with independent condition/version choices
+  instead of duplicate rows.
+- Fixed local trade-in order persistence so the LAN middleman saves draft,
+  review, approval, paid, and converted trade-in records without SQLite insert
+  placeholder errors.
+- Normalized storefront navigation links to HTTPS on the production domain.
+- Added first-class graded-card visibility to inventory search: the employee app
+  now filters Singles vs Graded Cards and shows grading company, grade, and
+  certification details, while WordPress staff inventory search supports a
+  server-side raw/graded filter and displays graded metadata in results.
+- Hardened trade-in/buy-in transaction status flow in the LAN middleman: trade
+  records now block duplicate conversion, preserve conversion audit fields, and
+  expose Review, Approve, Paid, Converted, Complete, and Reject actions in the
+  employee app.
+- After app inventory intake, the inventory list now filters by card name
+  instead of the newly generated barcode so same-printing cards added in
+  different conditions stay visible as one grouped card with condition stock
+  selectors.
+- Customer credit ledger entries now carry staff/reference details, balance
+  before and after, and exact line-item causes for local credit adjustments and
+  Square POS credit redemptions, with the employee app displaying the grouped
+  ledger lines.
+- Trade-in/buy-in drafts now keep the logged-in staff user on the shared
+  transaction record, return the staff display name to app clients, and support
+  transaction lookup by receipt/order id, customer, staff, card, set, status,
+  grade, grading company, and payout text.
+- Added a manager Reports dashboard with graph-ready filters, KPI cards,
+  employee intake versus sales comparisons, online versus in-store comparisons,
+  trade-in cash versus credit comparisons, inventory health metrics, retail KPI
+  formulas, CSV export contracts, and local-app REST data contracts.
+- Added a LAN middleman reports proxy so manager/owner app sessions can pull
+  website report plans through `/reports/{report}` without exposing WordPress
+  credentials to app clients.
+- Trade-in draft line items now keep their own payout percentage, payout type,
+  calculated default value, and manually editable final value, while inventory
+  intake remains separate from trade/buy-in records.
+- Removed trade-in preview/staging controls from the Inventory intake screen
+  and tightened the Trade-Ins layout so draft lookup filters wrap cleanly
+  without pulling inventory content into the trade/buy-in workspace.
+- Trade-Ins can now stage the currently selected inventory card when the
+  intake form is empty, while still keeping staged trade lines out of sellable
+  inventory until review and conversion.
+- Added a manager/owner Reports screen to the local app with date, employee,
+  channel, and game filters, graph-style comparison cards, KPI cards, and a
+  live LAN report refresh action.
+- Tightened the local app selected-card preview sizing so graded intake and
+  inventory detail layouts no longer create horizontal overflow.
+- Fixed the pickup fulfillment status flow so WordPress Ready for Pickup
+  responses preserve the app's picked-card checklist, the app refreshes the
+  shared fulfillment queue after status changes, and completed orders leave the
+  active picking view without a hard reload.
+- The employee app Trade-Ins screen now includes shared transaction lookup and
+  staff filters, and each saved draft shows who processed it for later reports
+  and accountability.
+- The storefront theme now normalizes same-site links to HTTPS on the production
+  GoDaddy host so menu and CTA links do not regress to mixed-scheme URLs.
+- Offline app intake search now keeps every returned candidate visible after
+  selecting Use Card, supports Set / Expansion filtering for broad names, and
+  no longer collapses the result list back to the selected card only.
+- Local app sync status now reports Online / Online local-cache / Offline
+  fallback from live LAN and WordPress connector state, and refreshes the last
+  sync timestamp whenever status, heartbeat, kiosk, or auto-sync checks run.
+- Fulfillment picking now accepts valid public id, inventory id, reservation id,
+  or Woo order item id references for checked cards, so Ready for pickup can be
+  reached reliably from website pickup orders.
+- Added manager-visible store operations settings for grading-company options,
+  local-store-only customer credit policy, and fulfillment notification/email
+  controls.
+- Added graded-card intake fields for grading company, grade, and certification
+  number to the staff inventory form, with product-type labels for Singles and
+  Graded Cards.
+- Added a trade-in value planner that pulls market-mid value, applies a
+  staff-selected 0% to 100% trade-in percentage in 5% increments, rounds down to
+  the nearest whole dollar, and separates cash versus store-credit totals.
+- Added trade-in receipt payload planning and manager-only report planning/REST
+  scaffolding for customer, sales, inventory, trade-in, fulfillment, ScryDex,
+  Square reconciliation, and audit reports.
+- Switched the app and LAN sync server primary WordPress connector to the
+  corrected HTTPS production site so application-password authentication works
+  for live REST writes.
+- Centralized sale-price and trade-in rounding rules. Customer sale prices over
+  $1.00 now round up to the next whole dollar, and trade-in values round down
+  after the configured payout percentage.
+- Fixed LAN inventory intake pushes so app-added cards can become available on
+  WordPress immediately when the Main Store location is configured, with
+  WordPress returning accepted inventory instead of leaving all items pending.
+- Added a WooCommerce Ready for pickup order status path for fulfillment
+  updates and one-time ready-for-pickup customer email notification support.
+
 ### Changed
 
+- Employee inventory now groups serialized copies of the same card printing
+  into one visible record, shows total physical stock and condition-level
+  quantities/prices, and lets staff select NM, LP, or another condition before
+  operating on the exact underlying barcode.
+- WooCommerce card detail and cart rows now render the projected ScryDex image
+  even when no WordPress media attachment exists, including legacy serialized
+  products whose image is recovered from canonical inventory. Home-page game cards now
+  deep-link into the Singles page with the matching game filter, MTG labels are
+  consistent across website and app surfaces, and employee pick rows now show
+  card art, barcode, location, and price with a clearer scan-friendly layout.
+- Customer kiosk mode is now a dedicated customer-only screen at `?mode=kiosk`,
+  while the employee app's former Kiosk tab is now an Order Fulfillment queue
+  that separates unpaid in-store kiosk requests from paid WooCommerce local
+  pickup orders.
+- Added WordPress and LAN middleman fulfillment endpoints for paid WooCommerce
+  local pickup orders, including persisted local caching, staff status updates,
+  retryable offline status queues, and no payment or inventory mutation from
+  fulfillment-status changes.
+- Offline app ScryDex inventory lookup now requests the full local result set
+  instead of only the first 8 matches, adds a Set / Expansion filter to narrow
+  broad searches, keeps the scrollable result list stable, and still clears the
+  search into a focused intake draft after staff choose Use Card.
+- Employee Order Fulfillment now separates active kiosk/WooCommerce pickup work
+  from completed orders and adds completed-order search by customer, order,
+  receipt, barcode, and card text.
+- Graded-card intake metadata now flows from the app to the LAN server and
+  WordPress inventory push payloads, including grading company, grade, and
+  certification number.
+- Local sync ScryDex search now accepts `limit` and `set`/`set_filter`
+  parameters, returns uncapped local-cache matches by default, and requests up
+  to 250 website fallback results through the WordPress catalog proxy.
+- The local WordPress catalog proxy client now retries with a legacy 50-row
+  limit if a live site has not yet been updated for 250-row intake searches.
+- WordPress reference-card search now allows intake lookups up to 250 rows so
+  the local app can pull a fuller set of candidate printings from the website
+  catalog when the LAN cache misses.
+- WooCommerce product projection now marks generated card products for the
+  official WooCommerce Square extension by setting the extension's
+  `wc_square_synced=yes` taxonomy flag when the extension taxonomy is
+  available, while keeping Square payment capture delegated to WooCommerce
+  Square.
+- Grouped card product galleries now render ScryDex card art as a static
+  product image instead of WooCommerce's zoom/lightbox anchor, preventing the
+  single-product page from trapping clicks after image zoom.
+- The LAN middleman server now advertises itself through safe UDP discovery so
+  installed employee/kiosk apps can find the local sync host automatically, with
+  manual URL setup preserved as fallback and no credentials returned in
+  discovery payloads.
+- The offline app setup/settings flow can discover and apply a local middleman
+  server, and browser preview mode clearly falls back to manual URL entry.
+- Inventory intake pricing now stores market price, market-plus-10 percent auto
+  retail, minimum sale floor, final sale price, and pricing source so added card
+  inventory respects the daily pricing rule without dropping below staff-set
+  minimums.
+- Added a package contract and generated zip for the local sync middleman
+  server install bundle.
 - Local inventory intake and exact Square POS sale finalization are now
   online-first: when the LAN server has WordPress push connectors configured,
   it immediately attempts the WordPress/WooCommerce update and reports accepted,

@@ -78,7 +78,7 @@ final class PricingCalculator {
 	public function suggested_price( int $market_price_minor_units ): int {
 		$this->assert_non_negative( $market_price_minor_units, 'market_price_minor_units' );
 
-		return intdiv( ( $market_price_minor_units * 110 ) + 50, 100 );
+		return PriceRounding::market_plus_basis_points_minor_units( $market_price_minor_units, 1000 );
 	}
 
 	private function assert_non_negative( int $amount, string $field ): void {

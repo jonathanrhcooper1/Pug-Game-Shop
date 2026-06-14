@@ -159,6 +159,7 @@ final class InventorySearchQueryBuilder {
 			'text_query',
 			'game',
 			'set_filter',
+			'raw_or_graded',
 			'status_in',
 			'location_id',
 			'online_visibility',
@@ -186,6 +187,11 @@ final class InventorySearchQueryBuilder {
 		$game = (string) ( $where['game'] ?? '' );
 		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
 			$errors[] = 'game_invalid';
+		}
+
+		$raw_or_graded = (string) ( $where['raw_or_graded'] ?? '' );
+		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
+			$errors[] = 'raw_or_graded_invalid';
 		}
 
 		if ( array_key_exists( 'status_in', $where ) ) {
@@ -333,6 +339,11 @@ final class InventorySearchQueryBuilder {
 			if ( array() !== $or_clauses ) {
 				$where_clauses[] = '(' . implode( ' OR ', $or_clauses ) . ')';
 			}
+		}
+
+		if ( isset( $where['raw_or_graded'] ) ) {
+			$where_clauses[] = '`raw_or_graded` = %s';
+			$prepare_args[]  = (string) $where['raw_or_graded'];
 		}
 
 		if ( isset( $where['status_in'] ) && is_array( $where['status_in'] ) ) {

@@ -20,7 +20,8 @@ final class InventorySearchRequest {
 		private string $sort,
 		private int $page,
 		private int $page_size,
-		private string $set_filter = ''
+		private string $set_filter = '',
+		private string $raw_or_graded = ''
 	) {
 	}
 
@@ -34,6 +35,10 @@ final class InventorySearchRequest {
 
 	public function set_filter(): string {
 		return $this->set_filter;
+	}
+
+	public function raw_or_graded(): string {
+		return $this->raw_or_graded;
 	}
 
 	/**

@@ -78,7 +78,7 @@ namespace {
 
 	if ( ! function_exists( 'taxonomy_exists' ) ) {
 		function taxonomy_exists( string $taxonomy ): bool {
-			return 'product_cat' === $taxonomy;
+			return in_array( $taxonomy, array( 'product_cat', 'wc_square_synced' ), true );
 		}
 	}
 
@@ -110,6 +110,25 @@ namespace {
 			);
 		}
 	}
+
+	if ( ! function_exists( 'term_exists' ) ) {
+		function term_exists( string $term, string $taxonomy ): bool {
+			return 'wc_square_synced' === $taxonomy && 'yes' === $term;
+		}
+	}
+
+	if ( ! function_exists( 'wp_set_post_terms' ) ) {
+		function wp_set_post_terms( int $post_id, array $terms, string $taxonomy, bool $append = false ): array {
+			$GLOBALS['tcg_test_set_post_terms'][] = array(
+				'post_id'  => $post_id,
+				'terms'    => $terms,
+				'taxonomy' => $taxonomy,
+				'append'   => $append,
+			);
+
+			return array( 1 );
+		}
+	}
 }
 
 namespace TCGStorePlatform\Tests\Unit {
@@ -119,11 +138,17 @@ namespace TCGStorePlatform\Tests\Unit {
 
 	final class WooCommerceInventoryProductWriterTest extends TestCase {
 		public function test_writer_creates_serialized_product_payload_through_woocommerce_crud(): void {
-			$writer = new WooCommerceInventoryProductWriter();
-			$result = $writer(
+			$GLOBALS['tcg_test_set_post_terms'] = array();
+			$writer                            = new WooCommerceInventoryProductWriter();
+			$result                            = $writer(
 				array(
-					'operation' => 'create_product',
-					'product'   => array(
+					'operation'   => 'create_product',
+					'square_sync' => array(
+						'enabled'  => true,
+						'taxonomy' => 'wc_square_synced',
+						'term'     => 'yes',
+					),
+					'product'     => array(
 						'name'           => 'Pokemon - Charizard',
 						'status'         => 'publish',
 						'sku'            => 'PKM-BASE-004',
@@ -147,6 +172,16 @@ namespace TCGStorePlatform\Tests\Unit {
 
 			$this->assert_same( 'written', $result['status'] );
 			$this->assert_same( 2468, $result['product_id'] );
+			$this->assert_same( 'synced', $result['square_sync']['status'] );
+			$this->assert_same(
+				array(
+					'post_id'  => 2468,
+					'terms'    => array( 'yes' ),
+					'taxonomy' => 'wc_square_synced',
+					'append'   => false,
+				),
+				$GLOBALS['tcg_test_set_post_terms'][0]
+			);
 			$this->assert_same( 'Pokemon - Charizard', $product->values['name'] );
 			$this->assert_same( 'PKM-BASE-004', $product->values['sku'] );
 			$this->assert_same( 1, $product->values['stock_quantity'] );

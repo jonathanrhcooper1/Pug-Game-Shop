@@ -133,6 +133,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 				'q'         => str_repeat( 'a', 140 ),
 				'game'      => '../bad',
 				'status'    => 'bad',
+				'raw_or_graded' => 'sealed',
 				'sort'      => 'bad',
 				'page_size' => 999,
 			)
@@ -145,6 +146,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 120, strlen( $panel['query']['q'] ) );
 		$this->assert_same( '', $panel['query']['game'] );
 		$this->assert_same( '', $panel['query']['status'] );
+		$this->assert_same( '', $panel['query']['raw_or_graded'] );
 		$this->assert_same( 'relevance', $panel['query']['sort'] );
 		$this->assert_same( 25, $panel['query']['page_size'] );
 		$this->assert_same( 'staff', $panel['query']['visibility'] );
@@ -173,6 +175,7 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 				'q'         => 'pikachu',
 				'game'      => 'pokemon',
 				'status'    => 'available',
+				'raw_or_graded' => 'graded',
 				'sort'      => 'updated_desc',
 				'page_size' => 50,
 			)
@@ -184,9 +187,11 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_same( 'pikachu', $panel['query']['q'] );
 		$this->assert_same( 'pokemon', $panel['query']['game'] );
 		$this->assert_same( 'available', $panel['query']['status'] );
+		$this->assert_same( 'graded', $panel['query']['raw_or_graded'] );
 		$this->assert_same( 'updated_desc', $panel['query']['sort'] );
 		$this->assert_same( 50, $panel['query']['page_size'] );
 		$this->assert_true( in_array( 'available', $panel['status_options'], true ) );
+		$this->assert_true( in_array( 'graded', $panel['raw_or_graded_options'], true ) );
 		$this->assert_true( in_array( 100, $panel['page_sizes'], true ) );
 	}
 

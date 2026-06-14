@@ -16,14 +16,19 @@ export function createLocalSyncHttpServer(options = {}) {
   const store = options.store ?? createLocalSyncStore(setupStoreOptions)
   const connectorStatus = {
     wordpressPullConfigured:
-      typeof storeOptions.wordpressInventoryPull === "function" || typeof storeOptions.wordpressEventsPull === "function",
+      typeof storeOptions.wordpressInventoryPull === "function" ||
+      typeof storeOptions.wordpressEventsPull === "function" ||
+      typeof storeOptions.wordpressFulfillmentPull === "function",
     wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
     wordpressInventorySalePushConnected: typeof storeOptions.wordpressInventorySalePush === "function",
+    wordpressFulfillmentPullConnected: typeof storeOptions.wordpressFulfillmentPull === "function",
+    wordpressFulfillmentStatusPushConnected: typeof storeOptions.wordpressFulfillmentStatusPush === "function",
     wordpressEventRegistrationPushConnected: typeof storeOptions.wordpressEventRegistrationPush === "function",
     wordpressEventCheckinPushConnected: typeof storeOptions.wordpressEventCheckinPush === "function",
     wordpressCreditPushConnected: typeof storeOptions.wordpressCreditPush === "function",
     wordpressCustomerPushConnected: typeof storeOptions.wordpressCustomerUpsertPush === "function",
     wordpressKioskOrderPushConnected: typeof storeOptions.wordpressKioskOrderPush === "function",
+    wordpressReportsPullConnected: typeof storeOptions.wordpressReportsPull === "function",
     scrydexCatalogProxyConfigured: typeof storeOptions.websiteCatalogFallback === "function",
   }
 
@@ -46,6 +51,7 @@ export function createLocalSyncHttpServer(options = {}) {
       configSource: storedConfig.config_source,
       configuredAtUtc: storedConfig.configured_at_utc,
       wordpressConnectorRestartRequired: storedConfig.wordpress_connector_restart_required,
+      creditApprovalThresholdMinorUnits: storedConfig.credit_approval_threshold_minor_units,
       ...connectorStatus,
     })
   }
@@ -66,7 +72,7 @@ export function createLocalSyncHttpServer(options = {}) {
           status: "ok",
           service: "pug_local_sync_server",
           local_database: "store-sync.sqlite",
-          contract_version: 2,
+          contract_version: 4,
           topology: "lan_middleman_server",
           setup_screen_mode: "single_configurable_website",
           one_website_mode: true,
@@ -133,6 +139,8 @@ export function createLocalSyncHttpServer(options = {}) {
           await store.searchScryDexCards(token, {
             query: url.searchParams.get("q") ?? "",
             game: url.searchParams.get("game") ?? "pokemon",
+            setFilter: url.searchParams.get("set") ?? url.searchParams.get("set_filter") ?? "",
+            limit: url.searchParams.get("limit") ?? "all",
           }),
         )
       }
@@ -157,6 +165,29 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.reserveInventory(token, await readJson(request)))
       }
 
+      if (request.method === "GET" && url.pathname === "/trade-ins/orders") {
+        return sendStoreResult(response, store.listTradeInOrders(token, {
+          limit: url.searchParams.get("limit") ?? "",
+          statuses: url.searchParams.getAll("status"),
+          query: url.searchParams.get("q") ?? "",
+          staffUserId: url.searchParams.get("staff_user_id") ?? "",
+          customer: url.searchParams.get("customer") ?? "",
+        }))
+      }
+
+      if (request.method === "POST" && url.pathname === "/trade-ins/orders") {
+        return sendStoreResult(response, store.createTradeInOrder(token, await readJson(request)))
+      }
+
+      const tradeInStatusMatch = url.pathname.match(/^\/trade-ins\/orders\/([^/]+)\/status$/)
+
+      if (request.method === "PATCH" && tradeInStatusMatch) {
+        return sendStoreResult(
+          response,
+          store.updateTradeInOrderStatus(token, decodeURIComponent(tradeInStatusMatch[1]), await readJson(request)),
+        )
+      }
+
       if (request.method === "GET" && url.pathname === "/kiosk/orders") {
         return sendStoreResult(response, store.listKioskOrders(token, {
           limit: url.searchParams.get("limit") ?? "",
@@ -174,6 +205,70 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(
           response,
           store.updateKioskOrderStatus(token, decodeURIComponent(kioskStatusMatch[1]), await readJson(request)),
+        )
+      }
+
+      const kioskPicksMatch = url.pathname.match(/^\/kiosk\/orders\/([^/]+)\/picks$/)
+
+      if (request.method === "PATCH" && kioskPicksMatch) {
+        return sendStoreResult(
+          response,
+          store.updateKioskOrderPicks(token, decodeURIComponent(kioskPicksMatch[1]), await readJson(request)),
+        )
+      }
+
+      const kioskPaymentMatch = url.pathname.match(/^\/kiosk\/orders\/([^/]+)\/payment$/)
+
+      if (request.method === "PATCH" && kioskPaymentMatch) {
+        return sendStoreResult(
+          response,
+          await store.updateKioskOrderPayment(token, decodeURIComponent(kioskPaymentMatch[1]), await readJson(request)),
+        )
+      }
+
+      if (request.method === "GET" && url.pathname === "/fulfillment/orders") {
+        return sendStoreResult(response, await store.listFulfillmentOrders(token, {
+          limit: url.searchParams.get("limit") ?? "",
+          statuses: url.searchParams.getAll("status"),
+          refresh: url.searchParams.get("refresh") ?? "true",
+        }))
+      }
+
+      const fulfillmentStatusMatch = url.pathname.match(/^\/fulfillment\/orders\/([^/]+)\/status$/)
+
+      if (request.method === "PATCH" && fulfillmentStatusMatch) {
+        return sendStoreResult(
+          response,
+          await store.updateFulfillmentOrderStatus(
+            token,
+            decodeURIComponent(fulfillmentStatusMatch[1]),
+            await readJson(request),
+          ),
+        )
+      }
+
+      const fulfillmentPicksMatch = url.pathname.match(/^\/fulfillment\/orders\/([^/]+)\/picks$/)
+
+      if (request.method === "PATCH" && fulfillmentPicksMatch) {
+        return sendStoreResult(
+          response,
+          store.updateFulfillmentOrderPicks(
+            token,
+            decodeURIComponent(fulfillmentPicksMatch[1]),
+            await readJson(request),
+          ),
+        )
+      }
+
+      const reportsMatch = url.pathname.match(/^\/reports\/([^/]+)$/)
+
+      if (request.method === "GET" && reportsMatch) {
+        return sendStoreResult(
+          response,
+          await store.getManagerReport(token, {
+            report: decodeURIComponent(reportsMatch[1]),
+            filters: Object.fromEntries(url.searchParams.entries()),
+          }),
         )
       }
 

@@ -8,6 +8,8 @@
 namespace TCGStorePlatform\Admin;
 
 use TCGStorePlatform\Inventory\InventoryStatus;
+use TCGStorePlatform\Settings\GradingCompanySettings;
+use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
 
 final class InventoryWorkspacePresenter {
@@ -141,6 +143,7 @@ final class InventoryWorkspacePresenter {
 				? 'Staff search reads are enabled; writes and projections remain deferred.'
 				: $this->search_lock_notes( $bootstrap_payload, $dependency_payload, $search_route ),
 			'status_options' => array_merge( array( '' ), InventoryStatus::all() ),
+			'raw_or_graded_options' => array( '', 'raw', 'graded' ),
 			'sort_options'   => array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ),
 			'page_sizes'     => array( 10, 25, 50, 100 ),
 		);
@@ -320,9 +323,10 @@ final class InventoryWorkspacePresenter {
 				? 'Staff intake writes are enabled; WooCommerce, Square, POS, and labels remain deferred.'
 				: $this->intake_lock_notes( $bootstrap_payload, $dependency_payload, $create_route ),
 			'status_options'        => InventoryStatus::all(),
-			'condition_options'     => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
-			'raw_or_graded_options' => array( 'raw', 'graded' ),
-			'visibility_options'    => array( 'hidden', 'visible', 'staff_only' ),
+			'condition_options'        => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
+			'raw_or_graded_options'    => array( 'raw', 'graded' ),
+			'grading_company_options'  => GradingCompanySettings::companies_from_settings( Settings::all() ),
+			'visibility_options'       => array( 'hidden', 'visible', 'staff_only' ),
 		);
 	}
 
@@ -538,14 +542,15 @@ final class InventoryWorkspacePresenter {
 
 	/**
 	 * @param array<string, mixed> $query Submitted admin query values.
-	 * @return array{q:string,game:string,status:string,sort:string,page_size:int,visibility:string}
+	 * @return array{q:string,game:string,status:string,raw_or_graded:string,sort:string,page_size:int,visibility:string}
 	 */
 	private function search_query( array $query ): array {
-		$q         = substr( trim( (string) ( $query['q'] ?? '' ) ), 0, 120 );
-		$game      = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
-		$status    = strtolower( trim( (string) ( $query['status'] ?? '' ) ) );
-		$sort      = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
-		$page_size = (int) ( $query['page_size'] ?? 25 );
+		$q             = substr( trim( (string) ( $query['q'] ?? '' ) ), 0, 120 );
+		$game          = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
+		$status        = strtolower( trim( (string) ( $query['status'] ?? '' ) ) );
+		$raw_or_graded = strtolower( trim( (string) ( $query['raw_or_graded'] ?? '' ) ) );
+		$sort          = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
+		$page_size     = (int) ( $query['page_size'] ?? 25 );
 
 		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
 			$game = '';
@@ -553,6 +558,10 @@ final class InventoryWorkspacePresenter {
 
 		if ( '' !== $status && ! InventoryStatus::is_valid( $status ) ) {
 			$status = '';
+		}
+
+		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
+			$raw_or_graded = '';
 		}
 
 		if ( ! in_array( $sort, array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ), true ) ) {
@@ -567,6 +576,7 @@ final class InventoryWorkspacePresenter {
 			'q'          => $q,
 			'game'       => $game,
 			'status'     => $status,
+			'raw_or_graded' => $raw_or_graded,
 			'sort'       => $sort,
 			'page_size'  => $page_size,
 			'visibility' => 'staff',
@@ -606,6 +616,9 @@ final class InventoryWorkspacePresenter {
 			'language'                       => strtoupper( $this->slug_value( $form['language'] ?? 'EN', 'EN' ) ),
 			'status'                         => $status,
 			'raw_or_graded'                  => $raw_or_graded,
+			'grading_company'                => $this->text_value( $form['grading_company'] ?? '', 64 ),
+			'grade'                          => $this->text_value( $form['grade'] ?? '', 32 ),
+			'cert_number'                    => $this->text_value( $form['cert_number'] ?? '', 100 ),
 			'condition_code'                 => $this->condition_code( $form['condition_code'] ?? 'NM' ),
 			'barcode'                        => strtoupper( $this->text_value( $form['barcode'] ?? '', 80 ) ),
 			'sku'                            => strtoupper( $this->text_value( $form['sku'] ?? '', 80 ) ),

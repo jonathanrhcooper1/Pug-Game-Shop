@@ -48,6 +48,8 @@ assert.equal(manifest.sync.pairing_route, "/offline/devices/register")
 assert.equal(manifest.sync.pull_route, "/offline/pull")
 assert.equal(manifest.sync.push_route, "/offline/push")
 assert.equal(manifest.sync.conflict_resolution_route, "/offline/conflicts/{conflict_id}/resolve")
+assert.equal(manifest.sync.local_sync_discovery, "udp:pug-local-sync-discovery-v1:8788")
+assert.equal(manifest.sync.manual_middleman_url_fallback, true)
 assert.equal(manifest.sync.direct_mysql_access, false)
 
 const requiredBrandingTokens = [

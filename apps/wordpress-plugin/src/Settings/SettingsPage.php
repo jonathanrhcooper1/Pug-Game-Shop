@@ -167,6 +167,37 @@ final class SettingsPage {
 		);
 
 		add_settings_section(
+			'tcg_store_platform_store_ops',
+			__( 'Store operations', 'tcg-store-platform' ),
+			array( $this, 'render_store_ops_description' ),
+			'tcg-store-platform'
+		);
+
+		add_settings_field(
+			'grading_companies',
+			__( 'Grading companies', 'tcg-store-platform' ),
+			array( $this, 'render_grading_companies' ),
+			'tcg-store-platform',
+			'tcg_store_platform_store_ops'
+		);
+
+		add_settings_field(
+			'customer_credit',
+			__( 'Customer credit policy', 'tcg-store-platform' ),
+			array( $this, 'render_customer_credit_policy' ),
+			'tcg-store-platform',
+			'tcg_store_platform_store_ops'
+		);
+
+		add_settings_field(
+			'fulfillment_notifications',
+			__( 'Fulfillment notifications', 'tcg-store-platform' ),
+			array( $this, 'render_fulfillment_notifications' ),
+			'tcg-store-platform',
+			'tcg_store_platform_store_ops'
+		);
+
+		add_settings_section(
 			'tcg_store_platform_offline_routes',
 			__( 'Offline route runtime', 'tcg-store-platform' ),
 			array( $this, 'render_offline_route_description' ),
@@ -441,6 +472,100 @@ final class SettingsPage {
 		echo esc_html__( 'Public search is ignored unless staff inventory search is enabled. Create stays read-safe for WooCommerce, Square, POS, and labels until separate projection gates are accepted.', 'tcg-store-platform' );
 		echo '</p>';
 		echo '</fieldset>';
+	}
+
+	public function render_store_ops_description(): void {
+		echo '<p>';
+		echo esc_html__( 'Store operations settings control graded-card intake labels, local-only customer credit, and staff fulfillment notifications.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_grading_companies(): void {
+		$settings  = Settings::all();
+		$companies = GradingCompanySettings::companies_from_settings( $settings );
+
+		echo '<textarea rows="4" class="large-text" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( GradingCompanySettings::KEY )
+			. '][companies]">';
+		echo esc_textarea( implode( "\n", $companies ) );
+		echo '</textarea>';
+		echo '<p class="description">';
+		echo esc_html__( 'One company per line. Intake always keeps an Other option for custom grading labels.', 'tcg-store-platform' );
+		echo '</p>';
+	}
+
+	public function render_customer_credit_policy(): void {
+		$settings = Settings::all();
+		$policy   = CustomerCreditSettings::sanitize( $settings[ CustomerCreditSettings::KEY ] ?? array() );
+
+		echo '<fieldset>';
+		echo '<label><input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( CustomerCreditSettings::KEY )
+			. '][local_store_only]" value="1" '
+			. checked( ! empty( $policy['local_store_only'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Keep customer credit local-store only.', 'tcg-store-platform' );
+		echo '</label><br />';
+		echo '<label><input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( CustomerCreditSettings::KEY )
+			. '][online_redemption_enabled]" value="1" '
+			. checked( ! empty( $policy['online_redemption_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Allow online credit redemption only when local-store-only mode is disabled.', 'tcg-store-platform' );
+		echo '</label><br />';
+		echo '<label>';
+		echo esc_html__( 'Manager approval threshold cents', 'tcg-store-platform' ) . ' ';
+		echo '<input type="number" min="0" step="100" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( CustomerCreditSettings::KEY )
+			. '][manager_approval_threshold_minor_units]" value="'
+			. esc_attr( (string) $policy['manager_approval_threshold_minor_units'] )
+			. '" />';
+		echo '</label>';
+		echo '<p class="description">';
+		echo esc_html__( 'Public checkout credit redemption remains hidden while local-store-only mode is enabled.', 'tcg-store-platform' );
+		echo '</p></fieldset>';
+	}
+
+	public function render_fulfillment_notifications(): void {
+		$settings = Settings::all();
+		$policy   = FulfillmentNotificationSettings::sanitize( $settings[ FulfillmentNotificationSettings::KEY ] ?? array() );
+
+		echo '<fieldset>';
+		echo '<label><input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
+			. '][audio_enabled]" value="1" '
+			. checked( ! empty( $policy['audio_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Enable staff audio notification for new pickup orders.', 'tcg-store-platform' );
+		echo '</label><br />';
+		echo '<label><input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
+			. '][ready_pickup_email_enabled]" value="1" '
+			. checked( ! empty( $policy['ready_pickup_email_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Email customers when an order is marked ready for pickup.', 'tcg-store-platform' );
+		echo '</label><br />';
+		echo '<label>';
+		echo esc_html__( 'Notification sound URL', 'tcg-store-platform' ) . ' ';
+		echo '<input type="url" class="regular-text" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
+			. '][notification_sound_url]" value="'
+			. esc_attr( (string) $policy['notification_sound_url'] )
+			. '" />';
+		echo '</label> ';
+		echo '<button type="button" class="button" onclick="const audio=this.previousElementSibling.querySelector(\'input\').value;if(audio){new Audio(audio).play().catch(()=>alert(\'Enable browser sound notifications first.\'));}">';
+		echo esc_html__( 'Test sound', 'tcg-store-platform' );
+		echo '</button>';
+		echo '<p class="description">';
+		echo esc_html__( 'Browsers may require staff to click once before sound can play; the dashboard should also show a visual fallback.', 'tcg-store-platform' );
+		echo '</p></fieldset>';
 	}
 
 	public function render_offline_route_description(): void {

@@ -64,6 +64,50 @@ assert.ok(capturedUrl.includes("q=moonbreon"))
 assert.ok(capturedUrl.includes("game=pokemon"))
 assert.ok(capturedUrl.includes("limit=8"))
 
+const retriedUrls = []
+const retryingFallback = createWordPressCatalogFallback({
+  websiteUrl: "https://example.test/",
+  fetcher: async (url) => {
+    retriedUrls.push(url.toString())
+
+    if (retriedUrls.length === 1) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "invalid",
+          errors: ["page_size_too_large"],
+        }),
+      }
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          cards: [
+            {
+              provider_card_id: "scrydex-pokemon-clc-033",
+              card_name: "Basic Fire Energy",
+              set_name: "Pokemon TCG Classic - Charizard",
+            },
+          ],
+        },
+      }),
+    }
+  },
+})
+const retryResult = await retryingFallback({ query: "energy", game: "pokemon", limit: 250 })
+
+assert.equal(retryResult.status, "ok")
+assert.equal(retryResult.cards.length, 1)
+assert.equal(retryResult.requested_limit, 50)
+assert.equal(retryResult.retried_with_legacy_limit, true)
+assert.equal(retriedUrls.length, 2)
+assert.ok(retriedUrls[0].includes("limit=250"))
+assert.ok(retriedUrls[1].includes("limit=50"))
+
 const unavailableFallback = createWordPressCatalogFallback({
   websiteUrl: "https://example.test/",
   fetcher: async () => ({

@@ -457,6 +457,31 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
 		}
 
+		public function test_reference_handler_allows_large_intake_lookup_page_size(): void {
+			$database = new \InventorySearchRouteHandlerWpdb(
+				array( $this->reference_card_row() ),
+				'1',
+				'wp_',
+				array(),
+				array(),
+				array()
+			);
+			$handler  = new ReferenceCardSearchRouteHandler( $database, 'wp_' );
+
+			$response = $handler->search_reference_cards(
+				$this->request(
+					array(
+						'q'     => 'moonbreon',
+						'game'  => 'pokemon',
+						'limit' => '250',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 250, $database->prepare_args[0][17] );
+		}
+
 		public function test_reference_handler_reports_provider_failure_without_secrets_on_cache_miss(): void {
 			$database = new \InventorySearchRouteHandlerWpdb( array(), '0', 'wp_' );
 			$provider = new ReferenceSearchFallbackProvider(

@@ -96,6 +96,7 @@ final class InventorySearchQueryPlanner {
 			'query'              => $request->query(),
 			'game'               => $request->game(),
 			'set_filter'         => $request->set_filter(),
+			'raw_or_graded'      => $request->raw_or_graded(),
 			'requested_statuses' => $request->statuses(),
 			'statuses'           => $statuses,
 			'location_id'        => $request->location_id(),
@@ -171,6 +172,10 @@ final class InventorySearchQueryPlanner {
 				'like'    => '%' . $request->set_filter() . '%',
 				'columns' => array( 'set_name', 'set_code' ),
 			);
+		}
+
+		if ( '' !== $request->raw_or_graded() ) {
+			$where['raw_or_graded'] = $request->raw_or_graded();
 		}
 
 		if ( array() !== $statuses ) {

@@ -23,6 +23,8 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
 		$this->assert_same( 'product_image', $map['filter woocommerce_product_get_image'] );
 		$this->assert_same( 'single_product_image_html', $map['filter woocommerce_single_product_image_thumbnail_html'] );
+		$this->assert_same( 'render_single_product_gallery', $map['action woocommerce_before_single_product_summary'] );
+		$this->assert_same( 'cart_item_thumbnail', $map['filter woocommerce_cart_item_thumbnail'] );
 		$this->assert_same( 'render_condition_selector', $map['action woocommerce_before_add_to_cart_button'] );
 		$this->assert_same( 'validate_add_to_cart', $map['filter woocommerce_add_to_cart_validation'] );
 		$this->assert_same( 'reserve_add_to_cart_inventory', $map['filter woocommerce_add_cart_item_data'] );
@@ -38,6 +40,9 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		foreach (
 			array(
 				'_tcg_inventory_product_mode',
+				'_tcg_serialized_inventory',
+				'front_image_remote_url',
+				'update_post_meta',
 				'grouped_card',
 				'tcg_inventory_option_key',
 				'Condition / version',
@@ -51,7 +56,13 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'woocommerce-card-product.css',
 				'tcg-store-woocommerce-card-product',
 				'woocommerce_single_product_image_thumbnail_html',
+				'woocommerce_before_single_product_summary',
+				'woocommerce_cart_item_thumbnail',
 				'tcg-woocommerce-card-gallery-image',
+				'tcg-woocommerce-card-product-gallery',
+				'tcg-woocommerce-card-cart-image',
+				'tcg-woocommerce-card-gallery-image--static',
+				'data-tcg-card-gallery-static',
 				'price_snapshot_minor_units',
 				'SerializedOrderLineMetadataPlanner',
 				'convert_to_sale',
@@ -76,6 +87,9 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'grid-template-columns',
 				'overflow-wrap: anywhere',
 				'@media (max-width: 640px)',
+				'tcg-woocommerce-card-gallery-image--static',
+				'tcg-woocommerce-card-cart-image',
+				'cursor: default',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

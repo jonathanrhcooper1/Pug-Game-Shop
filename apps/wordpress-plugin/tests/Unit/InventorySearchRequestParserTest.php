@@ -18,6 +18,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 				'q'           => '  Pikachu  ',
 				'game'        => 'Pokemon',
 				'set'         => '  Base Set  ',
+				'raw_or_graded' => ' Graded ',
 				'status'      => 'available,reserved,available',
 				'location_id' => '4',
 				'visibility'  => 'staff',
@@ -35,6 +36,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 		$this->assert_same( 'Pikachu', $request->query() );
 		$this->assert_same( 'pokemon', $request->game() );
 		$this->assert_same( 'Base Set', $request->set_filter() );
+		$this->assert_same( 'graded', $request->raw_or_graded() );
 		$this->assert_same( array( InventoryStatus::AVAILABLE, InventoryStatus::RESERVED ), $request->statuses() );
 		$this->assert_same( 4, $request->location_id() );
 		$this->assert_same( 'staff', $request->visibility() );
@@ -66,6 +68,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 			array(
 				'q'           => str_repeat( 'x', 121 ),
 				'set_filter'  => str_repeat( 's', 121 ),
+				'product_type' => 'sealed',
 				'game'        => 'bad game',
 				'status'      => array( 'available', 'lost' ),
 				'location_id' => 'store',
@@ -79,6 +82,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 		$this->assert_false( $result->is_valid() );
 		$this->assert_true( in_array( 'query_too_long', $result->errors(), true ) );
 		$this->assert_true( in_array( 'set_filter_too_long', $result->errors(), true ) );
+		$this->assert_true( in_array( 'raw_or_graded_invalid', $result->errors(), true ) );
 		$this->assert_true( in_array( 'game_invalid', $result->errors(), true ) );
 		$this->assert_true( in_array( 'status_invalid', $result->errors(), true ) );
 		$this->assert_true( in_array( 'location_id_invalid', $result->errors(), true ) );

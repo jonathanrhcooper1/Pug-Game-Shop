@@ -32,6 +32,7 @@ use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolverFactory;
+use TCGStorePlatform\Reports\StoreReportsPlanner;
 use TCGStorePlatform\Scheduler\DailyScheduler;
 use TCGStorePlatform\Settings\BrandingSettings;
 use TCGStorePlatform\Settings\ScryDexScheduleSettings;
@@ -368,6 +369,15 @@ final class AdminMenu {
 
 		add_submenu_page(
 			'tcg-store-platform',
+			__( 'Reports', 'tcg-store-platform' ),
+			__( 'Reports', 'tcg-store-platform' ),
+			'view_reports',
+			'tcg-store-platform-reports',
+			array( $this, 'render_reports' )
+		);
+
+		add_submenu_page(
+			'tcg-store-platform',
 			__( 'Settings', 'tcg-store-platform' ),
 			__( 'Settings', 'tcg-store-platform' ),
 			'manage_settings',
@@ -525,6 +535,33 @@ final class AdminMenu {
 		echo '</div>';
 
 		$this->render_scrydex_catalog_script();
+		echo '</div>';
+	}
+
+	public function render_reports(): void {
+		if ( ! current_user_can( 'view_reports' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view reports.', 'tcg-store-platform' ) );
+		}
+
+		$planner = new StoreReportsPlanner();
+		$plan    = $planner->dashboard_plan( $this->report_filters_from_request() );
+
+		echo '<div class="wrap tcg-store-reports"><h1>';
+		echo esc_html__( 'Business Reports', 'tcg-store-platform' );
+		echo '</h1><p class="description">';
+		echo esc_html__( 'Compare employees, online sales, Square/POS sales, trade-ins, inventory health, fulfillment speed, ScryDex sync, customer credit, and audit activity.', 'tcg-store-platform' );
+		echo '</p>';
+
+		$this->render_reports_styles();
+		$this->render_reports_filters( $plan );
+		$this->render_reports_kpis( $plan );
+		$this->render_reports_insights( $plan );
+		$this->render_reports_charts( $plan );
+		$this->render_reports_comparisons( $plan );
+		$this->render_reports_matrix( $plan );
+		$this->render_reports_retail_kpis( $plan );
+		$this->render_reports_exports( $plan );
+
 		echo '</div>';
 	}
 
@@ -809,15 +846,217 @@ final class AdminMenu {
 	/**
 	 * @return array<string, mixed>
 	 */
+	private function report_filters_from_request(): array {
+		$filters = array();
+
+		foreach ( array( 'date_from', 'date_to', 'staff_user_id', 'channel', 'game', 'product_type', 'condition', 'grading_company', 'source' ) as $key ) {
+			$filters[ $key ] = isset( $_GET[ $key ] ) ? sanitize_text_field( wp_unslash( $_GET[ $key ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		}
+
+		return $filters;
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_filters( array $plan ): void {
+		$filters  = is_array( $plan['filters'] ?? null ) ? $plan['filters'] : array();
+		$controls = is_array( $plan['filter_controls'] ?? null ) ? $plan['filter_controls'] : array();
+
+		echo '<form class="tcg-report-filters" method="get">';
+		echo '<input type="hidden" name="page" value="tcg-store-platform-reports" />';
+		foreach ( $controls as $control ) {
+			$key     = (string) ( $control['key'] ?? '' );
+			$label   = (string) ( $control['label'] ?? $key );
+			$type    = (string) ( $control['type'] ?? 'text' );
+			$options = is_array( $control['options'] ?? null ) ? $control['options'] : array();
+			$value   = (string) ( $filters[ $key ] ?? '' );
+
+			echo '<label><span>' . esc_html( $label ) . '</span>';
+			if ( array() !== $options ) {
+				echo '<select name="' . esc_attr( $key ) . '"><option value="">' . esc_html__( 'All', 'tcg-store-platform' ) . '</option>';
+				foreach ( $options as $option ) {
+					echo '<option value="' . esc_attr( (string) $option ) . '"' . selected( $value, (string) $option, false ) . '>' . esc_html( ucwords( str_replace( array( '_', '-' ), ' ', (string) $option ) ) ) . '</option>';
+				}
+				echo '</select>';
+			} else {
+				echo '<input type="' . esc_attr( 'date' === $type ? 'date' : 'text' ) . '" name="' . esc_attr( $key ) . '" value="' . esc_attr( $value ) . '" />';
+			}
+			echo '</label>';
+		}
+		submit_button( __( 'Update Reports', 'tcg-store-platform' ), 'primary', 'submit', false );
+		echo '</form>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_kpis( array $plan ): void {
+		$cards = is_array( $plan['kpi_cards'] ?? null ) ? $plan['kpi_cards'] : array();
+		echo '<section class="tcg-report-card-grid" aria-label="' . esc_attr__( 'Report KPI cards', 'tcg-store-platform' ) . '">';
+		foreach ( $cards as $card ) {
+			echo '<article class="tcg-report-kpi"><span>' . esc_html( (string) ( $card['label'] ?? '' ) ) . '</span>';
+			echo '<strong data-report-metric="' . esc_attr( (string) ( $card['metric'] ?? '' ) ) . '">' . esc_html__( 'Ready', 'tcg-store-platform' ) . '</strong>';
+			echo '<small>' . esc_html( (string) ( $card['description'] ?? '' ) ) . '</small></article>';
+		}
+		echo '</section>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_insights( array $plan ): void {
+		$tiles = is_array( $plan['insight_tiles'] ?? null ) ? $plan['insight_tiles'] : array();
+
+		echo '<h2>' . esc_html__( 'Manager Decision Board', 'tcg-store-platform' ) . '</h2>';
+		echo '<section class="tcg-report-insight-grid">';
+		foreach ( $tiles as $tile ) {
+			$filters = implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $tile['filters'] ?? array() ) ) );
+			echo '<article class="tcg-report-insight"><span>' . esc_html( (string) ( $tile['label'] ?? '' ) ) . '</span>';
+			echo '<h3>' . esc_html( (string) ( $tile['question'] ?? '' ) ) . '</h3>';
+			echo '<p>' . esc_html( (string) ( $tile['action'] ?? '' ) ) . '</p>';
+			echo '<small>' . esc_html__( 'Filters:', 'tcg-store-platform' ) . ' ' . esc_html( $filters ) . '</small></article>';
+		}
+		echo '</section>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_charts( array $plan ): void {
+		$charts = is_array( $plan['charts'] ?? null ) ? $plan['charts'] : array();
+		echo '<h2>' . esc_html__( 'Graph Dashboard', 'tcg-store-platform' ) . '</h2>';
+		echo '<section class="tcg-report-chart-grid">';
+		foreach ( $charts as $chart ) {
+			$series = is_array( $chart['y'] ?? null ) ? $chart['y'] : array();
+			echo '<article class="tcg-report-chart">';
+			echo '<div><span>' . esc_html( strtoupper( (string) ( $chart['type'] ?? 'chart' ) ) ) . '</span><h3>' . esc_html( (string) ( $chart['label'] ?? '' ) ) . '</h3></div>';
+			echo '<div class="tcg-report-chart-bars" aria-hidden="true">';
+			foreach ( array_values( $series ) as $index => $metric ) {
+				echo '<i style="--h:' . esc_attr( (string) ( 28 + ( ( $index + 1 ) * 11 ) % 58 ) ) . '%"></i>';
+			}
+			echo '</div><p>';
+			echo esc_html( 'Metrics: ' . implode( ', ', array_map( array( $this, 'report_label' ), $series ) ) );
+			echo '</p></article>';
+		}
+		echo '</section>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_comparisons( array $plan ): void {
+		$comparisons = is_array( $plan['comparison_sets'] ?? null ) ? $plan['comparison_sets'] : array();
+		echo '<h2>' . esc_html__( 'Comparison Builder', 'tcg-store-platform' ) . '</h2>';
+		echo '<div class="tcg-report-comparison-grid">';
+		foreach ( $comparisons as $comparison ) {
+			echo '<article class="tcg-report-comparison"><h3>' . esc_html( (string) ( $comparison['label'] ?? '' ) ) . '</h3>';
+			echo '<p>' . esc_html__( 'Compare by:', 'tcg-store-platform' ) . ' ' . esc_html( implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $comparison['compare_by'] ?? array() ) ) ) ) . '</p>';
+			echo '<small>' . esc_html__( 'Metrics:', 'tcg-store-platform' ) . ' ' . esc_html( implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $comparison['metrics'] ?? array() ) ) ) ) . '</small>';
+			echo '</article>';
+		}
+		echo '</div>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_matrix( array $plan ): void {
+		$matrix = is_array( $plan['report_matrix'] ?? null ) ? $plan['report_matrix'] : array();
+
+		echo '<h2>' . esc_html__( 'Report Matrix', 'tcg-store-platform' ) . '</h2>';
+		echo '<div class="tcg-report-matrix">';
+		foreach ( $matrix as $row ) {
+			echo '<article><h3>' . esc_html( (string) ( $row['area'] ?? '' ) ) . '</h3>';
+			echo '<p><strong>' . esc_html__( 'Reports:', 'tcg-store-platform' ) . '</strong> ' . esc_html( implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $row['reports'] ?? array() ) ) ) ) . '</p>';
+			echo '<p><strong>' . esc_html__( 'Graphs:', 'tcg-store-platform' ) . '</strong> ' . esc_html( implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $row['graphs'] ?? array() ) ) ) ) . '</p>';
+			echo '<p><strong>' . esc_html__( 'Filters:', 'tcg-store-platform' ) . '</strong> ' . esc_html( implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $row['default_filters'] ?? array() ) ) ) ) . '</p>';
+			echo '<small>' . esc_html__( 'Exports:', 'tcg-store-platform' ) . ' ' . esc_html( implode( ', ', array_map( array( $this, 'report_label' ), (array) ( $row['exports'] ?? array() ) ) ) ) . '</small></article>';
+		}
+		echo '</div>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_retail_kpis( array $plan ): void {
+		$kpis = is_array( $plan['retail_kpis'] ?? null ) ? $plan['retail_kpis'] : array();
+		echo '<h2>' . esc_html__( 'Retail KPI Library', 'tcg-store-platform' ) . '</h2>';
+		echo '<table class="widefat striped tcg-report-kpi-table"><thead><tr><th>' . esc_html__( 'KPI', 'tcg-store-platform' ) . '</th><th>' . esc_html__( 'Formula', 'tcg-store-platform' ) . '</th><th>' . esc_html__( 'Why it matters', 'tcg-store-platform' ) . '</th></tr></thead><tbody>';
+		foreach ( $kpis as $kpi ) {
+			echo '<tr><th scope="row">' . esc_html( (string) ( $kpi['label'] ?? '' ) ) . '</th><td><code>' . esc_html( (string) ( $kpi['formula'] ?? '' ) ) . '</code></td><td>' . esc_html( (string) ( $kpi['why'] ?? '' ) ) . '</td></tr>';
+		}
+		echo '</tbody></table>';
+	}
+
+	/**
+	 * @param array<string, mixed> $plan Dashboard plan.
+	 */
+	private function render_reports_exports( array $plan ): void {
+		$exports = is_array( $plan['csv_exports'] ?? null ) ? $plan['csv_exports'] : array();
+		$data    = is_array( $plan['data_contracts']['dashboard'] ?? null ) ? $plan['data_contracts']['dashboard'] : array();
+
+		echo '<h2>' . esc_html__( 'Exports and App API', 'tcg-store-platform' ) . '</h2>';
+		echo '<p class="tcg-report-api-contract"><strong>' . esc_html__( 'Manager REST contract:', 'tcg-store-platform' ) . '</strong> ';
+		echo esc_html( (string) ( $data['endpoint'] ?? '/wp-json/tcg-store/v1/reports/{report}' ) );
+		echo ' - ' . esc_html( (string) ( $data['pagination'] ?? '' ) ) . '</p>';
+		echo '<div class="tcg-report-export-grid">';
+		foreach ( $exports as $export ) {
+			$report = (string) ( $export['report'] ?? '' );
+			$url    = rest_url( 'tcg-store/v1/reports/' . rawurlencode( $report ) );
+			echo '<a class="tcg-report-export" href="' . esc_url( $url ) . '"><strong>' . esc_html( (string) ( $export['label'] ?? $report ) ) . '</strong><small>' . esc_html( (string) ( $export['filename'] ?? '' ) ) . '</small></a>';
+		}
+		echo '</div>';
+	}
+
+	private function report_label( mixed $value ): string {
+		return ucwords( str_replace( array( '_', '-' ), ' ', (string) $value ) );
+	}
+
+	private function render_reports_styles(): void {
+		echo '<style>
+.tcg-store-reports{--pug-bg:#07111d;--pug-panel:#101b2a;--pug-edge:#28435e;--pug-cyan:#36d7ff;--pug-gold:#ffd044;--pug-green:#7be495;--pug-pink:#ff78b9;color:#e8f3ff}
+.tcg-store-reports h1,.tcg-store-reports h2,.tcg-store-reports h3{color:#f8fbff}
+.tcg-report-filters,.tcg-report-card-grid,.tcg-report-insight-grid,.tcg-report-chart-grid,.tcg-report-comparison-grid,.tcg-report-matrix,.tcg-report-export-grid{display:grid;gap:14px;margin:18px 0}
+.tcg-report-filters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end;background:linear-gradient(135deg,#091829,#10253b);border:1px solid var(--pug-edge);border-radius:10px;padding:14px}
+.tcg-report-filters label{display:grid;gap:6px;font-weight:700;color:#a9c4de}
+.tcg-report-filters input,.tcg-report-filters select{width:100%;border-radius:8px;border:1px solid #365a7a;background:#06101c;color:#eef7ff}
+.tcg-report-card-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.tcg-report-kpi,.tcg-report-insight,.tcg-report-chart,.tcg-report-comparison,.tcg-report-matrix article,.tcg-report-export{background:linear-gradient(180deg,var(--pug-panel),#07101c);border:1px solid var(--pug-edge);border-radius:10px;padding:16px;box-shadow:0 14px 35px rgba(0,0,0,.18)}
+.tcg-report-kpi span,.tcg-report-insight span,.tcg-report-chart span{color:#87c9ff;text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.04em}
+.tcg-report-kpi strong{display:block;margin:8px 0;color:var(--pug-gold);font-size:26px}
+.tcg-report-kpi small,.tcg-report-insight small,.tcg-report-comparison small,.tcg-report-matrix small,.tcg-report-export small{color:#b8c8d9}
+.tcg-report-insight-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.tcg-report-insight h3{margin:.45em 0;color:#fff}
+.tcg-report-chart-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.tcg-report-chart-bars{display:flex;align-items:end;gap:8px;height:150px;margin:14px 0;padding:12px;background:linear-gradient(180deg,rgba(54,215,255,.08),rgba(255,208,68,.06));border-radius:8px}
+.tcg-report-chart-bars i{display:block;flex:1;height:var(--h);min-height:16px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--pug-cyan),var(--pug-green))}
+.tcg-report-comparison-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.tcg-report-comparison h3{margin-top:0;color:var(--pug-gold)}
+.tcg-report-matrix{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.tcg-report-matrix h3{margin-top:0;color:var(--pug-cyan)}
+.tcg-report-api-contract{background:#06101c;border:1px solid var(--pug-edge);border-radius:8px;padding:12px;color:#d6e8f8}
+.tcg-report-kpi-table code{white-space:normal}
+.tcg-report-export-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.tcg-report-export{text-decoration:none;color:#eaf7ff}
+.tcg-report-export:hover,.tcg-report-export:focus{border-color:var(--pug-gold);color:#fff}
+@media (max-width:782px){.tcg-report-filters{grid-template-columns:1fr}.tcg-report-chart-bars{height:110px}}
+</style>';
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
 	private function inventory_search_query(): array {
 		$source = is_array( $_GET ) ? wp_unslash( $_GET ) : array(); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		return array(
-			'q'         => $source['q'] ?? '',
-			'game'      => $source['game'] ?? '',
-			'status'    => $source['status'] ?? '',
-			'sort'      => $source['sort'] ?? '',
-			'page_size' => $source['page_size'] ?? '',
+			'q'             => $source['q'] ?? '',
+			'game'          => $source['game'] ?? '',
+			'status'        => $source['status'] ?? '',
+			'raw_or_graded' => $source['raw_or_graded'] ?? '',
+			'sort'          => $source['sort'] ?? '',
+			'page_size'     => $source['page_size'] ?? '',
 		);
 	}
 
@@ -839,6 +1078,7 @@ final class AdminMenu {
 		$ready          = true === ( $panel['ready'] ?? false );
 		$endpoint       = rest_url( ltrim( (string) ( $panel['endpoint_path'] ?? '' ), '/' ) );
 		$status_options = is_array( $panel['status_options'] ?? null ) ? $panel['status_options'] : array();
+		$raw_options    = is_array( $panel['raw_or_graded_options'] ?? null ) ? $panel['raw_or_graded_options'] : array();
 		$sort_options   = is_array( $panel['sort_options'] ?? null ) ? $panel['sort_options'] : array();
 		$page_sizes     = is_array( $panel['page_sizes'] ?? null ) ? $panel['page_sizes'] : array();
 
@@ -870,6 +1110,18 @@ final class AdminMenu {
 			$status = (string) $status;
 			echo '<option value="' . esc_attr( $status ) . '" ' . selected( (string) ( $query['status'] ?? '' ), $status, false ) . '>';
 			echo esc_html( '' === $status ? __( 'Any status', 'tcg-store-platform' ) : ucwords( str_replace( '_', ' ', $status ) ) );
+			echo '</option>';
+		}
+		echo '</select></td></tr>';
+		echo '<tr><th scope="row"><label for="tcg-store-inventory-raw-or-graded">' . esc_html__( 'Inventory type', 'tcg-store-platform' ) . '</label></th><td>';
+		echo '<select id="tcg-store-inventory-raw-or-graded" name="raw_or_graded">';
+		foreach ( $raw_options as $raw_or_graded ) {
+			$raw_or_graded = (string) $raw_or_graded;
+			$label         = '' === $raw_or_graded
+				? __( 'Singles and graded', 'tcg-store-platform' )
+				: ( 'graded' === $raw_or_graded ? __( 'Graded Cards', 'tcg-store-platform' ) : __( 'Singles', 'tcg-store-platform' ) );
+			echo '<option value="' . esc_attr( $raw_or_graded ) . '" ' . selected( (string) ( $query['raw_or_graded'] ?? '' ), $raw_or_graded, false ) . '>';
+			echo esc_html( $label );
 			echo '</option>';
 		}
 		echo '</select></td></tr>';
@@ -1052,6 +1304,7 @@ final class AdminMenu {
 		$status_options     = is_array( $panel['status_options'] ?? null ) ? $panel['status_options'] : array();
 		$condition_options  = is_array( $panel['condition_options'] ?? null ) ? $panel['condition_options'] : array();
 		$raw_options        = is_array( $panel['raw_or_graded_options'] ?? null ) ? $panel['raw_or_graded_options'] : array();
+		$grading_options    = is_array( $panel['grading_company_options'] ?? null ) ? $panel['grading_company_options'] : array();
 		$visibility_options = is_array( $panel['visibility_options'] ?? null ) ? $panel['visibility_options'] : array();
 		$notice_type        = $ready ? 'success' : 'warning';
 		$notes              = $can_create
@@ -1091,7 +1344,10 @@ final class AdminMenu {
 		$this->render_inventory_intake_text_input( $form, 'sale_price_minor_units', __( 'Sale price cents', 'tcg-store-platform' ), '250', true, 'number' );
 		$this->render_inventory_intake_text_input( $form, 'intake_quantity', __( 'Quantity to add', 'tcg-store-platform' ), '1', true, 'number' );
 		$this->render_inventory_intake_select( $form, 'status', __( 'Status', 'tcg-store-platform' ), $status_options );
-		$this->render_inventory_intake_select( $form, 'raw_or_graded', __( 'Raw or graded', 'tcg-store-platform' ), $raw_options );
+		$this->render_inventory_intake_select( $form, 'raw_or_graded', __( 'Product type', 'tcg-store-platform' ), $raw_options );
+		$this->render_inventory_intake_select( $form, 'grading_company', __( 'Grading company', 'tcg-store-platform' ), $grading_options );
+		$this->render_inventory_intake_text_input( $form, 'grade', __( 'Grade', 'tcg-store-platform' ), '10', false );
+		$this->render_inventory_intake_text_input( $form, 'cert_number', __( 'Certification number', 'tcg-store-platform' ), '12345678', false );
 		$this->render_inventory_intake_select( $form, 'condition_code', __( 'Condition', 'tcg-store-platform' ), $condition_options );
 		$this->render_inventory_intake_select( $form, 'online_visibility', __( 'Online visibility', 'tcg-store-platform' ), $visibility_options );
 		$this->render_inventory_intake_select( $form, 'kiosk_visibility', __( 'Kiosk visibility', 'tcg-store-platform' ), $visibility_options );
@@ -1157,10 +1413,20 @@ final class AdminMenu {
 		foreach ( $options as $option ) {
 			$option = (string) $option;
 			echo '<option value="' . esc_attr( $option ) . '" ' . selected( (string) ( $form[ $name ] ?? '' ), $option, false ) . '>';
-			echo esc_html( ucwords( str_replace( '_', ' ', $option ) ) );
+			echo esc_html( $this->inventory_intake_option_label( $name, $option ) );
 			echo '</option>';
 		}
 		echo '</select></td></tr>';
+	}
+
+	private function inventory_intake_option_label( string $name, string $option ): string {
+		if ( 'raw_or_graded' === $name ) {
+			return 'graded' === $option
+				? __( 'Graded Cards', 'tcg-store-platform' )
+				: __( 'Singles', 'tcg-store-platform' );
+		}
+
+		return ucwords( str_replace( '_', ' ', $option ) );
 	}
 
 	/**
@@ -1279,7 +1545,7 @@ final class AdminMenu {
 		echo 'const render=function(payload){const items=((payload.data||{}).items)||[];const meta=((payload.data||{}).meta)||{};';
 		echo 'updateSquareMapping(items);';
 		echo 'if(!items.length){target.innerHTML="<p>' . esc_js( __( 'No matching inventory found.', 'tcg-store-platform' ) ) . '</p>";return;}';
-		echo 'target.innerHTML="<p>"+esc(meta.total)+" ' . esc_js( __( 'matching items', 'tcg-store-platform' ) ) . '</p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Status', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'SKU', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'WooCommerce', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+items.map(function(item){return "<tr><td>"+esc(item.card_name)+"<br><span class=\"description\">"+esc(item.condition_code||"")+" "+esc(item.variant||item.finish||"")+"</span></td><td>"+esc(item.set_code||item.set_name||"")+"</td><td>"+esc(item.status)+"</td><td>"+esc(formatMoney(item.sale_price))+" "+esc(item.sale_currency||"")+"</td><td>"+esc(item.sku||item.barcode||"")+"</td><td>"+wcProductLabel(item)+wcProductForm(item)+"<p class=\"description\">' . esc_js( __( 'Payments stay with WooCommerce Square; this sync controls product, stock, image, and exact inventory reservation.', 'tcg-store-platform' ) ) . '</p></td></tr>";}).join("")+"</tbody></table>";};';
+		echo 'target.innerHTML="<p>"+esc(meta.total)+" ' . esc_js( __( 'matching items', 'tcg-store-platform' ) ) . '</p><table class=\"widefat striped\"><thead><tr><th>' . esc_js( __( 'Card', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Type', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Set', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Status', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'Price', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'SKU', 'tcg-store-platform' ) ) . '</th><th>' . esc_js( __( 'WooCommerce', 'tcg-store-platform' ) ) . '</th></tr></thead><tbody>"+items.map(function(item){const type=String(item.raw_or_graded||"raw")==="graded"?"' . esc_js( __( 'Graded Cards', 'tcg-store-platform' ) ) . '":"' . esc_js( __( 'Singles', 'tcg-store-platform' ) ) . '";const graded=[item.grading_company,item.grade,item.cert_number?("Cert "+item.cert_number):""].filter(Boolean).join(" / ");return "<tr><td>"+esc(item.card_name)+"<br><span class=\"description\">"+esc(item.condition_code||"")+" "+esc(item.variant||item.finish||"")+"</span></td><td>"+esc(type)+(graded?"<br><span class=\"description\">"+esc(graded)+"</span>":"")+"</td><td>"+esc(item.set_code||item.set_name||"")+"</td><td>"+esc(item.status)+"</td><td>"+esc(formatMoney(item.sale_price))+" "+esc(item.sale_currency||"")+"</td><td>"+esc(item.sku||item.barcode||"")+"</td><td>"+wcProductLabel(item)+wcProductForm(item)+"<p class=\"description\">' . esc_js( __( 'Payments stay with WooCommerce Square; this sync controls product, stock, image, and exact inventory reservation.', 'tcg-store-platform' ) ) . '</p></td></tr>";}).join("")+"</tbody></table>";};';
 		echo 'form.addEventListener("submit",function(event){event.preventDefault();const params=new URLSearchParams(new FormData(form));params.delete("page");params.delete("inventory_search");params.set("visibility","staff");target.innerHTML="<p>' . esc_js( __( 'Searching inventory...', 'tcg-store-platform' ) ) . '</p>";fetch(target.dataset.endpoint+"?"+params.toString(),{headers:{"X-WP-Nonce":target.dataset.nonce}}).then(function(response){return response.json().then(function(payload){return {ok:response.ok,payload:payload};});}).then(function(result){if(!result.ok){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";return;}render(result.payload);}).catch(function(){target.innerHTML="<p>' . esc_js( __( 'Inventory search failed.', 'tcg-store-platform' ) ) . '</p>";});});';
 		echo 'if(new URLSearchParams(window.location.search).get("inventory_search")==="1"){form.dispatchEvent(new Event("submit",{cancelable:true}));}';
 		echo '})();';
@@ -1327,6 +1593,10 @@ final class AdminMenu {
 		echo 'const target=document.getElementById("tcg-store-inventory-intake-result");';
 		echo 'if(!form||!target||target.dataset.ready!=="1"){return;}';
 		echo 'const esc=function(value){return String(value===null||value===undefined?"":value).replace(/[&<>"' . "'" . ']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","' . "'" . '":"&#039;"}[char];});};';
+		echo 'const typeField=form.querySelector("[name=\"raw_or_graded\"]");';
+		echo 'const gradedFields=["grading_company","grade","cert_number"].map(function(name){return form.querySelector("[name=\""+name+"\"]");}).filter(Boolean);';
+		echo 'const syncGradedFields=function(){const isGraded=typeField&&String(typeField.value)==="graded";gradedFields.forEach(function(field){const row=field.closest("tr");if(row){row.style.display=isGraded?"":"none";}field.required=isGraded&&(field.name==="grading_company"||field.name==="grade");});};';
+		echo 'if(typeField){typeField.addEventListener("change",syncGradedFields);syncGradedFields();}';
 		echo 'const quantityFrom=function(params){const raw=Number(params.get("intake_quantity")||1);if(!Number.isFinite(raw)){return 1;}return Math.min(100,Math.max(1,Math.floor(raw)));};';
 		echo 'const suffixed=function(value,index,total){if(total<2||!value){return value;}const suffix="-"+String(index+1).padStart(2,"0");return String(value).slice(0,72)+suffix;};';
 		echo 'const resultLine=function(results,total){const created=results.filter(function(result){return result.ok&&result.payload&&result.payload.status==="created";});const failed=results.length-created.length;const synced=created.filter(function(result){const sync=(((result.payload.meta||{}).projections||{}).woocommerce_product_sync)||{};return sync.synced===true;}).length;const rows=created.map(function(result){const data=result.payload.data||{};const sync=(((result.payload.meta||{}).projections||{}).woocommerce_product_sync)||{};const label=sync.requested?(sync.synced?" WooCommerce synced":" WooCommerce "+esc(sync.status||"not synced")):" external projections deferred";return "<li>#"+esc(data.inventory_id||"")+" "+esc(data.sku||data.barcode||"")+" <span class=\"description\">"+label+"</span></li>";}).join("");return "<p><strong>' . esc_js( __( 'Created inventory items', 'tcg-store-platform' ) ) . ':</strong> "+esc(created.length)+" / "+esc(total)+" <span class=\"description\">"+esc(synced)+" ' . esc_js( __( 'WooCommerce synced', 'tcg-store-platform' ) ) . '</span></p>"+(failed?"<p>' . esc_js( __( 'Failed', 'tcg-store-platform' ) ) . ': "+esc(failed)+"</p>":"")+"<ul>"+rows+"</ul>";};';

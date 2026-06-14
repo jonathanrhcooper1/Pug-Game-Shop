@@ -21,6 +21,10 @@ const offlineSyncAdapterSource = await readFile(
   path.join(appRoot, "src/data/tauriOfflineSyncAdapter.ts"),
   "utf8",
 )
+const localSyncDiscoveryAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriLocalSyncDiscoveryAdapter.ts"),
+  "utf8",
+)
 
 for (const dependency of [
   "keyring = { version = \"3\", features = [\"windows-native\"] }",
@@ -77,6 +81,14 @@ for (const marker of [
   "store_device_token",
   "get_device_token_status",
   "delete_device_token",
+  "discover_local_sync_servers",
+  "local_sync_discovery_completed",
+  "pug-local-sync-discovery-v1",
+  "LOCAL_SYNC_DISCOVERY_PORT",
+  "UdpSocket::bind",
+  "set_broadcast(true)",
+  "manual_fallback_supported",
+  "LocalSyncDiscoveredServer",
   "pair_offline_device",
   "run_offline_sync_request",
   "offline_sync_request_completed",
@@ -183,11 +195,25 @@ for (const marker of [
   assert.ok(offlineSyncAdapterSource.includes(marker), `Missing offline sync adapter marker: ${marker}`)
 }
 
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriLocalSyncDiscoveryAdapter",
+  "discover_local_sync_servers",
+  "local_sync_discovery_completed",
+  "pug-local-sync-discovery-v1",
+  "manual_fallback_supported: true",
+  "raw_credentials_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(localSyncDiscoveryAdapterSource.includes(marker), `Missing discovery adapter marker: ${marker}`)
+}
+
 for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
   assert.equal(adapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(secureStoreAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(devicePairingAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(offlineSyncAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(localSyncDiscoveryAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(libSource.includes(forbidden), false, `Forbidden command marker: ${forbidden}`)
 }
 

@@ -36,6 +36,9 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( 'instock', $product['stock_status'] );
 		$this->assert_same( true, $product['sold_individually'] );
 		$this->assert_same( array( 'singles', 'pokemon' ), $product['category_slugs'] );
+		$this->assert_same( true, $operation['square_sync']['enabled'] );
+		$this->assert_same( 'wc_square_synced', $operation['square_sync']['taxonomy'] );
+		$this->assert_same( 'yes', $operation['square_sync']['term'] );
 		$this->assert_same( true, $contract['woocommerce_write_deferred'] );
 		$this->assert_same( true, $contract['square_inventory_write_deferred'] );
 		$this->assert_contains( 'Charizard', $product['description'] );
@@ -87,12 +90,87 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( 'instock', $product['stock_status'] );
 		$this->assert_same( true, $product['sold_individually'] );
 		$this->assert_same( array( 'singles', 'pokemon' ), $product['category_slugs'] );
+		$this->assert_same( true, $operation['square_sync']['enabled'] );
+		$this->assert_same( 'wc_square_synced', $operation['square_sync']['taxonomy'] );
 		$this->assert_meta_value( 'grouped_card', '_tcg_inventory_product_mode', $product['meta_data'] );
 		$this->assert_meta_value( 'reference:777', '_tcg_inventory_group_key', $product['meta_data'] );
 		$this->assert_meta_value( 'https://images.example.test/charizard.png', '_tcg_front_image_url', $product['meta_data'] );
 		$this->assert_true( in_array( 'serialized_checkout_reserves_exact_inventory_row', $plan->errors(), true ) );
 		$this->assert_contains( '"condition_code":"LP"', $this->meta_value( '_tcg_inventory_options_json', $product['meta_data'] ) );
 		$this->assert_contains( '"price":"80.00"', $this->meta_value( '_tcg_inventory_options_json', $product['meta_data'] ) );
+	}
+
+	public function test_grouped_product_options_merge_blank_and_raw_singles_rows(): void {
+		$first                       = $this->available_row();
+		$first['reference_card_id']  = 777;
+		$first['condition_code']     = 'MP';
+		$first['raw_or_graded']      = '';
+		$first['sale_price']         = '34.94';
+		unset( $first['sale_price_minor_units'] );
+
+		$second                       = $first;
+		$second['inventory_id']       = 43;
+		$second['public_id']          = 'card-public-43';
+		$second['raw_or_graded']      = 'raw';
+
+		$plan    = ( new InventoryProductProjectionPlanner() )->plan_group( array( $first, $second ) );
+		$product = $plan->product_operations()[0]['product'];
+		$options = json_decode( $this->meta_value( '_tcg_inventory_options_json', $product['meta_data'] ), true );
+
+		$this->assert_true( is_array( $options ) );
+		$this->assert_same( 1, count( $options ) );
+		$this->assert_same( 'MP', $options[0]['condition_code'] );
+		$this->assert_same( 2, $options[0]['stock_quantity'] );
+		$this->assert_same( array( 42, 43 ), $options[0]['inventory_ids'] );
+	}
+
+	public function test_existing_card_group_with_no_available_copies_projects_stockout_without_price(): void {
+		$sold                           = $this->available_row();
+		$sold['status']                 = 'sold';
+		$sold['reference_card_id']      = 777;
+		$sold['woocommerce_product_id'] = 1001;
+		$sold['sale_price_minor_units'] = null;
+		$sold['sale_price']             = '';
+
+		$plan      = ( new InventoryProductProjectionPlanner() )->plan_group( array( $sold ) );
+		$operation = $plan->product_operations()[0];
+		$product   = $operation['product'];
+
+		$this->assert_same( InventoryProductProjectionPlan::READY, $plan->status() );
+		$this->assert_same( 'woocommerce_grouped_product_stockout_ready', $plan->code() );
+		$this->assert_same( 'mark_grouped_product_out_of_stock', $operation['operation'] );
+		$this->assert_same( 1001, $operation['product_id'] );
+		$this->assert_same( 1001, $product['id'] );
+		$this->assert_same( 'outofstock', $product['stock_status'] );
+		$this->assert_same( 0, $product['stock_quantity'] );
+		$this->assert_same( 'hidden', $product['catalog_visibility'] );
+		$this->assert_false( array_key_exists( 'regular_price', $product ) );
+		$this->assert_same( true, $operation['square_sync']['enabled'] );
+		$this->assert_true( in_array( 'no_available_visible_inventory_rows', $plan->errors(), true ) );
+		$this->assert_meta_value( 'stockout', '_tcg_projection_state', $product['meta_data'] );
+		$this->assert_meta_value( '[]', '_tcg_inventory_options_json', $product['meta_data'] );
+	}
+
+	public function test_sold_out_card_group_prefers_newest_product_mapping_for_stockout(): void {
+		$old                           = $this->available_row();
+		$old['inventory_id']           = 42;
+		$old['status']                 = 'sold';
+		$old['reference_card_id']      = 777;
+		$old['woocommerce_product_id'] = 1001;
+		$old['sale_price_minor_units'] = null;
+
+		$new                           = $old;
+		$new['inventory_id']           = 43;
+		$new['public_id']              = 'card-public-43';
+		$new['woocommerce_product_id'] = 1002;
+
+		$plan      = ( new InventoryProductProjectionPlanner() )->plan_group( array( $old, $new ) );
+		$operation = $plan->product_operations()[0];
+
+		$this->assert_same( InventoryProductProjectionPlan::READY, $plan->status() );
+		$this->assert_same( 'mark_grouped_product_out_of_stock', $operation['operation'] );
+		$this->assert_same( 1002, $operation['product_id'] );
+		$this->assert_same( 1002, $operation['product']['id'] );
 	}
 
 	public function test_existing_woocommerce_product_updates_without_recreation(): void {
@@ -128,6 +206,7 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( 0, $product['stock_quantity'] );
 		$this->assert_same( 'outofstock', $product['stock_status'] );
 		$this->assert_same( 'hidden', $product['catalog_visibility'] );
+		$this->assert_same( true, $operation['square_sync']['enabled'] );
 		$this->assert_true( in_array( 'status_not_available', $plan->errors(), true ) );
 		$this->assert_meta_value( 'stockout', '_tcg_projection_state', $product['meta_data'] );
 	}
