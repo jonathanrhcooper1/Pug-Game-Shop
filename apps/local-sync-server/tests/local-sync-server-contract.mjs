@@ -108,6 +108,7 @@ for (const endpoint of [
   "PATCH /kiosk/orders/:order_id/status",
   "POST /credit/redemptions",
   "GET /events",
+  "POST /events",
   "POST /events/registrations",
   "POST /events/check-ins",
   "POST /sync/push",

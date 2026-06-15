@@ -15,9 +15,12 @@ use TCGStorePlatform\Reservations\WpdbReservationStorage;
 
 final class GroupedInventoryProductHooks {
 	public const STYLE_HANDLE = 'tcg-store-woocommerce-card-product';
+	public const EXPIRY_CRON_HOOK = 'tcg_store_expire_reservations';
+	private const EXPIRY_CRON_RECURRENCE = 'tcg_store_every_five_minutes';
 
 	public function register(): void {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_filter( 'cron_schedules', array( $this, 'add_cron_schedule' ) );
 		add_filter( 'woocommerce_product_get_image', array( $this, 'product_image' ), 10, 5 );
 		add_filter( 'woocommerce_single_product_image_thumbnail_html', array( $this, 'single_product_image_html' ), 10, 2 );
 		add_action( 'woocommerce_before_single_product_summary', array( $this, 'render_single_product_gallery' ), 19 );
@@ -26,12 +29,17 @@ final class GroupedInventoryProductHooks {
 		add_filter( 'woocommerce_add_to_cart_validation', array( $this, 'validate_add_to_cart' ), 10, 5 );
 		add_filter( 'woocommerce_add_cart_item_data', array( $this, 'reserve_add_to_cart_inventory' ), 10, 4 );
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'restore_cart_item_from_session' ), 10, 3 );
+		add_action( 'woocommerce_before_cart', array( $this, 'release_expired_cart_reservations' ), 5 );
+		add_action( 'woocommerce_before_checkout_form', array( $this, 'release_expired_cart_reservations' ), 5 );
+		add_action( 'woocommerce_before_calculate_totals', array( $this, 'release_expired_cart_reservations' ), 5 );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_exact_inventory_price_snapshots' ), 20 );
+		add_action( self::EXPIRY_CRON_HOOK, array( $this, 'expire_stale_reservations' ), 10 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'attach_exact_inventory_order_line_metadata' ), 10, 4 );
 		add_action( 'woocommerce_payment_complete', array( $this, 'convert_paid_order_reservations' ), 10 );
 		add_action( 'woocommerce_order_status_failed', array( $this, 'release_order_reservations' ), 10 );
 		add_action( 'woocommerce_order_status_cancelled', array( $this, 'release_order_reservations' ), 10 );
 		add_action( 'woocommerce_cart_item_removed', array( $this, 'release_removed_cart_item_reservation' ), 10, 2 );
+		$this->maybe_schedule_reservation_expiry();
 	}
 
 	/**
@@ -40,6 +48,7 @@ final class GroupedInventoryProductHooks {
 	public static function hook_contracts(): array {
 		return array(
 			array( 'type' => 'action', 'hook' => 'wp_enqueue_scripts', 'callback' => 'enqueue_assets' ),
+			array( 'type' => 'filter', 'hook' => 'cron_schedules', 'callback' => 'add_cron_schedule' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_product_get_image', 'callback' => 'product_image' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_single_product_image_thumbnail_html', 'callback' => 'single_product_image_html' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_before_single_product_summary', 'callback' => 'render_single_product_gallery' ),
@@ -47,11 +56,54 @@ final class GroupedInventoryProductHooks {
 			array( 'type' => 'action', 'hook' => 'woocommerce_before_add_to_cart_button', 'callback' => 'render_condition_selector' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_add_to_cart_validation', 'callback' => 'validate_add_to_cart' ),
 			array( 'type' => 'filter', 'hook' => 'woocommerce_add_cart_item_data', 'callback' => 'reserve_add_to_cart_inventory' ),
+			array( 'type' => 'action', 'hook' => 'woocommerce_before_cart', 'callback' => 'release_expired_cart_reservations' ),
+			array( 'type' => 'action', 'hook' => 'woocommerce_before_checkout_form', 'callback' => 'release_expired_cart_reservations' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_before_calculate_totals', 'callback' => 'apply_exact_inventory_price_snapshots' ),
+			array( 'type' => 'action', 'hook' => self::EXPIRY_CRON_HOOK, 'callback' => 'expire_stale_reservations' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_checkout_create_order_line_item', 'callback' => 'attach_exact_inventory_order_line_metadata' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_payment_complete', 'callback' => 'convert_paid_order_reservations' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_cart_item_removed', 'callback' => 'release_removed_cart_item_reservation' ),
 		);
+	}
+
+	/**
+	 * @param array<string, array{interval:int,display:string}> $schedules Cron schedules.
+	 *
+	 * @return array<string, array{interval:int,display:string}>
+	 */
+	public function add_cron_schedule( array $schedules ): array {
+		$schedules[ self::EXPIRY_CRON_RECURRENCE ] = array(
+			'interval' => 5 * $this->minute_in_seconds(),
+			'display'  => __( 'Every five minutes', 'tcg-store-platform' ),
+		);
+
+		return $schedules;
+	}
+
+	public function maybe_schedule_reservation_expiry(): void {
+		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_event' ) ) {
+			return;
+		}
+
+		if ( wp_next_scheduled( self::EXPIRY_CRON_HOOK ) ) {
+			return;
+		}
+
+		wp_schedule_event( time() + $this->minute_in_seconds(), self::EXPIRY_CRON_RECURRENCE, self::EXPIRY_CRON_HOOK );
+	}
+
+	public static function unschedule_reservation_expiry(): void {
+		if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_unschedule_event' ) ) {
+			return;
+		}
+
+		while ( $timestamp = wp_next_scheduled( self::EXPIRY_CRON_HOOK ) ) {
+			wp_unschedule_event( (int) $timestamp, self::EXPIRY_CRON_HOOK );
+		}
+	}
+
+	private function minute_in_seconds(): int {
+		return defined( 'MINUTE_IN_SECONDS' ) ? (int) constant( 'MINUTE_IN_SECONDS' ) : 60;
 	}
 
 	public function enqueue_assets(): void {
@@ -306,6 +358,73 @@ final class GroupedInventoryProductHooks {
 		}
 	}
 
+	public function release_expired_cart_reservations( mixed $cart = null ): void {
+		$this->expire_stale_reservations();
+
+		$cart = is_object( $cart ) ? $cart : ( function_exists( 'WC' ) && is_object( WC() ) ? ( WC()->cart ?? null ) : null );
+		if ( ! is_object( $cart ) || ! method_exists( $cart, 'get_cart' ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$service = new ReservationService( new WpdbReservationStorage( $wpdb ) );
+
+		foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+			if ( ! is_array( $cart_item ) || empty( $cart_item['tcg_serialized_inventory'] ) ) {
+				continue;
+			}
+
+			if ( ! $this->datetime_expired( (string) ( $cart_item['reservation_expires_at'] ?? '' ) ) ) {
+				continue;
+			}
+
+			$reservation_id = (int) ( $cart_item['reservation_id'] ?? 0 );
+			if ( $reservation_id > 0 ) {
+				$service->expire( $reservation_id );
+			}
+
+			if ( method_exists( $cart, 'remove_cart_item' ) ) {
+				$cart->remove_cart_item( (string) $cart_item_key );
+			}
+
+			if ( function_exists( 'wc_add_notice' ) ) {
+				wc_add_notice( __( 'A card hold expired after 30 minutes and was returned to available inventory.', 'tcg-store-platform' ), 'notice' );
+			}
+		}
+	}
+
+	public function expire_stale_reservations( int $limit = 50 ): int {
+		global $wpdb;
+
+		if ( ! is_object( $wpdb ?? null ) ) {
+			return 0;
+		}
+
+		$table = $this->reservations_table( $wpdb );
+		$sql   = $wpdb->prepare(
+			"SELECT `reservation_id` FROM `{$table}` WHERE `status` = %s AND `expires_at` <= %s ORDER BY `expires_at` ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'active',
+			gmdate( 'Y-m-d H:i:s' ),
+			max( 1, min( 500, $limit ) )
+		);
+		$rows  = is_string( $sql ) ? $wpdb->get_results( $sql, ARRAY_A ) : array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		if ( ! is_array( $rows ) || array() === $rows ) {
+			return 0;
+		}
+
+		$service = new ReservationService( new WpdbReservationStorage( $wpdb ) );
+		$expired = 0;
+		foreach ( $rows as $row ) {
+			$result = $service->expire( (int) ( $row['reservation_id'] ?? 0 ) );
+			if ( $result->is_accepted() ) {
+				++$expired;
+			}
+		}
+
+		return $expired;
+	}
+
 	public function attach_exact_inventory_order_line_metadata( mixed $item, mixed $cart_item_key, mixed $values, mixed $order ): void {
 		unset( $order );
 
@@ -518,6 +637,24 @@ final class GroupedInventoryProductHooks {
 		return ( 1 === preg_match( '/^[A-Za-z0-9_]+$/', $prefix ) ? $prefix : '' ) . 'tcg_inventory_items';
 	}
 
+	private function reservations_table( \wpdb $database ): string {
+		$prefix = (string) ( $database->prefix ?? '' );
+
+		return ( 1 === preg_match( '/^[A-Za-z0-9_]+$/', $prefix ) ? $prefix : '' ) . 'tcg_reservations';
+	}
+
+	private function datetime_expired( string $value ): bool {
+		if ( '' === trim( $value ) ) {
+			return false;
+		}
+
+		try {
+			return new DateTimeImmutable( $value ) <= new DateTimeImmutable( 'now' );
+		} catch ( \Exception ) {
+			return false;
+		}
+	}
+
 	private function posted_option_key(): string {
 		$value = $_POST['tcg_inventory_option_key'] ?? ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$value = is_scalar( $value ) ? (string) $value : '';
@@ -653,7 +790,7 @@ final class GroupedInventoryProductHooks {
 		$url = $this->esc_url( $this->remote_image_url( $product ) );
 		$alt = $this->esc_attr( $product->get_name() );
 
-		return '<img src="' . $url . '" alt="' . $alt . '" class="' . $this->esc_attr( $class_names ) . '" loading="' . $this->esc_attr( $loading ) . '" decoding="async" />';
+		return '<img src="' . $url . '" alt="' . $alt . '" class="' . $this->esc_attr( $class_names ) . '" loading="' . $this->esc_attr( $loading ) . '" decoding="async" style="background:transparent;box-shadow:none;" />';
 	}
 
 	private function esc_url( string $url ): string {

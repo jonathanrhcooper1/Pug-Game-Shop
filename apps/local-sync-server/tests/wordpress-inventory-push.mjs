@@ -28,6 +28,8 @@ const item = {
   status: "pending_intake",
   image_url: "https://images.pokemontcg.io/base1/4_hires.png",
   back_image_url: "https://images.pokemontcg.io/cardback.png",
+  created_by_user_id: "27",
+  created_by_user_name: "Front Counter Staff",
 }
 const body = inventoryIntakeBody(item)
 
@@ -50,6 +52,8 @@ assert.equal(body.kiosk_visibility, "visible")
 assert.equal(body.pos_visibility, "visible")
 assert.equal(body.front_image_remote_url, "https://images.pokemontcg.io/base1/4_hires.png")
 assert.equal(body.back_image_remote_url, "https://images.pokemontcg.io/cardback.png")
+assert.equal(body.actor_user_id, 27)
+assert.match(body.staff_notes, /Front Counter Staff/)
 assert.equal(body.sync_woocommerce_product, true)
 assert.equal(body.production_write_approval, "woocommerce-product-sync")
 assert.equal("location_id" in body, false)

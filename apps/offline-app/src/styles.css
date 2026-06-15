@@ -3129,6 +3129,26 @@ h2 {
   border-radius: 8px;
 }
 
+.intake-location-control label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.intake-location-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.intake-location-add button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+}
+
 .inventory-intake-control > .intake-pricing-summary {
   color: #152018;
   background:
@@ -4313,6 +4333,87 @@ dd {
   white-space: pre;
 }
 
+.event-create-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(121, 215, 143, 0.16), rgba(247, 200, 89, 0.12)),
+    #fbfdf8;
+  border: 1px solid rgba(35, 100, 70, 0.18);
+  border-radius: 8px;
+}
+
+.event-create-card header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.event-create-card header div,
+.event-create-card header strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-create-card header strong {
+  color: #172016;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.event-create-card button {
+  flex: 0 0 auto;
+}
+
+.event-create-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(170px, 1fr) repeat(3, minmax(112px, 0.75fr));
+  gap: 8px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.event-create-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.event-create-grid input,
+.event-create-grid select,
+.event-create-grid textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(35, 100, 70, 0.18);
+  border-radius: 8px;
+}
+
+.event-create-grid textarea {
+  min-height: 68px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.event-create-grid input:focus,
+.event-create-grid select:focus,
+.event-create-grid textarea:focus {
+  outline: 2px solid rgba(92, 171, 119, 0.42);
+  outline-offset: 2px;
+}
+
+.event-create-description {
+  grid-column: span 2;
+}
+
 .event-list {
   display: grid;
   gap: 8px;
@@ -5474,6 +5575,7 @@ dd {
   .selected-scrydex-preview,
   .selected-scrydex-preview__meta,
   .inventory-adjustment-controls,
+  .event-create-grid,
   .event-row,
   .event-detail-card,
   .event-offline-fields,
@@ -5493,6 +5595,15 @@ dd {
   .credit-ledger-entry,
   .credit-panel {
     grid-template-columns: 1fr;
+  }
+
+  .event-create-card header {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .event-create-description {
+    grid-column: auto;
   }
 
   .credit-ledger-entry div:last-child {

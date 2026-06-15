@@ -74,6 +74,8 @@ try {
   assert.equal(intake.item.online_visibility, "staff_only")
   assert.equal(intake.item.kiosk_visibility, "visible")
   assert.equal(intake.item.pos_visibility, "hidden")
+  assert.equal(intake.item.created_by_user_id, cashierAuth.user.id)
+  assert.equal(intake.item.created_by_user_name, "Persistent Cashier")
 
   const createdCustomer = firstStore.createCustomer(managerAuth.session.token, {
     first_name: "Persistent",
@@ -139,6 +141,8 @@ try {
   assert.equal(persistedIntake.items[0].online_visibility, "staff_only")
   assert.equal(persistedIntake.items[0].kiosk_visibility, "visible")
   assert.equal(persistedIntake.items[0].pos_visibility, "hidden")
+  assert.equal(persistedIntake.items[0].created_by_user_id, cashierAuth.user.id)
+  assert.equal(persistedIntake.items[0].created_by_user_name, "Persistent Cashier")
 
   const persistedCustomers = restartedStore.searchCustomers({ query: "persistent.customer@example.test" })
   assert.equal(persistedCustomers.customers.length, 1)

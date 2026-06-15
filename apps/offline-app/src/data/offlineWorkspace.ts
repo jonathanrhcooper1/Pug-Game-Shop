@@ -187,6 +187,11 @@ export type EventSnapshot = {
   title: string
   startsAtUtc: string
   startsAtLabel: string
+  eventType: string
+  game: string
+  entryFeeMinorUnits: number
+  registrationDeadlineUtc: string
+  woocommerceProductId: number
   registrationStatus: EventRegistrationStatus
   capacity: number
   registeredCount: number
@@ -624,6 +629,11 @@ export type OfflinePullEventCacheRecord = {
   title: string
   starts_at_utc: string
   starts_at_label: string
+  event_type?: string
+  game?: string
+  entry_fee_minor_units?: number
+  registration_deadline_utc?: string
+  woocommerce_product_id?: number
   registration_status: EventRegistrationStatus
   capacity: number
   registered_count: number
@@ -1208,6 +1218,11 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       title: "Friday Commander Night",
       startsAtUtc: "2026-06-12T23:00:00Z",
       startsAtLabel: "Fri Jun 12, 7:00 PM",
+      eventType: "commander",
+      game: "magicthegathering",
+      entryFeeMinorUnits: 1000,
+      registrationDeadlineUtc: "2026-06-12T21:00:00Z",
+      woocommerceProductId: 0,
       registrationStatus: "open",
       capacity: 24,
       registeredCount: 10,
@@ -1220,6 +1235,11 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       title: "Pokemon League Challenge",
       startsAtUtc: "2026-06-14T17:00:00Z",
       startsAtLabel: "Sun Jun 14, 1:00 PM",
+      eventType: "league",
+      game: "pokemon",
+      entryFeeMinorUnits: 500,
+      registrationDeadlineUtc: "2026-06-14T16:00:00Z",
+      woocommerceProductId: 0,
       registrationStatus: "waitlist",
       capacity: 32,
       registeredCount: 32,
@@ -3116,6 +3136,17 @@ function sanitizeOfflinePullEventCacheRecords(
       title: record.title.trim(),
       starts_at_utc: record.starts_at_utc.trim(),
       starts_at_label: record.starts_at_label.trim(),
+      event_type: record.event_type?.trim() || "store_event",
+      game: record.game?.trim() || "pokemon",
+      entry_fee_minor_units:
+        typeof record.entry_fee_minor_units === "number" && Number.isFinite(record.entry_fee_minor_units)
+          ? Math.max(0, Math.floor(record.entry_fee_minor_units))
+          : 0,
+      registration_deadline_utc: record.registration_deadline_utc?.trim() || record.starts_at_utc.trim(),
+      woocommerce_product_id:
+        typeof record.woocommerce_product_id === "number" && Number.isFinite(record.woocommerce_product_id)
+          ? Math.max(0, Math.floor(record.woocommerce_product_id))
+          : 0,
       registration_status: record.registration_status,
       capacity: Math.floor(record.capacity),
       registered_count: Math.floor(record.registered_count),
@@ -3629,6 +3660,10 @@ export function buildEventRegistrationOperation(
     occurredAtLocal?: string
     queuedAtUtc?: string
     attendeeLabel?: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
     registrationSource?: "walk_in" | "phone" | "staff"
     paymentStatus?: EventPaymentStatus
   } = {},
@@ -3654,6 +3689,10 @@ export function buildEventRegistrationOperation(
       event_title: event.title,
       starts_at_utc: event.startsAtUtc,
       attendee_label: options.attendeeLabel ?? "Offline walk-in",
+      first_name: options.firstName ?? "",
+      last_name: options.lastName ?? "",
+      email: options.email ?? "",
+      phone: options.phone ?? "",
       registration_source: options.registrationSource ?? "walk_in",
       registration_status_snapshot: event.registrationStatus,
       seats_remaining_snapshot: seatsRemaining,
@@ -4057,6 +4096,11 @@ export function applyOfflinePullEventRecordsToCache(
       title: record.title,
       startsAtUtc: record.starts_at_utc,
       startsAtLabel: record.starts_at_label,
+      eventType: record.event_type ?? "store_event",
+      game: record.game ?? "pokemon",
+      entryFeeMinorUnits: record.entry_fee_minor_units ?? 0,
+      registrationDeadlineUtc: record.registration_deadline_utc ?? record.starts_at_utc,
+      woocommerceProductId: record.woocommerce_product_id ?? 0,
       registrationStatus: record.registration_status,
       capacity: record.capacity,
       registeredCount: Math.min(record.registered_count, record.capacity || record.registered_count),

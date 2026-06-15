@@ -33,6 +33,26 @@ assert.equal(body.idempotency_key, "op-event-registration-001")
 assert.equal(body.event_slug, "friday-commander-night")
 assert.equal(body.source, "offline_lan_sync")
 
+const contactBody = eventRegistrationBody({
+  ...operation,
+  operation_id: "op-event-registration-contact-001",
+  payload: {
+    ...operation.payload,
+    registration: {
+      ...operation.payload.registration,
+      first_name: "Ada",
+      last_name: "Lovelace",
+      email: "ada@example.test",
+      phone: "555-0100",
+    },
+  },
+})
+
+assert.equal(contactBody.first_name, "Ada")
+assert.equal(contactBody.last_name, "Lovelace")
+assert.equal(contactBody.email, "ada@example.test")
+assert.equal(contactBody.phone, "555-0100")
+
 let observedRequest = null
 const push = createWordPressEventRegistrationPush({
   websiteUrl: "https://example.test",

@@ -45,6 +45,7 @@ final class EventPresenter {
 			'seats_remaining'       => EventStatus::seats_remaining( $player_cap, $count ),
 			'registration_status'   => $status,
 			'registration_mode'     => (string) ( $row['registration_mode'] ?? EventRegistrationMode::LOCAL_ONLY ),
+			'woocommerce_product_id' => (int) ( $row['woocommerce_product_id'] ?? 0 ),
 			'registration_deadline' => $deadline ? $deadline->format( DATE_ATOM ) : null,
 			'refund_deadline'       => self::format_datetime( $row['refund_deadline'] ?? null, $timezone ),
 			'decklist_required'     => ! empty( $row['decklist_required'] ),

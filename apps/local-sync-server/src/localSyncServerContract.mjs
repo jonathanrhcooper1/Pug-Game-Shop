@@ -17,6 +17,8 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/pos/square/inventory-counts/reconcile", purpose: "Manager Square POS count comparison against serialized website inventory" },
   { method: "POST", path: "/pos/square/sales/finalize", purpose: "Staff Square receipt handoff that marks exact scanned inventory sold" },
   { method: "POST", path: "/inventory/intake", purpose: "Employee inventory intake queue" },
+  { method: "GET", path: "/inventory/locations", purpose: "Shared named inventory location list" },
+  { method: "POST", path: "/inventory/locations", purpose: "Staff-created inventory shelf/case location" },
   { method: "POST", path: "/inventory/reservations", purpose: "Local reservation lock request" },
   { method: "GET", path: "/trade-ins/orders", purpose: "Shared local trade-in and buy-in draft queue list" },
   { method: "POST", path: "/trade-ins/orders", purpose: "Staff trade-in and buy-in draft creation" },
@@ -34,6 +36,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/credit/adjustments", purpose: "Manager-approved store credit add/correction" },
   { method: "POST", path: "/credit/redemptions", purpose: "Store credit use queue for Square POS handoff" },
   { method: "GET", path: "/events", purpose: "Shared local event cache list" },
+  { method: "POST", path: "/events", purpose: "Staff event creation queue" },
   { method: "POST", path: "/events/registrations", purpose: "Event registration queue" },
   { method: "POST", path: "/events/check-ins", purpose: "Event check-in queue" },
   { method: "GET", path: "/sync/status", purpose: "WordPress sync status and backlog counts" },
@@ -158,6 +161,7 @@ export function buildLocalSyncSetupStatus(options = {}) {
       options.wordpressInventoryPushConnected ??
         options.wordpressInventorySalePushConnected ??
         options.wordpressFulfillmentStatusPushConnected ??
+        options.wordpressEventUpsertPushConnected ??
         options.wordpressEventRegistrationPushConnected ??
       options.wordpressEventCheckinPushConnected ??
       options.wordpressCreditPushConnected ??
@@ -199,6 +203,7 @@ export function buildLocalSyncSetupStatus(options = {}) {
     wordpress_inventory_sale_push_configured: Boolean(options.wordpressInventorySalePushConnected),
     wordpress_fulfillment_pull_configured: Boolean(options.wordpressFulfillmentPullConnected),
     wordpress_fulfillment_status_push_configured: Boolean(options.wordpressFulfillmentStatusPushConnected),
+    wordpress_event_upsert_push_configured: Boolean(options.wordpressEventUpsertPushConnected),
     wordpress_event_registration_push_configured: Boolean(options.wordpressEventRegistrationPushConnected),
     wordpress_event_checkin_push_configured: Boolean(options.wordpressEventCheckinPushConnected),
     wordpress_customer_push_configured: Boolean(options.wordpressCustomerPushConnected),

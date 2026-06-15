@@ -259,6 +259,8 @@ type KioskOrderTicket = {
   paymentStatus: "pay_at_store" | "paid"
   squareReceiptReference: string
   paidAtUtc: string
+  holdExpiresAtUtc: string
+  holdSecondsRemaining: number
   pickedItemIds: string[]
   allItemsPicked: boolean
 }
@@ -1150,6 +1152,27 @@ function formatUtcLabel(value: string) {
   }).format(date)
 }
 
+function datetimeLocalValueToUtc(value: string) {
+  const timestamp = Date.parse(value)
+
+  if (Number.isNaN(timestamp)) {
+    return ""
+  }
+
+  return new Date(timestamp).toISOString()
+}
+
+function eventPriceInputToMinorUnits(value: string) {
+  const normalized = value.replace(/[^0-9.]/g, "")
+  const parsed = Number.parseFloat(normalized)
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0
+  }
+
+  return Math.round(parsed * 100)
+}
+
 function squarePosReviewItemFromLegacyMapping(mapping: Record<string, unknown>) {
   const errors = Array.isArray(mapping.errors)
     ? mapping.errors.map((error) => String(error)).filter(Boolean)
@@ -1566,6 +1589,8 @@ function kioskTicketFromLocalSyncOrder(order: LocalSyncKioskOrder): KioskOrderTi
     paymentStatus: order.payment_status,
     squareReceiptReference: order.square_receipt_reference,
     paidAtUtc: order.paid_at_utc,
+    holdExpiresAtUtc: order.hold_expires_at_utc,
+    holdSecondsRemaining: order.hold_seconds_remaining,
     pickedItemIds: order.picked_item_ids,
     allItemsPicked: order.all_items_picked,
   }
@@ -1714,6 +1739,11 @@ function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapsho
     title: event.title,
     startsAtUtc: event.starts_at_utc,
     startsAtLabel: event.starts_at_label,
+    eventType: event.event_type,
+    game: event.game,
+    entryFeeMinorUnits: event.entry_fee_minor_units,
+    registrationDeadlineUtc: event.registration_deadline_utc,
+    woocommerceProductId: event.woocommerce_product_id,
     registrationStatus: event.registration_status,
     capacity: event.capacity,
     registeredCount: event.registered_count,
@@ -1851,6 +1881,17 @@ export function App() {
   const [intakePriceInput, setIntakePriceInput] = useState("0.00")
   const [intakeMinimumPriceInput, setIntakeMinimumPriceInput] = useState("0.00")
   const [intakeLocation, setIntakeLocation] = useState("Intake Queue")
+  const [inventoryLocations, setInventoryLocations] = useState(() =>
+    Array.from(
+      new Set(
+        ["Intake Queue", "Showcase A", "Case 1", "Case 2", "Back Stock"]
+          .concat(workspace.inventoryItems.map((item) => item.location))
+          .map((location) => location.trim())
+          .filter(Boolean),
+      ),
+    ).sort((left, right) => left.localeCompare(right)),
+  )
+  const [newInventoryLocation, setNewInventoryLocation] = useState("")
   const [intakeOnlineVisibility, setIntakeOnlineVisibility] = useState<InventoryVisibility>("visible")
   const [intakeKioskVisibility, setIntakeKioskVisibility] = useState<InventoryVisibility>("visible")
   const [intakePosVisibility, setIntakePosVisibility] = useState<InventoryVisibility>("visible")
@@ -1880,6 +1921,20 @@ export function App() {
   const [selectedId, setSelectedId] = useState(42)
   const [intakeQuantityInput, setIntakeQuantityInput] = useState("1")
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
+  const [newEventTitle, setNewEventTitle] = useState("")
+  const [newEventStartsAt, setNewEventStartsAt] = useState("")
+  const [newEventGame, setNewEventGame] = useState("pokemon")
+  const [newEventType, setNewEventType] = useState("league")
+  const [newEventCapacity, setNewEventCapacity] = useState("16")
+  const [newEventPrice, setNewEventPrice] = useState("0.00")
+  const [newEventCloseValue, setNewEventCloseValue] = useState("2")
+  const [newEventCloseUnit, setNewEventCloseUnit] = useState<"minutes" | "hours" | "days">("hours")
+  const [newEventLocation, setNewEventLocation] = useState("Event Room")
+  const [newEventDescription, setNewEventDescription] = useState("")
+  const [eventRegistrantFirstName, setEventRegistrantFirstName] = useState("")
+  const [eventRegistrantLastName, setEventRegistrantLastName] = useState("")
+  const [eventRegistrantEmail, setEventRegistrantEmail] = useState("")
+  const [eventRegistrantPhone, setEventRegistrantPhone] = useState("")
   const [eventAttendeeLabel, setEventAttendeeLabel] = useState("Offline walk-in")
   const [eventPaymentStatus, setEventPaymentStatus] =
     useState<EventPaymentStatus>("not_required")
@@ -2451,9 +2506,9 @@ export function App() {
       : selectedScryDexCard?.catalog_source === "wordpress_catalog_cache"
         ? "Website catalog cache"
         : "Catalog source pending"
-  const activeKioskOrderTickets = kioskOrderTickets.filter((ticket) => ticket.status !== "completed")
+  const activeKioskOrderTickets = kioskOrderTickets.filter((ticket) => !["completed", "expired"].includes(ticket.status))
   const activeWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status !== "completed")
-  const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ticket.status === "completed")
+  const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ["completed", "expired"].includes(ticket.status))
   const completedWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status === "completed")
   const fulfillmentHistoryNeedle = fulfillmentHistorySearch.trim().toLowerCase()
   const searchableCompletedKioskOrderTickets = completedKioskOrderTickets.filter((ticket) =>
@@ -3455,6 +3510,62 @@ export function App() {
     return nextStatus
   }
 
+  async function refreshInventoryLocations(sessionToken = localSyncSessionToken) {
+    if (!sessionToken) {
+      return null
+    }
+
+    const result = await localSyncClient.listInventoryLocations(sessionToken)
+
+    if (result.status === "ok") {
+      setInventoryLocations(result.locations)
+    } else {
+      handleBlockedLocalSyncSession(result, "Inventory location session required")
+    }
+
+    return result
+  }
+
+  async function handleAddInventoryLocation() {
+    if (!localSyncSessionToken) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "PIN session required",
+        detail: "Unlock with an employee, manager, or owner PIN before adding shared inventory locations.",
+      })
+      return
+    }
+
+    const location = newInventoryLocation.trim()
+
+    if (!location) {
+      setActivityMessage({
+        title: "Location name required",
+        detail: "Enter a shelf, case, box, or room name before saving a shared location.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.addInventoryLocation(localSyncSessionToken, { location })
+
+    if (result.status !== "ok") {
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Location not saved",
+        detail: result.message,
+      })
+      handleBlockedLocalSyncSession(result, "Inventory location session required")
+      return
+    }
+
+    setInventoryLocations(result.locations)
+    setIntakeLocation(result.location)
+    setNewInventoryLocation("")
+    setActivityMessage({
+      title: "Inventory location saved",
+      detail: `${result.location} is now available for intake and shared with this LAN server.`,
+    })
+  }
+
   async function refreshKioskOrderTickets(showMessage = false) {
     if (!localSyncSessionToken) {
       if (showMessage) {
@@ -3894,6 +4005,9 @@ export function App() {
               setKioskOrderTickets(result.orders.map(kioskTicketFromLocalSyncOrder))
             }
           })
+      }
+      if (sessionUser.access.includes("Inventory")) {
+        void refreshInventoryLocations(authResult.session.token)
       }
       startOfflineUserSession(
         sessionUser,
@@ -5331,6 +5445,7 @@ export function App() {
       pulling: "Pulling",
       ready: "Ready for Pickup",
       completed: "Completed",
+      expired: "Hold Expired",
     }
 
     if (!localSyncSessionToken) {
@@ -5597,6 +5712,8 @@ export function App() {
       paymentStatus: kioskOrder.order.payment_status,
       squareReceiptReference: kioskOrder.order.square_receipt_reference,
       paidAtUtc: kioskOrder.order.paid_at_utc,
+      holdExpiresAtUtc: kioskOrder.order.hold_expires_at_utc,
+      holdSecondsRemaining: kioskOrder.order.hold_seconds_remaining,
       pickedItemIds: kioskOrder.order.picked_item_ids,
       allItemsPicked: kioskOrder.order.all_items_picked,
     }
@@ -5668,6 +5785,75 @@ export function App() {
     )
   }
 
+  async function handleCreateEvent() {
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with an employee, manager, or owner PIN before creating store events.",
+      })
+      return
+    }
+
+    const title = newEventTitle.trim()
+    const startsAtUtc = datetimeLocalValueToUtc(newEventStartsAt)
+
+    if (!title || !startsAtUtc) {
+      setActiveSection("Events")
+      setActivityMessage({
+        title: "Event details required",
+        detail: "Add an event title and start date/time before creating the WooCommerce registration product.",
+      })
+      return
+    }
+
+    const capacity = Math.max(1, Math.round(Number.parseInt(newEventCapacity, 10) || 0))
+    const registrationCloseValue = Math.max(
+      0,
+      Math.round(Number.parseInt(newEventCloseValue, 10) || 0),
+    )
+    const priceMinorUnits = eventPriceInputToMinorUnits(newEventPrice)
+    const creationResult = await localSyncClient.createEvent(localSyncSessionToken, {
+      title,
+      startsAtUtc,
+      game: newEventGame,
+      eventType: newEventType.trim() || "store_event",
+      capacity,
+      priceMinorUnits,
+      registrationCloseValue,
+      registrationCloseUnit: newEventCloseUnit,
+      locationLabel: newEventLocation.trim() || "The Pug",
+      description: newEventDescription.trim(),
+    })
+
+    if (creationResult.status !== "ok") {
+      setActiveSection("Events")
+      setActivityMessage({
+        title: creationResult.status === "unavailable" ? "LAN server unavailable" : "Event creation blocked",
+        detail: creationResult.message,
+      })
+      return
+    }
+
+    const createdEvent = eventSnapshotFromLocalSync(creationResult.event)
+    setEventSnapshots((events) => mergeLocalSyncEventSnapshots(events, [creationResult.event]))
+    setSelectedEventId(createdEvent.eventId)
+    setNewEventTitle("")
+    setNewEventDescription("")
+    setNewEventPrice("0.00")
+    setNewEventCapacity("16")
+    setNewEventCloseValue("2")
+    setShowEventQueue(true)
+    setActiveSection("Events")
+    void refreshLocalSyncStatus()
+
+    setActivityMessage({
+      title: "Event created",
+      detail:
+        `${createdEvent.title} was added to the LAN event cache` +
+        `${createdEvent.woocommerceProductId > 0 ? ` and linked to WooCommerce product #${createdEvent.woocommerceProductId}` : ""}.`,
+    })
+  }
+
   async function handleEventRegistration(event: EventSnapshot | undefined = selectedEvent) {
     if (!event) {
       setActivityMessage({
@@ -5694,10 +5880,28 @@ export function App() {
     }
 
     const waitlistIntent = event.registrationStatus === "waitlist"
-    const attendeeLabel = cleanOfflineEventAttendeeLabel(eventAttendeeLabel)
+    const firstName = eventRegistrantFirstName.trim()
+    const lastName = eventRegistrantLastName.trim()
+    const email = eventRegistrantEmail.trim().toLowerCase()
+    const phone = eventRegistrantPhone.trim()
+
+    if (!firstName || !lastName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setActiveSection("Events")
+      setActivityMessage({
+        title: "Registrant details required",
+        detail: "Enter the customer's first name, last name, and email before registering them for an event.",
+      })
+      return
+    }
+
+    const attendeeLabel = cleanOfflineEventAttendeeLabel(`${firstName} ${lastName}`)
     const registrationResult = await localSyncClient.createEventRegistration(localSyncSessionToken, {
       eventId: event.eventId,
       attendeeLabel,
+      firstName,
+      lastName,
+      email,
+      phone,
       paymentStatus: eventPaymentStatus,
     })
 
@@ -5712,6 +5916,10 @@ export function App() {
     await stageOfflineOperation(
       buildEventRegistrationOperation(event, {
         attendeeLabel,
+        firstName,
+        lastName,
+        email,
+        phone,
         paymentStatus: eventPaymentStatus,
         registrationSource: "walk_in",
       }),
@@ -5728,6 +5936,11 @@ export function App() {
     ].slice(0, 8))
     setShowEventQueue(true)
     setActiveSection("Events")
+    setEventRegistrantFirstName("")
+    setEventRegistrantLastName("")
+    setEventRegistrantEmail("")
+    setEventRegistrantPhone("")
+    setEventAttendeeLabel("Offline walk-in")
     const nextEvent = eventSnapshotFromLocalSync(registrationResult.event)
     setEventSnapshots((events) =>
       events.map((item) => (item.eventId === nextEvent.eventId ? nextEvent : item)),
@@ -8454,15 +8667,34 @@ export function App() {
                     {formatMoney(intakeMinimumPriceMinorUnits ?? 0, "USD")}.
                   </small>
                 </div>
-                <label htmlFor="intake-location">
-                  <span className="micro-label">Location</span>
-                  <input
-                    id="intake-location"
-                    value={intakeLocation}
-                    onChange={(event) => setIntakeLocation(event.target.value)}
-                    placeholder="Intake Queue"
-                  />
-                </label>
+                <div className="intake-location-control">
+                  <label htmlFor="intake-location">
+                    <span className="micro-label">Location</span>
+                    <input
+                      id="intake-location"
+                      list="inventory-location-options"
+                      value={intakeLocation}
+                      onChange={(event) => setIntakeLocation(event.target.value)}
+                      placeholder="Intake Queue"
+                    />
+                  </label>
+                  <datalist id="inventory-location-options">
+                    {inventoryLocations.map((location) => (
+                      <option key={location} value={location} />
+                    ))}
+                  </datalist>
+                  <div className="intake-location-add">
+                    <input
+                      aria-label="New inventory location"
+                      value={newInventoryLocation}
+                      onChange={(event) => setNewInventoryLocation(event.target.value)}
+                      placeholder="Add shelf/case"
+                    />
+                    <button type="button" onClick={() => void handleAddInventoryLocation()}>
+                      <Icon name="plus" />
+                    </button>
+                  </div>
+                </div>
                 <label htmlFor="intake-online-visibility">
                   <span className="micro-label">Online shop</span>
                   <select
@@ -9542,6 +9774,14 @@ export function App() {
                         </div>
                         <div className="kiosk-ticket-detail">
                           <small>Queued {formatUtcLabel(ticket.createdAtUtc)}</small>
+                          {ticket.holdExpiresAtUtc ? (
+                            <small>
+                              Hold expires {formatUtcLabel(ticket.holdExpiresAtUtc)}
+                              {ticket.holdSecondsRemaining > 0
+                                ? `; ${Math.ceil(ticket.holdSecondsRemaining / 60)} min left`
+                                : ""}
+                            </small>
+                          ) : null}
                           <small>
                             Reservations: {ticket.reservationIds.slice(0, 3).join(", ")}
                             {ticket.reservationIds.length > 3 ? "..." : ""}
@@ -9687,6 +9927,9 @@ export function App() {
                           </small>
                           <span className={`kiosk-payment-status ${ticket.paymentStatus}`}>
                             {ticket.squareReceiptReference || "No receipt stored"}
+                          </span>
+                          <span className={`kiosk-ticket-status ${ticket.status}`}>
+                            {ticket.status === "expired" ? "Hold expired" : "Completed"}
                           </span>
                         </div>
                         <div className="kiosk-ticket-items">
@@ -10086,6 +10329,127 @@ export function App() {
                   </button>
                 </div>
               </div>
+              <div className="event-create-card" aria-label="Create store event">
+                <header>
+                  <div>
+                    <span className="micro-label">Create event</span>
+                    <strong>WooCommerce registration product</strong>
+                  </div>
+                  <button type="button" onClick={() => void handleCreateEvent()}>
+                    <Icon name="plus" />
+                    <span>Create Event</span>
+                  </button>
+                </header>
+                <div className="event-create-grid">
+                  <label htmlFor="event-create-title">
+                    <span className="micro-label">Event name</span>
+                    <input
+                      id="event-create-title"
+                      value={newEventTitle}
+                      onChange={(event) => setNewEventTitle(event.target.value)}
+                      placeholder="Friday Commander Night"
+                    />
+                  </label>
+                  <label htmlFor="event-create-starts-at">
+                    <span className="micro-label">Starts</span>
+                    <input
+                      id="event-create-starts-at"
+                      type="datetime-local"
+                      value={newEventStartsAt}
+                      onChange={(event) => setNewEventStartsAt(event.target.value)}
+                    />
+                  </label>
+                  <label htmlFor="event-create-game">
+                    <span className="micro-label">Game</span>
+                    <select
+                      id="event-create-game"
+                      value={newEventGame}
+                      onChange={(event) => setNewEventGame(event.target.value)}
+                    >
+                      <option value="pokemon">Pokemon</option>
+                      <option value="magicthegathering">MTG</option>
+                      <option value="lorcana">Lorcana</option>
+                      <option value="onepiece">One Piece</option>
+                    </select>
+                  </label>
+                  <label htmlFor="event-create-type">
+                    <span className="micro-label">Type</span>
+                    <input
+                      id="event-create-type"
+                      value={newEventType}
+                      onChange={(event) => setNewEventType(event.target.value)}
+                      placeholder="league, commander, prerelease"
+                    />
+                  </label>
+                  <label htmlFor="event-create-capacity">
+                    <span className="micro-label">Slots</span>
+                    <input
+                      id="event-create-capacity"
+                      inputMode="numeric"
+                      min="1"
+                      type="number"
+                      value={newEventCapacity}
+                      onChange={(event) => setNewEventCapacity(event.target.value)}
+                    />
+                  </label>
+                  <label htmlFor="event-create-price">
+                    <span className="micro-label">Price</span>
+                    <input
+                      id="event-create-price"
+                      inputMode="decimal"
+                      value={newEventPrice}
+                      onBlur={() =>
+                        setNewEventPrice((eventPriceInputToMinorUnits(newEventPrice) / 100).toFixed(2))
+                      }
+                      onChange={(event) => setNewEventPrice(event.target.value)}
+                      placeholder="0.00"
+                    />
+                  </label>
+                  <label htmlFor="event-create-close-value">
+                    <span className="micro-label">Registration closes</span>
+                    <input
+                      id="event-create-close-value"
+                      inputMode="numeric"
+                      min="0"
+                      type="number"
+                      value={newEventCloseValue}
+                      onChange={(event) => setNewEventCloseValue(event.target.value)}
+                    />
+                  </label>
+                  <label htmlFor="event-create-close-unit">
+                    <span className="micro-label">Before start</span>
+                    <select
+                      id="event-create-close-unit"
+                      value={newEventCloseUnit}
+                      onChange={(event) =>
+                        setNewEventCloseUnit(event.target.value as "minutes" | "hours" | "days")
+                      }
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </label>
+                  <label htmlFor="event-create-location">
+                    <span className="micro-label">Location</span>
+                    <input
+                      id="event-create-location"
+                      value={newEventLocation}
+                      onChange={(event) => setNewEventLocation(event.target.value)}
+                      placeholder="Event Room"
+                    />
+                  </label>
+                  <label className="event-create-description" htmlFor="event-create-description">
+                    <span className="micro-label">Rules / notes</span>
+                    <textarea
+                      id="event-create-description"
+                      value={newEventDescription}
+                      onChange={(event) => setNewEventDescription(event.target.value)}
+                      placeholder="Registration notes, round structure, prize notes"
+                    />
+                  </label>
+                </div>
+              </div>
               <div className="event-list" aria-label="Cached event snapshots">
                 {eventSnapshots.map((event) => {
                   const isSelected = selectedEvent?.eventId === event.eventId
@@ -10115,6 +10479,13 @@ export function App() {
                           {event.registeredCount}/{event.capacity} registered
                           {isPending ? "; local registration queued" : ""}
                           {isCheckinPending ? "; local check-in queued" : ""}
+                        </small>
+                        <small>
+                          {event.game.toUpperCase()} · {event.eventType || "store event"} ·{" "}
+                          {formatMoney(event.entryFeeMinorUnits, "USD")}
+                          {event.woocommerceProductId > 0
+                            ? ` · Woo product #${event.woocommerceProductId}`
+                            : " · Woo product pending"}
                         </small>
                       </button>
                       <button
@@ -10146,9 +10517,60 @@ export function App() {
                       version {selectedEvent.rowVersion}
                     </small>
                   </div>
+                  <div>
+                    <span className="micro-label">Registration</span>
+                    <strong>{formatMoney(selectedEvent.entryFeeMinorUnits, "USD")}</strong>
+                    <small>
+                      Closes {formatUtcLabel(selectedEvent.registrationDeadlineUtc)}
+                      {selectedEvent.woocommerceProductId > 0
+                        ? `; Woo product #${selectedEvent.woocommerceProductId}`
+                        : "; Woo product pending"}
+                    </small>
+                  </div>
                   <div className="event-offline-fields" aria-label="Offline event registration details">
+                    <label htmlFor="event-registrant-first-name">
+                      <span className="micro-label">First name</span>
+                      <input
+                        id="event-registrant-first-name"
+                        value={eventRegistrantFirstName}
+                        onChange={(event) => setEventRegistrantFirstName(event.target.value)}
+                        placeholder="First name"
+                      />
+                    </label>
+                    <label htmlFor="event-registrant-last-name">
+                      <span className="micro-label">Last name</span>
+                      <input
+                        id="event-registrant-last-name"
+                        value={eventRegistrantLastName}
+                        onChange={(event) => setEventRegistrantLastName(event.target.value)}
+                        placeholder="Last name"
+                      />
+                    </label>
+                    <label htmlFor="event-registrant-email">
+                      <span className="micro-label">Email</span>
+                      <input
+                        id="event-registrant-email"
+                        autoComplete="email"
+                        inputMode="email"
+                        value={eventRegistrantEmail}
+                        onBlur={() => setEventRegistrantEmail(eventRegistrantEmail.trim().toLowerCase())}
+                        onChange={(event) => setEventRegistrantEmail(event.target.value)}
+                        placeholder="customer@example.com"
+                      />
+                    </label>
+                    <label htmlFor="event-registrant-phone">
+                      <span className="micro-label">Phone</span>
+                      <input
+                        id="event-registrant-phone"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        value={eventRegistrantPhone}
+                        onChange={(event) => setEventRegistrantPhone(event.target.value)}
+                        placeholder="Optional"
+                      />
+                    </label>
                     <label htmlFor="event-attendee-label">
-                      <span className="micro-label">Attendee</span>
+                      <span className="micro-label">Check-in name</span>
                       <input
                         id="event-attendee-label"
                         value={eventAttendeeLabel}
@@ -10156,7 +10578,7 @@ export function App() {
                           setEventAttendeeLabel(cleanOfflineEventAttendeeLabel(eventAttendeeLabel))
                         }
                         onChange={(event) => setEventAttendeeLabel(event.target.value)}
-                        placeholder="Customer name or lookup"
+                        placeholder="Name used for manual check-in"
                       />
                     </label>
                     <label htmlFor="event-payment-status">

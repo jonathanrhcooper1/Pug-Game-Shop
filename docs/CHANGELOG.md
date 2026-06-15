@@ -18,6 +18,19 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Added live cart/kiosk hold enforcement to local inventory reads, kiosk order
+  creation, and fulfillment refreshes. Cards selected in a kiosk/cart now move
+  into a held state for 30 minutes, expired holds are released back into
+  sellable inventory, and legacy kiosk orders without explicit hold timestamps
+  are expired by their created time so old holds cannot linger.
+- Cleaned the local middleman queue after active-sync smoke tests and verified
+  the review stack starts with `queue_depth: 0` while all WordPress push/pull
+  channels remain connected to the production site.
+- Removed the pale product-image background from grouped singles product pages
+  and WooCommerce cart line items so card art renders on the storefront theme
+  without the gray/blue frame.
+- Hardened production active-sync verification with bounded retries for
+  transient SSH transport timeouts while still failing real command errors.
 - Final production release pass for 0.202.0 verified the active sync chain
   across ScryDex/reference cache, WordPress inventory creation, WooCommerce
   product projection, Square-sale inventory adjustment, customer credit, kiosk

@@ -1,5 +1,78 @@
 # Revision Log
 
+## 2026-06-15 - Production Hold Sync And Storefront Image Polish
+
+### What Changed
+
+- Added live hold cleanup to local/kiosk inventory workflows so selected cards
+  stay reserved for the configured 30-minute cart window and return to
+  sellable inventory after expiration.
+- Added legacy kiosk hold cleanup for older pending orders that were created
+  before explicit `hold_expires_at_utc` timestamps existed.
+- Removed stale pending kiosk queue operations when kiosk orders become
+  completed or expired.
+- Removed the product/cart image background from grouped singles product images
+  so live card art matches the storefront design.
+- Hardened the production active-sync verifier with bounded retries for
+  transient SSH transport failures.
+- Reinstalled the current WordPress plugin package on the production site after
+  creating a database backup and `wp-content` backup.
+
+### Why
+
+- Kiosk and shopping-cart reservations must live-validate inventory across the
+  local app, local middleman, and WooCommerce so the same card cannot remain
+  stuck in a hold or be oversold after a customer abandons a cart.
+- The storefront product and cart images needed to visually match the rest of
+  The Pug theme without the unwanted pale background.
+- Production verification should tolerate intermittent host SSH handshakes
+  without hiding real sync or command failures.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-hold-expiry.mjs`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `scripts/production-verify-active-syncs.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No new WordPress database migration was added.
+- Local SQLite hold cleanup uses existing kiosk order, reservation, inventory,
+  and queue-operation tables.
+
+### Tests Added
+
+- Added local middleman hold-expiry coverage for current kiosk reservations and
+  legacy kiosk orders that only have a created timestamp.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:hold-expiry`: passed.
+- `php tests/run.php --filter GroupedInventoryProductHooksTest`: passed all
+  1033 WordPress plugin tests.
+- `php tests/lint.php`: passed across 646 PHP files.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run production:verify-active-syncs`: passed against production with
+  ScryDex/reference search, WooCommerce product publishing, Square-sale sync,
+  customer credit, events, kiosk workflows, and pickup fulfillment green.
+- Browser checks confirmed the employee app reports online production sync,
+  the kiosk reports live inventory connected, product images render with a
+  transparent background, cart images render, and the test cart item was
+  removed after verification.
+
+### Rollback Notes
+
+- Reinstall the previous `tcg-store-platform` plugin ZIP from `dist/` or the
+  server backup if the storefront image or hold behavior needs to be reverted.
+- The production install created backups under `$HOME/tcg-production-backups/`
+  before replacing the plugin.
+- Reverting the local hold cleanup code returns kiosk/cart holds to the prior
+  behavior but does not require a database rollback.
+
 ## 2026-06-14 - Trade-In Counter UI And Phone Lookup
 
 ### What Changed

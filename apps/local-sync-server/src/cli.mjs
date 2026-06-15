@@ -8,6 +8,7 @@ import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
 import { createWordPressEventCheckinPush } from "./wordpressEventCheckinPush.mjs"
 import { createWordPressCustomerUpsertPush } from "./wordpressCustomerUpsertPush.mjs"
 import { createWordPressEventRegistrationPush } from "./wordpressEventRegistrationPush.mjs"
+import { createWordPressEventUpsertPush } from "./wordpressEventUpsertPush.mjs"
 import { createWordPressEventsPull } from "./wordpressEventsPull.mjs"
 import {
   createWordPressFulfillmentPull,
@@ -151,6 +152,15 @@ const wordpressEventRegistrationPush = wordpressPushEnabled
       applicationPassword: eventsApplicationPassword ?? catalogApplicationPassword,
     })
   : null
+const wordpressEventUpsertPush = wordpressPushEnabled
+  ? createWordPressEventUpsertPush({
+      websiteUrl,
+      restBasePath,
+      authHeader: eventsAuthHeader ?? catalogAuthHeader,
+      username: eventsUsername ?? catalogUsername,
+      applicationPassword: eventsApplicationPassword ?? catalogApplicationPassword,
+    })
+  : null
 const wordpressEventCheckinPush = wordpressPushEnabled
   ? createWordPressEventCheckinPush({
       websiteUrl,
@@ -212,6 +222,7 @@ const server = await listenLocalSyncHttpServer({
     wordpressInventoryPush,
     wordpressInventorySalePush,
     wordpressFulfillmentStatusPush,
+    wordpressEventUpsertPush,
     wordpressEventRegistrationPush,
     wordpressEventCheckinPush,
     wordpressCreditPush,

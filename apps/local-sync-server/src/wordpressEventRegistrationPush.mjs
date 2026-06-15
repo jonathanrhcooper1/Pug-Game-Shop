@@ -100,10 +100,12 @@ export function eventRegistrationBody(operation = {}) {
   const names = splitAttendeeName(label)
   const registrationId = cleanId(registration.registration_id ?? operation.entity_id ?? operation.operation_id)
   const email = cleanEmail(registration.email) || syntheticEmail(registrationId || cleanId(operation.operation_id))
+  const firstName = cleanAttendeeLabel(registration.first_name) || names.firstName
+  const lastName = cleanAttendeeLabel(registration.last_name) || names.lastName
 
   return {
-    first_name: names.firstName,
-    last_name: names.lastName,
+    first_name: firstName,
+    last_name: lastName,
     email,
     phone: cleanPhone(registration.phone),
     idempotency_key: cleanId(operation.operation_id ?? registrationId),

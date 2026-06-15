@@ -217,6 +217,10 @@ export type LocalSyncInventoryItem = {
   square_catalog_item_id: string
   square_catalog_variation_id: string
   external_sync_state: "pending" | "synced" | "square_synced" | "failed" | "conflict"
+  created_by_user_id: string
+  created_by_user_name: string
+  updated_by_user_id: string
+  updated_by_user_name: string
   source: "cached" | "queued" | "accepted"
 }
 
@@ -228,6 +232,7 @@ export type LocalSyncReservation = {
   actor_id: string
   status: "queued"
   created_at_utc: string
+  expires_at_utc: string
 }
 
 export type LocalSyncInventorySearchResult = LocalSyncResult<{
@@ -239,6 +244,23 @@ export type LocalSyncReservationResult = LocalSyncResult<{
   item: LocalSyncInventoryItem
   reservation: LocalSyncReservation
   wordpress_acceptance_required: true
+}>
+
+export type LocalSyncInventoryLocationListResult = LocalSyncResult<{
+  locations: string[]
+  location_count: number
+  source: "local_sync_server"
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncInventoryLocationCreateResult = LocalSyncResult<{
+  location: string
+  locations: string[]
+  location_count: number
+  source: "local_sync_server"
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
 }>
 
 export type LocalSyncAutoSyncOperationResult = {
@@ -354,7 +376,7 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   live_provider_request_performed: boolean
 }>
 
-export type LocalSyncKioskOrderStatus = "queued" | "accepted" | "pulling" | "ready" | "completed"
+export type LocalSyncKioskOrderStatus = "queued" | "accepted" | "pulling" | "ready" | "completed" | "expired"
 export type LocalSyncFulfillmentOrderStatus = "awaiting_pull" | "pulling" | "ready_for_pickup" | "completed"
 
 export type LocalSyncKioskOrder = {
@@ -367,6 +389,8 @@ export type LocalSyncKioskOrder = {
   square_receipt_reference: string
   square_order_id: string
   paid_at_utc: string
+  hold_expires_at_utc: string
+  hold_seconds_remaining: number
   picked_item_ids: string[]
   picked_item_count: number
   all_items_picked: boolean
@@ -711,6 +735,11 @@ export type LocalSyncEventSnapshot = {
   title: string
   starts_at_utc: string
   starts_at_label: string
+  event_type: string
+  game: string
+  entry_fee_minor_units: number
+  registration_deadline_utc: string
+  woocommerce_product_id: number
   registration_status: "open" | "waitlist" | "full" | "closed"
   capacity: number
   registered_count: number
@@ -723,6 +752,10 @@ export type LocalSyncEventRegistration = {
   registration_id: string
   event_id: string
   attendee_label: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
   registration_status: "registered" | "waitlist"
   payment_status: "not_required" | "pay_at_store"
   status: "queued"
@@ -743,6 +776,13 @@ export type LocalSyncEventListResult = LocalSyncResult<{
   events: LocalSyncEventSnapshot[]
   local_cache_source: "local_sync_server"
   wordpress_event_authority: true
+}>
+
+export type LocalSyncEventCreateResult = LocalSyncResult<{
+  event: LocalSyncEventSnapshot
+  wordpress_acceptance_required: true
+  wordpress_auto_sync_performed: boolean
+  wordpress_auto_sync_result: unknown
 }>
 
 export type LocalSyncEventRegistrationResult = LocalSyncResult<{
@@ -1079,6 +1119,11 @@ export type LocalSyncServerClient = {
     },
   ) => Promise<LocalSyncResult<{ user: LocalSyncUser }>>
   searchInventory: (query: string) => Promise<LocalSyncInventorySearchResult>
+  listInventoryLocations: (sessionToken: string) => Promise<LocalSyncInventoryLocationListResult>
+  addInventoryLocation: (
+    sessionToken: string,
+    input: { location: string },
+  ) => Promise<LocalSyncInventoryLocationCreateResult>
   reserveInventory: (
     sessionToken: string,
     input: { inventoryPublicId: string; holdReason: string },
@@ -1233,11 +1278,30 @@ export type LocalSyncServerClient = {
     },
   ) => Promise<LocalSyncCreditRedemptionResult>
   listEvents: () => Promise<LocalSyncEventListResult>
+  createEvent: (
+    sessionToken: string,
+    input: {
+      title: string
+      startsAtUtc: string
+      game: string
+      eventType: string
+      capacity: number
+      priceMinorUnits: number
+      registrationCloseValue: number
+      registrationCloseUnit: "minutes" | "hours" | "days"
+      locationLabel: string
+      description: string
+    },
+  ) => Promise<LocalSyncEventCreateResult>
   createEventRegistration: (
     sessionToken: string,
     input: {
       eventId: string
       attendeeLabel: string
+      firstName?: string
+      lastName?: string
+      email?: string
+      phone?: string
       paymentStatus: "not_required" | "pay_at_store"
     },
   ) => Promise<LocalSyncEventRegistrationResult>
@@ -1354,6 +1418,18 @@ export function createLocalSyncServerClient(
       requestLocalSync(fetcher, baseUrl, `/inventory/search?q=${encodeURIComponent(query)}`) as Promise<
         LocalSyncInventorySearchResult
       >,
+    listInventoryLocations: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/inventory/locations", {
+        sessionToken,
+      }) as Promise<LocalSyncInventoryLocationListResult>,
+    addInventoryLocation: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/inventory/locations", {
+        method: "POST",
+        sessionToken,
+        body: {
+          location: input.location,
+        },
+      }) as Promise<LocalSyncInventoryLocationCreateResult>,
     reserveInventory: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/inventory/reservations", {
         method: "POST",
@@ -1606,6 +1682,23 @@ export function createLocalSyncServerClient(
       }) as Promise<LocalSyncCreditRedemptionResult>,
     listEvents: () =>
       requestLocalSync(fetcher, baseUrl, "/events") as Promise<LocalSyncEventListResult>,
+    createEvent: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/events", {
+        method: "POST",
+        sessionToken,
+        body: {
+          title: input.title,
+          starts_at_utc: input.startsAtUtc,
+          game: input.game,
+          event_type: input.eventType,
+          capacity: input.capacity,
+          price_minor_units: input.priceMinorUnits,
+          registration_close_value: input.registrationCloseValue,
+          registration_close_unit: input.registrationCloseUnit,
+          location_label: input.locationLabel,
+          description: input.description,
+        },
+      }) as Promise<LocalSyncEventCreateResult>,
     createEventRegistration: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/events/registrations", {
         method: "POST",
@@ -1613,6 +1706,10 @@ export function createLocalSyncServerClient(
         body: {
           event_id: input.eventId,
           attendee_label: input.attendeeLabel,
+          first_name: input.firstName ?? "",
+          last_name: input.lastName ?? "",
+          email: input.email ?? "",
+          phone: input.phone ?? "",
           payment_status: input.paymentStatus,
         },
       }) as Promise<LocalSyncEventRegistrationResult>,

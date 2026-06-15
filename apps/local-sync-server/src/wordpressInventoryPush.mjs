@@ -177,6 +177,8 @@ export function inventoryIntakeBody(item = {}, options = {}) {
   const minimumSalePriceMinorUnits = roundSalePriceMinorUnits(item.minimum_sale_price_minor_units ?? priceMinorUnits)
   const marketPriceMinorUnits = boundedMinorUnits(item.market_price_minor_units ?? item.auto_price_minor_units ?? priceMinorUnits)
   const locationId = positiveInt(item.location_id ?? options.defaultLocationId)
+  const actorUserId = positiveInt(item.created_by_user_id ?? item.actor_user_id)
+  const actorLabel = cleanText(item.created_by_user_name || item.actor_name || item.created_by_user_id || "Unknown staff")
   const activeLocationConfigured = locationId !== null
   const onlineVisibility = cleanVisibility(item.online_visibility, options.defaultOnlineVisibility ?? "visible")
   const shouldPublishWooCommerce =
@@ -214,8 +216,12 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     pos_visibility: cleanVisibility(item.pos_visibility, options.defaultPosVisibility ?? "visible"),
     front_image_remote_url: cleanHttpUrl(item.image_url),
     back_image_remote_url: cleanHttpUrl(item.back_image_url),
-    staff_notes: cleanText(`Queued from LAN sync server location: ${item.location ?? "Intake Queue"}`),
+    staff_notes: cleanText(`Queued from LAN sync server by ${actorLabel}; location: ${item.location ?? "Intake Queue"}`),
     sync_woocommerce_product: shouldPublishWooCommerce,
+  }
+
+  if (actorUserId !== null) {
+    body.actor_user_id = actorUserId
   }
 
   if (activeLocationConfigured) {

@@ -23,6 +23,7 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressInventorySalePushConnected: typeof storeOptions.wordpressInventorySalePush === "function",
     wordpressFulfillmentPullConnected: typeof storeOptions.wordpressFulfillmentPull === "function",
     wordpressFulfillmentStatusPushConnected: typeof storeOptions.wordpressFulfillmentStatusPush === "function",
+    wordpressEventUpsertPushConnected: typeof storeOptions.wordpressEventUpsertPush === "function",
     wordpressEventRegistrationPushConnected: typeof storeOptions.wordpressEventRegistrationPush === "function",
     wordpressEventCheckinPushConnected: typeof storeOptions.wordpressEventCheckinPush === "function",
     wordpressCreditPushConnected: typeof storeOptions.wordpressCreditPush === "function",
@@ -161,6 +162,14 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, await store.createInventoryIntake(token, await readJson(request)))
       }
 
+      if (request.method === "GET" && url.pathname === "/inventory/locations") {
+        return sendStoreResult(response, store.listInventoryLocations(token))
+      }
+
+      if (request.method === "POST" && url.pathname === "/inventory/locations") {
+        return sendStoreResult(response, store.addInventoryLocation(token, await readJson(request)))
+      }
+
       if (request.method === "POST" && url.pathname === "/inventory/reservations") {
         return sendStoreResult(response, store.reserveInventory(token, await readJson(request)))
       }
@@ -290,6 +299,10 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "GET" && url.pathname === "/events") {
         return sendStoreResult(response, store.listEvents())
+      }
+
+      if (request.method === "POST" && url.pathname === "/events") {
+        return sendStoreResult(response, await store.createEvent(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/events/registrations") {

@@ -24,7 +24,7 @@ final class ApiRouteContractTest extends TestCase {
 			$seen[ $key ] = true;
 		}
 
-		$this->assert_same( 6, count( $seen ) );
+		$this->assert_same( 7, count( $seen ) );
 	}
 
 	public function test_health_route_requires_authenticated_access(): void {
@@ -43,6 +43,14 @@ final class ApiRouteContractTest extends TestCase {
 				'permission' => 'public',
 			),
 			$this->route_summary( '/events' )
+		);
+		$this->assert_same(
+			array(
+				'method'     => 'POST',
+				'callback'   => 'create_event',
+				'permission' => 'manage_events',
+			),
+			$this->route_summary_by_method( '/events', 'POST' )
 		);
 		$this->assert_same(
 			array(
@@ -133,5 +141,22 @@ final class ApiRouteContractTest extends TestCase {
 			'callback'   => $route['callback'],
 			'permission' => $route['permission'],
 		);
+	}
+
+	/**
+	 * @return array{method:string,callback:string,permission:string}
+	 */
+	private function route_summary_by_method( string $path, string $method ): array {
+		foreach ( $this->routes() as $route ) {
+			if ( $path === $route['path'] && $method === $route['method'] ) {
+				return array(
+					'method'     => $route['method'],
+					'callback'   => $route['callback'],
+					'permission' => $route['permission'],
+				);
+			}
+		}
+
+		$this->fail( "Route {$method} {$path} not found." );
 	}
 }

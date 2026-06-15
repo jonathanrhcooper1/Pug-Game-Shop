@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process"
+import { spawnSync } from "node:child_process"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
+const transientSshPattern = /Timed out while waiting for handshake|client-timeout|ECONNRESET|ETIMEDOUT|Connection timed out/i
 
 const checks = [
   {
@@ -51,24 +52,71 @@ const results = []
 
 for (const check of checks) {
   const startedAt = new Date().toISOString()
-  try {
-    execFileSync(check.command[0], check.command[1], {
+  const maxAttempts = check.maxAttempts ?? 3
+  let passed = false
+  let exitCode = null
+  let transientRetryCount = 0
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const result = spawnSync(check.command[0], check.command[1], {
       cwd: root,
-      stdio: "inherit",
+      encoding: "utf8",
       shell: process.platform === "win32" && check.command[0].toLowerCase().endsWith(".cmd"),
       env: {
         ...process.env,
         ...(check.env ?? {}),
       },
     })
-    results.push({ name: check.name, status: "passed", startedAt, finishedAt: new Date().toISOString() })
-  } catch (error) {
+
+    if (result.stdout) {
+      process.stdout.write(result.stdout)
+    }
+
+    if (result.stderr) {
+      process.stderr.write(result.stderr)
+    }
+
+    exitCode = result.status ?? null
+
+    if (result.status === 0) {
+      passed = true
+      break
+    }
+
+    const combinedOutput = `${result.stdout ?? ""}\n${result.stderr ?? ""}`
+    const isTransientSshFailure = transientSshPattern.test(combinedOutput)
+
+    if (!isTransientSshFailure || attempt >= maxAttempts) {
+      break
+    }
+
+    transientRetryCount += 1
+    console.warn(
+      JSON.stringify({
+        action: "production_active_sync_transient_ssh_retry",
+        check: check.name,
+        attempt,
+        nextAttempt: attempt + 1,
+      }),
+    )
+  }
+
+  if (passed) {
+    results.push({
+      name: check.name,
+      status: "passed",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      transientRetryCount,
+    })
+  } else {
     results.push({
       name: check.name,
       status: "failed",
       startedAt,
       finishedAt: new Date().toISOString(),
-      exitCode: error.status ?? null,
+      exitCode,
+      transientRetryCount,
     })
   }
 }

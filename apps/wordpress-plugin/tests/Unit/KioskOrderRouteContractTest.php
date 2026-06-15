@@ -24,10 +24,12 @@ final class KioskOrderRouteContractTest extends TestCase {
 
 	public function test_kiosk_order_controller_does_not_expose_payment_or_checkout_capture(): void {
 		$controller = new KioskOrderController();
+		$source     = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/Api/V1/KioskOrderController.php' );
 
 		$this->assert_true( method_exists( $controller, 'create_kiosk_order' ) );
 		$this->assert_true( method_exists( $controller, 'can_create_kiosk_order' ) );
 		$this->assert_false( method_exists( $controller, 'capture_payment' ) );
 		$this->assert_false( method_exists( $controller, 'create_woocommerce_order' ) );
+		$this->assert_contains( 'KIOSK_HOLD_SECONDS = 1800', $source );
 	}
 }

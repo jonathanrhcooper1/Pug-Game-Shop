@@ -27,6 +27,7 @@ const CLIENT_DEVICE_MODES = Object.freeze(["employee", "manager", "kiosk"])
 const CLIENT_DEVICE_SETUP_STATUSES = Object.freeze(["setup_required", "configuring", "ready", "error"])
 const CLIENT_DEVICE_NETWORK_STATUSES = Object.freeze(["online", "offline", "degraded"])
 const DEFAULT_HEARTBEAT_TIMEOUT_SECONDS = 90
+const DEFAULT_CARD_HOLD_SECONDS = 30 * 60
 const SEED_REFERENCE_CARD_IDS = Object.freeze([
   "scrydex-pokemon-base-004",
   "scrydex-pokemon-jungle-060",
@@ -49,6 +50,7 @@ export function createLocalSyncStore(options = {}) {
     3600,
     DEFAULT_HEARTBEAT_TIMEOUT_SECONDS,
   )
+  const cardHoldSeconds = boundedInt(options.cardHoldSeconds, 60, 24 * 60 * 60, DEFAULT_CARD_HOLD_SECONDS)
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressEventsPull = typeof options.wordpressEventsPull === "function" ? options.wordpressEventsPull : null
@@ -64,6 +66,8 @@ export function createLocalSyncStore(options = {}) {
     typeof options.wordpressEventRegistrationPush === "function" ? options.wordpressEventRegistrationPush : null
   const wordpressEventCheckinPush =
     typeof options.wordpressEventCheckinPush === "function" ? options.wordpressEventCheckinPush : null
+  const wordpressEventUpsertPush =
+    typeof options.wordpressEventUpsertPush === "function" ? options.wordpressEventUpsertPush : null
   const wordpressCreditPush = typeof options.wordpressCreditPush === "function" ? options.wordpressCreditPush : null
   const wordpressCustomerUpsertPush =
     typeof options.wordpressCustomerUpsertPush === "function" ? options.wordpressCustomerUpsertPush : null
@@ -91,6 +95,7 @@ export function createLocalSyncStore(options = {}) {
   persistCurrentAccessSchema(database, users, now)
   const sessions = new Map()
   const inventoryItems = loadInventoryItems(database)
+  const inventoryLocations = loadInventoryLocations(database, inventoryItems)
   const queue = loadQueue(database)
   const kioskOrders = loadKioskOrders(database)
   const fulfillmentOrders = loadFulfillmentOrders(database)
@@ -324,6 +329,7 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function searchInventory({ query = "" } = {}) {
+    cleanupExpiredLocalHolds()
     const needle = String(query).trim().toLowerCase()
     const items = inventoryItems.filter((item) => {
       if (!needle) {
@@ -348,6 +354,49 @@ export function createLocalSyncStore(options = {}) {
       status: "ok",
       items: items.map(publicInventoryItem),
       local_cache_source: "local_sync_server",
+    }
+  }
+
+  function listInventoryLocations(token) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    return {
+      status: "ok",
+      locations: [...inventoryLocations],
+      location_count: inventoryLocations.length,
+      source: "local_sync_server",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  function addInventoryLocation(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const location = cleanInventoryLocation(input.location ?? input.name ?? input.label)
+
+    if (!location) {
+      return blocked("inventory_location_required", "Enter a location name before saving it.")
+    }
+
+    mergeInventoryLocation(database, inventoryLocations, location, now)
+
+    return {
+      status: "ok",
+      location,
+      locations: [...inventoryLocations],
+      location_count: inventoryLocations.length,
+      source: "local_sync_server",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
     }
   }
 
@@ -592,7 +641,7 @@ export function createLocalSyncStore(options = {}) {
       0,
       minorUnits(input.minimum_sale_price_minor_units ?? input.minimum_price_minor_units ?? requestedPriceMinorUnits),
     )
-    const location = cleanName(input.location ?? input.location_label) || "Intake Queue"
+    const location = cleanInventoryLocation(input.location ?? input.location_label) || "Intake Queue"
     const imageUrl = cleanHttpUrl(input.image_url)
     const backImageUrl = cleanHttpUrl(input.back_image_url)
     const onlineVisibility = cleanVisibility(input.online_visibility, "visible")
@@ -675,10 +724,15 @@ export function createLocalSyncStore(options = {}) {
       square_catalog_item_id: "",
       square_catalog_variation_id: "",
       external_sync_state: "pending",
+      created_by_user_id: session.user.id,
+      created_by_user_name: session.user.name,
+      updated_by_user_id: session.user.id,
+      updated_by_user_name: session.user.name,
       source: "queued",
     }))
 
     const operations = []
+    mergeInventoryLocation(database, inventoryLocations, location, now)
 
     for (const item of items) {
       inventoryItems.push(item)
@@ -686,6 +740,7 @@ export function createLocalSyncStore(options = {}) {
       const operation = appendQueueOperation(database, queue, "inventory_intake", item.public_id, {
         item: publicInventoryItem(item),
         actor_id: session.user.id,
+        actor_name: session.user.name,
         sync_intent: "offline_inventory_intake",
         pricing: {
           source: priceSource,
@@ -791,6 +846,8 @@ export function createLocalSyncStore(options = {}) {
       item.status = "sold"
       item.source = "queued"
       item.external_sync_state = "pending"
+      item.updated_by_user_id = session.user.id
+      item.updated_by_user_name = session.user.name
       item.row_version += 1
       saveInventoryItem(database, item, now)
 
@@ -803,6 +860,7 @@ export function createLocalSyncStore(options = {}) {
         sale_total_minor_units: saleTotalMinorUnits,
         sale_price_minor_units: Math.max(0, minorUnits(item.price_minor_units)),
         actor_id: session.user.id,
+        actor_name: session.user.name,
         sold_at_utc: soldAtUtc,
         sync_intent: "square_pos_exact_inventory_sale",
       }, now)
@@ -846,6 +904,7 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function createKioskOrder(input = {}) {
+    cleanupExpiredLocalHolds()
     const firstName = cleanName(input.first_name)
     const lastName = cleanName(input.last_name)
     const publicIds = Array.isArray(input.inventory_public_ids) ? input.inventory_public_ids : []
@@ -908,6 +967,7 @@ export function createLocalSyncStore(options = {}) {
       picked_item_ids: [],
       reservation_ids: reservations.map((reservation) => reservation.reservation_id),
       items: selectedItems.map(kioskOrderItemSnapshot),
+      hold_expires_at_utc: earliestReservationExpiry(reservations),
       created_at_utc: now().toISOString(),
       updated_at_utc: now().toISOString(),
     }
@@ -930,6 +990,8 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
+    const expiryCleanup = cleanupExpiredLocalHolds()
+
     const limit = boundedInt(input.limit, 1, 100, 25)
     const statuses = Array.isArray(input.statuses)
       ? input.statuses.map(cleanKioskOrderStatus).filter(Boolean)
@@ -945,6 +1007,8 @@ export function createLocalSyncStore(options = {}) {
       orders,
       order_count: orders.length,
       total_order_count: kioskOrders.length,
+      expired_hold_count: expiryCleanup.expired_order_count,
+      released_inventory_count: expiryCleanup.released_inventory_count,
       shared_queue_source: "local_sync_server",
       wordpress_acceptance_required: true,
       credentials_synced_to_client: false,
@@ -967,8 +1031,8 @@ export function createLocalSyncStore(options = {}) {
     const requestedStatus = kioskOrderStatusSlug(input.status)
     const nextStatus = cleanKioskOrderStatus(requestedStatus)
 
-    if (!["queued", "accepted", "pulling", "ready", "completed"].includes(requestedStatus)) {
-      return blocked("invalid_kiosk_order_status", "Use queued, accepted, pulling, ready, or completed for kiosk pickup status.")
+    if (!["queued", "accepted", "pulling", "ready", "completed", "expired"].includes(requestedStatus)) {
+      return blocked("invalid_kiosk_order_status", "Use queued, accepted, pulling, ready, completed, or expired for kiosk pickup status.")
     }
 
     if (["ready", "completed"].includes(nextStatus) && order.payment_status !== "paid") {
@@ -1453,6 +1517,68 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function createEvent(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Events")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const title = cleanName(input.title)
+    const startsAtUtc = cleanDateTime(input.starts_at_utc ?? input.start_datetime ?? input.startsAtUtc)
+    const capacity = boundedInt(input.capacity ?? input.player_cap, 1, 10000, 16)
+    const entryFeeMinorUnits = Math.max(0, minorUnits(input.entry_fee_minor_units ?? input.price_minor_units))
+    const registrationDeadlineUtc =
+      cleanDateTime(input.registration_deadline_utc ?? input.registration_deadline) ||
+      eventRegistrationDeadline(startsAtUtc, input.registration_close_value, input.registration_close_unit)
+
+    if (!title || !startsAtUtc) {
+      return blocked("invalid_event", "Event title and start date/time are required.")
+    }
+
+    const event = {
+      event_id: `local-event-${randomUUID()}`,
+      slug: cleanSlug(input.slug) || cleanSlug(title),
+      row_version: 1,
+      title,
+      starts_at_utc: startsAtUtc,
+      starts_at_label: eventStartLabel(startsAtUtc),
+      event_type: cleanEventType(input.event_type),
+      game: cleanGame(input.game),
+      entry_fee_minor_units: entryFeeMinorUnits,
+      registration_deadline_utc: registrationDeadlineUtc,
+      woocommerce_product_id: 0,
+      registration_status: "open",
+      capacity,
+      registered_count: 0,
+      location_label: cleanName(input.location_label ?? input.location) || "The Pug",
+      note: cleanOptionalReason(input.description) || "Created in the local app; WordPress remains the event authority.",
+      source: "queued",
+    }
+
+    eventSnapshots.push(event)
+    saveEventSnapshot(database, event, now)
+    const operation = appendQueueOperation(database, queue, "event_upsert", event.event_id, {
+      event: publicEventSnapshot(event),
+      actor_id: session.user.id,
+      actor_name: session.user.name,
+      sync_intent: "offline_event_create",
+    }, now)
+
+    let autoSyncResult = null
+    if (wordpressEventUpsertPush) {
+      autoSyncResult = await pushEventUpsertOperation(operation)
+    }
+
+    return {
+      status: "ok",
+      event: publicEventSnapshot(event),
+      wordpress_acceptance_required: true,
+      wordpress_auto_sync_performed: autoSyncResult !== null,
+      wordpress_auto_sync_result: autoSyncResult,
+    }
+  }
+
   function createEventRegistration(token, input = {}) {
     const session = requireWorkspaceAccess(token, "Events")
 
@@ -1470,13 +1596,24 @@ export function createLocalSyncStore(options = {}) {
       return blocked("event_registration_closed", "The cached event is not accepting local registrations.")
     }
 
-    const attendeeLabel = cleanName(input.attendee_label) || "Offline walk-in"
+    const firstName = cleanName(input.first_name)
+    const lastName = cleanName(input.last_name)
+    const email = cleanEmail(input.email)
+    const phone = cleanPhone(input.phone)
+    const attendeeLabel =
+      cleanName(input.attendee_label) ||
+      cleanName(`${firstName} ${lastName}`) ||
+      "Offline walk-in"
     const paymentStatus = cleanEventPaymentStatus(input.payment_status)
     const registrationStatus = event.registration_status === "waitlist" ? "waitlist" : "registered"
     const registration = {
       registration_id: `event-registration-${randomUUID()}`,
       event_id: event.event_id,
       attendee_label: attendeeLabel,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone,
       registration_status: registrationStatus,
       payment_status: paymentStatus,
       status: "queued",
@@ -1794,6 +1931,7 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function reserveInventoryItem({ source, publicId, holdReason, actorId }) {
+    cleanupExpiredLocalHolds()
     const item = inventoryItems.find((candidate) => candidate.public_id === publicId)
 
     if (!item) {
@@ -1808,6 +1946,8 @@ export function createLocalSyncStore(options = {}) {
 
     item.status = "reserved"
     item.source = "queued"
+    item.updated_by_user_id = actorId
+    item.updated_by_user_name = userNameById(actorId, users)
     item.row_version += 1
     saveInventoryItem(database, item, now)
 
@@ -1819,6 +1959,7 @@ export function createLocalSyncStore(options = {}) {
       actor_id: actorId,
       status: "queued",
       created_at_utc: now().toISOString(),
+      expires_at_utc: new Date(now().getTime() + cardHoldSeconds * 1000).toISOString(),
     }
 
     appendQueueOperation(database, queue, "inventory_reservation", reservation.reservation_id, reservation, now)
@@ -1906,6 +2047,7 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function syncStatus() {
+    const expiryCleanup = cleanupExpiredLocalHolds()
     const deviceSummary = buildClientDeviceSummary(clientDevices, now, heartbeatTimeoutSeconds)
 
     return {
@@ -1913,6 +2055,9 @@ export function createLocalSyncStore(options = {}) {
       local_database: "store-sync.sqlite",
       persistence_mode: "sqlite",
       queue_depth: pendingQueueOperations(queue).length,
+      expired_hold_count: expiryCleanup.expired_order_count,
+      released_hold_inventory_count: expiryCleanup.released_inventory_count,
+      card_hold_seconds: cardHoldSeconds,
       kiosk_order_count: kioskOrders.length,
       fulfillment_order_count: fulfillmentOrders.length,
       inventory_count: inventoryItems.length,
@@ -1937,6 +2082,7 @@ export function createLocalSyncStore(options = {}) {
         wordpressInventoryPush ||
           wordpressInventorySalePush ||
           wordpressFulfillmentStatusPush ||
+          wordpressEventUpsertPush ||
           wordpressEventRegistrationPush ||
           wordpressEventCheckinPush ||
           wordpressCreditPush ||
@@ -1946,6 +2092,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_inventory_sale_push_connected: Boolean(wordpressInventorySalePush),
       wordpress_fulfillment_status_push_connected: Boolean(wordpressFulfillmentStatusPush),
+      wordpress_event_upsert_push_connected: Boolean(wordpressEventUpsertPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
@@ -2358,6 +2505,85 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function pushEventUpsertOperation(operation) {
+    if (!wordpressEventUpsertPush) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: "wordpress_event_upsert_push_unavailable",
+        message: "WordPress event creation push is not configured on this LAN server.",
+      }
+    }
+
+    const event = eventSnapshots.find((candidate) => candidate.event_id === operation.entity_id) ?? operation.payload?.event
+
+    if (!event) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "rejected",
+        code: "local_event_missing",
+      }
+    }
+
+    const pushResult = await wordpressEventUpsertPush({
+      operation: {
+        ...operation,
+        payload: {
+          ...operation.payload,
+          event: publicEventSnapshot(event),
+        },
+      },
+    })
+
+    if (pushResult.status !== "ok") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: pushResult.code,
+        message: pushResult.message,
+        wordpress_code: pushResult.wordpress_code ?? "",
+        http_status: pushResult.http_status ?? 0,
+        errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+      }
+    }
+
+    const localEvent = eventSnapshots.find((candidate) => candidate.event_id === operation.entity_id)
+    if (localEvent) {
+      localEvent.slug = cleanSlug(pushResult.event?.slug) || localEvent.slug
+      localEvent.row_version += 1
+      localEvent.registration_status = pushResult.event?.registration_status
+        ? cleanEventRegistrationStatus(pushResult.event.registration_status)
+        : localEvent.registration_status
+      localEvent.woocommerce_product_id = positiveInt(pushResult.event?.woocommerce_product_id) ?? 0
+      localEvent.registration_deadline_utc =
+        cleanIsoTimestamp(pushResult.event?.registration_deadline_utc) || localEvent.registration_deadline_utc
+      localEvent.source = "accepted"
+      localEvent.note = localEvent.woocommerce_product_id > 0
+        ? `Accepted by WordPress with WooCommerce product #${localEvent.woocommerce_product_id}.`
+        : "Accepted by WordPress."
+      saveEventSnapshot(database, localEvent, now)
+    }
+
+    deleteQueueOperation(database, queue, operation.operation_id)
+
+    return {
+      operation_id: operation.operation_id,
+      operation_type: operation.operation_type,
+      entity_id: operation.entity_id,
+      status: "accepted",
+      code: pushResult.code,
+      wordpress_code: pushResult.wordpress_code,
+      wordpress_event: pushResult.event,
+      woocommerce_product_created: Boolean(pushResult.woocommerce_product_created),
+    }
+  }
+
   async function pushQueuedOperations(token) {
     const session = requireSession(token)
 
@@ -2369,6 +2595,7 @@ export function createLocalSyncStore(options = {}) {
       !wordpressInventoryPush &&
       !wordpressInventorySalePush &&
       !wordpressFulfillmentStatusPush &&
+      !wordpressEventUpsertPush &&
       !wordpressEventRegistrationPush &&
       !wordpressEventCheckinPush &&
       !wordpressCreditPush &&
@@ -2378,12 +2605,14 @@ export function createLocalSyncStore(options = {}) {
       return blocked("wordpress_push_unavailable", "WordPress push is not configured on this LAN server.")
     }
 
+    const expiryCleanup = cleanupExpiredLocalHolds()
     const pendingOperations = pendingQueueOperations(queue)
     const inventoryOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_intake")
     const squareSaleOperations = pendingOperations.filter((operation) => operation.operation_type === "square_pos_sale")
     const fulfillmentStatusOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "woocommerce_fulfillment_status",
     )
+    const eventUpsertOperations = pendingOperations.filter((operation) => operation.operation_type === "event_upsert")
     const eventRegistrationOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "event_registration",
     )
@@ -2465,6 +2694,10 @@ export function createLocalSyncStore(options = {}) {
         inventory_mutation_performed: false,
         payment_capture_performed: false,
       })
+    }
+
+    for (const operation of eventUpsertOperations) {
+      results.push(await pushEventUpsertOperation(operation))
     }
 
     for (const operation of eventRegistrationOperations) {
@@ -2630,6 +2863,12 @@ export function createLocalSyncStore(options = {}) {
         if (cleanKioskOrderStatus(order.status) === "queued") {
           order.status = "accepted"
         }
+        order.hold_expires_at_utc =
+          earliestReservationExpiry(
+            (Array.isArray(pushResult.reservations) ? pushResult.reservations : []).map((reservation) => ({
+              expires_at_utc: reservation.expires_at,
+            })),
+          ) || order.hold_expires_at_utc
         order.updated_at_utc = now().toISOString()
         saveKioskOrder(database, order)
       }
@@ -2645,6 +2884,8 @@ export function createLocalSyncStore(options = {}) {
         if (item) {
           item.status = "reserved"
           item.source = "accepted"
+          item.updated_by_user_id = "wordpress-sync"
+          item.updated_by_user_name = "WordPress Sync"
           item.row_version += 1
           saveInventoryItem(database, item, now)
         }
@@ -2840,6 +3081,7 @@ export function createLocalSyncStore(options = {}) {
       squareSaleOperations.length +
       eventRegistrationOperations.length +
       eventCheckinOperations.length +
+      eventUpsertOperations.length +
       kioskOperations.length +
       coveredKioskReservationOperationIds.size +
       customerOperations.length +
@@ -2853,9 +3095,12 @@ export function createLocalSyncStore(options = {}) {
       rejected_count: rejectedCount,
       unsupported_operation_count: pendingOperations.length - supportedOperationCount,
       results,
+      expired_hold_count: expiryCleanup.expired_order_count,
+      released_hold_inventory_count: expiryCleanup.released_inventory_count,
       wordpress_push_connected: true,
       wordpress_inventory_push_connected: Boolean(wordpressInventoryPush),
       wordpress_inventory_sale_push_connected: Boolean(wordpressInventorySalePush),
+      wordpress_event_upsert_push_connected: Boolean(wordpressEventUpsertPush),
       wordpress_event_registration_push_connected: Boolean(wordpressEventRegistrationPush),
       wordpress_event_checkin_push_connected: Boolean(wordpressEventCheckinPush),
       wordpress_credit_push_connected: Boolean(wordpressCreditPush),
@@ -2866,12 +3111,105 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function cleanupExpiredLocalHolds() {
+    const timestamp = now()
+    const expiredReservationOperations = pendingQueueOperations(queue).filter(
+      (operation) =>
+        operation.operation_type === "inventory_reservation" &&
+        localReservationExpired(operation, timestamp, cardHoldSeconds),
+    )
+    const expiredReservationIds = new Set()
+    const releasedInventoryIds = new Set()
+
+    for (const operation of expiredReservationOperations) {
+      const reservationId = cleanPublicId(operation.entity_id)
+      const inventoryPublicId = cleanPublicId(operation.payload?.inventory_public_id)
+      expiredReservationIds.add(reservationId)
+
+      const item = inventoryItems.find((candidate) => candidate.public_id === inventoryPublicId)
+      if (item && item.status === "reserved") {
+        item.status = "available"
+        item.source = cleanPublicId(item.wordpress_public_id) ? "accepted" : "cached"
+        item.updated_by_user_id = "hold-expiry"
+        item.updated_by_user_name = "Hold Expiry"
+        item.row_version += 1
+        saveInventoryItem(database, item, now)
+        releasedInventoryIds.add(item.public_id)
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+    }
+
+    let expiredOrderCount = 0
+    for (const order of kioskOrders) {
+      const isActiveUnpaid = ["queued", "accepted", "pulling"].includes(cleanKioskOrderStatus(order.status)) &&
+        cleanKioskPaymentStatus(order.payment_status) !== "paid"
+      const orderReservationIds = new Set(
+        Array.isArray(order.reservation_ids) ? order.reservation_ids.map(cleanPublicId).filter(Boolean) : [],
+      )
+      const orderHasExpiredReservation = [...expiredReservationIds].some((reservationId) =>
+        orderReservationIds.has(reservationId),
+      )
+      const orderExpiredByTimestamp = localKioskOrderExpired(order, timestamp, cardHoldSeconds)
+
+      if (!isActiveUnpaid || (!orderHasExpiredReservation && !orderExpiredByTimestamp)) {
+        continue
+      }
+
+      for (const item of cleanKioskOrderItems(order.items)) {
+        const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+        if (localItem && localItem.status === "reserved") {
+          localItem.status = "available"
+          localItem.source = cleanPublicId(localItem.wordpress_public_id) ? "accepted" : "cached"
+          localItem.updated_by_user_id = "hold-expiry"
+          localItem.updated_by_user_name = "Hold Expiry"
+          localItem.row_version += 1
+          saveInventoryItem(database, localItem, now)
+          releasedInventoryIds.add(localItem.public_id)
+        }
+      }
+
+      order.status = "expired"
+      order.updated_at_utc = timestamp.toISOString()
+      saveKioskOrder(database, order)
+      for (const operation of [...queue]) {
+        if (operation.operation_type === "kiosk_order" && operation.entity_id === order.order_id) {
+          deleteQueueOperation(database, queue, operation.operation_id)
+        }
+      }
+      expiredOrderCount += 1
+    }
+
+    let terminalKioskOperationCount = 0
+    for (const operation of [...pendingQueueOperations(queue)]) {
+      if (operation.operation_type !== "kiosk_order") {
+        continue
+      }
+
+      const order = kioskOrders.find((candidate) => candidate.order_id === operation.entity_id)
+      if (!order || !["completed", "expired"].includes(cleanKioskOrderStatus(order.status))) {
+        continue
+      }
+
+      deleteQueueOperation(database, queue, operation.operation_id)
+      terminalKioskOperationCount += 1
+    }
+
+    return {
+      expired_reservation_count: expiredReservationIds.size,
+      expired_order_count: expiredOrderCount,
+      released_inventory_count: releasedInventoryIds.size,
+      terminal_kiosk_operation_count: terminalKioskOperationCount,
+    }
+  }
+
   return {
     addUser,
     close: () => database.close(),
     createCreditAdjustment,
     createCreditRedemption,
     createCustomer,
+    createEvent,
     createEventCheckin,
     createEventRegistration,
     createInventoryIntake,
@@ -2880,7 +3218,9 @@ export function createLocalSyncStore(options = {}) {
     finalizeSquarePosSale,
     deviceStatus,
     getSetupConfig,
+    addInventoryLocation,
     listEvents,
+    listInventoryLocations,
     listKioskOrders,
     listTradeInOrders,
     getManagerReport,
@@ -2971,6 +3311,10 @@ function migrateLocalSyncDatabase(database) {
       square_catalog_item_id TEXT NOT NULL DEFAULT '',
       square_catalog_variation_id TEXT NOT NULL DEFAULT '',
       external_sync_state TEXT NOT NULL DEFAULT 'pending',
+      created_by_user_id TEXT NOT NULL DEFAULT '',
+      created_by_user_name TEXT NOT NULL DEFAULT '',
+      updated_by_user_id TEXT NOT NULL DEFAULT '',
+      updated_by_user_name TEXT NOT NULL DEFAULT '',
       source TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
     );
@@ -2997,6 +3341,7 @@ function migrateLocalSyncDatabase(database) {
       picked_item_ids_json TEXT NOT NULL DEFAULT '[]',
       reservation_ids_json TEXT NOT NULL,
       items_json TEXT NOT NULL DEFAULT '[]',
+      hold_expires_at_utc TEXT NOT NULL DEFAULT '',
       created_at_utc TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL DEFAULT ''
     );
@@ -3081,6 +3426,11 @@ function migrateLocalSyncDatabase(database) {
       title TEXT NOT NULL,
       starts_at_utc TEXT NOT NULL,
       starts_at_label TEXT NOT NULL,
+      event_type TEXT NOT NULL DEFAULT 'tournament',
+      game TEXT NOT NULL DEFAULT 'other',
+      entry_fee_minor_units INTEGER NOT NULL DEFAULT 0,
+      registration_deadline_utc TEXT NOT NULL DEFAULT '',
+      woocommerce_product_id INTEGER NOT NULL DEFAULT 0,
       registration_status TEXT NOT NULL,
       capacity INTEGER NOT NULL,
       registered_count INTEGER NOT NULL,
@@ -3157,6 +3507,10 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "square_catalog_item_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "square_catalog_variation_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
+  ensureLocalSyncColumn(database, "inventory_items", "created_by_user_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "created_by_user_name", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "updated_by_user_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "updated_by_user_name", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "kiosk_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "kiosk_orders", "updated_at_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "kiosk_orders", "payment_status", "TEXT NOT NULL DEFAULT 'pay_at_store'")
@@ -3165,6 +3519,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "kiosk_orders", "paid_at_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "kiosk_orders", "paid_by_user_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "kiosk_orders", "picked_item_ids_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "kiosk_orders", "hold_expires_at_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "fulfillment_orders", "order_number", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "fulfillment_orders", "updated_at_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "fulfillment_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
@@ -3190,6 +3545,11 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "reference_cards", "price_points_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "event_snapshots", "slug", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "event_snapshots", "event_type", "TEXT NOT NULL DEFAULT 'tournament'")
+  ensureLocalSyncColumn(database, "event_snapshots", "game", "TEXT NOT NULL DEFAULT 'other'")
+  ensureLocalSyncColumn(database, "event_snapshots", "entry_fee_minor_units", "INTEGER NOT NULL DEFAULT 0")
+  ensureLocalSyncColumn(database, "event_snapshots", "registration_deadline_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "event_snapshots", "woocommerce_product_id", "INTEGER NOT NULL DEFAULT 0")
   database.exec(`
     UPDATE operation_queue
     SET sync_status = 'local_only'
@@ -3313,7 +3673,7 @@ function loadInventoryItems(database) {
         variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
-        external_sync_state, source
+        external_sync_state, created_by_user_id, created_by_user_name, updated_by_user_id, updated_by_user_name, source
       FROM inventory_items
       ORDER BY public_id
     `)
@@ -3352,6 +3712,10 @@ function loadInventoryItems(database) {
       square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
       square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
       external_sync_state: cleanExternalSyncState(row.external_sync_state),
+      created_by_user_id: cleanPublicId(row.created_by_user_id),
+      created_by_user_name: cleanName(row.created_by_user_name),
+      updated_by_user_id: cleanPublicId(row.updated_by_user_id),
+      updated_by_user_name: cleanName(row.updated_by_user_name),
       source: row.source,
     }))
 }
@@ -3432,6 +3796,49 @@ function saveSetupConfig(database, config) {
     .run("one_website_setup", JSON.stringify(config), config.configuredAtUtc || new Date().toISOString())
 }
 
+function loadInventoryLocations(database, inventoryItems = []) {
+  const row = database
+    .prepare("SELECT setting_value_json FROM server_settings WHERE setting_key = ?")
+    .get("inventory_locations")
+  const persistedLocations = row ? parseJson(row.setting_value_json, []) : []
+  const inventoryItemLocations = inventoryItems.map((item) => item.location)
+
+  return cleanInventoryLocations([
+    "Intake Queue",
+    "Showcase A",
+    "Showcase B",
+    "Case 1",
+    "Case 2",
+    "Back Stock",
+    ...persistedLocations,
+    ...inventoryItemLocations,
+  ])
+}
+
+function saveInventoryLocations(database, locations, now = () => new Date()) {
+  database
+    .prepare(`
+      INSERT INTO server_settings (setting_key, setting_value_json, updated_at_utc)
+      VALUES (?, ?, ?)
+      ON CONFLICT(setting_key) DO UPDATE SET
+        setting_value_json = excluded.setting_value_json,
+        updated_at_utc = excluded.updated_at_utc
+    `)
+    .run("inventory_locations", JSON.stringify(cleanInventoryLocations(locations)), now().toISOString())
+}
+
+function mergeInventoryLocation(database, inventoryLocations, location, now = () => new Date()) {
+  const cleaned = cleanInventoryLocation(location)
+
+  if (!cleaned || inventoryLocations.some((existing) => existing.toLowerCase() === cleaned.toLowerCase())) {
+    return
+  }
+
+  inventoryLocations.push(cleaned)
+  inventoryLocations.sort((left, right) => left.localeCompare(right))
+  saveInventoryLocations(database, inventoryLocations, now)
+}
+
 function publicSetupConfig(config) {
   return {
     store_id: config.storeId,
@@ -3473,7 +3880,7 @@ function loadKioskOrders(database) {
     .prepare(`
       SELECT order_id, first_name, last_name, status, payment_status, square_receipt_reference,
         square_order_id, paid_at_utc, paid_by_user_id, picked_item_ids_json,
-        reservation_ids_json, items_json, created_at_utc, updated_at_utc
+        reservation_ids_json, items_json, hold_expires_at_utc, created_at_utc, updated_at_utc
       FROM kiosk_orders
       ORDER BY created_at_utc DESC, order_id
     `)
@@ -3491,6 +3898,7 @@ function loadKioskOrders(database) {
       picked_item_ids: cleanPickedItemIds(parseJson(row.picked_item_ids_json, []), parseJson(row.items_json, [])),
       reservation_ids: parseJson(row.reservation_ids_json, []),
       items: cleanKioskOrderItems(parseJson(row.items_json, [])),
+      hold_expires_at_utc: cleanIsoTimestamp(row.hold_expires_at_utc),
       created_at_utc: row.created_at_utc,
       updated_at_utc: row.updated_at_utc || row.created_at_utc,
     }))
@@ -3625,7 +4033,9 @@ function loadEventSnapshots(database) {
   return database
     .prepare(`
       SELECT event_id, row_version, title, starts_at_utc, starts_at_label,
-        slug, registration_status, capacity, registered_count, location_label, note, source
+        slug, event_type, game, entry_fee_minor_units, registration_deadline_utc,
+        woocommerce_product_id, registration_status, capacity, registered_count,
+        location_label, note, source
       FROM event_snapshots
       ORDER BY starts_at_utc, event_id
     `)
@@ -3637,6 +4047,11 @@ function loadEventSnapshots(database) {
       title: row.title,
       starts_at_utc: row.starts_at_utc,
       starts_at_label: row.starts_at_label,
+      event_type: cleanEventType(row.event_type),
+      game: cleanGame(row.game),
+      entry_fee_minor_units: Math.max(0, minorUnits(row.entry_fee_minor_units)),
+      registration_deadline_utc: cleanIsoTimestamp(row.registration_deadline_utc),
+      woocommerce_product_id: positiveInt(row.woocommerce_product_id) ?? 0,
       registration_status: cleanEventRegistrationStatus(row.registration_status),
       capacity: Number(row.capacity),
       registered_count: Number(row.registered_count),
@@ -3679,9 +4094,10 @@ function saveInventoryItem(database, item, now) {
         variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
         currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
-        external_sync_state, source, updated_at_utc
+        external_sync_state, created_by_user_id, created_by_user_name, updated_by_user_id, updated_by_user_name,
+        source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         wordpress_public_id = excluded.wordpress_public_id,
         row_version = excluded.row_version,
@@ -3715,6 +4131,10 @@ function saveInventoryItem(database, item, now) {
         square_catalog_item_id = excluded.square_catalog_item_id,
         square_catalog_variation_id = excluded.square_catalog_variation_id,
         external_sync_state = excluded.external_sync_state,
+        created_by_user_id = excluded.created_by_user_id,
+        created_by_user_name = excluded.created_by_user_name,
+        updated_by_user_id = excluded.updated_by_user_id,
+        updated_by_user_name = excluded.updated_by_user_name,
         source = excluded.source,
         updated_at_utc = excluded.updated_at_utc
     `)
@@ -3752,6 +4172,10 @@ function saveInventoryItem(database, item, now) {
       cleanExternalId(item.square_catalog_item_id),
       cleanExternalId(item.square_catalog_variation_id),
       cleanExternalSyncState(item.external_sync_state),
+      cleanPublicId(item.created_by_user_id),
+      cleanName(item.created_by_user_name),
+      cleanPublicId(item.updated_by_user_id),
+      cleanName(item.updated_by_user_name),
       item.source,
       now().toISOString(),
     )
@@ -3895,9 +4319,9 @@ function saveKioskOrder(database, order) {
       INSERT INTO kiosk_orders (
         order_id, first_name, last_name, status, payment_status, square_receipt_reference,
         square_order_id, paid_at_utc, paid_by_user_id, picked_item_ids_json,
-        reservation_ids_json, items_json, created_at_utc, updated_at_utc
+        reservation_ids_json, items_json, hold_expires_at_utc, created_at_utc, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_id) DO UPDATE SET
         first_name = excluded.first_name,
         last_name = excluded.last_name,
@@ -3910,6 +4334,7 @@ function saveKioskOrder(database, order) {
         picked_item_ids_json = excluded.picked_item_ids_json,
         reservation_ids_json = excluded.reservation_ids_json,
         items_json = excluded.items_json,
+        hold_expires_at_utc = excluded.hold_expires_at_utc,
         updated_at_utc = excluded.updated_at_utc
     `)
     .run(
@@ -3925,6 +4350,7 @@ function saveKioskOrder(database, order) {
       JSON.stringify(cleanPickedItemIds(order.picked_item_ids, order.items)),
       JSON.stringify(order.reservation_ids),
       JSON.stringify(cleanKioskOrderItems(order.items)),
+      cleanIsoTimestamp(order.hold_expires_at_utc),
       order.created_at_utc,
       order.updated_at_utc || order.created_at_utc,
     )
@@ -4064,16 +4490,22 @@ function saveEventSnapshot(database, event, now) {
     .prepare(`
       INSERT INTO event_snapshots (
         event_id, slug, row_version, title, starts_at_utc, starts_at_label,
-        registration_status, capacity, registered_count, location_label, note,
-        source, updated_at_utc
+        event_type, game, entry_fee_minor_units, registration_deadline_utc,
+        woocommerce_product_id, registration_status, capacity, registered_count,
+        location_label, note, source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(event_id) DO UPDATE SET
         slug = excluded.slug,
         row_version = excluded.row_version,
         title = excluded.title,
         starts_at_utc = excluded.starts_at_utc,
         starts_at_label = excluded.starts_at_label,
+        event_type = excluded.event_type,
+        game = excluded.game,
+        entry_fee_minor_units = excluded.entry_fee_minor_units,
+        registration_deadline_utc = excluded.registration_deadline_utc,
+        woocommerce_product_id = excluded.woocommerce_product_id,
         registration_status = excluded.registration_status,
         capacity = excluded.capacity,
         registered_count = excluded.registered_count,
@@ -4089,6 +4521,11 @@ function saveEventSnapshot(database, event, now) {
       event.title,
       event.starts_at_utc,
       event.starts_at_label,
+      cleanEventType(event.event_type),
+      cleanGame(event.game),
+      Math.max(0, minorUnits(event.entry_fee_minor_units)),
+      cleanIsoTimestamp(event.registration_deadline_utc),
+      positiveInt(event.woocommerce_product_id) ?? 0,
       event.registration_status,
       event.capacity,
       event.registered_count,
@@ -4365,6 +4802,13 @@ function publicUser(user) {
   }
 }
 
+function userNameById(userId, users) {
+  const cleanedId = cleanPublicId(userId)
+  const user = (Array.isArray(users) ? users : []).find((candidate) => cleanPublicId(candidate.id) === cleanedId)
+
+  return cleanName(user?.name) || cleanedId || "System"
+}
+
 function publicInventoryItem(item) {
   return {
     public_id: item.public_id,
@@ -4400,6 +4844,10 @@ function publicInventoryItem(item) {
     square_catalog_item_id: cleanExternalId(item.square_catalog_item_id),
     square_catalog_variation_id: cleanExternalId(item.square_catalog_variation_id),
     external_sync_state: cleanExternalSyncState(item.external_sync_state),
+    created_by_user_id: cleanPublicId(item.created_by_user_id),
+    created_by_user_name: cleanName(item.created_by_user_name),
+    updated_by_user_id: cleanPublicId(item.updated_by_user_id),
+    updated_by_user_name: cleanName(item.updated_by_user_name),
     source: item.source,
   }
 }
@@ -4453,6 +4901,10 @@ function localInventoryItemFromWordPress(row) {
     square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
     square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
     external_sync_state: cleanExternalSyncState(row.external_sync_state),
+    created_by_user_id: cleanPublicId(row.created_by_user_id ?? row.created_by),
+    created_by_user_name: cleanName(row.created_by_user_name) || "WordPress",
+    updated_by_user_id: cleanPublicId(row.updated_by_user_id ?? row.updated_by),
+    updated_by_user_name: cleanName(row.updated_by_user_name) || "WordPress",
     source: "cached",
   }
 }
@@ -4480,6 +4932,11 @@ function localEventSnapshotFromWordPress(row) {
     title,
     starts_at_utc: startsAt,
     starts_at_label: cleanName(row.starts_at_label) || eventStartLabel(startsAt),
+    event_type: cleanEventType(row.event_type),
+    game: cleanGame(row.game),
+    entry_fee_minor_units: minorUnitsFromDecimal(row.entry_fee),
+    registration_deadline_utc: cleanIsoTimestamp(row.registration_deadline),
+    woocommerce_product_id: positiveInt(row.woocommerce_product_id) ?? 0,
     registration_status: cleanEventRegistrationStatus(row.registration_status),
     capacity,
     registered_count: registeredCount,
@@ -4888,7 +5345,7 @@ function cleanKioskOrderItems(items) {
 function cleanKioskOrderStatus(value) {
   const status = kioskOrderStatusSlug(value)
 
-  if (["queued", "accepted", "pulling", "ready", "completed"].includes(status)) {
+  if (["queued", "accepted", "pulling", "ready", "completed", "expired"].includes(status)) {
     return status
   }
 
@@ -4901,6 +5358,61 @@ function cleanKioskOrderStatus(value) {
 
 function cleanKioskPaymentStatus(value) {
   return value === "paid" ? "paid" : "pay_at_store"
+}
+
+function earliestReservationExpiry(reservations) {
+  const timestamps = (Array.isArray(reservations) ? reservations : [])
+    .map((reservation) => cleanIsoTimestamp(reservation?.expires_at_utc ?? reservation?.expiresAtUtc))
+    .filter(Boolean)
+    .sort()
+
+  return timestamps[0] ?? ""
+}
+
+function localReservationExpired(operation, nowDate, holdSeconds) {
+  if (!operation || operation.sync_status !== "pending") {
+    return false
+  }
+
+  const explicitExpiry = cleanIsoTimestamp(operation.payload?.expires_at_utc ?? operation.payload?.expiresAtUtc)
+  if (explicitExpiry) {
+    return localHoldExpiredAt(explicitExpiry, nowDate)
+  }
+
+  const queuedAt = cleanIsoTimestamp(operation.queued_at_utc ?? operation.payload?.created_at_utc)
+  if (!queuedAt) {
+    return false
+  }
+
+  return new Date(queuedAt).getTime() + holdSeconds * 1000 <= nowDate.getTime()
+}
+
+function localHoldExpiredAt(expiresAtUtc, nowDate) {
+  const expiry = cleanIsoTimestamp(expiresAtUtc)
+  if (!expiry) {
+    return false
+  }
+
+  const expiryTime = new Date(expiry).getTime()
+
+  return Number.isFinite(expiryTime) && expiryTime <= nowDate.getTime()
+}
+
+function localKioskOrderExpired(order, nowDate, holdSeconds) {
+  const explicitExpiry = cleanIsoTimestamp(order?.hold_expires_at_utc ?? order?.holdExpiresAtUtc)
+
+  if (explicitExpiry) {
+    return localHoldExpiredAt(explicitExpiry, nowDate)
+  }
+
+  const createdAt = cleanIsoTimestamp(order?.created_at_utc ?? order?.createdAtUtc)
+  if (!createdAt) {
+    return false
+  }
+
+  const createdTime = new Date(createdAt).getTime()
+
+  return Number.isFinite(createdTime) && createdTime + holdSeconds * 1000 <= nowDate.getTime()
 }
 
 function cleanTradeInItems(items) {
@@ -5031,6 +5543,10 @@ function kioskOrderStatusSlug(value) {
 function publicKioskOrder(order) {
   const items = cleanKioskOrderItems(order.items)
   const totalMinorUnits = items.reduce((total, item) => total + item.price_minor_units, 0)
+  const holdExpiresAtUtc = cleanIsoTimestamp(order.hold_expires_at_utc)
+  const holdSecondsRemaining = holdExpiresAtUtc
+    ? Math.max(0, Math.ceil((new Date(holdExpiresAtUtc).getTime() - Date.now()) / 1000))
+    : 0
 
   return {
     order_id: cleanPublicId(order.order_id),
@@ -5042,6 +5558,8 @@ function publicKioskOrder(order) {
     square_receipt_reference: cleanExternalId(order.square_receipt_reference),
     square_order_id: cleanExternalId(order.square_order_id),
     paid_at_utc: cleanIsoTimestamp(order.paid_at_utc) || "",
+    hold_expires_at_utc: holdExpiresAtUtc,
+    hold_seconds_remaining: holdSecondsRemaining,
     picked_item_ids: cleanPickedItemIds(order.picked_item_ids, items),
     picked_item_count: cleanPickedItemIds(order.picked_item_ids, items).length,
     all_items_picked: items.length > 0 && cleanPickedItemIds(order.picked_item_ids, items).length === items.length,
@@ -5334,6 +5852,11 @@ function publicEventSnapshot(event) {
     title: event.title,
     starts_at_utc: event.starts_at_utc,
     starts_at_label: event.starts_at_label,
+    event_type: cleanEventType(event.event_type),
+    game: cleanGame(event.game),
+    entry_fee_minor_units: Math.max(0, minorUnits(event.entry_fee_minor_units)),
+    registration_deadline_utc: cleanIsoTimestamp(event.registration_deadline_utc),
+    woocommerce_product_id: positiveInt(event.woocommerce_product_id) ?? 0,
     registration_status: event.registration_status,
     capacity: event.capacity,
     registered_count: event.registered_count,
@@ -5548,6 +6071,30 @@ function cleanName(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 80)
 }
 
+function cleanInventoryLocation(value) {
+  return cleanName(value).replace(/[<>]/g, "").slice(0, 80)
+}
+
+function cleanInventoryLocations(values) {
+  const locations = Array.isArray(values) ? values : []
+  const seen = new Set()
+  const cleaned = []
+
+  for (const value of locations) {
+    const location = cleanInventoryLocation(value)
+    const key = location.toLowerCase()
+
+    if (!location || seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    cleaned.push(location)
+  }
+
+  return cleaned.sort((left, right) => left.localeCompare(right)).slice(0, 200)
+}
+
 function cleanEmail(value) {
   const email = String(value ?? "").trim().toLowerCase().slice(0, 120)
 
@@ -5731,6 +6278,12 @@ function cleanEventRegistrationStatus(value) {
   return ["open", "waitlist", "full", "closed"].includes(value) ? value : "closed"
 }
 
+function cleanEventType(value) {
+  const eventType = String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_")
+
+  return eventType || "tournament"
+}
+
 function cleanDateTime(value) {
   const text = String(value ?? "").trim()
 
@@ -5757,6 +6310,24 @@ function eventStartLabel(value) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(parsed))
+}
+
+function eventRegistrationDeadline(startsAtUtc, value, unit) {
+  const startsAt = Date.parse(startsAtUtc)
+
+  if (!Number.isFinite(startsAt)) {
+    return ""
+  }
+
+  const amount = boundedInt(value, 0, 365, 0)
+  const normalizedUnit = String(unit ?? "").trim().toLowerCase()
+  const multiplier =
+    normalizedUnit.startsWith("day") ? 24 * 60 * 60 * 1000 :
+      normalizedUnit.startsWith("hour") ? 60 * 60 * 1000 :
+        normalizedUnit.startsWith("minute") ? 60 * 1000 :
+          0
+
+  return amount > 0 && multiplier > 0 ? new Date(startsAt - amount * multiplier).toISOString() : ""
 }
 
 function nullableNonNegativeInt(value) {

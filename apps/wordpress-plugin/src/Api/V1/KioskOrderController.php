@@ -11,6 +11,7 @@ use TCGStorePlatform\Inventory\InventoryStatus;
 
 final class KioskOrderController {
 	private const NAMESPACE = 'tcg-store/v1';
+	private const KIOSK_HOLD_SECONDS = 1800;
 
 	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ), 24 );
@@ -105,7 +106,7 @@ final class KioskOrderController {
 		$reservations_table = $wpdb->prefix . 'tcg_reservations';
 		$reservations       = array();
 		$owner_token_hash   = hash( 'sha256', $order_id . '|' . strtolower( $first_name . ' ' . $last_name ) );
-		$expires_at         = gmdate( 'Y-m-d H:i:s', time() + 2 * HOUR_IN_SECONDS );
+		$expires_at         = gmdate( 'Y-m-d H:i:s', time() + self::KIOSK_HOLD_SECONDS );
 
 		$wpdb->query( 'START TRANSACTION' );
 

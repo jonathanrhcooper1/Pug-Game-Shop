@@ -21,6 +21,7 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		}
 
 		$this->assert_same( 'enqueue_assets', $map['action wp_enqueue_scripts'] );
+		$this->assert_same( 'add_cron_schedule', $map['filter cron_schedules'] );
 		$this->assert_same( 'product_image', $map['filter woocommerce_product_get_image'] );
 		$this->assert_same( 'single_product_image_html', $map['filter woocommerce_single_product_image_thumbnail_html'] );
 		$this->assert_same( 'render_single_product_gallery', $map['action woocommerce_before_single_product_summary'] );
@@ -28,7 +29,10 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		$this->assert_same( 'render_condition_selector', $map['action woocommerce_before_add_to_cart_button'] );
 		$this->assert_same( 'validate_add_to_cart', $map['filter woocommerce_add_to_cart_validation'] );
 		$this->assert_same( 'reserve_add_to_cart_inventory', $map['filter woocommerce_add_cart_item_data'] );
+		$this->assert_same( 'release_expired_cart_reservations', $map['action woocommerce_before_cart'] );
+		$this->assert_same( 'release_expired_cart_reservations', $map['action woocommerce_before_checkout_form'] );
 		$this->assert_same( 'apply_exact_inventory_price_snapshots', $map['action woocommerce_before_calculate_totals'] );
+		$this->assert_same( 'expire_stale_reservations', $map['action tcg_store_expire_reservations'] );
 		$this->assert_same( 'attach_exact_inventory_order_line_metadata', $map['action woocommerce_checkout_create_order_line_item'] );
 		$this->assert_same( 'convert_paid_order_reservations', $map['action woocommerce_payment_complete'] );
 		$this->assert_same( 'release_removed_cart_item_reservation', $map['action woocommerce_cart_item_removed'] );
@@ -67,6 +71,13 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'SerializedOrderLineMetadataPlanner',
 				'convert_to_sale',
 				'cart_removed',
+				'release_expired_cart_reservations',
+				'expire_stale_reservations',
+				'maybe_schedule_reservation_expiry',
+				'tcg_store_every_five_minutes',
+				'wp_schedule_event',
+				'wp_next_scheduled',
+				'A card hold expired after 30 minutes',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );
@@ -90,6 +101,8 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'tcg-woocommerce-card-gallery-image--static',
 				'tcg-woocommerce-card-cart-image',
 				'cursor: default',
+				'background: transparent',
+				'box-shadow: none',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );
