@@ -1,5 +1,55 @@
 # Revision Log
 
+## 2026-06-15 - Trade-In Customer Lookup UI Refresh
+
+### What Changed
+
+- Redesigned the local employee Trade-Ins workspace with the same light card
+  treatment used on the Inventory page.
+- Moved customer lookup to the top of the Trade-In Counter.
+- Added live customer match cards from the LAN customer cache.
+- Changed the main customer action to `Use Customer` when a match exists and
+  `Create and Use Customer` when no match exists.
+- Passed `customer_lookup` through local customer creation so phone/lookup text
+  can be saved with new trade-in customers.
+
+### Why
+
+- Staff need trade-ins to read like a front-counter workflow, starting with the
+  customer record before building the offer.
+- The previous dark panel treatment was visually inconsistent with the newer
+  inventory screen and made the trade-in controls harder to scan.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- No new automated test file was added for this visual pass.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/offline-app run build`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- Browser check confirmed the Trade-Ins customer lookup is first under the
+  heading, unknown names show `Create and Use Customer`, and existing matches
+  show `Use Customer`.
+
+### Rollback Notes
+
+- Revert this revision to restore the previous darker Trade-Ins layout and
+  customer entry behavior. No database rollback is required.
+
 ## 2026-06-15 - Production Hold Sync And Storefront Image Polish
 
 ### What Changed

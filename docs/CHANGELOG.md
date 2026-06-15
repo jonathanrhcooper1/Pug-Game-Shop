@@ -18,6 +18,10 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Redesigned the local app Trade-Ins workspace to match the lighter Inventory
+  page treatment, moved customer lookup to the top of the flow, added live
+  customer match cards, and changed the primary customer action between
+  `Use Customer` and `Create and Use Customer` based on lookup results.
 - Added live cart/kiosk hold enforcement to local inventory reads, kiosk order
   creation, and fulfillment refreshes. Cards selected in a kiosk/cart now move
   into a held state for 30 minutes, expired holds are released back into

@@ -1405,6 +1405,46 @@ function tradeInValueMinorUnits(marketMidMinorUnits: number, percentageBasisPoin
   return Math.floor(rawMinorUnits / 100) * 100
 }
 
+function normalizeTradeInCustomerLookup(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase()
+}
+
+function splitTradeInCustomerName(value: string) {
+  const parts = value.trim().replace(/\s+/g, " ").split(" ").filter(Boolean)
+  const [firstName = "", ...lastNameParts] = parts
+
+  return {
+    firstName,
+    lastName: lastNameParts.join(" "),
+  }
+}
+
+function localSyncCustomerSearchText(customer: LocalSyncCustomer) {
+  return [
+    customer.customer_public_id,
+    customer.display_name,
+    customer.first_name,
+    customer.last_name,
+    customer.customer_lookup,
+    customer.email,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+}
+
+function localSyncCustomerMatchesTradeInLookup(
+  customer: LocalSyncCustomer,
+  customerName: string,
+  customerPhone: string,
+) {
+  const name = normalizeTradeInCustomerLookup(customerName)
+  const phone = normalizeTradeInCustomerLookup(customerPhone)
+  const searchText = localSyncCustomerSearchText(customer)
+
+  return Boolean((name && searchText.includes(name)) || (phone && searchText.includes(phone)))
+}
+
 function finalRetailPriceMinorUnits(autoMinorUnits: number, minimumMinorUnits: number) {
   const safeAutoMinorUnits = Number.isFinite(autoMinorUnits) ? Math.max(0, Math.trunc(autoMinorUnits)) : 0
   const safeMinimumMinorUnits = Number.isFinite(minimumMinorUnits)
@@ -1901,6 +1941,11 @@ export function App() {
   const [intakeCertNumber, setIntakeCertNumber] = useState("")
   const [tradeInCustomerName, setTradeInCustomerName] = useState("")
   const [tradeInCustomerPhone, setTradeInCustomerPhone] = useState("")
+  const [tradeInCustomerMatches, setTradeInCustomerMatches] = useState<LocalSyncCustomer[]>([])
+  const [tradeInSelectedCustomerPublicId, setTradeInSelectedCustomerPublicId] = useState("")
+  const [tradeInCustomerLookupStatus, setTradeInCustomerLookupStatus] = useState<
+    "idle" | "searching" | "matched" | "empty" | "blocked"
+  >("idle")
   const [tradeInPayoutType, setTradeInPayoutType] = useState<TradeInPayoutType>("credit")
   const [tradeInPercentageBasisPoints, setTradeInPercentageBasisPoints] = useState(6000)
   const [tradeInDraftItems, setTradeInDraftItems] = useState<TradeInDraftItem[]>([])
@@ -2841,6 +2886,42 @@ export function App() {
     .filter((item) => item.payoutType === "credit")
     .reduce((total, item) => total + item.finalValueMinorUnits, 0)
   const tradeInCombinedTotalMinorUnits = tradeInCashTotalMinorUnits + tradeInCreditTotalMinorUnits
+  const tradeInCustomerLookupQuery = [tradeInCustomerName, tradeInCustomerPhone]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(" ")
+  const tradeInSelectedCustomer =
+    tradeInCustomerMatches.find(
+      (customer) => customer.customer_public_id === tradeInSelectedCustomerPublicId,
+    ) ?? null
+  const tradeInExactCustomerMatch =
+    tradeInSelectedCustomer ??
+    tradeInCustomerMatches.find((customer) =>
+      localSyncCustomerMatchesTradeInLookup(customer, tradeInCustomerName, tradeInCustomerPhone),
+    ) ??
+    null
+  const tradeInPrimaryCustomerMatch = tradeInExactCustomerMatch ?? tradeInCustomerMatches[0] ?? null
+  const tradeInCustomerNameRequired = tradeInCustomerName.trim() === ""
+  const tradeInCustomerActionLabel =
+    tradeInCustomerLookupQuery.trim() === ""
+      ? "Enter Customer"
+      : tradeInCustomerLookupStatus === "searching"
+        ? "Searching"
+        : tradeInPrimaryCustomerMatch
+          ? "Use Customer"
+          : "Create and Use Customer"
+  const tradeInCustomerStatusLabel =
+    tradeInSelectedCustomer
+      ? `Using ${tradeInSelectedCustomer.display_name}`
+      : tradeInCustomerLookupStatus === "searching"
+        ? "Looking up customer"
+        : tradeInPrimaryCustomerMatch
+          ? `${tradeInCustomerMatches.length} match${tradeInCustomerMatches.length === 1 ? "" : "es"} found`
+          : tradeInCustomerLookupStatus === "empty"
+            ? "No match found"
+            : tradeInCustomerLookupStatus === "blocked"
+              ? "Lookup blocked"
+              : "Enter name or phone"
   const kioskInventoryPullConnected =
     localSyncStatus?.status === "ok" &&
     (localSyncStatus.wordpress_inventory_pull_connected ??
@@ -2859,6 +2940,50 @@ export function App() {
       : localSyncStatus.status === "ok"
         ? "local"
         : "offline"
+
+  useEffect(() => {
+    const lookupQuery = tradeInCustomerLookupQuery.trim()
+
+    if (lookupQuery.length < 2) {
+      setTradeInCustomerMatches([])
+      setTradeInSelectedCustomerPublicId("")
+      setTradeInCustomerLookupStatus("idle")
+      return
+    }
+
+    let cancelled = false
+    const timeoutId = window.setTimeout(() => {
+      setTradeInCustomerLookupStatus("searching")
+
+      void localSyncClient.searchCustomers(lookupQuery).then((result) => {
+        if (cancelled) {
+          return
+        }
+
+        if (result.status !== "ok") {
+          setTradeInCustomerMatches([])
+          setTradeInSelectedCustomerPublicId("")
+          setTradeInCustomerLookupStatus("blocked")
+          return
+        }
+
+        const matches = result.customers.slice(0, 6)
+        setTradeInCustomerMatches(matches)
+        setTradeInCustomerLookupStatus(matches.length > 0 ? "matched" : "empty")
+        if (
+          tradeInSelectedCustomerPublicId &&
+          !matches.some((customer) => customer.customer_public_id === tradeInSelectedCustomerPublicId)
+        ) {
+          setTradeInSelectedCustomerPublicId("")
+        }
+      })
+    }, 220)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [localSyncClient, tradeInCustomerLookupQuery, tradeInSelectedCustomerPublicId])
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -5124,6 +5249,94 @@ export function App() {
       title: "ScryDex reference selected",
       detail: `${card.card_name} ${card.printed_number} is ready for local intake review; leave barcode blank to auto-generate a unique copy code.`,
     })
+  }
+
+  function handleUseTradeInCustomer(customer: LocalSyncCustomer) {
+    const localCustomerId =
+      customer.customer_id ??
+      customerCreditDirectory.reduce((maxId, credit) => Math.max(maxId, credit.customerId), 0) + 1
+    const nextCreditSnapshot = customerCreditSnapshotFromLocalSyncCustomer(customer, {
+      customerId: localCustomerId,
+      customerPublicId: customer.customer_public_id,
+      rowVersion: customer.row_version,
+      label: "Customer credit",
+      customerName: customer.display_name,
+      customerLookup: customer.customer_lookup || customer.email,
+      availableMinorUnits: 0,
+      redemptionPreviewMinorUnits: 0,
+      currency: customer.credit.currency,
+      note: "Customer selected for the current trade-in offer.",
+    })
+    const lookupValue = customer.customer_lookup || customer.email || ""
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+    setTradeInSelectedCustomerPublicId(customer.customer_public_id)
+    setTradeInCustomerName(customer.display_name)
+    if (lookupValue && !lookupValue.includes("@")) {
+      setTradeInCustomerPhone(lookupValue)
+    }
+    setTradeInCustomerLookupStatus("matched")
+    setActiveSection("Trade-Ins")
+    setActivityMessage({
+      title: "Trade-in customer selected",
+      detail: `${customer.display_name} is attached to this offer. Staff can save the quote, accept, or decline after the card lines are staged.`,
+    })
+  }
+
+  async function handleTradeInCustomerAction() {
+    if (tradeInCustomerLookupQuery.trim() === "") {
+      setActivityMessage({
+        title: "Customer lookup needed",
+        detail: "Enter a customer name or phone at the top of the Trade-In Counter.",
+      })
+      return
+    }
+
+    if (tradeInPrimaryCustomerMatch) {
+      handleUseTradeInCustomer(tradeInPrimaryCustomerMatch)
+      return
+    }
+
+    if (tradeInCustomerNameRequired) {
+      setActivityMessage({
+        title: "Customer name needed",
+        detail: "No customer matched that lookup. Enter the customer name, then use Create and Use Customer.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Unlock with an employee, manager, or owner PIN before creating a trade-in customer.",
+      })
+      return
+    }
+
+    const { firstName, lastName } = splitTradeInCustomerName(tradeInCustomerName)
+    const createResult = await localSyncClient.createCustomer(localSyncSessionToken, {
+      firstName,
+      lastName,
+      email: "",
+      customerLookup: tradeInCustomerPhone.trim(),
+    })
+
+    if (createResult.status !== "ok") {
+      setTradeInCustomerLookupStatus("blocked")
+      setActivityMessage({
+        title: createResult.status === "unavailable" ? "LAN server unavailable" : "Customer blocked",
+        detail: createResult.message,
+      })
+      return
+    }
+
+    setTradeInCustomerMatches((customers) => [
+      createResult.customer,
+      ...customers.filter((customer) => customer.customer_public_id !== createResult.customer.customer_public_id),
+    ])
+    handleUseTradeInCustomer(createResult.customer)
+    void refreshLocalSyncStatus()
   }
 
   function handleStageTradeInItem() {
@@ -8876,6 +9089,70 @@ export function App() {
                 <h2>Trade-In Counter</h2>
                 <span>Add cards like a POS order, show the cash/credit offer, then record accepted or declined.</span>
               </div>
+
+              <div className={`trade-in-customer-hero ${tradeInCustomerLookupStatus}`}>
+                <div>
+                  <span className="micro-label">Customer lookup</span>
+                  <strong>{tradeInCustomerStatusLabel}</strong>
+                  <small>
+                    Start every offer by finding the customer. If no match exists, create the customer here and use
+                    the same record for saved quotes, accepted trade-ins, receipts, and reports.
+                  </small>
+                </div>
+                <label htmlFor="trade-in-customer-name">
+                  <span>Name</span>
+                  <input
+                    id="trade-in-customer-name"
+                    value={tradeInCustomerName}
+                    onChange={(event) => {
+                      setTradeInSelectedCustomerPublicId("")
+                      setTradeInCustomerName(event.target.value)
+                    }}
+                    placeholder="First and last name"
+                  />
+                </label>
+                <label htmlFor="trade-in-customer-phone">
+                  <span>Phone</span>
+                  <input
+                    id="trade-in-customer-phone"
+                    inputMode="tel"
+                    value={tradeInCustomerPhone}
+                    onChange={(event) => {
+                      setTradeInSelectedCustomerPublicId("")
+                      setTradeInCustomerPhone(event.target.value)
+                    }}
+                    placeholder="Phone for lookup"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handleTradeInCustomerAction()}
+                  disabled={tradeInCustomerLookupStatus === "searching" || tradeInCustomerLookupQuery.trim() === ""}
+                >
+                  {tradeInCustomerActionLabel}
+                </button>
+                {tradeInCustomerMatches.length > 0 ? (
+                  <div className="trade-in-customer-matches" aria-label="Customer lookup matches">
+                    {tradeInCustomerMatches.slice(0, 4).map((customer) => (
+                      <button
+                        type="button"
+                        className={
+                          customer.customer_public_id === tradeInSelectedCustomerPublicId ? "is-selected" : ""
+                        }
+                        key={customer.customer_public_id}
+                        onClick={() => handleUseTradeInCustomer(customer)}
+                      >
+                        <strong>{customer.display_name}</strong>
+                        <span>
+                          {customer.customer_lookup || customer.email || "No phone/email"} /{" "}
+                          {formatMoney(customer.credit.balance_minor_units, customer.credit.currency)} credit
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
               <div className="trade-in-flow-steps" aria-label="Trade-in workflow">
                 <span>1. Find customer</span>
                 <span>2. Add cards</span>
@@ -8883,29 +9160,6 @@ export function App() {
                 <span>4. Accept or decline</span>
               </div>
               <div className="trade-in-toolbar">
-                <div className="trade-in-customer-card">
-                  <span className="micro-label">Customer lookup</span>
-                  <label htmlFor="trade-in-customer-name">
-                    <span>Name</span>
-                    <input
-                      id="trade-in-customer-name"
-                      value={tradeInCustomerName}
-                      onChange={(event) => setTradeInCustomerName(event.target.value)}
-                      placeholder="First and last name"
-                    />
-                  </label>
-                  <label htmlFor="trade-in-customer-phone">
-                    <span>Phone</span>
-                    <input
-                      id="trade-in-customer-phone"
-                      inputMode="tel"
-                      value={tradeInCustomerPhone}
-                      onChange={(event) => setTradeInCustomerPhone(event.target.value)}
-                      placeholder="Phone for saved offer lookup"
-                    />
-                  </label>
-                  <small>Use name and/or phone so declined offers can be found when a customer comes back.</small>
-                </div>
                 <div className="trade-in-preview-card">
                   <span className="micro-label">Selected card quote</span>
                   <strong>{formatMoney(tradeInPreviewValueMinorUnits, "USD")}</strong>
@@ -8953,30 +9207,31 @@ export function App() {
                     Add Card to Offer
                   </button>
                 </div>
-              </div>
-
-              <div className={`trade-in-sync-card ${tradeInSyncStatus}`}>
-                <div>
-                  <span className="micro-label">Shared trade-in queue</span>
-                  <strong>
-                    {tradeInSyncStatus === "saving"
-                      ? "Saving"
-                      : tradeInSyncStatus === "ready"
-                        ? "Connected"
-                        : tradeInSyncStatus === "blocked"
-                          ? "Needs attention"
-                          : "Ready"}
-                  </strong>
-                  <small>
-                    Drafts save to the LAN middleman so multiple employee stations see the same review queue.
-                  </small>
+                <div className={`trade-in-sync-card ${tradeInSyncStatus}`}>
+                  <div>
+                    <span className="micro-label">Shared trade-in queue</span>
+                    <strong>
+                      {tradeInSyncStatus === "saving"
+                        ? "Saving"
+                        : tradeInSyncStatus === "ready"
+                          ? "Connected"
+                          : tradeInSyncStatus === "blocked"
+                            ? "Needs attention"
+                            : "Ready"}
+                    </strong>
+                    <small>
+                      Drafts save to the LAN middleman so every employee station sees the same review queue.
+                    </small>
+                  </div>
+                  <div className="trade-in-sync-actions">
+                    <button type="button" onClick={() => void handleSaveTradeInDraft()}>
+                      Save Draft
+                    </button>
+                    <button type="button" onClick={() => void refreshTradeInOrders()}>
+                      Refresh
+                    </button>
+                  </div>
                 </div>
-                <button type="button" onClick={() => void handleSaveTradeInDraft()}>
-                  Save Draft to Server
-                </button>
-                <button type="button" onClick={() => void refreshTradeInOrders()}>
-                  Refresh Trade-Ins
-                </button>
               </div>
 
               <div className="trade-in-total-strip" aria-label="Trade-in totals">

@@ -1260,7 +1260,7 @@ export type LocalSyncServerClient = {
   searchCustomers: (query: string) => Promise<LocalSyncCustomerSearchResult>
   createCustomer: (
     sessionToken: string,
-    input: { firstName: string; lastName: string; email: string },
+    input: { firstName: string; lastName: string; email: string; customerLookup?: string },
   ) => Promise<LocalSyncCreateCustomerResult>
   createCreditAdjustment: (
     sessionToken: string,
@@ -1655,6 +1655,7 @@ export function createLocalSyncServerClient(
           first_name: input.firstName,
           last_name: input.lastName,
           email: input.email,
+          customer_lookup: input.customerLookup ?? "",
         },
       }) as Promise<LocalSyncCreateCustomerResult>,
     createCreditAdjustment: (sessionToken, input) =>
