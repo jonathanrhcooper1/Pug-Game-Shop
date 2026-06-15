@@ -1752,10 +1752,10 @@ h2 {
   gap: 16px;
   min-width: 0;
   padding: 14px;
-  color: var(--text);
+  color: #172016;
   background:
-    linear-gradient(180deg, var(--panel-strong), var(--panel)),
-    repeating-linear-gradient(90deg, rgba(15, 22, 19, 0.03) 0 1px, transparent 1px 32px);
+    linear-gradient(180deg, #fffefe, #f5f8f2),
+    repeating-linear-gradient(90deg, rgba(18, 59, 89, 0.024) 0 1px, transparent 1px 32px);
 }
 
 .reports-panel {
@@ -1890,6 +1890,7 @@ h2 {
 
 .trade-in-customer-hero > div:first-child {
   display: grid;
+  grid-column: 1 / -1;
   gap: 4px;
   align-self: center;
 }
@@ -2159,7 +2160,7 @@ h2 {
 
 .trade-in-offer-actions {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto auto auto;
+  grid-template-columns: minmax(240px, 1fr) repeat(3, minmax(130px, auto));
   gap: 10px;
   align-items: center;
   background:
@@ -2193,7 +2194,7 @@ h2 {
 
 .trade-in-draft-card {
   display: grid;
-  grid-template-columns: 76px minmax(180px, 1fr) minmax(110px, 0.4fr) minmax(250px, 0.85fr) auto;
+  grid-template-columns: 76px minmax(190px, 1.1fr) minmax(120px, 0.45fr) minmax(260px, 0.95fr);
   align-items: center;
   gap: 12px;
   color: #172016;
@@ -2228,8 +2229,9 @@ h2 {
 
 .trade-in-draft-actions {
   display: flex;
+  grid-column: 2 / -1;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
 }
 
@@ -3331,7 +3333,7 @@ h2 {
 
 .scrydex-result-list article {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(126px, auto);
   gap: 10px;
   align-items: center;
   padding: 10px;
@@ -3395,6 +3397,16 @@ h2 {
   border: 1px solid rgba(216, 155, 24, 0.28);
   border-radius: 7px;
   font-variant-numeric: tabular-nums;
+}
+
+.scrydex-result-actions {
+  display: grid;
+  gap: 6px;
+  min-width: 126px;
+}
+
+.scrydex-result-actions button {
+  width: 100%;
 }
 
 .selected-scrydex-preview {

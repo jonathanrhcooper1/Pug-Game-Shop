@@ -28,7 +28,7 @@ const server = createLocalSyncHttpServer({
 
       assert.equal(query, "moonbreon")
       assert.equal(game, "pokemon")
-      assert.equal(limit, 250)
+      assert.equal(limit, "all")
 
       return {
         status: "ok",

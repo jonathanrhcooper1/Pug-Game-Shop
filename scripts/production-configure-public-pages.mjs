@@ -29,7 +29,7 @@ const pages = [
     slug: "shop-singles",
     title: "Shop Singles",
     content:
-      '<div class="tcg-storefront-shelf tcg-storefront-shelf--singles"><section class="tcg-storefront-shelf__hero"><div class="tcg-storefront-shelf__hero-copy"><p class="tcg-storefront-shelf__kicker">Live singles inventory</p><h2>Singles vault</h2><p>Search real-time card inventory by game, set, card name, condition, price, and in-stock quantity. Choose a card to select the exact condition/version before checkout.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a><a href="/events/">Events</a><a href="/buying/">Buying</a><a href="/contact/">Contact</a></nav><div class="tcg-storefront-shelf__stats"><div class="tcg-storefront-shelf__stat"><span>Online</span><strong>Live stock</strong></div><div class="tcg-storefront-shelf__stat"><span>Cards</span><strong>Images + prices</strong></div><div class="tcg-storefront-shelf__stat"><span>Checkout</span><strong>Exact copy</strong></div></div></div><aside class="tcg-storefront-shelf__badge" aria-label="The Pug"><span>The Pug</span><strong>Cards, games, and more</strong></aside></section>[tcg_inventory_search limit="48"]</div>',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--singles"><section class="tcg-storefront-shelf__hero"><div class="tcg-storefront-shelf__hero-copy"><p class="tcg-storefront-shelf__kicker">Live singles inventory</p><h2>Singles vault</h2><p>Search real-time card inventory by game, set, card name, condition, price, and in-stock quantity. Choose a card to select the exact condition/version before checkout.</p><nav class="tcg-storefront-shelf__nav" aria-label="Store shelves"><a href="/shop-singles/">Singles</a><a href="/shop-sealed-products/">Sealed</a><a href="/shop-graded-cards/">Graded</a><a href="/shop-accessories/">Accessories</a><a href="/events/">Events</a><a href="/buying/">Buying</a><a href="/contact/">Contact</a></nav><div class="tcg-storefront-shelf__stats"><div class="tcg-storefront-shelf__stat"><span>Online</span><strong>Live stock</strong></div><div class="tcg-storefront-shelf__stat"><span>Cards</span><strong>Images + prices</strong></div><div class="tcg-storefront-shelf__stat"><span>Checkout</span><strong>Exact copy</strong></div></div></div><aside class="tcg-storefront-shelf__badge" aria-label="The Pug"><span>The Pug</span><strong>Cards, games, and more</strong></aside></section>[tcg_inventory_search raw_or_graded="raw" limit="48"]</div>',
   },
   {
     slug: "shop-sealed-products",
@@ -53,7 +53,7 @@ const pages = [
     slug: "card-inventory",
     title: "Card Inventory",
     content:
-      '<div class="tcg-storefront-shelf tcg-storefront-shelf--singles">[tcg_inventory_search limit="48"]</div>',
+      '<div class="tcg-storefront-shelf tcg-storefront-shelf--singles">[tcg_inventory_search raw_or_graded="raw" limit="48"]</div>',
   },
   {
     slug: "events",

@@ -9,6 +9,17 @@ export function createWordPressCatalogFallback(options = {}) {
   }
 
   return async function wordpressCatalogFallback({ query = "", game = "pokemon", limit = 250 } = {}) {
+    if (isUnlimitedLimit(limit)) {
+      return fetchAllCatalogFallbackPages({
+        endpointBase,
+        fetcher,
+        timeoutMs,
+        authorizationHeader,
+        query,
+        game,
+      })
+    }
+
     const requestedLimit = boundedLimit(limit)
     const primaryResult = await fetchCatalogFallbackPage({
       endpointBase,
@@ -18,6 +29,7 @@ export function createWordPressCatalogFallback(options = {}) {
       query,
       game,
       limit: requestedLimit,
+      page: 1,
       retriedWithLegacyLimit: false,
     })
 
@@ -30,11 +42,82 @@ export function createWordPressCatalogFallback(options = {}) {
         query,
         game,
         limit: 50,
+        page: 1,
         retriedWithLegacyLimit: true,
       })
     }
 
     return primaryResult
+  }
+}
+
+async function fetchAllCatalogFallbackPages({
+  endpointBase,
+  fetcher,
+  timeoutMs,
+  authorizationHeader,
+  query = "",
+  game = "pokemon",
+} = {}) {
+  let page = 1
+  let pageSize = 250
+  let retriedWithLegacyLimit = false
+  let lastResult = null
+  const cards = []
+
+  while (true) {
+    const result = await fetchCatalogFallbackPage({
+      endpointBase,
+      fetcher,
+      timeoutMs,
+      authorizationHeader,
+      query,
+      game,
+      limit: pageSize,
+      page,
+      retriedWithLegacyLimit,
+    })
+
+    if (result.retry_with_legacy_limit === true && pageSize > 50) {
+      page = 1
+      pageSize = 50
+      retriedWithLegacyLimit = true
+      lastResult = null
+      cards.length = 0
+      continue
+    }
+
+    lastResult = result
+
+    if (result.status !== "ok") {
+      return cards.length > 0
+        ? {
+            ...result,
+            status: "ok",
+            cards,
+            requested_limit: "all",
+            partial_catalog: true,
+          }
+        : result
+    }
+
+    cards.push(...result.cards)
+
+    const total = Number.isFinite(Number(result.total)) ? Number(result.total) : 0
+    if (result.cards.length < pageSize || (total > 0 && cards.length >= total)) {
+      break
+    }
+
+    page += 1
+  }
+
+  return {
+    ...(lastResult ?? {}),
+    status: "ok",
+    cards,
+    requested_limit: "all",
+    total: cards.length,
+    retried_with_legacy_limit: retriedWithLegacyLimit,
   }
 }
 
@@ -46,12 +129,14 @@ async function fetchCatalogFallbackPage({
   query = "",
   game = "pokemon",
   limit = 250,
+  page = 1,
   retriedWithLegacyLimit = false,
 } = {}) {
   const endpoint = new URL(`${endpointBase}/reference/search`)
   endpoint.searchParams.set("q", String(query ?? "").trim())
   endpoint.searchParams.set("game", String(game ?? "").trim())
   endpoint.searchParams.set("limit", String(boundedLimit(limit)))
+  endpoint.searchParams.set("page", String(Math.max(1, Number.parseInt(String(page ?? "1"), 10) || 1)))
 
   const controller = typeof AbortController === "function" ? new AbortController() : null
   const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
@@ -101,6 +186,7 @@ async function fetchCatalogFallbackPage({
     return {
       status: "ok",
       cards,
+      total: catalogResponseTotal(body),
       requested_limit: boundedLimit(limit),
       retried_with_legacy_limit: retriedWithLegacyLimit,
       live_provider_request_performed: Boolean(
@@ -198,6 +284,18 @@ export function cardsFromWordPressCatalogResponse(body) {
   return candidates.filter((card) => card && typeof card === "object")
 }
 
+function catalogResponseTotal(body) {
+  const total = Number(
+    body?.total ??
+      body?.data?.meta?.total ??
+      body?.meta?.total ??
+      body?.data?.total ??
+      0,
+  )
+
+  return Number.isFinite(total) && total > 0 ? total : 0
+}
+
 async function safeCatalogJson(response) {
   try {
     return typeof response?.json === "function" ? await response.json() : null
@@ -239,6 +337,12 @@ function boundedLimit(value) {
   const limit = Number.parseInt(String(value ?? "250"), 10)
 
   return Number.isFinite(limit) ? Math.min(250, Math.max(1, limit)) : 250
+}
+
+function isUnlimitedLimit(value) {
+  const raw = String(value ?? "").trim().toLowerCase()
+
+  return raw === "all" || raw === "0" || raw === ""
 }
 
 function boundedTimeout(value) {

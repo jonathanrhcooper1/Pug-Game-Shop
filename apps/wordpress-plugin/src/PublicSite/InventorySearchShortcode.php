@@ -269,6 +269,7 @@ final class InventorySearchShortcode {
 			'q'         => $this->request_value( 'tcg_inventory_q', $attributes['query'] ?? '' ),
 			'game'      => $this->request_value( 'tcg_inventory_game', $attributes['game'] ?? '' ),
 			'set_filter' => $this->request_value( 'tcg_inventory_set', $attributes['set'] ?? ( $attributes['set_filter'] ?? '' ) ),
+			'raw_or_graded' => $this->request_value( 'tcg_inventory_type', $attributes['raw_or_graded'] ?? ( $attributes['product_type'] ?? 'raw' ) ),
 			'sort'      => $this->request_value( 'tcg_inventory_sort', $attributes['sort'] ?? 'relevance' ),
 			'visibility' => 'public',
 			'page'      => $this->request_positive_int( 'tcg_inventory_page', $attributes['page'] ?? 1, 1, 9999 ),
@@ -287,6 +288,7 @@ final class InventorySearchShortcode {
 					'q'          => '',
 					'game'       => '',
 					'set_filter' => '',
+					'raw_or_graded' => 'raw',
 					'sort'       => 'relevance',
 					'visibility' => 'public',
 					'page'       => 1,
@@ -305,6 +307,7 @@ final class InventorySearchShortcode {
 					'q'          => '',
 					'game'       => '',
 					'set_filter' => '',
+					'raw_or_graded' => 'raw',
 					'sort'       => 'relevance',
 				'visibility' => 'public',
 				'page'       => 1,
@@ -343,6 +346,7 @@ final class InventorySearchShortcode {
 			isset( $_GET['tcg_inventory_q'] )
 			|| isset( $_GET['tcg_inventory_game'] )
 			|| isset( $_GET['tcg_inventory_set'] )
+			|| isset( $_GET['tcg_inventory_type'] )
 			|| isset( $_GET['tcg_inventory_sort'] )
 			|| isset( $_GET['tcg_inventory_page'] )
 		) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended

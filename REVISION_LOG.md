@@ -9,9 +9,16 @@
 - Moved customer lookup to the top of the Trade-In Counter.
 - Added live customer match cards from the LAN customer cache.
 - Changed the main customer action to `Use Customer` when a match exists and
-  `Create and Use Customer` when no match exists.
+  `Create & Use Customer` when no match exists.
 - Passed `customer_lookup` through local customer creation so phone/lookup text
   can be saved with new trade-in customers.
+- Updated local app ScryDex lookup to display every returned match, preserve
+  Set / Expansion filtering, and offer explicit `Use Single` / `Use Graded`
+  actions when graded price data is available.
+- Preserved graded ScryDex price point metadata, including grading company and
+  grade, through the WordPress catalog proxy and LAN middleman.
+- Routed graded inventory product projections to the `graded-cards` storefront
+  category instead of the Singles category.
 
 ### Why
 
@@ -19,12 +26,25 @@
   customer record before building the offer.
 - The previous dark panel treatment was visually inconsistent with the newer
   inventory screen and made the trade-in controls harder to scan.
+- Graded slabs need to remain separate from raw singles during intake,
+  WooCommerce projection, public storefront filtering, and app selection.
+- Broad card searches such as Swamp or Demonic Tutor need the full website
+  reference set so staff can narrow by set instead of missing printings.
 
 ### Files Affected
 
 - `apps/offline-app/src/App.tsx`
 - `apps/offline-app/src/data/localSyncServerClient.ts`
 - `apps/offline-app/src/styles.css`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
 - `docs/CHANGELOG.md`
 - `REVISION_LOG.md`
 
@@ -34,21 +54,30 @@
 
 ### Tests Added
 
-- No new automated test file was added for this visual pass.
+- Added and updated local sync tests for unlimited WordPress catalog fallback
+  pagination and ScryDex reference search contracts.
+- Updated WordPress unit coverage for graded category projection, raw-only
+  public Singles filtering, graded price normalization, and ScryDex `include=prices`.
 
 ### Verification
 
 - `npm.cmd --prefix apps/offline-app run typecheck`: passed.
 - `npm.cmd --prefix apps/offline-app run build`: passed.
-- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `npm.cmd --prefix apps/local-sync-server test`: passed.
+- `php apps/wordpress-plugin/tests/lint.php`: passed.
+- `php apps/wordpress-plugin/tests/run.php`: passed, 1033 tests and 0 failures.
 - Browser check confirmed the Trade-Ins customer lookup is first under the
-  heading, unknown names show `Create and Use Customer`, and existing matches
-  show `Use Customer`.
+  heading, the login PIN field no longer autofills, and the Inventory product
+  type selector reveals grading company, grade, and certification fields.
+- Local sync API check confirmed broad MTG searches use `ResultLimit: all`:
+  `swamp` returned 50 matches across 14 sets and `demonic tutor` returned 27
+  matches across 22 sets from the WordPress catalog cache.
 
 ### Rollback Notes
 
-- Revert this revision to restore the previous darker Trade-Ins layout and
-  customer entry behavior. No database rollback is required.
+- Revert this revision to restore the previous darker Trade-Ins layout,
+  customer entry wording, capped catalog fallback behavior, and raw/graded
+  storefront projection behavior. No database rollback is required.
 
 ## 2026-06-15 - Production Hold Sync And Storefront Image Polish
 

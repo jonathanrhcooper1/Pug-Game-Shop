@@ -117,6 +117,8 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_contains( "'settings' => Settings::all()", $source );
 		$this->assert_contains( "tcg_inventory_page", $source );
 		$this->assert_contains( "tcg_inventory_set", $source );
+		$this->assert_contains( "tcg_inventory_type", $source );
+		$this->assert_contains( "'raw_or_graded' => 'raw'", $source );
 		$this->assert_contains( "tcg_inventory_page_size", $source );
 		$this->assert_contains( '.tcg-public-inventory {', $source );
 		$this->assert_contains( 'BrandingSettings::css_variable_string( Settings::all() )', $source );

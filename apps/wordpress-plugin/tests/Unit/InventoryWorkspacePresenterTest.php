@@ -294,10 +294,10 @@ final class InventoryWorkspacePresenterTest extends TestCase {
 		$this->assert_contains( 'inventory_pricing feature flag disabled', $panel['notes'] );
 		$this->assert_same( 120, strlen( $panel['query']['q'] ) );
 		$this->assert_same( 'pokemon', $panel['query']['game'] );
-		$this->assert_same( 12, $panel['query']['page_size'] );
+		$this->assert_same( 250, $panel['query']['page_size'] );
 		$this->assert_true( in_array( 'NM', $panel['condition_options'], true ) );
 		$this->assert_true( in_array( 25, $panel['quantity_options'], true ) );
-		$this->assert_true( in_array( 50, $panel['page_sizes'], true ) );
+		$this->assert_true( in_array( 250, $panel['page_sizes'], true ) );
 	}
 
 	public function test_lookup_panel_reports_ready_staging_reference_route(): void {

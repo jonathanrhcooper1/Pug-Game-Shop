@@ -21,7 +21,7 @@ All notable changes follow Semantic Versioning.
 - Redesigned the local app Trade-Ins workspace to match the lighter Inventory
   page treatment, moved customer lookup to the top of the flow, added live
   customer match cards, and changed the primary customer action between
-  `Use Customer` and `Create and Use Customer` based on lookup results.
+  `Use Customer` and `Create & Use Customer` based on lookup results.
 - Added live cart/kiosk hold enforcement to local inventory reads, kiosk order
   creation, and fulfillment refreshes. Cards selected in a kiosk/cart now move
   into a held state for 30 minutes, expired holds are released back into
@@ -167,8 +167,8 @@ All notable changes follow Semantic Versioning.
   WordPress inventory push payloads, including grading company, grade, and
   certification number.
 - Local sync ScryDex search now accepts `limit` and `set`/`set_filter`
-  parameters, returns uncapped local-cache matches by default, and requests up
-  to 250 website fallback results through the WordPress catalog proxy.
+  parameters, returns uncapped local-cache matches by default, and pages the
+  WordPress catalog proxy until all matching fallback rows are returned.
 - The local WordPress catalog proxy client now retries with a legacy 50-row
   limit if a live site has not yet been updated for 250-row intake searches.
 - WordPress reference-card search now allows intake lookups up to 250 rows so

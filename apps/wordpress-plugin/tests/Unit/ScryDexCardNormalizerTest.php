@@ -141,6 +141,15 @@ final class ScryDexCardNormalizerTest extends TestCase {
 								'market'    => 0.21,
 								'currency'  => 'USD',
 							),
+							array(
+								'type'     => 'graded',
+								'company'  => 'PSA',
+								'grade'    => '10',
+								'low'      => 42.00,
+								'mid'      => 48.56,
+								'market'   => 50.10,
+								'currency' => 'USD',
+							),
 						),
 					),
 				),
@@ -172,10 +181,14 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( 'SV1-001-reverse-holo', $variant['provider_variant_id'] );
 		$this->assert_same( 'https://images.scrydex.com/pokemon/sv1-1/reverse-front', $variant['front_image_url'] );
 		$this->assert_same( 'https://images.scrydex.com/pokemon/card-back', $variant['back_image_url'] );
-		$this->assert_same( 2, count( $price_points ) );
+		$this->assert_same( 3, count( $price_points ) );
 		$this->assert_same( 'SV1-001-reverse-holo', $price_points[1]['provider_variant_id'] );
 		$this->assert_same( 'nm', $price_points[1]['condition_code'] );
 		$this->assert_same( '0.2100', $price_points[1]['market_price'] );
+		$this->assert_same( 'graded', $price_points[2]['raw_or_graded'] );
+		$this->assert_same( 'PSA', $price_points[2]['grading_company'] );
+		$this->assert_same( '10', $price_points[2]['grade'] );
+		$this->assert_same( '50.1000', $price_points[2]['market_price'] );
 	}
 
 	public function test_normalizes_live_scrydex_variant_prices_without_top_level_price(): void {

@@ -554,7 +554,7 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const fallbackResult = websiteCatalogFallback
-      ? await websiteCatalogFallback({ query: needle, game: normalizedGame, limit: resultLimit ?? 250 })
+      ? await websiteCatalogFallback({ query: needle, game: normalizedGame, limit: resultLimit ?? "all" })
       : null
     const fallbackCards = normalizeReferenceCardsFromFallback(
       fallbackResult,
@@ -6573,7 +6573,9 @@ function cleanReferencePricePoints(value) {
         reference_variant_id: positiveInt(point.reference_variant_id),
         provider_variant_id: cleanPublicId(point.provider_variant_id),
         condition_code: cleanCondition(point.condition_code),
-        raw_or_graded: cleanRawOrGraded(point.raw_or_graded),
+        raw_or_graded: cleanRawOrGraded(point.raw_or_graded ?? point.rawOrGraded ?? point.type),
+        grading_company: cleanName(point.grading_company ?? point.grader ?? point.company),
+        grade: cleanName(point.grade),
         market_price_minor_units: marketPriceMinorUnits,
         low_price_minor_units: lowPriceMinorUnits,
         mid_price_minor_units: midPriceMinorUnits,
@@ -6590,7 +6592,6 @@ function cleanReferencePricePoints(value) {
       point.low_price_minor_units > 0 ||
       point.high_price_minor_units > 0,
     )
-    .slice(0, 80)
 }
 
 function pricePointMinorUnits(minorValue, decimalValue) {

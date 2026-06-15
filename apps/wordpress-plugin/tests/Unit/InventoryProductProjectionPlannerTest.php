@@ -57,7 +57,7 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$product = $plan->product_operations()[0]['product'];
 
 		$this->assert_same( InventoryProductProjectionPlan::READY, $plan->status() );
-		$this->assert_same( array( 'singles', 'graded-cards', 'pokemon' ), $product['category_slugs'] );
+		$this->assert_same( array( 'graded-cards', 'pokemon' ), $product['category_slugs'] );
 		$this->assert_same( 'PSA 10 / Holo / graded', $product['short_description'] );
 	}
 

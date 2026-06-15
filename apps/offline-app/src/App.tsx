@@ -1329,46 +1329,132 @@ function pricePointMinorUnits(point: LocalSyncScryDexPricePoint) {
     0
 }
 
+function normalizedScryDexPriceText(value?: string) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+function scryDexCardSupportsGraded(card: LocalSyncScryDexCard) {
+  return (
+    card.price_points.some((point) => point.raw_or_graded === "graded") ||
+    card.variants.some((variant) => variant.raw_or_graded_support === "graded")
+  )
+}
+
+function scryDexBestGradedPricePoint(
+  card: LocalSyncScryDexCard,
+  variant: LocalSyncScryDexVariant | null,
+) {
+  return bestScryDexPricePoint(card, variant, "", "graded", "", "")
+}
+
+function scryDexPricePointSummary(point: LocalSyncScryDexPricePoint | null) {
+  if (!point) {
+    return ""
+  }
+
+  const labels = [
+    point.raw_or_graded === "graded" ? "Graded" : "Single",
+    point.grading_company,
+    point.grade ? `Grade ${point.grade}` : "",
+    point.condition_code,
+  ].filter(Boolean)
+  const price = pricePointMinorUnits(point)
+
+  return `${labels.join(" / ")}${price > 0 ? ` ${formatMoney(price, point.currency)}` : ""}`.trim()
+}
+
+function scryDexResultPriceSummary(card: LocalSyncScryDexCard) {
+  const rawPoint = bestScryDexPricePoint(card, card.variants[0] ?? null, "NM", "raw", "", "")
+  const gradedPoint = scryDexBestGradedPricePoint(card, card.variants[0] ?? null)
+  const labels = [
+    rawPoint ? `Single ${formatMoney(pricePointMinorUnits(rawPoint), rawPoint.currency)}` : "",
+    gradedPoint ? scryDexPricePointSummary(gradedPoint) : "",
+  ].filter(Boolean)
+
+  return labels.length > 0
+    ? labels.join(" | ")
+    : `${formatMoney(card.market_price_minor_units, card.currency)} market`
+}
+
+function bestScryDexPricePoint(
+  card: LocalSyncScryDexCard,
+  variant: LocalSyncScryDexVariant | null,
+  condition: string,
+  productType: "raw" | "graded",
+  gradingCompany: string,
+  grade: string,
+) {
+  const normalizedCondition = condition.trim().toUpperCase()
+  const normalizedCompany = normalizedScryDexPriceText(gradingCompany)
+  const normalizedGrade = normalizedScryDexPriceText(grade)
+  const variantProviderId = variant?.provider_variant_id ?? ""
+  const variantReferenceId = variant?.reference_variant_id ?? null
+
+  const scored = (card.price_points ?? [])
+    .filter((point) => pricePointMinorUnits(point) > 0)
+    .map((point) => {
+      if (productType === "graded" && point.raw_or_graded !== "graded") {
+        return { point, score: -1 }
+      }
+
+      if (productType === "raw" && point.raw_or_graded === "graded") {
+        return { point, score: -1 }
+      }
+
+      const pointVariant = String(point.provider_variant_id ?? "")
+      const pointReferenceVariant = point.reference_variant_id ?? null
+      const pointCondition = String(point.condition_code ?? "").toUpperCase()
+      const pointCompany = normalizedScryDexPriceText(point.grading_company)
+      const pointGrade = normalizedScryDexPriceText(point.grade)
+      let score = 100
+
+      if (variantProviderId !== "" && pointVariant === variantProviderId) {
+        score += 40
+      }
+
+      if (variantReferenceId !== null && pointReferenceVariant === variantReferenceId) {
+        score += 40
+      }
+
+      if (normalizedCondition !== "" && pointCondition === normalizedCondition) {
+        score += 22
+      } else if (pointCondition === "") {
+        score += 4
+      }
+
+      if (productType === "graded") {
+        if (normalizedCompany !== "" && pointCompany === normalizedCompany) {
+          score += 18
+        } else if (pointCompany !== "") {
+          score += 4
+        }
+
+        if (normalizedGrade !== "" && pointGrade === normalizedGrade) {
+          score += 18
+        } else if (pointGrade !== "") {
+          score += 4
+        }
+      }
+
+      return { point, score }
+    })
+    .filter((entry) => entry.score >= 0)
+    .sort((left, right) => right.score - left.score)
+
+  return scored[0]?.point ?? null
+}
+
 function scryDexIntakePriceMinorUnits(
   card: LocalSyncScryDexCard,
   variant: LocalSyncScryDexVariant | null,
   condition: string,
+  productType: "raw" | "graded" = "raw",
+  gradingCompany = "",
+  grade = "",
 ) {
-  const normalizedCondition = condition.trim().toUpperCase()
-  const variantProviderId = variant?.provider_variant_id ?? ""
-  const variantReferenceId = variant?.reference_variant_id ?? null
-  const pricePoints = card.price_points ?? []
+  const point = bestScryDexPricePoint(card, variant, condition, productType, gradingCompany, grade)
 
-  const variantAndConditionPoint = pricePoints.find((point) =>
-    pricePointMinorUnits(point) > 0 &&
-    point.condition_code === normalizedCondition &&
-    (
-      (variantProviderId !== "" && point.provider_variant_id === variantProviderId) ||
-      (variantReferenceId !== null && point.reference_variant_id === variantReferenceId)
-    ),
-  )
-
-  if (variantAndConditionPoint) {
-    return pricePointMinorUnits(variantAndConditionPoint)
-  }
-
-  const conditionPoint = pricePoints.find((point) =>
-    pricePointMinorUnits(point) > 0 && point.condition_code === normalizedCondition,
-  )
-
-  if (conditionPoint) {
-    return pricePointMinorUnits(conditionPoint)
-  }
-
-  const variantPoint = pricePoints.find((point) =>
-    pricePointMinorUnits(point) > 0 &&
-    (
-      (variantProviderId !== "" && point.provider_variant_id === variantProviderId) ||
-      (variantReferenceId !== null && point.reference_variant_id === variantReferenceId)
-    ),
-  )
-
-  return variantPoint ? pricePointMinorUnits(variantPoint) : card.market_price_minor_units
+  return point ? pricePointMinorUnits(point) : card.market_price_minor_units
 }
 
 function autoRetailPriceMinorUnits(marketMinorUnits: number, markupBasisPoints = 1000) {
@@ -2263,7 +2349,14 @@ export function App() {
     : "Default version"
   const selectedScryDexImageUrl = cardImageForSelectedVariant(selectedScryDexCard, selectedScryDexVariant)
   const selectedScryDexIntakePriceMinorUnits = selectedScryDexCard
-    ? scryDexIntakePriceMinorUnits(selectedScryDexCard, selectedScryDexVariant, intakeCondition)
+    ? scryDexIntakePriceMinorUnits(
+        selectedScryDexCard,
+        selectedScryDexVariant,
+        intakeCondition,
+        intakeProductType,
+        intakeGradingCompany,
+        intakeGrade,
+      )
     : 0
   const selectedInventoryImageUrl = selectedItem.imageUrl || ""
   const selectedInventoryVersionLabel = inventoryVersionLabel(selectedItem)
@@ -2542,7 +2635,6 @@ export function App() {
     : ""
   const selectedScryDexVariantLabels =
     selectedScryDexCard?.variants
-      .slice(0, 4)
       .map(formatScryDexVariant)
       .filter(Boolean) ?? []
   const selectedScryDexSourceLabel =
@@ -2849,7 +2941,11 @@ export function App() {
               : ""
   const selectedScryDexQueueQuantity = intakeQuantity ?? 1
   const selectedScryDexIntakeSummary = selectedScryDexCard
-    ? `${selectedScryDexQueueQuantity} ${selectedScryDexQueueQuantity === 1 ? "copy" : "copies"} as ${intakeCondition || "RAW"} at ${formatMoney(
+    ? `${selectedScryDexQueueQuantity} ${selectedScryDexQueueQuantity === 1 ? "copy" : "copies"} as ${
+        intakeProductType === "graded"
+          ? `graded ${intakeGradingCompany}${intakeGrade ? ` ${intakeGrade}` : ""}`
+          : intakeCondition || "RAW"
+      } at ${formatMoney(
         intakeFinalPriceMinorUnits,
         selectedScryDexCard.currency,
       )}; market ${formatMoney(intakeMarketPriceMinorUnits, selectedScryDexCard.currency)} + 10%, floor ${formatMoney(intakeMinimumPriceMinorUnits ?? 0, selectedScryDexCard.currency)}`
@@ -2909,7 +3005,7 @@ export function App() {
         ? "Searching"
         : tradeInPrimaryCustomerMatch
           ? "Use Customer"
-          : "Create and Use Customer"
+          : "Create & Use Customer"
   const tradeInCustomerStatusLabel =
     tradeInSelectedCustomer
       ? `Using ${tradeInSelectedCustomer.display_name}`
@@ -5213,28 +5309,43 @@ export function App() {
     )
   }
 
-  function handleUseScryDexCard(card: LocalSyncScryDexCard) {
+  function handleUseScryDexCard(card: LocalSyncScryDexCard, productType: "raw" | "graded" = intakeProductType) {
     setSelectedScryDexCardId(card.provider_card_id)
     const firstVariant = card.variants[0] ?? null
     const variantId = firstVariant
       ? scryDexVariantId(card.provider_card_id, firstVariant, 0)
       : ""
+    const nextProductType = productType === "graded" ? "graded" : "raw"
+    const gradedPoint = nextProductType === "graded" ? scryDexBestGradedPricePoint(card, firstVariant) : null
+    const nextGradingCompany = gradedPoint?.grading_company || intakeGradingCompany || "PSA"
+    const nextGrade = gradedPoint?.grade || intakeGrade
 
     setActiveSection("Inventory")
     setScryDexGame(card.game)
     setScryDexQuery("")
     setSelectedScryDexVariantId(variantId)
-    setIntakeProductType(firstVariant?.raw_or_graded_support === "graded" ? "graded" : intakeProductType)
+    setIntakeProductType(nextProductType)
+    if (nextProductType === "graded") {
+      setIntakeGradingCompany(nextGradingCompany)
+      setIntakeGrade(nextGrade)
+    }
     setIntakeCardName(card.card_name)
     setIntakeSetName(card.set_name)
     setIntakeBarcode("")
     setIntakePriceInput(
       creditRedemptionInputFromMinorUnits(
-        scryDexIntakePriceMinorUnits(card, firstVariant, intakeCondition),
+        scryDexIntakePriceMinorUnits(
+          card,
+          firstVariant,
+          intakeCondition,
+          nextProductType,
+          nextGradingCompany,
+          nextGrade,
+        ),
       ),
     )
     setScryDexLookupDetail(
-      `Selected ${card.card_name}; full result list is still available above and intake fields are ready.`,
+      `Selected ${card.card_name} as ${nextProductType === "graded" ? "graded" : "single"}; full result list is still available above and intake fields are ready.`,
     )
     window.requestAnimationFrame(() => {
       const field = document.getElementById("intake-card-name")
@@ -5247,7 +5358,7 @@ export function App() {
     })
     setActivityMessage({
       title: "ScryDex reference selected",
-      detail: `${card.card_name} ${card.printed_number} is ready for local intake review; leave barcode blank to auto-generate a unique copy code.`,
+      detail: `${card.card_name} ${card.printed_number} is ready for ${nextProductType === "graded" ? "graded-card" : "single-card"} intake review; leave barcode blank to auto-generate a unique copy code.`,
     })
   }
 
@@ -5301,7 +5412,7 @@ export function App() {
     if (tradeInCustomerNameRequired) {
       setActivityMessage({
         title: "Customer name needed",
-        detail: "No customer matched that lookup. Enter the customer name, then use Create and Use Customer.",
+        detail: "No customer matched that lookup. Enter the customer name, then use Create & Use Customer.",
       })
       return
     }
@@ -5597,10 +5708,58 @@ export function App() {
       (variant, index) =>
         scryDexVariantId(selectedScryDexCard.provider_card_id, variant, index) === nextVariantId,
     ) ?? null
+    const gradedPoint =
+      intakeProductType === "graded" ? scryDexBestGradedPricePoint(selectedScryDexCard, nextVariant) : null
+
+    if (gradedPoint?.grading_company) {
+      setIntakeGradingCompany(gradedPoint.grading_company)
+    }
+
+    if (gradedPoint?.grade) {
+      setIntakeGrade(gradedPoint.grade)
+    }
 
     setIntakePriceInput(
       creditRedemptionInputFromMinorUnits(
-        scryDexIntakePriceMinorUnits(selectedScryDexCard, nextVariant, intakeCondition),
+        scryDexIntakePriceMinorUnits(
+          selectedScryDexCard,
+          nextVariant,
+          intakeCondition,
+          intakeProductType,
+          gradedPoint?.grading_company || intakeGradingCompany,
+          gradedPoint?.grade || intakeGrade,
+        ),
+      ),
+    )
+  }
+
+  function handleIntakeProductTypeChange(nextProductType: "raw" | "graded") {
+    setIntakeProductType(nextProductType)
+
+    if (!selectedScryDexCard) {
+      return
+    }
+
+    const gradedPoint =
+      nextProductType === "graded" ? scryDexBestGradedPricePoint(selectedScryDexCard, selectedScryDexVariant) : null
+    const nextGradingCompany = gradedPoint?.grading_company || intakeGradingCompany || "PSA"
+    const nextGrade = gradedPoint?.grade || intakeGrade
+
+    if (nextProductType === "graded") {
+      setIntakeGradingCompany(nextGradingCompany)
+      setIntakeGrade(nextGrade)
+    }
+
+    setIntakePriceInput(
+      creditRedemptionInputFromMinorUnits(
+        scryDexIntakePriceMinorUnits(
+          selectedScryDexCard,
+          selectedScryDexVariant,
+          intakeCondition,
+          nextProductType,
+          nextGradingCompany,
+          nextGrade,
+        ),
       ),
     )
   }
@@ -5614,7 +5773,14 @@ export function App() {
 
     setIntakePriceInput(
       creditRedemptionInputFromMinorUnits(
-        scryDexIntakePriceMinorUnits(selectedScryDexCard, selectedScryDexVariant, nextCondition),
+        scryDexIntakePriceMinorUnits(
+          selectedScryDexCard,
+          selectedScryDexVariant,
+          nextCondition,
+          intakeProductType,
+          intakeGradingCompany,
+          intakeGrade,
+        ),
       ),
     )
   }
@@ -8627,8 +8793,8 @@ export function App() {
                               {card.set_name} - {card.printed_number}
                             </small>
                             <span className="market-price">
-                              {formatMoney(card.market_price_minor_units, card.currency)} market;
-                              {" "}
+                              {scryDexResultPriceSummary(card)}
+                              {" / "}
                               {card.stock_available_count} in stock
                             </span>
                             <small>
@@ -8640,14 +8806,22 @@ export function App() {
                             </small>
                             <small>
                               {card.variants.length > 0
-                                ? card.variants.slice(0, 3).map(formatScryDexVariant).join(", ")
+                                ? card.variants.map(formatScryDexVariant).filter(Boolean).join(", ")
                                 : "Version details pending"}
                             </small>
                           </div>
-                          <button type="button" onClick={() => handleUseScryDexCard(card)}>
-                            <Icon name="check" />
-                            <span>Use Card</span>
-                          </button>
+                          <div className="scrydex-result-actions">
+                            <button type="button" onClick={() => handleUseScryDexCard(card, "raw")}>
+                              <Icon name="check" />
+                              <span>Use Single</span>
+                            </button>
+                            {scryDexCardSupportsGraded(card) ? (
+                              <button type="button" onClick={() => handleUseScryDexCard(card, "graded")}>
+                                <Icon name="tag" />
+                                <span>Use Graded</span>
+                              </button>
+                            ) : null}
+                          </div>
                         </article>
                       ))}
                     </div>
@@ -8747,7 +8921,7 @@ export function App() {
                   <select
                     id="intake-product-type"
                     value={intakeProductType}
-                    onChange={(event) => setIntakeProductType(event.target.value as "raw" | "graded")}
+                    onChange={(event) => handleIntakeProductTypeChange(event.target.value as "raw" | "graded")}
                   >
                     <option value="raw">Singles</option>
                     <option value="graded">Graded Cards</option>

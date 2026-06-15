@@ -44,6 +44,7 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	): ScryDexResult {
 		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
 		unset( $filters['game'] );
+		$filters = $this->with_price_include( $filters );
 
 		$params = array_merge(
 			$filters,
@@ -99,6 +100,7 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	): ScryDexResult {
 		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
 		unset( $filters['game'] );
+		$filters = $this->with_price_include( $filters );
 
 		$params = array_merge(
 			$filters,
@@ -164,6 +166,35 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 
 	public function get_usage(): ScryDexResult {
 		return $this->request( 'GET', '/account/v1/usage' );
+	}
+
+	/**
+	 * @param array<string, string> $filters Provider request filters.
+	 * @return array<string, string>
+	 */
+	private function with_price_include( array $filters ): array {
+		$include = trim( (string) ( $filters['include'] ?? '' ) );
+
+		if ( '' === $include ) {
+			$filters['include'] = 'prices';
+			return $filters;
+		}
+
+		$parts = array_values(
+			array_filter(
+				array_map(
+					static fn ( string $part ): string => strtolower( trim( $part ) ),
+					explode( ',', $include )
+				),
+				static fn ( string $part ): bool => '' !== $part
+			)
+		);
+
+		if ( ! in_array( 'prices', $parts, true ) ) {
+			$filters['include'] = $include . ',prices';
+		}
+
+		return $filters;
 	}
 
 	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid

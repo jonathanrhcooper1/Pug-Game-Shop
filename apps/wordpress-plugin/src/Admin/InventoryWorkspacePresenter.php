@@ -287,7 +287,7 @@ final class InventoryWorkspacePresenter {
 				: $this->lookup_lock_notes( $bootstrap_payload, $dependency_payload, $reference_route ),
 			'condition_options' => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
 			'quantity_options'  => array( 1, 2, 3, 4, 5, 10, 25 ),
-			'page_sizes'        => array( 12, 25, 50 ),
+			'page_sizes'        => array( 25, 50, 100, 250 ),
 		);
 	}
 
@@ -643,14 +643,14 @@ final class InventoryWorkspacePresenter {
 	private function lookup_query( array $query ): array {
 		$q         = substr( trim( (string) ( $query['q'] ?? '' ) ), 0, 120 );
 		$game      = strtolower( trim( (string) ( $query['game'] ?? 'pokemon' ) ) );
-		$page_size = (int) ( $query['page_size'] ?? 12 );
+		$page_size = (int) ( $query['page_size'] ?? 250 );
 
 		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
 			$game = 'pokemon';
 		}
 
-		if ( ! in_array( $page_size, array( 12, 25, 50 ), true ) ) {
-			$page_size = 12;
+		if ( ! in_array( $page_size, array( 25, 50, 100, 250 ), true ) ) {
+			$page_size = 250;
 		}
 
 		return array(

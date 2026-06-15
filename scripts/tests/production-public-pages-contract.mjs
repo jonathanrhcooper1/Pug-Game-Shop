@@ -29,6 +29,7 @@ for (const requiredMarker of [
   "production_public_pages_configured",
   "Singles vault",
   'limit="48"',
+  'raw_or_graded="raw"',
   "tcg-storefront-shelf",
   "expectedShortcode",
   "shop-singles",

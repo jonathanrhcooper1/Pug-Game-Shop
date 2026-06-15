@@ -202,9 +202,9 @@ try {
   assert.equal(magicAliasIntake.item.game, "magicthegathering")
 
   assert.deepEqual(fallbackQueries, [
-    { query: "bug catcher", game: "pokemon", limit: 250 },
-    { query: "pikachu", game: "pokemon", limit: 250 },
-    { query: "bulk", game: "pokemon", limit: 250 },
+    { query: "bug catcher", game: "pokemon", limit: "all" },
+    { query: "pikachu", game: "pokemon", limit: "all" },
+    { query: "bulk", game: "pokemon", limit: "all" },
   ])
 
   console.log("PASS ScryDex reference search relevance")

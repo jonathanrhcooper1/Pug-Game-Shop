@@ -316,6 +316,8 @@ export type LocalSyncScryDexPricePoint = {
   provider_variant_id: string
   condition_code: string
   raw_or_graded: "raw" | "graded"
+  grading_company?: string
+  grade?: string
   market_price_minor_units: number
   low_price_minor_units: number
   mid_price_minor_units: number

@@ -173,7 +173,7 @@ final class ScryDexCardNormalizer {
 		}
 
 		$grade           = $this->nullable_string( $source['grade'] ?? null );
-		$grading_company = $this->nullable_string( $source['grading_company'] ?? ( $source['grader'] ?? null ) );
+		$grading_company = $this->nullable_string( $source['grading_company'] ?? ( $source['grader'] ?? ( $source['company'] ?? null ) ) );
 		$raw_or_graded   = $this->raw_or_graded( $source, $grade, $grading_company );
 
 		return array(

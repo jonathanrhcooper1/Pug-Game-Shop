@@ -63,6 +63,41 @@ assert.ok(capturedUrl.startsWith("https://example.test/wp-json/tcg-store/v1/refe
 assert.ok(capturedUrl.includes("q=moonbreon"))
 assert.ok(capturedUrl.includes("game=pokemon"))
 assert.ok(capturedUrl.includes("limit=8"))
+assert.ok(capturedUrl.includes("page=1"))
+
+const pagedUrls = []
+const pagedFallback = createWordPressCatalogFallback({
+  websiteUrl: "https://example.test/",
+  fetcher: async (url) => {
+    const parsed = new URL(url)
+    const page = Number(parsed.searchParams.get("page") ?? "1")
+    pagedUrls.push(url.toString())
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          cards: page === 1
+            ? Array.from({ length: 250 }, (_, index) => ({ provider_card_id: `card-${index}` }))
+            : [{ provider_card_id: "card-250" }],
+          meta: {
+            total: 251,
+          },
+        },
+      }),
+    }
+  },
+})
+const pagedResult = await pagedFallback({ query: "charizard", game: "pokemon", limit: "all" })
+
+assert.equal(pagedResult.status, "ok")
+assert.equal(pagedResult.cards.length, 251)
+assert.equal(pagedResult.requested_limit, "all")
+assert.equal(pagedUrls.length, 2)
+assert.ok(pagedUrls[0].includes("limit=250"))
+assert.ok(pagedUrls[0].includes("page=1"))
+assert.ok(pagedUrls[1].includes("page=2"))
 
 const retriedUrls = []
 const retryingFallback = createWordPressCatalogFallback({

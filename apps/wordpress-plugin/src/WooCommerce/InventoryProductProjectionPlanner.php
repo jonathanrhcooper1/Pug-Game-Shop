@@ -672,12 +672,10 @@ final class InventoryProductProjectionPlanner {
 	 * @return list<string>
 	 */
 	private function product_category_slugs( array $row ): array {
-		$slugs = array( 'singles' );
+		$slugs = 'graded' === $this->slug( $row['raw_or_graded'] ?? '' )
+			? array( 'graded-cards' )
+			: array( 'singles' );
 		$game  = $this->slug( $row['game'] ?? '' );
-
-		if ( 'graded' === $this->slug( $row['raw_or_graded'] ?? '' ) ) {
-			$slugs[] = 'graded-cards';
-		}
 
 		if ( '' !== $game ) {
 			$slugs[] = $this->game_category_slug( $game );
