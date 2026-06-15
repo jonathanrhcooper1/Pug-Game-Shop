@@ -18,6 +18,9 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Hardened the local middleman release ZIP so `.env`, `.env.*`, SQLite
+  databases, logs, and node_modules are excluded from packaged production
+  artifacts.
 - Redesigned the local app Trade-Ins workspace to match the lighter Inventory
   page treatment, moved customer lookup to the top of the flow, added live
   customer match cards, and changed the primary customer action between

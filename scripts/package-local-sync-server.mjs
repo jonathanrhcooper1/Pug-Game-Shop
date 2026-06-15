@@ -21,6 +21,8 @@ execFileSync(
     "--exclude=*.sqlite-shm",
     "--exclude=*.sqlite-wal",
     "--exclude=*.log",
+    "--exclude=.env",
+    "--exclude=.env.*",
     "--exclude=.env.local",
     "--exclude=node_modules",
     "-C",

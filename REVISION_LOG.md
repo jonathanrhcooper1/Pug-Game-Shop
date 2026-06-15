@@ -1,5 +1,50 @@
 # Revision Log
 
+## 2026-06-15 - Local Sync Release Artifact Secret Hygiene
+
+### What Changed
+
+- Updated the local middleman server packager to exclude `.env` and `.env.*`
+  files from the production ZIP.
+- Expanded the local sync server package contract to fail if `.env` or
+  `.env.example` appears in the packaged artifact.
+- Rebuilt the production release package after the stricter exclusion.
+
+### Why
+
+- Release artifacts should not include environment files, even template files,
+  because production credentials and connection settings must be configured on
+  the target machine rather than shipped inside the installer package.
+
+### Files Affected
+
+- `scripts/package-local-sync-server.mjs`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated local sync server package contract coverage for forbidden `.env`
+  entries.
+
+### Verification
+
+- `npm.cmd run package:production-release`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- Artifact scan confirmed `dist/pug-local-sync-middleman-server.zip` does not
+  include `.env`, `.env.example`, SQLite databases, logs, or `node_modules`.
+
+### Rollback Notes
+
+- Revert this revision only if the release must intentionally ship environment
+  templates inside the middleman ZIP. No database rollback is required.
+
 ## 2026-06-15 - Trade-In Customer Lookup UI Refresh
 
 ### What Changed

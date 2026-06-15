@@ -28,6 +28,8 @@ for (const marker of [
   "--exclude=*.sqlite-shm",
   "--exclude=*.sqlite-wal",
   "--exclude=*.log",
+  "--exclude=.env",
+  "--exclude=.env.*",
   "--exclude=.env.local",
   "--exclude=node_modules",
 ]) {
@@ -54,6 +56,8 @@ assert.ok(entries.includes("./src/localSyncDiscovery.mjs"))
 assert.ok(entries.includes("./config/windows-service.manifest.json"))
 
 for (const forbidden of [
+  ".env",
+  ".env.example",
   ".env.local",
   "store-sync.sqlite",
   "store-sync.sqlite-shm",
