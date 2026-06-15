@@ -188,6 +188,7 @@ final class ScryDexPersistenceQueryBuilder {
 
 			$price_observation_queries[] = $this->price_observation_query_for_row(
 				$table_names['provider_price_observations'],
+				$table_names['reference_cards'],
 				$row
 			);
 		}
@@ -203,6 +204,7 @@ final class ScryDexPersistenceQueryBuilder {
 
 			$price_point_queries[] = $this->price_point_query_for_row(
 				$table_names['provider_price_points'],
+				$table_names['reference_cards'],
 				$row
 			);
 		}
@@ -619,7 +621,7 @@ final class ScryDexPersistenceQueryBuilder {
 	 * @param array<string, mixed> $row Provider price observation row.
 	 * @return array<string, mixed>
 	 */
-	private function price_observation_query_for_row( string $table_name, array $row ): array {
+	private function price_observation_query_for_row( string $table_name, string $reference_table_name, array $row ): array {
 		$row = array_merge(
 			$row,
 			array(
@@ -627,8 +629,9 @@ final class ScryDexPersistenceQueryBuilder {
 			)
 		);
 
-		$query = $this->insert_query_for_row(
+		$query = $this->insert_query_for_row_with_reference_lookup(
 			$table_name,
+			$reference_table_name,
 			self::PRICE_OBSERVATION_COLUMNS,
 			$row,
 			array(
@@ -638,7 +641,7 @@ final class ScryDexPersistenceQueryBuilder {
 			)
 		);
 
-		$query['sql_template']                                       .= ' ON DUPLICATE KEY UPDATE provider_price_observation_id = provider_price_observation_id';
+		$query['sql_template']                                       .= ' ON DUPLICATE KEY UPDATE reference_card_id = VALUES(reference_card_id), game = VALUES(game), provider_price_observation_id = provider_price_observation_id';
 		$query['provider_price_observation_write_execution_deferred'] = true;
 
 		return $query;
@@ -648,9 +651,10 @@ final class ScryDexPersistenceQueryBuilder {
 	 * @param array<string, mixed> $row Provider price-point row.
 	 * @return array<string, mixed>
 	 */
-	private function price_point_query_for_row( string $table_name, array $row ): array {
-		$query = $this->insert_query_for_row(
+	private function price_point_query_for_row( string $table_name, string $reference_table_name, array $row ): array {
+		$query = $this->insert_query_for_row_with_reference_lookup(
 			$table_name,
+			$reference_table_name,
 			self::PRICE_POINT_COLUMNS,
 			$row,
 			array(
@@ -661,10 +665,55 @@ final class ScryDexPersistenceQueryBuilder {
 			)
 		);
 
-		$query['sql_template']                                .= ' ON DUPLICATE KEY UPDATE market_price = VALUES(market_price), low_price = VALUES(low_price), mid_price = VALUES(mid_price), high_price = VALUES(high_price), source_observed_at = VALUES(source_observed_at), provider_updated_at = VALUES(provider_updated_at), raw_price_payload_json = VALUES(raw_price_payload_json)';
+		$query['sql_template']                                  .= ' ON DUPLICATE KEY UPDATE reference_card_id = VALUES(reference_card_id), reference_variant_id = VALUES(reference_variant_id), game = VALUES(game), condition_code = VALUES(condition_code), raw_or_graded = VALUES(raw_or_graded), grading_company = VALUES(grading_company), grade = VALUES(grade), market_price = VALUES(market_price), low_price = VALUES(low_price), mid_price = VALUES(mid_price), high_price = VALUES(high_price), source_observed_at = VALUES(source_observed_at), provider_updated_at = VALUES(provider_updated_at), raw_price_payload_json = VALUES(raw_price_payload_json)';
 		$query['provider_price_point_write_execution_deferred'] = true;
 
 		return $query;
+	}
+
+	/**
+	 * @param list<string> $columns Insert columns.
+	 * @param array<string, mixed> $row Insert row.
+	 * @param array<string, mixed> $metadata Query metadata.
+	 * @return array<string, mixed>
+	 */
+	private function insert_query_for_row_with_reference_lookup(
+		string $table_name,
+		string $reference_table_name,
+		array $columns,
+		array $row,
+		array $metadata
+	): array {
+		$prepare_args = array();
+		$placeholders = array();
+
+		foreach ( $columns as $column ) {
+			if ( 'reference_card_id' === $column && null === ( $row[ $column ] ?? null ) ) {
+				$prepare_args[] = (string) $row['provider_name'];
+				$prepare_args[] = (string) $row['provider_card_id'];
+				$placeholders[] = sprintf(
+					'(SELECT reference_card_id FROM `%s` WHERE provider_name = %%s AND provider_card_id = %%s LIMIT 1)',
+					$reference_table_name
+				);
+				continue;
+			}
+
+			$placeholders[] = $this->placeholder_for_value( $row[ $column ] ?? null, $prepare_args );
+		}
+
+		return array_merge(
+			$metadata,
+			array(
+				'sql_template'                         => sprintf(
+					'INSERT INTO `%s` (%s) VALUES (%s)',
+					$table_name,
+					implode( ', ', array_map( array( $this, 'quote_identifier' ), $columns ) ),
+					implode( ', ', $placeholders )
+				),
+				'prepare_args'                         => $prepare_args,
+				'persistence_query_execution_deferred' => true,
+			)
+		);
 	}
 
 	/**

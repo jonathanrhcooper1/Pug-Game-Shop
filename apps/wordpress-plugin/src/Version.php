@@ -9,7 +9,7 @@ namespace TCGStorePlatform;
 
 final class Version {
 	public const PLUGIN              = '0.202.0';
-	public const DATABASE            = 14;
+	public const DATABASE            = 15;
 	public const MINIMUM_PHP         = '8.1';
 	public const MINIMUM_WORDPRESS   = '6.5';
 	public const MINIMUM_WOOCOMMERCE = '8.2';

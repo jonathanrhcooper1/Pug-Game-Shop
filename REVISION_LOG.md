@@ -1,5 +1,60 @@
 # Revision Log
 
+## 2026-06-15 - ScryDex Provider Price Reference Backfill
+
+### What Changed
+
+- Updated ScryDex price-observation and price-point insert SQL so new rows
+  resolve `reference_card_id` from provider/card identity when a reference card
+  is inserted in the same sync pass.
+- Updated duplicate price-point imports to repair reference links and preserve
+  raw/graded metadata such as grading company and grade.
+- Added database migration 15 to backfill existing unlinked provider price rows
+  from the reference-card table.
+- Bumped the WordPress plugin database version from 14 to 15.
+
+### Why
+
+- Production already had graded price-point rows, but some were not linked to
+  reference cards. That prevented graded price data from attaching reliably to
+  card lookup/intake results.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0015ProviderPriceReferenceBackfill.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/Unit/ProviderPriceReferenceBackfillMigrationTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- `Version0015ProviderPriceReferenceBackfill` links provider price observations
+  and provider price points to reference cards where the provider/card identity
+  matches and `reference_card_id` is currently missing.
+
+### Tests Added
+
+- Added migration 15 metadata coverage.
+- Updated migration runner plan coverage for database version 15.
+- Updated ScryDex persistence query coverage so provider price writes include
+  reference-card lookup SQL.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/lint.php`: passed.
+- `php apps/wordpress-plugin/tests/run.php`: passed, 1034 tests and 0 failures.
+
+### Rollback Notes
+
+- The migration is a non-destructive data repair. It does not drop columns or
+  delete price data. If the repair must be undone, restore the pre-deploy
+  production database backup created by the production installer.
+
 ## 2026-06-15 - Local Sync Release Artifact Secret Hygiene
 
 ### What Changed

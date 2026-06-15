@@ -18,6 +18,10 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Linked ScryDex provider price observations and price points back to their
+  reference cards during new imports and added database migration 15 to backfill
+  existing unlinked rows, so graded price points can attach to card search and
+  intake results.
 - Hardened the local middleman release ZIP so `.env`, `.env.*`, SQLite
   databases, logs, and node_modules are excluded from packaged production
   artifacts.

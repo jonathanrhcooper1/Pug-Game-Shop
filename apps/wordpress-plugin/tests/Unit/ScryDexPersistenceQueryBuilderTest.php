@@ -61,10 +61,14 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_same( 'sdx-pkm-001-holo-unlimited', $variant['provider_variant_id'] );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_provider_price_observations`', $price['sql_template'] );
 		$this->assert_contains( 'ON DUPLICATE KEY UPDATE', $price['sql_template'] );
+		$this->assert_contains( 'SELECT reference_card_id FROM `wp_tcg_reference_cards`', $price['sql_template'] );
 		$this->assert_same( 'provider_price_observation_insert', $price['query_kind'] );
 		$this->assert_same( 'sdx-pkm-001', $price['provider_card_id'] );
+		$this->assert_true( in_array( 'scrydex', $price['prepare_args'], true ) );
+		$this->assert_true( in_array( 'sdx-pkm-001', $price['prepare_args'], true ) );
 		$this->assert_true( is_string( $price['public_id'] ) );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_provider_price_points`', $query_plan->price_point_queries()[0]['sql_template'] );
+		$this->assert_contains( 'SELECT reference_card_id FROM `wp_tcg_reference_cards`', $query_plan->price_point_queries()[0]['sql_template'] );
 		$this->assert_same( 'provider_price_point_insert', $query_plan->price_point_queries()[0]['query_kind'] );
 		$this->assert_contains( 'INSERT INTO `wp_tcg_sync_checkpoints`', $checkpoint['sql_template'] );
 		$this->assert_same( 'checkpoint_upsert', $checkpoint['query_kind'] );
