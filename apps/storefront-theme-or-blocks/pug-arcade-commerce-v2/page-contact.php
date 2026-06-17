@@ -35,6 +35,16 @@ $contact_status = isset($_GET['pug-contact']) ? sanitize_key(wp_unslash($_GET['p
                     <span>Selling Cards</span>
                     <small>Tell us what you have before bringing in singles or sealed product.</small>
                 </div>
+                <div class="contact-quick-card contact-location-card">
+                    <span>Visit The Pug</span>
+                    <address>
+                        The Pug Cards, Games &amp; More<br>
+                        513 Wears Valley Rd Suite #9.75<br>
+                        Pigeon Forge, TN 37862
+                    </address>
+                    <a href="tel:+18657740712">(865) 774-0712</a>
+                    <a class="contact-directions-link" href="https://www.google.com/maps/search/?api=1&amp;query=513%20Wears%20Valley%20Rd%20Suite%209.75%20Pigeon%20Forge%20TN%2037862" target="_blank" rel="noopener">Get Directions</a>
+                </div>
             </div>
         </div>
 
@@ -86,4 +96,3 @@ $contact_status = isset($_GET['pug-contact']) ? sanitize_key(wp_unslash($_GET['p
 
 <?php
 get_footer();
-

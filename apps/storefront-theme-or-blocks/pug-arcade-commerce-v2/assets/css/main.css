@@ -1319,6 +1319,36 @@ body.tax-product_cat .woocommerce-ordering {
   font-weight: 700;
 }
 
+.contact-location-card address,
+.contact-location-card a {
+  color: #eaf3ff;
+  font-size: 0.95rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.contact-location-card a {
+  text-decoration: none;
+}
+
+.contact-location-card a:hover {
+  color: var(--pug-gold);
+}
+
+.contact-directions-link {
+  align-items: center;
+  background: rgba(35, 215, 255, 0.12);
+  border: 1px solid rgba(35, 215, 255, 0.28);
+  border-radius: var(--pug-radius);
+  display: inline-flex;
+  justify-content: center;
+  margin-top: 0.15rem;
+  max-width: 10rem;
+  padding: 0.55rem 0.75rem;
+  text-transform: uppercase;
+}
+
 .contact-form-card {
   padding: 1.5rem;
 }

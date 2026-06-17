@@ -32,6 +32,10 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Replaced the storefront footer WooCommerce credit with `Created by JC
+  Electronics`, added The Pug address/phone/directions to the Contact page, and
+  added event registration confirmation emails that include event details,
+  payment status, and the shop address.
 - Split the local app counter flow so `Customers` now focuses on customer
   profile details, local store-credit balance, credit issue, ledger history,
   kiosk/order history, and checkout receipts, while the new `Checkout` tab

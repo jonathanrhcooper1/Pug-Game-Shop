@@ -1,5 +1,51 @@
 # Revision Log
 
+## 2026-06-17 - Contact Page and Event Registration Email
+
+### What Changed
+
+- Replaced the storefront footer `Powered by WooCommerce` text with `Created
+  by JC Electronics`.
+- Added The Pug address, phone number, and directions link to the Contact page.
+- Added event registration confirmation emails with event title, status,
+  date/time, game, format, entry/payment details, player details, and The Pug
+  address.
+- Added unit coverage for event-registration email content.
+
+### Why
+
+The live storefront needs branded footer credit, visible contact-page store
+location details, and customer registration confirmation emails that tell
+players where and when to arrive.
+
+### Files Affected
+
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/footer.php`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/page-contact.php`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/main.css`
+- `apps/wordpress-plugin/src/Events/EventRegistrationService.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationNotificationMailer.php`
+- `apps/wordpress-plugin/tests/Unit/EventRegistrationNotificationMailerTest.php`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `EventRegistrationNotificationMailerTest`.
+
+### Rollback Notes
+
+- Revert the footer/contact template and CSS changes to restore prior
+  storefront copy.
+- Revert `EventRegistrationService` and remove
+  `EventRegistrationNotificationMailer` to disable registration confirmations.
+- No database rollback is required.
+
 ## 2026-06-17 - Production Readiness Audit
 
 ### What Changed

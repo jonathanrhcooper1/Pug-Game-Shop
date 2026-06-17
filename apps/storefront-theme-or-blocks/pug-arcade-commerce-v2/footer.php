@@ -37,7 +37,7 @@ if (!defined('ABSPATH')) {
     </div>
     <div class="footer-bottom">
         <span>&copy; <?php echo esc_html(date('Y')); ?> The Pug Cards, Games &amp; More.</span>
-        <span>Powered by WooCommerce.</span>
+        <span>Created by JC Electronics.</span>
     </div>
 </footer>
 <?php wp_footer(); ?>
