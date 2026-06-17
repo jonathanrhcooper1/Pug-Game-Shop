@@ -18,6 +18,8 @@ for (const marker of [
   "pug-local-sync-middleman-server.zip",
   "tcg-store-platform-",
   "pug-arcade-commerce-v2-",
+  "documentation",
+  "release-package",
   "pug-local-sync-discovery-v1",
   "manualMiddlemanUrlFallback",
   "http://SERVER-IP:8787",

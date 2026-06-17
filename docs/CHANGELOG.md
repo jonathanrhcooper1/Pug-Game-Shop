@@ -32,6 +32,10 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Added a complete client-safe handover documentation package under
+  `release-package/`, refreshed support references under `docs/`, and updated
+  the production release package builder so the documentation bundle is included
+  in the installable full-product ZIP.
 - Added the complete `the-pug-production-release-0.202.0.zip` artifact under
   `releases/0.202.0`, including checksum documentation, and updated the
   production release packager so the storefront theme ZIP is included in future

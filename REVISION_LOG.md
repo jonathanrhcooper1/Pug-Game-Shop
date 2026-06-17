@@ -1,5 +1,70 @@
 # Revision Log
 
+## 2026-06-17 - Client Handover Documentation Package
+
+### What Changed
+
+- Added the complete `release-package/` documentation set for client handover,
+  owner operations, admin/staff use, kiosk/offline app operation, architecture,
+  install/deploy, APIs/connectors, database schema, sync engine, pricing,
+  customer credit/buylist, events, POS/payments, security, troubleshooting,
+  backup/restore, QA/release checklist, credentials, environment variables,
+  source code map, source code index, and commenting report.
+- Added support documentation under `docs/` for API routes, database tables,
+  background jobs, connector status, release notes, and the refreshed system
+  map.
+- Added client-safe environment placeholder templates under
+  `release-package/env/`.
+- Updated `.env.example` and `apps/local-sync-server/.env.example` to use
+  explicit placeholder credential values.
+- Added `scripts/generate-release-documentation.mjs` so the documentation set
+  can be regenerated consistently.
+- Updated the production release packager to include the handover
+  documentation inside the full-product release ZIP.
+
+### Why
+
+The project needed a complete professional release, owner guide, admin guide,
+support guide, source-code map, and secure credential handoff package that can
+be delivered with the production source and installers.
+
+### Files Affected
+
+- `release-package/*`
+- `release-package/env/*`
+- `docs/SYSTEM_MAP.md`
+- `docs/API_ROUTES.md`
+- `docs/DATABASE_TABLES.md`
+- `docs/BACKGROUND_JOBS.md`
+- `docs/CONNECTOR_STATUS.md`
+- `docs/RELEASE_NOTES.md`
+- `.env.example`
+- `apps/local-sync-server/.env.example`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Documentation generation script run.
+- Production release package contract updated to require documentation bundle
+  markers.
+- Final quality searches run for restricted vendor references and obvious
+  credential leakage in generated client-facing documentation.
+
+### Rollback Notes
+
+- Revert this revision to remove the documentation package and documentation
+  bundling behavior.
+- No WordPress database rollback is required.
+
 ## 2026-06-17 - Complete GitHub Release Package
 
 ### What Changed

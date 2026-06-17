@@ -1,4 +1,4 @@
-# System Map
+# Release Notes
 
 Created by JC Electronics
 
@@ -6,28 +6,14 @@ Project: The Pug Trading-Card Store Platform
 Version: 0.202.0
 Release date: 2026-06-17
 Last updated: 2026-06-17
-Document purpose: Concise system map for the production platform.
-Audience: Owner, administrator, support technician
+Document purpose: Client-facing release notes for version handoff.
+Audience: Owner, manager, administrator, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
-## System Diagram
+## Release 0.202.0
 
-~~~mermaid
-flowchart LR
-  Customer[Customer Browser] --> Woo[WooCommerce Storefront]
-  Kiosk[Customer Kiosk] --> LAN[LAN Middleman Server]
-  Staff[Employee App] --> LAN
-  LAN <--> WP[WordPress Plugin REST API]
-  Woo <--> WP
-  WP --> DB[(WordPress + Custom TCG Tables)]
-  WP <--> Scry[ScryDex API]
-  WP <--> Email[SMTP / WordPress Mail]
-  WP <--> Pay[WooCommerce Payment Gateways]
-  LAN <--> Square[Square Terminal / POS Adapter]
-  Events[Events Pages] --> WP
-  Reports[Manager Reports] --> WP
-~~~
+This release packages the production WordPress/WooCommerce trading-card store platform with the custom inventory plugin, storefront theme, local middleman server, employee app installer package, customer kiosk installer package, and full handover documentation prepared by JC Electronics.
 
-## Modules
+## Major Features
 
 | Module | Purpose | Primary location |
 | --- | --- | --- |
@@ -45,3 +31,25 @@ flowchart LR
 | Events | Local events, registration, waitlist, check-in, payment status, registration email, and optional external event linking. | Events admin, shortcodes, REST API |
 | Reports/audit | Manager reports, CSV exports, sync history, ledger, inventory, sales, fulfillment, and staff activity. | Reports screens and REST API |
 | Deployment | GitHub branch workflow, WordPress ZIP packages, local app installers, backups, and rollback notes. | GitHub and hosting |
+
+## Installation Notes
+
+- Use `releases/0.202.0/the-pug-production-release-0.202.0.zip` as the complete installable handoff.
+- Verify checksum before installation.
+- Install plugin and theme before local app/kiosk deployment.
+- Configure credentials through secure channels only.
+- Run production active sync verification before owner signoff.
+
+## Known Limitations
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| TopDeck event creation | Future enhancement | The documentation treats create-event support as future unless the provider endpoint and credentials are confirmed. |
+| Square reader live capture | Requires hardware/account validation | The local connector supports Terminal scaffolding; production capture must be validated with the store reader and Square account. |
+| Dymo label printing | Requires hardware validation | Barcode/label data is prepared; final print workflow must be verified on the in-store printer driver. |
+| SMTP delivery | Requires mail provider validation | Event registration email is implemented through WordPress mail; live delivery depends on configured SMTP/mail transport. |
+| Full production data import volume | Operational task | Large ScryDex pulls should be monitored through checkpoints, logs, and provider limits. |
+
+## Support Contact
+
+Support and maintenance are provided by JC Electronics according to the active service agreement.

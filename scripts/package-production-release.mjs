@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { basename, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -21,14 +21,25 @@ run("npm.cmd", ["run", "package:local-sync-server"])
 const pluginZip = resolve(distDir, `tcg-store-platform-${packageJson.version}.zip`)
 const themeZip = resolve(distDir, `pug-arcade-commerce-v2-${packageJson.version}.zip`)
 const localServerZip = resolve(distDir, "pug-local-sync-middleman-server.zip")
+const documentationDir = resolve(root, "release-package")
 const employeePackageDir = resolve(releaseDir, "employee-app")
 const kioskPackageDir = resolve(releaseDir, "customer-kiosk")
+const releaseDocumentationDir = resolve(releaseDir, "documentation")
 
 copyRequired(pluginZip, resolve(releaseDir, basename(pluginZip)))
 copyRequired(themeZip, resolve(releaseDir, basename(themeZip)))
 copyRequired(localServerZip, resolve(releaseDir, basename(localServerZip)))
 mkdirSync(employeePackageDir, { recursive: true })
 mkdirSync(kioskPackageDir, { recursive: true })
+
+// Bundle client handover docs with the installable package so the ZIP is a
+// complete owner/admin/support handoff, not only an installer collection.
+if (existsSync(documentationDir)) {
+  cpSync(documentationDir, resolve(releaseDocumentationDir, "release-package"), {
+    recursive: true,
+    force: true,
+  })
+}
 
 const appInstaller = findNewestInstaller(offlineBundleDir) ?? findNewestInstaller(fallbackOfflineBundleDir)
 const employeeManifest = releaseManifest("employee-app", appInstaller)
@@ -87,6 +98,9 @@ writeFileSync(
     "Final release gate:",
     "Run npm.cmd run production:verify-active-syncs before signoff.",
     "",
+    "Documentation:",
+    "- See documentation/release-package/README.md for owner, admin, staff, support, credential, and source-code handover guides.",
+    "",
     appInstaller
       ? `Bundled app installer: the-pug-local-app-${packageJson.version}.exe`
       : "App installer was not found. Run npm.cmd run build:offline-app:windows, then rerun npm.cmd run package:production-release.",
@@ -107,6 +121,7 @@ console.log(
       wordpressPluginZip: pluginZip,
       wordpressThemeZip: themeZip,
       localSyncServerZip: localServerZip,
+      documentationPackage: existsSync(documentationDir) ? releaseDocumentationDir : null,
       appInstaller: appInstaller ?? null,
       employeeAppPackage: employeePackageDir,
       customerKioskPackage: kioskPackageDir,

@@ -13,6 +13,7 @@ This folder contains the complete installable production package for The Pug.
 - LAN middleman server: `pug-local-sync-middleman-server.zip`
 - Employee app installer package
 - Customer kiosk installer package
+- Client handover and technical documentation package: `documentation/release-package/`
 - App install manifests and first-read instructions
 
 ## Install Order
