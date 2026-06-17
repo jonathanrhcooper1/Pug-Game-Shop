@@ -1,5 +1,48 @@
 # Revision Log
 
+## 2026-06-17 - Complete GitHub Release Package
+
+### What Changed
+
+- Updated the production release packager to include the storefront theme ZIP in
+  the full production bundle.
+- Added a tracked `releases/0.202.0` handoff folder with the complete
+  production release ZIP, checksum file, and install-order README.
+- Updated the packaging contract so future production bundles must include the
+  theme marker.
+
+### Why
+
+The repository needed to contain the full product handoff, not only source code,
+so GitHub has a complete downloadable package with the WordPress plugin, theme,
+LAN middleman, employee app, and customer kiosk app.
+
+### Files Affected
+
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `releases/0.202.0/README.md`
+- `releases/0.202.0/SHA256SUMS.txt`
+- `releases/0.202.0/the-pug-production-release-0.202.0.zip`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Ran `npm.cmd run package:production-release`.
+- Ran `node scripts/tests/production-release-package-contract.mjs`.
+
+### Rollback Notes
+
+- Remove `releases/0.202.0` and revert the release packager changes to return
+  to source-only GitHub handoffs.
+- No WordPress database rollback is required.
+
 ## 2026-06-17 - Contact Page and Event Registration Email
 
 ### What Changed

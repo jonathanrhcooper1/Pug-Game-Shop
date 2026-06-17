@@ -32,6 +32,10 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Added the complete `the-pug-production-release-0.202.0.zip` artifact under
+  `releases/0.202.0`, including checksum documentation, and updated the
+  production release packager so the storefront theme ZIP is included in future
+  full-product bundles.
 - Replaced the storefront footer WooCommerce credit with `Created by JC
   Electronics`, added The Pug address/phone/directions to the Contact page, and
   added event registration confirmation emails that include event details,

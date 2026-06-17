@@ -9,3 +9,6 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
   for the 2026-06-17 audit pass.
 - Updated storefront contact/footer copy and added event registration
   confirmation emails with event details and The Pug address.
+- Added the complete 0.202.0 production release ZIP under `releases/0.202.0`
+  and updated the production package builder so the storefront theme ZIP is
+  bundled with the plugin, LAN server, employee app, and customer kiosk app.

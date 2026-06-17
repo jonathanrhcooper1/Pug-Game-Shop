@@ -17,6 +17,7 @@ for (const marker of [
   "customer-kiosk.install.json",
   "pug-local-sync-middleman-server.zip",
   "tcg-store-platform-",
+  "pug-arcade-commerce-v2-",
   "pug-local-sync-discovery-v1",
   "manualMiddlemanUrlFallback",
   "http://SERVER-IP:8787",

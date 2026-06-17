@@ -15,14 +15,17 @@ rmSync(releaseDir, { recursive: true, force: true })
 mkdirSync(releaseDir, { recursive: true })
 
 run("npm.cmd", ["run", "package:wordpress"])
+run("npm.cmd", ["run", "package:wordpress-theme"])
 run("npm.cmd", ["run", "package:local-sync-server"])
 
 const pluginZip = resolve(distDir, `tcg-store-platform-${packageJson.version}.zip`)
+const themeZip = resolve(distDir, `pug-arcade-commerce-v2-${packageJson.version}.zip`)
 const localServerZip = resolve(distDir, "pug-local-sync-middleman-server.zip")
 const employeePackageDir = resolve(releaseDir, "employee-app")
 const kioskPackageDir = resolve(releaseDir, "customer-kiosk")
 
 copyRequired(pluginZip, resolve(releaseDir, basename(pluginZip)))
+copyRequired(themeZip, resolve(releaseDir, basename(themeZip)))
 copyRequired(localServerZip, resolve(releaseDir, basename(localServerZip)))
 mkdirSync(employeePackageDir, { recursive: true })
 mkdirSync(kioskPackageDir, { recursive: true })
@@ -71,9 +74,10 @@ writeFileSync(
     "",
     "Install order:",
     "1. Install/verify the WordPress plugin ZIP on production.",
-    "2. Install and start pug-local-sync-middleman-server.zip on the in-store host machine.",
-    "3. Install employee-app/the-pug-employee-app-*.exe on staff stations.",
-    "4. Install customer-kiosk/the-pug-customer-kiosk-*.exe on customer kiosk stations.",
+    "2. Install/verify the pug-arcade-commerce-v2 theme ZIP on production.",
+    "3. Install and start pug-local-sync-middleman-server.zip on the in-store host machine.",
+    "4. Install employee-app/the-pug-employee-app-*.exe on staff stations.",
+    "5. Install customer-kiosk/the-pug-customer-kiosk-*.exe on customer kiosk stations.",
     "",
     "Connectivity:",
     "- Employee and kiosk apps auto-discover the middleman over UDP pug-local-sync-discovery-v1 on port 8788.",
@@ -101,6 +105,7 @@ console.log(
       releaseDirectory: releaseDir,
       releaseZip,
       wordpressPluginZip: pluginZip,
+      wordpressThemeZip: themeZip,
       localSyncServerZip: localServerZip,
       appInstaller: appInstaller ?? null,
       employeeAppPackage: employeePackageDir,
