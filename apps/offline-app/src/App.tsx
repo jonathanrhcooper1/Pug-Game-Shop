@@ -116,12 +116,16 @@ import {
   type LocalSyncAuthResult,
   type LocalSyncCreditLedgerEntry,
   type LocalSyncCustomer,
+  type LocalSyncCustomerProfileResult,
   type LocalSyncDeviceHeartbeatResult,
   type LocalSyncDeviceStatusResult,
   type LocalSyncEventSnapshot,
   type LocalSyncAutoSyncOperationResult,
+  type LocalSyncCheckoutTransaction,
   type LocalSyncFulfillmentOrder,
   type LocalSyncFulfillmentOrderStatus,
+  type LocalSyncGradedProviderStatus,
+  type LocalSyncGradedValuation,
   type LocalSyncInventoryItem,
   type LocalSyncKioskOrder,
   type LocalSyncKioskOrderStatus,
@@ -132,11 +136,15 @@ import {
   type LocalSyncSetupStatusResult,
   type LocalSyncSquarePosInventoryCountReconciliationResult,
   type LocalSyncSquarePosInventoryPullPlanResult,
+  type LocalSyncSquareTerminalDeviceCodeResult,
+  type LocalSyncSquareTerminalStatusResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexPricePoint,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
+  type LocalSyncTradeInItem,
   type LocalSyncTradeInOrder,
+  type LocalSyncTradeInOrderStatusUpdateResult,
   type LocalSyncUser,
 } from "./data/localSyncServerClient"
 import {
@@ -173,6 +181,7 @@ type AppIconName =
   | "check"
   | "tag"
   | "copy"
+  | "close"
   | "trash"
 
 type ViewMode = "list" | "grid"
@@ -210,6 +219,7 @@ const REPORT_OPTIONS: Array<{ key: LocalSyncReportKey; label: string; focus: str
 const ACCESS_SECTIONS = [
   "Inventory",
   "Trade-Ins",
+  "Checkout",
   "Kiosk",
   "Queue",
   "Events",
@@ -249,6 +259,8 @@ type KioskTicketItem = {
 type KioskOrderTicket = {
   orderId: string
   customerName: string
+  customerPublicId: string
+  customerLookup: string
   itemCount: number
   totalMinorUnits: number
   totalLabel: string
@@ -287,6 +299,25 @@ type ActiveFulfillmentTicket =
   | { source: "kiosk"; orderId: string }
   | { source: "website"; orderId: number }
 
+type CheckoutCustomerMode = "guest" | "customer"
+type CheckoutReceiptDelivery = "print" | "email" | "both"
+type CheckoutTenderMode = "card" | "cash" | "split"
+
+type CheckoutCartLine = {
+  lineId: string
+  type: "inventory" | "misc" | "kiosk"
+  inventoryPublicId?: string
+  barcode?: string
+  cardName: string
+  setName?: string
+  condition?: string
+  location?: string
+  quantity: number
+  unitPriceMinorUnits: number
+  totalMinorUnits: number
+  sourceOrderId?: string
+}
+
 type TradeInPayoutType = "cash" | "credit"
 
 type TradeInDraftItem = {
@@ -301,8 +332,22 @@ type TradeInDraftItem = {
   marketMidMinorUnits: number
   percentageBasisPoints: number
   finalValueMinorUnits: number
+  finalValueManuallySet?: boolean
   payoutType: TradeInPayoutType
   imageUrl: string
+  providerCardId?: string
+  referenceVariantId?: number | null
+  providerVariantId?: string
+  game?: LocalSyncScryDexCard["game"]
+  setCode?: string
+  cardNumber?: string
+  printedNumber?: string
+  variant?: string
+  finish?: string
+  language?: string
+  backImageUrl?: string
+  priceObservedAtUtc?: string | null
+  priceSource?: string
 }
 
 type ActivityMessage = {
@@ -325,6 +370,45 @@ type StatusTimelineEntry = {
   title: string
   detail: string
   tone: StatusTone
+}
+
+type ManagerReportSummaryCard = {
+  label: string
+  value: string
+  detail: string
+  tone?: StatusTone
+}
+
+type ManagerReportChart = {
+  key: string
+  label: string
+  type: string
+  format: string
+  labels: string[]
+  series: Array<{
+    label: string
+    values: number[]
+  }>
+}
+
+type ValuationLink = {
+  label: string
+  href: string
+}
+
+type TradeInMarketValuation = {
+  marketMinorUnits: number
+  currency: "USD"
+  pricePoint: LocalSyncScryDexPricePoint | null
+  secondaryValuation: LocalSyncGradedValuation | null
+  sourceLabel: string
+  detail: string
+  tone: StatusTone
+  links: ValuationLink[]
+  exactGradeMatch: boolean
+  usingFallback: boolean
+  secondaryProviderStatus: string
+  baseReferenceMinorUnits: number
 }
 
 type LanSyncLastResult = {
@@ -644,6 +728,7 @@ function Icon({ name }: { name: AppIconName }) {
     scan: "M5 7V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4M8 12h8",
     wifi: "M5 10a11 11 0 0 1 14 0M8 13a6.5 6.5 0 0 1 8 0M11 16a2 2 0 0 1 2 0m-1 3h.01",
     card: "M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm3 3h5m-5 4h10",
+    checkout: "M4 6h16M6 6l1.5 12h9L18 6M9 10h6m-5 4h4M8 21h.01M16 21h.01",
     upload: "M12 16V5m0 0-4 4m4-4 4 4M5 19h14",
     history: "M3 12a9 9 0 1 0 3-6.7M3 4v5h5m4-3v6l4 2",
     search: "m20 20-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z",
@@ -655,6 +740,7 @@ function Icon({ name }: { name: AppIconName }) {
     check: "m5 13 4 4L19 7",
     tag: "M20 13 13 20 4 11V4h7l9 9Zm-11-4h.01",
     copy: "M8 8h10v12H8V8Zm-4 8V4h10",
+    close: "M6 6l12 12M18 6 6 18",
     trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
   }
 
@@ -1097,8 +1183,8 @@ function customerCreditSnapshotFromLocalSyncCustomer(
     currency: customer.credit.currency,
     note:
       customer.source === "queued"
-        ? "LAN server balance updated locally; website ledger posting is pending sync acceptance."
-        : "Cached website ledger balance from the LAN local sync server.",
+        ? "Balance updated in this store. It will be sent to the website when sync is available."
+        : "Current store credit balance for this customer.",
   }
 }
 
@@ -1121,9 +1207,10 @@ function customerCreditLedgerEntryFromLocalSync(
     balanceAfterMinorUnits: entry.balance_after_minor_units,
     currency: entry.currency,
     status: entry.status,
-    sourceLabel: entry.status === "pending_sync" ? "LAN queue" : "Website cache",
+    sourceLabel: entry.status === "pending_sync" ? "Waiting to sync" : "Saved history",
     operationId: entry.entry_id,
     staffUserId: entry.staff_user_id,
+    staffUserName: entry.staff_user_name,
     referenceId: entry.reference_id,
     lineItems: entry.line_items.map((line) => ({
       lineItemId: line.line_item_id,
@@ -1135,6 +1222,114 @@ function customerCreditLedgerEntryFromLocalSync(
       squareReceiptReference: line.square_receipt_reference,
     })),
   }
+}
+
+function localSyncCustomerToCreditSnapshot(
+  customer: LocalSyncCustomer,
+  directory: CustomerCreditSnapshot[],
+  fallback: CustomerCreditSnapshot,
+): CustomerCreditSnapshot {
+  const existing =
+    directory.find((credit) => credit.customerPublicId === customer.customer_public_id) ??
+    directory.find((credit) => credit.customerId === customer.customer_id)
+  const nextFallback =
+    existing ??
+    {
+      ...fallback,
+      customerId:
+        customer.customer_id ??
+        directory.reduce((maxId, credit) => Math.max(maxId, credit.customerId), 0) + 1,
+    }
+
+  return customerCreditSnapshotFromLocalSyncCustomer(customer, nextFallback)
+}
+
+function managerReportMeta(result: LocalSyncManagerReportResult | null): Record<string, unknown> {
+  return result?.status === "ok" && result.meta && typeof result.meta === "object" ? result.meta : {}
+}
+
+function managerReportSummaryCards(result: LocalSyncManagerReportResult | null): ManagerReportSummaryCard[] {
+  return recordsFromUnknown(managerReportMeta(result).summary_cards).map((card) => ({
+    label: stringFromUnknown(card.label, "Report card"),
+    value: stringFromUnknown(card.value, "0"),
+    detail: stringFromUnknown(card.detail, "Live local report metric."),
+    tone: statusToneFromRemoteState(stringFromUnknown(card.tone, "ready")),
+  }))
+}
+
+function managerReportKpiCards(result: LocalSyncManagerReportResult | null): ManagerReportSummaryCard[] {
+  return recordsFromUnknown(managerReportMeta(result).kpi_cards).map((card) => ({
+    label: stringFromUnknown(card.label, "KPI"),
+    value: stringFromUnknown(card.value, "Ready"),
+    detail: stringFromUnknown(card.detail, "Manager KPI."),
+    tone: "ready",
+  }))
+}
+
+function managerReportCharts(result: LocalSyncManagerReportResult | null): ManagerReportChart[] {
+  return recordsFromUnknown(managerReportMeta(result).charts).map((chart, index) => ({
+    key: stringFromUnknown(chart.key, `chart-${index}`),
+    label: stringFromUnknown(chart.label, "Report chart"),
+    type: stringFromUnknown(chart.type, "bar"),
+    format: stringFromUnknown(chart.format, "number"),
+    labels: stringsFromUnknown(chart.labels),
+    series: recordsFromUnknown(chart.series).map((series) => ({
+      label: stringFromUnknown(series.label, "Series"),
+      values: numbersFromUnknown(series.values),
+    })),
+  }))
+}
+
+function managerReportChartMax(chart: ManagerReportChart) {
+  return Math.max(1, ...chart.series.flatMap((series) => series.values.map((value) => Math.abs(value))))
+}
+
+function managerReportChartValue(value: number, format: string) {
+  if (format === "money") {
+    return formatMoney(Math.round(value), "USD")
+  }
+
+  return new Intl.NumberFormat("en-US").format(value)
+}
+
+function managerReportChartPoints(values: number[], max: number) {
+  const safeMax = Math.max(1, max)
+  const denominator = Math.max(1, values.length - 1)
+
+  return values
+    .map((value, index) => {
+      const x = 8 + (index / denominator) * 84
+      const y = 92 - Math.min(88, Math.round((Math.abs(value) / safeMax) * 84))
+
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(" ")
+}
+
+function managerReportChartTicks(max: number, format: string) {
+  return [1, 0.66, 0.33, 0].map((scale) => managerReportChartValue(Math.round(max * scale), format))
+}
+
+function recordsFromUnknown(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+    : []
+}
+
+function stringsFromUnknown(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item ?? "")).filter(Boolean) : []
+}
+
+function numbersFromUnknown(value: unknown): number[] {
+  return Array.isArray(value)
+    ? value.map((item) => Number(item)).filter((item) => Number.isFinite(item))
+    : []
+}
+
+function stringFromUnknown(value: unknown, fallback: string) {
+  const text = String(value ?? "").trim()
+
+  return text || fallback
 }
 
 function formatUtcLabel(value: string) {
@@ -1329,8 +1524,71 @@ function pricePointMinorUnits(point: LocalSyncScryDexPricePoint) {
     0
 }
 
+function tradeInPricePointMinorUnits(point: LocalSyncScryDexPricePoint) {
+  return point.mid_price_minor_units ||
+    point.market_price_minor_units ||
+    point.low_price_minor_units ||
+    point.high_price_minor_units ||
+    0
+}
+
 function normalizedScryDexPriceText(value?: string) {
   return String(value ?? "").trim().toLowerCase()
+}
+
+function normalizedScryDexGradeText(value?: string) {
+  const text = normalizedScryDexPriceText(value)
+    .replace(/\b(?:grade|gem mint|mint|near mint|pristine)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  const numericMatch = text.match(/\b(?:10(?:\.0)?|[1-9](?:\.\d)?)\b/)
+  const numeric = Number(numericMatch?.[0] ?? text)
+
+  if (Number.isFinite(numeric)) {
+    return Number.isInteger(numeric) ? String(numeric) : String(numeric)
+  }
+
+  return text
+}
+
+function normalizedScryDexCompanyText(value?: string) {
+  const text = normalizedScryDexPriceText(value)
+
+  if (text.includes("psa")) {
+    return "psa"
+  }
+
+  if (text.includes("cgc")) {
+    return "cgc"
+  }
+
+  if (text.includes("bgs") || text.includes("beckett")) {
+    return "bgs"
+  }
+
+  if (text.includes("sgc")) {
+    return "sgc"
+  }
+
+  if (text.includes("tag")) {
+    return "tag"
+  }
+
+  return text
+}
+
+function scryDexGradeMatches(left?: string, right?: string) {
+  const leftGrade = normalizedScryDexGradeText(left)
+  const rightGrade = normalizedScryDexGradeText(right)
+
+  return Boolean(leftGrade && rightGrade && leftGrade === rightGrade)
+}
+
+function scryDexCompanyMatches(left?: string, right?: string) {
+  const leftCompany = normalizedScryDexCompanyText(left)
+  const rightCompany = normalizedScryDexCompanyText(right)
+
+  return Boolean(leftCompany && rightCompany && leftCompany === rightCompany)
 }
 
 function scryDexCardSupportsGraded(card: LocalSyncScryDexCard) {
@@ -1347,7 +1605,7 @@ function scryDexBestGradedPricePoint(
   return bestScryDexPricePoint(card, variant, "", "graded", "", "")
 }
 
-function scryDexPricePointSummary(point: LocalSyncScryDexPricePoint | null) {
+function scryDexPricePointSummary(point: LocalSyncScryDexPricePoint | null, preferTradeInMid = false) {
   if (!point) {
     return ""
   }
@@ -1358,7 +1616,7 @@ function scryDexPricePointSummary(point: LocalSyncScryDexPricePoint | null) {
     point.grade ? `Grade ${point.grade}` : "",
     point.condition_code,
   ].filter(Boolean)
-  const price = pricePointMinorUnits(point)
+  const price = preferTradeInMid ? tradeInPricePointMinorUnits(point) : pricePointMinorUnits(point)
 
   return `${labels.join(" / ")}${price > 0 ? ` ${formatMoney(price, point.currency)}` : ""}`.trim()
 }
@@ -1385,8 +1643,8 @@ function bestScryDexPricePoint(
   grade: string,
 ) {
   const normalizedCondition = condition.trim().toUpperCase()
-  const normalizedCompany = normalizedScryDexPriceText(gradingCompany)
-  const normalizedGrade = normalizedScryDexPriceText(grade)
+  const normalizedCompany = normalizedScryDexCompanyText(gradingCompany)
+  const normalizedGrade = normalizedScryDexGradeText(grade)
   const variantProviderId = variant?.provider_variant_id ?? ""
   const variantReferenceId = variant?.reference_variant_id ?? null
 
@@ -1404,8 +1662,8 @@ function bestScryDexPricePoint(
       const pointVariant = String(point.provider_variant_id ?? "")
       const pointReferenceVariant = point.reference_variant_id ?? null
       const pointCondition = String(point.condition_code ?? "").toUpperCase()
-      const pointCompany = normalizedScryDexPriceText(point.grading_company)
-      const pointGrade = normalizedScryDexPriceText(point.grade)
+      const pointCompany = normalizedScryDexCompanyText(point.grading_company)
+      const pointGrade = normalizedScryDexGradeText(point.grade)
       let score = 100
 
       if (variantProviderId !== "" && pointVariant === variantProviderId) {
@@ -1424,13 +1682,17 @@ function bestScryDexPricePoint(
 
       if (productType === "graded") {
         if (normalizedCompany !== "" && pointCompany === normalizedCompany) {
-          score += 18
+          score += 26
+        } else if (normalizedCompany !== "" && pointCompany !== "") {
+          score -= 12
         } else if (pointCompany !== "") {
           score += 4
         }
 
         if (normalizedGrade !== "" && pointGrade === normalizedGrade) {
-          score += 18
+          score += 44
+        } else if (normalizedGrade !== "" && pointGrade !== "") {
+          score -= 36
         } else if (pointGrade !== "") {
           score += 4
         }
@@ -1442,6 +1704,238 @@ function bestScryDexPricePoint(
     .sort((left, right) => right.score - left.score)
 
   return scored[0]?.point ?? null
+}
+
+function valuationSearchQuery(
+  card: LocalSyncScryDexCard,
+  gradingCompany: string,
+  grade: string,
+) {
+  return [
+    card.card_name,
+    card.set_name,
+    card.printed_number || card.card_number,
+    gradingCompany,
+    grade ? `grade ${grade}` : "",
+    "graded card",
+  ]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(" ")
+}
+
+function valuationLinksForCard(
+  card: LocalSyncScryDexCard,
+  gradingCompany: string,
+  grade: string,
+): ValuationLink[] {
+  const query = valuationSearchQuery(card, gradingCompany, grade)
+  const encodedQuery = encodeURIComponent(query)
+
+  return [
+    {
+      label: "PriceCharting",
+      href: `https://www.pricecharting.com/search-products?q=${encodedQuery}`,
+    },
+    {
+      label: "eBay sold",
+      href: `https://www.ebay.com/sch/i.html?_nkw=${encodedQuery}&LH_Complete=1&LH_Sold=1`,
+    },
+    {
+      label: "PSA APR",
+      href: "https://www.psacard.com/auctionprices",
+    },
+    {
+      label: "TCGplayer",
+      href: `https://www.tcgplayer.com/search/all/product?q=${encodedQuery}`,
+    },
+  ]
+}
+
+function staffSafeSecondaryProviderMessage(providerStatus?: LocalSyncGradedProviderStatus | null) {
+  if (!providerStatus) {
+    return "No secondary graded comp provider returned a price."
+  }
+
+  if (providerStatus.status === "not_configured" || providerStatus.configured === false) {
+    return "Secondary graded comp lookup is not configured on this local server. Use Check comps or enter a manual offer."
+  }
+
+  if (providerStatus.status === "unsupported_grade") {
+    return "Secondary graded comp lookup does not support this grade. Use Check comps or enter a manual offer."
+  }
+
+  if (providerStatus.status === "no_match") {
+    return "Secondary graded comp lookup did not find a matching slab. Use Check comps or enter a manual offer."
+  }
+
+  if (providerStatus.status === "no_price") {
+    return "Secondary graded comp lookup matched the card but did not return a price. Use Check comps or enter a manual offer."
+  }
+
+  const detail = String(providerStatus.detail || "").trim()
+  if (/API token/i.test(detail)) {
+    return "Secondary graded comp lookup is not configured on this local server. Use Check comps or enter a manual offer."
+  }
+
+  return detail || "No secondary graded comp provider returned a price."
+}
+
+function resolveTradeInMarketValuation(
+  card: LocalSyncScryDexCard | null,
+  variant: LocalSyncScryDexVariant | null,
+  condition: string,
+  productType: "raw" | "graded",
+  gradingCompany: string,
+  grade: string,
+  secondaryValuation: LocalSyncGradedValuation | null = null,
+  secondaryProviderStatus = "",
+): TradeInMarketValuation {
+  if (!card) {
+    return {
+      marketMinorUnits: 0,
+      currency: "USD",
+      pricePoint: null,
+      secondaryValuation: null,
+      sourceLabel: "No card selected",
+      detail: "Select a card to view market value.",
+      tone: "idle",
+      links: [],
+      exactGradeMatch: false,
+      usingFallback: false,
+      secondaryProviderStatus,
+      baseReferenceMinorUnits: 0,
+    }
+  }
+
+  const pricePoint = bestScryDexPricePoint(card, variant, condition, productType, gradingCompany, grade)
+  const marketMinorUnits = pricePoint ? tradeInPricePointMinorUnits(pricePoint) : card.market_price_minor_units
+  const selectedCompany = gradingCompany.trim()
+  const selectedGrade = grade.trim()
+  const exactGradeMatch =
+    productType !== "graded" ||
+    selectedGrade === "" ||
+    Boolean(pricePoint?.grade && scryDexGradeMatches(pricePoint.grade, selectedGrade))
+  const exactCompanyMatch =
+    productType !== "graded" ||
+    selectedCompany === "" ||
+    Boolean(pricePoint?.grading_company && scryDexCompanyMatches(pricePoint.grading_company, selectedCompany))
+  const usingFallback =
+    productType === "graded" &&
+    (!pricePoint || !exactGradeMatch || !exactCompanyMatch)
+  const links = productType === "graded" && (usingFallback || marketMinorUnits <= 0)
+    ? valuationLinksForCard(card, selectedCompany, selectedGrade)
+    : []
+  const hasSecondaryValuation =
+    productType === "graded" &&
+    usingFallback &&
+    Boolean(secondaryValuation?.market_price_minor_units && secondaryValuation.market_price_minor_units > 0)
+
+  if (hasSecondaryValuation && secondaryValuation) {
+    return {
+      marketMinorUnits: secondaryValuation.market_price_minor_units,
+      currency: secondaryValuation.currency,
+      pricePoint,
+      secondaryValuation,
+      sourceLabel: secondaryValuation.source_label,
+      detail: `${secondaryValuation.source_detail} ScryDex did not have an exact ${[selectedCompany, selectedGrade].filter(Boolean).join(" ") || "graded"} price, so this secondary comp is being used for the offer.`,
+      tone: "ready",
+      links,
+      exactGradeMatch,
+      usingFallback: false,
+      secondaryProviderStatus,
+      baseReferenceMinorUnits: card.market_price_minor_units,
+    }
+  }
+
+  if (!pricePoint && productType === "graded" && marketMinorUnits <= 0) {
+    return {
+      marketMinorUnits,
+      currency: card.currency,
+      pricePoint: null,
+      secondaryValuation: null,
+      sourceLabel: "No graded market value",
+      detail: "ScryDex/reference pricing did not return a graded value for this card. Enter a manual offer or use Check comps before adding it to the offer.",
+      tone: "blocked",
+      links,
+      exactGradeMatch: false,
+      usingFallback: true,
+      secondaryProviderStatus,
+      baseReferenceMinorUnits: 0,
+    }
+  }
+
+  if (!pricePoint && productType === "graded") {
+    return {
+      marketMinorUnits: 0,
+      currency: card.currency,
+      pricePoint: null,
+      secondaryValuation: null,
+      sourceLabel: "No ScryDex graded price",
+      detail: `No graded ${[selectedCompany, selectedGrade].filter(Boolean).join(" ") || "price"} is stored for this card/version. Raw/base reference: ${formatMoney(marketMinorUnits, card.currency)}. Enter a manual offer or use Check comps before adding it to the offer.`,
+      tone: "blocked",
+      links,
+      exactGradeMatch: false,
+      usingFallback: true,
+      secondaryProviderStatus,
+      baseReferenceMinorUnits: marketMinorUnits,
+    }
+  }
+
+  if (pricePoint && usingFallback) {
+    const hasGenericGradedReference =
+      productType === "graded" &&
+      pricePoint.raw_or_graded === "graded" &&
+      !pricePoint.grading_company &&
+      !pricePoint.grade
+
+    return {
+      marketMinorUnits,
+      currency: pricePoint.currency,
+      pricePoint,
+      secondaryValuation: null,
+      sourceLabel: hasGenericGradedReference ? "ScryDex graded reference" : "Nearest ScryDex graded comp",
+      detail: `No exact ${[selectedCompany, selectedGrade].filter(Boolean).join(" ") || "graded"} price matched in ScryDex. Using ${scryDexPricePointSummary(pricePoint, true)} until staff verifies comps or enters a manual offer.`,
+      tone: "warning",
+      links,
+      exactGradeMatch,
+      usingFallback: true,
+      secondaryProviderStatus,
+      baseReferenceMinorUnits: card.market_price_minor_units,
+    }
+  }
+
+  if (pricePoint) {
+    return {
+      marketMinorUnits,
+      currency: pricePoint.currency,
+      pricePoint,
+      secondaryValuation: null,
+      sourceLabel: productType === "graded" ? "Exact ScryDex graded market" : "Single market",
+      detail: `${scryDexPricePointSummary(pricePoint, true)} from ${card.catalog_source.replace(/_/g, " ")}.`,
+      tone: "ready",
+      links,
+      exactGradeMatch,
+      usingFallback: false,
+      secondaryProviderStatus,
+      baseReferenceMinorUnits: card.market_price_minor_units,
+    }
+  }
+
+  return {
+    marketMinorUnits,
+    currency: card.currency,
+    pricePoint: null,
+    secondaryValuation: null,
+    sourceLabel: "Card market",
+    detail: `${formatMoney(marketMinorUnits, card.currency)} base market from ${card.catalog_source.replace(/_/g, " ")}.`,
+    tone: marketMinorUnits > 0 ? "ready" : "blocked",
+    links: marketMinorUnits > 0 ? [] : valuationLinksForCard(card, selectedCompany, selectedGrade),
+    exactGradeMatch: false,
+    usingFallback: marketMinorUnits <= 0,
+    secondaryProviderStatus,
+    baseReferenceMinorUnits: card.market_price_minor_units,
+  }
 }
 
 function scryDexIntakePriceMinorUnits(
@@ -1519,16 +2013,44 @@ function localSyncCustomerSearchText(customer: LocalSyncCustomer) {
     .toLowerCase()
 }
 
-function localSyncCustomerMatchesTradeInLookup(
-  customer: LocalSyncCustomer,
-  customerName: string,
-  customerPhone: string,
-) {
-  const name = normalizeTradeInCustomerLookup(customerName)
-  const phone = normalizeTradeInCustomerLookup(customerPhone)
+function localSyncCustomerMatchesTradeInLookup(customer: LocalSyncCustomer, ...lookupValues: string[]) {
   const searchText = localSyncCustomerSearchText(customer)
 
-  return Boolean((name && searchText.includes(name)) || (phone && searchText.includes(phone)))
+  return lookupValues.some((value) => {
+    const normalizedValue = normalizeTradeInCustomerLookup(value)
+
+    return Boolean(normalizedValue && searchText.includes(normalizedValue))
+  })
+}
+
+function localSyncTradeInOrderMatchesCustomer(
+  order: LocalSyncTradeInOrder,
+  customer: LocalSyncCustomer,
+) {
+  if (
+    order.customer_public_id &&
+    customer.customer_public_id &&
+    order.customer_public_id === customer.customer_public_id
+  ) {
+    return true
+  }
+
+  const orderSearchText = [
+    order.customer_name,
+    order.customer_phone,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+  const customerLookupValues = [
+    customer.display_name,
+    customer.first_name,
+    customer.last_name,
+    customer.customer_lookup,
+    customer.email,
+  ].map(normalizeTradeInCustomerLookup).filter(Boolean)
+
+  return customerLookupValues.some((value) => orderSearchText.includes(value))
 }
 
 function finalRetailPriceMinorUnits(autoMinorUnits: number, minimumMinorUnits: number) {
@@ -1697,6 +2219,8 @@ function kioskTicketFromLocalSyncOrder(order: LocalSyncKioskOrder): KioskOrderTi
   return {
     orderId: order.order_id,
     customerName: order.customer_name || [order.first_name, order.last_name].filter(Boolean).join(" "),
+    customerPublicId: order.customer_public_id,
+    customerLookup: order.customer_lookup,
     itemCount: order.item_count,
     totalMinorUnits: order.total_minor_units,
     totalLabel: formatMoney(order.total_minor_units, order.currency),
@@ -1778,6 +2302,8 @@ function fulfillmentTicketSearchText(ticket: KioskOrderTicket | WebsitePickupTic
   const orderStatus = "orderStatus" in ticket ? ticket.orderStatus : ""
   const source = "source" in ticket ? ticket.source : "kiosk"
   const squareReceiptReference = "squareReceiptReference" in ticket ? ticket.squareReceiptReference : ""
+  const customerPublicId = "customerPublicId" in ticket ? ticket.customerPublicId : ""
+  const customerLookup = "customerLookup" in ticket ? ticket.customerLookup : ""
 
   return [
     ticket.orderId,
@@ -1785,6 +2311,8 @@ function fulfillmentTicketSearchText(ticket: KioskOrderTicket | WebsitePickupTic
     orderStatus,
     source,
     ticket.customerName,
+    customerPublicId,
+    customerLookup,
     ticket.totalLabel,
     squareReceiptReference,
     ...ticket.items.flatMap((item) => [
@@ -1986,11 +2514,40 @@ export function App() {
   const [newCustomerFirstName, setNewCustomerFirstName] = useState("")
   const [newCustomerLastName, setNewCustomerLastName] = useState("")
   const [newCustomerEmail, setNewCustomerEmail] = useState("")
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false)
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("")
+  const [customerSearchResults, setCustomerSearchResults] = useState<LocalSyncCustomer[]>([])
+  const [customerProfileResult, setCustomerProfileResult] =
+    useState<LocalSyncCustomerProfileResult | null>(null)
+  const [customerProfileStatus, setCustomerProfileStatus] = useState<StatusTone>("idle")
+  const [customerProfileDetail, setCustomerProfileDetail] = useState(
+    "Search or select a customer to load profile history.",
+  )
   const [creditAdjustmentInput, setCreditAdjustmentInput] = useState("0.00")
   const [creditAdjustmentReason, setCreditAdjustmentReason] = useState("Manager-approved store credit")
   const [pendingEventRegistrationIds, setPendingEventRegistrationIds] = useState<string[]>([])
   const [pendingEventCheckinIds, setPendingEventCheckinIds] = useState<string[]>([])
-  const [showCreditLedger, setShowCreditLedger] = useState(false)
+  const [showCreditLedger, setShowCreditLedger] = useState(true)
+  const [customerKioskOrderSearch, setCustomerKioskOrderSearch] = useState("")
+  const [selectedCustomerKioskOrderId, setSelectedCustomerKioskOrderId] = useState("")
+  const [checkoutCustomerMode, setCheckoutCustomerMode] = useState<CheckoutCustomerMode>("guest")
+  const [checkoutBarcodeInput, setCheckoutBarcodeInput] = useState("")
+  const [checkoutProductSearch, setCheckoutProductSearch] = useState("")
+  const [checkoutCartLines, setCheckoutCartLines] = useState<CheckoutCartLine[]>([])
+  const [checkoutMiscLabel, setCheckoutMiscLabel] = useState("Misc sale")
+  const [checkoutMiscAmountInput, setCheckoutMiscAmountInput] = useState("0.00")
+  const [checkoutReceiptDelivery, setCheckoutReceiptDelivery] =
+    useState<CheckoutReceiptDelivery>("print")
+  const [checkoutReceiptEmail, setCheckoutReceiptEmail] = useState("")
+  const [checkoutTenderMode, setCheckoutTenderMode] = useState<CheckoutTenderMode>("card")
+  const [checkoutCashReceivedInput, setCheckoutCashReceivedInput] = useState("0.00")
+  const [checkoutCompletedReceipt, setCheckoutCompletedReceipt] =
+    useState<LocalSyncCheckoutTransaction | null>(null)
+  const [squareTerminalStatus, setSquareTerminalStatus] =
+    useState<LocalSyncSquareTerminalStatusResult | null>(null)
+  const [squareTerminalDeviceCode, setSquareTerminalDeviceCode] =
+    useState<LocalSyncSquareTerminalDeviceCodeResult | null>(null)
+  const [squareTerminalProbeStatus, setSquareTerminalProbeStatus] = useState<StatusTone>("idle")
   const [showEventQueue, setShowEventQueue] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<OfflineLabelPrintJob[]>([])
   const [query, setQuery] = useState("")
@@ -2025,16 +2582,43 @@ export function App() {
   const [intakeGradingCompany, setIntakeGradingCompany] = useState("PSA")
   const [intakeGrade, setIntakeGrade] = useState("")
   const [intakeCertNumber, setIntakeCertNumber] = useState("")
+  const [tradeInCustomerLookupInput, setTradeInCustomerLookupInput] = useState("")
   const [tradeInCustomerName, setTradeInCustomerName] = useState("")
   const [tradeInCustomerPhone, setTradeInCustomerPhone] = useState("")
+  const [tradeInCustomerEmail, setTradeInCustomerEmail] = useState("")
   const [tradeInCustomerMatches, setTradeInCustomerMatches] = useState<LocalSyncCustomer[]>([])
   const [tradeInSelectedCustomerPublicId, setTradeInSelectedCustomerPublicId] = useState("")
+  const [tradeInSelectedCustomerSnapshot, setTradeInSelectedCustomerSnapshot] =
+    useState<LocalSyncCustomer | null>(null)
   const [tradeInCustomerLookupStatus, setTradeInCustomerLookupStatus] = useState<
     "idle" | "searching" | "matched" | "empty" | "blocked"
   >("idle")
+  const [tradeInCardQuery, setTradeInCardQuery] = useState("")
+  const [tradeInCardGame, setTradeInCardGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
+  const [tradeInProductType, setTradeInProductType] = useState<"raw" | "graded">("raw")
+  const [tradeInCardResults, setTradeInCardResults] = useState<LocalSyncScryDexCard[]>([])
+  const [tradeInCardSetFilter, setTradeInCardSetFilter] = useState("")
+  const [tradeInSelectedCardId, setTradeInSelectedCardId] = useState("")
+  const [tradeInSelectedVariantId, setTradeInSelectedVariantId] = useState("")
+  const [tradeInCardLookupStatus, setTradeInCardLookupStatus] = useState<
+    "idle" | "searching" | "ready" | "blocked"
+  >("idle")
+  const [tradeInCardLookupDetail, setTradeInCardLookupDetail] = useState(
+    "Search ScryDex to add cards to this offer.",
+  )
+  const [tradeInCondition, setTradeInCondition] = useState("LP")
+  const [tradeInGradingCompany, setTradeInGradingCompany] = useState("PSA")
+  const [tradeInGrade, setTradeInGrade] = useState("")
+  const [tradeInCertNumber, setTradeInCertNumber] = useState("")
+  const [tradeInSecondaryValuation, setTradeInSecondaryValuation] =
+    useState<LocalSyncGradedValuation | null>(null)
+  const [tradeInSecondaryValuationStatus, setTradeInSecondaryValuationStatus] =
+    useState("ScryDex/reference cache is the primary pricing source.")
   const [tradeInPayoutType, setTradeInPayoutType] = useState<TradeInPayoutType>("credit")
   const [tradeInPercentageBasisPoints, setTradeInPercentageBasisPoints] = useState(6000)
+  const [tradeInManualFinalValueInput, setTradeInManualFinalValueInput] = useState("")
   const [tradeInDraftItems, setTradeInDraftItems] = useState<TradeInDraftItem[]>([])
+  const [tradeInLoadedOrderId, setTradeInLoadedOrderId] = useState("")
   const [tradeInRecordSearch, setTradeInRecordSearch] = useState("")
   const [tradeInStaffFilter, setTradeInStaffFilter] = useState("")
   const [serverTradeInOrders, setServerTradeInOrders] = useState<LocalSyncTradeInOrder[]>([])
@@ -2069,6 +2653,7 @@ export function App() {
   const [eventAttendeeLabel, setEventAttendeeLabel] = useState("Offline walk-in")
   const [eventPaymentStatus, setEventPaymentStatus] =
     useState<EventPaymentStatus>("not_required")
+  const [eventCheckinSearch, setEventCheckinSearch] = useState("")
   const [eventCheckinLookup, setEventCheckinLookup] = useState("")
   const [activeSection, setActiveSection] = useState("Inventory")
   const [sessionRole, setSessionRole] = useState<AppSessionRole>("locked")
@@ -2338,12 +2923,50 @@ export function App() {
     () => scryDexCards.filter((card) => scryDexCardMatchesSetFilter(card, scryDexSetFilter)),
     [scryDexCards, scryDexSetFilter],
   )
+  const tradeInCardSetOptions = useMemo(
+    () => scryDexSetOptionsFromCards(tradeInCardResults),
+    [tradeInCardResults],
+  )
+  const visibleTradeInCards = useMemo(
+    () => tradeInCardResults.filter((card) => scryDexCardMatchesSetFilter(card, tradeInCardSetFilter)),
+    [tradeInCardResults, tradeInCardSetFilter],
+  )
   const selectedScryDexCard = scryDexCards.find((card) => card.provider_card_id === selectedScryDexCardId) ?? null
   const selectedScryDexVariant =
     selectedScryDexCard?.variants.find(
       (variant, index) =>
         scryDexVariantId(selectedScryDexCard.provider_card_id, variant, index) === selectedScryDexVariantId,
     ) ?? null
+  const selectedTradeInCard =
+    tradeInCardResults.find((card) => card.provider_card_id === tradeInSelectedCardId) ?? null
+  const selectedTradeInVariant =
+    selectedTradeInCard?.variants.find(
+      (variant, index) =>
+        scryDexVariantId(selectedTradeInCard.provider_card_id, variant, index) === tradeInSelectedVariantId,
+    ) ?? null
+  const selectedTradeInVariantLabel = selectedTradeInVariant
+    ? formatScryDexVariant(selectedTradeInVariant) || "Selected version"
+    : "Default version"
+  const selectedTradeInImageUrl = cardImageForSelectedVariant(selectedTradeInCard, selectedTradeInVariant)
+  const selectedTradeInPrimaryValuation = resolveTradeInMarketValuation(
+    selectedTradeInCard,
+    selectedTradeInVariant,
+    tradeInCondition,
+    tradeInProductType,
+    tradeInGradingCompany,
+    tradeInGrade,
+  )
+  const selectedTradeInValuation = resolveTradeInMarketValuation(
+    selectedTradeInCard,
+    selectedTradeInVariant,
+    tradeInCondition,
+    tradeInProductType,
+    tradeInGradingCompany,
+    tradeInGrade,
+    tradeInSecondaryValuation,
+    tradeInSecondaryValuationStatus,
+  )
+  const selectedTradeInMarketMinorUnits = selectedTradeInValuation.marketMinorUnits
   const selectedScryDexVariantLabel = selectedScryDexVariant
     ? formatScryDexVariant(selectedScryDexVariant) || "Selected version"
     : "Default version"
@@ -2385,6 +3008,16 @@ export function App() {
     ...pendingCustomerCreditLedgerEntries,
     ...cachedCustomerCreditLedgerEntries,
   ].slice(0, 6)
+  const activeCustomerProfile =
+    customerProfileResult?.status === "ok" &&
+    customerProfileResult.customer.customer_public_id === customerCredit.customerPublicId
+      ? customerProfileResult
+      : null
+  const activeCustomerTradeInOrders = activeCustomerProfile?.trade_in_orders ?? []
+  const activeCustomerProfileSummary = activeCustomerProfile?.summary ?? null
+  const activeManagerReportSummaryCards = managerReportSummaryCards(managerReportResult)
+  const activeManagerReportCharts = managerReportCharts(managerReportResult)
+  const activeManagerReportKpiCards = managerReportKpiCards(managerReportResult)
   const queueTarget = queueSubmission?.sqlitePlan.table ?? "operation_queue"
   const selectedQueuedOperation = useMemo(() => {
     return queuedOperations.find(
@@ -2516,6 +3149,14 @@ export function App() {
         },
       ]
     : workspace.queueItems
+  const lanQueueSummaryItems =
+    localSyncStatus?.status === "ok" ? (localSyncStatus.queue_summary?.items ?? []) : []
+  const lanQueueSummaryTypeLabel =
+    localSyncStatus?.status === "ok" && localSyncStatus.queue_summary
+      ? Object.entries(localSyncStatus.queue_summary.by_type)
+          .map(([type, count]) => `${formatQueueOperationType(type)} x${count}`)
+          .join(", ") || "No pending LAN rows"
+      : "LAN queue details unavailable"
   const syncSummaryItems = workspace.syncSummary.map((item) => {
     if (liveLanQueueIsAuthoritative && item.label === "Queued writes") {
       return {
@@ -2546,6 +3187,32 @@ export function App() {
   const eventQueuePreviewEntries = useMemo(
     () => buildOfflineEventQueuePreviewEntries(queuedOperations, eventSnapshots),
     [queuedOperations, eventSnapshots],
+  )
+  const eventCheckinSearchNeedle = eventCheckinSearch.trim().toLowerCase()
+  const eventCheckinMatches = useMemo(
+    () =>
+      eventQueuePreviewEntries
+        .filter((entry) => entry.operationType === "event_reservation")
+        .filter((entry) => !selectedEventId || entry.eventId === selectedEventId)
+        .filter((entry) => {
+          if (!eventCheckinSearchNeedle) {
+            return true
+          }
+
+          return [
+            entry.attendeeLabel,
+            entry.title,
+            entry.registrationPublicId,
+            entry.detail,
+            entry.payloadSummary,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(eventCheckinSearchNeedle)
+        })
+        .slice(0, 8),
+    [eventCheckinSearchNeedle, eventQueuePreviewEntries, selectedEventId],
   )
   const eventBadgeCount =
     eventSnapshots.length + pendingEventRegistrationIds.length + pendingEventCheckinIds.length
@@ -2654,6 +3321,145 @@ export function App() {
   const searchableCompletedWebsitePickupTickets = completedWebsitePickupTickets.filter((ticket) =>
     fulfillmentTicketSearchText(ticket).includes(fulfillmentHistoryNeedle),
   )
+  const customerProfileKioskOrderTickets =
+    customerProfileResult?.status === "ok"
+      ? customerProfileResult.kiosk_orders.map(kioskTicketFromLocalSyncOrder)
+      : []
+  const customerProfileCheckoutTransactions =
+    customerProfileResult?.status === "ok" ? customerProfileResult.checkout_transactions : []
+  const customerKioskOrderNeedle = customerKioskOrderSearch.trim().toLowerCase()
+  const selectedCustomerPublicId = customerCredit.customerPublicId ?? ""
+  const customerKioskOrderById = new Map<string, KioskOrderTicket>()
+  for (const ticket of [...kioskOrderTickets, ...customerProfileKioskOrderTickets]) {
+    customerKioskOrderById.set(ticket.orderId, ticket)
+  }
+  const customerKioskOrderMatches = [...customerKioskOrderById.values()]
+    .filter((ticket) => {
+      const searchText = fulfillmentTicketSearchText(ticket)
+      const linkedToSelectedCustomer =
+        Boolean(selectedCustomerPublicId) && ticket.customerPublicId === selectedCustomerPublicId
+      const selectedCustomerNameMatch =
+        activeCustomerName.trim().length >= 3 &&
+        ticket.customerName.toLowerCase().includes(activeCustomerName.trim().toLowerCase())
+
+      if (customerKioskOrderNeedle) {
+        return searchText.includes(customerKioskOrderNeedle)
+      }
+
+      return linkedToSelectedCustomer || selectedCustomerNameMatch || ticket.status !== "completed"
+    })
+    .sort((left, right) => String(right.createdAtUtc).localeCompare(String(left.createdAtUtc)))
+    .slice(0, 12)
+  const checkoutKioskOrderMatches = customerKioskOrderMatches.filter(
+    (ticket) => ticket.paymentStatus !== "paid" && !["completed", "expired"].includes(ticket.status),
+  )
+  const selectedCustomerKioskOrder =
+    customerKioskOrderById.get(selectedCustomerKioskOrderId) ??
+    customerKioskOrderMatches.find((ticket) => ticket.orderId === selectedCustomerKioskOrderId) ??
+    null
+  const checkoutInventorySearchNeedle = checkoutProductSearch.trim()
+  const checkoutInventoryMatches = useMemo(
+    () =>
+      checkoutInventorySearchNeedle
+        ? filterInventoryItems(inventoryItems, checkoutInventorySearchNeedle, "all")
+            .filter((item) => (item.posVisibility ?? "visible") !== "hidden")
+            .slice(0, 18)
+        : [],
+    [checkoutInventorySearchNeedle, inventoryItems],
+  )
+  const checkoutInventoryLines = checkoutCartLines.filter((line) => line.type !== "misc")
+  const checkoutMiscLines = checkoutCartLines.filter((line) => line.type === "misc")
+  const checkoutSubtotalMinorUnits = checkoutCartLines.reduce(
+    (total, line) => total + line.totalMinorUnits,
+    0,
+  )
+  const checkoutCreditMinorUnits =
+    checkoutCustomerMode === "customer"
+      ? Math.max(0, creditRedemptionInputToMinorUnits(creditRedemptionInput) ?? 0)
+      : 0
+  const checkoutAmountDueMinorUnits = Math.max(0, checkoutSubtotalMinorUnits - checkoutCreditMinorUnits)
+  const checkoutCashInputMinorUnits = creditRedemptionInputToMinorUnits(checkoutCashReceivedInput)
+  const checkoutCashPaidMinorUnits =
+    checkoutTenderMode === "cash"
+      ? checkoutAmountDueMinorUnits
+      : checkoutTenderMode === "split"
+        ? Math.min(checkoutAmountDueMinorUnits, Math.max(0, checkoutCashInputMinorUnits ?? 0))
+        : 0
+  const checkoutCardPaidMinorUnits =
+    checkoutTenderMode === "card"
+      ? checkoutAmountDueMinorUnits
+      : checkoutTenderMode === "split"
+        ? Math.max(0, checkoutAmountDueMinorUnits - checkoutCashPaidMinorUnits)
+        : 0
+  const checkoutCashReceivedMinorUnits =
+    checkoutTenderMode === "cash" ? Math.max(0, checkoutCashInputMinorUnits ?? 0) : checkoutCashPaidMinorUnits
+  const checkoutChangeDueMinorUnits =
+    checkoutTenderMode === "cash"
+      ? Math.max(0, checkoutCashReceivedMinorUnits - checkoutAmountDueMinorUnits)
+      : 0
+  const checkoutSquareDueMinorUnits = checkoutCardPaidMinorUnits
+  const checkoutCustomerSelected = checkoutCustomerMode === "guest" || Boolean(customerCredit.customerPublicId)
+  const checkoutCleanSquareReceiptReference = squareReceiptReference.trim().replace(/\s+/g, " ")
+  const checkoutRequiresSquareReceipt = checkoutCardPaidMinorUnits > 0
+  const checkoutSquareReceiptIssue =
+    checkoutRequiresSquareReceipt && checkoutCleanSquareReceiptReference === ""
+      ? "Enter the Square receipt, ticket, or transaction reference for the card payment."
+      : checkoutRequiresSquareReceipt && checkoutCleanSquareReceiptReference.length < 3
+        ? "Use at least 3 characters for the Square reference."
+        : ""
+  const checkoutTenderIssue =
+    checkoutTenderMode === "cash" && checkoutCashInputMinorUnits === null
+      ? "Use a valid cash received amount with up to two decimals."
+      : checkoutTenderMode === "cash" && checkoutCashReceivedMinorUnits < checkoutAmountDueMinorUnits
+        ? "Cash received must cover the amount due after store credit."
+        : checkoutTenderMode === "split" && checkoutCashInputMinorUnits === null
+          ? "Use a valid cash amount with up to two decimals."
+          : checkoutTenderMode === "split" && checkoutCashPaidMinorUnits <= 0
+            ? "Enter the cash portion for a split payment."
+            : checkoutTenderMode === "split" && checkoutCashPaidMinorUnits >= checkoutAmountDueMinorUnits
+              ? "Split payment needs both a cash amount and a card balance."
+              : checkoutSquareReceiptIssue
+  const checkoutReceiptEmailAddress =
+    checkoutReceiptEmail.trim() ||
+    (checkoutCustomerMode === "customer" && activeCustomerProfile?.customer.email
+      ? activeCustomerProfile.customer.email
+      : "")
+  const checkoutReceiptEmailIssue =
+    ["email", "both"].includes(checkoutReceiptDelivery) &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutReceiptEmailAddress.trim())
+      ? "Enter an email address before choosing an email receipt."
+      : ""
+  const checkoutUnavailableLines = checkoutCartLines.filter((line) => {
+    if (line.type === "misc") {
+      return false
+    }
+
+    const item = inventoryItems.find(
+      (candidate) =>
+        candidate.publicId === line.inventoryPublicId ||
+        (!!line.barcode && candidate.barcode === line.barcode),
+    )
+
+    return !item || !["available", "reserved"].includes(item.status)
+  })
+  const checkoutHeldLines = checkoutCartLines.filter((line) => {
+    if (line.type === "misc") {
+      return false
+    }
+
+    return inventoryItems.some(
+      (item) =>
+        (item.publicId === line.inventoryPublicId || (!!line.barcode && item.barcode === line.barcode)) &&
+        item.status === "reserved",
+    )
+  })
+  const checkoutCanComplete =
+    checkoutCartLines.length > 0 &&
+    checkoutCustomerSelected &&
+    checkoutUnavailableLines.length === 0 &&
+    !checkoutReceiptEmailIssue &&
+    !checkoutTenderIssue &&
+    checkoutSubtotalMinorUnits > 0
   const scryDexLookupTone = statusToneFromRemoteState(scryDexLookupStatus)
   const queueStatusTone =
     queuedOperations.length > 0 || (localSyncStatus?.status === "ok" && localSyncStatus.queue_depth > 0)
@@ -2834,7 +3640,7 @@ export function App() {
   const squareSaleTotalMinorUnits = creditRedemptionInputToMinorUnits(squareSaleTotalInput)
   const squareSaleTotalIssue =
     squareSaleTotalInput.trim() === ""
-      ? "Enter the Square ticket total before staging credit use."
+      ? "Enter the Square ticket total before using store credit."
       : squareSaleTotalMinorUnits === null
         ? "Use a valid Square ticket total with up to two decimals."
         : squareSaleTotalMinorUnits <= 0
@@ -2843,7 +3649,7 @@ export function App() {
   const cleanSquareReceiptReference = squareReceiptReference.trim().replace(/\s+/g, " ")
   const squareReceiptReferenceIssue =
     cleanSquareReceiptReference === ""
-      ? "Enter the Square receipt, ticket, or transaction reference before staging credit use."
+      ? "Enter the Square receipt, ticket, or transaction reference before completing the sale."
       : cleanSquareReceiptReference.length < 3
         ? "Use at least 3 characters for the Square reference."
         : ""
@@ -2862,19 +3668,19 @@ export function App() {
     squareSaleTotalIssue
       ? squareSaleTotalIssue
       : creditRedemptionInput.trim() === ""
-      ? "Enter a credit amount before staging."
+      ? "Enter a credit amount before completing the sale."
       : creditRedemptionMinorUnits === null
         ? "Use a valid dollar amount with up to two decimals."
         : creditRedemptionMinorUnits <= 0
           ? "Credit amount must be greater than $0.00."
           : creditRedemptionMinorUnits > displayedCreditMinorUnits
-            ? "Amount exceeds the cached balance after local holds."
+            ? "Amount exceeds the customer's balance after in-progress holds."
             : squareSaleTotalMinorUnits !== null && creditRedemptionMinorUnits > squareSaleTotalMinorUnits
               ? "Credit amount cannot exceed the Square ticket total."
               : squareReceiptReferenceIssue
                 ? squareReceiptReferenceIssue
                 : !squareCashierConfirmed
-                  ? "Confirm that the cashier applied this credit in Square before staging."
+                  ? "Confirm that the cashier applied this credit in Square before completing the sale."
                   : ""
   const creditAdjustmentMinorUnits = creditRedemptionInputToMinorUnits(creditAdjustmentInput)
   const creditAdjustmentIssue =
@@ -2885,13 +3691,9 @@ export function App() {
         : creditAdjustmentMinorUnits <= 0
           ? "Credit add must be greater than $0.00."
           : ""
-  const creditAdjustmentNeedsManagerApproval =
-    creditAdjustmentMinorUnits !== null &&
-    Math.abs(creditAdjustmentMinorUnits) > creditApprovalThresholdMinorUnits
   const creditAdjustmentCanSubmit =
     !creditAdjustmentIssue &&
-    Boolean(localSyncSessionToken) &&
-    (!creditAdjustmentNeedsManagerApproval || ["manager", "owner"].includes(sessionRole))
+    Boolean(localSyncSessionToken)
   const creditRedemptionAmountLabel = formatMoney(
     creditRedemptionMinorUnits ?? 0,
     customerCredit.currency,
@@ -2954,27 +3756,30 @@ export function App() {
     "_",
     " ",
   )}, POS ${intakePosVisibility.replace("_", " ")}`
-  const tradeInSourceIsIntake = intakeCardName.trim() !== ""
-  const tradeInCurrentCardName = tradeInSourceIsIntake ? intakeCardName.trim() : selectedItem.cardName
-  const tradeInCurrentSetName = tradeInSourceIsIntake ? intakeSetName.trim() : selectedItem.setName
-  const tradeInCurrentCondition = tradeInSourceIsIntake ? intakeCondition : selectedItem.condition
-  const tradeInCurrentProductType = tradeInSourceIsIntake
-    ? intakeProductType
-    : selectedItem.rawOrGraded === "graded"
-      ? "graded"
-      : "raw"
-  const tradeInCurrentGradingCompany = tradeInSourceIsIntake
-    ? intakeGradingCompany.trim()
-    : (selectedItem.gradingCompany ?? "")
-  const tradeInCurrentGrade = tradeInSourceIsIntake ? intakeGrade.trim() : (selectedItem.grade ?? "")
-  const tradeInCurrentCertNumber = tradeInSourceIsIntake ? intakeCertNumber.trim() : (selectedItem.certNumber ?? "")
-  const tradeInCurrentImageUrl = tradeInSourceIsIntake ? selectedScryDexImageUrl : selectedInventoryImageUrl
-  const tradeInCurrentMarketMinorUnits =
-    intakeMarketPriceMinorUnits > 0 ? intakeMarketPriceMinorUnits : selectedItem.priceMinorUnits
+  const tradeInCurrentCardName = selectedTradeInCard?.card_name ?? ""
+  const tradeInCurrentSetName = selectedTradeInCard?.set_name ?? ""
+  const tradeInCurrentCondition = tradeInCondition
+  const tradeInCurrentProductType = tradeInProductType
+  const tradeInCurrentGradingCompany = tradeInGradingCompany.trim()
+  const tradeInCurrentGrade = tradeInGrade.trim()
+  const tradeInCurrentCertNumber = tradeInCertNumber.trim()
+  const tradeInCurrentImageUrl = selectedTradeInImageUrl
+  const tradeInCurrentMarketMinorUnits = selectedTradeInMarketMinorUnits
   const tradeInPreviewValueMinorUnits = tradeInValueMinorUnits(
     tradeInCurrentMarketMinorUnits,
     tradeInPercentageBasisPoints,
   )
+  const tradeInManualFinalValueMinorUnits =
+    tradeInManualFinalValueInput.trim() === ""
+      ? null
+      : creditRedemptionInputToMinorUnits(tradeInManualFinalValueInput)
+  const tradeInManualFinalValueIssue =
+    tradeInManualFinalValueInput.trim() !== "" && tradeInManualFinalValueMinorUnits === null
+      ? "Enter a valid dollar amount or clear the override."
+      : ""
+  const tradeInCurrentFinalValueMinorUnits =
+    tradeInManualFinalValueMinorUnits ?? tradeInPreviewValueMinorUnits
+  const tradeInCurrentFinalValueManuallySet = tradeInManualFinalValueMinorUnits !== null
   const tradeInCashTotalMinorUnits = tradeInDraftItems
     .filter((item) => item.payoutType === "cash")
     .reduce((total, item) => total + item.finalValueMinorUnits, 0)
@@ -2982,24 +3787,38 @@ export function App() {
     .filter((item) => item.payoutType === "credit")
     .reduce((total, item) => total + item.finalValueMinorUnits, 0)
   const tradeInCombinedTotalMinorUnits = tradeInCashTotalMinorUnits + tradeInCreditTotalMinorUnits
-  const tradeInCustomerLookupQuery = [tradeInCustomerName, tradeInCustomerPhone]
+  const tradeInCustomerLookupQuery = [
+    tradeInCustomerLookupInput,
+    tradeInCustomerName,
+    tradeInCustomerPhone,
+    tradeInCustomerEmail,
+  ]
     .map((value) => value.trim())
     .filter(Boolean)
     .join(" ")
   const tradeInSelectedCustomer =
+    tradeInSelectedCustomerSnapshot ??
     tradeInCustomerMatches.find(
       (customer) => customer.customer_public_id === tradeInSelectedCustomerPublicId,
     ) ?? null
   const tradeInExactCustomerMatch =
     tradeInSelectedCustomer ??
     tradeInCustomerMatches.find((customer) =>
-      localSyncCustomerMatchesTradeInLookup(customer, tradeInCustomerName, tradeInCustomerPhone),
+      localSyncCustomerMatchesTradeInLookup(
+        customer,
+        tradeInCustomerLookupInput,
+        tradeInCustomerName,
+        tradeInCustomerPhone,
+        tradeInCustomerEmail,
+      ),
     ) ??
     null
   const tradeInPrimaryCustomerMatch = tradeInExactCustomerMatch ?? tradeInCustomerMatches[0] ?? null
   const tradeInCustomerNameRequired = tradeInCustomerName.trim() === ""
   const tradeInCustomerActionLabel =
-    tradeInCustomerLookupQuery.trim() === ""
+    tradeInSelectedCustomer
+      ? "Customer Selected"
+      : tradeInCustomerLookupQuery.trim() === ""
       ? "Enter Customer"
       : tradeInCustomerLookupStatus === "searching"
         ? "Searching"
@@ -3017,7 +3836,19 @@ export function App() {
             ? "No match found"
             : tradeInCustomerLookupStatus === "blocked"
               ? "Lookup blocked"
-              : "Enter name or phone"
+              : "Search customer"
+  const visibleServerTradeInOrders =
+    tradeInSelectedCustomer && tradeInRecordSearch.trim() === "" && tradeInStaffFilter.trim() === ""
+      ? serverTradeInOrders.filter((order) =>
+          localSyncTradeInOrderMatchesCustomer(order, tradeInSelectedCustomer),
+        )
+      : serverTradeInOrders
+  const selectedCustomerServerTradeInCount =
+    tradeInSelectedCustomer
+      ? serverTradeInOrders.filter((order) =>
+          localSyncTradeInOrderMatchesCustomer(order, tradeInSelectedCustomer),
+        ).length
+      : 0
   const kioskInventoryPullConnected =
     localSyncStatus?.status === "ok" &&
     (localSyncStatus.wordpress_inventory_pull_connected ??
@@ -3042,7 +3873,9 @@ export function App() {
 
     if (lookupQuery.length < 2) {
       setTradeInCustomerMatches([])
-      setTradeInSelectedCustomerPublicId("")
+      if (!tradeInSelectedCustomerSnapshot) {
+        setTradeInSelectedCustomerPublicId("")
+      }
       setTradeInCustomerLookupStatus("idle")
       return
     }
@@ -3058,7 +3891,9 @@ export function App() {
 
         if (result.status !== "ok") {
           setTradeInCustomerMatches([])
-          setTradeInSelectedCustomerPublicId("")
+          if (!tradeInSelectedCustomerSnapshot) {
+            setTradeInSelectedCustomerPublicId("")
+          }
           setTradeInCustomerLookupStatus("blocked")
           return
         }
@@ -3066,11 +3901,13 @@ export function App() {
         const matches = result.customers.slice(0, 6)
         setTradeInCustomerMatches(matches)
         setTradeInCustomerLookupStatus(matches.length > 0 ? "matched" : "empty")
-        if (
-          tradeInSelectedCustomerPublicId &&
-          !matches.some((customer) => customer.customer_public_id === tradeInSelectedCustomerPublicId)
-        ) {
-          setTradeInSelectedCustomerPublicId("")
+        if (!tradeInSelectedCustomerSnapshot) {
+          if (
+            tradeInSelectedCustomerPublicId &&
+            !matches.some((customer) => customer.customer_public_id === tradeInSelectedCustomerPublicId)
+          ) {
+            setTradeInSelectedCustomerPublicId("")
+          }
         }
       })
     }, 220)
@@ -3079,7 +3916,111 @@ export function App() {
       cancelled = true
       window.clearTimeout(timeoutId)
     }
-  }, [localSyncClient, tradeInCustomerLookupQuery, tradeInSelectedCustomerPublicId])
+  }, [localSyncClient, tradeInCustomerLookupQuery, tradeInSelectedCustomerPublicId, tradeInSelectedCustomerSnapshot])
+
+  useEffect(() => {
+    if (tradeInProductType !== "graded") {
+      setTradeInSecondaryValuation(null)
+      setTradeInSecondaryValuationStatus("ScryDex/reference cache is the primary pricing source.")
+      return
+    }
+
+    if (!selectedTradeInCard) {
+      setTradeInSecondaryValuation(null)
+      setTradeInSecondaryValuationStatus("Select a graded card to pull secondary comps.")
+      return
+    }
+
+    if (!tradeInGrade.trim()) {
+      setTradeInSecondaryValuation(null)
+      setTradeInSecondaryValuationStatus("Enter the grade to pull secondary graded comps.")
+      return
+    }
+
+    if (!selectedTradeInPrimaryValuation.usingFallback) {
+      setTradeInSecondaryValuation(null)
+      setTradeInSecondaryValuationStatus("Exact ScryDex/reference graded price is being used.")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setTradeInSecondaryValuation(null)
+      setTradeInSecondaryValuationStatus("Unlock with staff PIN to pull secondary graded comps.")
+      return
+    }
+
+    let cancelled = false
+    const timeoutId = window.setTimeout(() => {
+      setTradeInSecondaryValuationStatus("Checking secondary graded comp providers.")
+
+      void localSyncClient
+        .lookupGradedTradeInValuation(localSyncSessionToken, {
+          providerCardId: selectedTradeInCard.provider_card_id,
+          providerVariantId: selectedTradeInVariant?.provider_variant_id ?? "",
+          referenceVariantId: selectedTradeInVariant?.reference_variant_id ?? null,
+          game: selectedTradeInCard.game,
+          cardName: selectedTradeInCard.card_name,
+          setName: selectedTradeInCard.set_name,
+          setCode: selectedTradeInCard.set_code,
+          cardNumber: selectedTradeInCard.card_number,
+          printedNumber: selectedTradeInCard.printed_number,
+          variant: selectedTradeInVariant?.variant ?? "",
+          finish: selectedTradeInVariant?.finish ?? "",
+          gradingCompany: tradeInGradingCompany,
+          grade: tradeInGrade,
+        })
+        .then((result) => {
+          if (cancelled) {
+            return
+          }
+
+          if (result.status !== "ok") {
+            setTradeInSecondaryValuation(null)
+            setTradeInSecondaryValuationStatus(
+              /API token/i.test(result.message)
+                ? "Secondary graded comp lookup is not configured on this local server. Use Check comps or enter a manual offer."
+                : result.message,
+            )
+            return
+          }
+
+          setTradeInSecondaryValuation(result.valuation)
+          if (result.valuation) {
+            setTradeInSecondaryValuationStatus(
+              `${result.valuation.source_label} loaded${result.cache_hit ? " from cache" : ""}; ScryDex remains primary when exact pricing exists.`,
+            )
+            return
+          }
+
+          const providerStatus = result.provider_statuses[0]
+          setTradeInSecondaryValuationStatus(staffSafeSecondaryProviderMessage(providerStatus))
+        })
+        .catch((error: unknown) => {
+          if (cancelled) {
+            return
+          }
+
+          setTradeInSecondaryValuation(null)
+          setTradeInSecondaryValuationStatus(
+            error instanceof Error ? error.message : "Secondary graded comp lookup failed.",
+          )
+        })
+    }, 350)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    localSyncClient,
+    localSyncSessionToken,
+    selectedTradeInCard,
+    selectedTradeInPrimaryValuation.usingFallback,
+    selectedTradeInVariant,
+    tradeInGrade,
+    tradeInGradingCompany,
+    tradeInProductType,
+  ])
 
   useEffect(() => {
     if (queuedOperations.length === 0) {
@@ -3097,6 +4038,19 @@ export function App() {
       setSelectedQueuedOperationId(queuedOperations[0].client_operation_id)
     }
   }, [queuedOperations, selectedQueuedOperationId])
+
+  useEffect(() => {
+    if (eventSnapshots.length === 0) {
+      if (selectedEventId !== "") {
+        setSelectedEventId("")
+      }
+      return
+    }
+
+    if (!eventSnapshots.some((event) => event.eventId === selectedEventId)) {
+      setSelectedEventId(eventSnapshots[0].eventId)
+    }
+  }, [eventSnapshots, selectedEventId])
 
   useEffect(() => {
     const normalizedQuery = query.trim()
@@ -3610,9 +4564,11 @@ export function App() {
       return
     }
 
-    setManagerReportStatus(result.wordpress_reports_pull_connected ? "ready" : "warning")
+    setManagerReportStatus("ready")
     setManagerReportDetail(
-      `${result.report.replace("_", " ")} report ready with ${result.rows.length} row(s); CSV header ${result.csv_header || "pending"}.`,
+      `${result.report.replace("_", " ")} report ready with ${result.rows.length} row(s); ${
+        result.wordpress_reports_pull_connected ? "WordPress report connector checked" : "local middleman data"
+      }; CSV header ${result.csv_header || "pending"}.`,
     )
   }
 
@@ -3982,21 +4938,25 @@ export function App() {
   }
 
   async function recordLocalDeviceHeartbeat(networkStatus: "online" | "offline" | "degraded" = "online") {
-    const heartbeatResult = await localSyncClient.recordDeviceHeartbeat({
-      deviceId: activePairedDevice?.devicePublicId ?? workspace.device.installationId,
-      deviceLabel: `${workspace.device.storeLabel} ${workspace.device.modeLabel}`.trim(),
-      mode: currentClientDeviceMode(),
-      appVersion: OFFLINE_APP_VERSION,
-      platform: "windows",
-      networkStatus,
-      setupStatus: activeProfile.localSync.oneWebsiteMode ? "ready" : "setup_required",
-      serverUrl: localSyncClient.serverUrl,
-      websiteUrl: connectorDisplayUrl(activeProfile),
-      capabilities: currentClientDeviceCapabilities(),
-      heartbeatIntervalSeconds: 30,
-    })
+    const [heartbeatResult, syncStatusResult] = await Promise.all([
+      localSyncClient.recordDeviceHeartbeat({
+        deviceId: activePairedDevice?.devicePublicId ?? workspace.device.installationId,
+        deviceLabel: `${workspace.device.storeLabel} ${workspace.device.modeLabel}`.trim(),
+        mode: currentClientDeviceMode(),
+        appVersion: OFFLINE_APP_VERSION,
+        platform: "windows",
+        networkStatus,
+        setupStatus: activeProfile.localSync.oneWebsiteMode ? "ready" : "setup_required",
+        serverUrl: localSyncClient.serverUrl,
+        websiteUrl: connectorDisplayUrl(activeProfile),
+        capabilities: currentClientDeviceCapabilities(),
+        heartbeatIntervalSeconds: 30,
+      }),
+      localSyncClient.getSyncStatus(),
+    ])
 
     setLocalDeviceHeartbeat(heartbeatResult)
+    setLocalSyncStatus(syncStatusResult)
     setLocalSyncLastCheckedAtUtc(new Date().toISOString())
     void refreshLocalDeviceStatus()
 
@@ -4896,7 +5856,7 @@ export function App() {
     if (selectedItem.status !== "available") {
       setActivityMessage({
         title: "Hold unavailable",
-        detail: `${selectedItem.cardName} is ${statusLabel(selectedItem.status).toLowerCase()} locally; choose an available item before staging a guarded hold.`,
+        detail: `${selectedItem.cardName} is ${statusLabel(selectedItem.status).toLowerCase()} locally; choose an available item before saving a hold.`,
       })
       return
     }
@@ -5256,7 +6216,7 @@ export function App() {
       localSyncSessionToken,
       normalizedQuery,
       scryDexGame,
-      { limit: "all" },
+      { limit: "all", rawOrGraded: intakeProductType === "graded" ? "graded" : "raw" },
     )
 
     if (result.status !== "ok") {
@@ -5307,6 +6267,149 @@ export function App() {
         ? scryDexVariantId(firstVisible.provider_card_id, firstVariant, 0)
         : "",
     )
+  }
+
+  async function handleTradeInCardLookup() {
+    const normalizedQuery = tradeInCardQuery.trim()
+
+    if (!normalizedQuery) {
+      setTradeInCardLookupStatus("blocked")
+      setTradeInCardLookupDetail("Enter a card name, set, or number.")
+      setTradeInCardResults([])
+      setTradeInCardSetFilter("")
+      setTradeInSelectedCardId("")
+      setTradeInSelectedVariantId("")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setTradeInCardLookupStatus("blocked")
+      setTradeInCardLookupDetail("Staff PIN session required before searching ScryDex.")
+      setTradeInCardResults([])
+      setTradeInCardSetFilter("")
+      setTradeInSelectedCardId("")
+      setTradeInSelectedVariantId("")
+      return
+    }
+
+    setTradeInCardLookupStatus("searching")
+    setTradeInCardLookupDetail("Searching ScryDex and local reference cache")
+    setTradeInCardSetFilter("")
+
+    const result = await localSyncClient.searchScryDexCards(
+      localSyncSessionToken,
+      normalizedQuery,
+      tradeInCardGame,
+      { limit: "all", rawOrGraded: tradeInProductType === "graded" ? "graded" : "raw" },
+    )
+
+    if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "Trade-in card search locked")) {
+        setTradeInCardLookupStatus("blocked")
+        setTradeInCardLookupDetail("PIN session expired. Enter your 4-digit PIN, then search again.")
+      } else {
+        setTradeInCardLookupStatus("blocked")
+        setTradeInCardLookupDetail(result.message)
+      }
+
+      setTradeInCardResults([])
+      setTradeInCardSetFilter("")
+      setTradeInSelectedCardId("")
+      setTradeInSelectedVariantId("")
+      return
+    }
+
+    const firstCard = result.cards[0] ?? null
+    const firstVariant = firstCard?.variants[0] ?? null
+
+    setTradeInCardResults(result.cards)
+    setTradeInSelectedCardId(firstCard?.provider_card_id ?? "")
+    setTradeInSelectedVariantId(
+      firstCard && firstVariant
+        ? scryDexVariantId(firstCard.provider_card_id, firstVariant, 0)
+        : "",
+    )
+    setTradeInCardLookupStatus("ready")
+    setTradeInCardLookupDetail(
+      `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} loaded; use set filter to choose the exact printing.`,
+    )
+  }
+
+  function handleTradeInCardSetFilterChange(nextFilter: string) {
+    setTradeInCardSetFilter(nextFilter)
+
+    const firstVisible = tradeInCardResults.find((card) => scryDexCardMatchesSetFilter(card, nextFilter)) ?? null
+    const firstVariant = firstVisible?.variants[0] ?? null
+
+    setTradeInSelectedCardId(firstVisible?.provider_card_id ?? "")
+    setTradeInSelectedVariantId(
+      firstVisible && firstVariant
+        ? scryDexVariantId(firstVisible.provider_card_id, firstVariant, 0)
+        : "",
+    )
+  }
+
+  function handleSelectTradeInCard(card: LocalSyncScryDexCard, productType: "raw" | "graded" = tradeInProductType) {
+    const nextProductType = productType === "graded" ? "graded" : "raw"
+    const firstVariant = card.variants[0] ?? null
+    const variantId = firstVariant
+      ? scryDexVariantId(card.provider_card_id, firstVariant, 0)
+      : ""
+    const gradedPoint = nextProductType === "graded" ? scryDexBestGradedPricePoint(card, firstVariant) : null
+
+    setTradeInSelectedCardId(card.provider_card_id)
+    setTradeInSelectedVariantId(variantId)
+    setTradeInProductType(nextProductType)
+    setTradeInCardGame(card.game)
+    setTradeInManualFinalValueInput("")
+    if (nextProductType === "graded") {
+      setTradeInGradingCompany(gradedPoint?.grading_company || tradeInGradingCompany || "PSA")
+      setTradeInGrade(gradedPoint?.grade || tradeInGrade)
+    }
+    setTradeInCardLookupDetail(
+      `Selected ${card.card_name}; set condition, payout, and percentage before adding it to the offer.`,
+    )
+  }
+
+  function handleTradeInVariantChange(nextVariantId: string) {
+    setTradeInSelectedVariantId(nextVariantId)
+    setTradeInManualFinalValueInput("")
+
+    if (!selectedTradeInCard) {
+      return
+    }
+
+    const nextVariant = selectedTradeInCard.variants.find(
+      (variant, index) =>
+        scryDexVariantId(selectedTradeInCard.provider_card_id, variant, index) === nextVariantId,
+    ) ?? null
+    const gradedPoint =
+      tradeInProductType === "graded" ? scryDexBestGradedPricePoint(selectedTradeInCard, nextVariant) : null
+
+    if (gradedPoint?.grading_company) {
+      setTradeInGradingCompany(gradedPoint.grading_company)
+    }
+
+    if (gradedPoint?.grade) {
+      setTradeInGrade(gradedPoint.grade)
+    }
+  }
+
+  function handleTradeInProductTypeChange(nextProductType: "raw" | "graded") {
+    setTradeInProductType(nextProductType)
+    setTradeInManualFinalValueInput("")
+
+    if (!selectedTradeInCard) {
+      return
+    }
+
+    const gradedPoint =
+      nextProductType === "graded" ? scryDexBestGradedPricePoint(selectedTradeInCard, selectedTradeInVariant) : null
+
+    if (nextProductType === "graded") {
+      setTradeInGradingCompany(gradedPoint?.grading_company || tradeInGradingCompany || "PSA")
+      setTradeInGrade(gradedPoint?.grade || tradeInGrade)
+    }
   }
 
   function handleUseScryDexCard(card: LocalSyncScryDexCard, productType: "raw" | "graded" = intakeProductType) {
@@ -5382,13 +6485,23 @@ export function App() {
 
     setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
     setActiveCustomerId(nextCreditSnapshot.customerId)
+    setTradeInSelectedCustomerSnapshot(customer)
     setTradeInSelectedCustomerPublicId(customer.customer_public_id)
+    setTradeInCustomerMatches((customers) => [
+      customer,
+      ...customers.filter((candidate) => candidate.customer_public_id !== customer.customer_public_id),
+    ])
     setTradeInCustomerName(customer.display_name)
+    setTradeInCustomerLookupInput(lookupValue || customer.display_name)
+    setTradeInCustomerEmail(customer.email || (lookupValue.includes("@") ? lookupValue : ""))
     if (lookupValue && !lookupValue.includes("@")) {
       setTradeInCustomerPhone(lookupValue)
     }
     setTradeInCustomerLookupStatus("matched")
     setActiveSection("Trade-Ins")
+    if (localSyncSessionToken) {
+      void refreshCustomerProfile(customer.customer_public_id)
+    }
     setActivityMessage({
       title: "Trade-in customer selected",
       detail: `${customer.display_name} is attached to this offer. Staff can save the quote, accept, or decline after the card lines are staged.`,
@@ -5400,6 +6513,14 @@ export function App() {
       setActivityMessage({
         title: "Customer lookup needed",
         detail: "Enter a customer name or phone at the top of the Trade-In Counter.",
+      })
+      return
+    }
+
+    if (tradeInSelectedCustomer) {
+      setActivityMessage({
+        title: "Trade-in customer ready",
+        detail: `${tradeInSelectedCustomer.display_name} is already attached to this offer.`,
       })
       return
     }
@@ -5426,11 +6547,14 @@ export function App() {
     }
 
     const { firstName, lastName } = splitTradeInCustomerName(tradeInCustomerName)
+    const lookupInput = tradeInCustomerLookupInput.trim()
+    const phoneLookup = tradeInCustomerPhone.trim() || (!lookupInput.includes("@") ? lookupInput : "")
+    const emailLookup = tradeInCustomerEmail.trim() || (lookupInput.includes("@") ? lookupInput : "")
     const createResult = await localSyncClient.createCustomer(localSyncSessionToken, {
       firstName,
       lastName,
-      email: "",
-      customerLookup: tradeInCustomerPhone.trim(),
+      email: emailLookup,
+      customerLookup: phoneLookup,
     })
 
     if (createResult.status !== "ok") {
@@ -5455,16 +6579,25 @@ export function App() {
       setActiveSection("Trade-Ins")
       setActivityMessage({
         title: "Trade-in needs a card",
-        detail: "Search or enter the card name before staging it for trade-in review.",
+        detail: "Search or enter the card name before adding it to the trade-in offer.",
       })
       return
     }
 
-    if (tradeInCurrentMarketMinorUnits <= 0) {
+    if (tradeInCurrentMarketMinorUnits <= 0 && tradeInManualFinalValueMinorUnits === null) {
       setActiveSection("Trade-Ins")
       setActivityMessage({
-        title: "Trade-in needs market mid",
-        detail: "Enter or select a market price before calculating cash or credit value.",
+        title: "Trade-in needs an offer value",
+        detail: "ScryDex did not return a usable graded market value for this card. Enter a manual offer value before adding it to the offer.",
+      })
+      return
+    }
+
+    if (tradeInManualFinalValueIssue) {
+      setActiveSection("Trade-Ins")
+      setActivityMessage({
+        title: "Trade-in override needs a valid value",
+        detail: tradeInManualFinalValueIssue,
       })
       return
     }
@@ -5480,19 +6613,42 @@ export function App() {
       certNumber: tradeInCurrentProductType === "graded" ? tradeInCurrentCertNumber : "",
       marketMidMinorUnits: tradeInCurrentMarketMinorUnits,
       percentageBasisPoints: tradeInPercentageBasisPoints,
-      finalValueMinorUnits: tradeInValueMinorUnits(tradeInCurrentMarketMinorUnits, tradeInPercentageBasisPoints),
+      finalValueMinorUnits: tradeInCurrentFinalValueMinorUnits,
+      finalValueManuallySet: tradeInCurrentFinalValueManuallySet,
       payoutType: tradeInPayoutType,
       imageUrl: tradeInCurrentImageUrl,
+      providerCardId: selectedTradeInCard?.provider_card_id,
+      referenceVariantId: selectedTradeInVariant?.reference_variant_id,
+      providerVariantId: selectedTradeInVariant?.provider_variant_id,
+      game: selectedTradeInCard?.game ?? tradeInCardGame,
+      setCode: selectedTradeInCard?.set_code,
+      cardNumber: selectedTradeInCard?.card_number,
+      printedNumber: selectedTradeInCard?.printed_number,
+      variant: selectedTradeInVariant?.variant,
+      finish: selectedTradeInVariant?.finish,
+      language: selectedTradeInVariant?.language,
+      backImageUrl: selectedTradeInVariant?.back_image_url,
+      priceObservedAtUtc:
+        selectedTradeInValuation.secondaryValuation?.observed_at_utc ??
+        selectedTradeInCard?.price_observed_at_utc ??
+        selectedTradeInCard?.catalog_synced_at_utc ??
+        null,
+      priceSource: selectedTradeInValuation.secondaryValuation
+        ? `${selectedTradeInValuation.secondaryValuation.provider}:secondary_graded_comp`
+        : selectedTradeInCard
+        ? `${selectedTradeInCard.catalog_source}:scrydex_trade_in`
+        : "manual_trade_in",
     }
 
     setTradeInDraftItems((items) => [...items, nextItem])
+    setTradeInManualFinalValueInput("")
     setActiveSection("Trade-Ins")
     setActivityMessage({
       title: "Trade-in line staged",
       detail: `${nextItem.cardName} is staged at ${tradeInPercentageBasisPoints / 100}% for ${formatMoney(
-        tradeInValueMinorUnits(nextItem.marketMidMinorUnits, nextItem.percentageBasisPoints),
+        nextItem.finalValueMinorUnits,
         "USD",
-      )} ${nextItem.payoutType}. It is not sellable inventory until approved and converted.`,
+      )} ${nextItem.payoutType}${nextItem.finalValueManuallySet ? " with a manual offer override" : ""}. It is not sellable inventory until approved and converted.`,
     })
   }
 
@@ -5513,6 +6669,7 @@ export function App() {
           ...item,
           percentageBasisPoints: nextPercentage,
           finalValueMinorUnits: tradeInValueMinorUnits(item.marketMidMinorUnits, nextPercentage),
+          finalValueManuallySet: false,
         }
       }),
     )
@@ -5537,10 +6694,165 @@ export function App() {
           ? {
               ...item,
               finalValueMinorUnits: parsedMinorUnits,
+              finalValueManuallySet: true,
             }
           : item,
-      ),
+        ),
     )
+  }
+
+  function tradeInDraftItemFromSavedOrderItem(item: LocalSyncTradeInItem): TradeInDraftItem {
+    return {
+      id: item.item_id || `trade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      productType: item.product_type,
+      cardName: item.card_name,
+      setName: item.set_name,
+      condition: item.condition,
+      gradingCompany: item.grading_company,
+      grade: item.grade,
+      certNumber: item.cert_number,
+      marketMidMinorUnits: item.market_mid_minor_units,
+      percentageBasisPoints: item.trade_in_percentage_basis_points,
+      finalValueMinorUnits: item.final_value_minor_units,
+      finalValueManuallySet: item.final_value_manually_set,
+      payoutType: item.payout_type,
+      imageUrl: item.image_url,
+      providerCardId: item.provider_card_id,
+      referenceVariantId: item.reference_variant_id,
+      providerVariantId: item.provider_variant_id,
+      game: item.game,
+      setCode: item.set_code,
+      cardNumber: item.card_number,
+      printedNumber: item.printed_number,
+      variant: item.variant,
+      finish: item.finish,
+      language: item.language,
+      backImageUrl: item.back_image_url,
+      priceSource: item.price_source || "saved_trade_in_offer",
+      priceObservedAtUtc: item.price_observed_at_utc,
+    }
+  }
+
+  function handleLoadTradeInOrder(order: LocalSyncTradeInOrder) {
+    const restoredCustomer: LocalSyncCustomer = {
+      customer_public_id: order.customer_public_id || `saved-${order.order_id}`,
+      customer_id: null,
+      row_version: 0,
+      display_name: order.customer_name,
+      first_name: splitTradeInCustomerName(order.customer_name).firstName,
+      last_name: splitTradeInCustomerName(order.customer_name).lastName,
+      customer_lookup: order.customer_phone,
+      email: "",
+      status: "active",
+      credit: {
+        balance_minor_units: 0,
+        currency: order.currency,
+      },
+      source: "cached",
+    }
+    const draftItems = order.items.map(tradeInDraftItemFromSavedOrderItem)
+
+    setTradeInSelectedCustomerSnapshot(restoredCustomer)
+    setTradeInSelectedCustomerPublicId(restoredCustomer.customer_public_id)
+    setTradeInCustomerMatches((customers) => [
+      restoredCustomer,
+      ...customers.filter((customer) => customer.customer_public_id !== restoredCustomer.customer_public_id),
+    ])
+    setTradeInCustomerName(order.customer_name)
+    setTradeInCustomerPhone(order.customer_phone)
+    setTradeInCustomerLookupInput(order.customer_phone || order.customer_name)
+    setTradeInCustomerEmail("")
+    setTradeInCustomerLookupStatus("matched")
+    setTradeInDraftItems(draftItems)
+    setTradeInLoadedOrderId(order.order_id)
+    setTradeInSyncStatus("ready")
+    setActiveSection("Trade-Ins")
+    setActivityMessage({
+      title: "Saved trade-in loaded",
+      detail: `${order.order_id} is back in the offer cart with ${draftItems.length} line item(s) for edits, additions, removals, accept, or decline.`,
+    })
+  }
+
+  async function createInventoryFromAcceptedTradeInItems(itemsToConvert: TradeInDraftItem[]) {
+    if (!localSyncSessionToken || itemsToConvert.length === 0) {
+      return { createdCount: 0, blockedCount: itemsToConvert.length, detail: "" }
+    }
+
+    const createdRemoteItems: LocalSyncInventoryItem[] = []
+    const blockedMessages: string[] = []
+
+    for (const item of itemsToConvert) {
+      const autoPriceMinorUnits = autoRetailPriceMinorUnits(item.marketMidMinorUnits)
+      const minimumSalePriceMinorUnits = Math.max(item.finalValueMinorUnits, 100)
+      const finalPriceMinorUnits = finalRetailPriceMinorUnits(autoPriceMinorUnits, minimumSalePriceMinorUnits)
+      const result = await localSyncClient.createInventoryIntake(localSyncSessionToken, {
+        cardName: item.cardName,
+        setName: item.setName || "Trade-In Intake",
+        condition: item.condition || (item.productType === "graded" ? "RAW" : "LP"),
+        barcode: "",
+        priceMinorUnits: finalPriceMinorUnits,
+        location: "Intake Queue",
+        quantity: 1,
+        providerCardId: item.providerCardId,
+        referenceVariantId: item.referenceVariantId,
+        providerVariantId: item.providerVariantId,
+        game: item.game ?? tradeInCardGame,
+        setCode: item.setCode,
+        cardNumber: item.cardNumber,
+        printedNumber: item.printedNumber,
+        variant: item.variant,
+        finish: item.finish,
+        language: item.language,
+        rawOrGraded: item.productType,
+        gradingCompany: item.productType === "graded" ? item.gradingCompany : "",
+        grade: item.productType === "graded" ? item.grade : "",
+        certNumber: item.productType === "graded" ? item.certNumber : "",
+        imageUrl: item.imageUrl,
+        backImageUrl: item.backImageUrl,
+        priceSource: item.priceSource ?? "accepted_trade_in",
+        priceObservedAtUtc: item.priceObservedAtUtc ?? null,
+        suggestedPriceMinorUnits: item.marketMidMinorUnits,
+        autoPriceMinorUnits,
+        minimumSalePriceMinorUnits,
+        finalPriceMinorUnits,
+        priceOverrideReason:
+          finalPriceMinorUnits > autoPriceMinorUnits
+            ? "trade_in_floor"
+            : "trade_in_market_plus_10_percent",
+        onlineVisibility: "visible",
+        kioskVisibility: "visible",
+        posVisibility: "visible",
+      })
+
+      if (result.status !== "ok") {
+        blockedMessages.push(`${item.cardName}: ${result.message}`)
+        continue
+      }
+
+      createdRemoteItems.push(...((result.items && result.items.length > 0) ? result.items : [result.item]))
+    }
+
+    if (createdRemoteItems.length > 0) {
+      const nextId = inventoryItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
+      const nextItems = createdRemoteItems.map((item, index) => inventoryItemFromLocalSync(item, nextId + index))
+
+      setInventoryItems((items) => [...nextItems, ...items])
+      setSelectedId(nextItems[0]?.id ?? selectedId)
+      setLocalInventoryIntakeReceipts((receipts) => [
+        ...buildLocalInventoryIntakeSyncReceipts(nextItems, {
+          profileId: activeProfile.id,
+          companyName: activeProfile.companyName,
+          localSyncServerUrl: localSyncClient.serverUrl,
+        }),
+        ...receipts,
+      ].slice(0, 50))
+    }
+
+    return {
+      createdCount: createdRemoteItems.length,
+      blockedCount: blockedMessages.length,
+      detail: blockedMessages.join("; "),
+    }
   }
 
   async function refreshTradeInOrders() {
@@ -5593,9 +6905,12 @@ export function App() {
     }
 
     setTradeInSyncStatus("saving")
-    const result = await localSyncClient.createTradeInOrder(localSyncSessionToken, {
+    const itemsForInventoryConversion = [...tradeInDraftItems]
+    const loadedOrderId = tradeInLoadedOrderId
+    const tradeInOrderPayload = {
       customerName: tradeInCustomerName.trim() || "Walk-in customer",
       customerPhone: tradeInCustomerPhone.trim(),
+      customerPublicId: tradeInSelectedCustomer?.customer_public_id,
       items: tradeInDraftItems.map((item) => ({
         id: item.id,
         productType: item.productType,
@@ -5610,8 +6925,24 @@ export function App() {
         finalValueMinorUnits: item.finalValueMinorUnits,
         payoutType: item.payoutType,
         imageUrl: item.imageUrl,
+        providerCardId: item.providerCardId,
+        referenceVariantId: item.referenceVariantId,
+        providerVariantId: item.providerVariantId,
+        game: item.game,
+        setCode: item.setCode,
+        cardNumber: item.cardNumber,
+        printedNumber: item.printedNumber,
+        variant: item.variant,
+        finish: item.finish,
+        language: item.language,
+        backImageUrl: item.backImageUrl,
+        priceSource: item.priceSource,
+        priceObservedAtUtc: item.priceObservedAtUtc,
       })),
-    })
+    }
+    const result = loadedOrderId
+      ? await localSyncClient.updateTradeInOrder(localSyncSessionToken, loadedOrderId, tradeInOrderPayload)
+      : await localSyncClient.createTradeInOrder(localSyncSessionToken, tradeInOrderPayload)
 
     if (result.status !== "ok") {
       setTradeInSyncStatus("blocked")
@@ -5623,6 +6954,7 @@ export function App() {
     }
 
     let savedOrder = result.order
+    let inventoryConversionDetail = ""
     if (nextStatus !== "draft") {
       const statusResult = await localSyncClient.updateTradeInOrderStatus(
         localSyncSessionToken,
@@ -5632,17 +6964,54 @@ export function App() {
 
       if (statusResult.status === "ok") {
         savedOrder = statusResult.order
+        inventoryConversionDetail += applyTradeInCreditApplication(statusResult.credit_application)
       } else {
+        setTradeInSyncStatus("blocked")
         setActivityMessage({
           title: "Trade-in offer saved",
           detail: `${result.order.customer_name} offer ${result.order.order_id} saved, but status update was blocked: ${statusResult.message}`,
         })
+        return
+      }
+    }
+
+    if (nextStatus === "approved") {
+      const inventoryResult = await createInventoryFromAcceptedTradeInItems(itemsForInventoryConversion)
+      inventoryConversionDetail =
+        inventoryResult.createdCount > 0
+          ? ` ${inventoryResult.createdCount} accepted card(s) were added to inventory intake and queued for website product sync.`
+          : " No inventory rows were created from the accepted offer."
+
+      if (inventoryResult.detail) {
+        inventoryConversionDetail += ` Review: ${inventoryResult.detail}`
+      }
+
+      if (inventoryResult.createdCount > 0) {
+        const conversionResult = await localSyncClient.updateTradeInOrderStatus(
+          localSyncSessionToken,
+          savedOrder.order_id,
+          "converted",
+          { notes: "Accepted offer converted to inventory intake from the employee app." },
+        )
+
+        if (conversionResult.status === "ok") {
+          savedOrder = conversionResult.order
+        }
       }
     }
 
     setServerTradeInOrders((orders) => [savedOrder, ...orders.filter((order) => order.order_id !== savedOrder.order_id)])
     setTradeInDraftItems([])
+    setTradeInCardQuery("")
+    setTradeInCardResults([])
+    setTradeInSelectedCardId("")
+    setTradeInSelectedVariantId("")
+    setTradeInLoadedOrderId("")
     setTradeInSyncStatus("ready")
+    void refreshLocalSyncStatus()
+    if (savedOrder.customer_public_id) {
+      void refreshCustomerProfile(savedOrder.customer_public_id)
+    }
     setActivityMessage({
       title:
         nextStatus === "approved"
@@ -5652,7 +7021,7 @@ export function App() {
             : "Trade-in draft saved",
       detail:
         nextStatus === "approved"
-          ? `${savedOrder.customer_name} accepted offer ${savedOrder.order_id}. Mark paid before converting accepted items to sellable inventory.`
+          ? `${savedOrder.customer_name} accepted offer ${savedOrder.order_id}.${inventoryConversionDetail}`
           : nextStatus === "rejected"
             ? `${savedOrder.customer_name} declined offer ${savedOrder.order_id}. The offer is saved for lookup by name, phone, receipt, staff, or card.`
             : `${savedOrder.customer_name} draft ${savedOrder.order_id} saved to the shared middleman queue. It is not sellable inventory yet.`,
@@ -5671,9 +7040,45 @@ export function App() {
       return
     }
 
+    let nextOrder = result.order
+    let detail = `${result.order.customer_name} moved to ${result.order.status}.`
+
+    if (status === "approved") {
+      detail += applyTradeInCreditApplication(result.credit_application)
+      const itemsForInventoryConversion = result.order.items.map(tradeInDraftItemFromSavedOrderItem)
+      const inventoryResult = await createInventoryFromAcceptedTradeInItems(itemsForInventoryConversion)
+
+      detail +=
+        inventoryResult.createdCount > 0
+          ? ` ${inventoryResult.createdCount} card(s) added to inventory intake.`
+          : " No inventory rows were created."
+
+      if (inventoryResult.detail) {
+        detail += ` Review: ${inventoryResult.detail}`
+      }
+
+      if (inventoryResult.createdCount > 0) {
+        const conversionResult = await localSyncClient.updateTradeInOrderStatus(
+          localSyncSessionToken,
+          result.order.order_id,
+          "converted",
+          { notes: "Approved saved trade-in converted to inventory intake." },
+        )
+
+        if (conversionResult.status === "ok") {
+          nextOrder = conversionResult.order
+        }
+      }
+    }
+
     setServerTradeInOrders((orders) =>
-      orders.map((order) => (order.order_id === result.order.order_id ? result.order : order)),
+      orders.map((order) => (order.order_id === nextOrder.order_id ? nextOrder : order)),
     )
+    void refreshLocalSyncStatus()
+    if (nextOrder.customer_public_id) {
+      void refreshCustomerProfile(nextOrder.customer_public_id)
+    }
+    setActivityMessage({ title: "Trade-in status updated", detail })
   }
 
   function handleLoadTradeInItemForInventory(item: TradeInDraftItem) {
@@ -5920,6 +7325,8 @@ export function App() {
         squareReceiptReference: reference,
         squareOrderId: fulfillmentSquareOrderId.trim(),
         cashierConfirmed: true,
+        customerPublicId: ticket.customerPublicId,
+        customerLookup: ticket.customerLookup,
       },
     )
 
@@ -6033,7 +7440,7 @@ export function App() {
       setActiveSection("Kiosk")
       setActivityMessage({
         title: "Kiosk order needs name",
-        detail: "Enter the customer's first and last name before staging a pickup order.",
+        detail: "Enter the customer's first and last name before sending a pickup order.",
       })
       return
     }
@@ -6046,7 +7453,7 @@ export function App() {
       setActiveSection("Kiosk")
       setActivityMessage({
         title: "Kiosk cart empty",
-        detail: "Select at least one available card before staging a pickup order.",
+        detail: "Select at least one available card before sending a pickup order.",
       })
       return
     }
@@ -6070,6 +7477,8 @@ export function App() {
     const kioskTicket: KioskOrderTicket = {
       orderId: kioskOrder.order.order_id,
       customerName: kioskCustomerName,
+      customerPublicId: kioskOrder.order.customer_public_id,
+      customerLookup: kioskOrder.order.customer_lookup,
       itemCount: availableItems.length,
       totalMinorUnits: availableItems.reduce((total, item) => total + item.priceMinorUnits, 0),
       totalLabel: formatMoney(
@@ -6237,7 +7646,7 @@ export function App() {
     if (!event) {
       setActivityMessage({
         title: "No event selected",
-        detail: "Pull event snapshots or select an event before staging an offline registration.",
+        detail: "Refresh events or select an event before saving an in-store registration.",
       })
       return
     }
@@ -6319,7 +7728,9 @@ export function App() {
     setEventRegistrantLastName("")
     setEventRegistrantEmail("")
     setEventRegistrantPhone("")
-    setEventAttendeeLabel("Offline walk-in")
+    setEventAttendeeLabel(attendeeLabel)
+    setEventCheckinSearch(`${attendeeLabel} ${phone}`.trim())
+    setEventCheckinLookup(registrationResult.registration.registration_id)
     const nextEvent = eventSnapshotFromLocalSync(registrationResult.event)
     setEventSnapshots((events) =>
       events.map((item) => (item.eventId === nextEvent.eventId ? nextEvent : item)),
@@ -6330,7 +7741,7 @@ export function App() {
     if (!event) {
       setActivityMessage({
         title: "No event selected",
-        detail: "Pull event snapshots or select an event before staging an offline check-in.",
+        detail: "Refresh events or select an event before saving an in-store check-in.",
       })
       return
     }
@@ -6388,6 +7799,9 @@ export function App() {
     ].slice(0, 8))
     setShowEventQueue(true)
     setActiveSection("Events")
+    setEventCheckinSearch("")
+    setEventCheckinLookup("")
+    setEventAttendeeLabel("Offline walk-in")
     const nextEvent = eventSnapshotFromLocalSync(checkinResult.event)
     setEventSnapshots((events) =>
       events.map((item) => (item.eventId === nextEvent.eventId ? nextEvent : item)),
@@ -6411,8 +7825,7 @@ export function App() {
     setActivityMessage({
       title: "Customer credit selected",
       detail:
-        `${customerCreditDisplayName(nextCustomerCredit)} cached balance is ready for offline review; ` +
-        "website ledger remains authoritative after sync acceptance.",
+        `${customerCreditDisplayName(nextCustomerCredit)} is selected. Store credit and history are ready to review.`,
       })
   }
 
@@ -6475,6 +7888,7 @@ export function App() {
     setNewCustomerFirstName("")
     setNewCustomerLastName("")
     setNewCustomerEmail("")
+    setShowNewCustomerForm(false)
     setShowCreditLedger(true)
     void refreshLocalSyncStatus()
     setActivityMessage({
@@ -6482,7 +7896,935 @@ export function App() {
       detail:
         `${nextCreditSnapshot.customerName ?? "Customer"} was created in ${localSyncClient.serverUrl}; ` +
         "WordPress assigns the final customer record after sync acceptance.",
+      })
+    }
+
+  function applyCustomerProfileResult(result: LocalSyncCustomerProfileResult) {
+    if (result.status !== "ok") {
+      return null
+    }
+
+    const nextCreditSnapshot = localSyncCustomerToCreditSnapshot(
+      result.customer,
+      customerCreditDirectory,
+      customerCredit,
+    )
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setCustomerCreditLedgerEntries((entries) => {
+      const profileEntryIds = new Set(result.credit_ledger_entries.map((entry) => entry.entry_id))
+      const mappedEntries = result.credit_ledger_entries.map((entry) =>
+        customerCreditLedgerEntryFromLocalSync(entry, nextCreditSnapshot.customerId),
+      )
+
+      return [
+        ...mappedEntries,
+        ...entries.filter((entry) => !profileEntryIds.has(entry.entryId)),
+      ]
     })
+    setServerTradeInOrders((orders) => {
+      const profileOrderIds = new Set(result.trade_in_orders.map((order) => order.order_id))
+
+      return [
+        ...result.trade_in_orders,
+        ...orders.filter((order) => !profileOrderIds.has(order.order_id)),
+      ]
+    })
+    setKioskOrderTickets((tickets) => {
+      const profileTickets = result.kiosk_orders.map(kioskTicketFromLocalSyncOrder)
+      const profileTicketIds = new Set(profileTickets.map((ticket) => ticket.orderId))
+
+      return [
+        ...profileTickets,
+        ...tickets.filter((ticket) => !profileTicketIds.has(ticket.orderId)),
+      ].slice(0, 50)
+    })
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+    setCustomerProfileResult(result)
+
+    return nextCreditSnapshot
+  }
+
+  async function refreshCustomerProfile(customerPublicId = customerCredit.customerPublicId) {
+    if (!customerPublicId) {
+      setCustomerProfileStatus("blocked")
+      setCustomerProfileDetail("Select a synced or LAN-created customer before loading a profile.")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setCustomerProfileStatus("blocked")
+      setCustomerProfileDetail("A valid local sync server session token is required.")
+      return
+    }
+
+    setCustomerProfileStatus("working")
+    setCustomerProfileDetail("Loading customer profile, store credit, orders, and saved trade-ins.")
+
+    const result = await localSyncClient.getCustomerProfile(localSyncSessionToken, customerPublicId)
+
+    if (result.status !== "ok") {
+      setCustomerProfileResult(result)
+      setCustomerProfileStatus("blocked")
+      setCustomerProfileDetail(result.message)
+      return
+    }
+
+    const nextCreditSnapshot = applyCustomerProfileResult(result)
+    setCustomerProfileStatus("ready")
+    setCustomerProfileDetail(
+      `${result.customer.display_name} profile loaded: ${result.summary.trade_in_count} trade-in record(s), ${result.summary.ledger_entry_count} ledger row(s), ${formatMoney(
+        result.summary.credit_balance_minor_units,
+        nextCreditSnapshot?.currency ?? "USD",
+      )} credit.`,
+    )
+  }
+
+  async function handleCustomerProfileSearch() {
+    const searchValue = customerSearchQuery.trim()
+
+    if (!searchValue) {
+      setCustomerProfileStatus("blocked")
+      setCustomerProfileDetail("Enter a name, email, phone, or customer ID.")
+      return
+    }
+
+    setCustomerProfileStatus("working")
+    setCustomerProfileDetail("Searching LAN customer cache.")
+
+    const result = await localSyncClient.searchCustomers(searchValue)
+
+    if (result.status !== "ok") {
+      setCustomerProfileResult(result)
+      setCustomerProfileStatus("blocked")
+      setCustomerProfileDetail(result.message)
+      return
+    }
+
+    setCustomerSearchResults(result.customers)
+    if (result.trade_in_orders && result.trade_in_orders.length > 0) {
+      setServerTradeInOrders((orders) => {
+        const foundIds = new Set(result.trade_in_orders?.map((order) => order.order_id) ?? [])
+
+        return [
+          ...(result.trade_in_orders ?? []),
+          ...orders.filter((order) => !foundIds.has(order.order_id)),
+        ]
+      })
+    }
+    if (result.kiosk_orders && result.kiosk_orders.length > 0) {
+      setKioskOrderTickets((tickets) => {
+        const foundTickets = result.kiosk_orders?.map(kioskTicketFromLocalSyncOrder) ?? []
+        const foundIds = new Set(foundTickets.map((ticket) => ticket.orderId))
+
+        return [
+          ...foundTickets,
+          ...tickets.filter((ticket) => !foundIds.has(ticket.orderId)),
+        ].slice(0, 50)
+      })
+    }
+    setCustomerProfileStatus(result.customers.length > 0 ? "ready" : "warning")
+    setCustomerProfileDetail(
+      result.customers.length > 0
+        ? `${result.customers.length} customer match(es) found. Select one to open the profile.`
+        : "No customer matched that lookup. Use Create New Customer when this is a new local customer.",
+    )
+  }
+
+  async function handleUseCustomerProfile(customer: LocalSyncCustomer) {
+    const nextCreditSnapshot = localSyncCustomerToCreditSnapshot(
+      customer,
+      customerCreditDirectory,
+      customerCredit,
+    )
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+    setCustomerSearchQuery(customer.customer_lookup || customer.email || customer.display_name)
+    setActiveSection("Customers")
+    await refreshCustomerProfile(customer.customer_public_id)
+  }
+
+  function checkoutLineFromInventoryItem(item: InventoryItem, sourceOrderId = ""): CheckoutCartLine {
+    return {
+      lineId: `${sourceOrderId || "pos"}-${item.publicId}`,
+      type: sourceOrderId ? "kiosk" : "inventory",
+      inventoryPublicId: item.publicId,
+      barcode: item.barcode,
+      cardName: item.cardName,
+      setName: item.setName,
+      condition: item.condition,
+      location: item.location,
+      quantity: 1,
+      unitPriceMinorUnits: item.priceMinorUnits,
+      totalMinorUnits: item.priceMinorUnits,
+      sourceOrderId,
+    }
+  }
+
+  function checkoutLineFromKioskItem(item: KioskTicketItem, sourceOrderId: string): CheckoutCartLine {
+    const inventoryItem = inventoryItems.find(
+      (candidate) => candidate.publicId === item.publicId || candidate.barcode === item.barcode,
+    )
+
+    if (inventoryItem) {
+      return checkoutLineFromInventoryItem(inventoryItem, sourceOrderId)
+    }
+
+    return {
+      lineId: `${sourceOrderId}-${item.publicId}`,
+      type: "kiosk",
+      inventoryPublicId: item.publicId,
+      barcode: item.barcode,
+      cardName: item.cardName,
+      setName: item.setName,
+      condition: item.condition,
+      location: item.location,
+      quantity: 1,
+      unitPriceMinorUnits: creditRedemptionInputToMinorUnits(item.price.replace(/[^0-9.]/g, "")) ?? 0,
+      totalMinorUnits: creditRedemptionInputToMinorUnits(item.price.replace(/[^0-9.]/g, "")) ?? 0,
+      sourceOrderId,
+    }
+  }
+
+  function resetCheckoutPaymentFields() {
+    setCheckoutCompletedReceipt(null)
+    setCreditRedemptionInput("0.00")
+    setSquareSaleTotalInput("0.00")
+    setSquareReceiptReference("")
+    setSquareSoldOrderId("")
+    setSquareCashierConfirmed(false)
+    setCheckoutTenderMode("card")
+    setCheckoutCashReceivedInput("0.00")
+    setCheckoutReceiptEmail("")
+  }
+
+  function setCheckoutMode(mode: CheckoutCustomerMode) {
+    setCheckoutCustomerMode(mode)
+    setSelectedCustomerKioskOrderId("")
+    resetCheckoutPaymentFields()
+    setActivityMessage({
+      title: mode === "guest" ? "Guest checkout started" : "Customer checkout started",
+      detail:
+        mode === "guest"
+          ? "This sale will be saved by receipt number without using customer credit."
+          : "Search and select the customer before using store credit or saving the sale to their profile.",
+    })
+  }
+
+  function handleAddCheckoutInventoryItem(item: InventoryItem) {
+    if (checkoutCartLines.some((line) => line.inventoryPublicId === item.publicId)) {
+      setActivityMessage({
+        title: "Already in checkout",
+        detail: `${item.cardName} is already on this sale.`,
+      })
+      return
+    }
+
+    if (!["available", "reserved"].includes(item.status)) {
+      setActivityMessage({
+        title: "Item not available",
+        detail: `${item.cardName} is ${statusLabel(item.status).toLowerCase()} and cannot be sold from checkout.`,
+      })
+      return
+    }
+
+    setCheckoutCartLines((lines) => [...lines, checkoutLineFromInventoryItem(item)])
+    setCheckoutBarcodeInput("")
+    setCheckoutProductSearch("")
+    setCheckoutCompletedReceipt(null)
+    setActivityMessage({
+      title: item.status === "reserved" ? "Held item added" : "Item added",
+      detail:
+        item.status === "reserved"
+          ? `${item.cardName} is on hold in the local cache. Complete only if this is the same customer/order.`
+          : `${item.cardName} is ready for checkout.`,
+    })
+  }
+
+  function handleAddCheckoutBarcode() {
+    const scan = checkoutBarcodeInput.trim()
+    const item = findInventoryItemByScan(inventoryItems, scan)
+
+    if (!scan || !item) {
+      setActivityMessage({
+        title: "Barcode not found",
+        detail: "Scan or type a product barcode from the label, then add it to checkout.",
+      })
+      return
+    }
+
+    handleAddCheckoutInventoryItem(item)
+  }
+
+  function handleAddCheckoutMiscLine() {
+    const amountMinorUnits = creditRedemptionInputToMinorUnits(checkoutMiscAmountInput)
+    const label = checkoutMiscLabel.trim() || "Misc sale"
+
+    if (amountMinorUnits === null || amountMinorUnits <= 0) {
+      setActivityMessage({
+        title: "Misc amount needed",
+        detail: "Enter a misc sale amount above $0.00.",
+      })
+      return
+    }
+
+    setCheckoutCartLines((lines) => [
+      ...lines,
+      {
+        lineId: `misc-${Date.now()}`,
+        type: "misc",
+        cardName: label,
+        quantity: 1,
+        unitPriceMinorUnits: amountMinorUnits,
+        totalMinorUnits: amountMinorUnits,
+      },
+    ])
+    setCheckoutMiscLabel("Misc sale")
+    setCheckoutMiscAmountInput("0.00")
+    setCheckoutCompletedReceipt(null)
+    setActivityMessage({
+      title: "Misc line added",
+      detail: `${label} added to checkout.`,
+    })
+  }
+
+  function handleRemoveCheckoutLine(lineId: string) {
+    setCheckoutCartLines((lines) => lines.filter((line) => line.lineId !== lineId))
+    setCheckoutCompletedReceipt(null)
+  }
+
+  function handleLoadKioskOrderToCheckout(ticket: KioskOrderTicket) {
+    if (ticket.paymentStatus === "paid" || ["completed", "expired"].includes(ticket.status)) {
+      setActivityMessage({
+        title: "Kiosk order already checked out",
+        detail: `${ticket.orderId} is already paid or closed. Use Fulfillment or the customer history to review it.`,
+      })
+      return
+    }
+
+    setSelectedCustomerKioskOrderId(ticket.orderId)
+    setSquareSaleTotalInput(creditRedemptionInputFromMinorUnits(ticket.totalMinorUnits))
+    setCreditRedemptionInput("0.00")
+    setSquareReceiptReference(ticket.squareReceiptReference || "")
+    setSquareSoldOrderId("")
+    setSquareCashierConfirmed(false)
+    setCheckoutReceiptEmail("")
+    setCheckoutCartLines(ticket.items.map((item) => checkoutLineFromKioskItem(item, ticket.orderId)))
+    if (ticket.customerPublicId || selectedCustomerPublicId) {
+      setCheckoutCustomerMode("customer")
+    }
+    setActiveSection("Checkout")
+    setCheckoutCompletedReceipt(null)
+    setActivityMessage({
+      title: "Kiosk order loaded",
+      detail: `${ticket.orderId} is in Checkout with ${ticket.itemCount} card(s). Pick the cards, then record Square payment.`,
+    })
+  }
+
+  function handleUseCustomerKioskOrder(ticket: KioskOrderTicket) {
+    handleLoadKioskOrderToCheckout(ticket)
+  }
+
+  async function handleAttachKioskOrderToCustomer(ticket = selectedCustomerKioskOrder) {
+    if (!ticket) {
+      setActivityMessage({
+        title: "Select kiosk order",
+        detail: "Search and select a kiosk pickup order before linking it to a customer profile.",
+      })
+      return null
+    }
+
+    if (!selectedCustomerPublicId) {
+      setActivityMessage({
+        title: "Select customer",
+        detail: "Search and select a customer before linking a kiosk order.",
+      })
+      return null
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "PIN session required",
+        detail: "Sign in before linking kiosk order history to a customer profile.",
+      })
+      return null
+    }
+
+    const result = await localSyncClient.updateKioskOrderCustomer(
+      localSyncSessionToken,
+      ticket.orderId,
+      {
+        customerPublicId: selectedCustomerPublicId,
+        customerLookup: customerCredit.customerLookup ?? activeCustomerName,
+      },
+    )
+
+    if (result.status !== "ok") {
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Kiosk link blocked",
+        detail: result.message,
+      })
+      return null
+    }
+
+    const updatedTicket = kioskTicketFromLocalSyncOrder(result.order)
+    setKioskOrderTickets((tickets) => [
+      updatedTicket,
+      ...tickets.filter((candidate) => candidate.orderId !== updatedTicket.orderId),
+    ].slice(0, 50))
+    setSelectedCustomerKioskOrderId(updatedTicket.orderId)
+    if (selectedCustomerPublicId) {
+      void refreshCustomerProfile(selectedCustomerPublicId)
+    }
+    setActivityMessage({
+      title: "Kiosk order linked",
+      detail: `${updatedTicket.orderId} is attached to ${activeCustomerName}'s local profile history.`,
+    })
+
+    return updatedTicket
+  }
+
+  async function handleRefreshSquareTerminalStatus() {
+    if (!localSyncSessionToken) {
+      setSquareTerminalProbeStatus("blocked")
+      setActivityMessage({
+        title: "Square reader status needs login",
+        detail: "Sign in before checking the Square Terminal connector on the LAN server.",
+      })
+      return
+    }
+
+    setSquareTerminalProbeStatus("working")
+    const result = await localSyncClient.getSquareTerminalStatus(localSyncSessionToken)
+    setSquareTerminalStatus(result)
+    setSquareTerminalProbeStatus(result.status === "ok" ? (result.can_create_terminal_checkout ? "ready" : "warning") : "blocked")
+    setActivityMessage({
+      title: result.status === "ok" ? "Square reader status checked" : "Square reader status blocked",
+      detail:
+        result.status === "ok"
+          ? result.can_create_terminal_checkout
+            ? "Square Terminal is configured on the LAN server and can receive checkout requests."
+            : "Square Terminal is not fully configured yet. Manual Square receipt handoff still works."
+          : result.message,
+    })
+  }
+
+  async function handleCreateSquareTerminalDeviceCode() {
+    if (!localSyncSessionToken || !managerControlsUnlocked) {
+      setActivityMessage({
+        title: "Manager unlock required",
+        detail: "Unlock manager controls before creating a Square Terminal activation code.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.createSquareTerminalDeviceCode(localSyncSessionToken, {
+      deviceName: "The Pug Counter Reader",
+    })
+    setSquareTerminalDeviceCode(result)
+    setSquareTerminalProbeStatus(result.status === "ok" ? "ready" : "blocked")
+    setActivityMessage({
+      title: result.status === "ok" ? "Square activation code ready" : "Square activation blocked",
+      detail:
+        result.status === "ok"
+          ? `Enter ${result.device_code.code} on the Square reader, then set the paired device ID on the LAN server.`
+          : result.message,
+    })
+  }
+
+  async function handleSendSquareTerminalCheckout() {
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "PIN session required",
+        detail: "Sign in before sending a checkout to the Square reader.",
+      })
+      return
+    }
+
+    const checkoutReaderMode = activeSection === "Checkout" && checkoutCartLines.length > 0
+    const terminalCheckoutAmountMinorUnits = checkoutReaderMode
+      ? checkoutCardPaidMinorUnits
+      : squareSaleTotalMinorUnits
+    const terminalCheckoutIssue = checkoutReaderMode
+      ? checkoutCardPaidMinorUnits <= 0
+        ? "There is no card balance to send to the Square reader."
+        : ""
+      : squareSaleTotalIssue
+
+    if (terminalCheckoutIssue || terminalCheckoutAmountMinorUnits === null) {
+      setActivityMessage({
+        title: "Square checkout amount needed",
+        detail: terminalCheckoutIssue || "Enter the Square ticket total first.",
+      })
+      return
+    }
+
+    const referenceId =
+      (checkoutReaderMode
+        ? selectedCustomerKioskOrder?.orderId || checkoutCleanSquareReceiptReference
+        : selectedCustomerKioskOrder?.orderId ?? cleanSquareReceiptReference) ||
+      `customer-${customerCredit.customerPublicId ?? customerCredit.customerId}`
+    const result = await localSyncClient.createSquareTerminalCheckout(localSyncSessionToken, {
+      amountMinorUnits: terminalCheckoutAmountMinorUnits,
+      currency: customerCredit.currency,
+      referenceId,
+      note: selectedCustomerKioskOrder
+        ? `The Pug kiosk order ${selectedCustomerKioskOrder.orderId}`
+        : checkoutReaderMode
+          ? "The Pug checkout card payment"
+          : `The Pug customer checkout ${activeCustomerName}`,
+    })
+
+    if (result.status !== "ok") {
+      setSquareTerminalProbeStatus("blocked")
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Square reader blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setSquareTerminalProbeStatus("ready")
+    setSquareReceiptReference(result.square_checkout.id || referenceId)
+    setActivityMessage({
+      title: "Sent to Square reader",
+      detail: `Checkout ${result.square_checkout.id || referenceId} was sent to the paired Square Terminal. Record the final receipt once the reader completes.`,
+    })
+  }
+
+  async function handleCompleteCustomerKioskCheckout() {
+    if (!selectedCustomerKioskOrder) {
+      setActivityMessage({
+        title: "Select kiosk order",
+        detail: "Search and select a kiosk order before completing customer checkout.",
+      })
+      return
+    }
+
+    if (!selectedCustomerKioskOrder.allItemsPicked) {
+      await handleOpenKioskPicking(selectedCustomerKioskOrder)
+      setActivityMessage({
+        title: "Pick cards first",
+        detail: "The kiosk order is open in fulfillment. Check off each card before completing the customer sale.",
+      })
+      return
+    }
+
+    if (squareReceiptReferenceIssue) {
+      setActivityMessage({
+        title: "Square reference required",
+        detail: squareReceiptReferenceIssue,
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "PIN session required",
+        detail: "Sign in before completing customer checkout.",
+      })
+      return
+    }
+
+    const linkedTicket =
+      selectedCustomerKioskOrder.customerPublicId === selectedCustomerPublicId
+        ? selectedCustomerKioskOrder
+        : await handleAttachKioskOrderToCustomer(selectedCustomerKioskOrder)
+
+    if (!linkedTicket) {
+      return
+    }
+
+    const paymentResult = await localSyncClient.confirmKioskOrderPayment(
+      localSyncSessionToken,
+      linkedTicket.orderId,
+      {
+        squareReceiptReference: cleanSquareReceiptReference,
+        cashierConfirmed: true,
+        customerPublicId: selectedCustomerPublicId,
+        customerLookup: customerCredit.customerLookup ?? activeCustomerName,
+      },
+    )
+
+    if (paymentResult.status !== "ok") {
+      setActivityMessage({
+        title: paymentResult.status === "unavailable" ? "LAN server unavailable" : "Kiosk payment blocked",
+        detail: paymentResult.message,
+      })
+      return
+    }
+
+    const paidTicket = kioskTicketFromLocalSyncOrder(paymentResult.order)
+    setKioskOrderTickets((tickets) =>
+      tickets.map((candidate) => candidate.orderId === paidTicket.orderId ? paidTicket : candidate),
+    )
+
+    const completedResult = await localSyncClient.updateKioskOrderStatus(
+      localSyncSessionToken,
+      paidTicket.orderId,
+      "completed",
+    )
+
+    const finalTicket =
+      completedResult.status === "ok" ? kioskTicketFromLocalSyncOrder(completedResult.order) : paidTicket
+    setKioskOrderTickets((tickets) => [
+      finalTicket,
+      ...tickets.filter((candidate) => candidate.orderId !== finalTicket.orderId),
+    ].slice(0, 50))
+    setSelectedCustomerKioskOrderId(finalTicket.orderId)
+    if (paymentResult.sale?.status === "ok") {
+      setInventoryItems((items) =>
+        items.map((item) =>
+          paymentResult.sale?.status === "ok" &&
+          paymentResult.sale.items.some((soldItem) => soldItem.public_id === item.publicId)
+            ? { ...item, status: "sold", source: "queued" }
+            : item,
+        ),
+      )
+    }
+    setSquareCashierConfirmed(false)
+    setSquareReceiptReference("")
+    if (selectedCustomerPublicId) {
+      void refreshCustomerProfile(selectedCustomerPublicId)
+    }
+    void runOperationalAutoSync()
+    setActivityMessage({
+      title: "Customer checkout completed",
+      detail: `${finalTicket.orderId} is completed, exact card copies are sold, and the order is attached to ${activeCustomerName}'s profile history.`,
+    })
+  }
+
+  function checkoutReceiptItemsPayload() {
+    return checkoutCartLines.map((line) => ({
+      line_id: line.lineId,
+      type: line.type,
+      label: line.cardName,
+      inventory_public_id: line.inventoryPublicId ?? "",
+      barcode: line.barcode ?? "",
+      card_name: line.cardName,
+      set_name: line.setName ?? "",
+      condition: line.condition ?? "",
+      location: line.location ?? "",
+      quantity: line.quantity,
+      unit_price_minor_units: line.unitPriceMinorUnits,
+      total_minor_units: line.totalMinorUnits,
+      status: line.type === "misc" ? "charged" : "sold",
+    }))
+  }
+
+  function checkoutFallbackCashReference() {
+    return `CASH-${new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)}`
+  }
+
+  async function saveCheckoutReceiptRecord(
+    source: "local_pos" | "kiosk" = "local_pos",
+    paymentReference = checkoutRequiresSquareReceipt
+      ? checkoutCleanSquareReceiptReference
+      : checkoutFallbackCashReference(),
+  ) {
+    if (!localSyncSessionToken) {
+      return null
+    }
+
+    const result = await localSyncClient.createCheckoutTransaction(localSyncSessionToken, {
+      customerPublicId: checkoutCustomerMode === "customer" ? selectedCustomerPublicId : "",
+      customerLookup: checkoutCustomerMode === "customer" ? customerCredit.customerLookup ?? activeCustomerName : "",
+      customerName: checkoutCustomerMode === "customer" ? activeCustomerName : "Guest checkout",
+      customerEmail: checkoutReceiptEmailAddress.trim(),
+      guestCheckout: checkoutCustomerMode === "guest",
+      squareReceiptReference: paymentReference,
+      squareOrderId: cleanSquareSoldOrderId,
+      sourceOrderId: selectedCustomerKioskOrder?.orderId ?? "",
+      source,
+      receiptDelivery: checkoutReceiptDelivery,
+      tenderType: checkoutTenderMode,
+      subtotalMinorUnits: checkoutSubtotalMinorUnits,
+      creditUsedMinorUnits: checkoutCreditMinorUnits,
+      squareDueMinorUnits: checkoutSquareDueMinorUnits,
+      cashPaidMinorUnits: checkoutCashPaidMinorUnits,
+      cardPaidMinorUnits: checkoutCardPaidMinorUnits,
+      changeDueMinorUnits: checkoutChangeDueMinorUnits,
+      totalMinorUnits: checkoutSubtotalMinorUnits,
+      currency: "USD",
+      items: checkoutReceiptItemsPayload(),
+    })
+
+    if (result.status === "ok") {
+      setCheckoutCompletedReceipt(result.transaction)
+      if (selectedCustomerPublicId) {
+        void refreshCustomerProfile(selectedCustomerPublicId)
+      }
+    }
+
+    return result
+  }
+
+  async function handleCompleteCheckoutSale() {
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "PIN session required",
+        detail: "Sign in before completing checkout.",
+      })
+      return
+    }
+
+    if (checkoutCartLines.length === 0) {
+      setActivityMessage({
+        title: "Checkout is empty",
+        detail: "Scan a product, load a kiosk order, or add a misc line before completing the sale.",
+      })
+      return
+    }
+
+    if (checkoutCustomerMode === "customer" && !selectedCustomerPublicId) {
+      setActivityMessage({
+        title: "Select customer",
+        detail: "Search and select the customer first, or switch this sale to Guest Checkout.",
+      })
+      return
+    }
+
+    if (checkoutUnavailableLines.length > 0) {
+      setActivityMessage({
+        title: "Unavailable item in cart",
+        detail: `${checkoutUnavailableLines[0].cardName} is no longer available. Remove it or sync inventory before completing checkout.`,
+      })
+      return
+    }
+
+    if (checkoutReceiptEmailIssue || checkoutTenderIssue) {
+      setActivityMessage({
+        title: "Receipt details needed",
+        detail: checkoutReceiptEmailIssue || checkoutTenderIssue,
+      })
+      return
+    }
+
+    if (checkoutCreditMinorUnits > 0) {
+      if (checkoutCustomerMode !== "customer" || !selectedCustomerPublicId) {
+        setActivityMessage({
+          title: "Credit needs customer",
+          detail: "Store credit can only be used after selecting a local customer profile.",
+        })
+        return
+      }
+
+      if (checkoutCreditMinorUnits > displayedCreditMinorUnits || checkoutCreditMinorUnits > checkoutSubtotalMinorUnits) {
+        setActivityMessage({
+          title: "Credit amount blocked",
+          detail: "Credit cannot exceed the customer's balance or the checkout total.",
+        })
+        return
+      }
+
+      if (checkoutCardPaidMinorUnits > 0 && !squareCashierConfirmed) {
+        setActivityMessage({
+          title: "Confirm Square credit",
+          detail: "Confirm the credit was included before sending or completing the Square card payment.",
+        })
+        return
+      }
+    }
+
+    const checkoutPaymentReference = checkoutRequiresSquareReceipt
+      ? checkoutCleanSquareReceiptReference
+      : checkoutFallbackCashReference()
+    const checkoutTenderLabel =
+      checkoutTenderMode === "cash"
+        ? "cash"
+        : checkoutTenderMode === "split"
+          ? "split cash/card"
+          : "card"
+
+    const kioskLineOrderIds = [
+      ...new Set(checkoutCartLines.filter((line) => line.type === "kiosk").map((line) => line.sourceOrderId).filter(Boolean)),
+    ]
+    const loadedKioskOrder =
+      selectedCustomerKioskOrder && kioskLineOrderIds.includes(selectedCustomerKioskOrder.orderId)
+        ? selectedCustomerKioskOrder
+        : null
+
+    if (loadedKioskOrder && !loadedKioskOrder.allItemsPicked) {
+      await handleOpenKioskPicking(loadedKioskOrder)
+      setActivityMessage({
+        title: "Pick cards first",
+        detail: "The kiosk order is open in fulfillment. Check off every card before completing checkout.",
+      })
+      return
+    }
+
+    const nonKioskInventoryLines = checkoutInventoryLines.filter((line) => line.type !== "kiosk")
+
+    if (nonKioskInventoryLines.length > 0) {
+      const saleResult = await localSyncClient.finalizeSquarePosSale(localSyncSessionToken, {
+        inventoryPublicIds: nonKioskInventoryLines.map((line) => line.inventoryPublicId ?? "").filter(Boolean),
+        barcodes: nonKioskInventoryLines.map((line) => line.barcode ?? "").filter(Boolean),
+        squareReceiptReference: checkoutPaymentReference,
+        squareOrderId: cleanSquareSoldOrderId,
+        saleTotalMinorUnits: checkoutSubtotalMinorUnits,
+      })
+
+      if (saleResult.status !== "ok") {
+        setActivityMessage({
+          title: saleResult.status === "unavailable" ? "LAN server unavailable" : "Checkout blocked",
+          detail: saleResult.message,
+        })
+        return
+      }
+
+      const soldIds = new Set((saleResult.items ?? []).map((item) => item.public_id))
+      setInventoryItems((items) =>
+        items.map((item) =>
+          soldIds.has(item.publicId) ||
+          nonKioskInventoryLines.some((line) => line.inventoryPublicId === item.publicId || line.barcode === item.barcode)
+            ? {
+                ...item,
+                status: "sold",
+                source: saleResult.wordpress_accepted_count > 0 ? "accepted" : "queued",
+                externalSyncState: saleResult.wordpress_accepted_count > 0 ? "synced" : "pending",
+                rowVersion: item.rowVersion + 1,
+              }
+            : item,
+        ),
+      )
+    }
+
+    if (loadedKioskOrder) {
+      const linkedTicket =
+        checkoutCustomerMode === "customer" && loadedKioskOrder.customerPublicId !== selectedCustomerPublicId
+          ? await handleAttachKioskOrderToCustomer(loadedKioskOrder)
+          : loadedKioskOrder
+
+      if (!linkedTicket) {
+        return
+      }
+
+      const paymentResult = await localSyncClient.confirmKioskOrderPayment(
+        localSyncSessionToken,
+        linkedTicket.orderId,
+        {
+          squareReceiptReference: checkoutPaymentReference,
+          squareOrderId: cleanSquareSoldOrderId,
+          cashierConfirmed: true,
+          customerPublicId: checkoutCustomerMode === "customer" ? selectedCustomerPublicId : "",
+          customerLookup: checkoutCustomerMode === "customer" ? customerCredit.customerLookup ?? activeCustomerName : "",
+        },
+      )
+
+      if (paymentResult.status !== "ok") {
+        setActivityMessage({
+          title: paymentResult.status === "unavailable" ? "LAN server unavailable" : "Kiosk checkout blocked",
+          detail: paymentResult.message,
+        })
+        return
+      }
+
+      const paidTicket = kioskTicketFromLocalSyncOrder(paymentResult.order)
+      const completedResult = await localSyncClient.updateKioskOrderStatus(
+        localSyncSessionToken,
+        paidTicket.orderId,
+        "completed",
+      )
+      const finalTicket =
+        completedResult.status === "ok" ? kioskTicketFromLocalSyncOrder(completedResult.order) : paidTicket
+      setKioskOrderTickets((tickets) => [
+        finalTicket,
+        ...tickets.filter((candidate) => candidate.orderId !== finalTicket.orderId),
+      ].slice(0, 50))
+      if (paymentResult.sale?.status === "ok") {
+        const kioskSoldIds = new Set(paymentResult.sale.items.map((item) => item.public_id))
+        setInventoryItems((items) =>
+          items.map((item) =>
+            kioskSoldIds.has(item.publicId) ? { ...item, status: "sold", source: "queued" } : item,
+          ),
+        )
+      }
+    }
+
+    if (checkoutCreditMinorUnits > 0) {
+      const redemptionResult = await localSyncClient.createCreditRedemption(localSyncSessionToken, {
+        customerPublicId: selectedCustomerPublicId,
+        amountMinorUnits: checkoutCreditMinorUnits,
+        saleTotalMinorUnits: checkoutSubtotalMinorUnits,
+        reason: `checkout store credit ${formatMoney(checkoutCreditMinorUnits, customerCredit.currency)}`,
+        squareReceiptReference: checkoutPaymentReference,
+        squareCashierConfirmed: true,
+      })
+
+      if (redemptionResult.status === "ok") {
+        const nextCreditSnapshot = customerCreditSnapshotFromLocalSyncCustomer(
+          redemptionResult.customer,
+          customerCredit,
+        )
+        setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+        setCustomerCreditLedgerEntries((entries) => [
+          customerCreditLedgerEntryFromLocalSync(redemptionResult.ledger_entry, nextCreditSnapshot.customerId),
+          ...entries.filter((entry) => entry.entryId !== redemptionResult.ledger_entry.entry_id),
+        ])
+        setActiveCustomerId(nextCreditSnapshot.customerId)
+      } else {
+        setActivityMessage({
+          title: redemptionResult.status === "unavailable" ? "LAN server unavailable" : "Credit use blocked",
+          detail: redemptionResult.message,
+        })
+        return
+      }
+    }
+
+    const receiptResult = await saveCheckoutReceiptRecord(
+      loadedKioskOrder ? "kiosk" : "local_pos",
+      checkoutPaymentReference,
+    )
+
+    if (receiptResult?.status !== "ok") {
+      setActivityMessage({
+        title: receiptResult?.status === "unavailable" ? "LAN server unavailable" : "Receipt not saved",
+        detail: receiptResult?.message ?? "Checkout finished, but the local receipt record did not save.",
+      })
+      return
+    }
+
+    setCreditRedemptionInput("0.00")
+    setSquareReceiptReference("")
+    setSquareSoldOrderId("")
+    setSquareCashierConfirmed(false)
+    void refreshLocalSyncStatus()
+    void runOperationalAutoSync()
+    setActivityMessage({
+      title: "Checkout complete",
+      detail:
+        `${checkoutCustomerMode === "guest" ? "Guest sale" : `${activeCustomerName}'s sale`} saved as ${checkoutTenderLabel} payment ${checkoutPaymentReference}. ` +
+        `${checkoutReceiptDelivery === "both" ? "Print and email receipt selected." : checkoutReceiptDelivery === "email" ? "Email receipt selected." : "Print receipt selected."}`,
+    })
+  }
+
+  function applyTradeInCreditApplication(
+    application: Extract<LocalSyncTradeInOrderStatusUpdateResult, { status: "ok" }>["credit_application"],
+  ) {
+    if (!application?.customer) {
+      return ""
+    }
+
+    const nextCreditSnapshot = localSyncCustomerToCreditSnapshot(
+      application.customer,
+      customerCreditDirectory,
+      customerCredit,
+    )
+
+    setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
+    setActiveCustomerId(nextCreditSnapshot.customerId)
+
+    if (application.ledger_entry) {
+      setCustomerCreditLedgerEntries((entries) => [
+        customerCreditLedgerEntryFromLocalSync(application.ledger_entry!, nextCreditSnapshot.customerId),
+        ...entries.filter((entry) => entry.entryId !== application.ledger_entry?.entry_id),
+      ])
+    }
+
+    return application.applied
+      ? ` ${formatMoney(application.credit_total_minor_units ?? 0, nextCreditSnapshot.currency)} store credit was applied to ${application.customer.display_name}.`
+      : ` ${application.message}`
   }
 
   async function handleCreditAdjustment() {
@@ -6542,9 +8884,7 @@ export function App() {
     setActivityMessage({
       title: "Credit add queued",
       detail:
-        `${formatMoney(creditAdjustmentMinorUnits, nextCreditSnapshot.currency)} added locally ${
-          adjustmentResult.manager_approved ? "with manager approval" : "within the staff approval limit"
-        }; ` +
+        `${formatMoney(creditAdjustmentMinorUnits, nextCreditSnapshot.currency)} added locally by the signed-in staff user; ` +
         "WordPress posts the final ledger entry after sync acceptance.",
     })
   }
@@ -7764,8 +10104,8 @@ export function App() {
     )
   }
 
-  function handlePrintLabel() {
-    const labelJob = buildOfflineLabelPrintJob(selectedItem, activeProfile)
+  function handlePrintLabel(targetItem = selectedItem) {
+    const labelJob = buildOfflineLabelPrintJob(targetItem, activeProfile)
     const labelDetail =
       `${labelJob.cardName} label ${labelJob.barcode} is ready for ${activeProfile.companyName}; ` +
       "payload can be copied now and hardware printing remains deferred until the printer adapter is connected."
@@ -7778,6 +10118,37 @@ export function App() {
     setActivityMessage({
       title: "Label preview prepared",
       detail: labelDetail,
+    })
+  }
+
+  function handlePrintCheckoutLabels() {
+    const labelItems = checkoutInventoryLines
+      .map((line) =>
+        inventoryItems.find(
+          (item) => item.publicId === line.inventoryPublicId || (!!line.barcode && item.barcode === line.barcode),
+        ),
+      )
+      .filter((item): item is InventoryItem => Boolean(item))
+
+    if (labelItems.length === 0) {
+      setActivityMessage({
+        title: "No labels ready",
+        detail: "Add scanned products to checkout before preparing Dymo labels.",
+      })
+      return
+    }
+
+    const labelJobs = labelItems.map((item) => buildOfflineLabelPrintJob(item, activeProfile))
+    const labelIds = new Set(labelJobs.map((job) => job.inventoryPublicId))
+
+    setLabelPrintJobs((jobs) => [
+      ...labelJobs,
+      ...jobs.filter((job) => !labelIds.has(job.inventoryPublicId)),
+    ].slice(0, 12))
+    setActivityMessage({
+      title: "Dymo labels prepared",
+      detail:
+        `${labelJobs.length} label job(s) are ready for Dymo LabelWriter 550 Turbo printing through the Windows print adapter.`,
     })
   }
 
@@ -8330,7 +10701,7 @@ export function App() {
                 <small>{connectorDisplayUrl(activeProfile)}</small>
               </button>
               ) : null}
-              <div className="connection-pill" aria-label="Offline mode active">
+              <div className="connection-pill" aria-label={`Connection status ${liveConnectionModeLabel}`}>
                 <Icon name="wifi" />
                 <span>{liveConnectionModeLabel}</span>
               </div>
@@ -9273,12 +11644,26 @@ export function App() {
                     the same record for saved quotes, accepted trade-ins, receipts, and reports.
                   </small>
                 </div>
+                <label htmlFor="trade-in-customer-lookup">
+                  <span>Search customer</span>
+                  <input
+                    id="trade-in-customer-lookup"
+                    value={tradeInCustomerLookupInput}
+                    onChange={(event) => {
+                      setTradeInSelectedCustomerSnapshot(null)
+                      setTradeInSelectedCustomerPublicId("")
+                      setTradeInCustomerLookupInput(event.target.value)
+                    }}
+                    placeholder="Name, email, or phone"
+                  />
+                </label>
                 <label htmlFor="trade-in-customer-name">
                   <span>Name</span>
                   <input
                     id="trade-in-customer-name"
                     value={tradeInCustomerName}
                     onChange={(event) => {
+                      setTradeInSelectedCustomerSnapshot(null)
                       setTradeInSelectedCustomerPublicId("")
                       setTradeInCustomerName(event.target.value)
                     }}
@@ -9292,10 +11677,25 @@ export function App() {
                     inputMode="tel"
                     value={tradeInCustomerPhone}
                     onChange={(event) => {
+                      setTradeInSelectedCustomerSnapshot(null)
                       setTradeInSelectedCustomerPublicId("")
                       setTradeInCustomerPhone(event.target.value)
                     }}
                     placeholder="Phone for lookup"
+                  />
+                </label>
+                <label htmlFor="trade-in-customer-email">
+                  <span>Email</span>
+                  <input
+                    id="trade-in-customer-email"
+                    type="email"
+                    value={tradeInCustomerEmail}
+                    onChange={(event) => {
+                      setTradeInSelectedCustomerSnapshot(null)
+                      setTradeInSelectedCustomerPublicId("")
+                      setTradeInCustomerEmail(event.target.value)
+                    }}
+                    placeholder="Email for receipts/profile"
                   />
                 </label>
                 <button
@@ -9329,18 +11729,311 @@ export function App() {
 
               <div className="trade-in-flow-steps" aria-label="Trade-in workflow">
                 <span>1. Find customer</span>
-                <span>2. Add cards</span>
+                <span>2. Search cards</span>
                 <span>3. Quote offer</span>
                 <span>4. Accept or decline</span>
               </div>
+
+              <div className="trade-in-search-card" aria-label="Trade-in card search">
+                <div className="trade-in-search-fields">
+                  <label htmlFor="trade-in-card-query">
+                    <span className="micro-label">Card search</span>
+                    <input
+                      id="trade-in-card-query"
+                      value={tradeInCardQuery}
+                      onChange={(event) => {
+                        setTradeInCardQuery(event.target.value)
+                        setTradeInCardSetFilter("")
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault()
+                          void handleTradeInCardLookup()
+                        }
+                      }}
+                      placeholder="Search ScryDex by card, set, or number"
+                    />
+                  </label>
+                  <label htmlFor="trade-in-card-game">
+                    <span className="micro-label">Game</span>
+                    <select
+                      id="trade-in-card-game"
+                      value={tradeInCardGame}
+                      onChange={(event) => {
+                        setTradeInCardGame(event.target.value as LocalSyncScryDexCard["game"])
+                        setTradeInCardSetFilter("")
+                      }}
+                    >
+                      <option value="pokemon">Pokemon</option>
+                      <option value="magicthegathering">MTG</option>
+                      <option value="lorcana">Lorcana</option>
+                      <option value="onepiece">One Piece</option>
+                    </select>
+                  </label>
+                  <label htmlFor="trade-in-card-set">
+                    <span className="micro-label">Set / Expansion</span>
+                    <select
+                      id="trade-in-card-set"
+                      value={tradeInCardSetFilter}
+                      onChange={(event) => handleTradeInCardSetFilterChange(event.target.value)}
+                      disabled={tradeInCardSetOptions.length === 0}
+                    >
+                      <option value="">All sets</option>
+                      {tradeInCardSetOptions.map((option) => (
+                        <option value={option.value} key={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className={`trade-in-card-status ${tradeInCardLookupStatus}`}>
+                    <span className="micro-label">Card lookup</span>
+                    <strong>
+                      {tradeInCardLookupStatus === "searching"
+                        ? "Searching"
+                        : tradeInCardLookupStatus === "ready"
+                          ? `${visibleTradeInCards.length} visible`
+                          : tradeInCardLookupStatus === "blocked"
+                            ? "Needs attention"
+                            : "Ready"}
+                    </strong>
+                    <small>{tradeInCardLookupDetail}</small>
+                    <button type="button" onClick={() => void handleTradeInCardLookup()}>
+                      <Icon name="search" />
+                      <span>Search</span>
+                    </button>
+                  </div>
+                </div>
+
+                {visibleTradeInCards.length > 0 ? (
+                  <div className="trade-in-card-results" aria-label="Trade-in card search results">
+                    {visibleTradeInCards.map((card) => (
+                      <article
+                        className={card.provider_card_id === tradeInSelectedCardId ? "is-selected" : ""}
+                        key={`trade-${card.provider_card_id}`}
+                      >
+                        <button
+                          className="trade-in-card-result-main"
+                          type="button"
+                          onClick={() => handleSelectTradeInCard(card, tradeInProductType)}
+                        >
+                          <span className="trade-in-result-art" aria-hidden="true">
+                            {card.image_url ? <img src={card.image_url} alt="" loading="lazy" /> : <Icon name="card" />}
+                          </span>
+                          <span>
+                            <strong>{card.card_name}</strong>
+                            <small>
+                              {card.set_name} / {card.printed_number || card.card_number || "No number"}
+                            </small>
+                            <small>{scryDexResultPriceSummary(card)}</small>
+                          </span>
+                        </button>
+                        <div className="trade-in-card-result-actions">
+                          <button type="button" onClick={() => handleSelectTradeInCard(card, "raw")}>
+                            Use Single
+                          </button>
+                          {scryDexCardSupportsGraded(card) ? (
+                            <button type="button" onClick={() => handleSelectTradeInCard(card, "graded")}>
+                              Use Graded
+                            </button>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
               <div className="trade-in-toolbar">
                 <div className="trade-in-preview-card">
                   <span className="micro-label">Selected card quote</span>
-                  <strong>{formatMoney(tradeInPreviewValueMinorUnits, "USD")}</strong>
+                  <strong>{formatMoney(tradeInCurrentFinalValueMinorUnits, "USD")}</strong>
                   <small>
-                    {tradeInCurrentCardName.trim() || "No card selected"} at {tradeInPercentageBasisPoints / 100}%.
+                    {tradeInCurrentCardName.trim() || "No trade-in card selected"} at{" "}
+                    {tradeInPercentageBasisPoints / 100}%
+                    {tradeInCurrentFinalValueManuallySet
+                      ? `, manually overridden from ${formatMoney(tradeInPreviewValueMinorUnits, "USD")}.`
+                      : "."}
                   </small>
+                  {selectedTradeInCard ? (
+                    <div className="trade-in-selected-card-preview">
+                      <span className="trade-in-result-art" aria-hidden="true">
+                        {selectedTradeInImageUrl ? (
+                          <img src={selectedTradeInImageUrl} alt="" loading="lazy" />
+                        ) : (
+                          <Icon name="card" />
+                        )}
+                      </span>
+                      <div>
+                        <strong>{selectedTradeInCard.card_name}</strong>
+                        <small>
+                          {selectedTradeInCard.set_name} / {selectedTradeInVariantLabel}
+                        </small>
+                        {selectedTradeInCard.variants.length > 0 ? (
+                          <label htmlFor="trade-in-variant">
+                            <span className="micro-label">Version</span>
+                            <select
+                              id="trade-in-variant"
+                              value={tradeInSelectedVariantId}
+                              onChange={(event) => handleTradeInVariantChange(event.target.value)}
+                            >
+                              {selectedTradeInCard.variants.map((variant, index) => {
+                                const variantId = scryDexVariantId(selectedTradeInCard.provider_card_id, variant, index)
+                                const label = formatScryDexVariant(variant) || `Version ${index + 1}`
+
+                                return (
+                                  <option key={variantId} value={variantId}>
+                                    {label}
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          </label>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                  {selectedTradeInCard ? (
+                    <div
+                      className={`trade-in-market-value ${selectedTradeInValuation.tone}`}
+                      aria-label="Trade-in market value"
+                    >
+                      <div>
+                        <span className="micro-label">Market value</span>
+                        <strong>
+                          {selectedTradeInValuation.marketMinorUnits > 0
+                            ? formatMoney(
+                                selectedTradeInValuation.marketMinorUnits,
+                                selectedTradeInValuation.currency,
+                              )
+                            : "Manual required"}
+                        </strong>
+                        <small>
+                          {selectedTradeInValuation.sourceLabel}: {selectedTradeInValuation.detail}
+                        </small>
+                        {selectedTradeInValuation.secondaryValuation ? (
+                          <small>
+                            Secondary comp: {selectedTradeInValuation.secondaryValuation.provider_product_name || selectedTradeInValuation.secondaryValuation.provider} / confidence{" "}
+                            {selectedTradeInValuation.secondaryValuation.confidence_score}% / fetched{" "}
+                            {formatUtcLabel(selectedTradeInValuation.secondaryValuation.fetched_at_utc)}
+                          </small>
+                        ) : selectedTradeInValuation.secondaryProviderStatus ? (
+                          <small>{selectedTradeInValuation.secondaryProviderStatus}</small>
+                        ) : null}
+                      </div>
+                      {selectedTradeInValuation.pricePoint ? (
+                        <dl>
+                          <div>
+                            <dt>Low</dt>
+                            <dd>
+                              {formatMoney(
+                                selectedTradeInValuation.pricePoint.low_price_minor_units,
+                                selectedTradeInValuation.pricePoint.currency,
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Mid</dt>
+                            <dd>
+                              {formatMoney(
+                                selectedTradeInValuation.pricePoint.mid_price_minor_units,
+                                selectedTradeInValuation.pricePoint.currency,
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>High</dt>
+                            <dd>
+                              {formatMoney(
+                                selectedTradeInValuation.pricePoint.high_price_minor_units,
+                                selectedTradeInValuation.pricePoint.currency,
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Observed</dt>
+                            <dd>{formatUtcLabel(selectedTradeInValuation.pricePoint.observed_at_utc)}</dd>
+                          </div>
+                        </dl>
+                      ) : null}
+                      {selectedTradeInValuation.links.length > 0 ? (
+                        <div className="trade-in-valuation-links" aria-label="External valuation links">
+                          <span>Check comps</span>
+                          {selectedTradeInValuation.links.map((link) => (
+                            <a href={link.href} target="_blank" rel="noreferrer" key={link.label}>
+                              {link.label}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="trade-in-card-controls">
+                    <label htmlFor="trade-in-product-type">
+                      <span className="micro-label">Type</span>
+                      <select
+                        id="trade-in-product-type"
+                        value={tradeInProductType}
+                        onChange={(event) => handleTradeInProductTypeChange(event.target.value as "raw" | "graded")}
+                      >
+                        <option value="raw">Single</option>
+                        <option value="graded">Graded</option>
+                      </select>
+                    </label>
+                    <label htmlFor="trade-in-condition">
+                      <span className="micro-label">
+                        {tradeInProductType === "graded" ? "Display condition" : "Condition"}
+                      </span>
+                      <select
+                        id="trade-in-condition"
+                        value={tradeInCondition}
+                        onChange={(event) => setTradeInCondition(event.target.value)}
+                      >
+                        <option value="NM">Near Mint</option>
+                        <option value="LP">Lightly Played</option>
+                        <option value="MP">Moderately Played</option>
+                        <option value="HP">Heavily Played</option>
+                        <option value="DMG">Damaged</option>
+                        <option value="RAW">Raw</option>
+                      </select>
+                    </label>
+                    {tradeInProductType === "graded" ? (
+                      <>
+                        <label htmlFor="trade-in-grading-company">
+                          <span className="micro-label">Grading company</span>
+                          <select
+                            id="trade-in-grading-company"
+                            value={tradeInGradingCompany}
+                            onChange={(event) => setTradeInGradingCompany(event.target.value)}
+                          >
+                            <option value="PSA">PSA</option>
+                            <option value="CGC">CGC</option>
+                            <option value="BGS">Beckett/BGS</option>
+                            <option value="SGC">SGC</option>
+                            <option value="TAG">TAG</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </label>
+                        <label htmlFor="trade-in-grade">
+                          <span className="micro-label">Grade</span>
+                          <input
+                            id="trade-in-grade"
+                            value={tradeInGrade}
+                            onChange={(event) => setTradeInGrade(event.target.value)}
+                            placeholder="10, 9.5, 8"
+                          />
+                        </label>
+                        <label htmlFor="trade-in-cert">
+                          <span className="micro-label">Cert #</span>
+                          <input
+                            id="trade-in-cert"
+                            value={tradeInCertNumber}
+                            onChange={(event) => setTradeInCertNumber(event.target.value)}
+                            placeholder="Optional"
+                          />
+                        </label>
+                      </>
+                    ) : null}
                     <label htmlFor="trade-in-percentage">
                       <span className="micro-label">Trade %</span>
                       <select
@@ -9355,28 +12048,34 @@ export function App() {
                         ))}
                       </select>
                     </label>
-                    <fieldset className="trade-in-payout-toggle">
-                      <legend className="micro-label">Payout</legend>
-                      <label>
-                        <input
-                          type="radio"
-                          name="trade-in-payout"
-                          checked={tradeInPayoutType === "credit"}
-                          onChange={() => setTradeInPayoutType("credit")}
-                        />
-                        <span>Store credit</span>
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="trade-in-payout"
-                          checked={tradeInPayoutType === "cash"}
-                          onChange={() => setTradeInPayoutType("cash")}
-                        />
-                        <span>Cash</span>
-                      </label>
-                    </fieldset>
+                    <label htmlFor="trade-in-manual-final-value">
+                      <span className="micro-label">Manual offer value</span>
+                      <input
+                        id="trade-in-manual-final-value"
+                        inputMode="decimal"
+                        value={tradeInManualFinalValueInput}
+                        onChange={(event) => setTradeInManualFinalValueInput(event.target.value)}
+                        placeholder={creditRedemptionInputFromMinorUnits(tradeInPreviewValueMinorUnits)}
+                      />
+                    </label>
+                    <label htmlFor="trade-in-payout">
+                      <span className="micro-label">Payout</span>
+                      <select
+                        id="trade-in-payout"
+                        value={tradeInPayoutType}
+                        onChange={(event) => setTradeInPayoutType(event.target.value as TradeInPayoutType)}
+                      >
+                        <option value="credit">Store credit</option>
+                        <option value="cash">Cash</option>
+                      </select>
+                    </label>
                   </div>
+                  <small className={tradeInManualFinalValueIssue ? "field-error" : "field-help"}>
+                    {tradeInManualFinalValueIssue ||
+                      (tradeInCurrentMarketMinorUnits > 0
+                        ? "Leave manual offer blank to use the calculated market-mid percentage."
+                        : "Enter a manual offer because no graded market value is available for this card.")}
+                  </small>
                   <button type="button" onClick={handleStageTradeInItem}>
                     Add Card to Offer
                   </button>
@@ -9428,6 +12127,7 @@ export function App() {
                   <span className="micro-label">Current customer offer</span>
                   <strong>{formatMoney(tradeInCombinedTotalMinorUnits, "USD")}</strong>
                   <small>
+                    {tradeInLoadedOrderId ? `Editing saved quote ${tradeInLoadedOrderId}. ` : ""}
                     {tradeInDraftItems.length} line item(s). Save as a quote, record customer acceptance, or keep a
                     declined offer on file for later lookup.
                   </small>
@@ -9480,7 +12180,10 @@ export function App() {
                         <div>
                           <span className="micro-label">Market mid</span>
                           <strong>{formatMoney(item.marketMidMinorUnits, "USD")}</strong>
-                          <small>Default floor {formatMoney(calculatedValueMinorUnits, "USD")}</small>
+                          <small>
+                            {item.finalValueManuallySet ? "Manual override" : "Default floor"}{" "}
+                            {formatMoney(calculatedValueMinorUnits, "USD")}
+                          </small>
                         </div>
                         <div className="trade-in-line-controls" aria-label={`${item.cardName} trade-in line controls`}>
                           <label>
@@ -9533,8 +12236,8 @@ export function App() {
                   })
                 ) : (
                   <p className="panel-empty">
-                    No cards in this offer yet. Search/select a card in Inventory, choose the per-card percentage and
-                    payout, then add it to this offer.
+                    No cards in this offer yet. Search ScryDex above, select the exact printing, choose condition,
+                    payout, and per-card percentage, then add it to this trade-in cart.
                   </p>
                 )}
               </div>
@@ -9543,7 +12246,18 @@ export function App() {
                 <div className="fulfillment-source-heading">
                   <div>
                     <span className="micro-label">Shared saved drafts</span>
-                    <strong>{serverTradeInOrders.length} trade-in order(s)</strong>
+                    <strong>
+                      {visibleServerTradeInOrders.length} trade-in order(s)
+                      {tradeInSelectedCustomer && tradeInRecordSearch.trim() === "" && tradeInStaffFilter.trim() === ""
+                        ? ` for ${tradeInSelectedCustomer.display_name}`
+                        : ""}
+                    </strong>
+                    {tradeInSelectedCustomer ? (
+                      <small>
+                        {selectedCustomerServerTradeInCount} saved/rejected/approved record(s) are attached to this
+                        customer profile. Use lookup filters to search the full store history.
+                      </small>
+                    ) : null}
                   </div>
                   <label className="trade-in-record-search" htmlFor="trade-in-record-search">
                     <span className="micro-label">Lookup saved offer</span>
@@ -9576,11 +12290,17 @@ export function App() {
                     </select>
                   </label>
                 </div>
-                {serverTradeInOrders.length > 0 ? (
-                  serverTradeInOrders.map((order) => {
-                    const isTerminalTradeIn = order.status === "rejected" || order.status === "completed"
+                {visibleServerTradeInOrders.length > 0 ? (
+                  visibleServerTradeInOrders.map((order) => {
+                    const isLockedTradeIn =
+                      order.status === "approved" ||
+                      order.status === "paid" ||
+                      order.status === "converted" ||
+                      order.status === "completed"
                     const canConvertTradeIn = order.status === "approved" || order.status === "paid"
                     const canCompleteTradeIn = order.status === "converted"
+                    const canEditTradeIn =
+                      order.status === "draft" || order.status === "review" || order.status === "rejected"
 
                     return (
                     <article className="trade-in-draft-card is-order" key={order.order_id}>
@@ -9605,7 +12325,9 @@ export function App() {
                         {order.converted_at_utc ? (
                           <small>
                             Converted {formatUtcLabel(order.converted_at_utc)}
-                            {order.converted_by_user_id ? ` by ${order.converted_by_user_id}` : ""}
+                            {order.converted_by_user_name || order.converted_by_user_id
+                              ? ` by ${order.converted_by_user_name || order.converted_by_user_id}`
+                              : ""}
                           </small>
                         ) : null}
                       </div>
@@ -9620,21 +12342,28 @@ export function App() {
                       <div className="trade-in-draft-actions">
                         <button
                           type="button"
-                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          disabled={!canEditTradeIn}
+                          onClick={() => handleLoadTradeInOrder(order)}
+                        >
+                          {order.status === "rejected" ? "Reopen Offer" : "Load Offer"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isLockedTradeIn}
                           onClick={() => void handleTradeInStatus(order.order_id, "review")}
                         >
                           Review
                         </button>
                         <button
                           type="button"
-                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          disabled={isLockedTradeIn}
                           onClick={() => void handleTradeInStatus(order.order_id, "approved")}
                         >
                           Approve
                         </button>
                         <button
                           type="button"
-                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          disabled={isLockedTradeIn || order.status !== "approved"}
                           onClick={() => void handleTradeInStatus(order.order_id, "paid")}
                         >
                           Paid
@@ -9655,7 +12384,7 @@ export function App() {
                         </button>
                         <button
                           type="button"
-                          disabled={isTerminalTradeIn || order.status === "converted"}
+                          disabled={isLockedTradeIn || order.status === "rejected"}
                           onClick={() => void handleTradeInStatus(order.order_id, "rejected")}
                         >
                           Reject
@@ -9665,7 +12394,11 @@ export function App() {
                     )
                   })
                 ) : (
-                  <p className="panel-empty">No shared trade-in orders loaded from the LAN server.</p>
+                  <p className="panel-empty">
+                    {tradeInSelectedCustomer
+                      ? `No saved trade-in offers are attached to ${tradeInSelectedCustomer.display_name}.`
+                      : "No shared trade-in orders loaded from the LAN server."}
+                  </p>
                 )}
               </div>
 
@@ -9905,7 +12638,7 @@ export function App() {
                 <button type="button" onClick={() => void handleQuantityAdjustment()}>
                   Adjust Qty
                 </button>
-                <button type="button" onClick={handlePrintLabel}>
+                <button type="button" onClick={() => handlePrintLabel()}>
                   Print Label
                 </button>
               </div>
@@ -9928,7 +12661,7 @@ export function App() {
                   <>
                     <span>Local queue ready</span>
                     <strong>SQLite operation envelope</strong>
-                    <small>Updates stay local until push acceptance.</small>
+                    <small>Updates are saved here and sent on the next sync.</small>
                   </>
                 )}
               </div>
@@ -9948,6 +12681,555 @@ export function App() {
                 </div>
               ) : null}
             </aside>
+
+            <section className="checkout-panel" aria-label="Checkout POS">
+              <div className="section-heading section-heading-actions">
+                <div>
+                  <h2>Checkout</h2>
+                  <span>Scan products, load kiosk orders, use local credit, and save the receipt.</span>
+                </div>
+                <div className="checkout-mode-buttons" aria-label="Checkout start mode">
+                  <button
+                    type="button"
+                    className={checkoutCustomerMode === "guest" ? "is-active" : ""}
+                    onClick={() => setCheckoutMode("guest")}
+                  >
+                    <Icon name="checkout" />
+                    <span>Guest Checkout</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={checkoutCustomerMode === "customer" ? "is-active" : ""}
+                    onClick={() => setCheckoutMode("customer")}
+                  >
+                    <Icon name="customer" />
+                    <span>Customer Checkout</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="checkout-customer-strip" aria-label="Checkout customer">
+                <div>
+                  <span className="micro-label">Current sale</span>
+                  <strong>
+                    {checkoutCustomerMode === "guest" ? "Guest checkout" : activeCustomerName}
+                  </strong>
+                  <small>
+                    {checkoutCustomerMode === "guest"
+                      ? "No store credit on guest checkout."
+                      : `${formatMoney(displayedCreditMinorUnits, customerCredit.currency)} local credit available.`}
+                  </small>
+                </div>
+                <label htmlFor="checkout-customer-search">
+                  <span className="micro-label">Find customer</span>
+                  <input
+                    id="checkout-customer-search"
+                    value={customerSearchQuery}
+                    onChange={(event) => setCustomerSearchQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        setCheckoutCustomerMode("customer")
+                        void handleCustomerProfileSearch()
+                      }
+                    }}
+                    placeholder="Name, email, or phone"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckoutCustomerMode("customer")
+                    void handleCustomerProfileSearch()
+                  }}
+                >
+                  <Icon name="search" />
+                  <span>Search</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection("Customers")
+                    setShowNewCustomerForm(true)
+                  }}
+                >
+                  <Icon name="plus" />
+                  <span>New Customer</span>
+                </button>
+              </div>
+
+              {checkoutCustomerMode === "customer" && customerSearchResults.length > 0 ? (
+                <div className="checkout-customer-results" aria-label="Checkout customer matches">
+                  {customerSearchResults.slice(0, 8).map((customer) => (
+                    <button
+                      type="button"
+                      key={customer.customer_public_id}
+                      className={customer.customer_public_id === customerCredit.customerPublicId ? "is-selected" : ""}
+                      onClick={() => void handleUseCustomerProfile(customer)}
+                    >
+                      <strong>{customer.display_name}</strong>
+                      <span>{customer.customer_lookup || customer.email || customer.customer_public_id}</span>
+                      <small>{formatMoney(customer.credit.balance_minor_units, customer.credit.currency)} credit</small>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="checkout-layout">
+                <div className="checkout-entry-panel">
+                  <div className="checkout-card-reader" aria-label="Barcode scanner">
+                    <label htmlFor="checkout-barcode">
+                      <span className="micro-label">Barcode scan</span>
+                      <input
+                        id="checkout-barcode"
+                        autoComplete="off"
+                        value={checkoutBarcodeInput}
+                        onChange={(event) => setCheckoutBarcodeInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault()
+                            handleAddCheckoutBarcode()
+                          }
+                        }}
+                        placeholder="Scan product label"
+                      />
+                    </label>
+                    <button type="button" onClick={handleAddCheckoutBarcode}>
+                      <Icon name="scan" />
+                      <span>Add Scan</span>
+                    </button>
+                  </div>
+
+                  <div className="checkout-product-search" aria-label="Product lookup">
+                    <label htmlFor="checkout-product-search">
+                      <span className="micro-label">Product search</span>
+                      <input
+                        id="checkout-product-search"
+                        value={checkoutProductSearch}
+                        onChange={(event) => setCheckoutProductSearch(event.target.value)}
+                        placeholder="Card, set, condition, barcode"
+                      />
+                    </label>
+                    <div className="checkout-search-results">
+                      {checkoutInventoryMatches.length > 0 ? (
+                        checkoutInventoryMatches.map((item) => (
+                          <button
+                            type="button"
+                            key={item.publicId}
+                            disabled={!["available", "reserved"].includes(item.status)}
+                            onClick={() => handleAddCheckoutInventoryItem(item)}
+                          >
+                            <strong>{item.cardName}</strong>
+                            <span>
+                              {item.setName} / {item.condition} / {statusLabel(item.status)}
+                            </span>
+                            <small>
+                              {item.price}; {item.barcode}; {item.location}
+                            </small>
+                          </button>
+                        ))
+                      ) : (
+                        <p>Search or scan to add products.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="checkout-kiosk-import" aria-label="Kiosk order import">
+                    <header>
+                      <div>
+                        <span className="micro-label">Kiosk order</span>
+                        <strong>
+                          {selectedCustomerKioskOrder
+                            ? selectedCustomerKioskOrder.orderId
+                            : "Search pickup orders"}
+                        </strong>
+                        <small>Load cards the customer already picked from the kiosk.</small>
+                      </div>
+                      <button type="button" onClick={() => void refreshKioskOrderTickets(false)}>
+                        <Icon name="sync" />
+                        <span>Refresh</span>
+                      </button>
+                    </header>
+                    <label htmlFor="checkout-kiosk-search">
+                      <span className="micro-label">Order, name, receipt, card</span>
+                      <input
+                        id="checkout-kiosk-search"
+                        value={customerKioskOrderSearch}
+                        onChange={(event) => setCustomerKioskOrderSearch(event.target.value)}
+                        placeholder="Kiosk ID, name, card"
+                      />
+                    </label>
+                    <div className="checkout-kiosk-results">
+                      {checkoutKioskOrderMatches.length > 0 ? (
+                        checkoutKioskOrderMatches.map((ticket) => (
+                          <button
+                            type="button"
+                            key={ticket.orderId}
+                            className={ticket.orderId === selectedCustomerKioskOrderId ? "is-selected" : ""}
+                            onClick={() => handleLoadKioskOrderToCheckout(ticket)}
+                          >
+                            <strong>{ticket.orderId}</strong>
+                            <span>{ticket.customerName}</span>
+                            <small>
+                              {ticket.status}; {ticket.itemCount} card(s); {ticket.totalLabel}
+                            </small>
+                          </button>
+                        ))
+                      ) : (
+                        <p>No unpaid kiosk orders match this search.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="checkout-misc-panel" aria-label="Misc sale line">
+                    <label htmlFor="checkout-misc-label">
+                      <span className="micro-label">Misc button</span>
+                      <input
+                        id="checkout-misc-label"
+                        value={checkoutMiscLabel}
+                        onChange={(event) => setCheckoutMiscLabel(event.target.value)}
+                        placeholder="Sleeves, snack, table fee"
+                      />
+                    </label>
+                    <label htmlFor="checkout-misc-amount">
+                      <span className="micro-label">Amount</span>
+                      <input
+                        id="checkout-misc-amount"
+                        inputMode="decimal"
+                        value={checkoutMiscAmountInput}
+                        onBlur={() => {
+                          const parsed = creditRedemptionInputToMinorUnits(checkoutMiscAmountInput)
+                          if (parsed !== null) {
+                            setCheckoutMiscAmountInput(creditRedemptionInputFromMinorUnits(parsed))
+                          }
+                        }}
+                        onChange={(event) =>
+                          setCheckoutMiscAmountInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                        }
+                        placeholder="0.00"
+                      />
+                    </label>
+                    <button type="button" onClick={handleAddCheckoutMiscLine}>
+                      <Icon name="plus" />
+                      <span>Add Misc</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="checkout-cart-panel" aria-label="Checkout cart">
+                  <header>
+                    <div>
+                      <span className="micro-label">Sale cart</span>
+                      <strong>{formatMoney(checkoutSubtotalMinorUnits, "USD")}</strong>
+                      <small>
+                        {checkoutCartLines.length} line(s)
+                        {checkoutHeldLines.length > 0 ? `; ${checkoutHeldLines.length} held item warning` : ""}
+                        {checkoutUnavailableLines.length > 0
+                          ? `; ${checkoutUnavailableLines.length} unavailable`
+                          : ""}
+                      </small>
+                    </div>
+                    <button type="button" onClick={() => setCheckoutCartLines([])}>
+                      <Icon name="trash" />
+                      <span>Clear</span>
+                    </button>
+                  </header>
+                  <div className="checkout-cart-lines">
+                    {checkoutCartLines.length > 0 ? (
+                      checkoutCartLines.map((line) => {
+                        const matchingItem = inventoryItems.find(
+                          (item) =>
+                            item.publicId === line.inventoryPublicId ||
+                            (!!line.barcode && item.barcode === line.barcode),
+                        )
+                        const lineStatus =
+                          line.type === "misc"
+                            ? "Manual charge"
+                            : matchingItem
+                              ? matchingItem.status === "reserved"
+                                ? "Held in cart/order"
+                                : statusLabel(matchingItem.status)
+                              : "Not found"
+
+                        return (
+                          <article
+                            className={`checkout-cart-line ${
+                              matchingItem && !["available", "reserved"].includes(matchingItem.status)
+                                ? "is-blocked"
+                                : matchingItem?.status === "reserved"
+                                  ? "is-warning"
+                                  : ""
+                            }`}
+                            key={line.lineId}
+                          >
+                            <div>
+                              <strong>{line.cardName}</strong>
+                              <small>
+                                {[line.setName, line.condition, line.location].filter(Boolean).join(" / ") ||
+                                  "Misc sale"}
+                              </small>
+                              <small>{line.barcode || line.sourceOrderId || lineStatus}</small>
+                            </div>
+                            <div>
+                              <span>{lineStatus}</span>
+                              <strong>{formatMoney(line.totalMinorUnits, "USD")}</strong>
+                              <button type="button" onClick={() => handleRemoveCheckoutLine(line.lineId)}>
+                                Remove
+                              </button>
+                            </div>
+                          </article>
+                        )
+                      })
+                    ) : (
+                      <p className="panel-empty">No items in checkout yet.</p>
+                    )}
+                  </div>
+
+                  <div className="checkout-payment-panel" aria-label="Checkout payment">
+                    <div className="checkout-tender-mode" aria-label="Payment method">
+                      <button
+                        type="button"
+                        className={checkoutTenderMode === "card" ? "is-active" : ""}
+                        onClick={() => {
+                          setCheckoutTenderMode("card")
+                          setCheckoutCashReceivedInput("0.00")
+                        }}
+                      >
+                        Pay with Card
+                      </button>
+                      <button
+                        type="button"
+                        className={checkoutTenderMode === "cash" ? "is-active" : ""}
+                        onClick={() => {
+                          setCheckoutTenderMode("cash")
+                          setSquareReceiptReference("")
+                          setSquareSoldOrderId("")
+                        }}
+                      >
+                        Pay with Cash
+                      </button>
+                      <button
+                        type="button"
+                        className={checkoutTenderMode === "split" ? "is-active" : ""}
+                        onClick={() => setCheckoutTenderMode("split")}
+                      >
+                        Split Cash/Card
+                      </button>
+                    </div>
+                    <label htmlFor="checkout-credit">
+                      <span className="micro-label">Use store credit</span>
+                      <input
+                        id="checkout-credit"
+                        inputMode="decimal"
+                        disabled={checkoutCustomerMode !== "customer"}
+                        value={checkoutCustomerMode === "customer" ? creditRedemptionInput : "0.00"}
+                        onBlur={() => {
+                          const parsed = creditRedemptionInputToMinorUnits(creditRedemptionInput)
+                          if (parsed !== null) {
+                            setCreditRedemptionInput(creditRedemptionInputFromMinorUnits(parsed))
+                          }
+                        }}
+                        onChange={(event) =>
+                          setCreditRedemptionInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                        }
+                        placeholder="0.00"
+                      />
+                      <small>
+                        Local credit is never available online. Select a customer before using it.
+                      </small>
+                    </label>
+                    {checkoutTenderMode === "cash" || checkoutTenderMode === "split" ? (
+                      <label htmlFor="checkout-cash-received">
+                        <span className="micro-label">
+                          {checkoutTenderMode === "cash" ? "Cash received" : "Cash amount"}
+                        </span>
+                        <input
+                          id="checkout-cash-received"
+                          inputMode="decimal"
+                          value={checkoutCashReceivedInput}
+                          onBlur={() => {
+                            const parsed = creditRedemptionInputToMinorUnits(checkoutCashReceivedInput)
+                            if (parsed !== null) {
+                              setCheckoutCashReceivedInput(creditRedemptionInputFromMinorUnits(parsed))
+                            }
+                          }}
+                          onChange={(event) =>
+                            setCheckoutCashReceivedInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                          }
+                          placeholder="0.00"
+                        />
+                        {checkoutTenderIssue && !checkoutSquareReceiptIssue ? (
+                          <small>{checkoutTenderIssue}</small>
+                        ) : null}
+                      </label>
+                    ) : null}
+                    <label htmlFor="checkout-square-reference">
+                      <span className="micro-label">
+                        {checkoutRequiresSquareReceipt ? "Card receipt" : "Card receipt"}
+                      </span>
+                      <input
+                        id="checkout-square-reference"
+                        disabled={!checkoutRequiresSquareReceipt}
+                        value={squareReceiptReference}
+                        onBlur={() => setSquareReceiptReference(checkoutCleanSquareReceiptReference)}
+                        onChange={(event) => setSquareReceiptReference(event.target.value)}
+                        placeholder={
+                          checkoutRequiresSquareReceipt
+                            ? "Receipt, ticket, or transaction ID"
+                            : "Not needed for cash-only sales"
+                        }
+                      />
+                      {checkoutSquareReceiptIssue ? <small>{checkoutSquareReceiptIssue}</small> : null}
+                    </label>
+                    <label htmlFor="checkout-square-order-id">
+                      <span className="micro-label">Square order ID</span>
+                      <input
+                        id="checkout-square-order-id"
+                        disabled={!checkoutRequiresSquareReceipt}
+                        value={squareSoldOrderId}
+                        onChange={(event) => setSquareSoldOrderId(event.target.value)}
+                        placeholder={checkoutRequiresSquareReceipt ? "Optional" : "Not needed for cash-only sales"}
+                      />
+                    </label>
+                    <label htmlFor="checkout-receipt-delivery">
+                      <span className="micro-label">Receipt</span>
+                      <select
+                        id="checkout-receipt-delivery"
+                        value={checkoutReceiptDelivery}
+                        onChange={(event) =>
+                          setCheckoutReceiptDelivery(event.target.value as CheckoutReceiptDelivery)
+                        }
+                      >
+                        <option value="print">Print receipt</option>
+                        <option value="email">Email receipt</option>
+                        <option value="both">Print and email</option>
+                      </select>
+                    </label>
+                    <label htmlFor="checkout-receipt-email">
+                      <span className="micro-label">Receipt email</span>
+                      <input
+                        id="checkout-receipt-email"
+                        inputMode="email"
+                        value={checkoutReceiptEmail}
+                        onChange={(event) => setCheckoutReceiptEmail(event.target.value)}
+                        placeholder={activeCustomerProfile?.customer.email || "name@example.com"}
+                      />
+                      {checkoutReceiptEmailIssue ? <small>{checkoutReceiptEmailIssue}</small> : null}
+                    </label>
+                    <label className="square-confirmation-check" htmlFor="checkout-square-credit-confirmed">
+                      <input
+                        id="checkout-square-credit-confirmed"
+                        type="checkbox"
+                        disabled={checkoutCreditMinorUnits <= 0 || checkoutCardPaidMinorUnits <= 0}
+                        checked={squareCashierConfirmed}
+                        onChange={(event) => setSquareCashierConfirmed(event.target.checked)}
+                      />
+                      <span>
+                        Store credit is reflected before collecting the card portion in Square.
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="checkout-total-panel" aria-label="Checkout totals">
+                    <div>
+                      <span>Subtotal</span>
+                      <strong>{formatMoney(checkoutSubtotalMinorUnits, "USD")}</strong>
+                    </div>
+                    <div>
+                      <span>Store credit</span>
+                      <strong>{formatMoney(checkoutCreditMinorUnits, "USD")}</strong>
+                    </div>
+                    <div>
+                      <span>Cash</span>
+                      <strong>{formatMoney(checkoutCashPaidMinorUnits, "USD")}</strong>
+                    </div>
+                    <div>
+                      <span>Card</span>
+                      <strong>{formatMoney(checkoutSquareDueMinorUnits, "USD")}</strong>
+                    </div>
+                    {checkoutTenderMode === "cash" ? (
+                      <div>
+                        <span>Change Due</span>
+                        <strong>{formatMoney(checkoutChangeDueMinorUnits, "USD")}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="square-terminal-panel checkout-square-reader" aria-label="Square Terminal reader connector">
+                    <header>
+                      <div>
+                        <span className="micro-label">Square reader</span>
+                        <strong>
+                          {squareTerminalStatus?.status === "ok"
+                            ? squareTerminalStatus.can_create_terminal_checkout
+                              ? "Ready for reader checkout"
+                              : "Manual receipt mode"
+                            : "Not checked"}
+                        </strong>
+                        <small>Reader setup stays on the LAN server. No Square secret is shown in the app.</small>
+                      </div>
+                      <button type="button" onClick={() => void handleRefreshSquareTerminalStatus()}>
+                        <Icon name="sync" />
+                        <span>{squareTerminalProbeStatus === "working" ? "Checking" : "Check Reader"}</span>
+                      </button>
+                    </header>
+                    <div className="square-terminal-actions">
+                      <button
+                        type="button"
+                        disabled={checkoutCardPaidMinorUnits <= 0}
+                        onClick={() => void handleSendSquareTerminalCheckout()}
+                      >
+                        <Icon name="tag" />
+                        <span>
+                          {checkoutCardPaidMinorUnits > 0
+                            ? `Send ${formatMoney(checkoutCardPaidMinorUnits, "USD")} to Square Reader`
+                            : "No card balance"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!managerControlsUnlocked}
+                        onClick={() => void handleCreateSquareTerminalDeviceCode()}
+                      >
+                        <Icon name="link" />
+                        <span>Activate Reader</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {checkoutCompletedReceipt ? (
+                    <div className="checkout-receipt-done" aria-label="Completed checkout receipt">
+                      <div>
+                        <span className="micro-label">Receipt saved</span>
+                        <strong>{checkoutCompletedReceipt.square_receipt_reference}</strong>
+                        <small>
+                          {checkoutCompletedReceipt.customer_name || "Guest checkout"} /{" "}
+                          {formatMoney(checkoutCompletedReceipt.total_minor_units, checkoutCompletedReceipt.currency)}
+                        </small>
+                      </div>
+                      <button type="button" onClick={() => window.print()}>
+                        <Icon name="copy" />
+                        <span>Print Receipt</span>
+                      </button>
+                      <button type="button" onClick={() => handlePrintCheckoutLabels()}>
+                        <Icon name="tag" />
+                        <span>Dymo Labels</span>
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <button
+                    className="checkout-complete-button"
+                    type="button"
+                    disabled={!checkoutCanComplete || !localSyncSessionToken}
+                    onClick={() => void handleCompleteCheckoutSale()}
+                  >
+                    <Icon name="check" />
+                    <span>Complete Sale</span>
+                  </button>
+                </div>
+              </div>
+            </section>
 
             <section
               className={`kiosk-panel fulfillment-panel ${
@@ -10494,67 +13776,223 @@ export function App() {
               </div>
 
               <div className="reports-dashboard-grid" aria-label="Business report summary cards">
-                {REPORT_OPTIONS.slice(0, 4).map((option) => (
-                  <article className="reports-summary-card" key={option.key}>
-                    <span className="micro-label">{option.label}</span>
-                    <strong>{option.focus}</strong>
-                    <small>
-                      {option.key === managerReportKey
-                        ? "Selected for live pull through the LAN middleman."
-                        : "Available to compare with the selected report."}
-                    </small>
-                  </article>
-                ))}
+                {(activeManagerReportSummaryCards.length > 0
+                  ? activeManagerReportSummaryCards
+                  : REPORT_OPTIONS.slice(0, 3).map((option) => ({
+                      label: option.label,
+                      value: option.key === managerReportKey ? "Ready" : "Compare",
+                      detail:
+                        option.key === managerReportKey
+                          ? `${option.focus}; selected for live pull through the LAN middleman.`
+                          : option.focus,
+                      tone: option.key === managerReportKey ? "ready" : "idle",
+                    }))).map((card, cardIndex) => (
+                      <article
+                        className={`reports-summary-card reports-summary-card-${cardIndex + 1} ${card.tone ?? "ready"}`}
+                        key={card.label}
+                      >
+                        <span className="micro-label">{card.label}</span>
+                        <div className="reports-summary-value">
+                          <strong>{card.value}</strong>
+                          <span>{cardIndex === 0 ? "Primary" : cardIndex === 1 ? "Compare" : "Live"}</span>
+                        </div>
+                        <small>{card.detail}</small>
+                        <div className="reports-summary-spark" aria-hidden="true">
+                          {[66, 74, 58, 82, 69, 88].map((height, sparkIndex) => (
+                            <i
+                              key={`${card.label}-spark-${sparkIndex}`}
+                              style={{ height: `${Math.max(22, height - cardIndex * 4 + sparkIndex * 2)}%` }}
+                            />
+                          ))}
+                        </div>
+                      </article>
+                    ))}
               </div>
 
               <div className="reports-chart-grid" aria-label="Report comparison graphs">
-                <article className="reports-chart-card">
-                  <span className="micro-label">Employee intake vs sales</span>
-                  <strong>Compare who added inventory, processed trade-ins, and closed sales</strong>
-                  <div className="reports-chart-bars" aria-hidden="true">
-                    <span style={{ width: "82%" }}></span>
-                    <span style={{ width: "64%" }}></span>
-                    <span style={{ width: "48%" }}></span>
-                  </div>
-                  <small>Filters: employee, date range, product type, game, source.</small>
-                </article>
-                <article className="reports-chart-card">
-                  <span className="micro-label">Online vs in-store</span>
-                  <strong>Track WooCommerce, Square POS, and kiosk pickup by channel</strong>
-                  <div className="reports-chart-bars" aria-hidden="true">
-                    <span style={{ width: "74%" }}></span>
-                    <span style={{ width: "58%" }}></span>
-                    <span style={{ width: "37%" }}></span>
-                  </div>
-                  <small>Payment capture stays in Square; inventory authority stays with WordPress.</small>
-                </article>
-                <article className="reports-chart-card">
-                  <span className="micro-label">Trade-in cash vs credit</span>
-                  <strong>Review payout mix, final values, and conversion to inventory</strong>
-                  <div className="reports-chart-bars" aria-hidden="true">
-                    <span style={{ width: "68%" }}></span>
-                    <span style={{ width: "43%" }}></span>
-                  </div>
-                  <small>Line values use stored final values, not recalculated prices.</small>
-                </article>
+                {activeManagerReportCharts.length > 0
+                  ? activeManagerReportCharts.map((chart) => {
+                      const max = managerReportChartMax(chart)
+                      const chartMode =
+                        chart.type.toLowerCase().includes("line") || chart.series.length > 1 ? "line" : "bar"
+                      const ticks = managerReportChartTicks(max, chart.format)
+
+                      return (
+                        <article className={`reports-chart-card is-${chartMode}`} key={chart.key}>
+                          <div className="reports-card-heading">
+                            <div>
+                              <span className="micro-label">{chart.type.replaceAll("_", " ")}</span>
+                              <strong>{chart.label}</strong>
+                            </div>
+                            <small>{chart.labels.length ? `${chart.labels.length} points` : "Live report"}</small>
+                          </div>
+                          <div className="reports-chart-legend" aria-label={`${chart.label} legend`}>
+                            {chart.series.map((series, seriesIndex) => (
+                              <span key={`${chart.key}-${series.label}-legend`}>
+                                <i className={`series-${seriesIndex % 4}`} />
+                                {series.label}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="reports-chart-shell">
+                            <div className="reports-chart-axis" aria-hidden="true">
+                              {ticks.map((tick) => (
+                                <span key={`${chart.key}-${tick}`}>{tick}</span>
+                              ))}
+                            </div>
+                            {chartMode === "line" ? (
+                              <div className="reports-line-chart" aria-label={`${chart.label} line chart`}>
+                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img">
+                                  <title>{chart.label}</title>
+                                  {[0, 25, 50, 75, 100].map((y) => (
+                                    <line key={`${chart.key}-grid-${y}`} x1="0" x2="100" y1={y} y2={y} />
+                                  ))}
+                                  {chart.series.map((series, seriesIndex) => (
+                                    <polyline
+                                      key={`${chart.key}-${series.label}-line`}
+                                      className={`series-${seriesIndex % 4}`}
+                                      points={managerReportChartPoints(series.values, max)}
+                                    />
+                                  ))}
+                                </svg>
+                                <div className="reports-chart-labels" aria-hidden="true">
+                                  {chart.labels.map((label) => (
+                                    <span key={`${chart.key}-${label}`}>{label}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="reports-column-chart" aria-label={`${chart.label} bar chart`}>
+                                {chart.labels.map((label, labelIndex) => (
+                                  <div className="reports-column-group" key={`${chart.key}-${label}`}>
+                                    <div>
+                                      {chart.series.map((series, seriesIndex) => {
+                                        const value = series.values[labelIndex] ?? 0
+
+                                        return (
+                                          <span
+                                            className={`series-${seriesIndex % 4}`}
+                                            key={`${chart.key}-${series.label}-${label}`}
+                                            style={{
+                                              height: `${Math.max(8, Math.round((Math.abs(value) / max) * 100))}%`,
+                                            }}
+                                            title={`${label}: ${managerReportChartValue(value, chart.format)}`}
+                                          >
+                                            <b>{managerReportChartValue(value, chart.format)}</b>
+                                          </span>
+                                        )
+                                      })}
+                                    </div>
+                                    <small>{label}</small>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <small>Live local report rows; WordPress report rows overlay when available.</small>
+                        </article>
+                      )
+                    })
+                  : (
+                    <>
+                      <article className="reports-chart-card">
+                        <div className="reports-card-heading">
+                          <div>
+                            <span className="micro-label">Employee intake vs sales</span>
+                            <strong>Staff productivity</strong>
+                          </div>
+                          <small>Preview</small>
+                        </div>
+                        <div className="reports-column-chart" aria-hidden="true">
+                          {["Intake", "Trades", "Sales", "Credit"].map((label, index) => (
+                            <div className="reports-column-group" key={label}>
+                              <div>
+                                <span className={`series-${index % 4}`} style={{ height: `${[82, 64, 48, 72][index]}%` }} />
+                              </div>
+                              <small>{label}</small>
+                            </div>
+                          ))}
+                        </div>
+                        <small>Filters: employee, date range, product type, game, source.</small>
+                      </article>
+                      <article className="reports-chart-card is-line">
+                        <div className="reports-card-heading">
+                          <div>
+                            <span className="micro-label">Online vs in-store</span>
+                            <strong>Channel trend</strong>
+                          </div>
+                          <small>Preview</small>
+                        </div>
+                        <div className="reports-line-chart" aria-hidden="true">
+                          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                            {[0, 25, 50, 75, 100].map((y) => (
+                              <line key={`preview-channel-${y}`} x1="0" x2="100" y1={y} y2={y} />
+                            ))}
+                            <polyline className="series-0" points="8,72 24,66 40,52 56,44 72,28 92,20" />
+                            <polyline className="series-1" points="8,82 24,78 40,72 56,68 72,60 92,55" />
+                          </svg>
+                          <div className="reports-chart-labels">
+                            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
+                              <span key={label}>{label}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <small>Payment capture stays in Square; inventory authority stays with WordPress.</small>
+                      </article>
+                      <article className="reports-chart-card">
+                        <div className="reports-card-heading">
+                          <div>
+                            <span className="micro-label">Trade-in cash vs credit</span>
+                            <strong>Payout mix</strong>
+                          </div>
+                          <small>Preview</small>
+                        </div>
+                        <div className="reports-column-chart" aria-hidden="true">
+                          {[
+                            ["Cash", 43],
+                            ["Credit", 68],
+                            ["Converted", 58],
+                          ].map(([label, height], index) => (
+                            <div className="reports-column-group" key={label}>
+                              <div>
+                                <span className={`series-${index % 4}`} style={{ height: `${height}%` }} />
+                              </div>
+                              <small>{label}</small>
+                            </div>
+                          ))}
+                        </div>
+                        <small>Line values use stored final values, not recalculated prices.</small>
+                      </article>
+                    </>
+                  )}
               </div>
 
               <div className="reports-kpi-grid" aria-label="Retail KPI cards">
-                <article className="reports-kpi-card">
-                  <span className="micro-label">Inventory health</span>
-                  <strong>Sell-through, aging, low stock, reserved stock</strong>
-                  <small>Use for reorder and pricing decisions.</small>
-                </article>
-                <article className="reports-kpi-card">
-                  <span className="micro-label">Customer credit</span>
-                  <strong>Credit given, credit used, balances, ledger exceptions</strong>
-                  <small>Local-store credit remains separate from public coupons.</small>
-                </article>
-                <article className="reports-kpi-card">
-                  <span className="micro-label">Operations audit</span>
-                  <strong>Overrides, receipts, ready-for-pickup, report exports</strong>
-                  <small>Manager-only audit trail for accountability.</small>
-                </article>
+                {(activeManagerReportKpiCards.length > 0
+                  ? activeManagerReportKpiCards
+                  : [
+                      {
+                        label: "Inventory health",
+                        value: "Sell-through, aging, low stock, reserved stock",
+                        detail: "Use for reorder and pricing decisions.",
+                      },
+                      {
+                        label: "Customer credit",
+                        value: "Credit given, credit used, balances, ledger exceptions",
+                        detail: "Local-store credit remains separate from public coupons.",
+                      },
+                      {
+                        label: "Operations audit",
+                        value: "Overrides, receipts, ready-for-pickup, report exports",
+                        detail: "Manager-only audit trail for accountability.",
+                      },
+                    ]).map((card) => (
+                    <article className="reports-kpi-card" key={card.label}>
+                      <span className="micro-label">{card.label}</span>
+                      <strong>{card.value}</strong>
+                      <small>{card.detail}</small>
+                    </article>
+                  ))}
               </div>
 
               {managerReportResult?.status === "ok" ? (
@@ -10568,6 +14006,20 @@ export function App() {
                       credentials synced to app: no.
                     </small>
                   </div>
+                  {managerReportResult.rows.length > 0 ? (
+                    <div className="reports-row-preview" aria-label="Latest report row preview">
+                      {managerReportResult.rows.slice(0, 6).map((row, rowIndex) => (
+                        <article key={`report-row-${rowIndex}`}>
+                          {Object.entries(row).slice(0, 5).map(([key, value]) => (
+                            <span key={`${rowIndex}-${key}`}>
+                              <small>{key.replaceAll("_", " ")}</small>
+                              <strong>{String(value ?? "")}</strong>
+                            </span>
+                          ))}
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </section>
@@ -10617,6 +14069,60 @@ export function App() {
                   <strong>{item.count}</strong>
                 </div>
               ))}
+              {localSyncStatus?.status === "ok" ? (
+                <div className="lan-queue-detail-panel" aria-label="LAN pending operation details">
+                  <header>
+                    <div>
+                      <span className="micro-label">LAN pending details</span>
+                      <strong>{lanQueueSummaryTypeLabel}</strong>
+                    </div>
+                    <small>
+                      Local-only rows: {localSyncStatus.queue_summary?.local_only_count ?? 0}; oldest{" "}
+                      {localSyncStatus.queue_summary?.oldest_queued_at_utc
+                        ? formatUtcLabel(localSyncStatus.queue_summary.oldest_queued_at_utc)
+                        : "none"}.
+                    </small>
+                  </header>
+                  {lanQueueSummaryItems.length > 0 ? (
+                    <div className="lan-queue-detail-list">
+                      {lanQueueSummaryItems.map((operation) => (
+                        <article key={operation.operation_id}>
+                          <div>
+                            <span>{formatQueueOperationType(operation.operation_type)}</span>
+                            <strong>{formatQueueOperationType(operation.sync_intent || operation.operation_type)}</strong>
+                            <small>
+                              {operation.customer_public_id
+                                ? `Customer ${operation.customer_public_id}`
+                                : operation.entity_id}
+                              {operation.wordpress_customer_id > 0
+                                ? ` / WP #${operation.wordpress_customer_id}`
+                                : ""}
+                            </small>
+                          </div>
+                          <div>
+                            <strong>
+                              {operation.amount_minor_units > 0
+                                ? formatMoney(operation.amount_minor_units, "USD")
+                                : operation.reservation_count > 0
+                                  ? `${operation.reservation_count} hold(s)`
+                                  : "Pending"}
+                            </strong>
+                            <small>
+                              {operation.ledger_type
+                                ? formatQueueOperationType(operation.ledger_type)
+                                : operation.square_receipt_present
+                                  ? "Square ref attached"
+                                  : formatUtcLabel(operation.queued_at_utc)}
+                            </small>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="panel-empty">No pending LAN rows. Local-only settings rows are not pushed.</p>
+                  )}
+                </div>
+              ) : null}
               {queuedOperations.length > 0 ? (
                 <div className="queued-operation-list" aria-label="Queued local operations">
                   {queuedOperations.slice(0, 6).map((operation) => (
@@ -10910,7 +14416,7 @@ export function App() {
                           {isCheckinPending ? "; local check-in queued" : ""}
                         </small>
                         <small>
-                          {event.game.toUpperCase()} · {event.eventType || "store event"} ·{" "}
+                          {gameDisplayLabel(event.game)} · {event.eventType || "store event"} ·{" "}
                           {formatMoney(event.entryFeeMinorUnits, "USD")}
                           {event.woocommerceProductId > 0
                             ? ` · Woo product #${event.woocommerceProductId}`
@@ -10923,11 +14429,23 @@ export function App() {
                         disabled={registrationBlocked}
                         onClick={() => void handleEventRegistration(event)}
                       >
-                        {event.registrationStatus === "waitlist" ? "Stage Waitlist" : "Register Offline"}
+                        {event.registrationStatus === "waitlist" ? "Add to Waitlist" : "Register Player"}
                       </button>
                     </article>
                   )
                 })}
+                {eventSnapshots.length === 0 ? (
+                  <div className="event-empty-state" aria-label="No events available">
+                    <strong>No events loaded yet</strong>
+                    <small>
+                      Create an event above or refresh LAN events to pull active WooCommerce registration products.
+                    </small>
+                    <button type="button" onClick={() => void refreshLanEventSnapshots({ announce: true })}>
+                      <Icon name="sync" />
+                      <span>Refresh Events</span>
+                    </button>
+                  </div>
+                ) : null}
               </div>
               {selectedEvent ? (
                 <div className="event-detail-card" aria-label="Selected event workflow">
@@ -10956,7 +14474,7 @@ export function App() {
                         : "; Woo product pending"}
                     </small>
                   </div>
-                  <div className="event-offline-fields" aria-label="Offline event registration details">
+                  <div className="event-offline-fields" aria-label="Event registration details">
                     <label htmlFor="event-registrant-first-name">
                       <span className="micro-label">First name</span>
                       <input
@@ -11041,6 +14559,49 @@ export function App() {
                       />
                     </label>
                   </div>
+                  <div className="event-checkin-panel" aria-label="Event check-in search">
+                    <div>
+                      <span className="micro-label">Player check-in</span>
+                      <strong>Search name, phone, or registration</strong>
+                      <small>
+                        Pick a local registration below, or paste a website registration ID into the check-in field.
+                      </small>
+                    </div>
+                    <label htmlFor="event-checkin-search">
+                      <span className="micro-label">Search player</span>
+                      <input
+                        id="event-checkin-search"
+                        value={eventCheckinSearch}
+                        onChange={(event) => setEventCheckinSearch(event.target.value)}
+                        placeholder="Name, phone, email, or registration ID"
+                      />
+                    </label>
+                    <div className="event-checkin-results" aria-label="Event check-in results">
+                      {eventCheckinMatches.length > 0 ? (
+                        eventCheckinMatches.map((entry) => (
+                          <button
+                            key={entry.operationId}
+                            type="button"
+                            onClick={() => {
+                              setSelectedEventId(entry.eventId)
+                              setEventAttendeeLabel(entry.attendeeLabel)
+                              setEventCheckinLookup(
+                                entry.registrationPublicId ||
+                                  cleanOfflineEventRegistrationPublicId("", entry.eventId),
+                              )
+                              setEventCheckinSearch(entry.attendeeLabel)
+                            }}
+                          >
+                            <strong>{entry.attendeeLabel}</strong>
+                            <small>{entry.title}</small>
+                            <small>{entry.registrationPublicId || "Local registration queued"}</small>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="panel-empty">No local registrations match this event yet.</p>
+                      )}
+                    </div>
+                  </div>
                   <button
                     type="button"
                     disabled={
@@ -11052,8 +14613,8 @@ export function App() {
                     <Icon name="event" />
                     <span>
                       {selectedEvent.registrationStatus === "waitlist"
-                        ? "Stage Waitlist"
-                        : "Register Walk-In"}
+                        ? "Add to Waitlist"
+                        : "Register Player"}
                     </span>
                   </button>
                   <button
@@ -11062,7 +14623,7 @@ export function App() {
                     onClick={() => void handleEventCheckin(selectedEvent)}
                   >
                     <Icon name="check" />
-                    <span>Check In</span>
+                    <span>Check In Player</span>
                   </button>
                   <button
                     type="button"
@@ -11772,7 +15333,6 @@ export function App() {
                     }
                   >
                     <option value="development">Development</option>
-                    <option value="staging">Staging</option>
                     <option value="production">Production</option>
                   </select>
                 </label>
@@ -11804,7 +15364,7 @@ export function App() {
                   />
                   <span>
                     <strong>Guarded inventory holds</strong>
-                    <small>Staging route-connected canonical execution</small>
+                    <small>Production sync with inventory checks before each sale.</small>
                   </span>
                 </label>
               </div>
@@ -11982,7 +15542,7 @@ export function App() {
             </section>
 
             <section className="credit-panel" aria-label="Customer credit snapshot" ref={creditPanelRef}>
-              <div>
+              <div className="customer-counter-hero">
                 <span className="micro-label">{customerCredit.label}</span>
                 <h2>
                   {formatMoney(
@@ -11992,82 +15552,391 @@ export function App() {
                 </h2>
               </div>
               <p>{customerCredit.note}</p>
-              <div
-                className="customer-credit-selector"
-                aria-label="Offline customer credit account selector"
-              >
-                <label htmlFor="customer-credit-account">
-                  <span className="micro-label">Customer account</span>
-                  <select
-                    id="customer-credit-account"
-                    value={customerCredit.customerId}
-                    onChange={(event) => handleCustomerCreditSelection(event.target.value)}
+              <div className="customer-profile-card" aria-label="Customer profile lookup">
+                <header>
+                  <div>
+                    <span className="micro-label">Customer profile</span>
+                    <strong>Search by name, email, phone, or customer ID</strong>
+                    <small>{customerProfileDetail}</small>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!localSyncSessionToken || customerProfileStatus === "working"}
+                    onClick={() => void refreshCustomerProfile()}
                   >
-                    {customerCreditDirectory.map((credit) => (
-                      <option key={credit.customerId} value={credit.customerId}>
-                        {customerCreditDisplayName(credit)} -{" "}
-                        {formatMoney(
-                          customerCreditAvailableAfterPending(
-                            credit,
-                            Math.max(
-                              pendingCreditByCustomer[credit.customerId] ?? 0,
-                              customerCreditPendingMinorUnitsFromOperations(
-                                queuedOperations,
-                                credit.customerId,
-                              ),
-                            ),
-                          ),
-                          credit.currency,
-                        )}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div>
-                  <span className="micro-label">Lookup</span>
-                  <strong>
-                    {customerCredit.customerLookup ?? `Customer #${customerCredit.customerId}`}
-                  </strong>
-                  <small>{activeCustomerName}; holds are local until accepted sync.</small>
-                </div>
-              </div>
-              <div className="credit-redemption-control" aria-label="Create local customer">
-                <label htmlFor="new-customer-first-name">
-                  <span className="micro-label">New customer</span>
-                  <input
-                    id="new-customer-first-name"
-                    value={newCustomerFirstName}
-                    onChange={(event) => setNewCustomerFirstName(event.target.value)}
-                    placeholder="First name"
-                  />
-                </label>
-                <label htmlFor="new-customer-last-name">
-                  <span className="micro-label">Last name</span>
-                  <input
-                    id="new-customer-last-name"
-                    value={newCustomerLastName}
-                    onChange={(event) => setNewCustomerLastName(event.target.value)}
-                    placeholder="Last name"
-                  />
-                </label>
-                <label htmlFor="new-customer-email">
-                  <span className="micro-label">Email</span>
-                  <input
-                    id="new-customer-email"
-                    inputMode="email"
-                    value={newCustomerEmail}
-                    onChange={(event) => setNewCustomerEmail(event.target.value)}
-                    placeholder="name@example.com"
-                  />
-                </label>
-                <div>
-                  <span className="micro-label">LAN customer queue</span>
-                  <strong>Website acceptance pending</strong>
-                  <button type="button" onClick={() => void handleCreateCustomer()}>
-                    <Icon name="plus" />
-                    <span>Create Customer</span>
+                    <Icon name="sync" />
+                    <span>{customerProfileStatus === "working" ? "Loading" : "Refresh Profile"}</span>
+                  </button>
+                </header>
+                <div className="customer-profile-search">
+                  <label htmlFor="customer-profile-search">
+                    <span className="micro-label">Lookup</span>
+                    <input
+                      id="customer-profile-search"
+                      value={customerSearchQuery}
+                      onChange={(event) => setCustomerSearchQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault()
+                          void handleCustomerProfileSearch()
+                        }
+                      }}
+                      placeholder="Morgan, name@example.com, 555-0100"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={customerProfileStatus === "working"}
+                    onClick={() => void handleCustomerProfileSearch()}
+                  >
+                    <Icon name="search" />
+                    <span>Search Customers</span>
                   </button>
                 </div>
+                {customerSearchResults.length > 0 ? (
+                  <div className="customer-profile-results" aria-label="Customer search results">
+                    {customerSearchResults.slice(0, 8).map((customer) => (
+                      <button
+                        type="button"
+                        key={customer.customer_public_id}
+                        className={
+                          customer.customer_public_id === customerCredit.customerPublicId ? "is-selected" : ""
+                        }
+                        onClick={() => void handleUseCustomerProfile(customer)}
+                      >
+                        <strong>{customer.display_name}</strong>
+                        <span>{customer.customer_lookup || customer.email || customer.customer_public_id}</span>
+                        <small>{formatMoney(customer.credit.balance_minor_units, customer.credit.currency)} credit</small>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {activeCustomerProfileSummary ? (
+                  <div className="customer-profile-summary" aria-label="Selected customer profile summary">
+                    <div>
+                      <span className="micro-label">Saved trade-ins</span>
+                      <strong>{activeCustomerProfileSummary.trade_in_count}</strong>
+                      <small>
+                        Draft {activeCustomerProfileSummary.status_counts.draft ?? 0}; rejected{" "}
+                        {activeCustomerProfileSummary.status_counts.rejected ?? 0}; approved{" "}
+                        {activeCustomerProfileSummary.status_counts.approved ?? 0}
+                      </small>
+                    </div>
+                    <div>
+                      <span className="micro-label">Credit from trades</span>
+                      <strong>{formatMoney(activeCustomerProfileSummary.credit_total_minor_units, "USD")}</strong>
+                      <small>Applied automatically when a trade-in is approved.</small>
+                    </div>
+                    <div>
+                      <span className="micro-label">Cash payouts</span>
+                      <strong>{formatMoney(activeCustomerProfileSummary.cash_total_minor_units, "USD")}</strong>
+                      <small>Tracked for reports and transaction lookup.</small>
+                    </div>
+                    <div>
+                      <span className="micro-label">Kiosk orders</span>
+                      <strong>{activeCustomerProfileSummary.kiosk_order_count ?? 0}</strong>
+                      <small>
+                        Completed {activeCustomerProfileSummary.completed_kiosk_order_count ?? 0}; tied to local pickup
+                        history.
+                      </small>
+                    </div>
+                    <div>
+                      <span className="micro-label">Checkout receipts</span>
+                      <strong>{activeCustomerProfileSummary.checkout_transaction_count ?? 0}</strong>
+                      <small>Saved POS and kiosk checkout history.</small>
+                    </div>
+                  </div>
+                ) : null}
+                {activeCustomerTradeInOrders.length > 0 ? (
+                  <div className="customer-profile-trades" aria-label="Customer saved trade-ins">
+                    <span className="micro-label">Trade-in records on this profile</span>
+                    {activeCustomerTradeInOrders.slice(0, 6).map((order) => {
+                      const canReopen =
+                        order.status === "draft" || order.status === "review" || order.status === "rejected"
+
+                      return (
+                        <article key={order.order_id}>
+                          <div>
+                            <strong>{order.order_id}</strong>
+                            <small>
+                              {order.status}; {order.item_count} item(s); {formatUtcLabel(order.updated_at_utc)}
+                            </small>
+                            <small>
+                              Credit {formatMoney(order.credit_total_minor_units, order.currency)} / cash{" "}
+                              {formatMoney(order.cash_total_minor_units, order.currency)}
+                            </small>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canReopen}
+                            onClick={() => handleLoadTradeInOrder(order)}
+                          >
+                            {order.status === "rejected" ? "Reopen" : canReopen ? "Edit" : "Locked"}
+                          </button>
+                        </article>
+                      )
+                    })}
+                  </div>
+                ) : null}
+                {customerProfileKioskOrderTickets.length > 0 ? (
+                  <div className="customer-profile-trades" aria-label="Customer kiosk order history">
+                    <span className="micro-label">Kiosk orders on this profile</span>
+                    {customerProfileKioskOrderTickets.slice(0, 6).map((ticket) => (
+                      <article key={ticket.orderId}>
+                        <div>
+                          <strong>{ticket.orderId}</strong>
+                          <small>
+                            {ticket.status}; {ticket.itemCount} card(s); {ticket.totalLabel}
+                          </small>
+                          <small>
+                            {ticket.squareReceiptReference || "No Square receipt stored"};{" "}
+                            {formatUtcLabel(ticket.createdAtUtc)}
+                          </small>
+                        </div>
+                        <button type="button" onClick={() => handleUseCustomerKioskOrder(ticket)}>
+                          Use
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+                {customerProfileCheckoutTransactions.length > 0 ? (
+                  <div className="customer-profile-trades" aria-label="Customer checkout receipt history">
+                    <span className="micro-label">Checkout receipts on this profile</span>
+                    {customerProfileCheckoutTransactions.slice(0, 8).map((transaction) => (
+                      <article key={transaction.transaction_id}>
+                        <div>
+                          <strong>{transaction.square_receipt_reference || transaction.transaction_id}</strong>
+                          <small>
+                            {transaction.source.replaceAll("_", " ")}; {transaction.item_count} item(s);{" "}
+                            {formatMoney(transaction.total_minor_units, transaction.currency)}
+                          </small>
+                          <small>
+                            {transaction.staff_user_name || transaction.staff_user_id || "Staff pending"};{" "}
+                            {formatUtcLabel(transaction.created_at_utc)}
+                          </small>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCheckoutCustomerMode(transaction.guest_checkout ? "guest" : "customer")
+                            setSquareReceiptReference(transaction.square_receipt_reference)
+                            setCheckoutCompletedReceipt(transaction)
+                            setActiveSection("Checkout")
+                          }}
+                        >
+                          Open
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="customer-selected-profile" aria-label="Selected customer account">
+                <div>
+                  <span className="micro-label">Selected customer</span>
+                  <strong>{activeCustomerName}</strong>
+                  <small>{customerCredit.customerLookup ?? `Customer #${customerCredit.customerId}`}</small>
+                </div>
+                <div>
+                  <span className="micro-label">Credit available</span>
+                  <strong>{formatMoney(displayedCreditMinorUnits, customerCredit.currency)}</strong>
+                  <small>
+                    In-progress checkout hold {formatMoney(pendingCreditMinorUnits, customerCredit.currency)}.
+                  </small>
+                </div>
+              </div>
+              <div className="customer-credit-issue" aria-label="Issue local store credit">
+                <div>
+                  <span className="micro-label">Issue credit</span>
+                  <strong>{creditAdjustmentIssue ? "Amount needed" : formatMoney(creditAdjustmentMinorUnits ?? 0, customerCredit.currency)}</strong>
+                  <small>Local store credit only. It is not an online coupon or gift card.</small>
+                </div>
+                <label htmlFor="customer-credit-issue-amount">
+                  <span className="micro-label">Amount</span>
+                  <input
+                    id="customer-credit-issue-amount"
+                    inputMode="decimal"
+                    value={creditAdjustmentInput}
+                    onBlur={() => {
+                      const parsed = creditRedemptionInputToMinorUnits(creditAdjustmentInput)
+                      if (parsed !== null) {
+                        setCreditAdjustmentInput(creditRedemptionInputFromMinorUnits(parsed))
+                      }
+                    }}
+                    onChange={(event) =>
+                      setCreditAdjustmentInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                    }
+                    placeholder="0.00"
+                  />
+                </label>
+                <label htmlFor="customer-credit-issue-reason">
+                  <span className="micro-label">Reason</span>
+                  <input
+                    id="customer-credit-issue-reason"
+                    value={creditAdjustmentReason}
+                    onChange={(event) => setCreditAdjustmentReason(event.target.value)}
+                    placeholder="Trade correction, goodwill, event prize"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={!creditAdjustmentCanSubmit}
+                  onClick={() => void handleCreditAdjustment()}
+                >
+                  <Icon name="plus" />
+                  <span>Issue Credit</span>
+                </button>
+              </div>
+              <div className="customer-create-request" aria-label="Create local customer request">
+                <div>
+                  <span className="micro-label">New customer</span>
+                  <strong>{showNewCustomerForm ? "Enter customer details" : "Hidden until requested"}</strong>
+                  <small>Customer profiles can be used here for store credit and order history.</small>
+                </div>
+                <button type="button" onClick={() => setShowNewCustomerForm((visible) => !visible)}>
+                  <Icon name={showNewCustomerForm ? "close" : "plus"} />
+                  <span>{showNewCustomerForm ? "Hide New Customer" : "Create New Customer"}</span>
+                </button>
+              </div>
+              {showNewCustomerForm ? (
+                <div className="credit-redemption-control" aria-label="Create local customer">
+                  <label htmlFor="new-customer-first-name">
+                    <span className="micro-label">First name</span>
+                    <input
+                      id="new-customer-first-name"
+                      value={newCustomerFirstName}
+                      onChange={(event) => setNewCustomerFirstName(event.target.value)}
+                      placeholder="First name"
+                    />
+                  </label>
+                  <label htmlFor="new-customer-last-name">
+                    <span className="micro-label">Last name</span>
+                    <input
+                      id="new-customer-last-name"
+                      value={newCustomerLastName}
+                      onChange={(event) => setNewCustomerLastName(event.target.value)}
+                      placeholder="Last name"
+                    />
+                  </label>
+                  <label htmlFor="new-customer-email">
+                    <span className="micro-label">Email</span>
+                    <input
+                      id="new-customer-email"
+                      inputMode="email"
+                      value={newCustomerEmail}
+                      onChange={(event) => setNewCustomerEmail(event.target.value)}
+                      placeholder="name@example.com"
+                    />
+                  </label>
+                  <div>
+                    <span className="micro-label">Local profile</span>
+                    <strong>Create and use customer</strong>
+                    <button type="button" onClick={() => void handleCreateCustomer()}>
+                      <Icon name="plus" />
+                      <span>Create & Use Customer</span>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              <div className="customer-kiosk-checkout" aria-label="Kiosk order checkout">
+                <header>
+                  <div>
+                    <span className="micro-label">Kiosk order checkout</span>
+                    <strong>
+                      {selectedCustomerKioskOrder
+                        ? `${selectedCustomerKioskOrder.orderId} / ${selectedCustomerKioskOrder.totalLabel}`
+                        : "Search kiosk orders"}
+                    </strong>
+                    <small>
+                      Pull a customer kiosk order into checkout, record Square payment, then attach the completed order to
+                      this customer profile.
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!selectedCustomerKioskOrder}
+                    onClick={() => selectedCustomerKioskOrder && handleUseCustomerKioskOrder(selectedCustomerKioskOrder)}
+                  >
+                    <Icon name="tag" />
+                    <span>Use Order Total</span>
+                  </button>
+                </header>
+                <div className="customer-kiosk-search">
+                  <label htmlFor="customer-kiosk-order-search">
+                    <span className="micro-label">Order, name, receipt, card</span>
+                    <input
+                      id="customer-kiosk-order-search"
+                      value={customerKioskOrderSearch}
+                      onChange={(event) => setCustomerKioskOrderSearch(event.target.value)}
+                      placeholder="kiosk ID, customer, receipt, Charizard"
+                    />
+                  </label>
+                  <button type="button" onClick={() => void refreshKioskOrderTickets(false)}>
+                    <Icon name="sync" />
+                    <span>Refresh Orders</span>
+                  </button>
+                </div>
+                <div className="customer-kiosk-order-list" aria-label="Kiosk order search results">
+                  {customerKioskOrderMatches.length > 0 ? (
+                    customerKioskOrderMatches.map((ticket) => (
+                      <button
+                        type="button"
+                        key={ticket.orderId}
+                        className={ticket.orderId === selectedCustomerKioskOrderId ? "is-selected" : ""}
+                        onClick={() => handleUseCustomerKioskOrder(ticket)}
+                      >
+                        <strong>{ticket.orderId}</strong>
+                        <span>{ticket.customerName}</span>
+                        <small>
+                          {ticket.status}; {ticket.paymentStatus === "paid" ? "paid" : "pay at store"};{" "}
+                          {ticket.itemCount} card(s); {ticket.totalLabel}
+                        </small>
+                      </button>
+                    ))
+                  ) : (
+                    <p>No kiosk orders match this customer/search yet.</p>
+                  )}
+                </div>
+                {selectedCustomerKioskOrder ? (
+                  <div className="customer-kiosk-selected-order" aria-label="Selected kiosk order cards">
+                    <div>
+                      <span className="micro-label">Selected order cards</span>
+                      <strong>
+                        {selectedCustomerKioskOrder.itemCount} card(s) / {selectedCustomerKioskOrder.totalLabel}
+                      </strong>
+                      <small>
+                        Picked {selectedCustomerKioskOrder.pickedItemIds.length}/{selectedCustomerKioskOrder.itemCount};
+                        receipt {selectedCustomerKioskOrder.squareReceiptReference || "not recorded"}.
+                      </small>
+                    </div>
+                    <ul>
+                      {selectedCustomerKioskOrder.items.map((item) => (
+                        <li key={item.publicId}>
+                          <span>{item.cardName}</span>
+                          <small>
+                            {item.setName}; {item.condition}; {item.location}
+                          </small>
+                          <strong>{item.price}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="customer-kiosk-actions">
+                      <button type="button" onClick={() => void handleAttachKioskOrderToCustomer()}>
+                        <Icon name="link" />
+                        <span>Attach to Customer</span>
+                      </button>
+                      <button type="button" onClick={() => void handleOpenKioskPicking(selectedCustomerKioskOrder)}>
+                        <Icon name="queue" />
+                        <span>Open Fulfillment</span>
+                      </button>
+                      <button type="button" onClick={() => void handleCompleteCustomerKioskCheckout()}>
+                        <Icon name="check" />
+                        <span>Complete Kiosk Sale</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="credit-redemption-control" aria-label="Customer credit redemption amount">
                 <label htmlFor="square-ticket-total">
@@ -12154,59 +16023,8 @@ export function App() {
                   {creditRedemptionIssue ? <small>{creditRedemptionIssue}</small> : null}
                 </div>
               </div>
-              <div className="credit-redemption-control" aria-label="Customer credit add">
-                <label htmlFor="credit-adjustment-amount">
-                  <span className="micro-label">Add store credit</span>
-                  <input
-                    id="credit-adjustment-amount"
-                    inputMode="decimal"
-                    value={creditAdjustmentInput}
-                    onBlur={() => {
-                      const parsed = creditRedemptionInputToMinorUnits(creditAdjustmentInput)
-
-                      if (parsed !== null) {
-                        setCreditAdjustmentInput(creditRedemptionInputFromMinorUnits(parsed))
-                      }
-                    }}
-                    onChange={(event) =>
-                      setCreditAdjustmentInput(moneyInputDraftWithTwoDecimals(event.target.value))
-                    }
-                    placeholder="0.00"
-                  />
-                </label>
-                <label htmlFor="credit-adjustment-reason">
-                  <span className="micro-label">Reason</span>
-                  <input
-                    id="credit-adjustment-reason"
-                    value={creditAdjustmentReason}
-                    onChange={(event) => setCreditAdjustmentReason(event.target.value)}
-                    placeholder="Manager-approved store credit"
-                  />
-                </label>
-                <div>
-                  <span className="micro-label">Approval</span>
-                  <strong>
-                    {creditAdjustmentNeedsManagerApproval
-                      ? ["manager", "owner"].includes(sessionRole)
-                        ? "Manager approved"
-                        : "Manager PIN required"
-                      : `Employee limit ${formatMoney(creditApprovalThresholdMinorUnits, "USD")}`}
-                  </strong>
-                  {creditAdjustmentIssue ? <small>{creditAdjustmentIssue}</small> : null}
-                  <button
-                    type="button"
-                    disabled={!creditAdjustmentCanSubmit}
-                    onClick={() => void handleCreditAdjustment()}
-                  >
-                    <Icon name="check" />
-                    <span>Add Credit</span>
-                  </button>
-                </div>
-              </div>
               <div
-                className={`square-credit-handoff owner-only-detail ${
-                  sessionRole === "owner" ? "" : "is-hidden"
-                }`}
+                className="square-credit-handoff"
                 aria-label="Square POS credit handoff"
               >
                 <div>
@@ -12244,7 +16062,7 @@ export function App() {
                     onChange={(event) => setSquareCashierConfirmed(event.target.checked)}
                   />
                   <span>
-                    Cashier confirmed Pug Store Credit was applied in Square before staging.
+                    Cashier confirmed Pug Store Credit was applied in Square before completing the sale.
                   </span>
                 </label>
                 <ol className="square-credit-checklist">
@@ -12280,10 +16098,99 @@ export function App() {
                   </li>
                 </ol>
               </div>
+              <div className="square-terminal-panel" aria-label="Square Terminal reader connector">
+                <header>
+                  <div>
+                    <span className="micro-label">Square reader connector</span>
+                    <strong>
+                      {squareTerminalStatus
+                        ? squareTerminalStatus.status === "ok"
+                          ? squareTerminalStatus.can_create_terminal_checkout
+                            ? "Ready for reader checkout"
+                            : "Manual receipt mode"
+                          : "Reader check blocked"
+                        : "Not checked"}
+                    </strong>
+                    <small>
+                      Server-side Square Terminal connector; tokens stay on the LAN server and are never returned to the
+                      app.
+                    </small>
+                  </div>
+                  <button type="button" onClick={() => void handleRefreshSquareTerminalStatus()}>
+                    <Icon name="sync" />
+                    <span>{squareTerminalProbeStatus === "working" ? "Checking" : "Check Reader"}</span>
+                  </button>
+                </header>
+                <div className="square-terminal-grid">
+                  <div>
+                    <span className="micro-label">Reader status</span>
+                    <strong>
+                      {squareTerminalStatus?.status === "ok"
+                        ? squareTerminalStatus.payment_capture_supported
+                          ? "Configured"
+                          : squareTerminalStatus.device_pairing_required
+                            ? "Pair reader"
+                            : "Credentials needed"
+                        : squareTerminalStatus
+                          ? "Unavailable"
+                          : "Unknown"}
+                    </strong>
+                    <small>
+                      {squareTerminalStatus?.status === "ok"
+                        ? `Token ${squareTerminalStatus.token_configured ? "set" : "missing"}; location ${
+                            squareTerminalStatus.location_configured ? "set" : "missing"
+                          }; device ${squareTerminalStatus.terminal_device_configured ? "set" : "missing"}.`
+                        : squareTerminalStatus
+                          ? squareTerminalStatus.message
+                        : "Use manual Square receipt entry until the connector is configured."}
+                    </small>
+                  </div>
+                  <div>
+                    <span className="micro-label">Checkout amount</span>
+                    <strong>
+                      {squareSaleTotalMinorUnits === null
+                        ? "Needs total"
+                        : formatMoney(squareSaleTotalMinorUnits, customerCredit.currency)}
+                    </strong>
+                    <small>
+                      {selectedCustomerKioskOrder
+                        ? `Kiosk order ${selectedCustomerKioskOrder.orderId}`
+                        : "Uses the Square ticket total field above."}
+                    </small>
+                  </div>
+                  <div>
+                    <span className="micro-label">Activation code</span>
+                    <strong>
+                      {squareTerminalDeviceCode?.status === "ok"
+                        ? squareTerminalDeviceCode.device_code.code
+                        : "Manager only"}
+                    </strong>
+                    <small>
+                      {squareTerminalDeviceCode?.status === "ok"
+                        ? squareTerminalDeviceCode.pairing_instruction
+                        : "Generate a code only after Square credentials and location are set on the LAN server."}
+                    </small>
+                  </div>
+                </div>
+                <div className="square-terminal-actions">
+                  <button type="button" onClick={() => void handleSendSquareTerminalCheckout()}>
+                    <Icon name="tag" />
+                    <span>Send to Square Reader</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!managerControlsUnlocked}
+                    onClick={() => void handleCreateSquareTerminalDeviceCode()}
+                  >
+                    <Icon name="link" />
+                    <span>Activate Reader</span>
+                  </button>
+                </div>
+              </div>
               {showCreditLedger ? (
                 <div className="ledger-preview" aria-label="Offline credit ledger preview">
                   <div className="ledger-summary-card">
-                    <span>Pending local hold</span>
+                    <span>In-progress hold</span>
                     <strong>
                       {formatMoney(
                         pendingCreditMinorUnits,
@@ -12292,7 +16199,7 @@ export function App() {
                     </strong>
                   </div>
                   <div className="ledger-summary-card">
-                    <span>Cached balance after hold</span>
+                    <span>Balance after hold</span>
                     <strong>
                       {formatMoney(
                         displayedCreditMinorUnits,
@@ -12318,7 +16225,11 @@ export function App() {
                               {entry.operationId ? `; ${entry.operationId}` : ""}
                             </small>
                             <small>
-                              {entry.staffUserId ? `Staff ${entry.staffUserId}` : "Staff pending"}
+                              {entry.staffUserName
+                                ? `Staff ${entry.staffUserName}`
+                                : entry.staffUserId
+                                  ? `Staff ${entry.staffUserId}`
+                                  : "Staff pending"}
                               {entry.referenceId ? `; ref ${entry.referenceId}` : ""}
                             </small>
                             {entry.lineItems && entry.lineItems.length > 0 ? (
@@ -12359,22 +16270,7 @@ export function App() {
               <div className="credit-actions">
                 <button type="button" onClick={() => void handleCreditRedemption()}>
                   <Icon name="tag" />
-                  <span>Stage Credit Use</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreditLedger(true)
-                    setActiveSection("Customers")
-                    setActivityMessage({
-                      title: "Ledger review opened",
-                      detail:
-                        "Cached credit balance, manager approval, and website ledger replay are ready for the next paired sync.",
-                    })
-                  }}
-                >
-                  <Icon name="history" />
-                  <span>Review Ledger</span>
+                  <span>Redeem Credit & Record Square Receipt</span>
                 </button>
               </div>
             </section>

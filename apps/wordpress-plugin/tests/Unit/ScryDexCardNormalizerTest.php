@@ -261,6 +261,98 @@ final class ScryDexCardNormalizerTest extends TestCase {
 		$this->assert_same( '0.0800', $price['market_price'] );
 	}
 
+	public function test_normalizes_scrydex_perfect_graded_price_as_grade_ten(): void {
+		$result = ( new ScryDexCardNormalizer() )->normalize_card(
+			array(
+				'id'        => 'xyp-xy147',
+				'game'      => 'pokemon',
+				'name'      => 'Hoopa',
+				'expansion' => array(
+					'name' => 'XY Black Star Promos',
+				),
+				'variants'  => array(
+					array(
+						'id'     => 'xyp-xy147-holo',
+						'name'   => 'holofoil',
+						'prices' => array(
+							array(
+								'type'       => 'graded',
+								'company'    => 'PSA',
+								'is_perfect' => true,
+								'market'     => 140.00,
+								'low'        => 135.00,
+								'currency'   => 'USD',
+							),
+						),
+					),
+				),
+			)
+		);
+		$price_points = $result->price_points();
+
+		$this->assert_true( $result->is_valid() );
+		$this->assert_same( 'graded', $price_points[0]['raw_or_graded'] );
+		$this->assert_same( 'PSA', $price_points[0]['grading_company'] );
+		$this->assert_same( '10', $price_points[0]['grade'] );
+		$this->assert_same( '140.0000', $price_points[0]['market_price'] );
+	}
+
+	public function test_normalizes_grade_keyed_scrydex_price_points(): void {
+		$result = ( new ScryDexCardNormalizer() )->normalize_card(
+			array(
+				'id'         => 'sv4pt5-234',
+				'game'       => 'pokemon',
+				'name'       => 'Charizard ex',
+				'expansion'  => array(
+					'id'   => 'sv4pt5',
+					'name' => 'Paldean Fates',
+					'code' => 'PAF',
+				),
+				'number'     => '234',
+				'updated_at' => '2026-06-15T12:30:00Z',
+				'variants'   => array(
+					array(
+						'id'            => 'sv4pt5-234-special-illustration',
+						'variant'       => 'Special Illustration Rare',
+						'finish'        => 'Foil',
+						'graded_prices' => array(
+							'PSA'     => array(
+								'10' => array(
+									'market_mid' => '187.25',
+									'low'        => '150.00',
+									'high'       => '220.00',
+									'currency'   => 'USD',
+								),
+								'9'  => '125.00',
+							),
+							'CGC 9.5' => array(
+								'marketValue' => '144.50',
+								'currency'    => 'USD',
+							),
+						),
+					),
+				),
+			)
+		);
+
+		$price_points = $result->price_points();
+
+		$this->assert_true( $result->is_valid() );
+		$this->assert_same( 3, count( $price_points ) );
+		$this->assert_same( 'sv4pt5-234-special-illustration', $price_points[0]['provider_variant_id'] );
+		$this->assert_same( 'graded', $price_points[0]['raw_or_graded'] );
+		$this->assert_same( 'PSA', $price_points[0]['grading_company'] );
+		$this->assert_same( '10', $price_points[0]['grade'] );
+		$this->assert_same( '187.2500', $price_points[0]['mid_price'] );
+		$this->assert_same( '150.0000', $price_points[0]['low_price'] );
+		$this->assert_same( '220.0000', $price_points[0]['high_price'] );
+		$this->assert_same( '9', $price_points[1]['grade'] );
+		$this->assert_same( '125.0000', $price_points[1]['market_price'] );
+		$this->assert_same( 'CGC', $price_points[2]['grading_company'] );
+		$this->assert_same( '9.5', $price_points[2]['grade'] );
+		$this->assert_same( '144.5000', $price_points[2]['market_price'] );
+	}
+
 	/**
 	 * @return array<string, mixed>
 	 */

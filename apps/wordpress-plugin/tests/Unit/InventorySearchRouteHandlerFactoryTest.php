@@ -182,15 +182,23 @@ namespace TCGStorePlatform\Tests\Unit {
 
 	final class ReferenceSearchFallbackProvider implements ScryDexProvider {
 		public int $search_count = 0;
+		public int $price_history_count = 0;
 		public string $last_query = '';
+		public string $last_price_history_card_id = '';
 
 		/**
 		 * @var array<string, string>
 		 */
 		public array $last_filters = array();
 
+		/**
+		 * @var array<string, string>
+		 */
+		public array $last_price_history_filters = array();
+
 		public function __construct(
-			private ScryDexResult $result
+			private ScryDexResult $result,
+			private ?ScryDexResult $price_history_result = null
 		) {
 		}
 
@@ -216,6 +224,14 @@ namespace TCGStorePlatform\Tests\Unit {
 			unset( $provider_card_id );
 
 			return ScryDexResult::not_supported( 'unused in reference search tests' );
+		}
+
+		public function get_card_price_history( string $provider_card_id, array $filters = array() ): ScryDexResult {
+			++$this->price_history_count;
+			$this->last_price_history_card_id = $provider_card_id;
+			$this->last_price_history_filters = $filters;
+
+			return $this->price_history_result ?? ScryDexResult::not_supported( 'unused in reference search tests' );
 		}
 
 		public function search_expansions(
@@ -401,6 +417,76 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $response['data']['meta']['live_provider_request'] );
 		}
 
+		public function test_reference_handler_enriches_graded_search_from_scrydex_price_history(): void {
+			$database = new \InventorySearchRouteHandlerWpdb(
+				array( $this->reference_card_row() ),
+				'1',
+				'wp_',
+				array( $this->reference_variant_row() ),
+				array(),
+				$this->reference_price_point_rows()
+			);
+			$provider = new ReferenceSearchFallbackProvider(
+				ScryDexResult::not_supported( 'unused search fallback' ),
+				new ScryDexResult(
+					ScryDexResult::SUCCESS,
+					200,
+					array(
+						'data' => array(
+							array(
+								'date'   => '2026-06-15',
+								'prices' => array(
+									array(
+										'type'      => 'graded',
+										'company'   => 'SGC',
+										'grade'     => '10',
+										'condition' => 'Near Mint',
+										'market'    => '466.93',
+										'low'       => '425.00',
+										'mid'       => '450.00',
+										'high'      => '500.00',
+										'currency'  => 'USD',
+									),
+								),
+							),
+						),
+					)
+				)
+			);
+			$handler  = new ReferenceCardSearchRouteHandler(
+				$database,
+				'wp_',
+				$provider,
+				new ScryDexPersistenceRepository( $database )
+			);
+
+			$response = $handler->search_reference_cards(
+				$this->request(
+					array(
+						'q'             => 'moonbreon',
+						'game'          => 'pokemon',
+						'limit'         => '8',
+						'raw_or_graded' => 'graded',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 1, $provider->price_history_count );
+			$this->assert_same( 'scrydex-pokemon-evs-215', $provider->last_price_history_card_id );
+			$this->assert_same( '30', $provider->last_price_history_filters['days'] );
+			$this->assert_same( 'completed', $response['data']['meta']['price_history_enrichment']['status'] );
+			$this->assert_same( 1, $response['data']['meta']['price_history_enrichment']['price_point_count'] );
+			$this->assert_same( 'executed', $response['data']['meta']['price_history_enrichment']['persistence_status'] );
+			$this->assert_same( array(), $response['data']['meta']['price_history_enrichment']['persistence_errors'] );
+			$this->assert_same( 'GRADED', $response['data']['cards'][0]['price_points'][1]['condition_code'] );
+			$this->assert_same( 'graded', $response['data']['cards'][0]['price_points'][1]['raw_or_graded'] );
+			$this->assert_same( 'SGC', $response['data']['cards'][0]['price_points'][1]['grading_company'] );
+			$this->assert_same( '10', $response['data']['cards'][0]['price_points'][1]['grade'] );
+			$this->assert_same( '466.93', $response['data']['cards'][0]['price_points'][1]['market_price'] );
+			$this->assert_true( $database->query_count > 0 );
+		}
+
 		public function test_reference_handler_fetches_and_persists_provider_card_on_cache_miss(): void {
 			$database = new \InventorySearchRouteHandlerWpdb( array(), '0', 'wp_' );
 			$provider = new ReferenceSearchFallbackProvider(
@@ -435,7 +521,7 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'moonbreon', $provider->last_query );
 			$this->assert_same( 'pokemon', $provider->last_filters['game'] );
 			$this->assert_same( '8', $provider->last_filters['page_size'] );
-			$this->assert_same( 'prices', $provider->last_filters['include'] );
+			$this->assert_same( 'prices,pop_reports', $provider->last_filters['include'] );
 			$this->assert_true( $database->query_count > 0 );
 			$this->assert_true( $response['data']['meta']['live_provider_request'] );
 			$this->assert_false( $response['data']['meta']['credentials_in_response'] );

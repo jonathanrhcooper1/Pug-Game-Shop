@@ -81,6 +81,14 @@ final class ReferenceCardSearchRouteHandler {
 			$price_points = $this->empty_price_point_index();
 		}
 
+		$price_history_enrichment = $this->maybe_enrich_graded_price_history( $request, $rows, $price_points );
+		if ( array() !== $price_history_enrichment['price_points'] ) {
+			$price_points = $this->merge_price_point_indexes(
+				$price_points,
+				$this->build_price_point_index( $price_history_enrichment['price_points'] )
+			);
+		}
+
 		$stock_summaries      = $this->fetch_stock_summaries( $query, $rows );
 		$stock_summary_status = is_array( $stock_summaries ) ? 'ready' : 'deferred';
 
@@ -123,6 +131,7 @@ final class ReferenceCardSearchRouteHandler {
 					'scrydex_credentials_scope' => 'wordpress_server_settings',
 					'stock_summary_status'      => $stock_summary_status,
 					'price_point_status'        => $price_point_status,
+					'price_history_enrichment'  => $this->price_history_enrichment_meta( $price_history_enrichment ),
 				),
 			),
 			'meta'        => $this->ready_meta( $query, count( $rows ), $total ),
@@ -130,12 +139,13 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
-	 * @return array{query:string,game:string,page:int,page_size:int,errors:list<string>}
+	 * @return array{query:string,game:string,raw_or_graded:string,page:int,page_size:int,errors:list<string>}
 	 */
 	private function parse_request( OfflineRestRequestData $data ): array {
 		$params    = array_merge( $data->query_params(), $data->body_params() );
 		$query     = trim( (string) ( $params['q'] ?? ( $params['query'] ?? '' ) ) );
 		$game      = strtolower( trim( (string) ( $params['game'] ?? '' ) ) );
+		$raw_or_graded = strtolower( trim( (string) ( $params['raw_or_graded'] ?? ( $params['product_type'] ?? '' ) ) ) );
 		$page_raw  = $params['page'] ?? 1;
 		$limit_raw = $params['page_size'] ?? ( $params['limit'] ?? 25 );
 		$page      = $this->positive_int( $page_raw, 1 );
@@ -156,6 +166,11 @@ final class ReferenceCardSearchRouteHandler {
 			$game     = '';
 		}
 
+		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
+			$errors[]      = 'raw_or_graded_invalid';
+			$raw_or_graded = '';
+		}
+
 		if ( ! $this->is_positive_intish( $page_raw ) ) {
 			$errors[] = 'page_invalid';
 			$page     = 1;
@@ -174,6 +189,7 @@ final class ReferenceCardSearchRouteHandler {
 		return array(
 			'query'     => $query,
 			'game'      => $game,
+			'raw_or_graded' => $raw_or_graded,
 			'page'      => $page,
 			'page_size' => $page_size,
 			'errors'    => array_values( array_unique( $errors ) ),
@@ -616,7 +632,7 @@ final class ReferenceCardSearchRouteHandler {
 				array(
 					'game'      => $game,
 					'page_size' => (string) $request['page_size'],
-					'include'   => 'prices',
+					'include'   => 'prices,pop_reports',
 				),
 				1,
 				''
@@ -1054,6 +1070,274 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
+	 * @param array<string, mixed>       $request Parsed request.
+	 * @param list<array<string, mixed>> $rows Reference card rows.
+	 * @param array<string, mixed>       $price_points Existing price points indexed by reference and provider.
+	 * @return array{status:string,request_count:int,price_point_count:int,price_points:list<array<string,mixed>>,errors:list<string>,persistence_status:string,persistence_errors:list<string>}
+	 */
+	private function maybe_enrich_graded_price_history( array $request, array $rows, array $price_points ): array {
+		$result = array(
+			'status'              => 'skipped',
+			'request_count'       => 0,
+			'price_point_count'   => 0,
+			'price_points'        => array(),
+			'errors'              => array(),
+			'persistence_status'  => 'skipped',
+			'persistence_errors'  => array(),
+		);
+
+		if ( 'graded' !== (string) ( $request['raw_or_graded'] ?? '' ) ) {
+			return $result;
+		}
+
+		if ( null === $this->scrydex_provider || ! method_exists( $this->scrydex_provider, 'get_card_price_history' ) ) {
+			$result['status'] = 'provider_unavailable';
+			$result['errors'] = array( 'scrydex_price_history_provider_unavailable' );
+			return $result;
+		}
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) || ! $this->row_needs_graded_price_history( $row, $price_points ) ) {
+				continue;
+			}
+
+			$provider_card_id = $this->text( $row['provider_card_id'] ?? '' );
+			if ( '' === $provider_card_id ) {
+				continue;
+			}
+
+			try {
+				$history = $this->scrydex_provider->get_card_price_history(
+					$provider_card_id,
+					array(
+						'game'      => $this->slug( $row['game'] ?? ( $request['game'] ?? 'pokemon' ) ),
+						'days'      => '30',
+						'page_size' => '30',
+					)
+				);
+			} catch ( Throwable $error ) {
+				$result['errors'][] = 'scrydex_price_history_exception:' . $this->safe_provider_message( $error->getMessage() );
+				continue;
+			}
+
+			++$result['request_count'];
+
+			if ( ! $history->is_success() ) {
+				$result['errors'][] = $history->error_code() ?? 'scrydex_price_history_failed';
+				continue;
+			}
+
+			$history_points = $this->price_point_rows_from_price_history( $history->body(), $row );
+			if ( array() !== $history_points ) {
+				$result['price_points'] = array_merge( $result['price_points'], $history_points );
+			}
+		}
+
+		$result['price_point_count'] = count( $result['price_points'] );
+		$result['status']            = $result['request_count'] > 0
+			? ( $result['price_point_count'] > 0 ? 'completed' : 'empty' )
+			: 'not_needed';
+
+		if ( array() !== $result['price_points'] ) {
+			$persistence = $this->persist_price_history_price_points( $result['price_points'], $rows );
+			$result['persistence_status'] = $persistence['status'];
+			$result['persistence_errors'] = $persistence['errors'];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Reference card row.
+	 * @param array<string, mixed> $price_points Existing price points indexed by reference and provider.
+	 */
+	private function row_needs_graded_price_history( array $row, array $price_points ): bool {
+		foreach ( $this->price_points_for_row( $row, $price_points ) as $point ) {
+			if ( 'graded' !== strtolower( $this->text( $point['raw_or_graded'] ?? '' ) ) ) {
+				continue;
+			}
+
+			if ( '' !== $this->text( $point['grade'] ?? '' ) || '' !== $this->text( $point['grading_company'] ?? '' ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param array<string, mixed> $body ScryDex price-history response body.
+	 * @param array<string, mixed> $card_row Reference card row.
+	 * @return list<array<string,mixed>>
+	 */
+	private function price_point_rows_from_price_history( array $body, array $card_row ): array {
+		$entries = $body['data'] ?? array();
+		if ( ! is_array( $entries ) ) {
+			return array();
+		}
+
+		foreach ( $entries as $entry ) {
+			if ( ! is_array( $entry ) ) {
+				continue;
+			}
+
+			$prices = $entry['prices'] ?? array();
+			if ( ! is_array( $prices ) ) {
+				continue;
+			}
+
+			$rows = array();
+			foreach ( $prices as $price ) {
+				if ( ! is_array( $price ) || 'graded' !== $this->history_price_type( $price ) ) {
+					continue;
+				}
+
+				$market = $this->history_price_amount( $price, array( 'market', 'market_price', 'marketPrice', 'value' ) );
+				$mid    = $this->history_price_amount( $price, array( 'mid', 'mid_price', 'midPrice', 'market', 'market_price', 'marketPrice' ) );
+				if ( null === $market && null === $mid ) {
+					continue;
+				}
+
+				$rows[] = array(
+					'provider_name'          => $this->text( $card_row['provider_name'] ?? 'scrydex' ),
+					'provider_card_id'       => $this->text( $card_row['provider_card_id'] ?? '' ),
+					'reference_card_id'      => $this->positive_reference_id( $card_row['reference_card_id'] ?? null ),
+					'reference_variant_id'   => null,
+					'provider_variant_id'    => $this->text( $price['provider_variant_id'] ?? ( $price['variant_id'] ?? ( $price['variant'] ?? '' ) ) ),
+					'game'                   => $this->slug( $card_row['game'] ?? 'pokemon' ),
+					'condition_code'         => 'graded',
+					'raw_or_graded'          => 'graded',
+					'grading_company'        => strtoupper( $this->text( $price['company'] ?? ( $price['grading_company'] ?? ( $price['grader'] ?? '' ) ) ) ),
+					'grade'                  => $this->history_price_grade( $price ),
+					'market_price'           => null === $market ? $mid : $market,
+					'low_price'              => $this->history_price_amount( $price, array( 'low', 'low_price', 'lowPrice' ) ),
+					'mid_price'              => $mid,
+					'high_price'             => $this->history_price_amount( $price, array( 'high', 'high_price', 'highPrice' ) ),
+					'currency'               => $this->currency( $price['currency'] ?? null ),
+					'source_observed_at'     => $this->mysql_datetime( $entry['date'] ?? '' ),
+					'provider_updated_at'    => $this->mysql_datetime( $entry['date'] ?? '' ),
+					'observed_at'            => gmdate( 'Y-m-d H:i:s' ),
+					'raw_price_payload_json' => $this->json_encode_safe( $price ),
+				);
+			}
+
+			if ( array() !== $rows ) {
+				return $rows;
+			}
+		}
+
+		return array();
+	}
+
+	/**
+	 * @param array<string, mixed> $price Price-history row.
+	 */
+	private function history_price_type( array $price ): string {
+		$type = strtolower( $this->text( $price['raw_or_graded'] ?? ( $price['type'] ?? '' ) ) );
+		if ( in_array( $type, array( 'raw', 'graded' ), true ) ) {
+			return $type;
+		}
+
+		return true === ( $price['is_perfect'] ?? false )
+			|| '' !== $this->text( $price['grade'] ?? '' )
+			|| '' !== $this->text( $price['company'] ?? '' )
+			? 'graded'
+			: 'raw';
+	}
+
+	/**
+	 * @param array<string, mixed> $price Price-history row.
+	 * @param list<string>        $keys Candidate amount keys.
+	 */
+	private function history_price_amount( array $price, array $keys ): ?string {
+		foreach ( $keys as $key ) {
+			if ( isset( $price[ $key ] ) && is_numeric( $price[ $key ] ) ) {
+				return number_format( (float) $price[ $key ], 2, '.', '' );
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $price Price-history row.
+	 */
+	private function history_price_grade( array $price ): string {
+		$grade = $this->text( $price['grade'] ?? ( $price['grading_grade'] ?? ( $price['grade_label'] ?? '' ) ) );
+		if ( '' !== $grade ) {
+			return $grade;
+		}
+
+		return true === ( $price['is_perfect'] ?? false ) ? '10' : '';
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $price_points New price-history point rows.
+	 * @param list<array<string, mixed>> $existing_rows Existing reference rows.
+	 * @return array{status:string,errors:list<string>}
+	 */
+	private function persist_price_history_price_points( array $price_points, array $existing_rows ): array {
+		if ( null === $this->scrydex_repository ) {
+			return array(
+				'status' => 'deferred',
+				'errors' => array( 'scrydex_persistence_repository_not_configured' ),
+			);
+		}
+
+		$page_plan = ScryDexSyncPagePlan::planned(
+			array(),
+			array(),
+			array(),
+			ScryDexSyncCheckpoint::initial( 0, 'price_history', 'pokemon' ),
+			array(),
+			$price_points
+		);
+		$persistence_plan = $this->persistence_planner()->plan_page(
+			$page_plan,
+			$existing_rows,
+			gmdate( 'Y-m-d H:i:s' )
+		);
+		$query_plan       = $this->query_builder()->build( $persistence_plan, $this->table_prefix, false );
+		$result           = $this->scrydex_repository->execute( $query_plan );
+
+		return array(
+			'status' => method_exists( $result, 'status' ) ? (string) $result->status() : 'unknown',
+			'errors' => method_exists( $result, 'errors' ) ? $this->string_list( $result->errors() ) : array(),
+		);
+	}
+
+	/**
+	 * @param array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>} $left Existing price-point index.
+	 * @param array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>} $right New price-point index.
+	 * @return array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>}
+	 */
+	private function merge_price_point_indexes( array $left, array $right ): array {
+		foreach ( array( 'by_reference', 'by_provider' ) as $bucket ) {
+			foreach ( $right[ $bucket ] as $key => $rows ) {
+				$left[ $bucket ][ $key ] = array_merge( $left[ $bucket ][ $key ] ?? array(), $rows );
+			}
+		}
+
+		return $left;
+	}
+
+	/**
+	 * @param array<string, mixed> $enrichment Enrichment result.
+	 * @return array<string, mixed>
+	 */
+	private function price_history_enrichment_meta( array $enrichment ): array {
+		return array(
+			'status'                => (string) ( $enrichment['status'] ?? 'skipped' ),
+			'request_count'         => (int) ( $enrichment['request_count'] ?? 0 ),
+			'price_point_count'     => (int) ( $enrichment['price_point_count'] ?? 0 ),
+			'persistence_status'    => (string) ( $enrichment['persistence_status'] ?? 'skipped' ),
+			'persistence_errors'    => $this->string_list( $enrichment['persistence_errors'] ?? array() ),
+			'errors'                => $this->string_list( $enrichment['errors'] ?? array() ),
+			'credentials_in_response' => false,
+		);
+	}
+
+	/**
 	 * @param list<array<string, mixed>> $price_rows Provider price-point aggregate rows.
 	 * @return array{by_reference:array<int,list<array<string,mixed>>>,by_provider:array<string,list<array<string,mixed>>>}
 	 */
@@ -1398,6 +1682,15 @@ final class ReferenceCardSearchRouteHandler {
 		return $value > 0 ? (int) round( $value * 100 ) : 0;
 	}
 
+	/**
+	 * @param array<string, mixed> $value Value to encode for provider payload storage.
+	 */
+	private function json_encode_safe( array $value ): string {
+		$encoded = function_exists( 'wp_json_encode' ) ? wp_json_encode( $value ) : json_encode( $value );
+
+		return is_string( $encoded ) ? $encoded : '{}';
+	}
+
 	private function decimal_string( mixed $value ): string {
 		if ( is_numeric( $value ) ) {
 			return number_format( (float) $value, 2, '.', '' );
@@ -1438,6 +1731,18 @@ final class ReferenceCardSearchRouteHandler {
 		$timestamp = strtotime( $text );
 
 		return false === $timestamp ? null : gmdate( 'Y-m-d\TH:i:s.000\Z', $timestamp );
+	}
+
+	private function mysql_datetime( mixed $value ): ?string {
+		$text = trim( (string) $value );
+
+		if ( '' === $text ) {
+			return null;
+		}
+
+		$timestamp = strtotime( $text );
+
+		return false === $timestamp ? null : gmdate( 'Y-m-d H:i:s', $timestamp );
 	}
 
 	private function array_a_output_type(): string {

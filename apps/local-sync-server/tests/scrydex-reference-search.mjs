@@ -6,7 +6,7 @@ const fallbackQueries = []
 const store = createLocalSyncStore({
   databasePath: ":memory:",
   removeSeedReferenceCards: true,
-  websiteCatalogFallback: async ({ query, game, limit }) => {
+  websiteCatalogFallback: async ({ query, game, limit, rawOrGraded = "" }) => {
     fallbackQueries.push({ query, game, limit })
 
     if (query === "bug catcher") {
@@ -82,6 +82,55 @@ const store = createLocalSyncStore({
             images: {
               large: "https://images.scrydex.example/pokemon/svp-190/large",
             },
+            prices: [
+              {
+                type: "graded",
+                company: "PSA",
+                is_perfect: true,
+                market: "144.50",
+                low: "120.00",
+                currency: "USD",
+              },
+            ],
+          },
+        ],
+      }
+    }
+
+    if (query === "charizard ex") {
+      const graded = rawOrGraded === "graded"
+
+      return {
+        status: "ok",
+        live_provider_request_performed: graded,
+        cards: [
+          {
+            id: "sv3pt5-183",
+            game,
+            name: "Charizard ex",
+            set: {
+              name: "151",
+              code: "MEW",
+            },
+            number: "183",
+            printedNumber: "183/165",
+            sku: "SV3PT5-183",
+            market_price: {
+              amount: "45.70",
+              currency: "USD",
+            },
+            price_points: graded
+              ? [
+                  {
+                    raw_or_graded: "graded",
+                    condition_code: "graded",
+                    grading_company: "SGC",
+                    grade: "10",
+                    market_price: "466.93",
+                    currency: "USD",
+                  },
+                ]
+              : [],
           },
         ],
       }
@@ -148,7 +197,32 @@ try {
   assert.equal(normalNameSearch.local_reference_cache_hit, false)
   assert.equal(normalNameSearch.wordpress_proxy_performed, true)
   assert.equal(normalNameSearch.cards[0].card_name, "Pikachu")
+  assert.equal(normalNameSearch.cards[0].price_points[0].raw_or_graded, "graded")
+  assert.equal(normalNameSearch.cards[0].price_points[0].grading_company, "PSA")
+  assert.equal(normalNameSearch.cards[0].price_points[0].grade, "10")
+  assert.equal(normalNameSearch.cards[0].price_points[0].market_price_minor_units, 14450)
   assert.equal(normalNameSearch.cards.some((card) => card.card_name === "Bug Catcher"), false)
+
+  const rawCharizardSearch = await store.searchScryDexCards(auth.session.token, {
+    query: "charizard ex",
+    game: "pokemon",
+  })
+  assert.equal(rawCharizardSearch.status, "ok")
+  assert.equal(rawCharizardSearch.cards[0].card_name, "Charizard ex")
+  assert.equal(rawCharizardSearch.cards[0].price_points.length, 0)
+
+  const gradedCharizardSearch = await store.searchScryDexCards(auth.session.token, {
+    query: "charizard ex",
+    game: "pokemon",
+    rawOrGraded: "graded",
+  })
+  assert.equal(gradedCharizardSearch.status, "ok")
+  assert.equal(gradedCharizardSearch.local_reference_cache_hit, true)
+  assert.equal(gradedCharizardSearch.wordpress_proxy_performed, true)
+  assert.equal(gradedCharizardSearch.cards[0].price_points[0].raw_or_graded, "graded")
+  assert.equal(gradedCharizardSearch.cards[0].price_points[0].grading_company, "SGC")
+  assert.equal(gradedCharizardSearch.cards[0].price_points[0].grade, "10")
+  assert.equal(gradedCharizardSearch.cards[0].price_points[0].market_price_minor_units, 46693)
 
   const variantFocusedSearch = await store.searchScryDexCards(auth.session.token, {
     query: "pikachuStamp",
@@ -167,6 +241,18 @@ try {
   assert.equal(broadSearch.source, "wordpress_proxy")
   assert.equal(broadSearch.cards.length, 10)
   assert.equal(broadSearch.result_limit, "all")
+
+  const repeatedBroadSearch = await store.searchScryDexCards(auth.session.token, {
+    query: "bulk",
+    game: "pokemon",
+    limit: "all",
+  })
+  assert.equal(repeatedBroadSearch.status, "ok")
+  assert.equal(repeatedBroadSearch.source, "wordpress_catalog_cache")
+  assert.equal(repeatedBroadSearch.local_reference_cache_hit, true)
+  assert.equal(repeatedBroadSearch.wordpress_proxy_performed, true)
+  assert.equal(repeatedBroadSearch.cards.length, 10)
+  assert.equal(repeatedBroadSearch.result_limit, "all")
 
   const filteredBroadSearch = await store.searchScryDexCards(auth.session.token, {
     query: "bulk",
@@ -204,6 +290,9 @@ try {
   assert.deepEqual(fallbackQueries, [
     { query: "bug catcher", game: "pokemon", limit: "all" },
     { query: "pikachu", game: "pokemon", limit: "all" },
+    { query: "charizard ex", game: "pokemon", limit: "all" },
+    { query: "charizard ex", game: "pokemon", limit: "all" },
+    { query: "bulk", game: "pokemon", limit: "all" },
     { query: "bulk", game: "pokemon", limit: "all" },
   ])
 

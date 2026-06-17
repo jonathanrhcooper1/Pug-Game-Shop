@@ -40,6 +40,7 @@ final class EventPresenter {
 			'entry_fee'             => number_format( $entry_fee, 2, '.', '' ),
 			'currency'              => (string) ( $row['currency'] ?? 'USD' ),
 			'is_free'               => $entry_fee <= 0.0,
+			'allow_pay_at_store'    => ! empty( $row['allow_pay_at_store'] ),
 			'player_cap'            => $player_cap,
 			'registered_count'      => $count,
 			'seats_remaining'       => EventStatus::seats_remaining( $player_cap, $count ),

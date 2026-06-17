@@ -187,7 +187,8 @@ final class GroupedInventoryProductHooks {
 		return $this->remote_image_html(
 			$product,
 			'tcg-woocommerce-card-image tcg-woocommerce-card-cart-image',
-			'lazy'
+			'eager',
+			array( 'width' => 72, 'height' => 96 )
 		);
 	}
 
@@ -786,11 +787,21 @@ final class GroupedInventoryProductHooks {
 		return $image_url;
 	}
 
-	private function remote_image_html( \WC_Product $product, string $class_names, string $loading ): string {
+	/**
+	 * @param array{width?: int, height?: int} $dimensions Optional stable dimensions.
+	 */
+	private function remote_image_html( \WC_Product $product, string $class_names, string $loading, array $dimensions = array() ): string {
 		$url = $this->esc_url( $this->remote_image_url( $product ) );
 		$alt = $this->esc_attr( $product->get_name() );
+		$width = max( 0, (int) ( $dimensions['width'] ?? 0 ) );
+		$height = max( 0, (int) ( $dimensions['height'] ?? 0 ) );
+		$dimension_html = '';
 
-		return '<img src="' . $url . '" alt="' . $alt . '" class="' . $this->esc_attr( $class_names ) . '" loading="' . $this->esc_attr( $loading ) . '" decoding="async" style="background:transparent;box-shadow:none;" />';
+		if ( $width > 0 && $height > 0 ) {
+			$dimension_html = ' width="' . $width . '" height="' . $height . '"';
+		}
+
+		return '<img src="' . $url . '" alt="' . $alt . '" class="' . $this->esc_attr( $class_names ) . '" loading="' . $this->esc_attr( $loading ) . '" decoding="async"' . $dimension_html . ' style="background:transparent;box-shadow:none;" />';
 	}
 
 	private function esc_url( string $url ): string {

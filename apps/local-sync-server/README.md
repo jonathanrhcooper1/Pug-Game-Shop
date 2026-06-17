@@ -35,6 +35,11 @@ instead of each keeping an isolated local authority.
 - Set `PUG_SQUARE_ENVIRONMENT=sandbox` and `PUG_SQUARE_LOCATION_ID` to shape
   the manager-only Square POS barcode/SKU inventory-readiness plan. This
   diagnostic never calls Square and never captures payments.
+- Optional Square Terminal reader checkout runs only from the LAN server. Set
+  `PUG_SQUARE_ACCESS_TOKEN`, `PUG_SQUARE_LOCATION_ID`, and
+  `PUG_SQUARE_TERMINAL_DEVICE_ID` in ignored local env to send a checkout to a
+  paired reader. Without those values the app stays in manual receipt mode:
+  staff complete payment in Square and record the receipt/reference.
 - The production CLI removes the canned reference-card seed rows unless
   `LOCAL_SYNC_ALLOW_DEMO_REFERENCE_CARDS=true`, so live lookups prefer the
   WordPress catalog.
@@ -81,4 +86,8 @@ provider responses.
 - Keep ScryDex credentials on WordPress/server settings, not in clients.
 - Serve a manager-only Square POS inventory-readiness plan from cached
   barcode/SKU mappings without making Square network requests.
-- Never capture Square payments; only support Square POS handoff metadata.
+- Keep customer credit local-store only. Online WooCommerce checkout does not
+  redeem this credit; staff record credit use locally with a Square receipt.
+- Keep Square credentials server-side. The optional Terminal connector can
+  request device activation codes and reader checkouts, but never returns raw
+  access tokens to clients.

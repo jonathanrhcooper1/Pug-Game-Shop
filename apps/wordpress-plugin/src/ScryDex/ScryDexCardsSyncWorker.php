@@ -68,7 +68,7 @@ final class ScryDexCardsSyncWorker {
 					array(
 						'game'      => $provider_request['game'],
 						'page_size' => (string) $provider_request['page_size'],
-						'include'   => 'prices',
+						'include'   => 'prices,pop_reports',
 					),
 					$provider_request['page'],
 					$provider_request['cursor']
@@ -79,7 +79,7 @@ final class ScryDexCardsSyncWorker {
 					array(
 						'game'      => $provider_request['game'],
 						'page_size' => (string) $provider_request['page_size'],
-						'include'   => 'prices',
+						'include'   => 'prices,pop_reports',
 					),
 					$provider_request['page'],
 					$provider_request['cursor']

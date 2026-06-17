@@ -65,6 +65,9 @@ assert.ok(capturedUrl.includes("game=pokemon"))
 assert.ok(capturedUrl.includes("limit=8"))
 assert.ok(capturedUrl.includes("page=1"))
 
+await fallback({ query: "moonbreon", game: "pokemon", limit: 8, rawOrGraded: "graded" })
+assert.ok(capturedUrl.includes("raw_or_graded=graded"))
+
 const pagedUrls = []
 const pagedFallback = createWordPressCatalogFallback({
   websiteUrl: "https://example.test/",

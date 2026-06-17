@@ -19,6 +19,8 @@ import { createWordPressInventoryPush, createWordPressInventorySalePush } from "
 import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 import { createWordPressReportsPull } from "./wordpressReportsPull.mjs"
 import { listenLocalSyncDiscoveryResponder } from "./localSyncDiscovery.mjs"
+import { createGradedPricingLookup } from "./gradedPricingProviders.mjs"
+import { createSquareTerminalConnector } from "./squareTerminalConnector.mjs"
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = resolve(appRoot, "..", "..")
@@ -45,6 +47,8 @@ const catalogApplicationPassword = firstEnv(
   "PUG_WORDPRESS_APP_PASSWORD",
 )
 const catalogAuthHeader = firstEnv("PUG_WORDPRESS_CATALOG_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
+const catalogTimeoutMs =
+  firstEnv("PUG_WORDPRESS_CATALOG_TIMEOUT_MS", "LOCAL_SYNC_WORDPRESS_CATALOG_TIMEOUT_MS") ?? "30000"
 const inventoryUsername = firstEnv("PUG_WORDPRESS_INVENTORY_USERNAME", "PUG_WORDPRESS_USERNAME")
 const inventoryApplicationPassword = firstEnv(
   "PUG_WORDPRESS_INVENTORY_APPLICATION_PASSWORD",
@@ -59,6 +63,10 @@ const inventoryDefaultPosVisibility =
   firstEnv("PUG_WORDPRESS_INVENTORY_POS_VISIBILITY", "LOCAL_SYNC_INVENTORY_POS_VISIBILITY") ?? "visible"
 const squareLocationId = firstEnv("PUG_SQUARE_LOCATION_ID", "LOCAL_SYNC_SQUARE_LOCATION_ID")
 const squareEnvironment = firstEnv("PUG_SQUARE_ENVIRONMENT", "LOCAL_SYNC_SQUARE_ENVIRONMENT") ?? "sandbox"
+const squareAccessToken = firstEnv("PUG_SQUARE_ACCESS_TOKEN", "LOCAL_SYNC_SQUARE_ACCESS_TOKEN")
+const squareTerminalDeviceId = firstEnv("PUG_SQUARE_TERMINAL_DEVICE_ID", "LOCAL_SYNC_SQUARE_TERMINAL_DEVICE_ID")
+const squareApiVersion = firstEnv("PUG_SQUARE_API_VERSION", "LOCAL_SYNC_SQUARE_API_VERSION")
+const squareBaseUrl = firstEnv("PUG_SQUARE_BASE_URL", "LOCAL_SYNC_SQUARE_BASE_URL")
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const eventsAuthHeader = firstEnv("PUG_WORDPRESS_EVENTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
@@ -83,12 +91,21 @@ const kioskAuthHeader = firstEnv("PUG_WORDPRESS_KIOSK_AUTH_HEADER", "PUG_WORDPRE
 const reportsUsername = firstEnv("PUG_WORDPRESS_REPORTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const reportsApplicationPassword = firstEnv("PUG_WORDPRESS_REPORTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const reportsAuthHeader = firstEnv("PUG_WORDPRESS_REPORTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
+const gradedPricingLookup = createGradedPricingLookup({
+  priceChartingToken: firstEnv("PUG_PRICECHARTING_API_TOKEN", "PRICECHARTING_API_TOKEN"),
+  priceChartingBaseUrl: firstEnv("PUG_PRICECHARTING_BASE_URL", "PRICECHARTING_BASE_URL"),
+  priceChartingMinRequestIntervalMs: firstEnv(
+    "PUG_PRICECHARTING_MIN_REQUEST_INTERVAL_MS",
+    "PRICECHARTING_MIN_REQUEST_INTERVAL_MS",
+  ),
+})
 const websiteCatalogFallback = createWordPressCatalogFallback({
   websiteUrl,
   restBasePath,
   authHeader: catalogAuthHeader,
   username: catalogUsername,
   applicationPassword: catalogApplicationPassword,
+  timeoutMs: catalogTimeoutMs,
 })
 const wordpressInventoryPush = wordpressPushEnabled
   ? createWordPressInventoryPush({
@@ -204,6 +221,14 @@ const wordpressReportsPull = createWordPressReportsPull({
   username: reportsUsername ?? catalogUsername,
   applicationPassword: reportsApplicationPassword ?? catalogApplicationPassword,
 })
+const squareTerminalConnector = createSquareTerminalConnector({
+  accessToken: squareAccessToken,
+  environment: squareEnvironment,
+  locationId: squareLocationId,
+  terminalDeviceId: squareTerminalDeviceId,
+  apiVersion: squareApiVersion,
+  baseUrl: squareBaseUrl,
+})
 const server = await listenLocalSyncHttpServer({
   host,
   port,
@@ -228,8 +253,15 @@ const server = await listenLocalSyncHttpServer({
     wordpressCreditPush,
     wordpressCustomerUpsertPush,
     wordpressKioskOrderPush,
+    gradedPricingLookup,
+    gradedPricingProviderConfigured: gradedPricingLookup.configured === true,
+    gradedPricingCacheTtlSeconds: firstEnv(
+      "PUG_GRADED_PRICING_CACHE_TTL_SECONDS",
+      "GRADED_PRICING_CACHE_TTL_SECONDS",
+    ),
     squareLocationId,
     squareEnvironment,
+    squareTerminalConnector,
   },
 })
 const address = server.address()
@@ -238,6 +270,8 @@ const resolvedPort = typeof address === "object" && address ? address.port : por
 console.log(`Pug local sync server listening on http://${host}:${resolvedPort}`)
 console.log(`Website: ${websiteUrl || "not configured"}`)
 console.log(`WordPress push enabled: ${wordpressPushEnabled ? "true" : "false"}`)
+console.log(`Secondary graded pricing configured: ${gradedPricingLookup.configured === true ? "true" : "false"}`)
+console.log(`Square Terminal configured: ${squareTerminalConnector.status().configured ? "true" : "false"}`)
 console.log("Credentials printed: false")
 
 if (discoveryEnabled) {

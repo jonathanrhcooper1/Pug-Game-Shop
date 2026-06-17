@@ -50,11 +50,15 @@ final class EventShortcodes {
 	public function render_events( array|string $attributes = array() ): string {
 		$this->enqueue_assets();
 
+		$detail_slug = $this->query_event_slug();
+		if ( '' !== $detail_slug ) {
+			return $this->render_event_detail( array( 'slug' => $detail_slug ) );
+		}
+
 		$attributes = is_array( $attributes ) ? $attributes : array();
 		$filters    = EventFilters::from_array( $attributes );
 		$limit      = isset( $attributes['limit'] ) ? (int) $attributes['limit'] : 12;
 		$events     = $this->repository()->list_public( $filters, min( 50, max( 1, $limit ) ) );
-		$notice     = $this->handle_registration_submission();
 
 		if ( array() === $events ) {
 			return '<div class="tcg-events tcg-events-empty">' . esc_html__( 'No upcoming events are currently posted.', 'tcg-store-platform' ) . '</div>';
@@ -64,10 +68,7 @@ final class EventShortcodes {
 
 		foreach ( $events as $row ) {
 			$event = EventPresenter::present( $row, new DateTimeImmutable( 'now' ) );
-			$html .= $this->render_card(
-				$event,
-				$notice && $notice['slug'] === $event['slug'] ? $notice : null
-			);
+			$html .= $this->render_card( $event );
 		}
 
 		$html .= '</div>';
@@ -102,26 +103,23 @@ final class EventShortcodes {
 
 	/**
 	 * @param array<string, mixed> $event Public event.
-	 * @param array<string, mixed>|null $notice Registration notice.
 	 */
-	private function render_card( array $event, ?array $notice = null ): string {
-		$html = '<article class="tcg-event-card">';
+	private function render_card( array $event ): string {
+		$title = (string) ( $event['title'] ?? __( 'Event', 'tcg-store-platform' ) );
+		$label = sprintf(
+			/* translators: %s: event title */
+			__( 'View event details and registration for %s', 'tcg-store-platform' ),
+			$title
+		);
 
-		if ( '' !== $event['header_image'] ) {
-			$html .= '<img class="tcg-event-card__image" src="' . esc_url( $event['header_image'] ) . '" alt="" loading="lazy" />';
-		}
+		$html  = '<article class="tcg-event-card tcg-event-card--' . esc_attr( $this->game_slug( $event ) ) . '">';
+		$html .= '<a class="tcg-event-card__link" href="' . esc_url( $this->event_detail_url( $event ) ) . '" aria-label="' . esc_attr( $label ) . '">';
 
-		$html .= '<h3>' . esc_html( $event['title'] ) . '</h3>';
-		$html .= '<p>' . esc_html( $this->summary_line( $event ) ) . '</p>';
-		$html .= '<p>' . esc_html( $this->capacity_line( $event ) ) . '</p>';
+		$html .= $this->render_event_header( $event, 'card' );
+		$html .= $this->render_event_stats( $event );
 		$html .= $this->render_badges( $event['badges'] );
-
-		if ( '' !== $event['register_url'] ) {
-			$html .= '<a class="button" href="' . esc_url( $event['register_url'] ) . '" rel="noopener noreferrer">' . esc_html__( 'Register', 'tcg-store-platform' ) . '</a>';
-		}
-
-		$html .= $this->render_registration_form( $event, $notice );
-
+		$html .= '<span class="tcg-event-card__cta">' . esc_html__( 'View & Register', 'tcg-store-platform' ) . '</span>';
+		$html .= '</a>';
 		$html .= '</article>';
 
 		return $html;
@@ -133,9 +131,9 @@ final class EventShortcodes {
 	 */
 	private function render_detail( array $event, ?array $notice = null ): string {
 		$html  = '<article class="tcg-event-detail">';
-		$html .= '<h2>' . esc_html( $event['title'] ) . '</h2>';
-		$html .= '<p>' . esc_html( $this->summary_line( $event ) ) . '</p>';
-		$html .= '<p>' . esc_html( $this->capacity_line( $event ) ) . '</p>';
+		$html .= '<a class="tcg-event-detail__back" href="' . esc_url( $this->events_list_url() ) . '">' . esc_html__( 'All events', 'tcg-store-platform' ) . '</a>';
+		$html .= $this->render_event_header( $event, 'detail' );
+		$html .= $this->render_event_stats( $event );
 		$html .= $this->render_badges( $event['badges'] );
 
 		if ( '' !== $event['description'] ) {
@@ -167,7 +165,7 @@ final class EventShortcodes {
 			self::STYLE_HANDLE,
 			$this->asset_url( 'assets/css/public-events.css' ),
 			array(),
-			Version::PLUGIN . '-events-empty-state'
+			Version::PLUGIN . '-events-empty-state-grid-contained-counts'
 		);
 
 		if ( function_exists( 'wp_add_inline_style' ) ) {
@@ -223,6 +221,214 @@ final class EventShortcodes {
 
 	/**
 	 * @param array<string, mixed> $event Public event.
+	 */
+	private function render_event_header( array $event, string $context ): string {
+		$date_label = $this->date_label( $event );
+		$time_label = $this->time_label( $event );
+		$tag        = 'detail' === $context ? 'h2' : 'h3';
+
+		$html  = '<div class="tcg-event-hero tcg-event-hero--' . esc_attr( $this->game_slug( $event ) ) . '">';
+		$html .= '<div class="tcg-event-hero__game">';
+		$html .= '<span class="tcg-event-game-mark tcg-event-game-mark--' . esc_attr( $this->game_slug( $event ) ) . '" aria-hidden="true">' . esc_html( $this->game_mark( $event ) ) . '</span>';
+		$html .= '<span>' . esc_html( $this->game_label( $event ) ) . '</span>';
+		$html .= '</div>';
+
+		if ( '' !== $event['header_image'] ) {
+			$html .= '<img class="tcg-event-card__image" src="' . esc_url( $event['header_image'] ) . '" alt="" loading="lazy" />';
+		}
+
+		$html .= '<' . $tag . '>' . esc_html( $event['title'] ) . '</' . $tag . '>';
+		$html .= '<p class="tcg-event-hero__meta">' . esc_html( implode( ' / ', array_filter( array( $date_label, $time_label, $this->format_label( $event ) ) ) ) ) . '</p>';
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function render_event_stats( array $event ): string {
+		$stats = array(
+			array(
+				'label' => __( 'Date', 'tcg-store-platform' ),
+				'value' => $this->date_label( $event ),
+			),
+			array(
+				'label' => __( 'Time', 'tcg-store-platform' ),
+				'value' => $this->time_label( $event ),
+			),
+			array(
+				'label' => __( 'Cost', 'tcg-store-platform' ),
+				'value' => $this->money_label( $event ),
+			),
+			array(
+				'label' => __( 'Seats', 'tcg-store-platform' ),
+				'value' => $this->capacity_line( $event ),
+			),
+		);
+
+		$html = '<div class="tcg-event-stats">';
+
+		foreach ( $stats as $stat ) {
+			$html .= '<div class="tcg-event-stat">';
+			$html .= '<span>' . esc_html( $stat['label'] ) . '</span>';
+			$html .= '<strong>' . esc_html( $stat['value'] ) . '</strong>';
+			$html .= '</div>';
+		}
+
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function event_datetime( array $event ): ?DateTimeImmutable {
+		$value = $event['start_datetime'] ?? null;
+
+		if ( ! is_string( $value ) || '' === trim( $value ) ) {
+			return null;
+		}
+
+		try {
+			return new DateTimeImmutable( $value );
+		} catch ( \Exception ) {
+			return null;
+		}
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function date_label( array $event ): string {
+		$datetime = $this->event_datetime( $event );
+
+		if ( null === $datetime ) {
+			return __( 'Date pending', 'tcg-store-platform' );
+		}
+
+		if ( function_exists( 'wp_date' ) ) {
+			return wp_date( 'M j, Y', $datetime->getTimestamp(), $datetime->getTimezone() );
+		}
+
+		return $datetime->format( 'M j, Y' );
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function time_label( array $event ): string {
+		$datetime = $this->event_datetime( $event );
+
+		if ( null === $datetime ) {
+			return __( 'Time pending', 'tcg-store-platform' );
+		}
+
+		if ( function_exists( 'wp_date' ) ) {
+			return wp_date( 'g:i A', $datetime->getTimestamp(), $datetime->getTimezone() );
+		}
+
+		return $datetime->format( 'g:i A' );
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function money_label( array $event ): string {
+		if ( ! empty( $event['is_free'] ) ) {
+			return __( 'Free', 'tcg-store-platform' );
+		}
+
+		return '$' . number_format( (float) ( $event['entry_fee'] ?? 0 ), 2 );
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function format_label( array $event ): string {
+		$format = trim( (string) ( $event['format'] ?? '' ) );
+
+		if ( '' !== $format ) {
+			return $format;
+		}
+
+		$type = trim( (string) ( $event['event_type'] ?? '' ) );
+
+		return '' !== $type ? ucwords( str_replace( array( '-', '_' ), ' ', $type ) ) : __( 'Store event', 'tcg-store-platform' );
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function game_label( array $event ): string {
+		$game = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
+		$normalized = preg_replace( '/[^a-z0-9]+/', '', $game ) ?? '';
+
+		return match ( $normalized ) {
+			'mtg', 'magic', 'magicthegathering' => 'Magic: The Gathering',
+			'pokemon' => 'Pokemon',
+			'lorcana' => 'Lorcana',
+			'onepiece' => 'One Piece',
+			'riftbound' => 'Riftbound',
+			default => '' !== $game ? ucwords( str_replace( array( '-', '_' ), ' ', $game ) ) : __( 'Trading Card Event', 'tcg-store-platform' ),
+		};
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function game_mark( array $event ): string {
+		$game = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
+		$normalized = preg_replace( '/[^a-z0-9]+/', '', $game ) ?? '';
+
+		return match ( $normalized ) {
+			'mtg', 'magic', 'magicthegathering' => 'MTG',
+			'pokemon' => 'PKMN',
+			'lorcana' => 'LOR',
+			'onepiece' => 'OP',
+			'riftbound' => 'RIFT',
+			default => $this->game_initials( $this->game_label( $event ) ),
+		};
+	}
+
+	private function game_initials( string $label ): string {
+		$words = preg_split( '/[^A-Za-z0-9]+/', trim( $label ) ) ?: array();
+		$mark  = '';
+
+		foreach ( $words as $word ) {
+			if ( '' === $word ) {
+				continue;
+			}
+
+			$mark .= strtoupper( substr( $word, 0, 1 ) );
+
+			if ( 4 <= strlen( $mark ) ) {
+				break;
+			}
+		}
+
+		return '' !== $mark ? $mark : 'TCG';
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function game_slug( array $event ): string {
+		$slug = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
+		$normalized = preg_replace( '/[^a-z0-9]+/', '', $slug ) ?? '';
+
+		if ( in_array( $normalized, array( 'mtg', 'magic', 'magicthegathering' ), true ) ) {
+			return 'magic-the-gathering';
+		}
+
+		$slug = preg_replace( '/[^a-z0-9]+/', '-', $slug ) ?? '';
+
+		return trim( $slug, '-' ) ?: 'store-event';
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
 	 * @param array<string, mixed>|null $notice Registration notice.
 	 */
 	private function render_registration_form( array $event, ?array $notice ): string {
@@ -245,6 +451,7 @@ final class EventShortcodes {
 
 		$html .= '<input type="hidden" name="tcg_event_register_slug" value="' . esc_attr( $slug ) . '" />';
 		$html .= '<input type="hidden" name="tcg_event_idempotency_key" value="' . esc_attr( $this->idempotency_key( $slug ) ) . '" />';
+		$html .= '<input type="hidden" name="payment_preference" value="' . esc_attr( ! empty( $event['is_free'] ) ? 'not_required' : 'pay_at_store' ) . '" />';
 
 		if ( function_exists( 'wp_nonce_field' ) ) {
 			$html .= wp_nonce_field( 'tcg_event_register_' . $slug, 'tcg_event_register_nonce', true, false );
@@ -255,6 +462,11 @@ final class EventShortcodes {
 		$html .= '<label><span>' . esc_html__( 'Last name', 'tcg-store-platform' ) . '</span><input name="last_name" autocomplete="family-name" required /></label>';
 		$html .= '<label><span>' . esc_html__( 'Email', 'tcg-store-platform' ) . '</span><input type="email" name="email" autocomplete="email" required /></label>';
 		$html .= '<label><span>' . esc_html__( 'Phone', 'tcg-store-platform' ) . '</span><input name="phone" autocomplete="tel" /></label>';
+		$html .= '</div>';
+		$html .= '<div class="tcg-event-registration__payment">';
+		$html .= '<span>' . esc_html__( 'Payment', 'tcg-store-platform' ) . '</span>';
+		$html .= '<strong>' . esc_html( ! empty( $event['is_free'] ) ? __( 'No payment needed', 'tcg-store-platform' ) : __( 'Pay at store', 'tcg-store-platform' ) ) . '</strong>';
+		$html .= '<small>' . esc_html( ! empty( $event['is_free'] ) ? __( 'Your seat will be held when registration is accepted.', 'tcg-store-platform' ) : __( 'We will collect the event cost at the counter when you arrive.', 'tcg-store-platform' ) ) . '</small>';
 		$html .= '</div>';
 		$html .= '<button type="submit">' . esc_html__( 'Register for Event', 'tcg-store-platform' ) . '</button>';
 		$html .= '</form>';
@@ -327,6 +539,37 @@ final class EventShortcodes {
 		$slug = preg_replace( '/[^a-z0-9_-]+/', '-', $slug ) ?? '';
 
 		return trim( substr( $slug, 0, 191 ), '-' );
+	}
+
+	private function query_event_slug(): string {
+		$value = $_GET['tcg_event'] ?? ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$value = function_exists( 'wp_unslash' ) ? wp_unslash( $value ) : $value;
+
+		return is_scalar( $value ) ? $this->clean_slug( (string) $value ) : '';
+	}
+
+	/**
+	 * @param array<string, mixed> $event Public event.
+	 */
+	private function event_detail_url( array $event ): string {
+		$slug = $this->clean_slug( (string) ( $event['slug'] ?? '' ) );
+
+		if ( function_exists( 'add_query_arg' ) ) {
+			return add_query_arg( 'tcg_event', rawurlencode( $slug ) );
+		}
+
+		return '?tcg_event=' . rawurlencode( $slug );
+	}
+
+	private function events_list_url(): string {
+		if ( function_exists( 'remove_query_arg' ) ) {
+			return remove_query_arg( 'tcg_event' );
+		}
+
+		$request_uri = (string) ( $_SERVER['REQUEST_URI'] ?? '' );
+		$path        = strtok( $request_uri, '?' );
+
+		return false !== $path && '' !== $path ? $path : '?';
 	}
 
 	private function repository(): EventRepository {

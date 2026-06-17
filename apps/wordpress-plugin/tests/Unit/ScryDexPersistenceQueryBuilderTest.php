@@ -151,6 +151,66 @@ final class ScryDexPersistenceQueryBuilderTest extends TestCase {
 		$this->assert_same( 'ex10-!', substr( $query_plan->reference_variant_upsert_queries()[1]['provider_variant_id'], 0, 6 ) );
 	}
 
+	public function test_builder_writes_grade_keyed_price_points_to_provider_price_table(): void {
+		$page_plan  = ( new ScryDexSyncPageProcessor() )->process_cards_page(
+			ScryDexSyncCheckpoint::initial( 101, 'cards', 'pokemon' ),
+			new ScryDexResult(
+				ScryDexResult::SUCCESS,
+				200,
+				array(
+					'page'  => 1,
+					'cards' => array(
+						array(
+							'id'        => 'sv4pt5-234',
+							'game'      => 'pokemon',
+							'name'      => 'Charizard ex',
+							'expansion' => array(
+								'id'   => 'sv4pt5',
+								'name' => 'Paldean Fates',
+								'code' => 'PAF',
+							),
+							'variants'  => array(
+								array(
+									'id'            => 'sv4pt5-234-special-illustration',
+									'variant'       => 'Special Illustration Rare',
+									'finish'        => 'Foil',
+									'graded_prices' => array(
+										'PSA'     => array(
+											'10' => array(
+												'market_mid' => '187.25',
+												'low'        => '150.00',
+												'high'       => '220.00',
+												'currency'   => 'USD',
+											),
+										),
+										'CGC 9.5' => array(
+											'marketValue' => '144.50',
+											'currency'    => 'USD',
+										),
+									),
+								),
+							),
+						),
+					),
+				)
+			)
+		);
+		$query_plan = ( new ScryDexPersistenceQueryBuilder() )->build(
+			( new ScryDexPersistencePlanner() )->plan_page( $page_plan, array(), '2026-06-15 12:00:00' ),
+			'wp_'
+		);
+
+		$this->assert_true( $query_plan->is_valid() );
+		$this->assert_same( 2, count( $query_plan->price_point_queries() ) );
+		$this->assert_contains( 'INSERT INTO `wp_tcg_provider_price_points`', $query_plan->price_point_queries()[0]['sql_template'] );
+		$this->assert_true( in_array( 'PSA', $query_plan->price_point_queries()[0]['prepare_args'], true ) );
+		$this->assert_true( in_array( '10', $query_plan->price_point_queries()[0]['prepare_args'], true ) );
+		$this->assert_true( in_array( '187.2500', $query_plan->price_point_queries()[0]['prepare_args'], true ) );
+		$this->assert_true( in_array( 'CGC', $query_plan->price_point_queries()[1]['prepare_args'], true ) );
+		$this->assert_true( in_array( '9.5', $query_plan->price_point_queries()[1]['prepare_args'], true ) );
+		$this->assert_true( in_array( '144.5000', $query_plan->price_point_queries()[1]['prepare_args'], true ) );
+	}
+
 	public function test_builder_rejects_failed_source_plan_and_invalid_prefix(): void {
 		$failed = ScryDexPersistencePlan::failed(
 			'scrydex_rate_limited',

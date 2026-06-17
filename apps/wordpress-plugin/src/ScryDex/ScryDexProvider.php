@@ -41,6 +41,11 @@ interface ScryDexProvider {
 
 	public function get_card( string $provider_card_id ): ScryDexResult;
 
+	/**
+	 * @param array<string, string> $filters Provider price-history filters.
+	 */
+	public function get_card_price_history( string $provider_card_id, array $filters = array() ): ScryDexResult;
+
 	public function get_usage(): ScryDexResult;
 
 	public function register_webhook( string $event_type, string $callback_url ): ScryDexResult;

@@ -16,8 +16,114 @@ All notable changes follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Audit
+
+- Added the 2026-06-17 production-readiness report bundle:
+  `PRODUCTION_AUDIT_REPORT.md`, `TEST_RESULTS.md`,
+  `CONNECTOR_STATUS_REPORT.md`, `SYNC_QUEUE_REPORT.md`,
+  `UI_REVIEW_REPORT.md`, `BUG_FIX_SUMMARY.md`, `OPEN_BLOCKERS.md`, and
+  `docs/SYSTEM_MAP.md`.
+- Added a public production Playwright smoke test covering public page loads,
+  forbidden production phrases, raw shortcode leakage, unsafe local/staging
+  links, event listing behavior, and expected 404 handling.
+- Verified production active syncs for ScryDex catalog/search, public shop
+  shortcodes, local inventory push, WooCommerce/Square sale flow, customer
+  credit/customer pushes, event/kiosk pushes, and local pickup fulfillment.
+
 ### Fixed
 
+- Split the local app counter flow so `Customers` now focuses on customer
+  profile details, local store-credit balance, credit issue, ledger history,
+  kiosk/order history, and checkout receipts, while the new `Checkout` tab
+  handles guest/customer sale start, barcode/product lookup, kiosk order import,
+  misc sale lines, local credit use, Square receipt capture, receipt delivery,
+  Square reader handoff, and Dymo label prep.
+- Added LAN checkout transaction history storage and API support, including
+  customer-linked and guest receipts, item lines, Square references, receipt
+  delivery choice, staff attribution, and profile/search visibility.
+- Cleaned production app wording by removing visible staging language from the
+  local app flow and replacing customer-facing sync jargon with plain store
+  language.
+- Fixed phone-width layout for the `Checkout` and `Customers` app tabs so the
+  customer credit/profile cards no longer overflow horizontally.
+- Added a Customers workspace kiosk-order checkout section: staff can search
+  kiosk pickup orders, load an order total/cards into checkout, attach the
+  order to the selected customer profile, and complete the local sale with the
+  Square receipt while keeping customer credit local-store only.
+- Added a server-side Square Terminal connector scaffold for the LAN sync
+  server, including secret-safe status, manager activation-code, and reader
+  checkout routes plus app UI states for manual receipt mode vs configured
+  reader checkout.
+- Hid new-customer creation on the Customers workspace until staff explicitly
+  request it, removing the confusing LAN customer queue block from the default
+  checkout surface.
+- Expanded ScryDex card normalization so daily and manual catalog syncs store
+  grade-specific price points from `price_points`, `graded_prices`,
+  `gradedPrices`, and variant-level graded price maps, including grading
+  company, grade, low/mid/high, currency, and raw payload metadata.
+- Updated daily/manual/live ScryDex card pulls to request `prices,pop_reports`
+  consistently, carry ScryDex top-level and variant `prices` payloads into the
+  local reference cache, and infer documented perfect graded rows as grade 10.
+- Added a ScryDex-primary price-history fallback for graded card searches. When
+  staff searches in graded mode and cached card rows do not have grade-specific
+  prices, WordPress requests the documented ScryDex card price-history endpoint,
+  merges the newest graded rows into the response, and persists them to the
+  provider price-point table.
+- Fixed ScryDex price-history persistence so graded rows use a valid stored
+  condition and MySQL timestamp values, allowing production WordPress to save
+  grade/company-specific prices instead of rejecting them during enrichment.
+- Increased the local sync WordPress catalog timeout and preserved merged
+  `price_points` in the LAN cache so the employee app receives newly enriched
+  graded price rows instead of stale raw-only card records.
+- Simplified the employee app Customers workspace into a checkout-focused
+  counter flow: search/select or create customer, review selected customer
+  credit/ledger history, enter Square ticket and store-credit redemption
+  amounts, attach the Square receipt/reference, and record the credit use.
+- Added secret-safe LAN queue diagnostics to sync status and the Queue page so
+  staff can see pending operation type, customer/reference ids, amount, and
+  queued time without exposing raw payload JSON or credentials.
+- Fixed graded Trade-In valuation so raw/base card market prices are shown only
+  as reference data when an exact graded ScryDex price is missing; staff must
+  enter a manual offer or use secondary comps instead of accidentally staging a
+  graded card from raw pricing.
+- Removed setup-token names from Trade-In graded comp messages shown in the app
+  and local sync API responses.
+- Added a Trade-Ins manual offer value field before staging a card, with
+  market-mid-first valuation for trade offers and persisted manual override
+  markers on saved trade-in line items.
+- Added server-side secondary graded pricing lookup for Trade-Ins with
+  PriceCharting support, ScryDex/reference cache remaining primary, a local
+  cache table, no client credential exposure, and offline app status/details
+  when secondary comps are used.
+- Added a Trade-Ins market-value panel for selected graded cards, including
+  grade/company-aware ScryDex price matching, visible fallback warnings, and
+  direct comp-search links when exact graded pricing is unavailable.
+- Connected Trade-Ins and Customers end to end in the local app: staff can
+  search existing customers by name, email, phone, or ID, create a missing
+  customer, save/reopen/decline/approve trade offers under that profile, and
+  automatically apply accepted store-credit payouts to the customer ledger.
+- Fixed customer profile trade-in matching so one customer's email/lookup fields
+  cannot accidentally match unrelated trade-in records.
+- Fixed the employee app sync header so it refreshes online/local-cache status
+  and last-sync time from the LAN middleman heartbeat instead of staying on the
+  seeded offline state.
+- Fixed local manager reports so missing currency or legacy blank amounts do
+  not break report generation; reports now render summary cards, graph series,
+  KPI cards, CSV header data, and row previews from the local/WordPress report
+  path.
+- Fixed the local app trade-in workflow so selected customers stay attached,
+  cards can be searched directly from the Trade-Ins screen, saved trade offers
+  can be loaded back into the cart for editing, accepted offers create
+  sellable inventory, events auto-select when loaded, and WooCommerce cart card
+  thumbnails render with eager fixed-size image markup.
+- Saved trade-in offers now update the existing LAN middleman draft/review
+  record when staff save, accept, or decline a loaded quote instead of creating
+  duplicate drafts, and converted/declined rows show the staff display name for
+  reporting.
+- The local app frame now keeps the navigation rail visible while the Trade-Ins
+  and Events workspaces scroll, with mobile sticky header/nav behavior preserved.
+- Updated offline app UI contracts for the current Trade-Ins copy and specific
+  `Use Single` / `Use Graded` card-result actions.
 - Linked ScryDex provider price observations and price points back to their
   reference cards during new imports and added database migration 15 to backfill
   existing unlinked rows, so graded price points can attach to card search and

@@ -31,6 +31,9 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressKioskOrderPushConnected: typeof storeOptions.wordpressKioskOrderPush === "function",
     wordpressReportsPullConnected: typeof storeOptions.wordpressReportsPull === "function",
     scrydexCatalogProxyConfigured: typeof storeOptions.websiteCatalogFallback === "function",
+    gradedPricingProviderConfigured:
+      Boolean(storeOptions.gradedPricingProviderConfigured) ||
+      (typeof storeOptions.gradedPricingLookup === "function" && storeOptions.gradedPricingLookup.configured === true),
   }
 
   const currentSetupStatus = () => {
@@ -142,6 +145,28 @@ export function createLocalSyncHttpServer(options = {}) {
             game: url.searchParams.get("game") ?? "pokemon",
             setFilter: url.searchParams.get("set") ?? url.searchParams.get("set_filter") ?? "",
             limit: url.searchParams.get("limit") ?? "all",
+            rawOrGraded: url.searchParams.get("raw_or_graded") ?? url.searchParams.get("product_type") ?? "",
+          }),
+        )
+      }
+
+      if (request.method === "GET" && url.pathname === "/trade-ins/graded-valuation") {
+        return sendStoreResult(
+          response,
+          await store.lookupGradedTradeInValuation(token, {
+            provider_card_id: url.searchParams.get("provider_card_id") ?? "",
+            provider_variant_id: url.searchParams.get("provider_variant_id") ?? "",
+            reference_variant_id: url.searchParams.get("reference_variant_id") ?? "",
+            game: url.searchParams.get("game") ?? "pokemon",
+            card_name: url.searchParams.get("card_name") ?? "",
+            set_name: url.searchParams.get("set_name") ?? "",
+            set_code: url.searchParams.get("set_code") ?? "",
+            card_number: url.searchParams.get("card_number") ?? "",
+            printed_number: url.searchParams.get("printed_number") ?? "",
+            variant: url.searchParams.get("variant") ?? "",
+            finish: url.searchParams.get("finish") ?? "",
+            grading_company: url.searchParams.get("grading_company") ?? "",
+            grade: url.searchParams.get("grade") ?? "",
           }),
         )
       }
@@ -156,6 +181,18 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "POST" && url.pathname === "/pos/square/sales/finalize") {
         return sendStoreResult(response, await store.finalizeSquarePosSale(token, await readJson(request)))
+      }
+
+      if (request.method === "GET" && url.pathname === "/pos/square/terminal/status") {
+        return sendStoreResult(response, store.getSquareTerminalStatus(token))
+      }
+
+      if (request.method === "POST" && url.pathname === "/pos/square/terminal/device-code") {
+        return sendStoreResult(response, await store.createSquareTerminalDeviceCode(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/pos/square/terminal/checkouts") {
+        return sendStoreResult(response, await store.createSquareTerminalCheckout(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/inventory/intake") {
@@ -186,6 +223,15 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "POST" && url.pathname === "/trade-ins/orders") {
         return sendStoreResult(response, store.createTradeInOrder(token, await readJson(request)))
+      }
+
+      const tradeInOrderMatch = url.pathname.match(/^\/trade-ins\/orders\/([^/]+)$/)
+
+      if (request.method === "PATCH" && tradeInOrderMatch) {
+        return sendStoreResult(
+          response,
+          store.updateTradeInOrder(token, decodeURIComponent(tradeInOrderMatch[1]), await readJson(request)),
+        )
       }
 
       const tradeInStatusMatch = url.pathname.match(/^\/trade-ins\/orders\/([^/]+)\/status$/)
@@ -232,6 +278,15 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(
           response,
           await store.updateKioskOrderPayment(token, decodeURIComponent(kioskPaymentMatch[1]), await readJson(request)),
+        )
+      }
+
+      const kioskCustomerMatch = url.pathname.match(/^\/kiosk\/orders\/([^/]+)\/customer$/)
+
+      if (request.method === "PATCH" && kioskCustomerMatch) {
+        return sendStoreResult(
+          response,
+          store.updateKioskOrderCustomer(token, decodeURIComponent(kioskCustomerMatch[1]), await readJson(request)),
         )
       }
 
@@ -285,6 +340,15 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.searchCustomers({ query: url.searchParams.get("q") ?? "" }))
       }
 
+      const customerProfileMatch = url.pathname.match(/^\/customers\/([^/]+)\/profile$/)
+
+      if (request.method === "GET" && customerProfileMatch) {
+        return sendStoreResult(
+          response,
+          store.getCustomerProfile(token, decodeURIComponent(customerProfileMatch[1])),
+        )
+      }
+
       if (request.method === "POST" && url.pathname === "/customers") {
         return sendStoreResult(response, store.createCustomer(token, await readJson(request)))
       }
@@ -295,6 +359,10 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "POST" && url.pathname === "/credit/redemptions") {
         return sendStoreResult(response, store.createCreditRedemption(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/checkout/transactions") {
+        return sendStoreResult(response, store.createCheckoutTransaction(token, await readJson(request)))
       }
 
       if (request.method === "GET" && url.pathname === "/events") {

@@ -8,7 +8,7 @@ export function createWordPressCatalogFallback(options = {}) {
     return null
   }
 
-  return async function wordpressCatalogFallback({ query = "", game = "pokemon", limit = 250 } = {}) {
+  return async function wordpressCatalogFallback({ query = "", game = "pokemon", limit = 250, rawOrGraded = "" } = {}) {
     if (isUnlimitedLimit(limit)) {
       return fetchAllCatalogFallbackPages({
         endpointBase,
@@ -17,6 +17,7 @@ export function createWordPressCatalogFallback(options = {}) {
         authorizationHeader,
         query,
         game,
+        rawOrGraded,
       })
     }
 
@@ -28,6 +29,7 @@ export function createWordPressCatalogFallback(options = {}) {
       authorizationHeader,
       query,
       game,
+      rawOrGraded,
       limit: requestedLimit,
       page: 1,
       retriedWithLegacyLimit: false,
@@ -41,6 +43,7 @@ export function createWordPressCatalogFallback(options = {}) {
         authorizationHeader,
         query,
         game,
+        rawOrGraded,
         limit: 50,
         page: 1,
         retriedWithLegacyLimit: true,
@@ -58,6 +61,7 @@ async function fetchAllCatalogFallbackPages({
   authorizationHeader,
   query = "",
   game = "pokemon",
+  rawOrGraded = "",
 } = {}) {
   let page = 1
   let pageSize = 250
@@ -73,6 +77,7 @@ async function fetchAllCatalogFallbackPages({
       authorizationHeader,
       query,
       game,
+      rawOrGraded,
       limit: pageSize,
       page,
       retriedWithLegacyLimit,
@@ -128,6 +133,7 @@ async function fetchCatalogFallbackPage({
   authorizationHeader,
   query = "",
   game = "pokemon",
+  rawOrGraded = "",
   limit = 250,
   page = 1,
   retriedWithLegacyLimit = false,
@@ -137,6 +143,10 @@ async function fetchCatalogFallbackPage({
   endpoint.searchParams.set("game", String(game ?? "").trim())
   endpoint.searchParams.set("limit", String(boundedLimit(limit)))
   endpoint.searchParams.set("page", String(Math.max(1, Number.parseInt(String(page ?? "1"), 10) || 1)))
+  const rawOrGradedFilter = cleanRawOrGradedFilter(rawOrGraded)
+  if (rawOrGradedFilter) {
+    endpoint.searchParams.set("raw_or_graded", rawOrGradedFilter)
+  }
 
   const controller = typeof AbortController === "function" ? new AbortController() : null
   const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
@@ -343,6 +353,12 @@ function isUnlimitedLimit(value) {
   const raw = String(value ?? "").trim().toLowerCase()
 
   return raw === "all" || raw === "0" || raw === ""
+}
+
+function cleanRawOrGradedFilter(value) {
+  const rawOrGraded = String(value ?? "").trim().toLowerCase()
+
+  return ["raw", "graded"].includes(rawOrGraded) ? rawOrGraded : ""
 }
 
 function boundedTimeout(value) {

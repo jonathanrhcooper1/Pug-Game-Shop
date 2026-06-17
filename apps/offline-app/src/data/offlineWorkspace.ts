@@ -10,6 +10,7 @@ export type IconName =
   | "wifi"
   | "card"
   | "history"
+  | "checkout"
 
 export type InventoryStatus = "available" | "reserved" | "sold" | "conflict" | "pending_intake"
 export type InventoryProductTypeFilter = "all" | "raw" | "graded"
@@ -141,6 +142,7 @@ export type CustomerCreditLedgerEntry = {
   sourceLabel: string
   operationId?: string
   staffUserId?: string
+  staffUserName?: string
   referenceId?: string
   lineItems?: Array<{
     lineItemId: string
@@ -910,6 +912,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
   navItems: [
     { label: "Inventory", icon: "box", active: true },
     { label: "Trade-Ins", icon: "card" },
+    { label: "Checkout", icon: "checkout" },
     { label: "Sync", icon: "sync" },
     { label: "Status", icon: "history" },
     { label: "Kiosk", icon: "scan" },
@@ -1094,7 +1097,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     availableMinorUnits: 24600,
     redemptionPreviewMinorUnits: 2800,
     currency: "USD",
-    note: "Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.",
+    note: "Current store credit balance for this customer.",
   },
   customerCreditDirectory: [
     {
@@ -1107,7 +1110,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       availableMinorUnits: 24600,
       redemptionPreviewMinorUnits: 2800,
       currency: "USD",
-      note: "Cached balance available for offline redemption. Ledger replay stays pending until push acceptance.",
+      note: "Current store credit balance for this customer.",
     },
     {
       customerId: 104,
@@ -1119,7 +1122,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       availableMinorUnits: 7250,
       redemptionPreviewMinorUnits: 1250,
       currency: "USD",
-      note: "Cached league-night credit available for offline redemption.",
+      note: "Current league-night store credit balance.",
     },
     {
       customerId: 117,
@@ -1145,7 +1148,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       balanceAfterMinorUnits: 24600,
       currency: "USD",
       status: "cached",
-      sourceLabel: "Website cache",
+      sourceLabel: "Saved history",
       staffUserId: "staff-front-counter",
       referenceId: "buylist-001",
       lineItems: [
@@ -1168,7 +1171,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       balanceAfterMinorUnits: 19600,
       currency: "USD",
       status: "cached",
-      sourceLabel: "Website cache",
+      sourceLabel: "Saved history",
       staffUserId: "staff-front-counter",
       referenceId: "SQ-1002",
       lineItems: [
@@ -1192,7 +1195,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       balanceAfterMinorUnits: 7250,
       currency: "USD",
       status: "cached",
-      sourceLabel: "Website cache",
+      sourceLabel: "Saved history",
       staffUserId: "manager-owner",
       referenceId: "event-prize-001",
     },
@@ -1206,7 +1209,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       balanceAfterMinorUnits: 0,
       currency: "USD",
       status: "cached",
-      sourceLabel: "Website cache",
+      sourceLabel: "Saved history",
       staffUserId: "staff-front-counter",
       referenceId: "SQ-1001",
     },

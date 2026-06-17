@@ -50,6 +50,7 @@ final class ScryDexHttpProviderTest extends TestCase {
 		$this->assert_contains( 'q=charizard', $captured['url'] );
 		$this->assert_contains( 'page_size=100', $captured['url'] );
 		$this->assert_contains( 'include=prices', $captured['url'] );
+		$this->assert_contains( 'pop_reports', $captured['url'] );
 		$this->assert_same( 'sandbox-scrydex-key', $captured['headers']['X-Api-Key'] );
 		$this->assert_same( 'sandbox-team-id', $captured['headers']['X-Team-ID'] );
 		$this->assert_same( 'mock-cursor-page-2', $body['next_cursor'] );
@@ -92,6 +93,7 @@ final class ScryDexHttpProviderTest extends TestCase {
 		$this->assert_contains( '/pokemon/v1/cards?', $captured['url'] );
 		$this->assert_contains( 'page_size=1', $captured['url'] );
 		$this->assert_contains( 'include=prices', $captured['url'] );
+		$this->assert_contains( 'pop_reports', $captured['url'] );
 		$this->assert_same( 'pokemon', $body['data'][0]['game'] );
 		$this->assert_same( 259, $body['total_count'] );
 	}
@@ -118,6 +120,7 @@ final class ScryDexHttpProviderTest extends TestCase {
 
 		$this->assert_contains( 'page_size=100', $captured['url'] );
 		$this->assert_contains( 'include=prices', $captured['url'] );
+		$this->assert_contains( 'pop_reports', $captured['url'] );
 	}
 
 	public function test_search_expansions_and_expansion_cards_use_documented_routes(): void {
@@ -143,8 +146,54 @@ final class ScryDexHttpProviderTest extends TestCase {
 
 		$this->assert_contains( '/pokemon/v1/expansions?', $urls[0] );
 		$this->assert_contains( 'page_size=100', $urls[0] );
+		$this->assert_contains( 'pop_reports', $urls[0] );
 		$this->assert_contains( '/pokemon/v1/expansions/sv1/cards?', $urls[1] );
 		$this->assert_contains( 'include=prices', $urls[1] );
+		$this->assert_contains( 'pop_reports', $urls[1] );
+	}
+
+	public function test_get_card_price_history_uses_documented_route_and_grade_filters(): void {
+		$captured = array();
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static function ( string $method, string $url, array $args ) use ( &$captured ): array {
+				$captured = array(
+					'method'  => $method,
+					'url'     => $url,
+					'headers' => $args['headers'],
+				);
+
+				return array(
+					'status' => 200,
+					'body'   => array(
+						'data' => array(),
+					),
+				);
+			}
+		);
+
+		$result = $provider->get_card_price_history(
+			'sv3pt5-199',
+			array(
+				'game'      => 'pokemon',
+				'days'      => '30',
+				'company'   => 'SGC',
+				'grade'     => '10',
+				'page_size' => '250',
+			)
+		);
+
+		$this->assert_true( $result->is_success() );
+		$this->assert_same( 'GET', $captured['method'] );
+		$this->assert_contains( '/pokemon/v1/cards/sv3pt5-199/price_history?', $captured['url'] );
+		$this->assert_contains( 'days=30', $captured['url'] );
+		$this->assert_contains( 'company=SGC', $captured['url'] );
+		$this->assert_contains( 'grade=10', $captured['url'] );
+		$this->assert_contains( 'page_size=100', $captured['url'] );
+		$this->assert_same( 'sandbox-scrydex-key', $captured['headers']['X-Api-Key'] );
+		$this->assert_same( 'sandbox-team-id', $captured['headers']['X-Team-ID'] );
 	}
 
 	public function test_game_endpoint_aliases_map_to_official_scrydex_keys(): void {

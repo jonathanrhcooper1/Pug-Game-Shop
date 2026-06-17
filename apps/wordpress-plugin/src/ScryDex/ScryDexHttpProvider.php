@@ -90,6 +90,38 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	}
 
 	/**
+	 * @param array<string, string> $filters Provider price-history filters.
+	 */
+	public function get_card_price_history( string $provider_card_id, array $filters = array() ): ScryDexResult {
+		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
+		unset( $filters['game'] );
+
+		$params = array_merge(
+			$filters,
+			array(
+				'page'      => (string) max( 1, (int) ( $filters['page'] ?? 1 ) ),
+				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 30 ) ) ),
+			)
+		);
+
+		$params = array_filter(
+			$params,
+			static fn ( string $value ): bool => '' !== trim( $value )
+		);
+
+		return $this->request(
+			'GET',
+			'/' . $game . '/v1/cards/' . rawurlencode( trim( $provider_card_id ) ) . '/price_history?' . http_build_query( $params ),
+			array( 'game' => $game )
+		);
+	}
+
+	// phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid
+	public function getCardPriceHistory( string $provider_card_id, array $filters = array() ): ScryDexResult {
+		return $this->get_card_price_history( $provider_card_id, $filters );
+	}
+
+	/**
 	 * @param array<string, string> $filters Provider expansion filters.
 	 */
 	public function search_expansions(
@@ -136,6 +168,7 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	): ScryDexResult {
 		$game = $this->game_endpoint( $filters['game'] ?? 'pokemon' );
 		unset( $filters['game'] );
+		$filters = $this->with_price_include( $filters );
 
 		$params = array_merge(
 			$filters,
@@ -174,9 +207,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	 */
 	private function with_price_include( array $filters ): array {
 		$include = trim( (string) ( $filters['include'] ?? '' ) );
+		$required_includes = array( 'prices', 'pop_reports' );
 
 		if ( '' === $include ) {
-			$filters['include'] = 'prices';
+			$filters['include'] = implode( ',', $required_includes );
 			return $filters;
 		}
 
@@ -190,8 +224,15 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 			)
 		);
 
-		if ( ! in_array( 'prices', $parts, true ) ) {
-			$filters['include'] = $include . ',prices';
+		$missing = array_values(
+			array_filter(
+				$required_includes,
+				static fn ( string $part ): bool => ! in_array( $part, $parts, true )
+			)
+		);
+
+		if ( $missing ) {
+			$filters['include'] = $include . ',' . implode( ',', $missing );
 		}
 
 		return $filters;

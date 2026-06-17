@@ -15,6 +15,7 @@ let wordpressInventoryPullRows = []
 let wordpressEventsPullCalls = 0
 let wordpressEventPullRows = []
 let wordpressReportsPullCalls = 0
+let gradedPricingLookupCalls = 0
 
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
@@ -81,6 +82,43 @@ const server = createLocalSyncHttpServer({
         ],
       }
     },
+    gradedPricingLookup: async (input) => {
+      gradedPricingLookupCalls += 1
+
+      assert.equal(input.card_name, "Charizard")
+      assert.equal(input.set_name, "Base")
+      assert.equal(input.grading_company, "PSA")
+      assert.equal(input.grade, "10")
+
+      return {
+        status: "ok",
+        valuation: {
+          provider: "pricecharting",
+          provider_product_id: "pokemon-base-charizard-4",
+          provider_product_name: "Pokemon Base Charizard #4",
+          provider_product_url: "https://www.pricecharting.com/game/pokemon-base/charizard-4",
+          grading_company: "PSA",
+          grade: "10",
+          market_price_minor_units: 420000,
+          currency: "USD",
+          source_label: "PriceCharting graded market",
+          source_detail: "PSA/Grade 10 from PriceCharting current values.",
+          confidence_score: 96,
+          observed_at_utc: "2026-06-15T20:00:00.000Z",
+          fetched_at_utc: "2026-06-15T20:00:00.000Z",
+        },
+        providers: [
+          {
+            provider: "pricecharting",
+            configured: true,
+            status: "ready",
+            detail: "Matched Pokemon Base Charizard #4 using PSA/Grade 10.",
+          },
+        ],
+        provider_request_performed: true,
+      }
+    },
+    gradedPricingProviderConfigured: true,
     wordpressInventoryPull: async ({ query, page, pageSize }) => {
       wordpressInventoryPullCalls += 1
 
@@ -625,6 +663,41 @@ try {
   assert.equal(scrydexSearch.credentials_synced_to_client, false)
   assert.equal(scrydexSearch.live_provider_request_performed, false)
   assertNoSecrets(scrydexSearch)
+
+  const gradedValuation = await fetchJson(
+    `${baseUrl}/trade-ins/graded-valuation?card_name=Charizard&set_name=Base&game=pokemon&card_number=4%2F102&grading_company=PSA&grade=10`,
+    {
+      token: managerToken,
+    },
+  )
+
+  assert.equal(gradedValuation.status, "ok")
+  assert.equal(gradedValuation.action, "local_sync_graded_trade_in_valuation")
+  assert.equal(gradedValuation.primary_source, "scrydex_reference_cache")
+  assert.equal(gradedValuation.secondary_source_used, true)
+  assert.equal(gradedValuation.provider_request_performed, true)
+  assert.equal(gradedValuation.cache_hit, false)
+  assert.equal(gradedValuation.valuation.provider, "pricecharting")
+  assert.equal(gradedValuation.valuation.market_price_minor_units, 420000)
+  assert.equal(gradedValuation.valuation.credentials_synced_to_client, false)
+  assert.equal(gradedValuation.valuation.raw_credentials_returned, false)
+  assert.equal(gradedValuation.provider_statuses[0].credentials_synced_to_client, false)
+  assert.equal(gradedPricingLookupCalls, 1)
+  assertNoSecrets(gradedValuation)
+
+  const cachedGradedValuation = await fetchJson(
+    `${baseUrl}/trade-ins/graded-valuation?card_name=Charizard&set_name=Base&game=pokemon&card_number=4%2F102&grading_company=PSA&grade=10`,
+    {
+      token: managerToken,
+    },
+  )
+
+  assert.equal(cachedGradedValuation.status, "ok")
+  assert.equal(cachedGradedValuation.cache_hit, true)
+  assert.equal(cachedGradedValuation.provider_request_performed, false)
+  assert.equal(cachedGradedValuation.valuation.market_price_minor_units, 420000)
+  assert.equal(gradedPricingLookupCalls, 1)
+  assertNoSecrets(cachedGradedValuation)
 
   const fallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon`, {
     token: cashierAuth.session.token,
@@ -1305,12 +1378,14 @@ try {
     body: {
       customer_public_id: createdCustomer.customer.customer_public_id,
       amount_minor_units: 3000,
-      reason: "staff should not add credit",
+      reason: "staff local-store credit add",
     },
-    expectedStatus: 409,
   })
-  assert.equal(staffCreditAdjustment.status, "blocked")
-  assert.equal(staffCreditAdjustment.code, "manager_credit_approval_required")
+  assert.equal(staffCreditAdjustment.status, "ok")
+  assert.equal(staffCreditAdjustment.manager_approved, false)
+  assert.equal(staffCreditAdjustment.approval_required, false)
+  assert.equal(staffCreditAdjustment.customer.credit.balance_minor_units, 3000)
+  assert.equal(staffCreditAdjustment.ledger_entry.staff_user_name, staffAuth.user.name)
 
   const staffThresholdCreditAdjustment = await fetchJson(`${baseUrl}/credit/adjustments`, {
     method: "POST",
@@ -1324,6 +1399,7 @@ try {
   assert.equal(staffThresholdCreditAdjustment.status, "ok")
   assert.equal(staffThresholdCreditAdjustment.manager_approved, false)
   assert.equal(staffThresholdCreditAdjustment.approval_required, false)
+  assert.equal(staffThresholdCreditAdjustment.customer.credit.balance_minor_units, 5000)
 
   const creditAdjustment = await fetchJson(`${baseUrl}/credit/adjustments`, {
     method: "POST",
@@ -1336,11 +1412,12 @@ try {
   })
   assert.equal(creditAdjustment.status, "ok")
   assert.equal(creditAdjustment.manager_approved, true)
-  assert.equal(creditAdjustment.customer.credit.balance_minor_units, 5000)
+  assert.equal(creditAdjustment.customer.credit.balance_minor_units, 8000)
   assert.equal(creditAdjustment.ledger_entry.status, "pending_sync")
-  assert.equal(creditAdjustment.ledger_entry.balance_before_minor_units, 2000)
-  assert.equal(creditAdjustment.ledger_entry.balance_after_minor_units, 5000)
+  assert.equal(creditAdjustment.ledger_entry.balance_before_minor_units, 5000)
+  assert.equal(creditAdjustment.ledger_entry.balance_after_minor_units, 8000)
   assert.equal(creditAdjustment.ledger_entry.staff_user_id, managerAuth.user.id)
+  assert.equal(creditAdjustment.ledger_entry.staff_user_name, managerAuth.user.name)
   assert.equal(creditAdjustment.ledger_entry.reference_id, "manual-credit-adjustment")
   assert.equal(creditAdjustment.ledger_entry.line_items[0].type, "credit_given")
   assert.equal(creditAdjustment.ledger_entry.line_items[0].amount_minor_units, 3000)
@@ -1358,15 +1435,16 @@ try {
     },
   })
   assert.equal(creditRedemption.status, "ok")
-  assert.equal(creditRedemption.customer.credit.balance_minor_units, 4000)
+  assert.equal(creditRedemption.customer.credit.balance_minor_units, 7000)
   assert.equal(creditRedemption.square_payment_capture_supported, false)
   assert.equal(creditRedemption.square_handoff.square_payment_method_label, "Pug Store Credit")
   assert.equal(creditRedemption.square_handoff.square_amount_due_minor_units, 3500)
   assert.equal(creditRedemption.square_handoff.square_receipt_reference, "SQ-TEST-4500")
   assert.equal(creditRedemption.square_handoff.square_cashier_confirmed, true)
-  assert.equal(creditRedemption.ledger_entry.balance_before_minor_units, 5000)
-  assert.equal(creditRedemption.ledger_entry.balance_after_minor_units, 4000)
+  assert.equal(creditRedemption.ledger_entry.balance_before_minor_units, 8000)
+  assert.equal(creditRedemption.ledger_entry.balance_after_minor_units, 7000)
   assert.equal(creditRedemption.ledger_entry.staff_user_id, staffAuth.user.id)
+  assert.equal(creditRedemption.ledger_entry.staff_user_name, staffAuth.user.name)
   assert.equal(creditRedemption.ledger_entry.reference_id, "SQ-TEST-4500")
   assert.equal(creditRedemption.ledger_entry.line_items[0].type, "credit_used")
   assert.equal(creditRedemption.ledger_entry.line_items[0].square_receipt_reference, "SQ-TEST-4500")
@@ -1376,13 +1454,13 @@ try {
     token: managerToken,
   })
   assert.equal(pushedCustomerAndCredit.status, "ok")
-  assert.equal(pushedCustomerAndCredit.operation_count, 5)
-  assert.equal(pushedCustomerAndCredit.accepted_count, 4)
+  assert.equal(pushedCustomerAndCredit.operation_count, 6)
+  assert.equal(pushedCustomerAndCredit.accepted_count, 5)
   assert.equal(pushedCustomerAndCredit.retry_count, 1)
   assert.equal(pushedCustomerAndCredit.wordpress_customer_push_connected, true)
   assert.equal(pushedCustomerAndCredit.wordpress_credit_push_connected, true)
   assert.equal(wordpressCustomerUpsertPushCalls, 1)
-  assert.equal(wordpressCreditPushCalls, 3)
+  assert.equal(wordpressCreditPushCalls, 4)
   assert.ok(
     pushedCustomerAndCredit.results.some(
       (result) =>
@@ -1400,7 +1478,7 @@ try {
     pushedCustomerAndCredit.results.filter(
       (result) =>
         ["credit_adjustment", "credit_redemption"].includes(result.operation_type) && result.status === "accepted",
-    ).length === 3,
+    ).length === 4,
   )
 
   const acceptedCustomerSearch = await fetchJson(`${baseUrl}/customers/search?q=local.customer`)
@@ -1414,7 +1492,7 @@ try {
     acceptedCustomerSearch.credit_ledger_entries.filter(
       (entry) => entry.customer_public_id === createdCustomer.customer.customer_public_id && entry.status === "accepted",
     ).length,
-    3,
+    4,
   )
 
   const overspendRedemption = await fetchJson(`${baseUrl}/credit/redemptions`, {
@@ -1438,6 +1516,8 @@ try {
   assert.equal(syncStatus.persistence_mode, "sqlite")
   assert.equal(syncStatus.local_operations_preserved, true)
   assert.ok(syncStatus.queue_depth >= 1)
+  assert.equal(syncStatus.queue_summary.pending_count, syncStatus.queue_depth)
+  assert.ok(Array.isArray(syncStatus.queue_summary.items))
   assert.ok(syncStatus.reference_card_count >= 6)
   assert.ok(syncStatus.customer_count >= 4)
   assert.ok(syncStatus.credit_ledger_entry_count >= 5)
@@ -1450,6 +1530,8 @@ try {
   assert.equal(syncStatus.setup_required_client_device_count, 1)
   assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
   assert.equal(syncStatus.scrydex_fallback_connected, true)
+  assert.equal(syncStatus.graded_pricing_provider_connected, true)
+  assert.equal(syncStatus.graded_pricing_primary_source, "scrydex_reference_cache")
   assert.equal(syncStatus.wordpress_pull_connected, true)
   assert.equal(syncStatus.wordpress_inventory_pull_connected, true)
   assert.equal(syncStatus.wordpress_events_pull_connected, true)

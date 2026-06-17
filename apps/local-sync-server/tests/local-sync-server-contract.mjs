@@ -53,10 +53,15 @@ assert.equal(contract.safety.lan_discovery_returns_credentials, false)
 assert.equal(contract.safety.manual_middleman_url_fallback_supported, true)
 assert.equal(contract.safety.scrydex_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, true)
+assert.equal(contract.safety.graded_pricing_credentials_synced_to_clients, false)
+assert.equal(contract.safety.graded_pricing_secondary_to_scrydex, true)
 assert.equal(contract.setup_status.action, "local_sync_server_setup_status")
 assert.equal(contract.setup_status.website_url, "https://j84.285.myftpupload.com/")
 assert.equal(contract.setup_status.wordpress_rest_base, "https://j84.285.myftpupload.com/wp-json/tcg-store/v1")
 assert.equal(contract.setup_status.credentials_synced_to_client, false)
+assert.equal(contract.setup_status.graded_pricing_provider_configured, false)
+assert.equal(contract.setup_status.graded_pricing_primary_source, "scrydex_reference_cache")
+assert.equal(contract.setup_status.graded_pricing_credentials_synced_to_client, false)
 assert.equal(contract.setup_status.client_presence_enabled, true)
 assert.equal(contract.setup_status.device_heartbeat_path, "/devices/heartbeat")
 assert.equal(contract.setup_status.device_status_path, "/devices/status")
@@ -74,6 +79,7 @@ assert.ok(contract.responsibilities.includes("bind_clients_to_configured_lan_ser
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_lookup_from_local_cache_before_wordpress_proxy"))
+assert.ok(contract.responsibilities.includes("serve_secondary_graded_price_comps_only_after_scrydex_reference_lookup"))
 assert.ok(contract.responsibilities.includes("serve_square_pos_barcode_inventory_plan_without_square_payment_capture"))
 assert.ok(contract.responsibilities.includes("compare_square_pos_inventory_counts_without_square_payment_capture"))
 assert.ok(contract.responsibilities.includes("finalize_exact_square_pos_sales_by_scanned_inventory"))
@@ -93,17 +99,24 @@ for (const endpoint of [
   "PATCH /users/:user_id/access",
   "GET /inventory/search",
   "GET /scrydex/cards/search",
+  "GET /trade-ins/graded-valuation",
   "POST /pos/square/inventory-pull-plan",
   "POST /pos/square/inventory-counts/reconcile",
   "POST /pos/square/sales/finalize",
+  "GET /pos/square/terminal/status",
+  "POST /pos/square/terminal/device-code",
+  "POST /pos/square/terminal/checkouts",
   "POST /kiosk/orders",
   "GET /customers/search",
+  "GET /customers/:customer_public_id/profile",
   "POST /customers",
   "POST /inventory/reservations",
   "GET /trade-ins/orders",
   "POST /trade-ins/orders",
+  "PATCH /trade-ins/orders/:order_id",
   "PATCH /trade-ins/orders/:order_id/status",
   "GET /kiosk/orders",
+  "PATCH /kiosk/orders/:order_id/customer",
   "POST /credit/adjustments",
   "PATCH /kiosk/orders/:order_id/status",
   "POST /credit/redemptions",

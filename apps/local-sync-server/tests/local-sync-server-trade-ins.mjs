@@ -85,6 +85,37 @@ try {
   assert.equal(list.orders[0].staff_user_id, auth.user.id)
   assert.equal(list.orders[0].staff_user_name, auth.user.name)
 
+  const editedDraft = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: {
+      customer_name: "Grace Hopper",
+      items: [
+        {
+          id: "line-1",
+          product_type: "graded",
+          card_name: "Charizard VMAX",
+          set_name: "Shining Fates",
+          condition: "NM",
+          grading_company: "PSA",
+          grade: "10",
+          cert_number: "12345678",
+          market_mid_minor_units: 1875,
+          trade_in_percentage_basis_points: 5000,
+          payout_type: "credit",
+        },
+      ],
+    },
+  })
+
+  assert.equal(editedDraft.status, "ok")
+  assert.equal(editedDraft.order.order_id, created.order.order_id)
+  assert.equal(editedDraft.order.status, "draft")
+  assert.equal(editedDraft.order.item_count, 1)
+  assert.equal(editedDraft.order.credit_total_minor_units, 900)
+  assert.equal(editedDraft.order.cash_total_minor_units, 0)
+  assert.equal(editedDraft.order.items[0].trade_in_percentage_basis_points, 5000)
+
   const customerLookup = await fetchJson(`${baseUrl}/trade-ins/orders?q=${encodeURIComponent("Grace Hopper")}`, {
     token: auth.session.token,
   })
@@ -145,6 +176,31 @@ try {
   assert.equal(approved.status, "ok")
   assert.equal(approved.order.status, "approved")
 
+  const approvedUpdate = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: {
+      customer_name: "Grace Hopper",
+      items: [
+        {
+          id: "line-1",
+          product_type: "graded",
+          card_name: "Charizard VMAX",
+          set_name: "Shining Fates",
+          condition: "NM",
+          grading_company: "PSA",
+          grade: "10",
+          market_mid_minor_units: 1875,
+          trade_in_percentage_basis_points: 6000,
+          payout_type: "credit",
+        },
+      ],
+    },
+  })
+
+  assert.equal(approvedUpdate.status, "blocked")
+  assert.equal(approvedUpdate.code, "trade_in_update_not_allowed")
+
   const paid = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/status`, {
     method: "PATCH",
     token: auth.session.token,
@@ -165,6 +221,7 @@ try {
   assert.equal(converted.order.sellable_inventory_created, false)
   assert.ok(converted.order.converted_at_utc)
   assert.equal(converted.order.converted_by_user_id, auth.user.id)
+  assert.equal(converted.order.converted_by_user_name, auth.user.name)
 
   const duplicateConversion = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/status`, {
     method: "PATCH",

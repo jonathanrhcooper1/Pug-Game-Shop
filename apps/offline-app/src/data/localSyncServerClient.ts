@@ -1,6 +1,7 @@
 export type LocalSyncAccessSection =
   | "Inventory"
   | "Trade-Ins"
+  | "Checkout"
   | "Kiosk"
   | "Queue"
   | "Events"
@@ -94,6 +95,9 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   wordpress_credit_push_configured: boolean
   wordpress_kiosk_order_push_configured: boolean
   scrydex_catalog_proxy_configured: boolean
+  graded_pricing_provider_configured?: boolean
+  graded_pricing_primary_source?: "scrydex_reference_cache"
+  graded_pricing_credentials_synced_to_client?: false
   credentials_synced_to_client: false
   raw_credentials_returned: false
   direct_mysql_access: false
@@ -378,6 +382,62 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   live_provider_request_performed: boolean
 }>
 
+export type LocalSyncGradedValuation = {
+  provider: "pricecharting" | "psa" | "ebay" | "tcgplayer" | string
+  provider_product_id: string
+  provider_product_name: string
+  provider_product_url: string
+  grading_company: string
+  grade: string
+  market_price_minor_units: number
+  currency: "USD"
+  source_label: string
+  source_detail: string
+  confidence_score: number
+  observed_at_utc: string
+  fetched_at_utc: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}
+
+export type LocalSyncGradedProviderStatus = {
+  provider: string
+  configured: boolean
+  status: string
+  detail: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}
+
+export type LocalSyncGradedValuationResult = LocalSyncResult<{
+  action: "local_sync_graded_trade_in_valuation"
+  query: {
+    provider_card_id: string
+    provider_variant_id: string
+    reference_variant_id: number | null
+    game: LocalSyncScryDexCard["game"]
+    card_name: string
+    set_name: string
+    set_code: string
+    card_number: string
+    printed_number: string
+    variant: string
+    finish: string
+    grading_company: string
+    grade: string
+    source_priority: "scrydex_primary_secondary_comps"
+  }
+  valuation: LocalSyncGradedValuation | null
+  provider_statuses: LocalSyncGradedProviderStatus[]
+  provider_request_performed: boolean
+  cache_hit: boolean
+  cache_expires_at_utc: string
+  primary_source: "scrydex_reference_cache"
+  secondary_source_used: boolean
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
 export type LocalSyncKioskOrderStatus = "queued" | "accepted" | "pulling" | "ready" | "completed" | "expired"
 export type LocalSyncFulfillmentOrderStatus = "awaiting_pull" | "pulling" | "ready_for_pickup" | "completed"
 
@@ -386,6 +446,8 @@ export type LocalSyncKioskOrder = {
   first_name: string
   last_name: string
   customer_name: string
+  customer_public_id: string
+  customer_lookup: string
   status: LocalSyncKioskOrderStatus
   payment_status: "pay_at_store" | "paid"
   square_receipt_reference: string
@@ -449,6 +511,14 @@ export type LocalSyncKioskOrderPaymentUpdateResult = LocalSyncResult<{
   square_payment_capture_performed: false
   inventory_sale_finalized: true
   sale?: LocalSyncSquarePosSaleFinalizeResult
+}>
+
+export type LocalSyncKioskOrderCustomerUpdateResult = LocalSyncResult<{
+  order: LocalSyncKioskOrder
+  shared_queue_source: "local_sync_server"
+  customer_profile_linked: boolean
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
 }>
 
 export type LocalSyncFulfillmentOrder = {
@@ -552,6 +622,19 @@ export type LocalSyncTradeInItem = {
   final_value_manually_set?: boolean
   payout_type: "cash" | "credit"
   image_url: string
+  provider_card_id?: string
+  reference_variant_id?: number | null
+  provider_variant_id?: string
+  game?: LocalSyncScryDexCard["game"]
+  set_code?: string
+  card_number?: string
+  printed_number?: string
+  variant?: string
+  finish?: string
+  language?: string
+  back_image_url?: string
+  price_source?: string
+  price_observed_at_utc?: string
 }
 
 export type LocalSyncTradeInOrder = {
@@ -571,6 +654,7 @@ export type LocalSyncTradeInOrder = {
   currency: "USD"
   converted_at_utc: string
   converted_by_user_id: string
+  converted_by_user_name?: string
   created_at_utc: string
   updated_at_utc: string
   sellable_inventory_created: false
@@ -587,12 +671,24 @@ export type LocalSyncTradeInOrderListResult = LocalSyncResult<{
 
 export type LocalSyncTradeInOrderCreateResult = LocalSyncResult<{
   order: LocalSyncTradeInOrder
+  credit_application?: LocalSyncTradeInCreditApplication | null
   sellable_inventory_created: false
   shared_queue_source: "local_sync_server"
   credentials_synced_to_client: false
 }>
 
 export type LocalSyncTradeInOrderStatusUpdateResult = LocalSyncTradeInOrderCreateResult
+
+export type LocalSyncTradeInCreditApplication = {
+  applied: boolean
+  code: string
+  message: string
+  customer?: LocalSyncCustomer
+  ledger_entry?: LocalSyncCreditLedgerEntry
+  credit_total_minor_units?: number
+  wordpress_acceptance_required?: true
+  idempotent?: boolean
+}
 
 export type LocalSyncReportKey =
   | "customers"
@@ -633,6 +729,7 @@ export type LocalSyncManagerReportResult = LocalSyncResult<{
   dashboard_plan: Record<string, unknown> | null
   csv_header: string
   wordpress_reports_pull_connected: boolean
+  local_reports_fallback_used?: boolean
   credentials_synced_to_client: false
   authorization_header_printed: false
 }>
@@ -667,6 +764,7 @@ export type LocalSyncCreditLedgerEntry = {
   reason: string
   source: string
   staff_user_id: string
+  staff_user_name?: string
   reference_id: string
   line_items: Array<{
     line_item_id: string
@@ -680,11 +778,80 @@ export type LocalSyncCreditLedgerEntry = {
   created_at_utc: string
 }
 
+export type LocalSyncCheckoutTransaction = {
+  transaction_id: string
+  customer_public_id: string
+  customer_lookup: string
+  customer_name: string
+  customer_email: string
+  guest_checkout: boolean
+  square_receipt_reference: string
+  square_order_id: string
+  source_order_id: string
+  source: "local_pos" | "kiosk" | "website_pickup" | "manual"
+  receipt_delivery: "print" | "email" | "both" | "none"
+  tender_type: "card" | "cash" | "split"
+  subtotal_minor_units: number
+  credit_used_minor_units: number
+  square_due_minor_units: number
+  cash_paid_minor_units: number
+  card_paid_minor_units: number
+  change_due_minor_units: number
+  total_minor_units: number
+  currency: "USD"
+  items: Array<{
+    line_id: string
+    type: "inventory" | "misc" | "kiosk"
+    label: string
+    inventory_public_id: string
+    barcode: string
+    card_name: string
+    set_name: string
+    condition: string
+    location: string
+    quantity: number
+    unit_price_minor_units: number
+    total_minor_units: number
+    status: string
+  }>
+  item_count: number
+  staff_user_id: string
+  staff_user_name: string
+  created_at_utc: string
+  updated_at_utc: string
+}
+
 export type LocalSyncCustomerSearchResult = LocalSyncResult<{
   customers: LocalSyncCustomer[]
   credit_ledger_entries: LocalSyncCreditLedgerEntry[]
+  trade_in_orders?: LocalSyncTradeInOrder[]
+  kiosk_orders?: LocalSyncKioskOrder[]
+  checkout_transactions?: LocalSyncCheckoutTransaction[]
   local_cache_source: "local_sync_server"
   wordpress_ledger_authority: true
+}>
+
+export type LocalSyncCustomerProfileResult = LocalSyncResult<{
+  customer: LocalSyncCustomer
+  credit_ledger_entries: LocalSyncCreditLedgerEntry[]
+  trade_in_orders: LocalSyncTradeInOrder[]
+  kiosk_orders: LocalSyncKioskOrder[]
+  checkout_transactions: LocalSyncCheckoutTransaction[]
+  summary: {
+    trade_in_count: number
+    checkout_transaction_count?: number
+    kiosk_order_count: number
+    completed_kiosk_order_count: number
+    ledger_entry_count: number
+    credit_balance_minor_units: number
+    cash_total_minor_units: number
+    credit_total_minor_units: number
+    combined_total_minor_units: number
+    status_counts: Record<string, number>
+  }
+  local_cache_source: "local_sync_server"
+  wordpress_ledger_authority: true
+  credentials_synced_to_client: false
 }>
 
 export type LocalSyncCreateCustomerResult = LocalSyncResult<{
@@ -699,6 +866,16 @@ export type LocalSyncCreditAdjustmentResult = LocalSyncResult<{
   approval_required: boolean
   approval_threshold_minor_units: number
   wordpress_acceptance_required: true
+}>
+
+export type LocalSyncCheckoutTransactionResult = LocalSyncResult<{
+  transaction: LocalSyncCheckoutTransaction
+  customer_profile_linked: boolean
+  square_payment_capture_performed: false
+  payment_capture_authority: "square_pos_or_square_terminal"
+  email_delivery_queued: boolean
+  print_receipt_ready: boolean
+  credentials_synced_to_client: false
 }>
 
 export type LocalSyncSquareCreditHandoff = {
@@ -799,10 +976,35 @@ export type LocalSyncEventCheckinResult = LocalSyncResult<{
   wordpress_acceptance_required: true
 }>
 
+export type LocalSyncQueueSummaryItem = {
+  operation_id: string
+  operation_type: string
+  entity_id: string
+  queued_at_utc: string
+  sync_status: "pending" | "local_only"
+  sync_intent: string
+  customer_public_id: string
+  wordpress_customer_id: number
+  ledger_entry_id: string
+  ledger_type: string
+  amount_minor_units: number
+  square_receipt_present: boolean
+  reservation_count: number
+}
+
+export type LocalSyncQueueSummary = {
+  pending_count: number
+  local_only_count: number
+  oldest_queued_at_utc: string
+  by_type: Record<string, number>
+  items: LocalSyncQueueSummaryItem[]
+}
+
 export type LocalSyncStatusResult = LocalSyncResult<{
   local_database: "store-sync.sqlite"
   persistence_mode: "sqlite_adapter_pending" | "sqlite"
   queue_depth: number
+  queue_summary?: LocalSyncQueueSummary
   kiosk_order_count: number
   fulfillment_order_count?: number
   inventory_count: number
@@ -833,6 +1035,8 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   wordpress_fulfillment_pull_connected?: boolean
   scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   scrydex_fallback_connected: boolean
+  graded_pricing_provider_connected?: boolean
+  graded_pricing_primary_source?: "scrydex_reference_cache"
   local_operations_preserved: true
 }>
 
@@ -1075,6 +1279,68 @@ export type LocalSyncSquarePosSaleFinalizeResult = LocalSyncResult<{
   credentials_synced_to_client: false
 }>
 
+export type LocalSyncSquareTerminalStatusResult = LocalSyncResult<{
+  action: "square_terminal_status"
+  environment: "sandbox" | "production"
+  configured: boolean
+  token_configured: boolean
+  location_configured: boolean
+  terminal_device_configured: boolean
+  can_create_device_code: boolean
+  can_create_terminal_checkout: boolean
+  payment_capture_supported: boolean
+  device_pairing_required: boolean
+  checkout_endpoint: "/v2/terminals/checkouts"
+  device_code_endpoint: "/v2/devices/codes"
+  square_payment_authority: "square_terminal_api"
+  pug_credit_balance_authority: "wordpress_customer_credit_ledger"
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncSquareTerminalDeviceCodeResult = LocalSyncResult<{
+  action: "square_terminal_device_code_created"
+  device_code: {
+    id: string
+    code: string
+    name: string
+    product_type: string
+    location_id: string
+    status: string
+    created_at: string
+    paired_at: string
+  }
+  pairing_instruction: string
+  provider_request_performed: true
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncSquareTerminalCheckoutResult = LocalSyncResult<{
+  action: "square_terminal_checkout_created"
+  square_checkout: {
+    id: string
+    status: string
+    reference_id: string
+    note: string
+    amount_money: {
+      amount: number
+      currency: "USD"
+    }
+    device_id: string
+    payment_ids: string[]
+    created_at: string
+    updated_at: string
+  }
+  provider_request_performed: true
+  payment_capture_started_on_reader: true
+  pug_credit_balance_authority: "wordpress_customer_credit_ledger"
+  requested_by_user_id: string
+  requested_by_user_name: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
 export type LocalSyncFetch = (
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -1172,10 +1438,34 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     query: string,
     game?: LocalSyncScryDexCard["game"],
-    options?: { limit?: number | "all"; setFilter?: string },
+    options?: { limit?: number | "all"; setFilter?: string; rawOrGraded?: "raw" | "graded" },
   ) => Promise<LocalSyncScryDexSearchResult>
+  lookupGradedTradeInValuation: (
+    sessionToken: string,
+    input: {
+      providerCardId?: string
+      providerVariantId?: string
+      referenceVariantId?: number | null
+      game?: LocalSyncScryDexCard["game"]
+      cardName: string
+      setName: string
+      setCode?: string
+      cardNumber?: string
+      printedNumber?: string
+      variant?: string
+      finish?: string
+      gradingCompany: string
+      grade: string
+    },
+  ) => Promise<LocalSyncGradedValuationResult>
   createKioskOrder: (
-    input: { firstName: string; lastName: string; inventoryPublicIds: string[] },
+    input: {
+      firstName: string
+      lastName: string
+      inventoryPublicIds: string[]
+      customerPublicId?: string
+      customerLookup?: string
+    },
   ) => Promise<LocalSyncKioskOrderResult>
   listKioskOrders: (
     sessionToken: string,
@@ -1198,8 +1488,15 @@ export type LocalSyncServerClient = {
       squareReceiptReference: string
       squareOrderId?: string
       cashierConfirmed: boolean
+      customerPublicId?: string
+      customerLookup?: string
     },
   ) => Promise<LocalSyncKioskOrderPaymentUpdateResult>
+  updateKioskOrderCustomer: (
+    sessionToken: string,
+    orderId: string,
+    input: { customerPublicId: string; customerLookup?: string },
+  ) => Promise<LocalSyncKioskOrderCustomerUpdateResult>
   listFulfillmentOrders: (
     sessionToken: string,
     input?: { limit?: number; statuses?: LocalSyncFulfillmentOrderStatus[]; refresh?: boolean },
@@ -1245,6 +1542,57 @@ export type LocalSyncServerClient = {
         finalValueMinorUnits?: number
         payoutType: "cash" | "credit"
         imageUrl?: string
+        providerCardId?: string
+        referenceVariantId?: number | null
+        providerVariantId?: string
+        game?: LocalSyncScryDexCard["game"]
+        setCode?: string
+        cardNumber?: string
+        printedNumber?: string
+        variant?: string
+        finish?: string
+        language?: string
+        backImageUrl?: string
+        priceSource?: string
+        priceObservedAtUtc?: string | null
+      }>
+    },
+  ) => Promise<LocalSyncTradeInOrderCreateResult>
+  updateTradeInOrder: (
+    sessionToken: string,
+    orderId: string,
+    input: {
+      customerName: string
+      customerPhone?: string
+      customerPublicId?: string
+      notes?: string
+      items: Array<{
+        id: string
+        productType: "raw" | "graded"
+        cardName: string
+        setName: string
+        condition: string
+        gradingCompany?: string
+        grade?: string
+        certNumber?: string
+        marketMidMinorUnits: number
+        percentageBasisPoints: number
+        finalValueMinorUnits?: number
+        payoutType: "cash" | "credit"
+        imageUrl?: string
+        providerCardId?: string
+        referenceVariantId?: number | null
+        providerVariantId?: string
+        game?: LocalSyncScryDexCard["game"]
+        setCode?: string
+        cardNumber?: string
+        printedNumber?: string
+        variant?: string
+        finish?: string
+        language?: string
+        backImageUrl?: string
+        priceSource?: string
+        priceObservedAtUtc?: string | null
       }>
     },
   ) => Promise<LocalSyncTradeInOrderCreateResult>
@@ -1260,6 +1608,10 @@ export type LocalSyncServerClient = {
     filters?: LocalSyncReportFilters,
   ) => Promise<LocalSyncManagerReportResult>
   searchCustomers: (query: string) => Promise<LocalSyncCustomerSearchResult>
+  getCustomerProfile: (
+    sessionToken: string,
+    customerPublicId: string,
+  ) => Promise<LocalSyncCustomerProfileResult>
   createCustomer: (
     sessionToken: string,
     input: { firstName: string; lastName: string; email: string; customerLookup?: string },
@@ -1268,6 +1620,31 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input: { customerPublicId: string; amountMinorUnits: number; reason: string },
   ) => Promise<LocalSyncCreditAdjustmentResult>
+  createCheckoutTransaction: (
+    sessionToken: string,
+    input: {
+      customerPublicId?: string
+      customerLookup?: string
+      customerName?: string
+      customerEmail?: string
+      guestCheckout?: boolean
+      squareReceiptReference: string
+      squareOrderId?: string
+      sourceOrderId?: string
+      source?: "local_pos" | "kiosk" | "website_pickup" | "manual"
+      receiptDelivery?: "print" | "email" | "both" | "none"
+      tenderType?: "card" | "cash" | "split"
+      subtotalMinorUnits: number
+      creditUsedMinorUnits?: number
+      squareDueMinorUnits?: number
+      cashPaidMinorUnits?: number
+      cardPaidMinorUnits?: number
+      changeDueMinorUnits?: number
+      totalMinorUnits: number
+      currency?: "USD"
+      items: Array<Record<string, unknown>>
+    },
+  ) => Promise<LocalSyncCheckoutTransactionResult>
   createCreditRedemption: (
     sessionToken: string,
     input: {
@@ -1343,6 +1720,21 @@ export type LocalSyncServerClient = {
       saleTotalMinorUnits?: number
     },
   ) => Promise<LocalSyncSquarePosSaleFinalizeResult>
+  getSquareTerminalStatus: (sessionToken: string) => Promise<LocalSyncSquareTerminalStatusResult>
+  createSquareTerminalDeviceCode: (
+    sessionToken: string,
+    input?: { deviceName?: string; idempotencyKey?: string },
+  ) => Promise<LocalSyncSquareTerminalDeviceCodeResult>
+  createSquareTerminalCheckout: (
+    sessionToken: string,
+    input: {
+      amountMinorUnits: number
+      currency?: "USD"
+      referenceId?: string
+      note?: string
+      idempotencyKey?: string
+    },
+  ) => Promise<LocalSyncSquareTerminalCheckoutResult>
   pushQueuedOperations: (sessionToken: string) => Promise<LocalSyncPushResult>
 }
 
@@ -1492,9 +1884,37 @@ export function createLocalSyncServerClient(
         params.set("set", options.setFilter)
       }
 
+      if (options.rawOrGraded) {
+        params.set("raw_or_graded", options.rawOrGraded)
+      }
+
       return requestLocalSync(fetcher, baseUrl, `/scrydex/cards/search?${params.toString()}`, {
         sessionToken,
       }) as Promise<LocalSyncScryDexSearchResult>
+    },
+    lookupGradedTradeInValuation: (sessionToken, input) => {
+      const params = new URLSearchParams({
+        provider_card_id: input.providerCardId ?? "",
+        provider_variant_id: input.providerVariantId ?? "",
+        reference_variant_id:
+          input.referenceVariantId === null || input.referenceVariantId === undefined
+            ? ""
+            : String(input.referenceVariantId),
+        game: input.game ?? "pokemon",
+        card_name: input.cardName,
+        set_name: input.setName,
+        set_code: input.setCode ?? "",
+        card_number: input.cardNumber ?? "",
+        printed_number: input.printedNumber ?? "",
+        variant: input.variant ?? "",
+        finish: input.finish ?? "",
+        grading_company: input.gradingCompany,
+        grade: input.grade,
+      })
+
+      return requestLocalSync(fetcher, baseUrl, `/trade-ins/graded-valuation?${params.toString()}`, {
+        sessionToken,
+      }) as Promise<LocalSyncGradedValuationResult>
     },
     createKioskOrder: (input) =>
       requestLocalSync(fetcher, baseUrl, "/kiosk/orders", {
@@ -1503,6 +1923,8 @@ export function createLocalSyncServerClient(
           first_name: input.firstName,
           last_name: input.lastName,
           inventory_public_ids: input.inventoryPublicIds,
+          customer_public_id: input.customerPublicId ?? "",
+          customer_lookup: input.customerLookup ?? "",
         },
       }) as Promise<LocalSyncKioskOrderResult>,
     listKioskOrders: (sessionToken, input = {}) => {
@@ -1538,8 +1960,19 @@ export function createLocalSyncServerClient(
           square_receipt_reference: input.squareReceiptReference,
           square_order_id: input.squareOrderId ?? "",
           cashier_confirmed: input.cashierConfirmed,
+          customer_public_id: input.customerPublicId ?? "",
+          customer_lookup: input.customerLookup ?? "",
         },
       }) as Promise<LocalSyncKioskOrderPaymentUpdateResult>,
+    updateKioskOrderCustomer: (sessionToken, orderId, input) =>
+      requestLocalSync(fetcher, baseUrl, `/kiosk/orders/${encodeURIComponent(orderId)}/customer`, {
+        method: "PATCH",
+        sessionToken,
+        body: {
+          customer_public_id: input.customerPublicId,
+          customer_lookup: input.customerLookup ?? "",
+        },
+      }) as Promise<LocalSyncKioskOrderCustomerUpdateResult>,
     listFulfillmentOrders: (sessionToken, input = {}) => {
       const statuses = (input.statuses ?? [])
         .map((status) => `status=${encodeURIComponent(status)}`)
@@ -1605,6 +2038,58 @@ export function createLocalSyncServerClient(
             final_value_minor_units: item.finalValueMinorUnits,
             payout_type: item.payoutType,
             image_url: item.imageUrl ?? "",
+            provider_card_id: item.providerCardId ?? "",
+            reference_variant_id: item.referenceVariantId ?? null,
+            provider_variant_id: item.providerVariantId ?? "",
+            game: item.game ?? "",
+            set_code: item.setCode ?? "",
+            card_number: item.cardNumber ?? "",
+            printed_number: item.printedNumber ?? "",
+            variant: item.variant ?? "",
+            finish: item.finish ?? "",
+            language: item.language ?? "",
+            back_image_url: item.backImageUrl ?? "",
+            price_source: item.priceSource ?? "",
+            price_observed_at_utc: item.priceObservedAtUtc ?? "",
+          })),
+        },
+      }) as Promise<LocalSyncTradeInOrderCreateResult>,
+    updateTradeInOrder: (sessionToken, orderId, input) =>
+      requestLocalSync(fetcher, baseUrl, `/trade-ins/orders/${encodeURIComponent(orderId)}`, {
+        method: "PATCH",
+        sessionToken,
+        body: {
+          customer_name: input.customerName,
+          customer_phone: input.customerPhone ?? "",
+          customer_public_id: input.customerPublicId ?? "",
+          notes: input.notes ?? "",
+          items: input.items.map((item) => ({
+            id: item.id,
+            product_type: item.productType,
+            card_name: item.cardName,
+            set_name: item.setName,
+            condition: item.condition,
+            grading_company: item.gradingCompany ?? "",
+            grade: item.grade ?? "",
+            cert_number: item.certNumber ?? "",
+            market_mid_minor_units: item.marketMidMinorUnits,
+            trade_in_percentage_basis_points: item.percentageBasisPoints,
+            final_value_minor_units: item.finalValueMinorUnits,
+            payout_type: item.payoutType,
+            image_url: item.imageUrl ?? "",
+            provider_card_id: item.providerCardId ?? "",
+            reference_variant_id: item.referenceVariantId ?? null,
+            provider_variant_id: item.providerVariantId ?? "",
+            game: item.game ?? "",
+            set_code: item.setCode ?? "",
+            card_number: item.cardNumber ?? "",
+            printed_number: item.printedNumber ?? "",
+            variant: item.variant ?? "",
+            finish: item.finish ?? "",
+            language: item.language ?? "",
+            back_image_url: item.backImageUrl ?? "",
+            price_source: item.priceSource ?? "",
+            price_observed_at_utc: item.priceObservedAtUtc ?? "",
           })),
         },
       }) as Promise<LocalSyncTradeInOrderCreateResult>,
@@ -1649,6 +2134,10 @@ export function createLocalSyncServerClient(
       requestLocalSync(fetcher, baseUrl, `/customers/search?q=${encodeURIComponent(query)}`) as Promise<
         LocalSyncCustomerSearchResult
       >,
+    getCustomerProfile: (sessionToken, customerPublicId) =>
+      requestLocalSync(fetcher, baseUrl, `/customers/${encodeURIComponent(customerPublicId)}/profile`, {
+        sessionToken,
+      }) as Promise<LocalSyncCustomerProfileResult>,
     createCustomer: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/customers", {
         method: "POST",
@@ -1670,6 +2159,33 @@ export function createLocalSyncServerClient(
           reason: input.reason,
         },
       }) as Promise<LocalSyncCreditAdjustmentResult>,
+    createCheckoutTransaction: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/checkout/transactions", {
+        method: "POST",
+        sessionToken,
+        body: {
+          customer_public_id: input.customerPublicId ?? "",
+          customer_lookup: input.customerLookup ?? "",
+          customer_name: input.customerName ?? "",
+          customer_email: input.customerEmail ?? "",
+          guest_checkout: input.guestCheckout ?? false,
+          square_receipt_reference: input.squareReceiptReference,
+          square_order_id: input.squareOrderId ?? "",
+          source_order_id: input.sourceOrderId ?? "",
+          source: input.source ?? "local_pos",
+          receipt_delivery: input.receiptDelivery ?? "print",
+          tender_type: input.tenderType ?? "card",
+          subtotal_minor_units: input.subtotalMinorUnits,
+          credit_used_minor_units: input.creditUsedMinorUnits ?? 0,
+          square_due_minor_units: input.squareDueMinorUnits ?? input.totalMinorUnits,
+          cash_paid_minor_units: input.cashPaidMinorUnits ?? 0,
+          card_paid_minor_units: input.cardPaidMinorUnits ?? input.squareDueMinorUnits ?? input.totalMinorUnits,
+          change_due_minor_units: input.changeDueMinorUnits ?? 0,
+          total_minor_units: input.totalMinorUnits,
+          currency: input.currency ?? "USD",
+          items: input.items,
+        },
+      }) as Promise<LocalSyncCheckoutTransactionResult>,
     createCreditRedemption: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/credit/redemptions", {
         method: "POST",
@@ -1772,6 +2288,31 @@ export function createLocalSyncServerClient(
           sale_total_minor_units: input.saleTotalMinorUnits ?? 0,
         },
       }) as Promise<LocalSyncSquarePosSaleFinalizeResult>,
+    getSquareTerminalStatus: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/pos/square/terminal/status", {
+        sessionToken,
+      }) as Promise<LocalSyncSquareTerminalStatusResult>,
+    createSquareTerminalDeviceCode: (sessionToken, input = {}) =>
+      requestLocalSync(fetcher, baseUrl, "/pos/square/terminal/device-code", {
+        method: "POST",
+        sessionToken,
+        body: {
+          device_name: input.deviceName ?? "",
+          idempotency_key: input.idempotencyKey ?? "",
+        },
+      }) as Promise<LocalSyncSquareTerminalDeviceCodeResult>,
+    createSquareTerminalCheckout: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/pos/square/terminal/checkouts", {
+        method: "POST",
+        sessionToken,
+        body: {
+          amount_minor_units: input.amountMinorUnits,
+          currency: input.currency ?? "USD",
+          reference_id: input.referenceId ?? "",
+          note: input.note ?? "",
+          idempotency_key: input.idempotencyKey ?? "",
+        },
+      }) as Promise<LocalSyncSquareTerminalCheckoutResult>,
     pushQueuedOperations: (sessionToken) =>
       requestLocalSync(fetcher, baseUrl, "/sync/push", {
         method: "POST",

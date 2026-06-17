@@ -90,6 +90,8 @@ final class ScryDexCardsSyncWorkerTest extends TestCase {
 		$this->assert_same( 'planned', $result['pages'][0]['orchestration_plan']['status'] );
 		$this->assert_same( 'planned', $result['pages'][1]['orchestration_plan']['status'] );
 		$this->assert_same( 2, count( $urls ) );
+		$this->assert_contains( 'include=prices', $urls[0] );
+		$this->assert_contains( 'pop_reports', $urls[0] );
 		$this->assert_not_contains( 'staging-primary-key', false === $json ? '' : $json );
 		$this->assert_not_contains( 'staging-team-id', false === $json ? '' : $json );
 	}

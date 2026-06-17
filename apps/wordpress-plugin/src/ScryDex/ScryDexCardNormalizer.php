@@ -158,9 +158,9 @@ final class ScryDexCardNormalizer {
 		string $game,
 		?string $provider_updated_at
 	): ?array {
-		$market = $this->decimal_amount( $this->first_present( $source, array( 'amount', 'market_price', 'marketPrice', 'market', 'avg_price', 'avgPrice', 'price' ) ) );
+		$market = $this->decimal_amount( $this->first_present( $source, array( 'amount', 'market_price', 'marketPrice', 'market', 'market_value', 'marketValue', 'avg_price', 'avgPrice', 'average_price', 'averagePrice', 'average', 'avg', 'value', 'price' ) ) );
 		$low    = $this->decimal_amount( $this->first_present( $source, array( 'low_price', 'lowPrice', 'low' ) ) );
-		$mid    = $this->decimal_amount( $this->first_present( $source, array( 'mid_price', 'midPrice', 'mid' ) ) );
+		$mid    = $this->decimal_amount( $this->first_present( $source, array( 'mid_price', 'midPrice', 'mid', 'market_mid', 'marketMid', 'mid_value', 'midValue' ) ) );
 		$high   = $this->decimal_amount( $this->first_present( $source, array( 'high_price', 'highPrice', 'high' ) ) );
 
 		if ( null === $market && null === $low && null === $mid && null === $high ) {
@@ -172,9 +172,12 @@ final class ScryDexCardNormalizer {
 			$currency = 'USD';
 		}
 
-		$grade           = $this->nullable_string( $source['grade'] ?? null );
-		$grading_company = $this->nullable_string( $source['grading_company'] ?? ( $source['grader'] ?? ( $source['company'] ?? null ) ) );
+		$grade           = $this->nullable_string( $source['grade'] ?? ( $source['grading_grade'] ?? ( $source['gradingGrade'] ?? ( $source['grade_label'] ?? ( $source['gradeLabel'] ?? null ) ) ) ) );
+		$grading_company = $this->nullable_string( $source['grading_company'] ?? ( $source['gradingCompany'] ?? ( $source['grader'] ?? ( $source['company'] ?? null ) ) ) );
 		$raw_or_graded   = $this->raw_or_graded( $source, $grade, $grading_company );
+		if ( 'graded' === $raw_or_graded && null === $grade && true === ( $source['is_perfect'] ?? null ) ) {
+			$grade = '10';
+		}
 
 		return array(
 			'provider_name'          => self::PROVIDER,
@@ -427,30 +430,107 @@ final class ScryDexCardNormalizer {
 			}
 		}
 
-		$prices = $raw['prices'] ?? null;
-		if ( is_array( $prices ) ) {
-			$payloads = array_merge( $payloads, $this->rows_from_price_collection( $prices, $raw ) );
+		foreach ( $this->price_collection_contexts() as $key => $context ) {
+			$prices = $raw[ $key ] ?? null;
+			if ( is_array( $prices ) ) {
+				$payloads = array_merge( $payloads, $this->rows_from_price_collection( $prices, $raw, $context ) );
+			}
 		}
 
 		foreach ( $this->variant_sources( $raw ) as $variant_source ) {
-			$variant_prices = $variant_source['prices'] ?? null;
-			if ( ! is_array( $variant_prices ) ) {
-				continue;
-			}
-
 			$variant = $this->variant_row( $variant_source, $provider_card_id );
 			if ( null === $variant ) {
 				continue;
 			}
 
-			foreach ( $this->rows_from_price_collection( $variant_prices, $raw ) as $price ) {
+			foreach ( $this->price_collection_contexts() as $key => $context ) {
+				$variant_prices = $variant_source[ $key ] ?? null;
+				if ( ! is_array( $variant_prices ) ) {
+					continue;
+				}
+
+				foreach ( $this->rows_from_price_collection( $variant_prices, $raw, $context ) as $price ) {
+					$payloads[] = array_merge(
+						array(
+							'provider_variant_id' => $variant['provider_variant_id'],
+							'variant'             => $variant['variant'],
+							'finish'              => $variant['finish'],
+						),
+						$price
+					);
+				}
+			}
+		}
+
+		return $payloads;
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function price_collection_contexts(): array {
+		return array(
+			'prices'              => array(),
+			'price_points'        => array(),
+			'pricePoints'         => array(),
+			'market_prices'       => array(),
+			'marketPrices'        => array(),
+			'graded_prices'       => array( 'raw_or_graded' => 'graded' ),
+			'gradedPrices'        => array( 'raw_or_graded' => 'graded' ),
+			'graded_price_points' => array( 'raw_or_graded' => 'graded' ),
+			'gradedPricePoints'   => array( 'raw_or_graded' => 'graded' ),
+			'grades'              => array( 'raw_or_graded' => 'graded' ),
+		);
+	}
+
+	/**
+	 * @param array<int|string, mixed> $prices Provider price collection.
+	 * @param array<string, mixed>     $raw Raw provider card.
+	 * @return list<array<string, mixed>>
+	 */
+	private function rows_from_price_collection( array $prices, array $raw, array $context = array() ): array {
+		$payloads = array();
+
+		if ( array_is_list( $prices ) ) {
+			foreach ( $prices as $price ) {
+				if ( is_array( $price ) ) {
+					$payloads[] = array_merge( $context, $price );
+				} elseif ( is_numeric( $price ) ) {
+					$payloads[] = array_merge(
+						$context,
+						array(
+							'market_price' => $price,
+							'currency'     => $raw['currency'] ?? 'USD',
+						)
+					);
+				}
+			}
+
+			return $payloads;
+		}
+
+		foreach ( $prices as $key => $price ) {
+			$entry_context = array_merge(
+				$context,
+				$this->price_context_from_key( is_scalar( $key ) ? (string) $key : '', $context )
+			);
+
+			if ( is_array( $price ) ) {
+				if ( $this->looks_like_price_payload( $price ) ) {
+					$payloads[] = array_merge( $entry_context, $price );
+				} else {
+					$payloads = array_merge(
+						$payloads,
+						$this->rows_from_price_collection( $price, $raw, $entry_context )
+					);
+				}
+			} elseif ( is_numeric( $price ) ) {
 				$payloads[] = array_merge(
+					$entry_context,
 					array(
-						'provider_variant_id' => $variant['provider_variant_id'],
-						'variant'             => $variant['variant'],
-						'finish'              => $variant['finish'],
-					),
-					$price
+						'market_price' => $price,
+						'currency'     => $raw['currency'] ?? 'USD',
+					)
 				);
 			}
 		}
@@ -459,36 +539,161 @@ final class ScryDexCardNormalizer {
 	}
 
 	/**
-	 * @param array<int|string, mixed> $prices Provider price collection.
-	 * @param array<string, mixed>     $raw Raw provider card.
-	 * @return list<array<string, mixed>>
+	 * @param array<string, mixed> $price Provider price payload candidate.
 	 */
-	private function rows_from_price_collection( array $prices, array $raw ): array {
-		$payloads = array();
-
-		if ( array_is_list( $prices ) ) {
-			foreach ( $prices as $price ) {
-				if ( is_array( $price ) ) {
-					$payloads[] = $price;
-				}
+	private function looks_like_price_payload( array $price ): bool {
+		foreach (
+			array(
+				'amount',
+				'market_price',
+				'marketPrice',
+				'market',
+				'market_value',
+				'marketValue',
+				'avg_price',
+				'avgPrice',
+				'average_price',
+				'averagePrice',
+				'average',
+				'avg',
+				'value',
+				'price',
+				'low_price',
+				'lowPrice',
+				'low',
+				'mid_price',
+				'midPrice',
+				'mid',
+				'market_mid',
+				'marketMid',
+				'high_price',
+				'highPrice',
+				'high',
+			) as $key
+		) {
+			if ( array_key_exists( $key, $price ) && is_numeric( $price[ $key ] ) ) {
+				return true;
 			}
-
-			return $payloads;
 		}
 
-		foreach ( $prices as $key => $price ) {
-			if ( is_array( $price ) ) {
-				$payloads[] = is_string( $key ) ? array_merge( array( 'condition' => $key ), $price ) : $price;
-			} elseif ( is_numeric( $price ) ) {
-				$payloads[] = array(
-					'condition'    => is_string( $key ) ? $key : null,
-					'market_price' => $price,
-					'currency'     => $raw['currency'] ?? 'USD',
-				);
-			}
+		return false;
+	}
+
+	/**
+	 * @param array<string, mixed> $parent_context Parent inferred price context.
+	 * @return array<string, mixed>
+	 */
+	private function price_context_from_key( string $key, array $parent_context = array() ): array {
+		$key = trim( $key );
+		if ( '' === $key ) {
+			return array();
 		}
 
-		return $payloads;
+		$normalized = preg_replace( '/[^a-z0-9.]+/', '_', strtolower( $key ) ) ?? strtolower( $key );
+		$normalized = trim( $normalized, '_' );
+		$context    = array();
+
+		if ( str_contains( $normalized, 'graded' ) ) {
+			$context['raw_or_graded'] = 'graded';
+		}
+
+		if ( str_contains( $normalized, 'single' ) || 'raw' === $normalized ) {
+			$context['raw_or_graded'] = 'raw';
+		}
+
+		$company = $this->grading_company_from_price_key( $normalized );
+		if ( null !== $company ) {
+			$context['raw_or_graded']   = 'graded';
+			$context['grading_company'] = $company;
+		}
+
+		$grade = $this->grade_from_price_key( $normalized, array_merge( $parent_context, $context ) );
+		if ( null !== $grade ) {
+			$context['raw_or_graded'] = 'graded';
+			$context['grade']         = $grade;
+		}
+
+		$condition = $this->condition_from_price_key( $normalized );
+		if ( null !== $condition && ! isset( $context['grade'] ) ) {
+			$context['condition'] = $condition;
+		}
+
+		return $context;
+	}
+
+	private function grading_company_from_price_key( string $normalized ): ?string {
+		$tokens = array_values( array_filter( explode( '_', $normalized ), static fn ( string $token ): bool => '' !== $token ) );
+
+		if ( in_array( 'psa', $tokens, true ) ) {
+			return 'PSA';
+		}
+
+		if ( in_array( 'cgc', $tokens, true ) ) {
+			return 'CGC';
+		}
+
+		if ( in_array( 'bgs', $tokens, true ) || in_array( 'beckett', $tokens, true ) ) {
+			return 'BGS';
+		}
+
+		if ( in_array( 'sgc', $tokens, true ) ) {
+			return 'SGC';
+		}
+
+		if ( in_array( 'tag', $tokens, true ) ) {
+			return 'TAG';
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $context Inferred price context.
+	 */
+	private function grade_from_price_key( string $normalized, array $context ): ?string {
+		$is_graded_context = 'graded' === ( $context['raw_or_graded'] ?? '' )
+			|| null !== ( $context['grading_company'] ?? null );
+
+		if ( preg_match( '/(?:^|_)(?:grade|graded|gem_mint|pristine|mint)_?(10(?:\.0)?|[1-9](?:\.\d)?)(?:_|$)/', $normalized, $matches ) ) {
+			return $this->normalize_grade_label( $matches[1] );
+		}
+
+		if ( preg_match( '/(?:^|_)(?:psa|cgc|bgs|beckett|sgc|tag)_?(10(?:\.0)?|[1-9](?:\.\d)?)(?:_|$)/', $normalized, $matches ) ) {
+			return $this->normalize_grade_label( $matches[1] );
+		}
+
+		if ( $is_graded_context && preg_match( '/^(10(?:\.0)?|[1-9](?:\.\d)?)$/', $normalized, $matches ) ) {
+			return $this->normalize_grade_label( $matches[1] );
+		}
+
+		return null;
+	}
+
+	private function normalize_grade_label( string $grade ): string {
+		$grade = trim( $grade );
+
+		return str_ends_with( $grade, '.0' ) ? substr( $grade, 0, -2 ) : $grade;
+	}
+
+	private function condition_from_price_key( string $normalized ): ?string {
+		$conditions = array(
+			'nm'                => 'NM',
+			'near_mint'         => 'NM',
+			'nearmint'          => 'NM',
+			'lp'                => 'LP',
+			'lightly_played'    => 'LP',
+			'lightlyplayed'     => 'LP',
+			'mp'                => 'MP',
+			'moderately_played' => 'MP',
+			'moderatelyplayed'  => 'MP',
+			'hp'                => 'HP',
+			'heavily_played'    => 'HP',
+			'heavilyplayed'     => 'HP',
+			'dmg'               => 'DMG',
+			'damaged'           => 'DMG',
+		);
+
+		return $conditions[ $normalized ] ?? null;
 	}
 
 	/**
@@ -520,6 +725,10 @@ final class ScryDexCardNormalizer {
 		$value = strtolower( $this->clean_string( $source['raw_or_graded'] ?? ( $source['rawOrGraded'] ?? ( $source['type'] ?? '' ) ) ) );
 		if ( in_array( $value, array( 'raw', 'graded' ), true ) ) {
 			return $value;
+		}
+
+		if ( true === ( $source['is_perfect'] ?? null ) ) {
+			return 'graded';
 		}
 
 		return null !== $grade || null !== $grading_company ? 'graded' : 'raw';

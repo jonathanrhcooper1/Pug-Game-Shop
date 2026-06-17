@@ -1,5 +1,782 @@
 # Revision Log
 
+## 2026-06-17 - Production Readiness Audit
+
+### What Changed
+
+- Added the required production audit report set, connector status report,
+  queue report, UI review report, bug summary, open blocker list, and system map.
+- Added public production smoke coverage for public WordPress pages, forbidden
+  production phrases, raw shortcodes, local/staging links, event listing
+  behavior, and expected 404 behavior.
+- Ran the full automated test/build/package/security suite and guarded
+  production active-sync verification.
+- Documented live production findings that need manual approval or hardware,
+  including HTTPS nav/menu deployment, one local queue conflict, Square reader
+  validation, SMTP validation, Dymo printing, and placeholder product images.
+
+### Why
+
+The project needed a production-readiness checkpoint that separates verified
+system behavior from items that require human approval, payment hardware,
+printer hardware, or live admin configuration.
+
+### Files Affected
+
+- `PRODUCTION_AUDIT_REPORT.md`
+- `TEST_RESULTS.md`
+- `CONNECTOR_STATUS_REPORT.md`
+- `SYNC_QUEUE_REPORT.md`
+- `UI_REVIEW_REPORT.md`
+- `BUG_FIX_SUMMARY.md`
+- `OPEN_BLOCKERS.md`
+- `docs/SYSTEM_MAP.md`
+- `tests/e2e/public-production-smoke.spec.ts`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for this audit documentation/test checkpoint.
+
+### Tests Added Or Run
+
+- Added `tests/e2e/public-production-smoke.spec.ts`.
+- Ran `npm run test:local`.
+- Ran `npm run test:sync-engine`.
+- Ran `npm run test:pos-payments`.
+- Ran `npm run test:api-client`.
+- Ran `npm run test:offline-app`.
+- Ran `npm run test:packaging`.
+- Ran `npm run test:required-matrix`.
+- Ran `npm run build`.
+- Ran `npm run verify:no-production-secrets`.
+- Ran `npm run package:production-release`.
+- Ran production public shortcode, reference search, ScryDex catalog, public
+  Playwright, and active sync verifiers.
+
+### Rollback Notes
+
+- The report files and smoke test can be reverted without database impact.
+- No production deployment was performed by this audit pass.
+- Production smoke data created by guarded sync verification was cleaned up by
+  the verifier.
+
+## 2026-06-16 - POS Checkout and Customer Profile Split
+
+### What Changed
+
+- Added a dedicated `Checkout` workspace to the local app for guest/customer
+  checkout, barcode/product lookup, kiosk order import, misc sale lines, local
+  store-credit use, Square receipt capture, receipt delivery choice, Square
+  reader handoff, and Dymo label prep.
+- Simplified the `Customers` workspace into customer lookup/profile, credit
+  balance, issue-credit, ledger history, trade-in history, kiosk/order history,
+  and checkout receipt history.
+- Added LAN checkout transaction storage and `POST /checkout/transactions`.
+  Receipts save staff user/name, customer or guest checkout, Square receipt,
+  receipt delivery choice, sale totals, credit used, Square amount due, and line
+  items.
+- Added customer profile/search receipt visibility so POS and kiosk checkout
+  transactions stay searchable under the customer account.
+- Prevented paid/closed kiosk orders from being loaded back into Checkout and
+  reset Square/credit fields when starting a new checkout.
+- Replaced visible app staging wording with production/plain-English staff
+  language and fixed mobile overflow on `Checkout` and `Customers`.
+
+### Why
+
+The local app needed to behave more like a normal store POS: customer records
+should hold identity, credit, and history, while all selling actions happen in a
+separate checkout screen with receipt and label handling.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-checkout.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- LAN SQLite additive migration for `checkout_transactions`, including customer,
+  receipt, staff, totals, and item-line JSON fields.
+
+### Tests Added
+
+- Added `local-sync-server-checkout.mjs` coverage for customer-linked receipts,
+  guest receipts, email receipt validation, staff attribution, customer search,
+  and customer profile checkout history.
+- Extended offline app client/UI/workspace contract tests for the Checkout tab,
+  checkout receipt routes/types, Dymo label prep, and the current customer
+  display path.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server test`
+- Browser clickthrough on `http://127.0.0.1:1420/`: Inventory, Trade-Ins,
+  Checkout, Fulfillment, Queue, Events, Reports, Customers, and Settings all
+  loaded without console errors or visible staging text.
+- Browser responsive check at `390x844`: `Checkout` and `Customers` had zero
+  horizontal overflow.
+
+### Rollback Notes
+
+- Revert the affected local sync server, offline app, tests, and docs files.
+  The SQLite migration is additive; older code can ignore the
+  `checkout_transactions` table if rollback is needed.
+
+## 2026-06-16 - Customer Kiosk Checkout and Square Terminal Connector
+
+### What Changed
+
+- Added customer-linked kiosk order history to the LAN sync server. Kiosk
+  orders now store a customer public ID and lookup snapshot, and customer
+  profile/search responses include matching kiosk orders and summary counts.
+- Added a Customers workspace kiosk checkout panel in the local app. Staff can
+  search/select kiosk orders, load order totals/cards into checkout, attach the
+  order to the selected customer, open fulfillment, and complete a picked order
+  with a Square receipt reference.
+- Hid new-customer fields until staff click `Create New Customer`; the default
+  customer screen now focuses on lookup, selected profile, kiosk checkout,
+  local credit, ledger history, and Square receipt flow.
+- Added a server-side Square Terminal connector adapter plus LAN routes for
+  secret-safe reader status, manager device-code activation, and reader
+  checkout requests.
+- Added Square Terminal controls to the Customers workspace. The app reports
+  manual receipt mode until the LAN server has Square token, location, and
+  terminal device ID configured.
+
+### Why
+
+The customer screen needed to behave like the local checkout counter: kiosk
+orders should flow into staff checkout/profile history, new customer creation
+should not be noisy by default, and Square reader support must keep credentials
+server-side while preserving manual receipt fallback.
+
+### Files Affected
+
+- `.env.example`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/squareTerminalConnector.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-square-terminal.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- LAN SQLite additive migration for `kiosk_orders.customer_public_id` and
+  `kiosk_orders.customer_lookup`. Existing kiosk rows keep blank values until
+  staff attach them to a customer or name matching resolves them.
+
+### Tests Added
+
+- Added `local-sync-server-square-terminal.mjs` coverage for Square Terminal
+  status, activation-code, checkout, and customer-linked kiosk order profile
+  history.
+- Extended local sync client and UI shell contract tests for Square Terminal
+  routes/types and customer kiosk checkout UI markers.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:square-terminal`
+- `git diff --check`
+- Browser click/view pass on `http://127.0.0.1:1420/` Customers workspace:
+  verified request-only create customer form, kiosk order checkout panel,
+  selected order detail, Square reader status panel, no console warnings or
+  errors, and corrected customer profile header layout.
+- Restarted the local sync server and verified
+  `/pos/square/terminal/status` returns secret-safe unconfigured state.
+
+### Rollback Notes
+
+- Revert the affected local sync server, offline app, tests, env template, and
+  docs files. The SQLite migration is additive; rollback code can ignore the
+  extra kiosk order columns, or they can be left in place.
+
+## 2026-06-15 - Graded ScryDex Trade-In Fallback Cleanup
+
+### What Changed
+
+- Updated daily, manual, and live ScryDex card requests to include both
+  `prices` and `pop_reports` so graded-capable payloads are requested
+  consistently.
+- Added a ScryDex price-history provider method and graded-search enrichment
+  path. When the local app searches in graded mode, the local middleman forwards
+  `raw_or_graded=graded` to WordPress; WordPress then requests the documented
+  ScryDex `cards/<id>/price_history` endpoint for cache hits that lack
+  grade-specific rows, merges the latest graded price rows into the search
+  response, and persists them to the provider price-point table.
+- Fixed the production persistence shape for price-history rows by storing a
+  valid graded condition code and MySQL timestamp values for source/provider
+  dates. Production WordPress now accepts the enriched graded rows instead of
+  rejecting them during provider price-point validation.
+- Increased the local sync WordPress catalog fallback timeout to 30 seconds and
+  changed reference-card merging to preserve enriched `price_points`, so the
+  employee app can receive ScryDex graded rows after WordPress enriches a cached
+  search result.
+- Extended the local sync cache normalizer to preserve ScryDex top-level and
+  variant `prices` / `pricePoints` rows, including documented `type`,
+  `condition`, `company`, `grade`, `market`, `low`, `mid`, `high`, and
+  `is_perfect` values.
+- Treated ScryDex `is_perfect: true` graded price rows as grade `10` when the
+  provider row does not include a separate grade value.
+- Changed the Trade-Ins graded quote panel so a missing exact ScryDex graded
+  price does not auto-price from the raw/base card value. The app now marks the
+  quote as manual-required and only allows staging after staff enter a manual
+  offer or a secondary graded comp returns a value.
+- Cleaned customer-facing/server messages so secondary graded comp setup does
+  not expose local environment variable names.
+
+### Why
+
+The Trade-Ins screen was making it look like ScryDex graded pricing existed for
+cards where the local cache only had raw/base prices. Graded intake needs to
+distinguish exact graded market data from raw reference data so staff do not
+accidentally overpay or underpay on slabbed cards.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `apps/local-sync-server/tests/graded-pricing-providers.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added ScryDex normalizer coverage for documented perfect graded rows.
+- Added ScryDex HTTP provider coverage for the documented card price-history
+  route and grade/company filters.
+- Added local sync server coverage proving ScryDex-style `prices` rows are
+  stored as graded grade-10 price points in the reference cache.
+- Added WordPress catalog fallback coverage proving graded searches forward
+  `raw_or_graded=graded`.
+- Extended offline app local-sync client contract coverage for the graded search
+  parameter.
+- Added provider tests confirming missing secondary graded comp configuration
+  does not leak setup-token names.
+- Extended offline app UI contract coverage for manual-required graded price
+  messaging.
+
+### Verification
+
+- `php tests/run.php --filter ScryDex`
+- `php tests/run.php --filter InventorySearchRouteHandlerFactoryTest`
+- `php tests/lint.php`
+- `php tests/run.php --filter ScryDexCardNormalizerTest`
+- `php tests/run.php --filter ScryDexHttpProviderTest`
+- `npm.cmd --prefix apps/local-sync-server run test:graded-pricing`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-catalog`
+- `npm.cmd --prefix apps/local-sync-server run test:scrydex-reference-search`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server test`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- Production WordPress graded search for `Charizard ex` / Pokemon returned 27
+  cards, 580 graded price points, `price_history_enrichment.status=completed`,
+  `persistence_status=executed`, and zero persistence errors after redeploy.
+- Local app-facing search
+  `/scrydex/cards/search?q=Charizard%20ex&game=pokemon&limit=all&raw_or_graded=graded`
+  returned 27 cards and 580 graded price points; `Charizard ex` 151 #183
+  included SGC 10, PSA 10, CGC 10, BGS 10, and other grade/company rows.
+
+### Rollback Notes
+
+- Revert the affected ScryDex provider/normalizer, local sync cache,
+  Trade-Ins UI, tests, and docs files. No schema rollback is required.
+
+## 2026-06-15 - Customer Checkout Flow and Queue Diagnostics
+
+### What Changed
+
+- Simplified the employee app Customers workspace into a focused counter flow:
+  customer search/select, create customer, selected customer balance, Square
+  ticket total, store-credit redemption amount, Square receipt/reference, and
+  visible ledger history.
+- Removed the visible customer-account dropdown and standalone add-credit panel
+  from the Customers page. Store credit additions still flow through trade-in
+  approval or the existing backend credit adjustment path, while customer
+  checkout focuses on redemption and Square receipt tracking.
+- Made the Square POS handoff visible to staff on the Customers page instead of
+  hiding it as an owner-only detail.
+- Added a secret-safe LAN queue summary to `/sync/status` and rendered the
+  pending operation type, sync intent, customer public id, WordPress customer
+  id, amount, and queued time in the Queue page.
+
+### Why
+
+The Customers page had too many administrative controls for front-counter use,
+and the queue badge only showed a count. Staff need a clear checkout path and a
+plain explanation of why local/LAN queue badges remain visible.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended local sync runtime coverage to assert `queue_summary.pending_count`
+  matches `queue_depth`.
+- Extended offline app client/UI contracts for queue summary types and the new
+  customer checkout markers.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- Browser check of Customers page confirmed the old add-credit button and
+  customer dropdown are gone, Square receipt/ref is visible, ledger history is
+  visible, and the primary action is `Redeem Credit & Record Square Receipt`.
+- Browser check of Queue page confirmed the LAN pending row displays as a
+  trade-in credit application for customer/public ids with amount and queued
+  time, without raw payload JSON.
+
+### Rollback Notes
+
+- Revert the affected local sync status, offline app UI/style, tests, and docs
+  files. No schema rollback is required.
+
+## 2026-06-15 - ScryDex Graded Price Point Sync and Trade-In Offer Override
+
+### What Changed
+
+- Expanded ScryDex price normalization to import explicit `price_points`,
+  `pricePoints`, `graded_prices`, `gradedPrices`, `graded_price_points`,
+  `gradedPricePoints`, and `grades` collections from both card-level and
+  variant-level provider payloads.
+- Added support for nested grade/company maps such as `PSA -> 10`,
+  `CGC 9.5`, and scalar grade price rows, preserving the grading company,
+  grade, low/mid/high/market price fields, currency, and raw provider payload.
+- Fixed ScryDex price-key inference so uppercase provider keys like `PSA`,
+  `CGC`, `BGS`, `SGC`, and `TAG` are normalized before parsing.
+- Updated Trade-Ins valuation to prefer ScryDex mid price for trade offers
+  when a price point includes low/mid/high/market values.
+- Added a Manual offer value field to the Trade-Ins quote panel before
+  staging a card. Blank keeps the calculated market-mid percentage; a value
+  overrides the staged line and marks it as manually set.
+
+### Why
+
+Graded ScryDex payloads can return multiple price points per card/version by
+grading company and grade. Those rows need to land in the existing WordPress
+`tcg_provider_price_points` database path so daily sync, search, intake, and
+trade-in valuation all see the same source-of-truth pricing. Staff also need a
+fast manual override at quote time when the comp needs judgment.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This uses the existing provider price-point table and local trade-in
+  JSON line-item storage.
+
+### Tests Added
+
+- Added ScryDex normalizer coverage for nested grade-keyed price rows with
+  PSA and CGC grade-specific price points.
+- Added ScryDex persistence query coverage proving grade-specific price points
+  are written through the provider price-point database insert path.
+- Extended offline app UI contract coverage for the manual offer value field.
+
+### Verification
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server test -- --runInBand`
+- Browser check confirmed the Trade-Ins workspace renders the Manual offer
+  value field and market-mid helper text with no console warnings or errors.
+
+### Rollback Notes
+
+- Revert the affected normalizer/test/app/style/docs files to return to the
+  prior generic ScryDex price extraction and post-stage-only final-value
+  editing. No schema rollback is required.
+
+## 2026-06-15 - Secondary Graded Pricing Provider Lookup
+
+### What Changed
+
+- Added a local sync server graded-price lookup path for Trade-Ins that only
+  runs when the app is quoting graded cards and ScryDex/reference cache does
+  not have an exact grade/company match.
+- Added PriceCharting as the first secondary official API provider, with
+  grade/company mapping for PSA/generic 10, BGS 10, CGC 10, SGC 10, 9.5, 9,
+  8/8.5, and 7/7.5.
+- Added a server-side provider cache so repeated graded comp checks do not
+  repeatedly hit the external provider, and added a one-request-per-second
+  default throttle for PriceCharting API compliance.
+- Added offline app client types and UI status text showing when a secondary
+  comp was used while preserving ScryDex/reference cache as the primary source.
+- Added server contract/runtime/provider tests to verify the route, cache hit,
+  credential hiding, grade mapping, and ScryDex-primary status.
+
+### Why
+
+Staff needed the graded Trade-Ins flow to auto-pull secondary comp data when
+ScryDex lacks exact graded pricing, without turning secondary providers into
+the authority or leaking provider credentials to app clients.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/graded-pricing-providers.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added local sync SQLite table `graded_price_valuations` for secondary graded
+  comp cache rows.
+
+### Tests Added
+
+- Added `apps/local-sync-server/tests/graded-pricing-providers.mjs`.
+- Extended local sync server contract/runtime tests for the new
+  `/trade-ins/graded-valuation` endpoint and cache behavior.
+- Extended offline app client/UI contracts for the new client method and
+  secondary comp status text.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:graded-pricing`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+
+### Rollback Notes
+
+- Revert the listed server/app/test/docs files together to remove automatic
+  secondary graded comp lookup. Drop `graded_price_valuations` only if cached
+  comp history is no longer needed. ScryDex/reference valuation remains intact.
+
+## 2026-06-15 - Graded Trade-In Market Value Visibility
+
+### What Changed
+
+- Added grade/company-aware market valuation for selected Trade-Ins cards so
+  graded quotes can use exact ScryDex/reference price points when available.
+- Added a visible Trade-Ins market-value panel that shows the selected market
+  value, source, low/mid/high/observed details when a price point exists, and
+  a warning state when the app has to fall back to raw/base market value.
+- Added external comp links for graded cards when exact pricing is missing:
+  PriceCharting, eBay sold listings, PSA APR, and TCGplayer.
+- Normalized grade and grading-company matching so labels like `Gem Mint 10`,
+  `Grade 10`, `10.0`, `BGS`, and `Beckett` match the staff-selected values.
+- Extended the offline app UI shell contract to protect the new market-value
+  text, comp links, and CSS hooks.
+
+### Why
+
+Staff needed the graded-card Trade-Ins screen to visibly show which market
+value is driving the offer, react to grade/company changes, and provide a clear
+manual comp path when ScryDex/reference data does not have an exact graded
+price.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline app UI shell contract for the Trade-Ins market-value
+  panel and external comp links.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- Browser check confirmed the local app unlocks, opens Trade-Ins, searches
+  Charizard, selects a priced card, switches it to Graded, updates the market
+  panel for PSA/BGS grade 10, and shows comp links when no exact graded price
+  exists. Browser console had no warnings or errors.
+
+### Rollback Notes
+
+- Revert the listed app/test/docs files together to remove the graded
+  valuation panel and return to the prior Trade-Ins quote display. No database
+  rollback is required.
+
+## 2026-06-15 - Customer Profile Trade-In Linkage And Reports Fix
+
+### What Changed
+
+- Added a dedicated Trade-Ins customer lookup field that searches by name,
+  email, phone, or customer ID while keeping name, phone, and email fields for
+  creating new customers.
+- Linked accepted trade-in store-credit application back into the customer
+  profile ledger with staff name, timestamp, order reference, and exact
+  line-item values.
+- Filtered the Trade-Ins saved-offer list to the selected customer when a
+  customer is attached, while retaining the broader saved-offer search and
+  staff filters for store-wide lookup.
+- Tightened server-side customer/trade-in matching so profile trade-in history
+  only includes matching public IDs or exact normalized customer lookup values.
+- Refreshed local sync status during the employee heartbeat so the app header
+  shows live online/local-cache status and current last-sync time after login.
+- Hardened local manager reports so missing/legacy currency or numeric values
+  cannot break report generation, and so local report fallback data powers
+  summary cards, KPI cards, chart series, row previews, and CSV headers.
+
+### Why
+
+Trade-ins, customer credit, and reports needed to communicate as one workflow:
+staff must be able to select or create a customer, save/decline/approve offers
+under that profile, apply store credit automatically on approval, and then see
+the same data in reports.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended LAN middleman runtime/contract coverage for customer profile access,
+  staff credit changes without manager amount limits, profile ledger staff
+  names, trade-in credit application, and local report fallback behavior.
+
+### Verification
+
+- Browser check confirmed the app starts online after login, not stale offline.
+- Browser check confirmed Trade-Ins can search Morgan Lee by email, select the
+  existing customer, search ScryDex/reference cards, add Charizard to the
+  offer cart, save a quote, approve it, apply `$2,520.00` store credit, and
+  convert the accepted card into inventory intake.
+- Browser check confirmed the Customers page shows Morgan Lee's updated
+  balance, exact trade-in ledger line item, staff attribution, and only
+  Morgan-linked trade-in records.
+- Browser check confirmed Reports renders summary cards, five chart series,
+  KPI cards, CSV header information, and live row previews.
+
+### Rollback Notes
+
+- Revert the listed app/server files together to return to the prior trade-in
+  customer lookup and report behavior. No database migration rollback is
+  required. Trade-in/credit records created during testing remain business data
+  and should be corrected with manager ledger corrections rather than deleted.
+
+## 2026-06-15 - Trade-In Cart Workflow And Cart Image Fix
+
+### What Changed
+
+- Reworked the local app Trade-Ins flow so card lookup happens inside the
+  Trade-Ins screen, with all matching ScryDex/reference results available and a
+  set/expansion filter to narrow exact printings.
+- Persisted selected trade-in customers across lookup refreshes so the action
+  changes to `Customer Selected` instead of reverting to `Create & Use`.
+- Added POS-style trade-in cart behavior: select a card/version, choose raw or
+  graded, condition/display condition, per-card trade percentage, cash or store
+  credit payout, then add the item to the offer cart.
+- Added saved-offer loading so a draft/review trade-in can be restored back
+  into the cart for item edits before acceptance, decline, payment, or
+  conversion.
+- Added an authenticated LAN middleman update route for saved trade-in orders
+  so staff can save, accept, or decline a loaded draft/review quote without
+  duplicating the original transaction.
+- Added accepted-trade inventory conversion from trade-in cart lines into the
+  local intake/inventory path with ScryDex identity, image, pricing, and staff
+  attribution metadata preserved.
+- Exposed the converter staff display name on saved trade-in records and in the
+  employee app saved-offer list for later reports.
+- Added event list fallback/refresh UI and selection guards so the Events page
+  shows loaded events instead of sitting on an empty detail state.
+- Fixed the local app shell so the navigation rail remains visible while
+  taller Trade-Ins and Events workspaces scroll.
+- Fixed WooCommerce cart thumbnails for grouped card products by using eager
+  loading and stable card-sized dimensions.
+- Updated offline app UI contracts for current Trade-Ins copy and the explicit
+  `Use Single` / `Use Graded` card-result actions.
+
+### Why
+
+- Staff needed trade-ins to behave like a counter/POS workflow instead of
+  borrowing fields from the inventory intake screen, and saved trade offers
+  needed to reopen in an editable cart.
+- The live WooCommerce cart could show blank card thumbnails because zero-size
+  lazy images were not loading reliably in cart rows.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added WooCommerce grouped-card hook contract coverage for eager, fixed-size
+  cart thumbnail markup.
+- Added LAN middleman coverage for editing saved trade-in drafts/reviews,
+  blocking edits after approval/conversion, preserving converter names, and
+  documenting the new `PATCH /trade-ins/orders/:order_id` endpoint.
+- Updated offline UI shell contract coverage for the current Trade-Ins controls.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`: passed, 1034 tests and 0 failures.
+- `php apps/wordpress-plugin/tests/lint.php`: passed, 648 PHP files and 0 failures.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/offline-app run build`: passed with the existing Vite
+  large-chunk warning.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:pos-payments`: passed.
+- `npm.cmd run test:api-client`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run test:required-matrix`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run production:verify-active-syncs`: passed. Verified ScryDex
+  reference catalog/search, public shop shortcodes, local inventory push,
+  WooCommerce product projection/Square-sale sync, customer credit push,
+  customer upsert push, event registration/check-in push, kiosk order push,
+  and local pickup fulfillment. The first production reference-search attempt
+  retried twice for transient SSH handshakes and then completed successfully.
+- Browser check confirmed local app trade-in card search, set filtering,
+  selecting a card, adding it to the offer cart, selecting a customer, saving
+  a quote, reloading the quote, declining the loaded quote, and Events page
+  population.
+- Browser check confirmed production home, Singles, Graded, Sealed,
+  Accessories, Events, and one product detail page load without console
+  errors or broken loaded images. The production Events page currently shows
+  the empty-state because no current published production event records exist.
+- Browser check confirmed the tested product page renders the ScryDex card
+  image with transparent image backgrounds and the grouped condition selector.
+
+### Rollback Notes
+
+- Revert the listed file changes and reinstall the previous plugin ZIP if the
+  WooCommerce cart image change causes a storefront regression. If saved
+  trade-in update behavior must be rolled back, revert the LAN middleman route,
+  store, client, and app changes together so loaded saved quotes become
+  read-only again. No database migration or destructive data change is included
+  in this revision.
+
 ## 2026-06-15 - ScryDex Provider Price Reference Backfill
 
 ### What Changed
