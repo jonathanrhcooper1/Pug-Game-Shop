@@ -20,6 +20,13 @@ const server = createLocalSyncHttpServer({
       return {
         status: "ok",
         order_count: 1,
+        fulfillment_notifications: {
+          audio_enabled: true,
+          notification_sound_url: "https://j84.285.myftpupload.com/wp-content/uploads/pickup-alert.mp3",
+          employee_only: true,
+          ready_pickup_email_enabled: true,
+          credentials_synced_to_client: false,
+        },
         orders: [
           {
             order_id: 9401,
@@ -124,7 +131,30 @@ try {
   assert.equal(queue.orders[0].inventory_mutation_performed_by_status, false)
   assert.equal(queue.wordpress_fulfillment_pull_connected, true)
   assert.equal(queue.wordpress_fulfillment_status_push_connected, true)
+  assert.equal(queue.fulfillment_notifications.audio_enabled, true)
+  assert.equal(
+    queue.fulfillment_notifications.notification_sound_url,
+    "https://j84.285.myftpupload.com/wp-content/uploads/pickup-alert.mp3",
+  )
+  assert.equal(queue.fulfillment_notifications.employee_only, true)
+  assert.equal(queue.fulfillment_notifications.credentials_synced_to_client, false)
   assertNoSecrets(queue)
+
+  const notifications = await fetchJson(`${baseUrl}/notifications/fulfillment`, {
+    token: auth.session.token,
+  })
+
+  assert.equal(notifications.status, "ok")
+  assert.equal(notifications.action, "fulfillment_notification_settings")
+  assert.equal(notifications.fulfillment_notifications.audio_enabled, true)
+  assert.equal(
+    notifications.fulfillment_notifications.notification_sound_url,
+    "https://j84.285.myftpupload.com/wp-content/uploads/pickup-alert.mp3",
+  )
+  assert.equal(notifications.fulfillment_notifications.employee_only, true)
+  assert.equal(notifications.fulfillment_notifications.credentials_synced_to_client, false)
+  assert.equal(notifications.raw_credentials_returned, false)
+  assertNoSecrets(notifications)
 
   const picked = await fetchJson(`${baseUrl}/fulfillment/orders/9401/picks`, {
     method: "PATCH",

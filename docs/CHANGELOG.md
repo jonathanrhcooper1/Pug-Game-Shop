@@ -32,6 +32,20 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Added production/local live-inventory cutover cleanup commands that back up
+  first, remove generated card inventory/products, clear stale LAN queue rows
+  and open sync conflicts, and preserve ScryDex catalog/reference data,
+  customers, orders, and credit ledger history.
+- Added a generated `pug-order-notification.mp3` chime plus a production upload
+  command that registers the file in WordPress Media Library and enables it for
+  employee pickup-order sound alerts.
+- Removed sample card inventory, queued-write counts, and demo conflict rows
+  from the local app seed state so a clean live database starts cleanly.
+- Added employee-only pickup order sound notifications for the employee app.
+  WordPress managers can upload/select an MP3 or MP4 alert in the platform
+  settings, the paid pickup queue exposes only safe notification metadata, and
+  the LAN sync server serves that metadata through a PIN-session Bearer token
+  endpoint without sending WordPress credentials to clients.
 - Added a complete client-safe handover documentation package under
   `release-package/`, refreshed support references under `docs/`, and updated
   the production release package builder so the documentation bundle is included

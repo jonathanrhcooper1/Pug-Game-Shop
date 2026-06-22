@@ -3396,6 +3396,62 @@ h2 {
   line-height: 1.4;
 }
 
+.order-notification-sound-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  color: #172016;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(230, 248, 255, 0.72));
+  border: 1px solid rgba(19, 141, 171, 0.24);
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(18, 59, 89, 0.08);
+}
+
+.order-notification-sound-card.is-ready {
+  border-color: rgba(28, 151, 86, 0.32);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(226, 252, 235, 0.72));
+}
+
+.order-notification-sound-card.is-off {
+  border-color: rgba(130, 142, 150, 0.25);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.order-notification-sound-card > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.order-notification-sound-card strong {
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.order-notification-sound-card small {
+  color: #52605a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.order-notification-sound-card button {
+  min-height: 38px;
+  padding: 0 13px;
+  color: #07131d;
+  background: var(--gold);
+  border: 1px solid rgba(216, 155, 24, 0.32);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.order-notification-sound-card button:disabled {
+  color: #69746f;
+  background: rgba(167, 174, 171, 0.2);
+}
+
 .kiosk-customer-fields {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto;
@@ -7303,6 +7359,7 @@ dd {
   .detail-panel,
   .kiosk-hero,
   .kiosk-customer-fields,
+  .order-notification-sound-card,
   .kiosk-summary-strip,
   .kiosk-layout,
   .kiosk-card,
@@ -8108,6 +8165,7 @@ dd {
 }
 
 .fulfillment-panel.is-picking > .kiosk-hero,
+.fulfillment-panel.is-picking > .order-notification-sound-card,
 .fulfillment-panel.is-picking > .kiosk-summary-strip,
 .fulfillment-panel.is-picking > .kiosk-ticket-list {
   display: none;

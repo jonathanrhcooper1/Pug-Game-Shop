@@ -177,6 +177,7 @@ final class FulfillmentOrderController {
 					'payment_required'      => true,
 					'payment_authority'     => 'woocommerce_square_or_configured_gateway',
 					'inventory_authority'   => 'tcg_store_platform_reservations',
+					'fulfillment_notifications' => $this->fulfillment_notification_payload(),
 					'credentials_synced_to_client' => false,
 				),
 			),
@@ -260,6 +261,23 @@ final class FulfillmentOrderController {
 				true
 			);
 		}
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function fulfillment_notification_payload(): array {
+		$settings = FulfillmentNotificationSettings::sanitize(
+			Settings::all()[ FulfillmentNotificationSettings::KEY ] ?? array()
+		);
+
+		return array(
+			'audio_enabled'              => ! empty( $settings['audio_enabled'] ),
+			'notification_sound_url'     => (string) ( $settings['notification_sound_url'] ?? '' ),
+			'employee_only'              => true,
+			'ready_pickup_email_enabled' => ! empty( $settings['ready_pickup_email_enabled'] ),
+			'credentials_synced_to_client' => false,
+		);
 	}
 
 	private function send_ready_for_pickup_email_once( mixed $order ): bool {

@@ -4,6 +4,19 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Added production/local cleanup tooling for the live inventory import cutover:
+  clear generated card inventory/products, stale LAN queue rows, and open sync
+  conflicts while preserving ScryDex reference data, customers, orders, and
+  credit ledger history.
+- Added a generated employee order notification MP3 asset and production
+  upload command that registers it in WordPress Media Library and enables it
+  for employee pickup alerts.
+- Removed shipped demo card inventory, queue, and conflict seed rows from the
+  local app so an empty live database no longer renders sample inventory after
+  restart.
+- Added employee-only pickup order audio notification settings, WordPress media
+  upload support for MP3/MP4 alert sounds, and authenticated LAN sync delivery
+  of notification metadata without exposing WordPress credentials.
 - Added production-readiness audit documentation, public production smoke tests,
   connector/sync status reporting, UI review notes, and release artifact paths
   for the 2026-06-17 audit pass.

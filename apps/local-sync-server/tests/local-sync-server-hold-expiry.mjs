@@ -86,6 +86,7 @@ let legacyServer = createLocalSyncHttpServer({
   storeOptions: {
     cardHoldSeconds: 60,
     databasePath: legacyDatabasePath,
+    seedDemoInventory: true,
     now: () => currentTime,
   },
 })
@@ -125,6 +126,7 @@ legacyServer = createLocalSyncHttpServer({
   storeOptions: {
     cardHoldSeconds: 60,
     databasePath: legacyDatabasePath,
+    seedDemoInventory: true,
     now: () => currentTime,
   },
 })

@@ -42,6 +42,9 @@ final class SettingsPageSourceTest extends TestCase {
 				'Fulfillment notifications',
 				'Keep customer credit local-store only.',
 				'Enable staff audio notification for new pickup orders.',
+				'Notification sound file',
+				'Upload/select MP3 or MP4',
+				'wp_enqueue_media',
 				'Test sound',
 			) as $marker
 		) {

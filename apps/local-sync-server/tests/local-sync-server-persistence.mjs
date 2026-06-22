@@ -11,7 +11,12 @@ let currentTime = new Date("2026-06-09T12:00:00.000Z")
 const now = () => currentTime
 
 try {
-  const firstStore = createLocalSyncStore({ databasePath, now, heartbeatTimeoutSeconds: 90 })
+  const firstStore = createLocalSyncStore({
+    databasePath,
+    now,
+    heartbeatTimeoutSeconds: 90,
+    seedDemoInventory: true,
+  })
   const managerAuth = firstStore.createSession({ pin: "9999" })
   assert.equal(managerAuth.status, "ok")
 
@@ -119,7 +124,12 @@ try {
   firstStore.close()
 
   currentTime = new Date("2026-06-09T12:02:01.000Z")
-  const restartedStore = createLocalSyncStore({ databasePath, now, heartbeatTimeoutSeconds: 90 })
+  const restartedStore = createLocalSyncStore({
+    databasePath,
+    now,
+    heartbeatTimeoutSeconds: 90,
+    seedDemoInventory: true,
+  })
   const persistedSetupConfig = restartedStore.getSetupConfig()
   assert.equal(persistedSetupConfig.website_url, "https://cards.example.test/")
   assert.equal(persistedSetupConfig.wordpress_rest_base, "https://cards.example.test/wp-json/tcg-store/v1")

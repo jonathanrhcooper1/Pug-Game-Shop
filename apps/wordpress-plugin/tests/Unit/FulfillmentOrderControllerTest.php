@@ -53,6 +53,8 @@ final class FulfillmentOrderControllerTest extends TestCase {
 				'inventory_mutation_performed',
 				'payment_capture_performed',
 				'credentials_synced_to_client',
+				'fulfillment_notifications',
+				'notification_sound_url',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

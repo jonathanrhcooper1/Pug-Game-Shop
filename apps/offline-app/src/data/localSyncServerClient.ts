@@ -483,12 +483,31 @@ export type LocalSyncKioskOrderResult = LocalSyncResult<{
   reservations: LocalSyncReservation[]
 }>
 
+export type LocalSyncFulfillmentNotificationSettings = {
+  audio_enabled: boolean
+  notification_sound_url: string
+  employee_only: true
+  ready_pickup_email_enabled: boolean
+  source: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}
+
+export type LocalSyncFulfillmentNotificationSettingsResult = LocalSyncResult<{
+  action: "fulfillment_notification_settings"
+  fulfillment_notifications: LocalSyncFulfillmentNotificationSettings
+  employee_only: true
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
 export type LocalSyncKioskOrderListResult = LocalSyncResult<{
   orders: LocalSyncKioskOrder[]
   order_count: number
   total_order_count: number
   shared_queue_source: "local_sync_server"
   wordpress_acceptance_required: true
+  fulfillment_notifications?: LocalSyncFulfillmentNotificationSettings
   credentials_synced_to_client: false
 }>
 
@@ -572,6 +591,7 @@ export type LocalSyncFulfillmentOrderListResult = LocalSyncResult<{
   }
   wordpress_fulfillment_pull_connected: boolean
   wordpress_fulfillment_status_push_connected: boolean
+  fulfillment_notifications?: LocalSyncFulfillmentNotificationSettings
   credentials_synced_to_client: false
 }>
 
@@ -1471,6 +1491,9 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input?: { limit?: number; statuses?: LocalSyncKioskOrderStatus[] },
   ) => Promise<LocalSyncKioskOrderListResult>
+  getFulfillmentNotifications: (
+    sessionToken: string,
+  ) => Promise<LocalSyncFulfillmentNotificationSettingsResult>
   updateKioskOrderStatus: (
     sessionToken: string,
     orderId: string,
@@ -1940,6 +1963,10 @@ export function createLocalSyncServerClient(
         sessionToken,
       }) as Promise<LocalSyncKioskOrderListResult>
     },
+    getFulfillmentNotifications: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/notifications/fulfillment", {
+        sessionToken,
+      }) as Promise<LocalSyncFulfillmentNotificationSettingsResult>,
     updateKioskOrderStatus: (sessionToken, orderId, status) =>
       requestLocalSync(fetcher, baseUrl, `/kiosk/orders/${encodeURIComponent(orderId)}/status`, {
         method: "PATCH",

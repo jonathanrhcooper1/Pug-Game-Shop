@@ -112,6 +112,10 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.deviceStatus())
       }
 
+      if (request.method === "GET" && url.pathname === "/notifications/fulfillment") {
+        return sendStoreResult(response, store.getFulfillmentNotifications(token))
+      }
+
       if (request.method === "POST" && url.pathname === "/auth/pin") {
         return sendStoreResult(response, store.createSession(await readJson(request)))
       }

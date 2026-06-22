@@ -20,6 +20,7 @@ final class SettingsPage {
 
 	public function register(): void {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_settings_media' ) );
 		add_filter( 'option_page_capability_tcg_store_platform', array( $this, 'settings_capability' ) );
 		add_action( 'update_option_' . Settings::OPTION_NAME, array( $this, 'audit_settings_change' ), 10, 3 );
 		add_action( 'update_option_' . FeatureFlags::OPTION_NAME, array( $this, 'audit_settings_change' ), 10, 3 );
@@ -27,6 +28,18 @@ final class SettingsPage {
 
 	public function settings_capability(): string {
 		return 'manage_settings';
+	}
+
+	public function enqueue_settings_media(): void {
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : '';
+
+		if ( 'tcg-store-platform-settings' !== $page ) {
+			return;
+		}
+
+		if ( function_exists( 'wp_enqueue_media' ) ) {
+			wp_enqueue_media();
+		}
 	}
 
 	public function register_settings(): void {
@@ -533,6 +546,7 @@ final class SettingsPage {
 	public function render_fulfillment_notifications(): void {
 		$settings = Settings::all();
 		$policy   = FulfillmentNotificationSettings::sanitize( $settings[ FulfillmentNotificationSettings::KEY ] ?? array() );
+		$field_id = 'tcg-fulfillment-notification-sound-url';
 
 		echo '<fieldset>';
 		echo '<label><input type="checkbox" name="'
@@ -551,21 +565,28 @@ final class SettingsPage {
 			. ' /> ';
 		echo esc_html__( 'Email customers when an order is marked ready for pickup.', 'tcg-store-platform' );
 		echo '</label><br />';
-		echo '<label>';
-		echo esc_html__( 'Notification sound URL', 'tcg-store-platform' ) . ' ';
-		echo '<input type="url" class="regular-text" name="'
+		echo '<label for="' . esc_attr( $field_id ) . '">';
+		echo esc_html__( 'Notification sound file', 'tcg-store-platform' ) . ' ';
+		echo '<input id="' . esc_attr( $field_id ) . '" type="url" class="regular-text" name="'
 			. esc_attr( Settings::OPTION_NAME )
 			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
 			. '][notification_sound_url]" value="'
 			. esc_attr( (string) $policy['notification_sound_url'] )
+			. '" placeholder="'
+			. esc_attr__( 'Choose an MP3 or MP4 from Media Library', 'tcg-store-platform' )
 			. '" />';
 		echo '</label> ';
-		echo '<button type="button" class="button" onclick="const audio=this.previousElementSibling.querySelector(\'input\').value;if(audio){new Audio(audio).play().catch(()=>alert(\'Enable browser sound notifications first.\'));}">';
+		echo '<button type="button" class="button" data-tcg-select-fulfillment-sound data-target="' . esc_attr( $field_id ) . '">';
+		echo esc_html__( 'Upload/select MP3 or MP4', 'tcg-store-platform' );
+		echo '</button> ';
+		echo '<button type="button" class="button" data-tcg-test-fulfillment-sound data-target="' . esc_attr( $field_id ) . '">';
 		echo esc_html__( 'Test sound', 'tcg-store-platform' );
 		echo '</button>';
 		echo '<p class="description">';
-		echo esc_html__( 'Browsers may require staff to click once before sound can play; the dashboard should also show a visual fallback.', 'tcg-store-platform' );
-		echo '</p></fieldset>';
+		echo esc_html__( 'This sound is used only by the employee system for new kiosk or website pickup orders. Upload an MP3 or MP4 file from this site media library. Browsers may require staff to click Enable order sounds before playback starts.', 'tcg-store-platform' );
+		echo '</p>';
+		echo '<script>(function(){if(window.tcgFulfillmentNotificationMediaReady){return;}window.tcgFulfillmentNotificationMediaReady=true;document.addEventListener("click",function(event){var selectButton=event.target.closest("[data-tcg-select-fulfillment-sound]");if(selectButton){event.preventDefault();var input=document.getElementById(selectButton.getAttribute("data-target"));if(!input||!window.wp||!wp.media){return;}var frame=wp.media({title:"' . esc_js( __( 'Choose order notification sound', 'tcg-store-platform' ) ) . '",button:{text:"' . esc_js( __( 'Use this sound', 'tcg-store-platform' ) ) . '"},library:{type:["audio","video"]},multiple:false});frame.on("select",function(){var attachment=frame.state().get("selection").first();var data=attachment?attachment.toJSON():null;if(data&&data.url){input.value=data.url;input.dispatchEvent(new Event("change",{bubbles:true}));}});frame.open();return;}var testButton=event.target.closest("[data-tcg-test-fulfillment-sound]");if(testButton){event.preventDefault();var target=document.getElementById(testButton.getAttribute("data-target"));var url=target?target.value:"";if(url){new Audio(url).play().catch(function(){alert("' . esc_js( __( 'Click once in the employee app to enable browser sound notifications.', 'tcg-store-platform' ) ) . '");});}}});})();</script>';
+		echo '</fieldset>';
 	}
 
 	public function render_offline_route_description(): void {

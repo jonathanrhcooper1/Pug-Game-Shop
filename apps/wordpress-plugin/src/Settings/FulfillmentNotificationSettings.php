@@ -18,6 +18,7 @@ final class FulfillmentNotificationSettings {
 			'audio_enabled'             => true,
 			'ready_pickup_email_enabled' => true,
 			'notification_sound_url'    => '',
+			'employee_only'             => true,
 		);
 	}
 
@@ -35,6 +36,10 @@ final class FulfillmentNotificationSettings {
 			$url = '';
 		}
 
+		if ( '' !== $url && 1 !== preg_match( '#\.(mp3|mp4)(?:\?.*)?$#i', $url ) ) {
+			$url = '';
+		}
+
 		return array(
 			'audio_enabled'              => array_key_exists( 'audio_enabled', $value )
 				? ! empty( $value['audio_enabled'] )
@@ -43,6 +48,7 @@ final class FulfillmentNotificationSettings {
 				? ! empty( $value['ready_pickup_email_enabled'] )
 				: (bool) $fallback['ready_pickup_email_enabled'],
 			'notification_sound_url'     => $url,
+			'employee_only'              => true,
 		);
 	}
 

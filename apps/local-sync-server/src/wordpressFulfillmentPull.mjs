@@ -149,6 +149,7 @@ async function fetchFulfillmentEndpoint({
       orders,
       order,
       order_count: orders.length,
+      fulfillment_notifications: fulfillmentNotificationSettingsFromWordPressResponse(responseBody),
       credentials_synced_to_client: false,
       authorization_header_printed: false,
       endpoint: secretSafeEndpoint(endpoint),
@@ -168,6 +169,22 @@ async function fetchFulfillmentEndpoint({
     if (timeout) {
       clearTimeout(timeout)
     }
+  }
+}
+
+function fulfillmentNotificationSettingsFromWordPressResponse(body) {
+  const data = body?.data && typeof body.data === "object" ? body.data : body
+  const settings =
+    data?.fulfillment_notifications && typeof data.fulfillment_notifications === "object"
+      ? data.fulfillment_notifications
+      : {}
+
+  return {
+    audio_enabled: settings.audio_enabled !== false,
+    notification_sound_url: cleanNotificationSoundUrl(settings.notification_sound_url),
+    employee_only: true,
+    ready_pickup_email_enabled: settings.ready_pickup_email_enabled !== false,
+    credentials_synced_to_client: false,
   }
 }
 
@@ -253,6 +270,25 @@ function cleanId(value) {
 
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, 191)
+}
+
+function cleanNotificationSoundUrl(value) {
+  const raw = String(value ?? "").trim()
+
+  if (!raw) {
+    return ""
+  }
+
+  try {
+    const parsed = new URL(raw)
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return ""
+    }
+
+    return /\.(mp3|mp4)$/i.test(parsed.pathname) ? parsed.toString() : ""
+  } catch {
+    return ""
+  }
 }
 
 function cleanIsoTimestamp(value) {

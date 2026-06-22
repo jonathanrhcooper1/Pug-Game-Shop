@@ -74,6 +74,9 @@ export function createLocalSyncStore(options = {}) {
     typeof options.wordpressCustomerUpsertPush === "function" ? options.wordpressCustomerUpsertPush : null
   const wordpressKioskOrderPush =
     typeof options.wordpressKioskOrderPush === "function" ? options.wordpressKioskOrderPush : null
+  const fulfillmentNotifications = cleanFulfillmentNotificationSettings(
+    options.fulfillmentNotifications ?? options.fulfillmentNotificationSettings,
+  )
   const gradedPricingLookup = typeof options.gradedPricingLookup === "function" ? options.gradedPricingLookup : null
   const gradedPricingProviderConfigured = Boolean(options.gradedPricingProviderConfigured ?? gradedPricingLookup?.configured)
   const gradedPricingCacheTtlSeconds = boundedInt(
@@ -85,9 +88,13 @@ export function createLocalSyncStore(options = {}) {
   const squareLocationId = cleanExternalId(options.squareLocationId) || "LOCAL-SQUARE-POS"
   const squareEnvironment = cleanSquareEnvironment(options.squareEnvironment)
   const squareTerminalConnector = options.squareTerminalConnector ?? null
-  const database = options.database ?? openLocalSyncDatabase(options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH)
+  const databasePath = options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH
+  const seedDemoInventory =
+    options.seedDemoInventory === true ||
+    (options.seedDemoInventory !== false && !options.database && databasePath === ":memory:")
+  const database = options.database ?? openLocalSyncDatabase(databasePath)
   migrateLocalSyncDatabase(database)
-  seedLocalSyncDatabase(database, now)
+  seedLocalSyncDatabase(database, now, { seedDemoInventory })
   const setupConfig = loadSetupConfig(database, {
     configuredAtUtc: now().toISOString(),
     localDatabase: options.localDatabase ?? "store-sync.sqlite",
@@ -256,6 +263,10 @@ export function createLocalSyncStore(options = {}) {
       raw_credentials_returned: false,
       raw_credentials_accepted: false,
     }
+  }
+
+  function publicFulfillmentNotificationSettings() {
+    return cleanFulfillmentNotificationSettings(fulfillmentNotifications)
   }
 
   function addUser(token, input = {}) {
@@ -1281,7 +1292,25 @@ export function createLocalSyncStore(options = {}) {
       released_inventory_count: expiryCleanup.released_inventory_count,
       shared_queue_source: "local_sync_server",
       wordpress_acceptance_required: true,
+      fulfillment_notifications: publicFulfillmentNotificationSettings(),
       credentials_synced_to_client: false,
+    }
+  }
+
+  function getFulfillmentNotifications(token) {
+    const session = requireWorkspaceAccess(token, "Kiosk")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    return {
+      status: "ok",
+      action: "fulfillment_notification_settings",
+      fulfillment_notifications: publicFulfillmentNotificationSettings(),
+      employee_only: true,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
     }
   }
 
@@ -1501,6 +1530,14 @@ export function createLocalSyncStore(options = {}) {
       })
 
       if (wordpressPullResult.status === "ok") {
+        if (wordpressPullResult.fulfillment_notifications) {
+          Object.assign(
+            fulfillmentNotifications,
+            cleanFulfillmentNotificationSettings(wordpressPullResult.fulfillment_notifications),
+            { source: "wordpress_fulfillment_settings" },
+          )
+        }
+
         for (const order of wordpressPullResult.orders ?? []) {
           const normalizedOrder = localFulfillmentOrderFromWordPress(order, now)
 
@@ -1550,6 +1587,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_refresh_blocked: wordpressPullBlocked,
       wordpress_fulfillment_pull_connected: Boolean(wordpressFulfillmentPull),
       wordpress_fulfillment_status_push_connected: Boolean(wordpressFulfillmentStatusPush),
+      fulfillment_notifications: publicFulfillmentNotificationSettings(),
       credentials_synced_to_client: false,
     }
   }
@@ -4348,6 +4386,7 @@ export function createLocalSyncStore(options = {}) {
     createCheckoutTransaction,
     createCustomer,
     getCustomerProfile,
+    getFulfillmentNotifications,
     createEvent,
     createEventCheckin,
     createEventRegistration,
@@ -4784,7 +4823,7 @@ function ensureLocalSyncUserRoleConstraint(database) {
   `)
 }
 
-function seedLocalSyncDatabase(database, now) {
+function seedLocalSyncDatabase(database, now, options = {}) {
   const userCount = database.prepare("SELECT COUNT(*) AS count FROM users").get().count
   const inventoryCount = database.prepare("SELECT COUNT(*) AS count FROM inventory_items").get().count
   const customerCount = database.prepare("SELECT COUNT(*) AS count FROM customers").get().count
@@ -4797,7 +4836,7 @@ function seedLocalSyncDatabase(database, now) {
     }
   }
 
-  if (Number(inventoryCount) === 0) {
+  if (options.seedDemoInventory === true && Number(inventoryCount) === 0) {
     for (const item of seedInventoryItems()) {
       saveInventoryItem(database, item, now)
     }
@@ -7917,6 +7956,35 @@ function cleanSquareEnvironment(value) {
 
 function cleanPublicId(value) {
   return String(value ?? "").trim().replace(/[^a-zA-Z0-9-_:.]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 96)
+}
+
+function cleanFulfillmentNotificationSettings(value = {}) {
+  const settings = value && typeof value === "object" ? value : {}
+  const rawUrl = String(settings.notification_sound_url ?? settings.notificationSoundUrl ?? "").trim()
+  let notificationSoundUrl = ""
+
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl)
+      notificationSoundUrl =
+        ["http:", "https:"].includes(parsed.protocol) && /\.(mp3|mp4)$/i.test(parsed.pathname)
+          ? parsed.toString()
+          : ""
+    } catch {
+      notificationSoundUrl = ""
+    }
+  }
+
+  return {
+    audio_enabled: settings.audio_enabled !== false && settings.audioEnabled !== false,
+    notification_sound_url: notificationSoundUrl,
+    employee_only: true,
+    ready_pickup_email_enabled:
+      settings.ready_pickup_email_enabled !== false && settings.readyPickupEmailEnabled !== false,
+    source: cleanExternalId(settings.source) || "local_sync_server_default",
+    credentials_synced_to_client: false,
+    raw_credentials_returned: false,
+  }
 }
 
 function cleanStoreId(value) {

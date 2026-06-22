@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react"
 
 import {
   buildOfflinePushBatchPayload,
@@ -122,6 +122,7 @@ import {
   type LocalSyncEventSnapshot,
   type LocalSyncAutoSyncOperationResult,
   type LocalSyncCheckoutTransaction,
+  type LocalSyncFulfillmentNotificationSettings,
   type LocalSyncFulfillmentOrder,
   type LocalSyncFulfillmentOrderStatus,
   type LocalSyncGradedProviderStatus,
@@ -216,6 +217,15 @@ const REPORT_OPTIONS: Array<{ key: LocalSyncReportKey; label: string; focus: str
   { key: "scrydex", label: "ScryDex", focus: "Sync history, price changes, failed pulls" },
   { key: "audit", label: "Audit", focus: "Overrides, ledger corrections, staff actions" },
 ]
+const DEFAULT_FULFILLMENT_NOTIFICATION_SETTINGS: LocalSyncFulfillmentNotificationSettings = {
+  audio_enabled: true,
+  notification_sound_url: "",
+  employee_only: true,
+  ready_pickup_email_enabled: true,
+  source: "employee_app_default",
+  credentials_synced_to_client: false,
+  raw_credentials_returned: false,
+}
 const ACCESS_SECTIONS = [
   "Inventory",
   "Trade-Ins",
@@ -2215,6 +2225,54 @@ function employeeSectionLabel(label: string) {
   return label === "Kiosk" ? "Fulfillment" : label
 }
 
+async function playBuiltInOrderTone(contextRef: MutableRefObject<AudioContext | null>) {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  const audioWindow = window as typeof window & {
+    webkitAudioContext?: typeof AudioContext
+  }
+  const AudioContextConstructor = audioWindow.AudioContext ?? audioWindow.webkitAudioContext
+
+  if (!AudioContextConstructor) {
+    throw new Error("AudioContext is unavailable.")
+  }
+
+  const context = contextRef.current ?? new AudioContextConstructor()
+  contextRef.current = context
+
+  if (context.state === "suspended") {
+    await Promise.race([
+      context.resume(),
+      new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error("AudioContext resume timed out.")), 1_000)
+      }),
+    ])
+  }
+
+  const oscillator = context.createOscillator()
+  const gain = context.createGain()
+  oscillator.type = "sine"
+  oscillator.frequency.value = 880
+  gain.gain.setValueAtTime(0.001, context.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.42)
+  await new Promise<void>((resolve) => {
+    const finish = () => {
+      window.clearTimeout(timeoutId)
+      resolve()
+    }
+    const timeoutId = window.setTimeout(finish, 700)
+
+    oscillator.onended = finish
+    oscillator.connect(gain)
+    gain.connect(context.destination)
+    oscillator.start()
+    oscillator.stop(context.currentTime + 0.45)
+  })
+}
+
 function kioskTicketFromLocalSyncOrder(order: LocalSyncKioskOrder): KioskOrderTicket {
   return {
     orderId: order.order_id,
@@ -2448,6 +2506,9 @@ export function App() {
   const creditPanelRef = useRef<HTMLElement>(null)
   const connectorPanelRef = useRef<HTMLElement>(null)
   const kioskCartRef = useRef<HTMLElement>(null)
+  const knownPickupTicketIdsRef = useRef<Set<string> | null>(null)
+  const orderNotificationAudioRef = useRef<HTMLAudioElement | null>(null)
+  const orderNotificationAudioContextRef = useRef<AudioContext | null>(null)
   const connectorProfileStorageRef = useRef<ConnectorProfileStorageRestoreResult | null>(null)
   if (connectorProfileStorageRef.current === null) {
     connectorProfileStorageRef.current = loadConnectorProfileStorage()
@@ -2770,6 +2831,10 @@ export function App() {
   const [kioskCartInView, setKioskCartInView] = useState(true)
   const [kioskOrderTickets, setKioskOrderTickets] = useState<KioskOrderTicket[]>([])
   const [websitePickupTickets, setWebsitePickupTickets] = useState<WebsitePickupTicket[]>([])
+  const [fulfillmentNotificationSettings, setFulfillmentNotificationSettings] =
+    useState<LocalSyncFulfillmentNotificationSettings>(DEFAULT_FULFILLMENT_NOTIFICATION_SETTINGS)
+  const [orderNotificationSoundEnabled, setOrderNotificationSoundEnabled] = useState(false)
+  const [orderNotificationIssue, setOrderNotificationIssue] = useState("")
   const [fulfillmentHistorySearch, setFulfillmentHistorySearch] = useState("")
   const [activeFulfillmentTicket, setActiveFulfillmentTicket] =
     useState<ActiveFulfillmentTicket | null>(null)
@@ -4487,6 +4552,16 @@ export function App() {
     }
   }, [sessionIsUnlocked])
 
+  useEffect(() => {
+    knownPickupTicketIdsRef.current = null
+
+    if (!sessionIsUnlocked || !localSyncSessionToken || customerKioskMode) {
+      return
+    }
+
+    void refreshFulfillmentNotificationSettings(localSyncSessionToken)
+  }, [sessionIsUnlocked, localSyncSessionToken, customerKioskMode, localSyncClient])
+
   function isAccessSection(label: string): label is AccessSection {
     return ACCESS_SECTIONS.includes(label as AccessSection)
   }
@@ -4743,6 +4818,148 @@ export function App() {
     })
   }
 
+  function applyFulfillmentNotificationSettings(
+    settings?: LocalSyncFulfillmentNotificationSettings,
+  ) {
+    if (!settings) {
+      return fulfillmentNotificationSettings
+    }
+
+    const nextSettings = {
+      ...DEFAULT_FULFILLMENT_NOTIFICATION_SETTINGS,
+      ...settings,
+      employee_only: true as const,
+      credentials_synced_to_client: false as const,
+      raw_credentials_returned: false as const,
+    }
+
+    setFulfillmentNotificationSettings(nextSettings)
+
+    return nextSettings
+  }
+
+  async function refreshFulfillmentNotificationSettings(sessionToken = localSyncSessionToken) {
+    if (!sessionToken || customerKioskMode) {
+      return fulfillmentNotificationSettings
+    }
+
+    const result = await localSyncClient.getFulfillmentNotifications(sessionToken)
+
+    if (result.status !== "ok") {
+      handleBlockedLocalSyncSession(result, "Order sound settings locked")
+      return fulfillmentNotificationSettings
+    }
+
+    return applyFulfillmentNotificationSettings(result.fulfillment_notifications)
+  }
+
+  async function enableOrderNotificationSound() {
+    const played = await playOrderNotificationSound({
+      reason: "Staff sound check",
+      force: true,
+    })
+
+    if (played) {
+      setOrderNotificationSoundEnabled(true)
+      setOrderNotificationIssue("")
+      setActivityMessage({
+        title: "Order sounds enabled",
+        detail: "This employee station will play a sound when a new kiosk or website pickup order arrives.",
+      })
+    }
+  }
+
+  async function playOrderNotificationSound({
+    newOrderCount = 0,
+    reason = "New pickup order",
+    force = false,
+    settings = fulfillmentNotificationSettings,
+  }: {
+    newOrderCount?: number
+    reason?: string
+    force?: boolean
+    settings?: LocalSyncFulfillmentNotificationSettings
+  } = {}) {
+    if (customerKioskMode || (!force && !settings.audio_enabled)) {
+      return false
+    }
+
+    try {
+      const soundUrl = settings.notification_sound_url.trim()
+
+      if (soundUrl) {
+        const audio = orderNotificationAudioRef.current ?? new Audio()
+        audio.src = soundUrl
+        audio.currentTime = 0
+        orderNotificationAudioRef.current = audio
+        await audio.play()
+      } else {
+        await playBuiltInOrderTone(orderNotificationAudioContextRef)
+      }
+
+      setOrderNotificationSoundEnabled(true)
+      setOrderNotificationIssue("")
+
+      if (newOrderCount > 0) {
+        setActivityMessage({
+          title: reason,
+          detail: `${newOrderCount} new pickup order${newOrderCount === 1 ? "" : "s"} arrived. Open Fulfillment to pull the cards.`,
+        })
+      }
+
+      return true
+    } catch {
+      setOrderNotificationSoundEnabled(false)
+      setOrderNotificationIssue(
+        "Browser audio blocked this attempt. Click Enable Sound directly on this employee station.",
+      )
+
+      if (newOrderCount > 0) {
+        setActivityMessage({
+          title: reason,
+          detail: `${newOrderCount} new pickup order${newOrderCount === 1 ? "" : "s"} arrived. Click Enable order sounds so future orders can play the alert.`,
+        })
+      }
+
+      return false
+    }
+  }
+
+  function handlePickupTicketNotifications(
+    kioskTickets: KioskOrderTicket[],
+    websiteTickets: WebsitePickupTicket[],
+    settings = fulfillmentNotificationSettings,
+  ) {
+    if (customerKioskMode || !settings.audio_enabled) {
+      return
+    }
+
+    const activeIds = new Set([
+      ...kioskTickets
+        .filter((ticket) => !["completed", "expired"].includes(ticket.status))
+        .map((ticket) => `kiosk:${ticket.orderId}`),
+      ...websiteTickets
+        .filter((ticket) => ticket.status !== "completed")
+        .map((ticket) => `website:${ticket.orderId}`),
+    ])
+
+    if (knownPickupTicketIdsRef.current === null) {
+      knownPickupTicketIdsRef.current = activeIds
+      return
+    }
+
+    const newIds = [...activeIds].filter((id) => !knownPickupTicketIdsRef.current?.has(id))
+    knownPickupTicketIdsRef.current = activeIds
+
+    if (newIds.length > 0) {
+      void playOrderNotificationSound({
+        newOrderCount: newIds.length,
+        reason: "New pickup order",
+        settings,
+      })
+    }
+  }
+
   async function refreshKioskOrderTickets(showMessage = false) {
     if (!localSyncSessionToken) {
       if (showMessage) {
@@ -4755,9 +4972,12 @@ export function App() {
       return null
     }
 
-    const [result, websitePickupResult] = await Promise.all([
+    const [result, websitePickupResult, notificationResult] = await Promise.all([
       localSyncClient.listKioskOrders(localSyncSessionToken, { limit: 25 }),
       localSyncClient.listFulfillmentOrders(localSyncSessionToken, { limit: 25, refresh: true }),
+      customerKioskMode
+        ? Promise.resolve(null)
+        : localSyncClient.getFulfillmentNotifications(localSyncSessionToken),
     ])
 
     if (result.status !== "ok") {
@@ -4771,16 +4991,39 @@ export function App() {
       return result
     }
 
-    setKioskOrderTickets(result.orders.map(kioskTicketFromLocalSyncOrder))
+    let nextNotificationSettings = fulfillmentNotificationSettings
+    if (result.fulfillment_notifications) {
+      nextNotificationSettings = applyFulfillmentNotificationSettings(result.fulfillment_notifications)
+    }
+    if (websitePickupResult.status === "ok" && websitePickupResult.fulfillment_notifications) {
+      nextNotificationSettings = applyFulfillmentNotificationSettings(
+        websitePickupResult.fulfillment_notifications,
+      )
+    }
+    if (notificationResult?.status === "ok") {
+      nextNotificationSettings = applyFulfillmentNotificationSettings(
+        notificationResult.fulfillment_notifications,
+      )
+    }
+
+    const nextKioskTickets = result.orders.map(kioskTicketFromLocalSyncOrder)
+    const nextWebsitePickupTickets =
+      websitePickupResult.status === "ok"
+        ? websitePickupResult.orders.map(websitePickupTicketFromLocalSyncOrder)
+        : websitePickupTickets
+
+    setKioskOrderTickets(nextKioskTickets)
 
     if (websitePickupResult.status === "ok") {
-      setWebsitePickupTickets(websitePickupResult.orders.map(websitePickupTicketFromLocalSyncOrder))
+      setWebsitePickupTickets(nextWebsitePickupTickets)
     } else if (showMessage) {
       setActivityMessage({
         title: websitePickupResult.status === "unavailable" ? "Website pickup unavailable" : "Website pickup blocked",
         detail: websitePickupResult.message,
       })
     }
+
+    handlePickupTicketNotifications(nextKioskTickets, nextWebsitePickupTickets, nextNotificationSettings)
 
     if (showMessage) {
       setActiveSection("Kiosk")
@@ -4828,12 +5071,30 @@ export function App() {
       if (eventResult.status === "ok") {
         setEventSnapshots(eventResult.events.map(eventSnapshotFromLocalSync))
       }
+      let nextNotificationSettings = fulfillmentNotificationSettings
       if (kioskResult.status === "ok") {
+        if (kioskResult.fulfillment_notifications) {
+          nextNotificationSettings = applyFulfillmentNotificationSettings(kioskResult.fulfillment_notifications)
+        }
         setKioskOrderTickets(kioskResult.orders.map(kioskTicketFromLocalSyncOrder))
       }
       if (fulfillmentResult.status === "ok") {
+        if (fulfillmentResult.fulfillment_notifications) {
+          nextNotificationSettings = applyFulfillmentNotificationSettings(
+            fulfillmentResult.fulfillment_notifications,
+          )
+        }
         setWebsitePickupTickets(
           fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder),
+        )
+      }
+      if (kioskResult.status === "ok" || fulfillmentResult.status === "ok") {
+        handlePickupTicketNotifications(
+          kioskResult.status === "ok" ? kioskResult.orders.map(kioskTicketFromLocalSyncOrder) : kioskOrderTickets,
+          fulfillmentResult.status === "ok"
+            ? fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder)
+            : websitePickupTickets,
+          nextNotificationSettings,
         )
       }
       setLocalSyncStatus(statusResult)
@@ -13427,6 +13688,38 @@ export function App() {
                   </small>
                 </div>
               </div>
+              {!customerKioskMode ? (
+                <div
+                  className={`order-notification-sound-card ${
+                    fulfillmentNotificationSettings.audio_enabled ? "is-on" : "is-off"
+                  } ${orderNotificationSoundEnabled ? "is-ready" : "needs-enable"}`}
+                  aria-label="Employee order sound notification"
+                >
+                  <div>
+                    <span className="micro-label">Employee order sounds</span>
+                    <strong>
+                      {fulfillmentNotificationSettings.audio_enabled
+                        ? orderNotificationSoundEnabled
+                          ? "Sound is enabled on this station"
+                          : "Click once to enable pickup alerts"
+                        : "Sound alerts are off in website settings"}
+                    </strong>
+                    <small>
+                      {fulfillmentNotificationSettings.notification_sound_url
+                        ? "Using the MP3/MP4 selected in WordPress settings."
+                        : "Using the built-in alert tone until an MP3/MP4 is selected in WordPress settings."}
+                      {orderNotificationIssue ? ` ${orderNotificationIssue}` : ""}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!fulfillmentNotificationSettings.audio_enabled}
+                    onClick={() => void enableOrderNotificationSound()}
+                  >
+                    {orderNotificationSoundEnabled ? "Test Sound" : "Enable Sound"}
+                  </button>
+                </div>
+              ) : null}
               <div className="kiosk-summary-strip" aria-label="Kiosk order readiness">
                 <div>
                   <span className="micro-label">Queue source</span>

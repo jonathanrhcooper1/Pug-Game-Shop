@@ -1,5 +1,136 @@
 # Revision Log
 
+## 2026-06-22 - Live Inventory Cutover Cleanup
+
+### What Changed
+
+- Added production cleanup tooling that creates a database backup, deletes
+  generated card WooCommerce products, clears serialized card inventory rows,
+  reservations, price logs, inventory movement/barcode rows, pending LAN queue
+  rows, and open sync conflicts.
+- Added local LAN SQLite cleanup tooling that backs up the local database and
+  clears demo inventory, queued operations, kiosk-order cache, and fulfillment
+  cache while preserving ScryDex reference cards, customers, credit ledger, and
+  events.
+- Added a generated `pug-order-notification.mp3` chime and a production upload
+  command that registers it in WordPress Media Library, enables employee-only
+  fulfillment sound notifications, and keeps credentials out of output.
+- Removed demo inventory, queued-write, and open-conflict seed rows from the
+  local app so a clean live database no longer shows sample cards or stale
+  conflict counts after restart.
+
+### Why
+
+The store is moving to live inventory CSV import, so production and the LAN app
+need a clean inventory/queue state without losing ScryDex catalog data,
+customer history, order history, or local credit records.
+
+### Files Affected
+
+- `.gitignore`
+- `assets/audio/pug-order-notification.mp3`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `package.json`
+- `scripts/local-clear-card-inventory-and-queues.mjs`
+- `scripts/production-clear-card-inventory.mjs`
+- `scripts/production-upload-notification-sound.mjs`
+- `scripts/tests/local-clear-demo-data-contract.mjs`
+- `scripts/tests/production-clear-card-inventory-contract.mjs`
+- `scripts/tests/production-notification-sound-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added contract tests for local cleanup, production inventory cleanup, and
+  production notification-sound upload scripts.
+
+### Rollback Notes
+
+- Restore the production database from the backup created by
+  `production:clear-card-inventory` if cleared inventory must be restored.
+- Restore the local SQLite backup under `.local/backups/` if local demo rows or
+  queued operations need to be recovered.
+- Re-run the notification sound upload with a different MP3/MP4 or clear the
+  WordPress fulfillment notification sound URL in settings to remove the sound.
+
+## 2026-06-22 - Employee Pickup Order Audio Notifications
+
+### What Changed
+
+- Added employee-only order sound notification settings to the WordPress plugin
+  fulfillment settings, including media-library upload/select support for MP3
+  and MP4 files plus a test-sound button.
+- Exposed sanitized fulfillment notification metadata in the WordPress local
+  pickup fulfillment API response.
+- Added an authenticated LAN sync endpoint,
+  `GET /notifications/fulfillment`, that returns only safe notification
+  metadata through the local PIN-session Bearer token flow.
+- Updated kiosk and WooCommerce pickup queue pulls so new active pickup orders
+  can trigger an employee-app sound/visual alert.
+- Added a Fulfillment-screen control in the employee app for enabling/testing
+  order sounds on that station, with a browser-autoplay fallback message.
+- Verified the app warning sources: the rendered app had no console warnings on
+  login or Fulfillment; remaining non-failing warnings are Vite bundle size and
+  Node SQLite experimental runtime notices.
+
+### Why
+
+Staff need an audible employee-system alert when kiosk pickup orders or paid
+website local-pickup orders arrive, while keeping WordPress and Square
+credentials out of local browser clients.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/FulfillmentNotificationSettings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressFulfillmentPull.mjs`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-fulfillment.mjs`
+- `apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsPageSourceTest.php`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added local-sync contract coverage for
+  `GET /notifications/fulfillment`.
+- Added local-sync fulfillment coverage proving notification settings flow from
+  WordPress pickup pulls into the employee-safe notification endpoint without
+  credential leakage.
+- Ran `npm.cmd --prefix apps/offline-app run typecheck`.
+- Ran `npm.cmd --prefix apps/offline-app run build`.
+- Ran `npm.cmd --prefix apps/local-sync-server run test`.
+- Ran `php apps/wordpress-plugin/tests/run.php`.
+- Ran `php apps/wordpress-plugin/tests/lint.php`.
+- Render-checked the local app login and Fulfillment screens in the in-app
+  browser; no console warnings or errors appeared.
+
+### Rollback Notes
+
+- Revert this revision to remove the employee audio notification endpoint,
+  app UI, and WordPress media-setting enhancements.
+- Existing fulfillment email settings remain safe to keep, and no database
+  rollback is required.
+
 ## 2026-06-17 - Client Handover Documentation Package
 
 ### What Changed

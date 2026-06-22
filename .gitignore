@@ -10,6 +10,7 @@ wp-content/
 playwright-report/
 test-results/
 tmp/
+.local/
 apps/offline-app/src-tauri/gen/
 *.log
 *.sqlite

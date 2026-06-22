@@ -74,6 +74,7 @@ assert.ok(contract.responsibilities.includes("allow_manager_to_update_secret_fre
 assert.ok(contract.responsibilities.includes("track_employee_and_kiosk_device_heartbeats"))
 assert.ok(contract.responsibilities.includes("publish_online_offline_client_presence"))
 assert.ok(contract.responsibilities.includes("report_client_setup_status_without_credentials"))
+assert.ok(contract.responsibilities.includes("serve_employee_only_pickup_order_notification_settings"))
 assert.ok(contract.responsibilities.includes("advertise_lan_middleman_with_manual_url_fallback"))
 assert.ok(contract.responsibilities.includes("bind_clients_to_configured_lan_server_before_sync"))
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
@@ -93,6 +94,7 @@ for (const endpoint of [
   "POST /setup/config",
   "POST /devices/heartbeat",
   "GET /devices/status",
+  "GET /notifications/fulfillment",
   "POST /auth/pin",
   "GET /users/access-policy",
   "POST /users",
