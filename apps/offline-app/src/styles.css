@@ -884,6 +884,22 @@ h2 {
   text-align: right;
 }
 
+.status-dashboard-heading > .secondary-command {
+  flex: 0 0 auto;
+}
+
+.status-inline-message {
+  margin: 0;
+  padding: 8px 10px;
+  color: #ecf8ef;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  background: rgba(23, 45, 62, 0.42);
+  border: 1px solid rgba(121, 215, 143, 0.28);
+  border-radius: 8px;
+}
+
 .status-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));

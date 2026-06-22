@@ -356,7 +356,7 @@ export type LocalSyncScryDexCard = {
   market_price_minor_units: number
   currency: "USD"
   image_url: string
-  catalog_source: "wordpress_catalog_cache" | "local_reference_cache"
+  catalog_source: "wordpress_catalog_cache" | "wordpress_catalog_export" | "local_reference_cache"
   price_observed_at_utc: string | null
   catalog_synced_at_utc: string
   stock_available_count: number
@@ -1050,6 +1050,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   wordpress_kiosk_order_push_connected?: boolean
   wordpress_fulfillment_status_push_connected?: boolean
   wordpress_pull_connected: boolean
+  wordpress_catalog_pull_connected?: boolean
   wordpress_inventory_pull_connected?: boolean
   wordpress_events_pull_connected?: boolean
   wordpress_fulfillment_pull_connected?: boolean
@@ -1079,11 +1080,23 @@ export type LocalSyncPullResult = LocalSyncResult<{
   fulfillment_updated_count?: number
   fulfillment_ignored_count?: number
   fulfillment_orders?: LocalSyncFulfillmentOrder[]
+  catalog_pulled_count?: number
+  catalog_applied_count?: number
+  catalog_inserted_count?: number
+  catalog_updated_count?: number
+  catalog_ignored_count?: number
   meta: {
     page: number
     page_size: number
     total: number
     has_more: boolean
+  } | null
+  catalog_meta?: {
+    page: number
+    page_size: number
+    total: number
+    has_more: boolean
+    manifest?: Record<string, unknown> | null
   } | null
   events_meta: {
     page: number
@@ -1095,11 +1108,13 @@ export type LocalSyncPullResult = LocalSyncResult<{
     order_count: number
   } | null
   wordpress_pull_connected: true
+  wordpress_catalog_pull_connected?: boolean
   wordpress_inventory_pull_connected: boolean
   wordpress_events_pull_connected: boolean
   wordpress_fulfillment_pull_connected?: boolean
   credentials_synced_to_client: false
   local_inventory_count: number
+  local_reference_card_count?: number
   local_event_count: number
   local_fulfillment_order_count?: number
   local_queue_depth: number
@@ -1717,7 +1732,16 @@ export type LocalSyncServerClient = {
     },
   ) => Promise<LocalSyncEventCheckinResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
-  pullWebsiteInventory: (sessionToken: string) => Promise<LocalSyncPullResult>
+  pullWebsiteInventory: (
+    sessionToken: string,
+    input?: {
+      domains?: ("inventory" | "events" | "fulfillment" | "catalog")[]
+      catalogPage?: number
+      catalogPageSize?: number
+      page?: number
+      pageSize?: number
+    },
+  ) => Promise<LocalSyncPullResult>
   planSquarePosInventoryPull: (
     sessionToken: string,
     input?: { squareLocationId?: string; updatedAfter?: string; limit?: number },
@@ -2272,12 +2296,16 @@ export function createLocalSyncServerClient(
       }) as Promise<LocalSyncEventCheckinResult>,
     getSyncStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/sync/status") as Promise<LocalSyncStatusResult>,
-    pullWebsiteInventory: (sessionToken) =>
+    pullWebsiteInventory: (sessionToken, input = {}) =>
       requestLocalSync(fetcher, baseUrl, "/sync/pull", {
         method: "POST",
         sessionToken,
         body: {
-          domains: ["inventory", "events", "fulfillment"],
+          domains: input.domains ?? ["inventory", "events", "fulfillment"],
+          catalog_page: input.catalogPage,
+          catalog_page_size: input.catalogPageSize,
+          page: input.page,
+          page_size: input.pageSize,
         },
       }) as Promise<LocalSyncPullResult>,
     planSquarePosInventoryPull: (sessionToken, input = {}) =>

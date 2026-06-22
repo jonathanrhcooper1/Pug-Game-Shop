@@ -53,6 +53,8 @@ export function createLocalSyncStore(options = {}) {
   )
   const cardHoldSeconds = boundedInt(options.cardHoldSeconds, 60, 24 * 60 * 60, DEFAULT_CARD_HOLD_SECONDS)
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
+  const wordpressCatalogExportPull =
+    typeof options.wordpressCatalogExportPull === "function" ? options.wordpressCatalogExportPull : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressEventsPull = typeof options.wordpressEventsPull === "function" ? options.wordpressEventsPull : null
   const wordpressFulfillmentPull =
@@ -2130,7 +2132,7 @@ export function createLocalSyncStore(options = {}) {
   function listEvents() {
     return {
       status: "ok",
-      events: eventSnapshots.map(publicEventSnapshot),
+      events: eventSnapshots.filter((event) => isActiveEventSnapshot(event, now)).map(publicEventSnapshot),
       local_cache_source: "local_sync_server",
       wordpress_event_authority: true,
     }
@@ -2686,7 +2688,10 @@ export function createLocalSyncStore(options = {}) {
       setup_required_client_device_count: deviceSummary.setup_required_count,
       heartbeat_timeout_seconds: heartbeatTimeoutSeconds,
       active_session_count: sessions.size,
-      wordpress_pull_connected: Boolean(wordpressInventoryPull || wordpressEventsPull || wordpressFulfillmentPull),
+      wordpress_pull_connected: Boolean(
+        wordpressInventoryPull || wordpressEventsPull || wordpressFulfillmentPull || wordpressCatalogExportPull,
+      ),
+      wordpress_catalog_pull_connected: Boolean(wordpressCatalogExportPull),
       wordpress_inventory_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_events_pull_connected: Boolean(wordpressEventsPull),
       wordpress_fulfillment_pull_connected: Boolean(wordpressFulfillmentPull),
@@ -3328,7 +3333,7 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
-    if (!wordpressInventoryPull && !wordpressEventsPull && !wordpressFulfillmentPull) {
+    if (!wordpressInventoryPull && !wordpressEventsPull && !wordpressFulfillmentPull && !wordpressCatalogExportPull) {
       return blocked("wordpress_pull_unavailable", "WordPress pull is not configured on this LAN server.")
     }
 
@@ -3336,9 +3341,11 @@ export function createLocalSyncStore(options = {}) {
     const shouldPullInventory = requestedDomains.has("inventory") && Boolean(wordpressInventoryPull)
     const shouldPullEvents = requestedDomains.has("events") && Boolean(wordpressEventsPull)
     const shouldPullFulfillment = requestedDomains.has("fulfillment") && Boolean(wordpressFulfillmentPull)
+    const shouldPullCatalog = requestedDomains.has("catalog") && Boolean(wordpressCatalogExportPull)
     let inventoryPullResult = null
     let eventPullResult = null
     let fulfillmentPullResult = null
+    let catalogPullResult = null
 
     const appliedItems = []
     let insertedCount = 0
@@ -3393,6 +3400,52 @@ export function createLocalSyncStore(options = {}) {
           saveInventoryItem(database, pulledItem, now)
           appliedItems.push(publicInventoryItem(pulledItem))
           insertedCount += 1
+        }
+      }
+    }
+
+    const appliedReferenceCards = []
+    let catalogInsertedCount = 0
+    let catalogUpdatedCount = 0
+    let catalogIgnoredCount = 0
+
+    if (shouldPullCatalog) {
+      catalogPullResult = await wordpressCatalogExportPull({
+        table: "reference_cards",
+        page: input.catalog_page ?? input.catalogPage ?? input.page,
+        pageSize: input.catalog_page_size ?? input.catalogPageSize ?? input.page_size ?? input.pageSize,
+      })
+
+      if (catalogPullResult.status !== "ok") {
+        return {
+          status: "blocked",
+          code: catalogPullResult.code ?? "wordpress_catalog_pull_failed",
+          message: catalogPullResult.message ?? "WordPress catalog pull did not complete.",
+          http_status: catalogPullResult.http_status ?? 0,
+          credentials_synced_to_client: false,
+        }
+      }
+
+      for (const row of catalogPullResult.rows ?? []) {
+        const card = normalizeReferenceCard(row, row.game ?? input.game ?? "pokemon", now, "wordpress_catalog_export")
+
+        if (!card.provider_card_id) {
+          catalogIgnoredCount += 1
+          continue
+        }
+
+        const existingIndex = referenceCards.findIndex(
+          (candidate) => candidate.provider_card_id === card.provider_card_id,
+        )
+
+        upsertReferenceCard(referenceCards, card)
+        saveReferenceCard(database, card, now)
+        appliedReferenceCards.push(card)
+
+        if (existingIndex >= 0) {
+          catalogUpdatedCount += 1
+        } else {
+          catalogInsertedCount += 1
         }
       }
     }
@@ -3529,7 +3582,13 @@ export function createLocalSyncStore(options = {}) {
       fulfillment_updated_count: fulfillmentUpdatedCount,
       fulfillment_ignored_count: fulfillmentIgnoredCount,
       fulfillment_orders: appliedFulfillmentOrders,
+      catalog_pulled_count: (catalogPullResult?.rows ?? []).length,
+      catalog_applied_count: appliedReferenceCards.length,
+      catalog_inserted_count: catalogInsertedCount,
+      catalog_updated_count: catalogUpdatedCount,
+      catalog_ignored_count: catalogIgnoredCount,
       meta: inventoryPullResult?.meta ?? null,
+      catalog_meta: catalogPullResult?.meta ?? null,
       events_meta: eventPullResult?.meta ?? null,
       fulfillment_meta: fulfillmentPullResult
         ? {
@@ -3537,11 +3596,13 @@ export function createLocalSyncStore(options = {}) {
           }
         : null,
       wordpress_pull_connected: true,
+      wordpress_catalog_pull_connected: Boolean(wordpressCatalogExportPull),
       wordpress_inventory_pull_connected: Boolean(wordpressInventoryPull),
       wordpress_events_pull_connected: Boolean(wordpressEventsPull),
       wordpress_fulfillment_pull_connected: Boolean(wordpressFulfillmentPull),
       credentials_synced_to_client: false,
       local_inventory_count: inventoryItems.length,
+      local_reference_card_count: referenceCards.length,
       local_event_count: eventSnapshots.length,
       local_fulfillment_order_count: fulfillmentOrders.length,
       local_queue_depth: pendingQueueOperations(queue).length,
@@ -6213,8 +6274,8 @@ function seedEventSnapshots() {
       slug: "event-100",
       row_version: 3,
       title: "Friday Commander Night",
-      starts_at_utc: "2026-06-12T23:00:00Z",
-      starts_at_label: "Fri Jun 12, 7:00 PM",
+      starts_at_utc: "2026-07-12T23:00:00Z",
+      starts_at_label: "Sun Jul 12, 7:00 PM",
       registration_status: "open",
       capacity: 24,
       registered_count: 10,
@@ -6227,8 +6288,8 @@ function seedEventSnapshots() {
       slug: "event-101",
       row_version: 2,
       title: "Pokemon League Challenge",
-      starts_at_utc: "2026-06-14T17:00:00Z",
-      starts_at_label: "Sun Jun 14, 1:00 PM",
+      starts_at_utc: "2026-07-14T17:00:00Z",
+      starts_at_label: "Tue Jul 14, 1:00 PM",
       registration_status: "waitlist",
       capacity: 32,
       registered_count: 32,
@@ -8122,6 +8183,16 @@ function eventRegistrationDeadline(startsAtUtc, value, unit) {
   return amount > 0 && multiplier > 0 ? new Date(startsAt - amount * multiplier).toISOString() : ""
 }
 
+function isActiveEventSnapshot(event, now = () => new Date()) {
+  const startsAtMs = Date.parse(String(event?.starts_at_utc ?? ""))
+
+  if (!Number.isFinite(startsAtMs)) {
+    return true
+  }
+
+  return startsAtMs + 8 * 60 * 60 * 1000 >= now().getTime()
+}
+
 function nullableNonNegativeInt(value) {
   if (value === null || value === undefined || value === "") {
     return null
@@ -8137,7 +8208,7 @@ function pullDomains(value) {
   const domains = new Set(
     raw
       .map((entry) => String(entry ?? "").trim().toLowerCase())
-      .filter((entry) => ["inventory", "events", "fulfillment"].includes(entry)),
+      .filter((entry) => ["inventory", "events", "fulfillment", "catalog"].includes(entry)),
   )
 
   if (domains.size === 0) {
@@ -8641,7 +8712,9 @@ function cleanIsoTimestamp(value) {
 }
 
 function cleanCatalogSource(value) {
-  return value === "local_reference_cache" ? "local_reference_cache" : "wordpress_catalog_cache"
+  return ["local_reference_cache", "wordpress_catalog_export"].includes(value)
+    ? value
+    : "wordpress_catalog_cache"
 }
 
 function seedScryDexReferenceCards() {

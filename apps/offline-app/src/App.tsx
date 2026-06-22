@@ -1367,6 +1367,44 @@ function datetimeLocalValueToUtc(value: string) {
   return new Date(timestamp).toISOString()
 }
 
+function addEventRecurrenceInterval(
+  startsAtUtc: string,
+  frequency: "none" | "daily" | "weekly" | "monthly",
+  index: number,
+) {
+  const date = new Date(startsAtUtc)
+
+  if (Number.isNaN(date.getTime()) || index <= 0 || frequency === "none") {
+    return startsAtUtc
+  }
+
+  if (frequency === "daily") {
+    date.setUTCDate(date.getUTCDate() + index)
+  } else if (frequency === "weekly") {
+    date.setUTCDate(date.getUTCDate() + index * 7)
+  } else if (frequency === "monthly") {
+    date.setUTCMonth(date.getUTCMonth() + index)
+  }
+
+  return date.toISOString()
+}
+
+function recurringEventTitle(baseTitle: string, startsAtUtc: string, totalOccurrences: number) {
+  return totalOccurrences > 1 ? `${baseTitle} - ${formatUtcLabel(startsAtUtc)}` : baseTitle
+}
+
+function isActiveEventSnapshot(event: EventSnapshot, nowMs = Date.now()) {
+  const startsAtMs = Date.parse(event.startsAtUtc)
+
+  if (!Number.isFinite(startsAtMs)) {
+    return true
+  }
+
+  const activeWindowMs = 8 * 60 * 60 * 1000
+
+  return startsAtMs + activeWindowMs >= nowMs
+}
+
 function eventPriceInputToMinorUnits(value: string) {
   const normalized = value.replace(/[^0-9.]/g, "")
   const parsed = Number.parseFloat(normalized)
@@ -2461,7 +2499,12 @@ function lanSyncPullMessage(result: LocalSyncPullResult | null) {
     return `LAN website pull blocked: ${result.message}`
   }
 
-  return `LAN website pull applied ${result.applied_count} inventory item(s) and ${result.events_applied_count} event(s); inserted ${result.inserted_count} item(s) / ${result.events_inserted_count} event(s), updated ${result.updated_count} item(s) / ${result.events_updated_count} event(s), and preserved ${result.ignored_count + result.events_ignored_count} local row(s).`
+  const catalogDetail =
+    (result.catalog_applied_count ?? 0) > 0
+      ? ` Catalog applied ${result.catalog_applied_count} reference card(s); local catalog now ${result.local_reference_card_count ?? 0}.`
+      : ""
+
+  return `LAN website pull applied ${result.applied_count} inventory item(s) and ${result.events_applied_count} event(s); inserted ${result.inserted_count} item(s) / ${result.events_inserted_count} event(s), updated ${result.updated_count} item(s) / ${result.events_updated_count} event(s), and preserved ${result.ignored_count + result.events_ignored_count} local row(s).${catalogDetail}`
 }
 
 function eventSnapshotFromLocalSync(event: LocalSyncEventSnapshot): EventSnapshot {
@@ -2723,6 +2766,9 @@ export function App() {
   const [newEventType, setNewEventType] = useState("league")
   const [newEventCapacity, setNewEventCapacity] = useState("16")
   const [newEventPrice, setNewEventPrice] = useState("0.00")
+  const [newEventRecurrenceFrequency, setNewEventRecurrenceFrequency] =
+    useState<"none" | "daily" | "weekly" | "monthly">("none")
+  const [newEventRecurrenceCount, setNewEventRecurrenceCount] = useState("1")
   const [newEventCloseValue, setNewEventCloseValue] = useState("2")
   const [newEventCloseUnit, setNewEventCloseUnit] = useState<"minutes" | "hours" | "days">("hours")
   const [newEventLocation, setNewEventLocation] = useState("Event Room")
@@ -2743,6 +2789,8 @@ export function App() {
   const [localSyncSessionExpiresAtUtc, setLocalSyncSessionExpiresAtUtc] = useState("")
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
   const [localSyncLastCheckedAtUtc, setLocalSyncLastCheckedAtUtc] = useState("")
+  const [catalogRefreshInFlight, setCatalogRefreshInFlight] = useState(false)
+  const [catalogRefreshSummary, setCatalogRefreshSummary] = useState("")
   const [squarePosPlan, setSquarePosPlan] =
     useState<LocalSyncSquarePosInventoryPullPlanResult | null>(null)
   const [squareCountsInput, setSquareCountsInput] = useState(
@@ -3071,7 +3119,14 @@ export function App() {
   const selectedInventoryImageUrl = selectedItem.imageUrl || ""
   const selectedInventoryVersionLabel = inventoryVersionLabel(selectedItem)
   const selectedInventoryVisibilitySummary = inventoryVisibilitySummary(selectedItem)
-  const selectedEvent = eventSnapshots.find((event) => event.eventId === selectedEventId) ?? eventSnapshots[0]
+  const visibleEventSnapshots = useMemo(
+    () => eventSnapshots.filter((event) => isActiveEventSnapshot(event)),
+    [eventSnapshots],
+  )
+  const selectedEvent =
+    visibleEventSnapshots.find((event) => event.eventId === selectedEventId) ??
+    visibleEventSnapshots[0] ??
+    eventSnapshots[0]
   const customerCredit =
     findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
   const activeCustomerName = customerCreditDisplayName(customerCredit)
@@ -3200,7 +3255,7 @@ export function App() {
     sessionRole === "owner"
       ? ACCESS_SECTIONS
       : sessionRole === "manager"
-        ? ACCESS_SECTIONS.filter((section) => !["Sync", "Status", "Conflicts"].includes(section))
+        ? ACCESS_SECTIONS.filter((section) => !["Sync", "Conflicts"].includes(section))
         : (activeOfflineUser?.access ?? []).filter(
             (section) => !["Sync", "Status", "Conflicts", "Settings"].includes(section),
           )
@@ -3396,7 +3451,9 @@ export function App() {
       ? "Local reference cache"
       : selectedScryDexCard?.catalog_source === "wordpress_catalog_cache"
         ? "Website catalog cache"
-        : "Catalog source pending"
+        : selectedScryDexCard?.catalog_source === "wordpress_catalog_export"
+          ? "Website catalog export"
+          : "Catalog source pending"
   const activeKioskOrderTickets = kioskOrderTickets.filter((ticket) => !["completed", "expired"].includes(ticket.status))
   const activeWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status !== "completed")
   const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ["completed", "expired"].includes(ticket.status))
@@ -3607,7 +3664,11 @@ export function App() {
           localSyncStatus?.status === "ok" && localSyncStatus.scrydex_fallback_connected
             ? "connected"
             : "not confirmed"
-        }. Local database first; ScryDex provider fallback only when the website reference cache misses.`,
+        }; website catalog pull ${
+          localSyncStatus?.status === "ok" && localSyncStatus.wordpress_catalog_pull_connected
+            ? "connected"
+            : "not configured"
+        }. Local database first; website reference fallback only when the local cache misses.`,
       tone: localSyncStatus?.status === "ok" && localSyncStatus.reference_card_count > 0
         ? "ready"
         : localSyncStatusTone === "blocked"
@@ -4129,17 +4190,17 @@ export function App() {
   }, [queuedOperations, selectedQueuedOperationId])
 
   useEffect(() => {
-    if (eventSnapshots.length === 0) {
+    if (visibleEventSnapshots.length === 0) {
       if (selectedEventId !== "") {
         setSelectedEventId("")
       }
       return
     }
 
-    if (!eventSnapshots.some((event) => event.eventId === selectedEventId)) {
-      setSelectedEventId(eventSnapshots[0].eventId)
+    if (!visibleEventSnapshots.some((event) => event.eventId === selectedEventId)) {
+      setSelectedEventId(visibleEventSnapshots[0].eventId)
     }
-  }, [eventSnapshots, selectedEventId])
+  }, [selectedEventId, visibleEventSnapshots])
 
   useEffect(() => {
     const normalizedQuery = query.trim()
@@ -4769,7 +4830,7 @@ export function App() {
     }
 
     if (sessionRole === "manager") {
-      return ACCESS_SECTIONS.filter((section) => !["Sync", "Status", "Conflicts"].includes(section))
+      return ACCESS_SECTIONS.filter((section) => !["Sync", "Conflicts"].includes(section))
     }
 
     return (activeOfflineUser?.access ?? ["Inventory", "Kiosk", "Queue"]).filter(
@@ -4784,6 +4845,89 @@ export function App() {
     setLocalSyncLastCheckedAtUtc(new Date().toISOString())
 
     return nextStatus
+  }
+
+  async function handleRefreshReferenceCatalog() {
+    if (!localSyncSessionToken) {
+      setActiveSection("Status")
+      setActivityMessage({
+        title: "Manager session required",
+        detail: "Sign in with a manager or owner PIN before refreshing the local card catalog.",
+      })
+      return
+    }
+
+    const pageSize = 1000
+    const maxPages = 250
+    let page = 1
+    let pulledCount = 0
+    let appliedCount = 0
+    let insertedCount = 0
+    let updatedCount = 0
+    let totalCount = 0
+
+    setCatalogRefreshInFlight(true)
+    setActiveSection("Status")
+    setActivityMessage({
+      title: "Refreshing card catalog",
+      detail: "Pulling the website ScryDex catalog into the local cache. Searches can keep using the website fallback while this runs.",
+    })
+
+    try {
+      while (page <= maxPages) {
+        const result = await localSyncClient.pullWebsiteInventory(localSyncSessionToken, {
+          domains: ["catalog"],
+          catalogPage: page,
+          catalogPageSize: pageSize,
+        })
+
+        if (handleBlockedLocalSyncSession(result, "Catalog refresh locked")) {
+          return
+        }
+
+        if (result.status !== "ok") {
+          setCatalogRefreshSummary(`Catalog refresh stopped on page ${page}: ${result.message}`)
+          setActivityMessage({
+            title: "Catalog refresh blocked",
+            detail: result.message,
+          })
+          return
+        }
+
+        pulledCount += result.catalog_pulled_count ?? 0
+        appliedCount += result.catalog_applied_count ?? 0
+        insertedCount += result.catalog_inserted_count ?? 0
+        updatedCount += result.catalog_updated_count ?? 0
+        totalCount = result.catalog_meta?.total ?? totalCount
+        setCatalogRefreshSummary(
+          `Pulled ${countLabel(pulledCount, "card")} from ${countLabel(totalCount || pulledCount, "website row")}; local cache ${countLabel(result.local_reference_card_count ?? 0, "card")}.`,
+        )
+
+        if (!result.catalog_meta?.has_more || (result.catalog_pulled_count ?? 0) === 0) {
+          break
+        }
+
+        page += 1
+      }
+
+      const statusResult = await refreshLocalSyncStatus()
+      const finalCount = statusResult.status === "ok" ? statusResult.reference_card_count : appliedCount
+      setCatalogRefreshSummary(
+        `Catalog refresh complete: ${countLabel(appliedCount, "card")} applied, ${countLabel(insertedCount, "new card")}, ${countLabel(updatedCount, "updated card")}; local cache now ${countLabel(finalCount, "card")}.`,
+      )
+      setActivityMessage({
+        title: "Card catalog refreshed",
+        detail: `The local app cache now has ${countLabel(finalCount, "reference card")}. Website remains the source of truth.`,
+      })
+    } catch (error) {
+      setCatalogRefreshSummary(error instanceof Error ? error.message : "Catalog refresh failed.")
+      setActivityMessage({
+        title: "Catalog refresh failed",
+        detail: error instanceof Error ? error.message : "Catalog refresh failed.",
+      })
+    } finally {
+      setCatalogRefreshInFlight(false)
+    }
   }
 
   async function refreshInventoryLocations(sessionToken = localSyncSessionToken) {
@@ -6114,7 +6258,7 @@ export function App() {
   }
 
   async function handleStageInventoryUpdate(
-    actionTitle = "Inventory update staged",
+    actionTitle = "Inventory update saved",
     operationOptions: InventoryUpdateOptions = {},
     detailOverride?: string,
     targetItem = selectedItem,
@@ -7883,7 +8027,7 @@ export function App() {
     setQuantityAdjustmentReason(reason)
 
     await handleStageInventoryUpdate(
-      "Quantity adjustment staged",
+      "Quantity adjustment saved",
       {
         operationKind: "quantity",
         quantityDelta,
@@ -7921,45 +8065,67 @@ export function App() {
       Math.round(Number.parseInt(newEventCloseValue, 10) || 0),
     )
     const priceMinorUnits = eventPriceInputToMinorUnits(newEventPrice)
-    const creationResult = await localSyncClient.createEvent(localSyncSessionToken, {
-      title,
-      startsAtUtc,
-      game: newEventGame,
-      eventType: newEventType.trim() || "store_event",
-      capacity,
-      priceMinorUnits,
-      registrationCloseValue,
-      registrationCloseUnit: newEventCloseUnit,
-      locationLabel: newEventLocation.trim() || "The Pug",
-      description: newEventDescription.trim(),
-    })
+    const recurrenceCount =
+      newEventRecurrenceFrequency === "none"
+        ? 1
+        : Math.min(52, Math.max(1, Math.round(Number.parseInt(newEventRecurrenceCount, 10) || 1)))
+    const createdEvents: LocalSyncEventSnapshot[] = []
 
-    if (creationResult.status !== "ok") {
-      setActiveSection("Events")
-      setActivityMessage({
-        title: creationResult.status === "unavailable" ? "LAN server unavailable" : "Event creation blocked",
-        detail: creationResult.message,
+    for (let occurrenceIndex = 0; occurrenceIndex < recurrenceCount; occurrenceIndex += 1) {
+      const occurrenceStartsAtUtc = addEventRecurrenceInterval(
+        startsAtUtc,
+        newEventRecurrenceFrequency,
+        occurrenceIndex,
+      )
+      const creationResult = await localSyncClient.createEvent(localSyncSessionToken, {
+        title: recurringEventTitle(title, occurrenceStartsAtUtc, recurrenceCount),
+        startsAtUtc: occurrenceStartsAtUtc,
+        game: newEventGame,
+        eventType: newEventType.trim() || "store_event",
+        capacity,
+        priceMinorUnits,
+        registrationCloseValue,
+        registrationCloseUnit: newEventCloseUnit,
+        locationLabel: newEventLocation.trim() || "The Pug",
+        description: newEventDescription.trim(),
       })
-      return
+
+      if (creationResult.status !== "ok") {
+        setActiveSection("Events")
+        setActivityMessage({
+          title: creationResult.status === "unavailable" ? "LAN server unavailable" : "Event creation blocked",
+          detail:
+            `${createdEvents.length} event(s) were created before the next one failed. ` +
+            creationResult.message,
+        })
+        if (createdEvents.length > 0) {
+          setEventSnapshots((events) => mergeLocalSyncEventSnapshots(events, createdEvents))
+        }
+        return
+      }
+
+      createdEvents.push(creationResult.event)
     }
 
-    const createdEvent = eventSnapshotFromLocalSync(creationResult.event)
-    setEventSnapshots((events) => mergeLocalSyncEventSnapshots(events, [creationResult.event]))
+    const createdEvent = eventSnapshotFromLocalSync(createdEvents[0])
+    setEventSnapshots((events) => mergeLocalSyncEventSnapshots(events, createdEvents))
     setSelectedEventId(createdEvent.eventId)
     setNewEventTitle("")
     setNewEventDescription("")
     setNewEventPrice("0.00")
     setNewEventCapacity("16")
     setNewEventCloseValue("2")
+    setNewEventRecurrenceFrequency("none")
+    setNewEventRecurrenceCount("1")
     setShowEventQueue(true)
     setActiveSection("Events")
     void refreshLocalSyncStatus()
 
     setActivityMessage({
-      title: "Event created",
+      title: recurrenceCount > 1 ? "Recurring events created" : "Event created",
       detail:
-        `${createdEvent.title} was added to the LAN event cache` +
-        `${createdEvent.woocommerceProductId > 0 ? ` and linked to WooCommerce product #${createdEvent.woocommerceProductId}` : ""}.`,
+        `${createdEvents.length} event(s) were added to the LAN event cache` +
+        `${createdEvents.some((event) => event.woocommerce_product_id > 0) ? " and linked to WooCommerce where accepted" : ""}.`,
     })
   }
 
@@ -11092,8 +11258,19 @@ export function App() {
                   <span className="micro-label">Live system status</span>
                   <strong>Website, catalog, queue, and local cache</strong>
                 </div>
-                <span>Online-first with offline fallback</span>
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={catalogRefreshInFlight || !localSyncSessionToken}
+                  onClick={() => void handleRefreshReferenceCatalog()}
+                >
+                  <Icon name="sync" />
+                  <span>{catalogRefreshInFlight ? "Refreshing Catalog" : "Refresh Card Catalog"}</span>
+                </button>
               </header>
+              {catalogRefreshSummary ? (
+                <p className="status-inline-message">{catalogRefreshSummary}</p>
+              ) : null}
               <div className="status-summary-grid">
                 {statusSummaryCards.map((card) => (
                   <article className={`status-summary-card ${card.tone}`} key={card.id}>
@@ -12956,7 +13133,7 @@ export function App() {
                   onClick={() => void handleStageInventoryUpdate()}
                 >
                   <Icon name="upload" />
-                  <span>Stage Inventory Update</span>
+                  <span>Save Inventory Update</span>
                 </button>
                 <button
                   type="button"
@@ -12976,7 +13153,7 @@ export function App() {
                 {stagedOperation ? (
                   <>
                     <span>
-                      {queueSubmission?.status === "queued" ? "Queued envelope" : "Staged envelope"}
+                      {queueSubmission?.status === "queued" ? "Queued update" : "Saved update"}
                     </span>
                     <strong>{stagedOperation.client_operation_id}</strong>
                     <small>
@@ -14602,10 +14779,10 @@ export function App() {
               <button
                 className="secondary-command"
                 type="button"
-                onClick={() => void handleStageInventoryUpdate("Queue update staged")}
+                onClick={() => void handleStageInventoryUpdate("Queue update saved")}
               >
                 <Icon name="plus" />
-                <span>Stage New Update</span>
+                  <span>Save New Update</span>
               </button>
             </section>
 
@@ -14634,7 +14811,7 @@ export function App() {
                   </div>
                   <button type="button" onClick={() => void handleCreateEvent()}>
                     <Icon name="plus" />
-                    <span>Create Event</span>
+                    <span>{newEventRecurrenceFrequency === "none" ? "Create Event" : "Create Events"}</span>
                   </button>
                 </header>
                 <div className="event-create-grid">
@@ -14702,6 +14879,36 @@ export function App() {
                       placeholder="0.00"
                     />
                   </label>
+                  <label htmlFor="event-create-recurrence">
+                    <span className="micro-label">Repeat</span>
+                    <select
+                      id="event-create-recurrence"
+                      value={newEventRecurrenceFrequency}
+                      onChange={(event) =>
+                        setNewEventRecurrenceFrequency(
+                          event.target.value as "none" | "daily" | "weekly" | "monthly",
+                        )
+                      }
+                    >
+                      <option value="none">No repeat</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </label>
+                  <label htmlFor="event-create-recurrence-count">
+                    <span className="micro-label">Number of dates</span>
+                    <input
+                      id="event-create-recurrence-count"
+                      inputMode="numeric"
+                      min="1"
+                      max="52"
+                      type="number"
+                      disabled={newEventRecurrenceFrequency === "none"}
+                      value={newEventRecurrenceCount}
+                      onChange={(event) => setNewEventRecurrenceCount(event.target.value)}
+                    />
+                  </label>
                   <label htmlFor="event-create-close-value">
                     <span className="micro-label">Registration closes</span>
                     <input
@@ -14748,7 +14955,7 @@ export function App() {
                 </div>
               </div>
               <div className="event-list" aria-label="Cached event snapshots">
-                {eventSnapshots.map((event) => {
+                {visibleEventSnapshots.map((event) => {
                   const isSelected = selectedEvent?.eventId === event.eventId
                   const isPending = pendingEventRegistrationIds.includes(event.eventId)
                   const isCheckinPending = pendingEventCheckinIds.includes(event.eventId)
@@ -14796,7 +15003,7 @@ export function App() {
                     </article>
                   )
                 })}
-                {eventSnapshots.length === 0 ? (
+                {visibleEventSnapshots.length === 0 ? (
                   <div className="event-empty-state" aria-label="No events available">
                     <strong>No events loaded yet</strong>
                     <small>

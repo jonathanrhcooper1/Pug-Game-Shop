@@ -4,6 +4,7 @@ import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
 let websiteCatalogFallbackCalls = 0
 let wordpressInventoryPullCalls = 0
+let wordpressCatalogExportPullCalls = 0
 let wordpressInventoryPushCalls = 0
 let wordpressInventorySalePushCalls = 0
 let wordpressEventRegistrationPushCalls = 0
@@ -12,6 +13,7 @@ let wordpressCustomerUpsertPushCalls = 0
 let wordpressCreditPushCalls = 0
 let wordpressKioskOrderPushCalls = 0
 let wordpressInventoryPullRows = []
+let wordpressCatalogExportRows = []
 let wordpressEventsPullCalls = 0
 let wordpressEventPullRows = []
 let wordpressReportsPullCalls = 0
@@ -134,6 +136,27 @@ const server = createLocalSyncHttpServer({
           page_size: 10,
           total: wordpressInventoryPullRows.length,
           has_more: false,
+        },
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    },
+    wordpressCatalogExportPull: async ({ table, page, pageSize }) => {
+      wordpressCatalogExportPullCalls += 1
+
+      assert.equal(table, "reference_cards")
+      assert.equal(page, 2)
+      assert.equal(pageSize, 3)
+
+      return {
+        status: "ok",
+        table,
+        rows: wordpressCatalogExportRows,
+        meta: {
+          page,
+          page_size: pageSize,
+          total: 9,
+          has_more: true,
         },
         credentials_synced_to_client: false,
         authorization_header_printed: false,
@@ -950,13 +973,58 @@ try {
   assert.equal(pulledCharizardInventory.items[0].square_catalog_variation_id, "SQUARE-VARIATION-42")
   assert.equal(pulledCharizardInventory.items[0].external_sync_state, "square_synced")
 
+  wordpressCatalogExportRows = [
+    {
+      provider_card_id: "scrydex-pokemon-cat-001",
+      game: "pokemon",
+      card_name: "Catalog Hydrated Pikachu",
+      set_name: "Local Sync Export",
+      set_code: "LSE",
+      card_number: "1",
+      market_price_minor_units: 1234,
+      image_url: "https://images.example.test/catalog-pikachu.png",
+      variants_json: JSON.stringify([{ provider_variant_id: "cat-001-standard", variant: "Standard" }]),
+      price_points_json: JSON.stringify([{ condition_code: "NM", market_price_minor_units: 1234 }]),
+    },
+  ]
+
+  const pulledCatalog = await fetchJson(`${baseUrl}/sync/pull`, {
+    method: "POST",
+    token: managerToken,
+    body: {
+      domains: ["catalog"],
+      catalog_page: 2,
+      catalog_page_size: 3,
+    },
+  })
+  assert.equal(pulledCatalog.status, "ok")
+  assert.equal(pulledCatalog.catalog_pulled_count, 1)
+  assert.equal(pulledCatalog.catalog_applied_count, 1)
+  assert.equal(pulledCatalog.catalog_inserted_count, 1)
+  assert.equal(pulledCatalog.catalog_updated_count, 0)
+  assert.equal(pulledCatalog.catalog_meta.page, 2)
+  assert.equal(pulledCatalog.wordpress_catalog_pull_connected, true)
+  assert.ok(pulledCatalog.local_reference_card_count >= 1)
+  assert.equal(wordpressCatalogExportPullCalls, 1)
+
+  const hydratedCatalogSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=Catalog%20Hydrated&game=pokemon`, {
+    token: managerToken,
+  })
+  assert.equal(hydratedCatalogSearch.status, "ok")
+  assert.ok(
+    hydratedCatalogSearch.cards.some(
+      (card) => card.provider_card_id === "scrydex-pokemon-cat-001" && card.catalog_source === "wordpress_catalog_export",
+    ),
+    JSON.stringify(hydratedCatalogSearch.cards, null, 2),
+  )
+
   wordpressEventPullRows = [
     {
       id: 42,
       public_id: "event-public-42",
       slug: "friday-commander-night",
       title: "Friday Commander Night",
-      start_datetime: "2026-06-12T23:00:00+00:00",
+      start_datetime: "2026-07-12T23:00:00+00:00",
       player_cap: 24,
       registered_count: 10,
       seats_remaining: 14,

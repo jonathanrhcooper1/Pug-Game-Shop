@@ -18,7 +18,9 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressPullConfigured:
       typeof storeOptions.wordpressInventoryPull === "function" ||
       typeof storeOptions.wordpressEventsPull === "function" ||
-      typeof storeOptions.wordpressFulfillmentPull === "function",
+      typeof storeOptions.wordpressFulfillmentPull === "function" ||
+      typeof storeOptions.wordpressCatalogExportPull === "function",
+    wordpressCatalogPullConnected: typeof storeOptions.wordpressCatalogExportPull === "function",
     wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
     wordpressInventorySalePushConnected: typeof storeOptions.wordpressInventorySalePush === "function",
     wordpressFulfillmentPullConnected: typeof storeOptions.wordpressFulfillmentPull === "function",

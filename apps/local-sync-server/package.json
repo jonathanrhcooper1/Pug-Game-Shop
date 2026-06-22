@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/cli.mjs",
-    "test": "npm run test:contract && npm run test:graded-pricing && npm run test:runtime && npm run test:square-terminal && npm run test:multi-client && npm run test:fulfillment && npm run test:kiosk-payment && npm run test:checkout && npm run test:hold-expiry && npm run test:event-create && npm run test:locations && npm run test:trade-ins && npm run test:persistence && npm run test:discovery && npm run test:scrydex-reference-search && npm run test:wordpress-catalog && npm run test:wordpress-inventory-pull && npm run test:wordpress-events-pull && npm run test:wordpress-fulfillment-pull && npm run test:wordpress-reports-pull && npm run test:wordpress-inventory-push && npm run test:wordpress-inventory-sale-push && npm run test:wordpress-event-upsert-push && npm run test:wordpress-events-push && npm run test:wordpress-event-checkin-push && npm run test:wordpress-credit-push && npm run test:wordpress-customer-push && npm run test:wordpress-kiosk-push",
+    "test": "npm run test:contract && npm run test:graded-pricing && npm run test:runtime && npm run test:square-terminal && npm run test:multi-client && npm run test:fulfillment && npm run test:kiosk-payment && npm run test:checkout && npm run test:hold-expiry && npm run test:event-create && npm run test:locations && npm run test:trade-ins && npm run test:persistence && npm run test:discovery && npm run test:scrydex-reference-search && npm run test:wordpress-catalog && npm run test:wordpress-catalog-export && npm run test:wordpress-inventory-pull && npm run test:wordpress-events-pull && npm run test:wordpress-fulfillment-pull && npm run test:wordpress-reports-pull && npm run test:wordpress-inventory-push && npm run test:wordpress-inventory-sale-push && npm run test:wordpress-event-upsert-push && npm run test:wordpress-events-push && npm run test:wordpress-event-checkin-push && npm run test:wordpress-credit-push && npm run test:wordpress-customer-push && npm run test:wordpress-kiosk-push",
     "test:contract": "node tests/local-sync-server-contract.mjs",
     "test:graded-pricing": "node tests/graded-pricing-providers.mjs",
     "test:persistence": "node tests/local-sync-server-persistence.mjs",
@@ -23,6 +23,7 @@
     "test:trade-ins": "node tests/local-sync-server-trade-ins.mjs",
     "test:scrydex-reference-search": "node tests/scrydex-reference-search.mjs",
     "test:wordpress-catalog": "node tests/wordpress-catalog-fallback.mjs",
+    "test:wordpress-catalog-export": "node tests/wordpress-catalog-export-pull.mjs",
     "test:wordpress-inventory-pull": "node tests/wordpress-inventory-pull.mjs",
     "test:wordpress-events-pull": "node tests/wordpress-events-pull.mjs",
     "test:wordpress-fulfillment-pull": "node tests/wordpress-fulfillment-pull.mjs",

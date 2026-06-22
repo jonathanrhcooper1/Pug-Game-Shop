@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { listenLocalSyncHttpServer } from "./localSyncHttpServer.mjs"
+import { createWordPressCatalogExportPull } from "./wordpressCatalogExportPull.mjs"
 import { createWordPressCatalogFallback } from "./wordpressCatalogFallback.mjs"
 import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
 import { createWordPressEventCheckinPush } from "./wordpressEventCheckinPush.mjs"
@@ -106,6 +107,15 @@ const websiteCatalogFallback = createWordPressCatalogFallback({
   username: catalogUsername,
   applicationPassword: catalogApplicationPassword,
   timeoutMs: catalogTimeoutMs,
+})
+const wordpressCatalogExportPull = createWordPressCatalogExportPull({
+  websiteUrl,
+  restBasePath,
+  authHeader: catalogAuthHeader,
+  username: catalogUsername,
+  applicationPassword: catalogApplicationPassword,
+  timeoutMs: catalogTimeoutMs,
+  pageSize: process.env.PUG_WORDPRESS_CATALOG_PULL_PAGE_SIZE,
 })
 const wordpressInventoryPush = wordpressPushEnabled
   ? createWordPressInventoryPush({
@@ -240,6 +250,7 @@ const server = await listenLocalSyncHttpServer({
     databasePath,
     removeSeedReferenceCards,
     websiteCatalogFallback,
+    wordpressCatalogExportPull,
     wordpressInventoryPull,
     wordpressEventsPull,
     wordpressFulfillmentPull,
