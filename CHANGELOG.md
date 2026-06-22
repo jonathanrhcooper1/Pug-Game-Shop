@@ -4,6 +4,13 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Added employee-app local MP3/MP4 pickup-order sound selection so alert audio
+  is chosen and tested on each staff station instead of in WordPress settings.
+- Added an event creation handoff that opens the selected event's check-in
+  workflow after creation.
+- Added Square catalog conversion tooling for importing MTG/Pokemon singles
+  into the `Pug Grading Singles` category while excluding graded rows and
+  flagging variable-price rows for ScryDex pricing.
 - Added production/local cleanup tooling for the live inventory import cutover:
   clear generated card inventory/products, stale LAN queue rows, and open sync
   conflicts while preserving ScryDex reference data, customers, orders, and

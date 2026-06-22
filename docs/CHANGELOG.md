@@ -32,6 +32,16 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Moved pickup-order audio selection into the employee app: staff stations can
+  choose a local MP3/MP4, test it, or use the built-in tone without depending
+  on a WordPress media setting.
+- Added an event creation handoff that clears stale player lookup fields and
+  moves staff to the selected event's check-in workflow after the event product
+  is created.
+- Added `inventory:prepare-pug-grading-singles`, a Square catalog converter
+  that keeps MTG/Pokemon singles, excludes graded rows, outputs the `Pug
+  Grading Singles` import category, and flags Square `variable` price rows for
+  ScryDex pricing.
 - Added production/local live-inventory cutover cleanup commands that back up
   first, remove generated card inventory/products, clear stale LAN queue rows
   and open sync conflicts, and preserve ScryDex catalog/reference data,

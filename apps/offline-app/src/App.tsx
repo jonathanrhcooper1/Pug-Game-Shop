@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react"
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type MutableRefObject } from "react"
 
 import {
   buildOfflinePushBatchPayload,
@@ -531,6 +531,101 @@ type ConflictReviewStorageRestoreResult = {
 }
 
 const CONFLICT_REVIEW_STORAGE_KEY_PREFIX = "pug-offline-conflict-review:"
+const EMPLOYEE_ORDER_SOUND_STORAGE_KEY = "pug-employee-order-notification-sound:v1"
+const MAX_EMPLOYEE_ORDER_SOUND_BYTES = 1.5 * 1024 * 1024
+
+type EmployeeOrderSoundSettings = {
+  enabled: boolean
+  soundDataUrl: string
+  soundFileName: string
+  savedAtUtc: string
+}
+
+function defaultEmployeeOrderSoundSettings(): EmployeeOrderSoundSettings {
+  return {
+    enabled: true,
+    soundDataUrl: "",
+    soundFileName: "",
+    savedAtUtc: "",
+  }
+}
+
+function loadEmployeeOrderSoundSettings(): EmployeeOrderSoundSettings {
+  const fallback = defaultEmployeeOrderSoundSettings()
+
+  if (typeof window === "undefined") {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(EMPLOYEE_ORDER_SOUND_STORAGE_KEY) ?? "null",
+    ) as Partial<EmployeeOrderSoundSettings> | null
+
+    if (!parsed || typeof parsed !== "object") {
+      return fallback
+    }
+
+    return {
+      enabled: parsed.enabled !== false,
+      soundDataUrl: typeof parsed.soundDataUrl === "string" ? parsed.soundDataUrl : "",
+      soundFileName: typeof parsed.soundFileName === "string" ? parsed.soundFileName : "",
+      savedAtUtc: typeof parsed.savedAtUtc === "string" ? parsed.savedAtUtc : "",
+    }
+  } catch {
+    return fallback
+  }
+}
+
+function persistEmployeeOrderSoundSettings(settings: EmployeeOrderSoundSettings) {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      EMPLOYEE_ORDER_SOUND_STORAGE_KEY,
+      JSON.stringify({
+        enabled: settings.enabled,
+        soundDataUrl: settings.soundDataUrl,
+        soundFileName: settings.soundFileName,
+        savedAtUtc: settings.savedAtUtc,
+      }),
+    )
+  } catch {
+    window.localStorage.removeItem(EMPLOYEE_ORDER_SOUND_STORAGE_KEY)
+  }
+}
+
+function employeeOrderSoundFileIssue(file: File): string {
+  const fileName = file.name.toLowerCase()
+  const acceptedExtension =
+    fileName.endsWith(".mp3") ||
+    fileName.endsWith(".mp4") ||
+    fileName.endsWith(".m4a") ||
+    fileName.endsWith(".wav") ||
+    fileName.endsWith(".ogg")
+  const acceptedType = file.type.startsWith("audio/") || file.type === "video/mp4"
+
+  if (!acceptedExtension && !acceptedType) {
+    return "Choose an MP3, MP4, M4A, WAV, or OGG notification sound."
+  }
+
+  if (file.size > MAX_EMPLOYEE_ORDER_SOUND_BYTES) {
+    return "Choose a notification sound under 1.5 MB so the employee app can store it locally."
+  }
+
+  return ""
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")))
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("file_read_failed")))
+    reader.readAsDataURL(file)
+  })
+}
 
 function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
   if (typeof window === "undefined") {
@@ -2565,6 +2660,7 @@ export function App() {
   const kioskPanelRef = useRef<HTMLElement>(null)
   const queuePanelRef = useRef<HTMLElement>(null)
   const eventPanelRef = useRef<HTMLElement>(null)
+  const eventCheckinPanelRef = useRef<HTMLDivElement>(null)
   const conflictPanelRef = useRef<HTMLElement>(null)
   const creditPanelRef = useRef<HTMLElement>(null)
   const connectorPanelRef = useRef<HTMLElement>(null)
@@ -2901,6 +2997,9 @@ export function App() {
   const [websitePickupTickets, setWebsitePickupTickets] = useState<WebsitePickupTicket[]>([])
   const [fulfillmentNotificationSettings, setFulfillmentNotificationSettings] =
     useState<LocalSyncFulfillmentNotificationSettings>(DEFAULT_FULFILLMENT_NOTIFICATION_SETTINGS)
+  const [employeeOrderSoundSettings, setEmployeeOrderSoundSettings] = useState(
+    loadEmployeeOrderSoundSettings,
+  )
   const [orderNotificationSoundEnabled, setOrderNotificationSoundEnabled] = useState(false)
   const [orderNotificationIssue, setOrderNotificationIssue] = useState("")
   const [fulfillmentHistorySearch, setFulfillmentHistorySearch] = useState("")
@@ -4462,6 +4561,10 @@ export function App() {
   }, [connectorProfiles, activeProfileId])
 
   useEffect(() => {
+    persistEmployeeOrderSoundSettings(employeeOrderSoundSettings)
+  }, [employeeOrderSoundSettings])
+
+  useEffect(() => {
     window.localStorage.setItem(
       PREPARED_PAIRING_STORAGE_KEY,
       JSON.stringify(buildPreparedPairingStorageSnapshot(preparedPairingRequests, connectorProfiles)),
@@ -5022,6 +5125,11 @@ export function App() {
   }
 
   async function enableOrderNotificationSound() {
+    setEmployeeOrderSoundSettings((settings) => ({
+      ...settings,
+      enabled: true,
+      savedAtUtc: new Date().toISOString(),
+    }))
     const played = await playOrderNotificationSound({
       reason: "Staff sound check",
       force: true,
@@ -5037,23 +5145,77 @@ export function App() {
     }
   }
 
+  async function handleEmployeeOrderSoundFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ""
+
+    if (!file) {
+      return
+    }
+
+    const issue = employeeOrderSoundFileIssue(file)
+    if (issue) {
+      setOrderNotificationIssue(issue)
+      setActivityMessage({
+        title: "Sound not saved",
+        detail: issue,
+      })
+      return
+    }
+
+    try {
+      const soundDataUrl = await fileToDataUrl(file)
+      setEmployeeOrderSoundSettings({
+        enabled: true,
+        soundDataUrl,
+        soundFileName: file.name,
+        savedAtUtc: new Date().toISOString(),
+      })
+      setOrderNotificationIssue("")
+      setOrderNotificationSoundEnabled(false)
+      setActivityMessage({
+        title: "Order sound saved",
+        detail: `${file.name} is saved on this employee station. Click Test Sound once to allow browser playback.`,
+      })
+    } catch {
+      setOrderNotificationIssue("The app could not read that audio file. Choose a different MP3 or MP4.")
+      setActivityMessage({
+        title: "Sound not saved",
+        detail: "The employee app could not read that audio file. Choose a different MP3 or MP4.",
+      })
+    }
+  }
+
+  function handleUseBuiltInOrderSound() {
+    setEmployeeOrderSoundSettings({
+      enabled: true,
+      soundDataUrl: "",
+      soundFileName: "",
+      savedAtUtc: new Date().toISOString(),
+    })
+    setOrderNotificationSoundEnabled(false)
+    setOrderNotificationIssue("")
+    setActivityMessage({
+      title: "Default order sound selected",
+      detail: "This employee station will use the built-in alert tone until another MP3 or MP4 is chosen.",
+    })
+  }
+
   async function playOrderNotificationSound({
     newOrderCount = 0,
     reason = "New pickup order",
     force = false,
-    settings = fulfillmentNotificationSettings,
   }: {
     newOrderCount?: number
     reason?: string
     force?: boolean
-    settings?: LocalSyncFulfillmentNotificationSettings
   } = {}) {
-    if (customerKioskMode || (!force && !settings.audio_enabled)) {
+    if (customerKioskMode || (!force && !employeeOrderSoundSettings.enabled)) {
       return false
     }
 
     try {
-      const soundUrl = settings.notification_sound_url.trim()
+      const soundUrl = employeeOrderSoundSettings.soundDataUrl.trim()
 
       if (soundUrl) {
         const audio = orderNotificationAudioRef.current ?? new Audio()
@@ -5096,9 +5258,8 @@ export function App() {
   function handlePickupTicketNotifications(
     kioskTickets: KioskOrderTicket[],
     websiteTickets: WebsitePickupTicket[],
-    settings = fulfillmentNotificationSettings,
   ) {
-    if (customerKioskMode || !settings.audio_enabled) {
+    if (customerKioskMode || !employeeOrderSoundSettings.enabled) {
       return
     }
 
@@ -5123,7 +5284,6 @@ export function App() {
       void playOrderNotificationSound({
         newOrderCount: newIds.length,
         reason: "New pickup order",
-        settings,
       })
     }
   }
@@ -5159,19 +5319,14 @@ export function App() {
       return result
     }
 
-    let nextNotificationSettings = fulfillmentNotificationSettings
     if (result.fulfillment_notifications) {
-      nextNotificationSettings = applyFulfillmentNotificationSettings(result.fulfillment_notifications)
+      applyFulfillmentNotificationSettings(result.fulfillment_notifications)
     }
     if (websitePickupResult.status === "ok" && websitePickupResult.fulfillment_notifications) {
-      nextNotificationSettings = applyFulfillmentNotificationSettings(
-        websitePickupResult.fulfillment_notifications,
-      )
+      applyFulfillmentNotificationSettings(websitePickupResult.fulfillment_notifications)
     }
     if (notificationResult?.status === "ok") {
-      nextNotificationSettings = applyFulfillmentNotificationSettings(
-        notificationResult.fulfillment_notifications,
-      )
+      applyFulfillmentNotificationSettings(notificationResult.fulfillment_notifications)
     }
 
     const nextKioskTickets = result.orders.map(kioskTicketFromLocalSyncOrder)
@@ -5191,7 +5346,7 @@ export function App() {
       })
     }
 
-    handlePickupTicketNotifications(nextKioskTickets, nextWebsitePickupTickets, nextNotificationSettings)
+    handlePickupTicketNotifications(nextKioskTickets, nextWebsitePickupTickets)
 
     if (showMessage) {
       setActiveSection("Kiosk")
@@ -5239,18 +5394,15 @@ export function App() {
       if (eventResult.status === "ok") {
         setEventSnapshots(eventResult.events.map(eventSnapshotFromLocalSync))
       }
-      let nextNotificationSettings = fulfillmentNotificationSettings
       if (kioskResult.status === "ok") {
         if (kioskResult.fulfillment_notifications) {
-          nextNotificationSettings = applyFulfillmentNotificationSettings(kioskResult.fulfillment_notifications)
+          applyFulfillmentNotificationSettings(kioskResult.fulfillment_notifications)
         }
         setKioskOrderTickets(kioskResult.orders.map(kioskTicketFromLocalSyncOrder))
       }
       if (fulfillmentResult.status === "ok") {
         if (fulfillmentResult.fulfillment_notifications) {
-          nextNotificationSettings = applyFulfillmentNotificationSettings(
-            fulfillmentResult.fulfillment_notifications,
-          )
+          applyFulfillmentNotificationSettings(fulfillmentResult.fulfillment_notifications)
         }
         setWebsitePickupTickets(
           fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder),
@@ -5262,7 +5414,6 @@ export function App() {
           fulfillmentResult.status === "ok"
             ? fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder)
             : websitePickupTickets,
-          nextNotificationSettings,
         )
       }
       setLocalSyncStatus(statusResult)
@@ -8038,6 +8189,16 @@ export function App() {
     )
   }
 
+  function focusEventCheckinPanel() {
+    setActiveSection("Events")
+    window.requestAnimationFrame(() => {
+      eventCheckinPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
+    })
+  }
+
   async function handleCreateEvent() {
     if (!localSyncSessionToken) {
       setActivityMessage({
@@ -8118,14 +8279,17 @@ export function App() {
     setNewEventRecurrenceFrequency("none")
     setNewEventRecurrenceCount("1")
     setShowEventQueue(true)
-    setActiveSection("Events")
+    setEventAttendeeLabel("Offline walk-in")
+    setEventCheckinSearch("")
+    setEventCheckinLookup("")
+    focusEventCheckinPanel()
     void refreshLocalSyncStatus()
 
     setActivityMessage({
       title: recurrenceCount > 1 ? "Recurring events created" : "Event created",
       detail:
         `${createdEvents.length} event(s) were added to the LAN event cache` +
-        `${createdEvents.some((event) => event.woocommerce_product_id > 0) ? " and linked to WooCommerce where accepted" : ""}.`,
+        `${createdEvents.some((event) => event.woocommerce_product_id > 0) ? " and linked to WooCommerce where accepted" : ""}. Player check-in is ready on the selected event.`,
     })
   }
 
@@ -13937,33 +14101,46 @@ export function App() {
               {!customerKioskMode ? (
                 <div
                   className={`order-notification-sound-card ${
-                    fulfillmentNotificationSettings.audio_enabled ? "is-on" : "is-off"
+                    employeeOrderSoundSettings.enabled ? "is-on" : "is-off"
                   } ${orderNotificationSoundEnabled ? "is-ready" : "needs-enable"}`}
                   aria-label="Employee order sound notification"
                 >
                   <div>
                     <span className="micro-label">Employee order sounds</span>
                     <strong>
-                      {fulfillmentNotificationSettings.audio_enabled
+                      {employeeOrderSoundSettings.enabled
                         ? orderNotificationSoundEnabled
                           ? "Sound is enabled on this station"
                           : "Click once to enable pickup alerts"
-                        : "Sound alerts are off in website settings"}
+                        : "Sound alerts are off on this station"}
                     </strong>
                     <small>
-                      {fulfillmentNotificationSettings.notification_sound_url
-                        ? "Using the MP3/MP4 selected in WordPress settings."
-                        : "Using the built-in alert tone until an MP3/MP4 is selected in WordPress settings."}
+                      {employeeOrderSoundSettings.soundFileName
+                        ? `Using ${employeeOrderSoundSettings.soundFileName} saved in this app.`
+                        : "Using the built-in alert tone until an MP3/MP4 is selected in this app."}
                       {orderNotificationIssue ? ` ${orderNotificationIssue}` : ""}
                     </small>
                   </div>
-                  <button
-                    type="button"
-                    disabled={!fulfillmentNotificationSettings.audio_enabled}
-                    onClick={() => void enableOrderNotificationSound()}
-                  >
-                    {orderNotificationSoundEnabled ? "Test Sound" : "Enable Sound"}
-                  </button>
+                  <div className="order-notification-actions">
+                    <label className="order-notification-file">
+                      <span>Choose MP3/MP4</span>
+                      <input
+                        type="file"
+                        accept="audio/*,video/mp4,.mp3,.mp4,.m4a,.wav,.ogg"
+                        onChange={(event) => void handleEmployeeOrderSoundFileChange(event)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!employeeOrderSoundSettings.enabled}
+                      onClick={() => void enableOrderNotificationSound()}
+                    >
+                      {orderNotificationSoundEnabled ? "Test Sound" : "Enable Sound"}
+                    </button>
+                    <button type="button" onClick={handleUseBuiltInOrderSound}>
+                      Default Tone
+                    </button>
+                  </div>
                 </div>
               ) : null}
               <div className="kiosk-summary-strip" aria-label="Kiosk order readiness">
@@ -15043,6 +15220,10 @@ export function App() {
                         : "; Woo product pending"}
                     </small>
                   </div>
+                  <button type="button" onClick={focusEventCheckinPanel}>
+                    <Icon name="check" />
+                    <span>Go To Check-In</span>
+                  </button>
                   <div className="event-offline-fields" aria-label="Event registration details">
                     <label htmlFor="event-registrant-first-name">
                       <span className="micro-label">First name</span>
@@ -15128,7 +15309,11 @@ export function App() {
                       />
                     </label>
                   </div>
-                  <div className="event-checkin-panel" aria-label="Event check-in search">
+                  <div
+                    className="event-checkin-panel"
+                    aria-label="Event check-in search"
+                    ref={eventCheckinPanelRef}
+                  >
                     <div>
                       <span className="micro-label">Player check-in</span>
                       <strong>Search name, phone, or registration</strong>

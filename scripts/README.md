@@ -43,3 +43,12 @@ fixture-generation scripts.
 
 Production scripts read secrets from process environment variables or the
 ignored `.env.production.local` file. They must not be run from CI.
+
+## Inventory Imports
+
+- `npm run inventory:prepare-pug-grading-singles -- --input <square-catalog.csv>`
+  reads a Square catalog export, keeps only rows marked as MTG/Pokemon singles,
+  excludes graded rows, and writes a normalized CSV under `dist/imports/` with
+  the import category set to `Pug Grading Singles`. Rows with Square `variable`
+  pricing are preserved with `price_source=scrydex_required` so they can be
+  priced from the ScryDex/reference cache before publishing.

@@ -1,5 +1,62 @@
 # Revision Log
 
+## 2026-06-22 - Employee Audio, Event Check-In Handoff, And Singles Import Prep
+
+### What Changed
+
+- Moved pickup-order notification sound selection into the employee app with a
+  station-local MP3/MP4 picker, test button, default-tone fallback, file-size
+  guard, and local persistence.
+- Updated event creation so the app selects the created event, clears stale
+  check-in lookup fields, and scrolls staff to the player check-in workflow.
+- Added a repeatable Square catalog conversion script for importing MTG and
+  Pokemon singles into the `Pug Grading Singles` category while excluding
+  graded rows and flagging Square `variable` prices for ScryDex pricing.
+- Added a contract test for the singles import converter and documented the
+  importer command.
+
+### Why
+
+Pickup alert audio should play from the employee app, not from a website
+settings screen. Staff also need event check-in immediately after creating a
+registration product. The live Square catalog export needs a safe normalization
+step before singles are imported into the Pug grading inventory flow.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `package.json`
+- `scripts/README.md`
+- `scripts/prepare-pug-grading-singles-import.mjs`
+- `scripts/tests/pug-grading-singles-import-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `scripts/tests/pug-grading-singles-import-contract.mjs`.
+- `node scripts/tests/pug-grading-singles-import-contract.mjs`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/offline-app run build`
+- Browser checked the employee Fulfillment sound card for local MP3/MP4
+  selection, default tone, and test/enable controls.
+
+### Rollback Notes
+
+- Revert the employee app audio changes to return pickup alert sound selection
+  to server-provided notification metadata.
+- Revert the event handoff helper if event creation should leave staff at the
+  top of the Events screen.
+- Delete the singles import script and generated `dist/imports/` output if the
+  Square CSV import approach changes before live inventory load.
+
 ## 2026-06-22 - Empty Inventory App Startup Fix
 
 ### What Changed

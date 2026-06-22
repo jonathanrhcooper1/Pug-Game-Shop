@@ -3468,6 +3468,36 @@ h2 {
   background: rgba(167, 174, 171, 0.2);
 }
 
+.order-notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.order-notification-file {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 13px;
+  color: #07131d;
+  background: #ffffff;
+  border: 1px solid rgba(19, 141, 171, 0.24);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.order-notification-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .kiosk-customer-fields {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto;
