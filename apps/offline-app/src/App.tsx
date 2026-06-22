@@ -2089,6 +2089,26 @@ type InventoryConditionGroup = {
   priceLabel: string
 }
 
+const EMPTY_INVENTORY_ITEM: InventoryItem = {
+  id: 0,
+  publicId: "",
+  rowVersion: 0,
+  cardName: "No inventory selected",
+  setName: "Live inventory is ready for import",
+  number: "",
+  condition: "No stock loaded",
+  barcode: "",
+  price: "$0.00",
+  priceMinorUnits: 0,
+  currency: "USD",
+  location: "Import CSV",
+  status: "sold",
+  source: "cached",
+  onlineVisibility: "staff_only",
+  kioskVisibility: "hidden",
+  posVisibility: "staff_only",
+}
+
 type InventoryDisplayGroup = {
   key: string
   representative: InventoryItem
@@ -2982,7 +3002,9 @@ export function App() {
   const secureStoreSummary = secureStoreAdapter
     ? "available; device tokens can be persisted through the Tauri desktop secure-store commands"
     : "browser preview; live device tokens stay blocked until the Windows secure-store adapter is running"
-  const selectedItem = findInventoryItem(inventoryItems, selectedId)
+  const selectedInventoryItem = findInventoryItem(inventoryItems, selectedId) ?? null
+  const hasSelectedInventoryItem = Boolean(selectedInventoryItem)
+  const selectedItem = selectedInventoryItem ?? EMPTY_INVENTORY_ITEM
   const scryDexSetOptions = useMemo(() => scryDexSetOptionsFromCards(scryDexCards), [scryDexCards])
   const visibleScryDexCards = useMemo(
     () => scryDexCards.filter((card) => scryDexCardMatchesSetFilter(card, scryDexSetFilter)),
@@ -3721,7 +3743,9 @@ export function App() {
   const cleanSquareSoldReference = squareSoldReference.trim().replace(/\s+/g, " ")
   const cleanSquareSoldOrderId = squareSoldOrderId.trim().replace(/\s+/g, " ")
   const squareSoldReferenceIssue =
-    selectedItem.status !== "available" && selectedItem.status !== "reserved"
+    !hasSelectedInventoryItem
+      ? "Import or add live inventory before finalizing a Square sale."
+      : selectedItem.status !== "available" && selectedItem.status !== "reserved"
       ? `${selectedItem.cardName} is ${statusLabel(selectedItem.status).toLowerCase()} and cannot be finalized as a Square sale.`
       : cleanSquareSoldReference === ""
         ? "Enter the Square receipt, ticket, or order reference before marking this item sold."
@@ -6095,6 +6119,15 @@ export function App() {
     detailOverride?: string,
     targetItem = selectedItem,
   ) {
+    if (targetItem.id === EMPTY_INVENTORY_ITEM.id) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "No inventory selected",
+        detail: "Import the live inventory CSV or add a card before staging inventory changes.",
+      })
+      return
+    }
+
     await stageOfflineOperation(
       buildInventoryUpdateOperation(targetItem, operationOptions),
       actionTitle,
@@ -6114,6 +6147,15 @@ export function App() {
   }
 
   async function handleInventoryReservation() {
+    if (!hasSelectedInventoryItem) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "No inventory selected",
+        detail: "Import the live inventory CSV or add a card before creating a hold.",
+      })
+      return
+    }
+
     if (selectedItem.status !== "available") {
       setActivityMessage({
         title: "Hold unavailable",
@@ -6166,6 +6208,15 @@ export function App() {
   }
 
   async function handleSquareSaleFinalize() {
+    if (!hasSelectedInventoryItem) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Square sale blocked",
+        detail: "Import the live inventory CSV or add a card before finalizing a Square sale.",
+      })
+      return
+    }
+
     if (squareSoldReferenceIssue) {
       setActivityMessage({
         title: "Square sale blocked",
@@ -7809,6 +7860,15 @@ export function App() {
   }
 
   async function handleQuantityAdjustment() {
+    if (!hasSelectedInventoryItem) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Quantity adjustment blocked",
+        detail: "Import the live inventory CSV or add a card before adjusting inventory.",
+      })
+      return
+    }
+
     if (quantityDelta === null) {
       setActiveSection("Inventory")
       setActivityMessage({
@@ -10366,6 +10426,15 @@ export function App() {
   }
 
   function handlePrintLabel(targetItem = selectedItem) {
+    if (targetItem.id === EMPTY_INVENTORY_ITEM.id) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "No label available",
+        detail: "Import the live inventory CSV or add a card before printing labels.",
+      })
+      return
+    }
+
     const labelJob = buildOfflineLabelPrintJob(targetItem, activeProfile)
     const labelDetail =
       `${labelJob.cardName} label ${labelJob.barcode} is ready for ${activeProfile.companyName}; ` +

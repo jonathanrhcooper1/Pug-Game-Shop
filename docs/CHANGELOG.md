@@ -41,6 +41,8 @@ All notable changes follow Semantic Versioning.
   employee pickup-order sound alerts.
 - Removed sample card inventory, queued-write counts, and demo conflict rows
   from the local app seed state so a clean live database starts cleanly.
+- Fixed the employee app empty-inventory startup path so the local app renders
+  the PIN screen and empty inventory state after live inventory is cleared.
 - Added employee-only pickup order sound notifications for the employee app.
   WordPress managers can upload/select an MP3 or MP4 alert in the platform
   settings, the paid pickup queue exposes only safe notification metadata, and

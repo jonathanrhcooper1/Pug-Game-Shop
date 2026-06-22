@@ -14,6 +14,8 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 - Removed shipped demo card inventory, queue, and conflict seed rows from the
   local app so an empty live database no longer renders sample inventory after
   restart.
+- Fixed the employee app empty-inventory startup path so clearing live/demo
+  inventory no longer leaves `http://127.0.0.1:1420/` on a blank screen.
 - Added employee-only pickup order audio notification settings, WordPress media
   upload support for MP3/MP4 alert sounds, and authenticated LAN sync delivery
   of notification metadata without exposing WordPress credentials.

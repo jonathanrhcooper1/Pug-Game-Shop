@@ -1,5 +1,44 @@
 # Revision Log
 
+## 2026-06-22 - Empty Inventory App Startup Fix
+
+### What Changed
+
+- Added an empty-inventory fallback for the employee app selected-card detail
+  state.
+- Disabled inventory update, hold, Square sale, quantity adjustment, and label
+  actions when no live inventory row is selected.
+
+### Why
+
+After the live inventory cleanup, the employee app could load with zero
+inventory rows. The Inventory view still expected a selected card and crashed
+before the login/app shell could render.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm --prefix apps/offline-app run typecheck`
+- `npm --prefix apps/offline-app run build`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+
+### Rollback Notes
+
+- Revert this entry and the matching employee app selected-card fallback if
+  demo inventory seeding is restored, though keeping the fallback is safer for
+  real live-inventory cutovers.
+
 ## 2026-06-22 - Live Inventory Cutover Cleanup
 
 ### What Changed
