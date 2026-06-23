@@ -16,6 +16,14 @@ All notable changes follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Added a live ScryDex Vision card scanner for the employee app Inventory and
+  Trade-In card lookup panels. Camera frames are cropped in the app, identified
+  by the LAN server, and converted back into normal ScryDex/reference catalog
+  results for staff confirmation without exposing ScryDex credentials to
+  clients.
+
 ### Audit
 
 - Added the 2026-06-17 production-readiness report bundle:
@@ -32,6 +40,67 @@ All notable changes follow Semantic Versioning.
 
 ### Fixed
 
+- Fixed the employee app inventory workspace at compact desktop/small-screen
+  widths so the inventory panel and selected-card detail panel stack cleanly
+  without overlap or horizontal scrolling.
+- Updated Windows packaging to build fullscreen, decorationless Store and Kiosk
+  installers, remove the fake in-app window buttons, and include hidden LAN
+  server startup helpers in the release package.
+- Fixed the LAN server release ZIP layout so shared `packages/api-client`
+  runtime code is included with `apps/local-sync-server`.
+- Updated the production active-sync inventory smoke verifier so a confirmed
+  WordPress inventory search match counts as a successful push when the local
+  accepted-result echo does not include the original local entity id.
+- Added a WooCommerce stock reconciliation hook for grouped card products so
+  Square/WooCommerce stock count changes mark matching custom inventory rows
+  sold and stop stale sold cards from staying available in the employee app.
+- Fixed the trade-in offer UI so Add Card to Offer clears the selected card and
+  result list for the next scan, and each offer row keeps an independent
+  cash/credit payout field.
+- Added Square inventory count polling to the LAN server so Square POS sales can
+  be detected from live Square counts, marked sold locally, and pushed to
+  WordPress without waiting for a manual WooCommerce Square sync.
+- Verified Square count reconciliation handles partial inventory count drops,
+  not only zero-stock sales, and renamed the employee app's visible Checkout
+  workspace to Sale Completion so staff use Square as the payment/POS authority.
+- Added Square location auto-discovery for inventory polling when a token is
+  configured but `PUG_SQUARE_LOCATION_ID` is left blank.
+- Standardized local, website cart, and kiosk card holds to 15 minutes.
+- Fixed mobile product image layout by isolating card art in a top container so
+  it cannot overlap product text on phone screens.
+- Fixed customer kiosk scrolling with a scrollable shell, constrained inventory
+  gallery, and vertical selected-card tray behavior on smaller screens.
+- Added direct DYMO Connect printing for employee inventory labels. The LAN
+  sync server now exposes authenticated `/labels/dymo/printers` and
+  `/labels/dymo/print` routes, detects the local DYMO LabelWriter 550 Turbo,
+  uses the detected 30336 roll (`Small30336`) with Code 128 barcodes, and the
+  employee app falls back to browser printing only when DYMO Connect is
+  unavailable.
+- Simplified selected-inventory label printing so one Print Barcode Label click
+  sends the selected card directly to DYMO instead of creating a second
+  prepared-label print button first.
+- Updated the employee-app print path so labels try the DYMO printer attached
+  to the current workstation first, fall back to the LAN middleman server
+  printer second, and only use the browser print dialog as a final fallback.
+- Completed the strict 2026-06-22 Square catalog import pass from column AH:
+  1,471 card rows, 2,105 physical units, 1,204 ScryDex image hydrations, 267
+  hidden unmatched review rows, zero failed rows, and zero LAN queue backlog.
+- Fixed the local WordPress inventory pull merge so accepted local inventory
+  rows keep their local identity while storing the WordPress public ID. The live
+  local cache was deduped from 4,052 rows to 2,106 real rows, leaving zero
+  duplicate barcodes, zero sync queue backlog, and 2,104 Square-ready rows.
+- Fixed Square POS sale finalization so the WordPress inventory public ID keeps
+  its original casing instead of being normalized like a scan barcode before
+  calling the website mark-sold endpoint.
+- Added `inventory:import-square-catalog-local`, a dry-run/execute Square
+  catalog importer for live local inventory loads. It reads quantity from column
+  AH (`Current Quantity The PUG`), includes MTG Singles, Pokemon, One Piece, and
+  graded-card rows, preserves Square catalog IDs, skips One Piece
+  supplies/events, and marks Square `variable` price rows hidden until ScryDex
+  pricing is applied.
+- Imported the 2026-06-22 Square catalog into the local/website inventory flow:
+  1,570 source rows and 3,278 physical units, with all imported rows carrying
+  Square IDs and the LAN sync queue reconciled to zero pending items.
 - Moved pickup-order audio selection into the employee app: staff stations can
   choose a local MP3/MP4, test it, or use the built-in tone without depending
   on a WordPress media setting.

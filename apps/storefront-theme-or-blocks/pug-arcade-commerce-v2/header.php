@@ -58,8 +58,6 @@ function pug_arcade_default_menu()
 {
     $items = array(
         array('label' => 'Singles', 'url' => pug_arcade_page_url('shop-singles')),
-        array('label' => 'Sealed', 'url' => pug_arcade_page_url('shop-sealed-products')),
-        array('label' => 'Accessories', 'url' => pug_arcade_page_url('shop-accessories')),
         array('label' => 'Buying', 'url' => home_url('/buying/')),
         array('label' => 'Events', 'url' => home_url('/events/')),
         array('label' => 'Contact', 'url' => home_url('/contact/')),

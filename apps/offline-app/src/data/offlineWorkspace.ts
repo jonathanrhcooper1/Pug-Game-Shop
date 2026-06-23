@@ -72,12 +72,13 @@ export type OfflineLabelPrintJob = {
   inventoryPublicId: string
   cardName: string
   setName: string
+  setCode: string
   cardNumber: string
   condition: string
   barcode: string
   price: string
   location: string
-  format: "barcode-price-location"
+  format: "card-set-condition-barcode"
   queuedAtUtc: string
   queuedAtLabel: string
   payloadText: string
@@ -1201,6 +1202,33 @@ function cleanLabelPrintText(value: string, fallback: string, maxLength = 72): s
   return (cleaned || fallback).slice(0, maxLength)
 }
 
+function abbreviateSetLabel(setCode: string | undefined, setName: string): string {
+  const code = cleanLabelPrintText(setCode ?? "", "", 16)
+
+  if (code) {
+    return code.toUpperCase()
+  }
+
+  const words = cleanLabelPrintText(setName, "SET", 48)
+    .replace(/[^a-zA-Z0-9 ]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (words.length === 0) {
+    return "SET"
+  }
+
+  if (words.length === 1) {
+    return words[0].slice(0, 4).toUpperCase()
+  }
+
+  return words
+    .slice(0, 4)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+}
+
 export function buildOfflineLabelPrintJob(
   item: InventoryItem,
   profile: StoreConnectorProfile,
@@ -1216,20 +1244,15 @@ export function buildOfflineLabelPrintJob(
     32,
   )
   const cardName = cleanLabelPrintText(item.cardName, "Unknown card")
-  const setLine =
-    `${cleanLabelPrintText(item.setName, "Unknown set", 48)} ` +
-    `#${cleanLabelPrintText(item.number, "N/A", 24)}`
+  const setCode = abbreviateSetLabel(item.setCode, item.setName)
   const condition = cleanLabelPrintText(item.condition, "Condition pending", 28)
   const price = cleanLabelPrintText(item.price, "$0.00", 24)
   const barcode = cleanLabelPrintText(item.barcode, item.publicId, 64)
   const location = cleanLabelPrintText(item.location, "Unassigned", 48)
   const payloadText = [
-    companyShortName,
     cardName,
-    `${setLine} ${condition}`,
-    `Price ${price}`,
-    `Barcode ${barcode}`,
-    `Location ${location}`,
+    `${setCode} ${condition}`,
+    barcode,
   ].join("\n")
 
   return {
@@ -1243,12 +1266,13 @@ export function buildOfflineLabelPrintJob(
     inventoryPublicId: item.publicId,
     cardName,
     setName: cleanLabelPrintText(item.setName, "Unknown set", 48),
+    setCode,
     cardNumber: cleanLabelPrintText(item.number, "N/A", 24),
     condition,
     barcode,
     price,
     location,
-    format: "barcode-price-location",
+    format: "card-set-condition-barcode",
     queuedAtUtc,
     queuedAtLabel: new Intl.DateTimeFormat("en-US", {
       hour: "numeric",

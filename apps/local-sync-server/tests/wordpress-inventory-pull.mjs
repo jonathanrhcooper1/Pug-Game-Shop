@@ -67,7 +67,7 @@ assert.equal(result.authorization_header_printed, false)
 assert.ok(capturedUrl.startsWith("https://example.test/wp-json/tcg-store/v1/inventory/search?"))
 assert.ok(capturedUrl.includes("q=charizard"))
 assert.ok(capturedUrl.includes("visibility=staff"))
-assert.ok(capturedUrl.includes("status=available"))
+assert.ok(capturedUrl.includes("status=available%2Creserved%2Csold"))
 assert.ok(capturedUrl.includes("page=2"))
 assert.ok(capturedUrl.includes("page_size=25"))
 

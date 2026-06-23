@@ -31,9 +31,7 @@ const menu = {
   items: [
     { type: "home", label: "Home" },
     { type: "page", slug: "shop-singles", label: "Singles" },
-    { type: "page", slug: "shop-sealed-products", label: "Sealed" },
     { type: "page", slug: "shop-graded-cards", label: "Graded" },
-    { type: "page", slug: "shop-accessories", label: "Accessories" },
     { type: "page", slug: "events", label: "Events" },
     { type: "custom", url: "/buying/", label: "Buying" },
     { type: "custom", url: "/contact/", label: "Contact" },

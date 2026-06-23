@@ -21,7 +21,10 @@ import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 import { createWordPressReportsPull } from "./wordpressReportsPull.mjs"
 import { listenLocalSyncDiscoveryResponder } from "./localSyncDiscovery.mjs"
 import { createGradedPricingLookup } from "./gradedPricingProviders.mjs"
+import { createSquareInventoryCountsPuller } from "./squareInventoryCountsPuller.mjs"
+import { createSquareSalesReportsPuller } from "./squareSalesReportsPuller.mjs"
 import { createSquareTerminalConnector } from "./squareTerminalConnector.mjs"
+import { createScryDexVisionIdentifier } from "./scrydexVisionIdentifier.mjs"
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = resolve(appRoot, "..", "..")
@@ -68,6 +71,13 @@ const squareAccessToken = firstEnv("PUG_SQUARE_ACCESS_TOKEN", "LOCAL_SYNC_SQUARE
 const squareTerminalDeviceId = firstEnv("PUG_SQUARE_TERMINAL_DEVICE_ID", "LOCAL_SYNC_SQUARE_TERMINAL_DEVICE_ID")
 const squareApiVersion = firstEnv("PUG_SQUARE_API_VERSION", "LOCAL_SYNC_SQUARE_API_VERSION")
 const squareBaseUrl = firstEnv("PUG_SQUARE_BASE_URL", "LOCAL_SYNC_SQUARE_BASE_URL")
+const squareInventoryPollDisabled = envFlag(
+  "PUG_SQUARE_INVENTORY_POLL_DISABLED",
+  "LOCAL_SYNC_SQUARE_INVENTORY_POLL_DISABLED",
+)
+const squareInventoryPollSeconds = boundedPollSeconds(
+  firstEnv("PUG_SQUARE_INVENTORY_POLL_SECONDS", "LOCAL_SYNC_SQUARE_INVENTORY_POLL_SECONDS"),
+)
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const eventsAuthHeader = firstEnv("PUG_WORDPRESS_EVENTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
@@ -92,6 +102,12 @@ const kioskAuthHeader = firstEnv("PUG_WORDPRESS_KIOSK_AUTH_HEADER", "PUG_WORDPRE
 const reportsUsername = firstEnv("PUG_WORDPRESS_REPORTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const reportsApplicationPassword = firstEnv("PUG_WORDPRESS_REPORTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const reportsAuthHeader = firstEnv("PUG_WORDPRESS_REPORTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
+const scryDexVisionIdentifier = createScryDexVisionIdentifier({
+  apiKey: firstEnv("SCRYDEX_VISION_API_KEY", "PUG_SCRYDEX_VISION_API_KEY", "SCRYDEX_API_KEY", "PUG_SCRYDEX_API_KEY"),
+  teamId: firstEnv("SCRYDEX_VISION_TEAM_ID", "PUG_SCRYDEX_VISION_TEAM_ID", "SCRYDEX_TEAM_ID", "PUG_SCRYDEX_TEAM_ID"),
+  baseUrl: firstEnv("SCRYDEX_VISION_BASE_URL", "PUG_SCRYDEX_VISION_BASE_URL"),
+  timeoutMs: firstEnv("SCRYDEX_VISION_TIMEOUT_MS", "PUG_SCRYDEX_VISION_TIMEOUT_MS"),
+})
 const gradedPricingLookup = createGradedPricingLookup({
   priceChartingToken: firstEnv("PUG_PRICECHARTING_API_TOKEN", "PRICECHARTING_API_TOKEN"),
   priceChartingBaseUrl: firstEnv("PUG_PRICECHARTING_BASE_URL", "PRICECHARTING_BASE_URL"),
@@ -239,6 +255,21 @@ const squareTerminalConnector = createSquareTerminalConnector({
   apiVersion: squareApiVersion,
   baseUrl: squareBaseUrl,
 })
+const squareInventoryCountsPuller = createSquareInventoryCountsPuller({
+  accessToken: squareAccessToken,
+  environment: squareEnvironment,
+  locationId: squareLocationId,
+  apiVersion: squareApiVersion,
+  baseUrl: squareBaseUrl,
+})
+const squareSalesReportsPuller = createSquareSalesReportsPuller({
+  accessToken: squareAccessToken,
+  environment: squareEnvironment,
+  locationId: squareLocationId,
+  apiVersion: squareApiVersion,
+  baseUrl: squareBaseUrl,
+  defaultLookbackDays: firstEnv("PUG_SQUARE_REPORT_LOOKBACK_DAYS", "LOCAL_SYNC_SQUARE_REPORT_LOOKBACK_DAYS"),
+})
 const server = await listenLocalSyncHttpServer({
   host,
   port,
@@ -264,6 +295,7 @@ const server = await listenLocalSyncHttpServer({
     wordpressCreditPush,
     wordpressCustomerUpsertPush,
     wordpressKioskOrderPush,
+    scryDexVisionIdentifier,
     gradedPricingLookup,
     gradedPricingProviderConfigured: gradedPricingLookup.configured === true,
     gradedPricingCacheTtlSeconds: firstEnv(
@@ -273,6 +305,8 @@ const server = await listenLocalSyncHttpServer({
     squareLocationId,
     squareEnvironment,
     squareTerminalConnector,
+    squareInventoryCountsPuller,
+    squareSalesReportsPuller,
   },
 })
 const address = server.address()
@@ -281,9 +315,20 @@ const resolvedPort = typeof address === "object" && address ? address.port : por
 console.log(`Pug local sync server listening on http://${host}:${resolvedPort}`)
 console.log(`Website: ${websiteUrl || "not configured"}`)
 console.log(`WordPress push enabled: ${wordpressPushEnabled ? "true" : "false"}`)
+console.log(`ScryDex Vision configured: ${scryDexVisionIdentifier.status().configured ? "true" : "false"}`)
 console.log(`Secondary graded pricing configured: ${gradedPricingLookup.configured === true ? "true" : "false"}`)
 console.log(`Square Terminal configured: ${squareTerminalConnector.status().configured ? "true" : "false"}`)
+console.log(`Square inventory poll configured: ${squareInventoryCountsPuller.status().configured ? "true" : "false"}`)
+console.log(`Square sales report pull configured: ${squareSalesReportsPuller.status().configured ? "true" : "false"}`)
 console.log("Credentials printed: false")
+
+if (!squareInventoryPollDisabled && squareInventoryCountsPuller.status().configured) {
+  startSquareInventoryPolling(server, squareInventoryPollSeconds)
+} else if (squareInventoryPollDisabled) {
+  console.log("Square inventory polling disabled by environment.")
+} else {
+  console.log("Square inventory polling not started; configure Square token and location for live POS sale detection.")
+}
 
 if (discoveryEnabled) {
   try {
@@ -349,4 +394,55 @@ function envFlag(...keys) {
   const value = firstEnv(...keys)
 
   return ["1", "true", "yes", "on"].includes(String(value ?? "").toLowerCase())
+}
+
+function boundedPollSeconds(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  if (!Number.isFinite(parsed)) {
+    return 15
+  }
+
+  return Math.min(300, Math.max(10, parsed))
+}
+
+function startSquareInventoryPolling(server, pollSeconds) {
+  const store = server.localSyncStore
+
+  if (!store || typeof store.reconcileSquareProviderInventoryCountsForSystem !== "function") {
+    console.warn("Square inventory polling unavailable; local sync store was not attached to the HTTP server.")
+    return
+  }
+
+  let running = false
+  const run = async () => {
+    if (running) {
+      return
+    }
+
+    running = true
+    try {
+      const result = await store.reconcileSquareProviderInventoryCountsForSystem({
+        source: "background_poll",
+      })
+
+      if (result.status === "ok" && result.sold_count > 0) {
+        console.log(
+          `Square inventory poll marked ${result.sold_count} item(s) sold; WordPress accepted ${result.wordpress_accepted_count}, retry ${result.wordpress_retry_count}.`,
+        )
+      } else if (result.status !== "ok") {
+        console.warn(`Square inventory poll blocked: ${result.code || "unknown"}`)
+      }
+    } catch (error) {
+      console.warn(`Square inventory poll failed: ${error instanceof Error ? error.message : "Unknown error."}`)
+    } finally {
+      running = false
+    }
+  }
+
+  const interval = setInterval(run, pollSeconds * 1000)
+  interval.unref?.()
+  server.once("close", () => clearInterval(interval))
+  console.log(`Square inventory polling enabled every ${pollSeconds}s.`)
+  void run()
 }

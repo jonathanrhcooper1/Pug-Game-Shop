@@ -754,6 +754,21 @@ final class SettingsPage {
 			(string) $settings['request_timeout_seconds'],
 			'number'
 		);
+		echo '<label>';
+		echo '<input type="checkbox" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( ScryDexProviderSettings::KEY )
+			. '][webhook_receiver_enabled]" value="1" '
+			. checked( ! empty( $settings['webhook_receiver_enabled'] ), true, false )
+			. ' /> ';
+		echo esc_html__( 'Enable signed ScryDex webhook receiver.', 'tcg-store-platform' );
+		echo '</label><br />';
+		$this->render_scrydex_secret_input(
+			'webhook_secret',
+			__( 'Webhook signing secret', 'tcg-store-platform' ),
+			true === $status['webhook_secret_configured'],
+			'clear_webhook_secret'
+		);
 
 		echo '<p class="description">';
 		echo esc_html(
@@ -762,6 +777,15 @@ final class SettingsPage {
 				__( 'Status: %1$s. Active key slot: %2$s. Network requests are enabled only when the ScryDex provider is configured and catalog sync is started.', 'tcg-store-platform' ),
 				(string) $status['status'],
 				(string) $status['active_key_slot']
+			)
+		);
+		echo '</p>';
+		echo '<p class="description">';
+		echo esc_html(
+			sprintf(
+				/* translators: %s: REST webhook endpoint URL. */
+				__( 'Webhook endpoint: %s. Configure this URL in ScryDex with the whsec_ signing secret from your ScryDex account.', 'tcg-store-platform' ),
+				function_exists( 'rest_url' ) ? rest_url( 'tcg-store/v1/scrydex/webhooks' ) : '/wp-json/tcg-store/v1/scrydex/webhooks'
 			)
 		);
 		echo '</p>';

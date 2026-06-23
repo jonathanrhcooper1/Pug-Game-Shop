@@ -177,7 +177,6 @@ $categories = array(
         <p>Shop online, check event nights, or message the team about preorders and collections.</p>
         <div class="hero-actions">
             <a class="btn btn-primary magnet" href="<?php echo esc_url(pug_arcade_shop_url()); ?>">Enter Shop</a>
-            <a class="btn btn-ghost magnet" href="<?php echo esc_url(pug_arcade_page_url('shop-sealed-products')); ?>">Shop Sealed</a>
             <a class="btn btn-ghost magnet" href="<?php echo esc_url(home_url('/contact/')); ?>">Contact The Pug</a>
         </div>
     </section>

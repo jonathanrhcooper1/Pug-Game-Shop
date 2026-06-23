@@ -95,6 +95,7 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   wordpress_credit_push_configured: boolean
   wordpress_kiosk_order_push_configured: boolean
   scrydex_catalog_proxy_configured: boolean
+  scrydex_vision_configured?: boolean
   graded_pricing_provider_configured?: boolean
   graded_pricing_primary_source?: "scrydex_reference_cache"
   graded_pricing_credentials_synced_to_client?: false
@@ -310,6 +311,44 @@ export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
   label_print_deferred: true
 }>
 
+export type LocalSyncDymoPrinter = {
+  type: "LabelWriterPrinter"
+  name: string
+  model_name: string
+  is_connected: boolean
+  is_local: boolean
+  is_twin_turbo: boolean
+}
+
+export type LocalSyncDymoPrinterListResult = LocalSyncResult<{
+  action: "dymo_printers_detected"
+  service_base_url: string
+  printer_count: number
+  connected_printer_count: number
+  printers: LocalSyncDymoPrinter[]
+  preferred_printer: LocalSyncDymoPrinter | null
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncDymoLabelPrintResult = LocalSyncResult<{
+  action: "dymo_label_printed"
+  label_stock: "30336 Small Multipurpose Labels"
+  label_size: "1 in x 2 1/8 in"
+  printer_name: string
+  barcode_format: "Code128Auto"
+  scan_code: string
+  card_name: string
+  set_code: string
+  condition: string
+  direct_print_performed: true
+  browser_print_dialog_required: false
+  requested_by_user_id: string
+  requested_by_user_name: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
 export type LocalSyncStockByCondition = {
   condition: string
   quantity: number
@@ -380,6 +419,63 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   credential_storage: "wordpress_server_settings"
   credentials_synced_to_client: false
   live_provider_request_performed: boolean
+}>
+
+export type LocalSyncScryDexVisionScanResult = LocalSyncResult<{
+  action: "scrydex_vision_card_scan"
+  cards: LocalSyncScryDexCard[]
+  query: string
+  game: LocalSyncScryDexCard["game"]
+  set_filter?: string
+  result_limit?: number | "all"
+  source: "wordpress_catalog_cache" | "local_reference_cache" | "wordpress_proxy" | "scrydex_vision"
+  lookup_order: ("scrydex_vision" | "local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
+  local_reference_cache_hit?: boolean
+  wordpress_proxy_performed?: boolean
+  wordpress_proxy_required?: boolean
+  credential_storage: "lan_server_environment" | "wordpress_server_settings"
+  credentials_synced_to_client: false
+  live_provider_request_performed: boolean
+  vision?: {
+    status: "ok"
+    action: "scrydex_vision_card_identified"
+    analysis: {
+      type: string
+      game: string
+      language_code: string
+      graded_details: {
+        company: string
+        grade_code: string
+        grade_label: string
+        grade_number: string
+        year: string
+        cert: string
+      }
+    }
+    matches: Array<{
+      rank: number
+      score: number | null
+      variant: string
+      provider_card_id: string
+      game: string
+      card_name: string
+      set_name: string
+      set_code: string
+      card_number: string
+      printed_number: string
+      image_url: string
+    }>
+    match_count: number
+    top_query: string
+    game: string
+    provider: "scrydex_vision"
+    credentials_synced_to_client: false
+    raw_credentials_returned: false
+  }
+  vision_query?: string
+  vision_set_filter?: string
+  vision_match_count?: number
+  vision_provider?: "scrydex_vision"
 }>
 
 export type LocalSyncGradedValuation = {
@@ -1427,6 +1523,18 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input: { location: string },
   ) => Promise<LocalSyncInventoryLocationCreateResult>
+  listDymoPrinters: (sessionToken: string) => Promise<LocalSyncDymoPrinterListResult>
+  printDymoLabel: (
+    sessionToken: string,
+    input: {
+      cardName: string
+      setCode: string
+      condition: string
+      barcode: string
+      printerName?: string
+      copies?: number
+    },
+  ) => Promise<LocalSyncDymoLabelPrintResult>
   reserveInventory: (
     sessionToken: string,
     input: { inventoryPublicId: string; holdReason: string },
@@ -1475,6 +1583,14 @@ export type LocalSyncServerClient = {
     game?: LocalSyncScryDexCard["game"],
     options?: { limit?: number | "all"; setFilter?: string; rawOrGraded?: "raw" | "graded" },
   ) => Promise<LocalSyncScryDexSearchResult>
+  identifyScryDexCardImage: (
+    sessionToken: string,
+    input: {
+      imageDataUrl: string
+      game?: LocalSyncScryDexCard["game"]
+      rawOrGraded?: "raw" | "graded"
+    },
+  ) => Promise<LocalSyncScryDexVisionScanResult>
   lookupGradedTradeInValuation: (
     sessionToken: string,
     input: {
@@ -1871,6 +1987,23 @@ export function createLocalSyncServerClient(
           location: input.location,
         },
       }) as Promise<LocalSyncInventoryLocationCreateResult>,
+    listDymoPrinters: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/labels/dymo/printers", {
+        sessionToken,
+      }) as Promise<LocalSyncDymoPrinterListResult>,
+    printDymoLabel: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/labels/dymo/print", {
+        method: "POST",
+        sessionToken,
+        body: {
+          card_name: input.cardName,
+          set_code: input.setCode,
+          condition: input.condition,
+          barcode: input.barcode,
+          printer_name: input.printerName ?? "",
+          copies: input.copies ?? 1,
+        },
+      }) as Promise<LocalSyncDymoLabelPrintResult>,
     reserveInventory: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/inventory/reservations", {
         method: "POST",
@@ -1939,6 +2072,16 @@ export function createLocalSyncServerClient(
         sessionToken,
       }) as Promise<LocalSyncScryDexSearchResult>
     },
+    identifyScryDexCardImage: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/scrydex/cards/identify-image", {
+        method: "POST",
+        sessionToken,
+        body: {
+          image_data_url: input.imageDataUrl,
+          game: input.game ?? "pokemon",
+          raw_or_graded: input.rawOrGraded ?? "raw",
+        },
+      }) as Promise<LocalSyncScryDexVisionScanResult>,
     lookupGradedTradeInValuation: (sessionToken, input) => {
       const params = new URLSearchParams({
         provider_card_id: input.providerCardId ?? "",

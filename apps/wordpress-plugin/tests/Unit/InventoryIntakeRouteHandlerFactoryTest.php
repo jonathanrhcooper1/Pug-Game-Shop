@@ -6,6 +6,10 @@
  */
 
 namespace {
+	if ( ! defined( 'ARRAY_A' ) ) {
+		define( 'ARRAY_A', 'ARRAY_A' );
+	}
+
 	if ( ! class_exists( 'wpdb' ) ) {
 		class wpdb {
 			public string $prefix             = 'wp_';
@@ -113,6 +117,7 @@ namespace {
 			public string $last_output_type   = '';
 			public array $prepare_queries     = array();
 			public array $queries             = array();
+			public array|false $result_set    = array();
 			private int|false $query_result   = 1;
 			private array $query_results      = array();
 			private ?array $row               = null;
@@ -159,6 +164,16 @@ namespace {
 				return $this->row;
 			}
 
+			/**
+			 * @return list<array<string, mixed>>|false
+			 */
+			public function get_results( string $query, string $output_type ): array|false {
+				$this->last_query       = $query;
+				$this->last_output_type = $output_type;
+
+				return $this->result_set;
+			}
+
 			public function query( string $query ): int|false {
 				++$this->query_count;
 				$this->last_query = $query;
@@ -186,6 +201,7 @@ namespace TCGStorePlatform\Tests\Unit {
 	final class InventoryIntakeRouteHandlerFactoryTest extends TestCase {
 		public function test_handler_creates_inventory_item_through_staged_repository(): void {
 			$database = new \InventoryIntakeRouteHandlerWpdb();
+			$GLOBALS['wpdb'] = $database;
 			$handler  = new InventoryIntakeRouteHandler(
 				new InventoryIntakeRepository( $database ),
 				null,
@@ -204,25 +220,35 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'PCS-000001', $response['data']['barcode'] );
 			$this->assert_true( $response['data']['price_change_log_persisted'] );
 			$this->assert_same( 1, $response['data']['price_change_log_row_count'] );
-			$this->assert_same( 3, $database->prepare_count );
+			$this->assert_same( 4, $database->prepare_count );
 			$this->assert_same( 1, $database->get_row_count );
 			$this->assert_same( 4, $database->query_count );
 			$this->assert_contains( 'INSERT INTO `wp_tcg_inventory_items`', $database->prepare_queries[1] );
 			$this->assert_contains( 'INSERT INTO `wp_tcg_price_change_log`', $database->prepare_queries[2] );
-			$this->assert_same( 'COMMIT', $database->last_query );
+			$this->assert_same( 'COMMIT', $database->queries[3] );
+			$this->assert_contains( 'SELECT * FROM `wp_tcg_inventory_items`', $database->last_query );
+			$this->assert_same( 'ARRAY_A', $database->last_output_type );
 			$this->assert_false( $response['meta']['route_connected_writes_deferred'] );
 			$this->assert_true( $response['meta']['route_registration_deferred'] );
 			$this->assert_true( $response['meta']['woocommerce_projection_deferred'] );
 			$this->assert_false( $response['meta']['external_projection_planning_deferred'] );
 			$this->assert_same( 'inventory_external_projection_plans', $response['meta']['projections']['action'] );
 			$this->assert_same( 'planned', $response['meta']['projections']['status'] );
+			$this->assert_true( $response['meta']['projections']['grouped_product'] );
+			$this->assert_same( 1, $response['meta']['projections']['group_row_count'] );
 			$this->assert_same( 1, $response['meta']['projections']['operation_count'] );
 			$this->assert_true( $response['meta']['projections']['network_request_deferred'] );
 			$this->assert_same( 'woocommerce', $response['meta']['projections']['woocommerce_product_projection']['provider'] );
 			$this->assert_same( 'ready', $response['meta']['projections']['woocommerce_product_projection']['status'] );
 			$this->assert_same( true, $response['meta']['projections']['woocommerce_product_projection']['woocommerce_write_deferred'] );
 			$this->assert_same( 'create_product', $response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['operation'] );
-			$this->assert_same( 'PCS-PIKA-000001', $response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['product']['sku'] );
+			$this->assert_same(
+				'grouped_card',
+				$this->meta_value(
+					'_tcg_inventory_product_mode',
+					$response['meta']['projections']['woocommerce_product_projection']['product_operations'][0]['product']['meta_data']
+				)
+			);
 			$this->assert_true( $response['meta']['projections']['woocommerce_product_write_request_deferred'] );
 			$this->assert_same( 'woocommerce_product_write_request_plan', $response['meta']['projections']['woocommerce_product_write_request']['action'] );
 			$this->assert_same( 'ready', $response['meta']['projections']['woocommerce_product_write_request']['status'] );
@@ -231,8 +257,11 @@ namespace TCGStorePlatform\Tests\Unit {
 				$response['meta']['projections']['woocommerce_product_write_request']['request_plan']['requests'][0]['path']
 			);
 			$this->assert_same(
-				'PCS-PIKA-000001',
-				$response['meta']['projections']['woocommerce_product_write_request']['request_plan']['requests'][0]['body']['sku']
+				'grouped_card',
+				$this->meta_value(
+					'_tcg_inventory_product_mode',
+					$response['meta']['projections']['woocommerce_product_write_request']['request_plan']['requests'][0]['body']['meta_data']
+				)
 			);
 			$this->assert_true( $response['meta']['projections']['woocommerce_product_write_request']['woocommerce_write_deferred'] );
 			$this->assert_same( 'square', $response['meta']['projections']['square_inventory_projection']['provider'] );
@@ -374,6 +403,20 @@ namespace TCGStorePlatform\Tests\Unit {
 			);
 
 			return new OfflineRestRequestData( $body, array(), array(), $headers );
+		}
+
+		/**
+		 * @param list<array{key:string,value:string}> $meta_data Product metadata rows.
+		 */
+		private function meta_value( string $key, array $meta_data ): string {
+			foreach ( $meta_data as $meta_row ) {
+				if ( $key === $meta_row['key'] ) {
+					return $meta_row['value'];
+				}
+			}
+
+			$this->assert_true( false, 'Expected product metadata key ' . $key . '.' );
+			return '';
 		}
 
 		/**

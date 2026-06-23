@@ -41,6 +41,9 @@ assert.equal(contract.safety.square_payment_capture_supported, false)
 assert.equal(contract.safety.square_pos_inventory_pull_plan_manager_only, true)
 assert.equal(contract.safety.square_pos_inventory_count_reconciliation_manager_only, true)
 assert.equal(contract.safety.square_pos_inventory_count_reconciliation_mutates_inventory, false)
+assert.equal(contract.safety.square_pos_sales_report_pull_manager_only, true)
+assert.equal(contract.safety.square_pos_sales_report_pull_creates_woocommerce_orders, false)
+assert.equal(contract.safety.square_pos_sales_report_pull_mutates_inventory, false)
 assert.equal(contract.safety.square_pos_sale_finalize_captures_payment, false)
 assert.equal(contract.safety.square_pos_sale_finalize_marks_exact_inventory_sold, true)
 assert.equal(contract.safety.live_credentials_blocked_in_local_server, true)
@@ -53,12 +56,15 @@ assert.equal(contract.safety.lan_discovery_returns_credentials, false)
 assert.equal(contract.safety.manual_middleman_url_fallback_supported, true)
 assert.equal(contract.safety.scrydex_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, true)
+assert.equal(contract.safety.scrydex_vision_credentials_synced_to_clients, false)
+assert.equal(contract.safety.scrydex_vision_uses_lan_server_credentials_only, true)
 assert.equal(contract.safety.graded_pricing_credentials_synced_to_clients, false)
 assert.equal(contract.safety.graded_pricing_secondary_to_scrydex, true)
 assert.equal(contract.setup_status.action, "local_sync_server_setup_status")
 assert.equal(contract.setup_status.website_url, "https://j84.285.myftpupload.com/")
 assert.equal(contract.setup_status.wordpress_rest_base, "https://j84.285.myftpupload.com/wp-json/tcg-store/v1")
 assert.equal(contract.setup_status.credentials_synced_to_client, false)
+assert.equal(contract.setup_status.scrydex_vision_configured, false)
 assert.equal(contract.setup_status.graded_pricing_provider_configured, false)
 assert.equal(contract.setup_status.graded_pricing_primary_source, "scrydex_reference_cache")
 assert.equal(contract.setup_status.graded_pricing_credentials_synced_to_client, false)
@@ -80,9 +86,11 @@ assert.ok(contract.responsibilities.includes("bind_clients_to_configured_lan_ser
 assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordpress_only"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_lookup_from_local_cache_before_wordpress_proxy"))
+assert.ok(contract.responsibilities.includes("serve_scrydex_vision_live_card_scan_without_client_credentials"))
 assert.ok(contract.responsibilities.includes("serve_secondary_graded_price_comps_only_after_scrydex_reference_lookup"))
 assert.ok(contract.responsibilities.includes("serve_square_pos_barcode_inventory_plan_without_square_payment_capture"))
 assert.ok(contract.responsibilities.includes("compare_square_pos_inventory_counts_without_square_payment_capture"))
+assert.ok(contract.responsibilities.includes("pull_square_pos_sales_reports_without_creating_woocommerce_orders"))
 assert.ok(contract.responsibilities.includes("finalize_exact_square_pos_sales_by_scanned_inventory"))
 assert.ok(contract.responsibilities.includes("serve_cached_staff_pin_and_access_policy"))
 assert.ok(contract.responsibilities.includes("store_pin_credentials_as_hashes_not_cleartext"))
@@ -101,9 +109,11 @@ for (const endpoint of [
   "PATCH /users/:user_id/access",
   "GET /inventory/search",
   "GET /scrydex/cards/search",
+  "POST /scrydex/cards/identify-image",
   "GET /trade-ins/graded-valuation",
   "POST /pos/square/inventory-pull-plan",
   "POST /pos/square/inventory-counts/reconcile",
+  "POST /pos/square/reports/sales/pull",
   "POST /pos/square/sales/finalize",
   "GET /pos/square/terminal/status",
   "POST /pos/square/terminal/device-code",

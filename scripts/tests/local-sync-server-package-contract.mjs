@@ -41,7 +41,7 @@ execFileSync("node", ["scripts/package-local-sync-server.mjs"], {
   stdio: "inherit",
 })
 
-const zipPath = resolve(root, "dist/pug-local-sync-middleman-server.zip")
+const zipPath = resolve(root, "dist/pug-lan-server.zip")
 const entries = execFileSync("tar", ["-tf", zipPath], {
   cwd: root,
   encoding: "utf8",
@@ -50,10 +50,11 @@ const entries = execFileSync("tar", ["-tf", zipPath], {
   .filter(Boolean)
 
 assert.ok(statSync(zipPath).size > 10_000)
-assert.ok(entries.includes("./src/cli.mjs"))
-assert.ok(entries.includes("./src/localSyncHttpServer.mjs"))
-assert.ok(entries.includes("./src/localSyncDiscovery.mjs"))
-assert.ok(entries.includes("./config/windows-service.manifest.json"))
+assert.ok(entries.includes("./apps/local-sync-server/src/cli.mjs"))
+assert.ok(entries.includes("./apps/local-sync-server/src/localSyncHttpServer.mjs"))
+assert.ok(entries.includes("./apps/local-sync-server/src/localSyncDiscovery.mjs"))
+assert.ok(entries.includes("./apps/local-sync-server/config/windows-service.manifest.json"))
+assert.ok(entries.includes("./packages/api-client/src/squareInventoryAdapter.mjs"))
 
 for (const forbidden of [
   ".env",
@@ -65,7 +66,7 @@ for (const forbidden of [
   "node_modules/",
 ]) {
   assert.equal(
-    entries.some((entry) => entry === `./${forbidden}` || entry.startsWith(`./${forbidden}`)),
+    entries.some((entry) => entry.endsWith(`/${forbidden}`) || entry.includes(`/${forbidden}/`)),
     false,
     `Package included forbidden entry: ${forbidden}`,
   )

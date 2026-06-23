@@ -46,8 +46,6 @@ maybeRunWp(['theme', 'activate', 'pug-arcade-commerce-v2']);
 
 for (const page of [
   ['Shop Singles', 'shop-singles', '[tcg_inventory_search limit="24"]'],
-  ['Shop Sealed Products', 'shop-sealed-products', '[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]'],
-  ['Shop Accessories', 'shop-accessories', '[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]'],
   ['Events', 'events'],
   ['Kiosk', 'kiosk'],
   ['Customer Credit', 'customer-credit']

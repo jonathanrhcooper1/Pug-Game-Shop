@@ -12,6 +12,9 @@ instead of each keeping an isolated local authority.
 
 - Requires Node 22.13+ or the current Node 24 line so `node:sqlite` is
   available without an extra native npm dependency.
+- The packaged LAN server does not ship an existing SQLite database and does
+  not install SQLite separately. It uses Node's built-in `node:sqlite` module
+  and creates or reuses the configured database path on startup.
 - `npm start` starts the local HTTP server on `127.0.0.1:8787` by default.
 - Configuration is read from process env plus optional ignored local files:
   repository `.env.local-sync`, app `.env.local`, then repository `.env.local`.
@@ -23,6 +26,9 @@ instead of each keeping an isolated local authority.
 - Set `PUG_WORDPRESS_USERNAME` and `PUG_WORDPRESS_APP_PASSWORD` to use a
   WordPress Application Password server-side. Credentials are never returned to
   clients.
+- Set `SCRYDEX_VISION_API_KEY` and `SCRYDEX_VISION_TEAM_ID` to enable the
+  employee app live card scanner. The app sends a cropped camera frame to the
+  LAN server; ScryDex keys stay server-side and are never returned to clients.
 - WordPress writes are disabled unless `LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true`.
 - Set `PUG_WORDPRESS_DEFAULT_LOCATION_ID` to an active WordPress inventory
   location when accepted local intake should become immediately available
@@ -35,6 +41,12 @@ instead of each keeping an isolated local authority.
 - Set `PUG_SQUARE_ENVIRONMENT=sandbox` and `PUG_SQUARE_LOCATION_ID` to shape
   the manager-only Square POS barcode/SKU inventory-readiness plan. This
   diagnostic never calls Square and never captures payments.
+- With `PUG_SQUARE_ACCESS_TOKEN` configured, managers can pull read-only Square
+  POS sales/payment report snapshots into `/reports/sales` and
+  `/reports/square_reconciliation`. These rows stay Square/POS report data and
+  do not create WooCommerce orders or local sold inventory records.
+- `PUG_SQUARE_REPORT_LOOKBACK_DAYS` controls the default sales report window
+  when a manager pull omits explicit dates.
 - Optional Square Terminal reader checkout runs only from the LAN server. Set
   `PUG_SQUARE_ACCESS_TOKEN`, `PUG_SQUARE_LOCATION_ID`, and
   `PUG_SQUARE_TERMINAL_DEVICE_ID` in ignored local env to send a checkout to a

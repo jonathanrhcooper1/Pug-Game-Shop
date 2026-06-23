@@ -1,5 +1,536 @@
 # Revision Log
 
+## 2026-06-23 - Small-Screen App Fix And Three-App Release Package
+
+### What Changed
+
+- Fixed the employee app Inventory page breakpoint so compact desktop/small
+  laptop widths stack Inventory and Selected Card Detail instead of preserving
+  the two-column desktop layout.
+- Removed the fake in-app minimize/maximize/close controls and switched the
+  packaged Tauri window contract to fullscreen, decorationless operation.
+- Added Store and Kiosk Windows build profiles that emit separate `Pug Store
+  App` and `Pug Kiosk App` NSIS installers.
+- Updated the production release package to include exactly three installable
+  handoff folders: `Pug Store App`, `LAN Server + Pug Store App`, and `Kiosk
+  Page`.
+- Added hidden/startup helper scripts for the LAN server package.
+- Fixed the LAN server ZIP layout so `apps/local-sync-server` ships with the
+  shared `packages/api-client` source it imports at runtime.
+- Updated the production active-sync inventory smoke verifier so a verified
+  WordPress inventory search match counts as proof of a successful push when
+  the accepted result does not echo the original local entity id.
+
+### Why
+
+The live app was visually broken at smaller screen widths, the packaged app
+still had decorative window buttons that were not functional, and the requested
+release shape is three concrete app/server/kiosk deliverables. The active-sync
+verifier also needed to reflect the real production proof path: the hidden test
+row reached WordPress and was searchable even when the local accepted-result
+echo was incomplete.
+
+### Files Affected
+
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/main.tsx`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/capabilities/default.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `scripts/run-offline-app-windows-build.mjs`
+- `scripts/package-local-sync-server.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `scripts/generate-release-documentation.mjs`
+- `release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md`
+- `release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md`
+- `docs/CHANGELOG.md`
+- `docs/RELEASE_NOTES.md`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:scrydex-reference-search`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd run package:production-release`
+- `npm.cmd run production:verify-active-syncs`
+- In-app browser visual check at `http://127.0.0.1:1420/` with a 1050x768
+  compact viewport.
+
+### Rollback Notes
+
+- Revert the app CSS breakpoint if the Inventory detail panel should return to
+  desktop two-column layout at compact widths.
+- Revert the Tauri config/build profile changes if installers should return to
+  decorated/resizable windows.
+- Revert `scripts/package-local-sync-server.mjs` if the LAN server package is
+  intentionally built without shared package source.
+- Revert the production inventory smoke verifier change if local accepted-result
+  echo is made mandatory again.
+
+## 2026-06-23 - Live ScryDex Vision Card Scanner
+
+### What Changed
+
+- Added a LAN-server ScryDex Vision wrapper for live card image identification.
+- Added `POST /scrydex/cards/identify-image` to the local sync server.
+- Added `identifyScryDexCardImage()` to the offline app local sync client.
+- Added Scan Card buttons to the Inventory ScryDex lookup panel and Trade-In
+  card search panel.
+- Added a shared live camera modal with a card-shaped guide, automatic centered
+  card crop, JPEG frame cleanup, and result handoff back into the normal
+  ScryDex/reference catalog selection flow.
+- Added ScryDex Vision env placeholders to local sync templates.
+
+### Why
+
+Staff need a fast live scanner similar to TCGplayer scanning so inventory and
+trade-in intake can identify cards without typing. The scanner still requires
+staff confirmation against the normal catalog results before adding inventory or
+trade-in lines, so camera recognition cannot silently mutate inventory.
+
+### Files Affected
+
+- `apps/local-sync-server/src/scrydexVisionIdentifier.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `.env.example`
+- `release-package/env/local-sync.env.example`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/local-sync-server run test:runtime`
+- `npm --prefix apps/offline-app run typecheck`
+- `npm --prefix apps/offline-app run build`
+- In-app browser visual check at `http://127.0.0.1:1420/`
+
+### Rollback Notes
+
+- Remove or disable the Scan Card buttons in the offline app if staff should
+  return to typed lookup only.
+- Clear `SCRYDEX_VISION_API_KEY` and `SCRYDEX_VISION_TEAM_ID` from the LAN
+  server environment to block Vision requests without affecting typed ScryDex
+  catalog search.
+- Revert the `/scrydex/cards/identify-image` route if the LAN server should not
+  accept camera-frame identification requests.
+
+## 2026-06-23 - Production ScryDex Webhook Secret Configuration
+
+### What Changed
+
+- Added webhook-only support to the production ScryDex configuration helper.
+- Enabled the live ScryDex webhook receiver on production and installed the
+  signing secret without printing the secret value.
+- Verified unsigned webhook delivery is rejected and correctly signed delivery
+  reaches payload validation.
+- Updated webhook-triggered expansion refreshes to run all available ScryDex
+  pages for the notified expansion rather than stopping at the daily sync page
+  limit.
+
+### Why
+
+ScryDex now requires a webhook destination and signing secret so price/catalog
+change notifications can trigger targeted syncs instead of relying only on
+polling. The webhook path also needs full expansion pagination so a price
+notification cannot leave later pages stale.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexWebhookRefreshRunner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexWebhookRefreshRunnerSourceTest.php`
+- `scripts/production-configure-scrydex.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node scripts/production-configure-scrydex.mjs --webhook-only`
+- Signed and unsigned production webhook smoke requests.
+- `php -l apps/wordpress-plugin/src/ScryDex/ScryDexWebhookRefreshRunner.php`
+- `php -l apps/wordpress-plugin/tests/Unit/ScryDexWebhookRefreshRunnerSourceTest.php`
+- `php apps/wordpress-plugin/tests/run.php --filter ScryDexWebhookRefreshRunnerSourceTest`
+
+### Rollback Notes
+
+- Disable the ScryDex webhook receiver in the WordPress plugin settings or
+  clear the webhook secret if ScryDex deliveries should stop being accepted.
+- Revert the webhook runner max-pages override if webhook-triggered updates
+  should again be capped to the scheduled sync page limit.
+
+## 2026-06-22 - Woo Stock Reconciliation And Trade-In Line Reset
+
+### What Changed
+
+- Added WooCommerce grouped-card stock hooks that reconcile Woo/Square stock
+  reductions back into the custom `tcg_inventory_items` table.
+- When the official Square/WooCommerce flow lowers a grouped product's stock,
+  the plugin now marks the matching extra available custom inventory rows sold,
+  stamps `date_sold`, updates `last_external_sync_at`, and increments
+  `row_version` so the local app can pull the corrected status.
+- Updated the employee trade-in screen so Add Card to Offer clears the selected
+  card, search results, set filter, variant selection, and manual offer value
+  before the next scan.
+- Gave each trade-in offer line unique percentage, payout, and manual-value
+  field IDs/names so one line's cash/credit selector cannot bleed into another
+  line.
+
+### Why
+
+The Square connector test card showed as sold out in WooCommerce/Square but
+still appeared as one available copy in the app because the custom inventory row
+remained `available`. Trade-in line controls also needed to behave like a POS
+cart, where each added line is independent and the next item starts cleanly.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/local-sync-server/src/wordpressInventoryPull.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `php -l apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `php -l apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `php tests/run.php` from `apps/wordpress-plugin` passed the grouped inventory
+  hook tests but still reports six existing offline/POS readiness-policy
+  failures outside this change.
+- `node apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `node apps/local-sync-server/tests/square-inventory-counts-puller.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Revert the WooCommerce stock hooks if Woo/Square stock updates should stop
+  updating custom inventory rows.
+- Revert the trade-in UI reset if staff should keep the previous selected card
+  after adding it to an offer.
+
+## 2026-06-22 - Live Square Inventory Polling And Mobile/Kiosk Holds
+
+### What Changed
+
+- Added a Square inventory count puller for the LAN sync server using Square's
+  batch inventory counts API.
+- Added manager/manual and background reconciliation paths that compare mapped
+  Square variation counts with local POS-visible inventory, mark missing local
+  copies sold, and push sold states back to WordPress.
+- Expanded the reconciliation test to cover partial count drops, proving a
+  Square count change such as 5 local copies to 3 Square copies marks two local
+  rows sold instead of only acting when Square reaches zero.
+- Added Square location auto-discovery so inventory count polling can use the
+  active Square location when `PUG_SQUARE_LOCATION_ID` is blank and only the
+  access token is configured.
+- Renamed staff-facing Checkout text in the employee app to Sale Completion so
+  the app records local credit, sale history, and Square receipts without
+  presenting itself as the primary POS/payment system.
+- Simplified selected-inventory label printing so one Print Barcode Label click
+  sends the selected card directly to DYMO, falling back to the browser print
+  window only when direct DYMO printing is unavailable.
+- Updated the employee-app label workflow to try DYMO Connect on the current
+  workstation first, then the authenticated LAN middleman printer route, and
+  only open the browser print fallback if both direct routes are unavailable.
+- Restarted the local sync server so the 15-minute hold setting is active.
+- Changed card holds from 30 minutes to 15 minutes in local inventory
+  reservations, WooCommerce cart reservations, and kiosk pickup orders.
+- Fixed mobile WooCommerce card product layout so the card image renders in its
+  own top container before product text.
+- Fixed kiosk scrolling by letting the kiosk shell scroll and constraining the
+  customer gallery/selected-card panes on smaller screens.
+- Added Square inventory polling placeholders to committed environment
+  templates.
+
+### Why
+
+Square POS sales were only updating WooCommerce after a manual Square sync, and
+the local app still showed sold cards as available. The LAN server now has a
+read-only Square count reconciliation path that can close that gap once the
+local Square access token and location are configured.
+
+### Files Affected
+
+- `apps/local-sync-server/src/squareInventoryCountsPuller.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/square-inventory-counts-puller.mjs`
+- `apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/.env.example`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/App.tsx`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/Api/V1/KioskOrderController.php`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/Unit/KioskOrderRouteContractTest.php`
+- `.env.example`
+- `release-package/env/local-sync.env.example`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/square-inventory-counts-puller.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/local-sync-server/tests/local-sync-server-hold-expiry.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/squareInventoryCountsPuller.mjs`
+- Browser check: local app loaded at `http://127.0.0.1:1420/`; kiosk mode
+  loaded at `http://127.0.0.1:1420/?mode=kiosk`; mobile kiosk shell now
+  reports scrollable shell and constrained gallery height.
+
+### Known Issues
+
+- The restarted local server currently reports
+  `square_inventory_count_poller_connected: false` because the ignored local
+  environment does not yet include `PUG_SQUARE_ACCESS_TOKEN` and
+  `PUG_SQUARE_LOCATION_ID`.
+- `php apps/wordpress-plugin/tests/run.php --filter ...` ran the full PHP suite
+  instead of filtering and reported six pre-existing offline/fee readiness
+  failures outside this change. The hold-related tests passed in that run.
+
+### Rollback Notes
+
+- Set `PUG_SQUARE_INVENTORY_POLL_DISABLED=true` and restart the LAN server to
+  disable live Square count polling without reverting code.
+- Revert the Square puller/server changes if Square count reconciliation should
+  return to manual-only checks.
+- Revert the hold constants if the business chooses to return cart/kiosk holds
+  to 30 minutes.
+
+## 2026-06-22 - Local Inventory Dedupe And Square Connector Verification
+
+### What Changed
+
+- Fixed local website-inventory pull reconciliation so accepted local rows keep
+  their local public ID while storing the WordPress public ID separately.
+- Added duplicate-shadow cleanup during WordPress inventory pulls so the local
+  cache does not keep both the original local row and the website copy for the
+  same physical barcode.
+- Cleaned the live local inventory cache after backing it up:
+  `apps/local-sync-server/store-sync.before-dedupe-20260622-193333.sqlite`.
+- Verified the production connector path for the Square test card:
+  local inventory, production WordPress inventory, and WooCommerce product
+  projection.
+
+### Why
+
+The strict Square catalog import pushed accepted rows to WordPress correctly,
+but pulling those website rows back into the local cache created duplicate
+barcode shadows. That made the Square POS readiness check report thousands of
+duplicate scan identities even though the real inventory was valid.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The live cleanup was a local SQLite data repair only, with a backup
+  created before deleting duplicate shadow rows.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- Live local sync status check confirmed 2,106 real inventory rows, zero queue
+  backlog, and zero duplicate barcode groups after cleanup.
+
+### Rollback Notes
+
+- Restore
+  `apps/local-sync-server/store-sync.before-dedupe-20260622-193333.sqlite` over
+  the active local sync database if the live local inventory cleanup needs to be
+  reversed.
+- Revert the WordPress inventory pull merge change if local rows should again
+  be replaced by website cache rows, though that would reintroduce duplicate
+  barcode risk.
+
+## 2026-06-22 - DYMO Direct Label Printing And Strict CSV Import Completion
+
+### What Changed
+
+- Added direct DYMO Connect printing behind the local sync server so employee
+  app label buttons can print to the DYMO LabelWriter 550 Turbo without the
+  browser print dialog.
+- Added authenticated LAN routes for DYMO printer discovery and card inventory
+  label printing.
+- Updated employee app label printing to try direct DYMO printing first and use
+  the existing browser print popup only as a fallback.
+- Updated the local sync server contract and app client contract to include the
+  DYMO routes.
+- Completed the strict Square catalog import from column AH using the current
+  CSV file: 1,471 card rows, 2,105 physical units, zero failed rows, and zero
+  LAN queue backlog.
+
+### Why
+
+Browser printing did not fit the DYMO 30336 1 x 2 1/8 inch labels cleanly, and
+the store needs barcodes that can be scanned by Square and the local app. Direct
+DYMO Connect printing lets the local server target the exact 30336 roll and use
+Code 128 barcodes without exposing printer control to unauthenticated clients.
+
+### Files Affected
+
+- `apps/local-sync-server/src/dymoLabelPrinter.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/dymoLabelPrinter.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncServerContract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- Authenticated live LAN route test for `/labels/dymo/printers`.
+- Authenticated live direct-print test for one 30336 DYMO label using
+  `PUG-TEST-001`.
+
+### Rollback Notes
+
+- Revert the DYMO helper, server routes, app client methods, and app print
+  handler to return to browser print-dialog-only behavior.
+- If the strict CSV import needs to be reversed, restore the local SQLite
+  backup from before import or run the production/local cleanup tool before a
+  corrected re-import.
+
+## 2026-06-22 - Square Catalog Live Inventory Import
+
+### What Changed
+
+- Added a repeatable local Square catalog importer that can dry-run or execute
+  against the LAN sync server `/inventory/intake` route.
+- Imported the 2026-06-22 Square catalog using column AH, `Current Quantity The
+  PUG`, as the quantity source.
+- Included MTG Singles, Pokemon, One Piece, and graded Pokemon card rows while
+  skipping One Piece supplies/events.
+- Preserved Square item IDs and variation/SKU IDs on every imported inventory
+  unit for later POS reconciliation.
+- Reconciled the two duplicate-key WordPress retry leftovers by pulling their
+  canonical WordPress inventory rows back into the local cache and clearing the
+  exact pending operations.
+
+### Why
+
+The live inventory import needs to use the store's Square export as the source
+file while keeping the website as the inventory authority and preserving enough
+Square metadata for barcode/POS workflows.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `package.json`
+- `scripts/README.md`
+- `scripts/import-square-catalog-local-inventory.mjs`
+- `scripts/tests/square-local-inventory-import-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `scripts/tests/square-local-inventory-import-contract.mjs`.
+- Dry-run import summary: `dist/imports/square-local-inventory-import-2026-06-22-dry-run.json`.
+- Executed import summaries:
+  `dist/imports/square-local-inventory-import-2026-06-22-executed.json` and
+  `dist/imports/square-local-inventory-import-2026-06-22-resume-line-1620.json`.
+- Verified local database totals after import: 3,278 available inventory units,
+  3,278 rows with Square IDs, and zero pending LAN queue operations.
+
+### Rollback Notes
+
+- Restore the local SQLite backup from before the import if the live catalog
+  load needs to be reversed locally.
+- Run the production inventory cleanup script before re-importing if the
+  website inventory needs to be reset and loaded again from a corrected Square
+  catalog export.
+
 ## 2026-06-22 - Employee Audio, Event Check-In Handoff, And Singles Import Prep
 
 ### What Changed

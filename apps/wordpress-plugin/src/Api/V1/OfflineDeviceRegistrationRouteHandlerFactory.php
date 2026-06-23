@@ -95,6 +95,10 @@ final class OfflineDeviceRegistrationRouteHandlerFactory {
 			if ( is_callable( $this->database_provider ) ) {
 				$database = ( $this->database_provider )();
 			} else {
+				if ( ! defined( 'ABSPATH' ) ) {
+					return null;
+				}
+
 				global $wpdb;
 				$database = $wpdb ?? null;
 			}

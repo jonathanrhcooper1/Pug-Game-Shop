@@ -16,8 +16,6 @@ if (!defined('ABSPATH')) {
         <div>
             <h2>Shop</h2>
             <a href="<?php echo esc_url(pug_arcade_page_url('shop-singles')); ?>">Singles</a>
-            <a href="<?php echo esc_url(pug_arcade_page_url('shop-sealed-products')); ?>">Sealed products</a>
-            <a href="<?php echo esc_url(pug_arcade_page_url('shop-accessories')); ?>">Accessories</a>
             <a href="<?php echo esc_url(pug_arcade_shop_url()); ?>">All products</a>
         </div>
         <div>

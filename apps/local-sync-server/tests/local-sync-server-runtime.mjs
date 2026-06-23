@@ -874,6 +874,8 @@ try {
   assert.equal(acceptedIntakeInventory.items[0].online_visibility, "hidden")
   assert.equal(acceptedIntakeInventory.items[0].kiosk_visibility, "visible")
   assert.equal(acceptedIntakeInventory.items[0].pos_visibility, "staff_only")
+  const acceptedMewtwoLocalPublicId = acceptedIntakeInventory.items[0].public_id
+  const acceptedMewtwoWordPressPublicId = acceptedIntakeInventory.items[0].wordpress_public_id
 
   const pendingLocalOnlyIntake = await fetchJson(`${baseUrl}/inventory/intake`, {
     method: "POST",
@@ -882,7 +884,7 @@ try {
       card_name: "Local Only Pull Guard",
       set_name: "Preview Set",
       condition: "NM",
-      barcode: "PUG-PULL-GUARD",
+      barcode: "PUG-PULL-GUARD-REMOTE",
       price_minor_units: 1200,
       location: "Intake Bin",
       quantity: 1,
@@ -923,6 +925,27 @@ try {
       front_image_url: "https://images.pokemontcg.io/base1/4_hires.png",
     },
     {
+      public_id: acceptedMewtwoWordPressPublicId,
+      row_version: 10,
+      provider_card_id: "scrydex-pokemon-mewtwo",
+      game: "pokemon",
+      card_name: "Mewtwo",
+      set_name: "Smoke Test",
+      set_code: "SMOKE",
+      card_number: "150",
+      printed_number: "150/165",
+      condition_code: "NM",
+      barcode: "PUG-SMOKE-MEWTWO-01",
+      sale_price: "42.00",
+      sale_currency: "USD",
+      status: "available",
+      location_id: 7,
+      square_catalog_item_id: "SQUARE-MEWTWO-ITEM",
+      square_catalog_variation_id: "SQUARE-MEWTWO-VAR",
+      external_sync_state: "square_synced",
+      front_image_url: "https://images.example.test/mewtwo-remote.png",
+    },
+    {
       public_id: pendingLocalOnlyIntake.item.public_id,
       row_version: 9,
       provider_card_id: "scrydex-pokemon-pull-guard",
@@ -950,9 +973,10 @@ try {
     },
   })
   assert.equal(pulledInventory.status, "ok")
-  assert.equal(pulledInventory.pulled_count, 2)
-  assert.equal(pulledInventory.applied_count, 1)
+  assert.equal(pulledInventory.pulled_count, 3)
+  assert.equal(pulledInventory.applied_count, 2)
   assert.equal(pulledInventory.inserted_count, 1)
+  assert.equal(pulledInventory.updated_count, 1)
   assert.equal(pulledInventory.ignored_count, 1)
   assert.equal(pulledInventory.wordpress_pull_connected, true)
   assert.equal(pulledInventory.wordpress_inventory_pull_connected, true)
@@ -972,6 +996,14 @@ try {
   assert.equal(pulledCharizardInventory.items[0].square_catalog_item_id, "SQUARE-ITEM-42")
   assert.equal(pulledCharizardInventory.items[0].square_catalog_variation_id, "SQUARE-VARIATION-42")
   assert.equal(pulledCharizardInventory.items[0].external_sync_state, "square_synced")
+
+  const pulledAcceptedMewtwo = await fetchJson(`${baseUrl}/inventory/search?q=PUG-SMOKE-MEWTWO-01`)
+  assert.equal(pulledAcceptedMewtwo.status, "ok")
+  assert.equal(pulledAcceptedMewtwo.items.length, 1)
+  assert.equal(pulledAcceptedMewtwo.items[0].public_id, acceptedMewtwoLocalPublicId)
+  assert.equal(pulledAcceptedMewtwo.items[0].wordpress_public_id, acceptedMewtwoWordPressPublicId)
+  assert.equal(pulledAcceptedMewtwo.items[0].source, "accepted")
+  assert.equal(pulledAcceptedMewtwo.items[0].square_catalog_variation_id, "SQUARE-MEWTWO-VAR")
 
   wordpressCatalogExportRows = [
     {
@@ -1083,19 +1115,20 @@ try {
   assert.equal(squarePlan.action, "square_pos_inventory_pull_plan")
   assert.equal(squarePlan.planner_status, "conflict")
   assert.equal(squarePlan.requires_manager_review, true)
-  assert.equal(squarePlan.mapped_count, 1)
+  assert.equal(squarePlan.mapped_count, 2)
   assert.ok(squarePlan.unresolved_count > 0)
   assert.equal(squarePlan.request_plan.path, "/v2/inventory/counts/batch-retrieve")
-  assert.deepEqual(squarePlan.request_plan.body.catalog_object_ids, ["SQUARE-VARIATION-42"])
+  assert.deepEqual(squarePlan.request_plan.body.catalog_object_ids.sort(), ["SQUARE-MEWTWO-VAR", "SQUARE-VARIATION-42"])
   assert.deepEqual(squarePlan.request_plan.body.location_ids, ["L-SANDBOX-1"])
-  assert.equal(squarePlan.mapping_summary.ready_for_square_pull_count, 1)
-  assert.equal(squarePlan.mapping_summary.ready_available_count, 1)
+  assert.equal(squarePlan.mapping_summary.ready_for_square_pull_count, 2)
+  assert.equal(squarePlan.mapping_summary.ready_available_count, 2)
   assert.ok(squarePlan.mapping_summary.review_count > 0)
   assert.equal(squarePlan.mapping_summary.square_inventory_authority, "tcg_store_platform")
   assert.equal(squarePlan.mapping_summary.square_counts_used_for, "pos_reconciliation_and_exception_detection")
-  assert.equal(squarePlan.square_pull_feed[0].card_name, "Charizard")
-  assert.equal(squarePlan.square_pull_feed[0].barcode, "PUG-WP-CHARIZARD")
-  assert.equal(squarePlan.square_pull_feed[0].expected_serialized_quantity, "1")
+  const squareFeedByBarcode = Object.fromEntries(squarePlan.square_pull_feed.map((row) => [row.barcode, row]))
+  assert.equal(squareFeedByBarcode["PUG-WP-CHARIZARD"].card_name, "Charizard")
+  assert.equal(squareFeedByBarcode["PUG-WP-CHARIZARD"].expected_serialized_quantity, "1")
+  assert.equal(squareFeedByBarcode["PUG-SMOKE-MEWTWO-01"].card_name, "Mewtwo")
   assert.ok(
     squarePlan.review_items.some((item) =>
       item.errors.includes("square_catalog_variation_id_required_for_inventory_pull"),
@@ -1135,6 +1168,12 @@ try {
           state: "IN_STOCK",
         },
         {
+          catalog_object_id: "SQUARE-MEWTWO-VAR",
+          location_id: "L-SANDBOX-1",
+          quantity: "1",
+          state: "IN_STOCK",
+        },
+        {
           catalog_object_id: "SQUARE-UNEXPECTED-99",
           location_id: "L-SANDBOX-1",
           quantity: "1",
@@ -1150,10 +1189,12 @@ try {
   assert.equal(squareCountReconciliation.summary.mismatched_count, 1)
   assert.equal(squareCountReconciliation.summary.unexpected_square_count, 1)
   assert.ok(squareCountReconciliation.summary.unresolved_mapping_count > 0)
-  assert.equal(squareCountReconciliation.comparisons[0].card_name, "Charizard")
-  assert.equal(squareCountReconciliation.comparisons[0].expected_serialized_quantity, "1")
-  assert.equal(squareCountReconciliation.comparisons[0].actual_square_quantity, "2")
-  assert.equal(squareCountReconciliation.comparisons[0].issue_label, "Count mismatch")
+  const mismatchedSquareCount = squareCountReconciliation.comparisons.find(
+    (comparison) => comparison.issue_label === "Count mismatch",
+  )
+  assert.ok(mismatchedSquareCount)
+  assert.equal(mismatchedSquareCount.expected_serialized_quantity, "1")
+  assert.equal(mismatchedSquareCount.actual_square_quantity, "2")
   assert.equal(squareCountReconciliation.unexpected_square_counts[0].catalogObjectId, "SQUARE-UNEXPECTED-99")
   assert.equal(squareCountReconciliation.provider_inventory_write_deferred, true)
   assert.equal(squareCountReconciliation.square_payment_capture_supported, false)

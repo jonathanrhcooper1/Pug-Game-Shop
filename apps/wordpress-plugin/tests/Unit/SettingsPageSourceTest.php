@@ -25,6 +25,11 @@ final class SettingsPageSourceTest extends TestCase {
 				'clear_primary_api_key',
 				'clear_secondary_api_key',
 				'clear_team_id',
+				'Enable signed ScryDex webhook receiver',
+				'Webhook signing secret',
+				'clear_webhook_secret',
+				'tcg-store/v1/scrydex/webhooks',
+				'whsec_ signing secret',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

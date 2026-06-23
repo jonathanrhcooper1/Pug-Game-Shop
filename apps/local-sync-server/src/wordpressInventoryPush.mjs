@@ -309,7 +309,7 @@ function safeWooCommerceOperationResult(value) {
 }
 
 function inventorySaleIdentity(item = {}, operation = {}) {
-  return cleanBarcode(
+  return cleanPublicIdentity(
     item.wordpress_public_id ??
       operation.payload?.wordpress_public_id ??
       operation.payload?.inventory_public_id ??
@@ -415,6 +415,7 @@ function cleanGame(value) {
     mtg: "magicthegathering",
     "magic-the-gathering": "magicthegathering",
     onepiece: "onepiece",
+    one_piece: "onepiece",
     "one-piece": "onepiece",
     "one-piece-card-game": "onepiece",
   }
@@ -441,7 +442,20 @@ function cleanVisibility(value, fallback) {
 }
 
 function cleanBarcode(value) {
-  return cleanText(value).replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 191)
+  return cleanText(value)
+    .toUpperCase()
+    .replace(/[^0-9A-Z ./$+%-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80)
+}
+
+function cleanPublicIdentity(value) {
+  return cleanText(value)
+    .replace(/[^a-zA-Z0-9-_:.]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 96)
 }
 
 function cleanHttpUrl(value) {

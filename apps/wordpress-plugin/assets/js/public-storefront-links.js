@@ -3,9 +3,7 @@
 
 	var shelves = [
 		{ label: 'Singles', href: '/shop-singles/' },
-		{ label: 'Sealed', href: '/shop-sealed-products/' },
-		{ label: 'Graded', href: '/shop-graded-cards/' },
-		{ label: 'Accessories', href: '/shop-accessories/' }
+		{ label: 'Graded', href: '/shop-graded-cards/' }
 	];
 
 	function absoluteUrl(path) {
@@ -22,6 +20,29 @@
 		}
 
 		return '/shop' === url.pathname.replace(/\/$/, '') || 'shop' === (link.textContent || '').trim().toLowerCase();
+	}
+
+	function isSiteChromeLink(link) {
+		var node = link.parentElement;
+
+		while (node && node !== document.body) {
+			if (
+				node.tagName
+				&& (
+					node.tagName.toLowerCase() === 'header'
+					|| node.tagName.toLowerCase() === 'footer'
+					|| node.getAttribute('role') === 'contentinfo'
+					|| /\bsite-header\b/.test(node.className || '')
+					|| /\bsite-footer\b/.test(node.className || '')
+				)
+			) {
+				return true;
+			}
+
+			node = node.parentElement;
+		}
+
+		return false;
 	}
 
 	function hasShelfLink(scope, href) {
@@ -86,17 +107,20 @@
 			return;
 		}
 
-		links.slice(0, shelves.length).forEach(function (link, index) {
-			var shelf = shelves[index];
-			link.textContent = shelf.label;
-			link.href = absoluteUrl(shelf.href);
-			link.setAttribute('aria-label', shelf.label);
+		links.forEach(function (link) {
+			if (!isShopLink(link) || (link.textContent || '').trim().toLowerCase() === 'all products') {
+				return;
+			}
+
+			link.textContent = shelves[0].label;
+			link.href = absoluteUrl(shelves[0].href);
+			link.setAttribute('aria-label', shelves[0].label);
 		});
 	}
 
 	function rewriteLegacyShopLinks() {
 		Array.prototype.slice.call(document.querySelectorAll('a[href]')).forEach(function (link) {
-			if (!isShopLink(link)) {
+			if (!isShopLink(link) || isSiteChromeLink(link)) {
 				return;
 			}
 

@@ -438,10 +438,11 @@ try {
   assert.equal(labelJob.jobId, "label-pug-game-shop-production-inv-1001-20260608123500")
   assert.equal(labelJob.inventoryPublicId, "inv-1001")
   assert.equal(labelJob.barcode, "PKM-BASE-004-HOLO")
-  assert.equal(labelJob.format, "barcode-price-location")
+  assert.equal(labelJob.format, "card-set-condition-barcode")
+  assert.equal(labelJob.setCode, "BASE")
   assert.ok(labelJob.payloadText.includes("Charizard"))
-  assert.ok(labelJob.payloadText.includes("Price $125.00"))
-  assert.ok(labelJob.payloadText.includes("Location Case A3"))
+  assert.ok(labelJob.payloadText.includes("BASE NM"))
+  assert.ok(labelJob.payloadText.includes("PKM-BASE-004-HOLO"))
   assert.ok(
     connectorManifestUnavailableGuidance("Manifest endpoint returned HTTP 404.").includes(
       "Install and activate the production plugin package",

@@ -11,7 +11,7 @@ Audience: Owner, manager, administrator, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
 ## Release 0.202.0
 
-This release packages the production WordPress/WooCommerce trading-card store platform with the custom inventory plugin, storefront theme, local middleman server, employee app installer package, customer kiosk installer package, and full handover documentation prepared by JC Electronics.
+This release packages the production WordPress/WooCommerce trading-card store platform into exactly three deliverables: Pug Store App, LAN Server + Pug Store App, and Kiosk Page, with handover documentation prepared by JC Electronics.
 
 ## Major Features
 
@@ -34,9 +34,9 @@ This release packages the production WordPress/WooCommerce trading-card store pl
 
 ## Installation Notes
 
-- Use `releases/0.202.0/the-pug-production-release-0.202.0.zip` as the complete installable handoff.
+- Use `dist/the-pug-store-deliverables-0.202.0.zip` as the complete installable handoff.
 - Verify checksum before installation.
-- Install plugin and theme before local app/kiosk deployment.
+- Start with the LAN Server + Pug Store App deliverable, then install Pug Store App and install Kiosk Page on the customer station.
 - Configure credentials through secure channels only.
 - Run production active sync verification before owner signoff.
 

@@ -39,6 +39,9 @@ final class GroupedInventoryProductHooks {
 		add_action( 'woocommerce_order_status_failed', array( $this, 'release_order_reservations' ), 10 );
 		add_action( 'woocommerce_order_status_cancelled', array( $this, 'release_order_reservations' ), 10 );
 		add_action( 'woocommerce_cart_item_removed', array( $this, 'release_removed_cart_item_reservation' ), 10, 2 );
+		add_action( 'woocommerce_product_set_stock', array( $this, 'reconcile_product_stock_to_inventory' ), 20, 1 );
+		add_action( 'woocommerce_variation_set_stock', array( $this, 'reconcile_product_stock_to_inventory' ), 20, 1 );
+		add_action( 'woocommerce_product_set_stock_status', array( $this, 'reconcile_product_stock_to_inventory' ), 20, 3 );
 		$this->maybe_schedule_reservation_expiry();
 	}
 
@@ -63,6 +66,9 @@ final class GroupedInventoryProductHooks {
 			array( 'type' => 'action', 'hook' => 'woocommerce_checkout_create_order_line_item', 'callback' => 'attach_exact_inventory_order_line_metadata' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_payment_complete', 'callback' => 'convert_paid_order_reservations' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_cart_item_removed', 'callback' => 'release_removed_cart_item_reservation' ),
+			array( 'type' => 'action', 'hook' => 'woocommerce_product_set_stock', 'callback' => 'reconcile_product_stock_to_inventory' ),
+			array( 'type' => 'action', 'hook' => 'woocommerce_variation_set_stock', 'callback' => 'reconcile_product_stock_to_inventory' ),
+			array( 'type' => 'action', 'hook' => 'woocommerce_product_set_stock_status', 'callback' => 'reconcile_product_stock_to_inventory' ),
 		);
 	}
 
@@ -389,7 +395,7 @@ final class GroupedInventoryProductHooks {
 			}
 
 			if ( function_exists( 'wc_add_notice' ) ) {
-				wc_add_notice( __( 'A card hold expired after 30 minutes and was returned to available inventory.', 'tcg-store-platform' ), 'notice' );
+				wc_add_notice( __( 'A card hold expired after 15 minutes and was returned to available inventory.', 'tcg-store-platform' ), 'notice' );
 			}
 		}
 	}
@@ -453,6 +459,32 @@ final class GroupedInventoryProductHooks {
 
 	public function release_order_reservations( mixed $order_id ): void {
 		$this->transition_order_reservations( (int) $order_id, 'release_reservation' );
+	}
+
+	public function reconcile_product_stock_to_inventory( mixed $product_or_id = null, mixed $stock_status = null, mixed $product_from_hook = null ): void {
+		unset( $stock_status );
+
+		$product = $product_from_hook instanceof \WC_Product
+			? $product_from_hook
+			: $this->product_from_stock_hook_value( $product_or_id );
+
+		if ( null === $product || ! $this->is_grouped_inventory_product( $product ) ) {
+			return;
+		}
+
+		$target_quantity = $this->stock_quantity_for_reconciliation( $product );
+		if ( null === $target_quantity ) {
+			return;
+		}
+
+		$available_rows = $this->available_inventory_rows_for_product( $product->get_id() );
+		$current_count  = count( $available_rows );
+		if ( $current_count <= $target_quantity ) {
+			return;
+		}
+
+		$rows_to_mark_sold = array_slice( $available_rows, $target_quantity );
+		$this->mark_inventory_rows_sold_from_stock_sync( $rows_to_mark_sold );
 	}
 
 	public function release_removed_cart_item_reservation( mixed $cart_item_key, mixed $cart ): void {
@@ -632,6 +664,72 @@ final class GroupedInventoryProductHooks {
 		return $product instanceof \WC_Product ? $product : null;
 	}
 
+	private function product_from_stock_hook_value( mixed $value ): ?\WC_Product {
+		if ( $value instanceof \WC_Product ) {
+			return $value;
+		}
+
+		if ( is_object( $value ) && method_exists( $value, 'get_parent_id' ) ) {
+			$parent_id = (int) $value->get_parent_id();
+			if ( $parent_id > 0 ) {
+				return $this->product( $parent_id );
+			}
+		}
+
+		return $this->product( $value );
+	}
+
+	private function stock_quantity_for_reconciliation( \WC_Product $product ): ?int {
+		if ( method_exists( $product, 'get_stock_quantity' ) ) {
+			$stock_quantity = $product->get_stock_quantity();
+			if ( is_numeric( $stock_quantity ) ) {
+				return max( 0, (int) $stock_quantity );
+			}
+		}
+
+		if ( method_exists( $product, 'is_in_stock' ) && ! $product->is_in_stock() ) {
+			return 0;
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $rows Inventory rows.
+	 */
+	private function mark_inventory_rows_sold_from_stock_sync( array $rows ): void {
+		global $wpdb;
+
+		if ( ! is_object( $wpdb ?? null ) || array() === $rows ) {
+			return;
+		}
+
+		$table = $this->inventory_table( $wpdb );
+		$now   = function_exists( 'current_time' ) ? current_time( 'mysql', true ) : gmdate( 'Y-m-d H:i:s' );
+
+		foreach ( $rows as $row ) {
+			$inventory_id = (int) ( $row['inventory_id'] ?? 0 );
+			if ( $inventory_id <= 0 ) {
+				continue;
+			}
+
+			$sql = $wpdb->prepare(
+				"UPDATE `{$table}` SET `status` = %s, `date_sold` = COALESCE(`date_sold`, %s), `external_sync_state` = %s, `last_external_sync_at` = %s, `updated_at` = %s, `row_version` = `row_version` + 1 WHERE `inventory_id` = %d AND `status` = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				InventoryStatus::SOLD,
+				$now,
+				'woo_stock_reconciled',
+				$now,
+				$now,
+				$inventory_id,
+				InventoryStatus::AVAILABLE
+			);
+
+			if ( is_string( $sql ) ) {
+				$wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+	}
+
 	private function inventory_table( \wpdb $database ): string {
 		$prefix = (string) ( $database->prefix ?? '' );
 
@@ -691,7 +789,7 @@ final class GroupedInventoryProductHooks {
 	}
 
 	private function cart_hold_seconds(): int {
-		return defined( 'MINUTE_IN_SECONDS' ) ? 30 * (int) MINUTE_IN_SECONDS : 1800;
+		return defined( 'MINUTE_IN_SECONDS' ) ? 15 * (int) MINUTE_IN_SECONDS : 900;
 	}
 
 	private function cart_metadata_keys(): array {

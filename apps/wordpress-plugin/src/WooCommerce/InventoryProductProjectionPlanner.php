@@ -962,7 +962,6 @@ final class InventoryProductProjectionPlanner {
 				$this->string_value( $row, array( 'rarity' ) ),
 				$this->string_value( $row, array( 'finish' ) ),
 				$this->string_value( $row, array( 'condition_code' ) ),
-				$this->string_value( $row, array( 'public_id' ) ),
 			),
 			static fn ( string $value ): bool => '' !== $value
 		);

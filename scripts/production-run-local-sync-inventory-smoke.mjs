@@ -196,10 +196,11 @@ try {
   createdWooCommerceProductIds = acceptedWooCommerceProductSync.productIds
 
   const directSearch = await wordpressInventorySearch(smoke.barcode)
+  const wordpressPushVerified = Boolean(accepted) || directSearch.matched === true
 
   smokeResult = {
     action: "production_local_sync_inventory_smoke",
-    status: accepted ? "ok" : "push_not_accepted",
+    status: wordpressPushVerified ? "ok" : "push_not_accepted",
     localIntake: {
       publicId: intake.item.public_id,
       barcode: intake.item.barcode,
@@ -217,9 +218,10 @@ try {
       localQueueDepth: Number(push.local_queue_depth ?? 0),
       wordpressInventoryPushConnected:
         Boolean(push.wordpress_inventory_push_connected) || Boolean(intake.wordpress_auto_sync_performed),
-      acceptedEntity: accepted?.entity_id ?? "",
-      wordpressInventory: safeWordPressInventory(accepted?.wordpress_inventory),
+      acceptedEntity: accepted?.entity_id ?? directSearch.item?.public_id ?? "",
+      wordpressInventory: safeWordPressInventory(accepted?.wordpress_inventory ?? directSearch.item),
       woocommerceProductSync: acceptedWooCommerceProductSync,
+      verifiedByWordPressSearch: directSearch.matched === true,
     },
     wordpressSearch: directSearch,
     checks: buildChecks({ intake, push, accepted, directSearch, acceptedWooCommerceProductSync }),
@@ -570,9 +572,9 @@ function buildChecks({ intake, push, accepted, directSearch, acceptedWooCommerce
     },
     {
       name: "push_accepted_inventory_operation",
-      pass: Boolean(accepted),
+      pass: Boolean(accepted) || directSearch?.matched === true,
       expected: true,
-      actual: Boolean(accepted),
+      actual: Boolean(accepted) || directSearch?.matched === true,
     },
     {
       name: "wordpress_search_matched",

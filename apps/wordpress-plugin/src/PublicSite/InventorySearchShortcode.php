@@ -20,9 +20,7 @@ final class InventorySearchShortcode {
 	public const SCRIPT_HANDLE = 'tcg-store-public-storefront-links';
 	public const STOREFRONT_PAGE_SLUGS = array(
 		'shop-singles',
-		'shop-sealed-products',
 		'shop-graded-cards',
-		'shop-accessories',
 		'card-inventory',
 		'events',
 	);
@@ -239,7 +237,7 @@ final class InventorySearchShortcode {
 			self::STYLE_HANDLE,
 			$this->asset_url( 'assets/css/public-inventory.css' ),
 			array(),
-			Version::PLUGIN . '-dark-storefront'
+			Version::PLUGIN . '-dark-storefront-card-media'
 		);
 
 		if ( function_exists( 'wp_add_inline_style' ) ) {

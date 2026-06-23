@@ -3,9 +3,47 @@ import assert from "node:assert/strict"
 import { createLocalSyncStore } from "../src/localSyncStore.mjs"
 
 const fallbackQueries = []
+const visionRequests = []
 const store = createLocalSyncStore({
   databasePath: ":memory:",
   removeSeedReferenceCards: true,
+  scryDexVisionIdentifier: {
+    configured: true,
+    identifyCardImage: async (input) => {
+      visionRequests.push(input)
+
+      return {
+        status: "ok",
+        action: "scrydex_vision_card_identified",
+        analysis: {
+          type: "raw",
+          game: "pokemon",
+          language_code: "EN",
+          graded_details: {},
+        },
+        matches: [
+          {
+            rank: 1,
+            score: 0.94,
+            provider_card_id: "vision-scan-001",
+            game: "pokemon",
+            card_name: "Scan Target",
+            set_name: "Vision Set",
+            set_code: "VIS",
+            card_number: "7",
+            printed_number: "7/100",
+            image_url: "https://images.scrydex.example/pokemon/vision-scan-001/large",
+          },
+        ],
+        match_count: 1,
+        top_query: "scan target",
+        game: "pokemon",
+        provider: "scrydex_vision",
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    },
+  },
   websiteCatalogFallback: async ({ query, game, limit, rawOrGraded = "" }) => {
     fallbackQueries.push({ query, game, limit })
 
@@ -92,6 +130,34 @@ const store = createLocalSyncStore({
                 currency: "USD",
               },
             ],
+          },
+        ],
+      }
+    }
+
+    if (query === "scan target") {
+      return {
+        status: "ok",
+        live_provider_request_performed: true,
+        cards: [
+          {
+            id: "vision-scan-001",
+            game,
+            name: "Scan Target",
+            set: {
+              name: "Vision Set",
+              code: "VIS",
+            },
+            number: "7",
+            printedNumber: "7/100",
+            sku: "VIS-007",
+            market_price: {
+              amount: "12.30",
+              currency: "USD",
+            },
+            images: {
+              large: "https://images.scrydex.example/pokemon/vision-scan-001/large",
+            },
           },
         ],
       }
@@ -203,6 +269,20 @@ try {
   assert.equal(normalNameSearch.cards[0].price_points[0].market_price_minor_units, 14450)
   assert.equal(normalNameSearch.cards.some((card) => card.card_name === "Bug Catcher"), false)
 
+  const visionLookup = await store.identifyScryDexCardImage(auth.session.token, {
+    image_data_url: "data:image/jpeg;base64,Y2FyZA==",
+    game: "pokemon",
+  })
+  assert.equal(visionLookup.status, "ok")
+  assert.equal(visionLookup.action, "scrydex_vision_card_scan")
+  assert.equal(visionLookup.vision_query, "scan target")
+  assert.equal(visionLookup.vision_set_filter, "vision set")
+  assert.equal(visionLookup.cards[0].card_name, "Scan Target")
+  assert.equal(visionLookup.cards[0].set_name, "Vision Set")
+  assert.equal(visionLookup.credentials_synced_to_client, false)
+  assert.equal(visionLookup.raw_credentials_returned, false)
+  assert.equal(visionRequests[0].game, "pokemon")
+
   const rawCharizardSearch = await store.searchScryDexCards(auth.session.token, {
     query: "charizard ex",
     game: "pokemon",
@@ -290,6 +370,7 @@ try {
   assert.deepEqual(fallbackQueries, [
     { query: "bug catcher", game: "pokemon", limit: "all" },
     { query: "pikachu", game: "pokemon", limit: "all" },
+    { query: "scan target", game: "pokemon", limit: "all" },
     { query: "charizard ex", game: "pokemon", limit: "all" },
     { query: "charizard ex", game: "pokemon", limit: "all" },
     { query: "bulk", game: "pokemon", limit: "all" },

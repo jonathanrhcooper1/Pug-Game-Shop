@@ -75,9 +75,7 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_same(
 			array(
 				'shop-singles',
-				'shop-sealed-products',
 				'shop-graded-cards',
-				'shop-accessories',
 				'card-inventory',
 				'events',
 			),
@@ -130,9 +128,10 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$script = (string) file_get_contents( dirname( __DIR__, 2 ) . '/assets/js/public-storefront-links.js' );
 
 		$this->assert_contains( '/shop-singles/', $script );
-		$this->assert_contains( '/shop-sealed-products/', $script );
 		$this->assert_contains( '/shop-graded-cards/', $script );
-		$this->assert_contains( '/shop-accessories/', $script );
+		$this->assert_not_contains( '/shop-sealed-products/', $script );
+		$this->assert_not_contains( '/shop-accessories/', $script );
+		$this->assert_contains( 'isSiteChromeLink', $script );
 		$this->assert_contains( 'rewriteFooterShopLinks', $script );
 		$this->assert_contains( 'rewriteHeaderShopLinks', $script );
 		$this->assert_contains( 'rewriteLegacyShopLinks', $script );
@@ -150,6 +149,9 @@ final class PublicInventorySearchShortcodeTest extends TestCase {
 		$this->assert_contains( '.tcg-storefront-shelf__badge', $css );
 		$this->assert_contains( '.tcg-storefront-shelf .tcg-public-inventory__hero', $css );
 		$this->assert_contains( '.tcg-public-inventory__quick-filters', $css );
+		$this->assert_contains( 'grid-template-rows: auto minmax(0, 1fr)', $css );
+		$this->assert_contains( 'height: clamp(360px, 112vw, 520px)', $css );
+		$this->assert_contains( 'overflow: hidden', $css );
 		$this->assert_contains( 'box-shadow: none', $css );
 		$this->assert_contains( 'width: 100%;', $css );
 		$this->assert_contains( 'max-width: 100%;', $css );

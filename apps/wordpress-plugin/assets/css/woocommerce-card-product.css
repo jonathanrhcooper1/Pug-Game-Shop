@@ -16,6 +16,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: transparent !important;
   border-radius: 8px;
 }
@@ -31,10 +34,21 @@
 }
 
 .tcg-woocommerce-card-product-gallery {
+  box-sizing: border-box;
   display: block;
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  clear: both;
+  width: 100%;
+  max-width: 520px;
+  margin-right: auto;
+  margin-left: auto;
+  overflow: hidden;
 }
 
 .tcg-woocommerce-card-product-gallery .woocommerce-product-gallery__wrapper {
+  display: block;
   width: 100%;
 }
 
@@ -215,10 +229,63 @@
   font-weight: 900;
 }
 
+@media (max-width: 900px) {
+  .single-product div.product:has(.tcg-woocommerce-card-product-gallery) {
+    display: flow-root;
+  }
+
+  .single-product div.product .tcg-woocommerce-card-product-gallery,
+  .single-product div.product .woocommerce-product-gallery.tcg-woocommerce-card-product-gallery {
+    display: block !important;
+    float: none !important;
+    clear: both !important;
+    width: min(100%, 430px) !important;
+    max-width: min(100%, 430px);
+    min-height: clamp(300px, 76vw, 470px);
+    margin: 0 auto 20px !important;
+    padding: 10px;
+    background: color-mix(in srgb, var(--tcg-primary, #0a2639) 8%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--tcg-primary, #0a2639) 16%, transparent);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .single-product div.product .tcg-woocommerce-card-product-gallery .woocommerce-product-gallery__wrapper {
+    display: grid;
+    width: 100%;
+    min-height: clamp(280px, 72vw, 440px);
+  }
+
+  .single-product div.product .summary {
+    display: block !important;
+    position: relative;
+    z-index: 2;
+    float: none !important;
+    clear: both !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 0 !important;
+  }
+
+  .tcg-woocommerce-card-gallery-image {
+    aspect-ratio: 3 / 4;
+    box-sizing: border-box;
+    min-height: clamp(280px, 72vw, 440px);
+    max-height: min(64dvh, 440px);
+    padding: 8px;
+  }
+
+  .tcg-woocommerce-card-image {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .tcg-woocommerce-card-image {
-    max-height: 420px;
-    padding: 10px;
+    max-height: 100%;
+    padding: 0;
   }
 
   .tcg-woocommerce-card-cart-image {

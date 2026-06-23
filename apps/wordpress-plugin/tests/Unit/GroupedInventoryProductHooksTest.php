@@ -36,6 +36,9 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		$this->assert_same( 'attach_exact_inventory_order_line_metadata', $map['action woocommerce_checkout_create_order_line_item'] );
 		$this->assert_same( 'convert_paid_order_reservations', $map['action woocommerce_payment_complete'] );
 		$this->assert_same( 'release_removed_cart_item_reservation', $map['action woocommerce_cart_item_removed'] );
+		$this->assert_same( 'reconcile_product_stock_to_inventory', $map['action woocommerce_product_set_stock'] );
+		$this->assert_same( 'reconcile_product_stock_to_inventory', $map['action woocommerce_variation_set_stock'] );
+		$this->assert_same( 'reconcile_product_stock_to_inventory', $map['action woocommerce_product_set_stock_status'] );
 	}
 
 	public function test_source_contains_condition_price_exact_inventory_markers(): void {
@@ -79,7 +82,11 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'tcg_store_every_five_minutes',
 				'wp_schedule_event',
 				'wp_next_scheduled',
-				'A card hold expired after 30 minutes',
+				'A card hold expired after 15 minutes',
+				'reconcile_product_stock_to_inventory',
+				'mark_inventory_rows_sold_from_stock_sync',
+				'woo_stock_reconciled',
+				'woocommerce_product_set_stock_status',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );
@@ -106,6 +113,9 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'cursor: default',
 				'background: transparent',
 				'box-shadow: none',
+				'isolation: isolate',
+				'display: flow-root',
+				'min-height: clamp(300px, 76vw, 470px)',
 			) as $marker
 		) {
 			$this->assert_contains( $marker, $source );

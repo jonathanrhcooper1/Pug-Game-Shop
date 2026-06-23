@@ -11,6 +11,7 @@ loadLocalEnv([resolve(root, ".env.production.local"), resolve(root, ".env.local"
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const dryRun = process.argv.includes("--dry-run")
 const statusOnly = process.argv.includes("--status")
+const webhookOnly = process.argv.includes("--webhook-only")
 const remoteUploadDir = normalizeRemoteDir(process.env.PUG_PROD_REMOTE_UPLOAD_DIR ?? "/html/wp-content/uploads")
 const remoteRunnerPath = `${remoteUploadDir}/scrydex-production-configure-${timestampForRemoteName(
   new Date(),
@@ -25,7 +26,7 @@ const requiredEnv = {
 }
 
 const providerPayload = {
-  action: statusOnly ? "status" : "configure",
+  action: statusOnly ? "status" : webhookOnly ? "configure_webhook" : "configure",
   version: packageJson.version,
   environment: safeChoice(process.env.SCRYDEX_ENVIRONMENT, ["production", "staging", "sandbox"], "production"),
   base_url: normalizeBaseUrl(process.env.SCRYDEX_BASE_URL ?? "https://api.scrydex.com"),
@@ -35,6 +36,11 @@ const providerPayload = {
   ).trim(),
   secondary_api_key: String(process.env.SCRYDEX_SECONDARY_API_KEY ?? "").trim(),
   request_timeout_seconds: clampInt(process.env.SCRYDEX_REQUEST_TIMEOUT_SECONDS, 5, 60, 15),
+  webhook_receiver_enabled:
+    process.env.SCRYDEX_WEBHOOK_RECEIVER_ENABLED == null
+      ? null
+      : envFlag(process.env.SCRYDEX_WEBHOOK_RECEIVER_ENABLED, false),
+  webhook_secret: String(process.env.SCRYDEX_WEBHOOK_SECRET ?? "").trim(),
   budget: {
     enabled: envFlag(process.env.SCRYDEX_USAGE_BUDGET_ENABLED, true),
     daily_credit_budget: clampInt(process.env.SCRYDEX_DAILY_CREDIT_BUDGET, 0, 1000000, 1000),
@@ -63,12 +69,16 @@ const missingEnv = Object.entries(requiredEnv)
   .filter(([, value]) => !value)
   .map(([name]) => name)
 
-if (!statusOnly && !providerPayload.team_id) {
+if (!statusOnly && !webhookOnly && !providerPayload.team_id) {
   missingEnv.push("SCRYDEX_TEAM_ID")
 }
 
-if (!statusOnly && !providerPayload.primary_api_key) {
+if (!statusOnly && !webhookOnly && !providerPayload.primary_api_key) {
   missingEnv.push("SCRYDEX_API_KEY or SCRYDEX_PRIMARY_API_KEY")
+}
+
+if (!statusOnly && webhookOnly && !providerPayload.webhook_secret) {
+  missingEnv.push("SCRYDEX_WEBHOOK_SECRET")
 }
 
 if (dryRun) {
@@ -82,6 +92,14 @@ if (dryRun) {
         wpCli,
         requiresEnv: statusOnly
           ? ["PUG_PROD_SSH_HOST", "PUG_PROD_SSH_USER", "PUG_PROD_SSH_PASSWORD"]
+          : webhookOnly
+            ? [
+                "PUG_PROD_SSH_HOST",
+                "PUG_PROD_SSH_USER",
+                "PUG_PROD_SSH_PASSWORD",
+                "SCRYDEX_WEBHOOK_SECRET",
+                "PUG_PROD_CONFIRM_SCRYDEX_CONFIG",
+              ]
           : [
               "PUG_PROD_SSH_HOST",
               "PUG_PROD_SSH_USER",
@@ -137,9 +155,7 @@ if (!is_array($settings)) {
 	$settings = TCGStorePlatform\\Settings\\Settings::defaults();
 }
 if ('configure' === ($payload['action'] ?? '')) {
-	$settings['scrydex_provider'] = array_merge(
-		is_array($settings['scrydex_provider'] ?? null) ? $settings['scrydex_provider'] : array(),
-		array(
+	$provider_updates = array(
 			'enabled' => true,
 			'environment' => (string) ($payload['environment'] ?? 'production'),
 			'base_url' => (string) ($payload['base_url'] ?? 'https://api.scrydex.com'),
@@ -148,7 +164,16 @@ if ('configure' === ($payload['action'] ?? '')) {
 			'secondary_api_key' => (string) ($payload['secondary_api_key'] ?? ''),
 			'request_timeout_seconds' => (int) ($payload['request_timeout_seconds'] ?? 15),
 			'webhook_registration_enabled' => false,
-		)
+	);
+	if (array_key_exists('webhook_receiver_enabled', $payload) && null !== $payload['webhook_receiver_enabled']) {
+		$provider_updates['webhook_receiver_enabled'] = !empty($payload['webhook_receiver_enabled']);
+	}
+	if ('' !== (string) ($payload['webhook_secret'] ?? '')) {
+		$provider_updates['webhook_secret'] = (string) ($payload['webhook_secret'] ?? '');
+	}
+	$settings['scrydex_provider'] = array_merge(
+		is_array($settings['scrydex_provider'] ?? null) ? $settings['scrydex_provider'] : array(),
+		$provider_updates
 	);
 	$budget = is_array($payload['budget'] ?? null) ? $payload['budget'] : array();
 	$settings['scrydex_usage_budget'] = array_merge(
@@ -159,6 +184,17 @@ if ('configure' === ($payload['action'] ?? '')) {
 			'minimum_remaining_credits' => (int) ($budget['minimum_remaining_credits'] ?? 50),
 			'per_cards_page_credit_estimate' => (int) ($budget['per_cards_page_credit_estimate'] ?? 1),
 			'usage_snapshot_max_age_minutes' => (int) ($budget['usage_snapshot_max_age_minutes'] ?? 15),
+		)
+	);
+	$settings = TCGStorePlatform\\Settings\\Settings::sanitize($settings);
+	update_option(TCGStorePlatform\\Settings\\Settings::OPTION_NAME, $settings, false);
+} elseif ('configure_webhook' === ($payload['action'] ?? '')) {
+	$settings['scrydex_provider'] = array_merge(
+		is_array($settings['scrydex_provider'] ?? null) ? $settings['scrydex_provider'] : array(),
+		array(
+			'webhook_receiver_enabled' => true,
+			'webhook_secret' => (string) ($payload['webhook_secret'] ?? ''),
+			'webhook_registration_enabled' => false,
 		)
 	);
 	$settings = TCGStorePlatform\\Settings\\Settings::sanitize($settings);
@@ -185,6 +221,11 @@ echo wp_json_encode(array(
 		'secondary_key_configured' => $provider['secondary_key_configured'],
 		'active_key_slot' => $provider['active_key_slot'],
 		'active_key_fingerprint' => $provider['active_key_fingerprint'],
+		'webhook_receiver_enabled' => $provider['webhook_receiver_enabled'],
+		'webhook_receiver_configured' => $provider['webhook_receiver_configured'],
+		'webhook_secret_configured' => $provider['webhook_secret_configured'],
+		'webhook_secret_fingerprint' => $provider['webhook_secret_fingerprint'],
+		'webhook_configuration_issues' => $provider['webhook_configuration_issues'],
 		'credential_values_redacted' => true,
 		'configuration_issues' => $provider['configuration_issues'],
 	),

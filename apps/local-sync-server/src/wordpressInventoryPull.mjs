@@ -23,7 +23,7 @@ export function createWordPressInventoryPull(options = {}) {
     }
 
     endpoint.searchParams.set("visibility", "staff")
-    endpoint.searchParams.set("status", "available")
+    endpoint.searchParams.set("status", "available,reserved,sold")
     endpoint.searchParams.set("page", String(positivePage(page, 1)))
     endpoint.searchParams.set("page_size", String(boundedPageSize(pageSize)))
     endpoint.searchParams.set("sort", "updated_desc")

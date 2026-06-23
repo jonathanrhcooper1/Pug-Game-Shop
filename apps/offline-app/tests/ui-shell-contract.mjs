@@ -72,10 +72,10 @@ for (const requiredText of [
   "Credit available",
   "Create New Customer",
   "Hidden until requested",
-  "Checkout",
-  "Guest Checkout",
-  "Customer Checkout",
-  "Scan products, load kiosk orders, use local credit, and save the receipt.",
+  "Sale Completion",
+  "Guest Sale",
+  "Customer Sale",
+  "Scan products, load kiosk orders, apply local credit, and save the Square receipt.",
   "Current sale",
   "Find customer",
   "Barcode scan",
@@ -99,11 +99,11 @@ for (const requiredText of [
   "Receipt saved",
   "Print Receipt",
   "Dymo Labels",
-  "Checkout receipts on this profile",
+  "Sale receipts on this profile",
   "Issue Credit",
   "Local credit is never available online.",
   "Store credit is reflected before collecting the card portion in Square.",
-  "Kiosk order checkout",
+  "Kiosk order sale",
   "Kiosk orders on this profile",
   "Selected order cards",
   "Attach to Customer",
@@ -154,6 +154,14 @@ for (const requiredText of [
   "Inventory intake",
   "Trade-In Counter",
   "Customer lookup",
+  "Search Customer",
+  "Customer required",
+  "Select a customer first",
+  "Select or create a customer before searching cards for this offer.",
+  "Select or create a customer before searching and adding trade-in cards.",
+  "Select or create the customer before saving, approving, or declining this trade-in offer.",
+  "Customer link required",
+  "This saved trade-in has no customer link yet. Select or create the customer before reopening it.",
   "Add Card to Offer",
   "Save Quote",
   "Customer Accepts",
@@ -203,7 +211,8 @@ for (const requiredText of [
   "Graded inventory",
   "Certification number optional",
   "Condition / stock",
-  "Selected copy",
+  "Technical details",
+  "Website ID",
   "Current market",
   "Minimum sale",
   "Auto pricing",
@@ -247,13 +256,11 @@ for (const requiredText of [
   "Save Inventory Update",
   "Hold Item",
   "Adjust Qty",
-  "Print Label",
-  "Square POS sold inventory handoff",
-  "Finalize Square Sale",
-  "Square sale finalized",
-  "payment capture stays in Square POS",
-  "Label preview prepared",
-  "Prepared label jobs",
+  "Print Barcode Label",
+  "Printing barcode label",
+  "Checking this PC for DYMO",
+  "Trying LAN server printer",
+  "LAN DYMO label sent",
   "Pending Intake",
   "job.payloadText",
   "buildOfflineLabelPrintJob(targetItem, activeProfile)",
@@ -527,6 +534,20 @@ for (const interactionMarker of [
   "handleRefreshManagerReport",
   "localSyncClient.getManagerReport",
   ".lookupGradedTradeInValuation(localSyncSessionToken",
+  "const tradeInCustomerSelected = Boolean(tradeInSelectedCustomer)",
+  "const tradeInCanCreateCustomer =",
+  "searchTradeInCustomersNow",
+  "disabled={!tradeInCustomerSelected}",
+  "customerPublicId: tradeInSelectedCustomer.customer_public_id",
+  "if (!order.customer_public_id)",
+  "handleTradeInStatus(order:",
+  "payoutType: tradeInPayoutType",
+  "payoutType: item.payoutType",
+  "setTradeInDraftItems((items) => [...items, nextItem])",
+  "Search the next card to add another line to this trade-in offer.",
+  "resetTradeInCardSearch(\"Search the next card to add another line to this trade-in offer.\")",
+  "trade-in-line-${item.id.replace",
+  "handleTradeInLinePayoutChange(item.id",
   "filter((item) => canAccessSection(item.label))",
   "handleAddOfflineUser",
   "toggleNewUserAccess",
@@ -686,6 +707,13 @@ for (const interactionMarker of [
   "visibleScryDexCards",
   "handleScryDexSetFilterChange",
   "Search Catalog",
+  "Scan Card",
+  "openLiveCardScanner",
+  "identifyLiveCardScanFrame",
+  "navigator.mediaDevices?.getUserMedia",
+  "captureLiveCardScanFrame",
+  "live-card-scanner-backdrop",
+  "identifyScryDexCardImage(",
   "Use Single",
   "Use Graded",
   "Selected catalog card",
@@ -824,7 +852,7 @@ for (const interactionMarker of [
   "staff_barcode_scan",
   "staff_quantity_adjustment",
   "POS mapping",
-  "Pending Square mapping",
+  "Not mapped yet",
   "Plan POS Pull",
   "handlePlanSquarePosInventoryPull",
   "payment capture supported: no",
@@ -836,12 +864,41 @@ for (const responsiveMarker of ["@media (max-width: 760px)", "max-width: 12em"])
   assert.ok(styles.includes(responsiveMarker), `Missing responsive marker: ${responsiveMarker}`)
 }
 
+for (const [pattern, description] of [
+  [/body\s*{[^}]*overflow-x:\s*hidden;/s, "body horizontal overflow guard"],
+  [/#root\s*{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/s, "root width clamp"],
+  [/\.content-grid\s*>\s*\*\s*{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/s, "paged content child width clamp"],
+  [
+    /@media\s*\(max-width:\s*520px\)[\s\S]*?\.nav-rail nav\s*{[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/s,
+    "mobile nav wraps into fixed-width-safe grid",
+  ],
+  [
+    /\.inventory-intake-control\s*>\s*\.scrydex-lookup-control\s*{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(180px,\s*100%\),\s*1fr\)\);/s,
+    "catalog lookup wraps before clipping action controls",
+  ],
+  [/\.connector-panel\s+\.secondary-command\s*{[^}]*color:\s*#5f4500;/s, "light-panel secondary command contrast"],
+]) {
+  assert.match(styles, pattern, `Missing responsive visual guard: ${description}`)
+}
+
 for (const color of ["#ffd044", "#79d78f", "#f07e67"]) {
   assert.ok(styles.includes(color), `Missing status/accent color: ${color}`)
 }
 
 for (const hiddenSetupToken of ["PUG_PRICECHARTING_API_TOKEN", "PRICECHARTING_API_TOKEN"]) {
   assert.equal(appSource.includes(hiddenSetupToken), false, `App UI should not render setup token name: ${hiddenSetupToken}`)
+}
+
+for (const hiddenInventorySaleText of [
+  "Square POS sold inventory handoff",
+  "Finalize Square Sale",
+  "payment capture stays in Square POS",
+]) {
+  assert.equal(
+    appSource.includes(hiddenInventorySaleText),
+    false,
+    `Inventory page should not render hidden Square sale UI text: ${hiddenInventorySaleText}`,
+  )
 }
 
 for (const forbidden of [

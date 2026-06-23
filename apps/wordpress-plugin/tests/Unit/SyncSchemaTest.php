@@ -32,6 +32,19 @@ final class SyncSchemaTest extends TestCase {
 		$this->assert_contains( 'UNIQUE KEY job_resource (sync_job_id, provider_name, resource_type, resource_key)', $checkpoint );
 	}
 
+	public function test_webhook_event_table_logs_safe_event_delivery_state(): void {
+		$webhooks = SyncSchema::tables( 'wp_', 'DEFAULT CHARACTER SET utf8mb4' )['wp_tcg_webhook_events'];
+
+		$this->assert_contains( 'provider_event_id varchar(191) NOT NULL', $webhooks );
+		$this->assert_contains( 'event_type varchar(100) NOT NULL', $webhooks );
+		$this->assert_contains( 'signature_status varchar(32) NOT NULL', $webhooks );
+		$this->assert_contains( 'payload_hash char(64) NOT NULL', $webhooks );
+		$this->assert_contains( 'payload_body longtext NOT NULL', $webhooks );
+		$this->assert_contains( 'processing_status varchar(32) NOT NULL DEFAULT \'queued\'', $webhooks );
+		$this->assert_contains( 'UNIQUE KEY provider_event (provider_name, provider_event_id)', $webhooks );
+		$this->assert_not_contains( 'webhook_secret', $webhooks );
+	}
+
 	public function test_drop_order_reverses_sync_dependencies(): void {
 		$this->assert_same(
 			array(

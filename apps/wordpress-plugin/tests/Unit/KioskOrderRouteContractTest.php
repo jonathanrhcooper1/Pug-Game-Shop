@@ -30,6 +30,6 @@ final class KioskOrderRouteContractTest extends TestCase {
 		$this->assert_true( method_exists( $controller, 'can_create_kiosk_order' ) );
 		$this->assert_false( method_exists( $controller, 'capture_payment' ) );
 		$this->assert_false( method_exists( $controller, 'create_woocommerce_order' ) );
-		$this->assert_contains( 'KIOSK_HOLD_SECONDS = 1800', $source );
+		$this->assert_contains( 'KIOSK_HOLD_SECONDS = 900', $source );
 	}
 }

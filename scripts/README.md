@@ -52,3 +52,11 @@ ignored `.env.production.local` file. They must not be run from CI.
   the import category set to `Pug Grading Singles`. Rows with Square `variable`
   pricing are preserved with `price_source=scrydex_required` so they can be
   priced from the ScryDex/reference cache before publishing.
+- `npm run inventory:import-square-catalog-local -- --input <square-catalog.csv> --pin <local-pin>`
+  performs a dry run against a Square catalog export and writes a JSON summary
+  under `dist/imports/`. Add `--execute` to post the planned rows into the
+  local sync server through `/inventory/intake`. Quantity is read from column
+  AH, `Current Quantity The PUG`; MTG Singles, Pokemon, and One Piece card rows
+  are included, One Piece supplies/events are skipped, Square item/variation IDs
+  are preserved, and Square `variable` price rows are imported hidden with a
+  ScryDex-required price source until repriced.

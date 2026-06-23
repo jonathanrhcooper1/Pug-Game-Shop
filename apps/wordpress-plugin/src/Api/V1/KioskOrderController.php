@@ -11,7 +11,7 @@ use TCGStorePlatform\Inventory\InventoryStatus;
 
 final class KioskOrderController {
 	private const NAMESPACE = 'tcg-store/v1';
-	private const KIOSK_HOLD_SECONDS = 1800;
+	private const KIOSK_HOLD_SECONDS = 900;
 
 	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ), 24 );

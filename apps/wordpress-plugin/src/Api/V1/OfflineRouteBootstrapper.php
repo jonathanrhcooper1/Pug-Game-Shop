@@ -145,16 +145,21 @@ final class OfflineRouteBootstrapper {
 		$pairing_authorizer_factory = new OfflineDevicePairingAuthorizerFactory(
 			static fn (): array => $settings
 		);
+		$runtime_database           = $this->runtime_database();
+		$runtime_database_provider  = null !== $runtime_database
+			? static fn (): \wpdb => $runtime_database
+			: null;
 		$pairing_handler_factory    = new OfflineDeviceRegistrationRouteHandlerFactory(
-			null,
+			$runtime_database_provider,
 			$pairing_authorizer_factory
 		);
 		$pairing_handler            = $pairing_handler_factory->handler();
-		$runtime_database           = $this->runtime_database();
 		$pull_handler_factory       = new OfflinePullRouteHandlerFactory(
+			database_provider: $runtime_database_provider,
 			route_connected_execution_enabled: true === $runtime_settings['pull_route_enabled']
 		);
 		$push_handler_factory       = new OfflinePushRouteHandlerFactory(
+			database_provider: $runtime_database_provider,
 			server_snapshots_provider: true === $runtime_settings['push_route_enabled'] && null !== $runtime_database
 				? new OfflinePushRouteServerSnapshotProvider( $runtime_database )
 				: null,
@@ -172,6 +177,7 @@ final class OfflineRouteBootstrapper {
 			? $pairing_authorizer_factory->permission_callback()
 			: null;
 		$conflict_handler_factory   = new OfflineConflictRouteHandlerFactory(
+			database_provider: $runtime_database_provider,
 			route_connected_execution_enabled: true === $runtime_settings['conflict_routes_enabled']
 		);
 		$handlers                   = array_merge(
@@ -179,7 +185,7 @@ final class OfflineRouteBootstrapper {
 			null !== $pairing_handler ? $pairing_handler->handlers() : array(),
 			$conflict_handler_factory->handlers()
 		);
-		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory();
+		$device_permission_factory  = new OfflineRegisteredDevicePermissionResolverFactory( $runtime_database_provider );
 
 		return new OfflineRouteRegistrationPlanner(
 			new OfflineRoutePermissionCallbackFactory(

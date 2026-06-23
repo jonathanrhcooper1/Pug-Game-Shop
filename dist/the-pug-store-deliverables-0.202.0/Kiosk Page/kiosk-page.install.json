@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "deliverable": "Kiosk Page",
+  "version": "0.202.0",
+  "delivery_type": "windows_desktop_kiosk_app",
+  "installer": "Pug Kiosk App-0.202.0.exe",
+  "launch_mode": "customer_kiosk",
+  "build_mode": "kiosk",
+  "fullscreen": true,
+  "decorations": false,
+  "command_prompt_window_required": false,
+  "launch_url_hint": "?mode=kiosk",
+  "requires_lan_server": true,
+  "staff_screens_exposed": false,
+  "sync_topology": "kiosk_page <-lan/offline-> lan_server <-https-> wordpress_woocommerce_plugin",
+  "validation": [
+    "Open the kiosk page on the kiosk station.",
+    "Confirm inventory search loads.",
+    "Add a card to the kiosk cart.",
+    "Submit a pickup request and verify it reaches fulfillment."
+  ]
+}

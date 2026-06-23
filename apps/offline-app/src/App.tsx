@@ -241,6 +241,7 @@ const ACCESS_SECTIONS = [
   "Settings",
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
+const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
 const OFFLINE_APP_VERSION = "0.202.0"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
@@ -312,6 +313,7 @@ type ActiveFulfillmentTicket =
 type CheckoutCustomerMode = "guest" | "customer"
 type CheckoutReceiptDelivery = "print" | "email" | "both"
 type CheckoutTenderMode = "card" | "cash" | "split"
+type LiveCardScanMode = "inventory" | "trade-in"
 
 type CheckoutCartLine = {
   lineId: string
@@ -2375,7 +2377,15 @@ function initialCustomerKioskMode() {
 }
 
 function employeeSectionLabel(label: string) {
-  return label === "Kiosk" ? "Fulfillment" : label
+  if (label === "Kiosk") {
+    return "Fulfillment"
+  }
+
+  if (label === "Checkout") {
+    return "Sale Completion"
+  }
+
+  return label
 }
 
 async function playBuiltInOrderTone(contextRef: MutableRefObject<AudioContext | null>) {
@@ -2585,6 +2595,521 @@ function localSyncPushResultFromAutoSync(
   }
 }
 
+function escapePrintableLabelHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
+const LOCAL_DYMO_PRINTING_URL = "https://127.0.0.1:41951/DYMO/DLS/Printing"
+const DYMO_30336_LABEL_NAME = "30336 Small Multipurpose Labels"
+
+type BrowserDymoPrinter = {
+  name: string
+  modelName: string
+  isConnected: boolean
+  isLocal: boolean
+}
+
+type BrowserDymoPrintResult =
+  | {
+      status: "ok"
+      printerName: string
+      labelStock: string
+      barcodeFormat: "Code128Auto"
+      scanCode: string
+    }
+  | {
+      status: "blocked"
+      code: string
+      message: string
+    }
+
+async function printLabelOnThisPcDymo(job: OfflineLabelPrintJob): Promise<BrowserDymoPrintResult> {
+  const printersResult = await requestBrowserDymoService("GetPrinters")
+
+  if (printersResult.status !== "ok") {
+    return printersResult
+  }
+
+  const printers = parseBrowserDymoPrinters(printersResult.body)
+  const connectedLocalPrinters = printers.filter((printer) => printer.isConnected && printer.isLocal)
+  const connectedPrinters = printers.filter((printer) => printer.isConnected)
+  const printer =
+    connectedLocalPrinters.find((candidate) => candidate.name.toLowerCase().includes("550 turbo")) ??
+    connectedLocalPrinters[0] ??
+    connectedPrinters.find((candidate) => candidate.name.toLowerCase().includes("550 turbo")) ??
+    connectedPrinters[0] ??
+    null
+
+  if (!printer) {
+    return {
+      status: "blocked",
+      code: "local_dymo_printer_not_found",
+      message:
+        "No connected DYMO LabelWriter was found on this PC. The app will try the LAN server printer next.",
+    }
+  }
+
+  const labelXml = buildBrowserDymo30336LabelXml(job)
+  const printResult = await requestBrowserDymoService("PrintLabel", {
+    printerName: printer.name,
+    printParamsXml: `<LabelWriterPrintParams><Copies>1</Copies><JobTitle>${escapeDymoXml(
+      `${job.cardName} ${job.barcode}`.slice(0, 80),
+    )}</JobTitle><FlowDirection>LeftToRight</FlowDirection><PrintQuality>Text</PrintQuality></LabelWriterPrintParams>`,
+    labelXml,
+    labelSetXml: "",
+  })
+
+  if (printResult.status !== "ok") {
+    return printResult
+  }
+
+  return {
+    status: "ok",
+    printerName: printer.name,
+    labelStock: DYMO_30336_LABEL_NAME,
+    barcodeFormat: "Code128Auto",
+    scanCode: cleanBrowserDymoScanCode(job.barcode),
+  }
+}
+
+async function requestBrowserDymoService(
+  action: "GetPrinters" | "PrintLabel",
+  fields: Record<string, string> | null = null,
+): Promise<{ status: "ok"; body: string } | Extract<BrowserDymoPrintResult, { status: "blocked" }>> {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), 3200)
+
+  try {
+    const response = await fetch(`${LOCAL_DYMO_PRINTING_URL}/${action}`, {
+      method: fields ? "POST" : "GET",
+      headers: fields
+        ? {
+            "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+          }
+        : undefined,
+      body: fields ? new URLSearchParams(fields).toString() : undefined,
+      signal: controller.signal,
+    })
+    const body = await response.text()
+
+    if (!response.ok) {
+      return {
+        status: "blocked",
+        code: "local_dymo_service_rejected_request",
+        message:
+          action === "GetPrinters"
+            ? "DYMO Connect is running on this PC but did not return the printer list."
+            : "DYMO Connect rejected the local print request.",
+      }
+    }
+
+    return {
+      status: "ok",
+      body,
+    }
+  } catch (error) {
+    return {
+      status: "blocked",
+      code: "local_dymo_service_unavailable",
+      message:
+        error instanceof DOMException && error.name === "AbortError"
+          ? "DYMO Connect did not respond on this PC before the timeout."
+          : "DYMO Connect local printing service is unavailable on this PC.",
+    }
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
+}
+
+function parseBrowserDymoPrinters(xml: string): BrowserDymoPrinter[] {
+  return Array.from(String(xml ?? "").matchAll(/<LabelWriterPrinter>([\s\S]*?)<\/LabelWriterPrinter>/gi))
+    .map((match) => match[1])
+    .map((printerXml) => ({
+      name: browserDymoXmlValue(printerXml, "Name"),
+      modelName: browserDymoXmlValue(printerXml, "ModelName"),
+      isConnected: browserDymoXmlValue(printerXml, "IsConnected").toLowerCase() === "true",
+      isLocal: browserDymoXmlValue(printerXml, "IsLocal").toLowerCase() === "true",
+    }))
+    .filter((printer) => printer.name)
+}
+
+function browserDymoXmlValue(xml: string, tagName: string): string {
+  const match = String(xml ?? "").match(new RegExp(`<${tagName}>([\\s\\S]*?)<\\/${tagName}>`, "i"))
+
+  return match ? decodeDymoXml(match[1]).trim() : ""
+}
+
+function buildBrowserDymo30336LabelXml(job: OfflineLabelPrintJob): string {
+  const cardName = cleanBrowserDymoText(job.cardName, "Unknown card", 64)
+  const setCode = cleanBrowserDymoText(job.setCode, "SET", 24).toUpperCase()
+  const condition = cleanBrowserDymoText(job.condition, "Condition", 32)
+  const scanCode = cleanBrowserDymoScanCode(job.barcode)
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<DesktopLabel Version="1">
+  <DYMOLabel Version="4">
+    <Description>The Pug inventory label</Description>
+    <Orientation>Landscape</Orientation>
+    <LabelName>Small30336</LabelName>
+    <InitialLength>0</InitialLength>
+    <BorderStyle>SolidLine</BorderStyle>
+    <DYMORect>
+      <DYMOPoint><X>0.045</X><Y>0.035</Y></DYMOPoint>
+      <Size><Width>2.035</Width><Height>0.93</Height></Size>
+    </DYMORect>
+    <BorderThickness>0</BorderThickness>
+    <Show_Border>False</Show_Border>
+    <HasFixedLength>False</HasFixedLength>
+    <FixedLengthValue>0</FixedLengthValue>
+    <DynamicLayoutManager>
+      <RotationBehavior>ClearObjects</RotationBehavior>
+      <LabelObjects>
+        ${browserDymoTextObjectXml({
+          name: "CardName",
+          text: cardName,
+          x: "0.055",
+          y: "0.035",
+          width: "2.005",
+          height: "0.205",
+          fontSize: "9.5",
+          isBold: true,
+        })}
+        ${browserDymoTextObjectXml({
+          name: "SetCondition",
+          text: `${setCode} ${condition}`.trim(),
+          x: "0.055",
+          y: "0.232",
+          width: "2.005",
+          height: "0.145",
+          fontSize: "7.2",
+          isBold: true,
+        })}
+        <BarcodeObject>
+          <Name>InventoryBarcode</Name>
+          ${browserDymoBrushesXml({ backgroundA: 1, fillA: 1 })}
+          <Rotation>Rotation0</Rotation>
+          <OutlineThickness>1</OutlineThickness>
+          <IsOutlined>False</IsOutlined>
+          <BorderStyle>SolidLine</BorderStyle>
+          <Margin><DYMOThickness Left="0" Top="0" Right="0" Bottom="0" /></Margin>
+          <BarcodeFormat>Code128Auto</BarcodeFormat>
+          <Data><DataString>${escapeDymoXml(scanCode)}</DataString></Data>
+          <HorizontalAlignment>Center</HorizontalAlignment>
+          <VerticalAlignment>Middle</VerticalAlignment>
+          <Size>AutoFit</Size>
+          <TextPosition>Bottom</TextPosition>
+          <FontInfo>
+            <FontName>Arial</FontName>
+            <FontSize>6.2</FontSize>
+            <IsBold>True</IsBold>
+            <IsItalic>False</IsItalic>
+            <IsUnderline>False</IsUnderline>
+            <FontBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></FontBrush>
+          </FontInfo>
+          <ObjectLayout>
+            <DYMOPoint><X>0.075</X><Y>0.405</Y></DYMOPoint>
+            <Size><Width>1.965</Width><Height>0.515</Height></Size>
+          </ObjectLayout>
+        </BarcodeObject>
+      </LabelObjects>
+    </DynamicLayoutManager>
+  </DYMOLabel>
+  <LabelApplication>The Pug Local App</LabelApplication>
+  <DataTable><Columns></Columns><Rows></Rows></DataTable>
+</DesktopLabel>`
+}
+
+function browserDymoTextObjectXml({
+  name,
+  text,
+  x,
+  y,
+  width,
+  height,
+  fontSize,
+  isBold,
+}: {
+  name: string
+  text: string
+  x: string
+  y: string
+  width: string
+  height: string
+  fontSize: string
+  isBold: boolean
+}) {
+  return `<TextObject>
+          <Name>${escapeDymoXml(name)}</Name>
+          ${browserDymoBrushesXml({ backgroundA: 0, fillA: 0 })}
+          <Rotation>Rotation0</Rotation>
+          <OutlineThickness>1</OutlineThickness>
+          <IsOutlined>False</IsOutlined>
+          <BorderStyle>SolidLine</BorderStyle>
+          <Margin><DYMOThickness Left="0" Top="0" Right="0" Bottom="0" /></Margin>
+          <HorizontalAlignment>Left</HorizontalAlignment>
+          <VerticalAlignment>Middle</VerticalAlignment>
+          <FitMode>AlwaysFit</FitMode>
+          <IsVertical>False</IsVertical>
+          <FormattedText>
+            <FitMode>AlwaysFit</FitMode>
+            <HorizontalAlignment>Left</HorizontalAlignment>
+            <VerticalAlignment>Middle</VerticalAlignment>
+            <IsVertical>False</IsVertical>
+            <LineTextSpan>
+              <TextSpan>
+                <Text>${escapeDymoXml(text)}</Text>
+                <FontInfo>
+                  <FontName>Arial</FontName>
+                  <FontSize>${escapeDymoXml(fontSize)}</FontSize>
+                  <IsBold>${isBold ? "True" : "False"}</IsBold>
+                  <IsItalic>False</IsItalic>
+                  <IsUnderline>False</IsUnderline>
+                  <FontBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></FontBrush>
+                </FontInfo>
+              </TextSpan>
+            </LineTextSpan>
+          </FormattedText>
+          <ObjectLayout>
+            <DYMOPoint><X>${escapeDymoXml(x)}</X><Y>${escapeDymoXml(y)}</Y></DYMOPoint>
+            <Size><Width>${escapeDymoXml(width)}</Width><Height>${escapeDymoXml(height)}</Height></Size>
+          </ObjectLayout>
+        </TextObject>`
+}
+
+function browserDymoBrushesXml({ backgroundA, fillA }: { backgroundA: number; fillA: number }) {
+  return `<Brushes>
+            <BackgroundBrush><SolidColorBrush><Color A="${backgroundA}" R="1" G="1" B="1"></Color></SolidColorBrush></BackgroundBrush>
+            <BorderBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></BorderBrush>
+            <StrokeBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></StrokeBrush>
+            <FillBrush><SolidColorBrush><Color A="${fillA}" R="0" G="0" B="0"></Color></SolidColorBrush></FillBrush>
+          </Brushes>`
+}
+
+function cleanBrowserDymoText(value: string, fallback = "", maxLength = 80): string {
+  const text = String(value ?? "")
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  return (text || fallback).slice(0, maxLength)
+}
+
+function cleanBrowserDymoScanCode(value: string): string {
+  const text = cleanBrowserDymoText(value, "PUG-0000", 80)
+    .replace(/[^\x20-\x7e]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+
+  return text || "PUG-0000"
+}
+
+function escapeDymoXml(value: string) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+}
+
+function decodeDymoXml(value: string) {
+  return String(value ?? "")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, "\"")
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&")
+}
+
+const CODE39_PATTERNS: Record<string, string> = {
+  "0": "nnnwwnwnn",
+  "1": "wnnwnnnnw",
+  "2": "nnwwnnnnw",
+  "3": "wnwwnnnnn",
+  "4": "nnnwwnnnw",
+  "5": "wnnwwnnnn",
+  "6": "nnwwwnnnn",
+  "7": "nnnwnnwnw",
+  "8": "wnnwnnwnn",
+  "9": "nnwwnnwnn",
+  A: "wnnnnwnnw",
+  B: "nnwnnwnnw",
+  C: "wnwnnwnnn",
+  D: "nnnnwwnnw",
+  E: "wnnnwwnnn",
+  F: "nnwnwwnnn",
+  G: "nnnnnwwnw",
+  H: "wnnnnwwnn",
+  I: "nnwnnwwnn",
+  J: "nnnnwwwnn",
+  K: "wnnnnnnww",
+  L: "nnwnnnnww",
+  M: "wnwnnnnwn",
+  N: "nnnnwnnww",
+  O: "wnnnwnnwn",
+  P: "nnwnwnnwn",
+  Q: "nnnnnnwww",
+  R: "wnnnnnwwn",
+  S: "nnwnnnwwn",
+  T: "nnnnwnwwn",
+  U: "wwnnnnnnw",
+  V: "nwwnnnnnw",
+  W: "wwwnnnnnn",
+  X: "nwnnwnnnw",
+  Y: "wwnnwnnnn",
+  Z: "nwwnwnnnn",
+  "-": "nwnnnnwnw",
+  ".": "wwnnnnwnn",
+  " ": "nwwnnnwnn",
+  "$": "nwnwnwnnn",
+  "/": "nwnwnnnwn",
+  "+": "nwnnnwnwn",
+  "%": "nnnwnwnwn",
+  "*": "nwnnwnwnn",
+}
+
+function printableCode39Value(rawValue: string): string {
+  return rawValue
+    .toUpperCase()
+    .replace(/[^0-9A-Z ./$+%-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 38) || "PUG0000"
+}
+
+function code39BarcodeSvgMarkup(rawValue: string): string {
+  const value = rawValue
+  const encoded = `*${printableCode39Value(value)}*`
+  const quietZone = 10
+  const height = 42
+  let x = quietZone
+  const rects: string[] = []
+
+  Array.from(encoded).forEach((character) => {
+    const pattern = CODE39_PATTERNS[character] ?? CODE39_PATTERNS["-"]
+    let drawBar = true
+
+    Array.from(pattern).forEach((widthText) => {
+      const width = widthText === "w" ? 3 : 1
+
+      if (drawBar) {
+        rects.push(`<rect x="${x}" y="0" width="${width}" height="${height}" />`)
+      }
+
+      x += width
+      drawBar = !drawBar
+    })
+
+    x += 1
+  })
+
+  const width = x + quietZone
+
+  return `<svg class="barcode-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Barcode ${escapePrintableLabelHtml(value)}"><rect x="0" y="0" width="${width}" height="${height}" fill="#fff" /><g fill="#111">${rects.join("")}</g></svg>`
+}
+
+function openDymoLabelPrintDialog(job: OfflineLabelPrintJob): boolean {
+  const printWindow = window.open("", "pug-dymo-label", "width=420,height=320")
+
+  if (!printWindow) {
+    return false
+  }
+
+  const printableBarcode = printableCode39Value(job.barcode)
+  const barcode = escapePrintableLabelHtml(printableBarcode)
+  const cardName = escapePrintableLabelHtml(job.cardName)
+  const setLine = escapePrintableLabelHtml(`${job.setCode} #${job.cardNumber}`)
+  const condition = escapePrintableLabelHtml(job.condition)
+  const barcodeSvg = code39BarcodeSvgMarkup(printableBarcode)
+
+  printWindow.document.open()
+  printWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${cardName} label</title>
+    <style>
+      @page { size: 2.125in 1in; margin: 0; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: #101811;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #ffffff;
+      }
+      .label {
+        width: 2.125in;
+        height: 1in;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 0.025in;
+        padding: 0.055in 0.07in;
+        border: 1px solid #111;
+      }
+      .name {
+        overflow: hidden;
+        font-size: 10px;
+        font-weight: 900;
+        line-height: 1.08;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .meta {
+        overflow: hidden;
+        font-size: 7.5px;
+        font-weight: 800;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .barcode {
+        align-self: end;
+        display: grid;
+        gap: 0.01in;
+      }
+      .barcode-svg {
+        width: 100%;
+        height: 0.39in;
+        display: block;
+      }
+      .code {
+        overflow: hidden;
+        font-family: "Courier New", monospace;
+        font-size: 7px;
+        font-weight: 800;
+        text-align: center;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="label">
+      <div class="name">${cardName}</div>
+      <div class="meta">${setLine} / ${condition}</div>
+      <div class="barcode">
+        ${barcodeSvg}
+        <div class="code">${barcode}</div>
+      </div>
+    </main>
+    <script>
+      window.addEventListener("load", () => {
+        window.focus();
+        setTimeout(() => window.print(), 120);
+      });
+    </script>
+  </body>
+</html>`)
+  printWindow.document.close()
+
+  return true
+}
+
 function lanSyncPullMessage(result: LocalSyncPullResult | null) {
   if (!result) {
     return "LAN website pull was not run because no PIN session is active."
@@ -2668,6 +3193,9 @@ export function App() {
   const knownPickupTicketIdsRef = useRef<Set<string> | null>(null)
   const orderNotificationAudioRef = useRef<HTMLAudioElement | null>(null)
   const orderNotificationAudioContextRef = useRef<AudioContext | null>(null)
+  const liveCardScanVideoRef = useRef<HTMLVideoElement | null>(null)
+  const liveCardScanCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const liveCardScanStreamRef = useRef<MediaStream | null>(null)
   const connectorProfileStorageRef = useRef<ConnectorProfileStorageRestoreResult | null>(null)
   if (connectorProfileStorageRef.current === null) {
     connectorProfileStorageRef.current = loadConnectorProfileStorage()
@@ -2853,6 +3381,12 @@ export function App() {
     "idle" | "searching" | "ready" | "blocked"
   >("idle")
   const [scryDexLookupDetail, setScryDexLookupDetail] = useState("Ready")
+  const [liveCardScanMode, setLiveCardScanMode] = useState<LiveCardScanMode | null>(null)
+  const [liveCardScanStatus, setLiveCardScanStatus] = useState<
+    "idle" | "starting" | "ready" | "identifying" | "blocked"
+  >("idle")
+  const [liveCardScanDetail, setLiveCardScanDetail] = useState("Line the card up inside the guide.")
+  const [liveCardScanPreviewUrl, setLiveCardScanPreviewUrl] = useState("")
   const [selectedId, setSelectedId] = useState(42)
   const [intakeQuantityInput, setIntakeQuantityInput] = useState("1")
   const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
@@ -3023,7 +3557,7 @@ export function App() {
     title: offlineSessionStorage.restored ? "Local queue restored" : "Local workspace ready",
     detail: offlineSessionStorage.restored
       ? `${offlineSessionStorage.queuedOperations.length} queued operation(s) and ${offlineSessionStorage.syncAttempts.length} sync attempt(s) restored from this device.`
-      : "Run website setup, scan inventory, or stage a queue update.",
+      : "Run website setup, scan inventory, or save an update for sync.",
   })
   const [selectedConflictTitle, setSelectedConflictTitle] = useState("")
   const [showConflictHistory, setShowConflictHistory] = useState(false)
@@ -3349,6 +3883,7 @@ export function App() {
   const sessionIsUnlocked = sessionRole !== "locked"
   const managerControlsUnlocked = ["manager", "owner"].includes(sessionRole) && !managerSettingsLocked
   const ownerControlsUnlocked = sessionRole === "owner" && !managerSettingsLocked
+  const inventoryTechnicalDetailsUnlocked = ["manager", "owner"].includes(sessionRole)
   const activeOfflineUser = offlineUsers.find((user) => user.id === sessionUserId) ?? null
   const effectiveAccess =
     sessionRole === "owner"
@@ -4063,7 +4598,13 @@ export function App() {
     ) ??
     null
   const tradeInPrimaryCustomerMatch = tradeInExactCustomerMatch ?? tradeInCustomerMatches[0] ?? null
+  const tradeInCustomerSelected = Boolean(tradeInSelectedCustomer)
   const tradeInCustomerNameRequired = tradeInCustomerName.trim() === ""
+  const tradeInCanCreateCustomer =
+    !tradeInCustomerSelected &&
+    !tradeInPrimaryCustomerMatch &&
+    tradeInCustomerLookupStatus === "empty" &&
+    tradeInCustomerLookupQuery.trim() !== ""
   const tradeInCustomerActionLabel =
     tradeInSelectedCustomer
       ? "Customer Selected"
@@ -4073,7 +4614,9 @@ export function App() {
         ? "Searching"
         : tradeInPrimaryCustomerMatch
           ? "Use Customer"
-          : "Create & Use Customer"
+          : tradeInCanCreateCustomer
+            ? "Create & Use Customer"
+            : "Search Customer"
   const tradeInCustomerStatusLabel =
     tradeInSelectedCustomer
       ? `Using ${tradeInSelectedCustomer.display_name}`
@@ -4116,6 +4659,12 @@ export function App() {
       : localSyncStatus.status === "ok"
         ? "local"
         : "offline"
+
+  useEffect(() => {
+    return () => {
+      stopLiveCardScanStream()
+    }
+  }, [])
 
   useEffect(() => {
     const lookupQuery = tradeInCustomerLookupQuery.trim()
@@ -4375,10 +4924,27 @@ export function App() {
     let cancelled = false
 
     const refreshKioskConnection = () => {
-      void localSyncClient.getSyncStatus().then((result) => {
+      const normalizedQuery = kioskSearchQuery.trim()
+
+      void Promise.all([
+        localSyncClient.getSyncStatus(),
+        localSyncClient.searchInventory(normalizedQuery),
+      ]).then(([statusResult, inventoryResult]) => {
         if (!cancelled) {
-          setLocalSyncStatus(result)
+          setLocalSyncStatus(statusResult)
           setLocalSyncLastCheckedAtUtc(new Date().toISOString())
+          if (inventoryResult.status === "ok") {
+            setInventoryItems((items) => {
+              const mergedItems = mergeLocalSyncInventoryItems(items, inventoryResult.items)
+              setKioskCartIds((ids) =>
+                ids.filter((id) => {
+                  const item = mergedItems.find((candidate) => candidate.id === id)
+                  return item?.status === "available"
+                }),
+              )
+              return mergedItems
+            })
+          }
         }
       })
     }
@@ -4390,7 +4956,7 @@ export function App() {
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [customerKioskMode, localSyncClient])
+  }, [customerKioskMode, kioskSearchQuery, localSyncClient])
 
   useEffect(() => {
     if (!customerKioskMode || !kioskCartRef.current) {
@@ -6418,7 +6984,7 @@ export function App() {
       setActiveSection("Inventory")
       setActivityMessage({
         title: "No inventory selected",
-        detail: "Import the live inventory CSV or add a card before staging inventory changes.",
+        detail: "Import the live inventory CSV or add a card before saving inventory changes.",
       })
       return
     }
@@ -6427,7 +6993,7 @@ export function App() {
       buildInventoryUpdateOperation(targetItem, operationOptions),
       actionTitle,
       detailOverride ??
-        `${targetItem.cardName} prepared for ${activeProfile.companyName}; website push remains deferred until the device connector is paired.`,
+        `${targetItem.cardName} was saved for ${activeProfile.companyName}; it will sync after the device connector is paired.`,
     )
     setInventoryItems((items) =>
       items.map((item) =>
@@ -6484,10 +7050,10 @@ export function App() {
 
     await stageOfflineOperation(
       buildInventoryReservationOperation(selectedItem),
-      "LAN inventory hold staged",
+      "Inventory hold saved",
       activeProfile.wordpress.canonicalInventoryWritesEnabled
-        ? `${selectedItem.cardName} is locked by ${localSyncClient.serverUrl} and queued for ${activeProfile.companyName}; guarded website inventory execution is enabled for this connector after pairing.`
-        : `${selectedItem.cardName} is locked by ${localSyncClient.serverUrl} and queued for ${activeProfile.companyName}; canonical inventory execution remains deferred for this connector.`,
+        ? `${selectedItem.cardName} is locked by ${localSyncClient.serverUrl} and ready to sync with ${activeProfile.companyName} after pairing.`
+        : `${selectedItem.cardName} is locked by ${localSyncClient.serverUrl} and saved locally until website sync is enabled.`,
     )
     setInventoryItems((items) =>
       items.map((item) =>
@@ -6792,6 +7358,209 @@ export function App() {
     })
   }
 
+  function stopLiveCardScanStream() {
+    liveCardScanStreamRef.current?.getTracks().forEach((track) => track.stop())
+    liveCardScanStreamRef.current = null
+
+    if (liveCardScanVideoRef.current) {
+      liveCardScanVideoRef.current.srcObject = null
+    }
+  }
+
+  async function openLiveCardScanner(mode: LiveCardScanMode) {
+    if (!localSyncSessionToken) {
+      const detail = "Enter your 4-digit staff PIN before scanning cards."
+
+      if (mode === "inventory") {
+        setScryDexLookupStatus("blocked")
+        setScryDexLookupDetail(detail)
+      } else {
+        setTradeInCardLookupStatus("blocked")
+        setTradeInCardLookupDetail(detail)
+      }
+      return
+    }
+
+    if (mode === "trade-in" && !tradeInSelectedCustomer) {
+      setTradeInCardLookupStatus("blocked")
+      setTradeInCardLookupDetail("Select or create a customer before scanning trade-in cards.")
+      return
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const detail = "This device does not expose a camera to the app. Use typed ScryDex search on this workstation."
+
+      if (mode === "inventory") {
+        setScryDexLookupStatus("blocked")
+        setScryDexLookupDetail(detail)
+      } else {
+        setTradeInCardLookupStatus("blocked")
+        setTradeInCardLookupDetail(detail)
+      }
+      return
+    }
+
+    stopLiveCardScanStream()
+    setLiveCardScanMode(mode)
+    setLiveCardScanStatus("starting")
+    setLiveCardScanDetail("Starting camera")
+    setLiveCardScanPreviewUrl("")
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      })
+
+      liveCardScanStreamRef.current = stream
+      await new Promise((resolve) => window.setTimeout(resolve, 40))
+
+      if (liveCardScanVideoRef.current) {
+        liveCardScanVideoRef.current.srcObject = stream
+        await liveCardScanVideoRef.current.play()
+      }
+
+      setLiveCardScanStatus("ready")
+      setLiveCardScanDetail("Line the card inside the guide, keep glare low, then scan.")
+    } catch (error) {
+      stopLiveCardScanStream()
+      setLiveCardScanStatus("blocked")
+      setLiveCardScanDetail(error instanceof Error ? error.message : "Camera could not be started.")
+    }
+  }
+
+  function closeLiveCardScanner() {
+    stopLiveCardScanStream()
+    setLiveCardScanMode(null)
+    setLiveCardScanStatus("idle")
+    setLiveCardScanDetail("Line the card up inside the guide.")
+  }
+
+  function captureLiveCardScanFrame() {
+    const video = liveCardScanVideoRef.current
+    const canvas = liveCardScanCanvasRef.current
+
+    if (!video || !canvas || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      throw new Error("Camera is not ready yet.")
+    }
+
+    const sourceWidth = video.videoWidth
+    const sourceHeight = video.videoHeight
+    const cardAspectRatio = 2.5 / 3.5
+    const cropHeight = Math.min(sourceHeight * 0.86, (sourceWidth * 0.78) / cardAspectRatio)
+    const cropWidth = cropHeight * cardAspectRatio
+    const sourceX = Math.max(0, (sourceWidth - cropWidth) / 2)
+    const sourceY = Math.max(0, (sourceHeight - cropHeight) / 2)
+    const outputWidth = 1100
+    const outputHeight = Math.round(outputWidth / cardAspectRatio)
+    const context = canvas.getContext("2d")
+
+    if (!context) {
+      throw new Error("Camera frame could not be prepared.")
+    }
+
+    canvas.width = outputWidth
+    canvas.height = outputHeight
+    context.clearRect(0, 0, outputWidth, outputHeight)
+    context.fillStyle = "#ffffff"
+    context.fillRect(0, 0, outputWidth, outputHeight)
+    context.filter = "contrast(1.08) saturate(1.05)"
+    context.drawImage(video, sourceX, sourceY, cropWidth, cropHeight, 0, 0, outputWidth, outputHeight)
+    context.filter = "none"
+
+    return canvas.toDataURL("image/jpeg", 0.86)
+  }
+
+  async function identifyLiveCardScanFrame() {
+    if (!liveCardScanMode || !localSyncSessionToken) {
+      setLiveCardScanStatus("blocked")
+      setLiveCardScanDetail("Staff PIN session required before scanning cards.")
+      return
+    }
+
+    try {
+      const imageDataUrl = captureLiveCardScanFrame()
+      const scanMode = liveCardScanMode
+      const game = scanMode === "inventory" ? scryDexGame : tradeInCardGame
+      const rawOrGraded = scanMode === "inventory" ? intakeProductType : tradeInProductType
+
+      setLiveCardScanPreviewUrl(imageDataUrl)
+      setLiveCardScanStatus("identifying")
+      setLiveCardScanDetail("Reading card and loading matching catalog results")
+
+      const result = await localSyncClient.identifyScryDexCardImage(localSyncSessionToken, {
+        imageDataUrl,
+        game,
+        rawOrGraded,
+      })
+
+      if (result.status !== "ok") {
+        if (handleBlockedLocalSyncSession(result, "Live card scanner locked")) {
+          setLiveCardScanDetail("PIN session expired. Enter your 4-digit PIN, then scan again.")
+        } else {
+          setLiveCardScanDetail(result.message)
+        }
+        setLiveCardScanStatus("blocked")
+        return
+      }
+
+      const nextSetFilter = result.vision_set_filter ?? result.set_filter ?? ""
+      const firstCard =
+        result.cards.find((card) => scryDexCardMatchesSetFilter(card, nextSetFilter)) ??
+        result.cards[0] ??
+        null
+      const firstVariant = firstCard?.variants[0] ?? null
+
+      if (scanMode === "inventory") {
+        setScryDexGame(result.game)
+        setScryDexQuery(result.vision_query ?? result.query)
+        setScryDexCards(result.cards)
+        setScryDexSetFilter(nextSetFilter)
+        setSelectedScryDexCardId(firstCard?.provider_card_id ?? "")
+        setSelectedScryDexVariantId(
+          firstCard && firstVariant
+            ? scryDexVariantId(firstCard.provider_card_id, firstVariant, 0)
+            : "",
+        )
+        setScryDexLookupStatus("ready")
+        setScryDexLookupDetail(
+          `${result.cards.length} catalog result${result.cards.length === 1 ? "" : "s"} loaded from live scan; confirm the exact version before adding inventory.`,
+        )
+      } else {
+        setTradeInCardGame(result.game)
+        setTradeInCardQuery(result.vision_query ?? result.query)
+        setTradeInCardResults(result.cards)
+        setTradeInCardSetFilter(nextSetFilter)
+        setTradeInSelectedCardId(firstCard?.provider_card_id ?? "")
+        setTradeInSelectedVariantId(
+          firstCard && firstVariant
+            ? scryDexVariantId(firstCard.provider_card_id, firstVariant, 0)
+            : "",
+        )
+        setTradeInCardLookupStatus("ready")
+        setTradeInCardLookupDetail(
+          `${result.cards.length} catalog result${result.cards.length === 1 ? "" : "s"} loaded from live scan; choose the exact card, payout, and percentage.`,
+        )
+      }
+
+      setActivityMessage({
+        title: "Live card scan complete",
+        detail:
+          result.cards.length > 0
+            ? "ScryDex Vision identified the card and loaded matching catalog records for staff confirmation."
+            : "ScryDex Vision completed, but no catalog records matched. Try typed search or rescan with less glare.",
+      })
+      closeLiveCardScanner()
+    } catch (error) {
+      setLiveCardScanStatus("blocked")
+      setLiveCardScanDetail(error instanceof Error ? error.message : "Scan failed. Try again with the card centered.")
+    }
+  }
+
   async function handleScryDexLookup() {
     const normalizedQuery = scryDexQuery.trim()
 
@@ -6876,7 +7645,68 @@ export function App() {
     )
   }
 
+  function resetTradeInCardSearch(
+    detail = "Search ScryDex to add cards to this offer.",
+  ) {
+    setTradeInManualFinalValueInput("")
+    setTradeInCardQuery("")
+    setTradeInCardResults([])
+    setTradeInCardSetFilter("")
+    setTradeInSelectedCardId("")
+    setTradeInSelectedVariantId("")
+    setTradeInCardLookupStatus("idle")
+    setTradeInCardLookupDetail(detail)
+  }
+
+  function clearTradeInSelectedCustomerForEdit() {
+    setTradeInSelectedCustomerSnapshot(null)
+    setTradeInSelectedCustomerPublicId("")
+    resetTradeInCardSearch("Select a customer before searching cards for this offer.")
+  }
+
+  async function searchTradeInCustomersNow(lookupQuery = tradeInCustomerLookupQuery) {
+    const normalizedLookupQuery = lookupQuery.trim()
+
+    if (normalizedLookupQuery.length < 2) {
+      setTradeInCustomerMatches([])
+      setTradeInSelectedCustomerPublicId("")
+      setTradeInCustomerLookupStatus("idle")
+      return { status: "idle" as const, matches: [] }
+    }
+
+    setTradeInCustomerLookupStatus("searching")
+    const result = await localSyncClient.searchCustomers(normalizedLookupQuery)
+
+    if (result.status !== "ok") {
+      setTradeInCustomerMatches([])
+      setTradeInSelectedCustomerPublicId("")
+      setTradeInCustomerLookupStatus("blocked")
+      return { status: "blocked" as const, matches: [] }
+    }
+
+    const matches = result.customers.slice(0, 6)
+    setTradeInCustomerMatches(matches)
+    setTradeInCustomerLookupStatus(matches.length > 0 ? "matched" : "empty")
+    setTradeInSelectedCustomerPublicId((selectedPublicId) =>
+      selectedPublicId && matches.some((customer) => customer.customer_public_id === selectedPublicId)
+        ? selectedPublicId
+        : "",
+    )
+
+    return { status: "ok" as const, matches }
+  }
+
   async function handleTradeInCardLookup() {
+    if (!tradeInSelectedCustomer) {
+      setTradeInCardLookupStatus("blocked")
+      setTradeInCardLookupDetail("Select or create a customer before searching cards for this trade-in offer.")
+      setTradeInCardResults([])
+      setTradeInCardSetFilter("")
+      setTradeInSelectedCardId("")
+      setTradeInSelectedVariantId("")
+      return
+    }
+
     const normalizedQuery = tradeInCardQuery.trim()
 
     if (!normalizedQuery) {
@@ -6957,6 +7787,16 @@ export function App() {
   }
 
   function handleSelectTradeInCard(card: LocalSyncScryDexCard, productType: "raw" | "graded" = tradeInProductType) {
+    if (!tradeInSelectedCustomer) {
+      setTradeInCardLookupStatus("blocked")
+      setTradeInCardLookupDetail("Select or create a customer before choosing trade-in cards.")
+      setActivityMessage({
+        title: "Trade-in customer required",
+        detail: "Select or create the customer at the top of the Trade-In Counter before adding card lines.",
+      })
+      return
+    }
+
     const nextProductType = productType === "graded" ? "graded" : "raw"
     const firstVariant = card.variants[0] ?? null
     const variantId = firstVariant
@@ -7137,6 +7977,33 @@ export function App() {
       return
     }
 
+    if (!tradeInCanCreateCustomer) {
+      const searchResult = await searchTradeInCustomersNow()
+      const firstMatch = searchResult.matches[0] ?? null
+
+      if (firstMatch) {
+        setActivityMessage({
+          title: "Customer match found",
+          detail: "Select the matching customer or click Use Customer before starting the trade-in offer.",
+        })
+        return
+      }
+
+      if (searchResult.status === "blocked") {
+        setActivityMessage({
+          title: "Customer lookup blocked",
+          detail: "Customer search could not reach the LAN server. Try the lookup again before creating a customer.",
+        })
+        return
+      }
+
+      setActivityMessage({
+        title: "No customer match",
+        detail: "No customer matched that lookup. Enter the customer name, then use Create & Use Customer.",
+      })
+      return
+    }
+
     if (tradeInCustomerNameRequired) {
       setActivityMessage({
         title: "Customer name needed",
@@ -7182,6 +8049,17 @@ export function App() {
   }
 
   function handleStageTradeInItem() {
+    if (!tradeInSelectedCustomer) {
+      setActiveSection("Trade-Ins")
+      setTradeInCardLookupStatus("blocked")
+      setTradeInCardLookupDetail("Select or create a customer before adding cards to the offer.")
+      setActivityMessage({
+        title: "Trade-in customer required",
+        detail: "Select or create the customer at the top of the Trade-In Counter before adding card lines.",
+      })
+      return
+    }
+
     if (tradeInCurrentCardName.trim() === "") {
       setActiveSection("Trade-Ins")
       setActivityMessage({
@@ -7248,7 +8126,7 @@ export function App() {
     }
 
     setTradeInDraftItems((items) => [...items, nextItem])
-    setTradeInManualFinalValueInput("")
+    resetTradeInCardSearch("Search the next card to add another line to this trade-in offer.")
     setActiveSection("Trade-Ins")
     setActivityMessage({
       title: "Trade-in line staged",
@@ -7341,22 +8219,46 @@ export function App() {
   }
 
   function handleLoadTradeInOrder(order: LocalSyncTradeInOrder) {
-    const restoredCustomer: LocalSyncCustomer = {
-      customer_public_id: order.customer_public_id || `saved-${order.order_id}`,
-      customer_id: null,
-      row_version: 0,
-      display_name: order.customer_name,
-      first_name: splitTradeInCustomerName(order.customer_name).firstName,
-      last_name: splitTradeInCustomerName(order.customer_name).lastName,
-      customer_lookup: order.customer_phone,
-      email: "",
-      status: "active",
-      credit: {
-        balance_minor_units: 0,
-        currency: order.currency,
-      },
-      source: "cached",
+    const canEditOrder =
+      order.status === "draft" || order.status === "review" || order.status === "rejected"
+
+    if (!canEditOrder) {
+      setActivityMessage({
+        title: "Trade-in record locked",
+        detail: `${order.order_id} is ${order.status} history and cannot be reopened into the editable offer cart.`,
+      })
+      return
     }
+
+    if (!order.customer_public_id && !tradeInSelectedCustomer) {
+      setActivityMessage({
+        title: "Customer link required",
+        detail:
+          "This saved trade-in has no customer link yet. Select or create the customer before reopening it.",
+      })
+      return
+    }
+
+    const restoredCustomer: LocalSyncCustomer =
+      tradeInSelectedCustomer &&
+      (!order.customer_public_id || tradeInSelectedCustomer.customer_public_id === order.customer_public_id)
+        ? tradeInSelectedCustomer
+        : {
+            customer_public_id: order.customer_public_id,
+            customer_id: null,
+            row_version: 0,
+            display_name: order.customer_name,
+            first_name: splitTradeInCustomerName(order.customer_name).firstName,
+            last_name: splitTradeInCustomerName(order.customer_name).lastName,
+            customer_lookup: order.customer_phone,
+            email: "",
+            status: "active",
+            credit: {
+              balance_minor_units: 0,
+              currency: order.currency,
+            },
+            source: "cached",
+          }
     const draftItems = order.items.map(tradeInDraftItemFromSavedOrderItem)
 
     setTradeInSelectedCustomerSnapshot(restoredCustomer)
@@ -7365,10 +8267,12 @@ export function App() {
       restoredCustomer,
       ...customers.filter((customer) => customer.customer_public_id !== restoredCustomer.customer_public_id),
     ])
-    setTradeInCustomerName(order.customer_name)
-    setTradeInCustomerPhone(order.customer_phone)
-    setTradeInCustomerLookupInput(order.customer_phone || order.customer_name)
-    setTradeInCustomerEmail("")
+    setTradeInCustomerName(restoredCustomer.display_name || order.customer_name)
+    setTradeInCustomerPhone(order.customer_phone || restoredCustomer.customer_lookup)
+    setTradeInCustomerLookupInput(
+      restoredCustomer.customer_lookup || order.customer_phone || restoredCustomer.email || order.customer_name,
+    )
+    setTradeInCustomerEmail(restoredCustomer.email)
     setTradeInCustomerLookupStatus("matched")
     setTradeInDraftItems(draftItems)
     setTradeInLoadedOrderId(order.order_id)
@@ -7492,6 +8396,16 @@ export function App() {
   }
 
   async function handleSaveTradeInDraft(nextStatus: LocalSyncTradeInOrder["status"] = "draft") {
+    if (!tradeInSelectedCustomer) {
+      setActiveSection("Trade-Ins")
+      setTradeInSyncStatus("blocked")
+      setActivityMessage({
+        title: "Trade-in customer required",
+        detail: "Select or create the customer before saving, approving, or declining this trade-in offer.",
+      })
+      return
+    }
+
     if (!localSyncSessionToken) {
       setActiveSection("Trade-Ins")
       setTradeInSyncStatus("blocked")
@@ -7515,9 +8429,9 @@ export function App() {
     const itemsForInventoryConversion = [...tradeInDraftItems]
     const loadedOrderId = tradeInLoadedOrderId
     const tradeInOrderPayload = {
-      customerName: tradeInCustomerName.trim() || "Walk-in customer",
+      customerName: tradeInSelectedCustomer.display_name.trim() || tradeInCustomerName.trim() || "Selected customer",
       customerPhone: tradeInCustomerPhone.trim(),
-      customerPublicId: tradeInSelectedCustomer?.customer_public_id,
+      customerPublicId: tradeInSelectedCustomer.customer_public_id,
       items: tradeInDraftItems.map((item) => ({
         id: item.id,
         productType: item.productType,
@@ -7609,10 +8523,7 @@ export function App() {
 
     setServerTradeInOrders((orders) => [savedOrder, ...orders.filter((order) => order.order_id !== savedOrder.order_id)])
     setTradeInDraftItems([])
-    setTradeInCardQuery("")
-    setTradeInCardResults([])
-    setTradeInSelectedCardId("")
-    setTradeInSelectedVariantId("")
+    resetTradeInCardSearch()
     setTradeInLoadedOrderId("")
     setTradeInSyncStatus("ready")
     void refreshLocalSyncStatus()
@@ -7635,12 +8546,21 @@ export function App() {
     })
   }
 
-  async function handleTradeInStatus(orderId: string, status: LocalSyncTradeInOrder["status"]) {
+  async function handleTradeInStatus(order: LocalSyncTradeInOrder, status: LocalSyncTradeInOrder["status"]) {
     if (!localSyncSessionToken) {
       return
     }
 
-    const result = await localSyncClient.updateTradeInOrderStatus(localSyncSessionToken, orderId, status)
+    if (!order.customer_public_id) {
+      setActivityMessage({
+        title: "Customer link required",
+        detail:
+          "Select or create the customer, reopen this editable offer, and save it before changing trade-in status.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.updateTradeInOrderStatus(localSyncSessionToken, order.order_id, status)
 
     if (result.status !== "ok") {
       setActivityMessage({ title: "Trade-in status blocked", detail: result.message })
@@ -8755,7 +9675,7 @@ export function App() {
     setSelectedCustomerKioskOrderId("")
     resetCheckoutPaymentFields()
     setActivityMessage({
-      title: mode === "guest" ? "Guest checkout started" : "Customer checkout started",
+      title: mode === "guest" ? "Guest sale started" : "Customer sale started",
       detail:
         mode === "guest"
           ? "This sale will be saved by receipt number without using customer credit."
@@ -8766,7 +9686,7 @@ export function App() {
   function handleAddCheckoutInventoryItem(item: InventoryItem) {
     if (checkoutCartLines.some((line) => line.inventoryPublicId === item.publicId)) {
       setActivityMessage({
-        title: "Already in checkout",
+        title: "Already in sale",
         detail: `${item.cardName} is already on this sale.`,
       })
       return
@@ -8775,7 +9695,7 @@ export function App() {
     if (!["available", "reserved"].includes(item.status)) {
       setActivityMessage({
         title: "Item not available",
-        detail: `${item.cardName} is ${statusLabel(item.status).toLowerCase()} and cannot be sold from checkout.`,
+        detail: `${item.cardName} is ${statusLabel(item.status).toLowerCase()} and cannot be sold here.`,
       })
       return
     }
@@ -8789,7 +9709,7 @@ export function App() {
       detail:
         item.status === "reserved"
           ? `${item.cardName} is on hold in the local cache. Complete only if this is the same customer/order.`
-          : `${item.cardName} is ready for checkout.`,
+          : `${item.cardName} is ready for sale completion.`,
     })
   }
 
@@ -8800,7 +9720,7 @@ export function App() {
     if (!scan || !item) {
       setActivityMessage({
         title: "Barcode not found",
-        detail: "Scan or type a product barcode from the label, then add it to checkout.",
+        detail: "Scan or type a product barcode from the label, then add it to this sale.",
       })
       return
     }
@@ -8836,7 +9756,7 @@ export function App() {
     setCheckoutCompletedReceipt(null)
     setActivityMessage({
       title: "Misc line added",
-      detail: `${label} added to checkout.`,
+      detail: `${label} added to this sale.`,
     })
   }
 
@@ -8869,7 +9789,7 @@ export function App() {
     setCheckoutCompletedReceipt(null)
     setActivityMessage({
       title: "Kiosk order loaded",
-      detail: `${ticket.orderId} is in Checkout with ${ticket.itemCount} card(s). Pick the cards, then record Square payment.`,
+      detail: `${ticket.orderId} is in Sale Completion with ${ticket.itemCount} card(s). Pick the cards, then record Square payment.`,
     })
   }
 
@@ -8955,7 +9875,7 @@ export function App() {
       detail:
         result.status === "ok"
           ? result.can_create_terminal_checkout
-            ? "Square Terminal is configured on the LAN server and can receive checkout requests."
+            ? "Square Terminal is configured on the LAN server and can receive payment requests."
             : "Square Terminal is not fully configured yet. Manual Square receipt handoff still works."
           : result.message,
     })
@@ -8988,7 +9908,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "PIN session required",
-        detail: "Sign in before sending a checkout to the Square reader.",
+        detail: "Sign in before sending a payment to the Square reader.",
       })
       return
     }
@@ -9005,7 +9925,7 @@ export function App() {
 
     if (terminalCheckoutIssue || terminalCheckoutAmountMinorUnits === null) {
       setActivityMessage({
-        title: "Square checkout amount needed",
+        title: "Square payment amount needed",
         detail: terminalCheckoutIssue || "Enter the Square ticket total first.",
       })
       return
@@ -9023,8 +9943,8 @@ export function App() {
       note: selectedCustomerKioskOrder
         ? `The Pug kiosk order ${selectedCustomerKioskOrder.orderId}`
         : checkoutReaderMode
-          ? "The Pug checkout card payment"
-          : `The Pug customer checkout ${activeCustomerName}`,
+          ? "The Pug card payment"
+          : `The Pug customer payment ${activeCustomerName}`,
     })
 
     if (result.status !== "ok") {
@@ -9040,7 +9960,7 @@ export function App() {
     setSquareReceiptReference(result.square_checkout.id || referenceId)
     setActivityMessage({
       title: "Sent to Square reader",
-      detail: `Checkout ${result.square_checkout.id || referenceId} was sent to the paired Square Terminal. Record the final receipt once the reader completes.`,
+      detail: `Payment ${result.square_checkout.id || referenceId} was sent to the paired Square Terminal. Record the final receipt once the reader completes.`,
     })
   }
 
@@ -9048,7 +9968,7 @@ export function App() {
     if (!selectedCustomerKioskOrder) {
       setActivityMessage({
         title: "Select kiosk order",
-        detail: "Search and select a kiosk order before completing customer checkout.",
+        detail: "Search and select a kiosk order before completing the customer sale.",
       })
       return
     }
@@ -9073,7 +9993,7 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "PIN session required",
-        detail: "Sign in before completing customer checkout.",
+        detail: "Sign in before completing the customer sale.",
       })
       return
     }
@@ -9141,7 +10061,7 @@ export function App() {
     }
     void runOperationalAutoSync()
     setActivityMessage({
-      title: "Customer checkout completed",
+      title: "Customer sale completed",
       detail: `${finalTicket.orderId} is completed, exact card copies are sold, and the order is attached to ${activeCustomerName}'s profile history.`,
     })
   }
@@ -9181,7 +10101,7 @@ export function App() {
     const result = await localSyncClient.createCheckoutTransaction(localSyncSessionToken, {
       customerPublicId: checkoutCustomerMode === "customer" ? selectedCustomerPublicId : "",
       customerLookup: checkoutCustomerMode === "customer" ? customerCredit.customerLookup ?? activeCustomerName : "",
-      customerName: checkoutCustomerMode === "customer" ? activeCustomerName : "Guest checkout",
+      customerName: checkoutCustomerMode === "customer" ? activeCustomerName : "Guest sale",
       customerEmail: checkoutReceiptEmailAddress.trim(),
       guestCheckout: checkoutCustomerMode === "guest",
       squareReceiptReference: paymentReference,
@@ -9215,14 +10135,14 @@ export function App() {
     if (!localSyncSessionToken) {
       setActivityMessage({
         title: "PIN session required",
-        detail: "Sign in before completing checkout.",
+        detail: "Sign in before completing this sale.",
       })
       return
     }
 
     if (checkoutCartLines.length === 0) {
       setActivityMessage({
-        title: "Checkout is empty",
+        title: "Sale is empty",
         detail: "Scan a product, load a kiosk order, or add a misc line before completing the sale.",
       })
       return
@@ -9231,7 +10151,7 @@ export function App() {
     if (checkoutCustomerMode === "customer" && !selectedCustomerPublicId) {
       setActivityMessage({
         title: "Select customer",
-        detail: "Search and select the customer first, or switch this sale to Guest Checkout.",
+        detail: "Search and select the customer first, or switch this sale to Guest Sale.",
       })
       return
     }
@@ -9239,7 +10159,7 @@ export function App() {
     if (checkoutUnavailableLines.length > 0) {
       setActivityMessage({
         title: "Unavailable item in cart",
-        detail: `${checkoutUnavailableLines[0].cardName} is no longer available. Remove it or sync inventory before completing checkout.`,
+        detail: `${checkoutUnavailableLines[0].cardName} is no longer available. Remove it or sync inventory before completing this sale.`,
       })
       return
     }
@@ -9264,7 +10184,7 @@ export function App() {
       if (checkoutCreditMinorUnits > displayedCreditMinorUnits || checkoutCreditMinorUnits > checkoutSubtotalMinorUnits) {
         setActivityMessage({
           title: "Credit amount blocked",
-          detail: "Credit cannot exceed the customer's balance or the checkout total.",
+          detail: "Credit cannot exceed the customer's balance or the sale total.",
         })
         return
       }
@@ -9300,7 +10220,7 @@ export function App() {
       await handleOpenKioskPicking(loadedKioskOrder)
       setActivityMessage({
         title: "Pick cards first",
-        detail: "The kiosk order is open in fulfillment. Check off every card before completing checkout.",
+        detail: "The kiosk order is open in fulfillment. Check off every card before completing this sale.",
       })
       return
     }
@@ -9318,7 +10238,7 @@ export function App() {
 
       if (saleResult.status !== "ok") {
         setActivityMessage({
-          title: saleResult.status === "unavailable" ? "LAN server unavailable" : "Checkout blocked",
+          title: saleResult.status === "unavailable" ? "LAN server unavailable" : "Sale blocked",
           detail: saleResult.message,
         })
         return
@@ -9365,7 +10285,7 @@ export function App() {
 
       if (paymentResult.status !== "ok") {
         setActivityMessage({
-          title: paymentResult.status === "unavailable" ? "LAN server unavailable" : "Kiosk checkout blocked",
+          title: paymentResult.status === "unavailable" ? "LAN server unavailable" : "Kiosk sale blocked",
           detail: paymentResult.message,
         })
         return
@@ -9398,7 +10318,7 @@ export function App() {
         customerPublicId: selectedCustomerPublicId,
         amountMinorUnits: checkoutCreditMinorUnits,
         saleTotalMinorUnits: checkoutSubtotalMinorUnits,
-        reason: `checkout store credit ${formatMoney(checkoutCreditMinorUnits, customerCredit.currency)}`,
+        reason: `sale store credit ${formatMoney(checkoutCreditMinorUnits, customerCredit.currency)}`,
         squareReceiptReference: checkoutPaymentReference,
         squareCashierConfirmed: true,
       })
@@ -9431,7 +10351,7 @@ export function App() {
     if (receiptResult?.status !== "ok") {
       setActivityMessage({
         title: receiptResult?.status === "unavailable" ? "LAN server unavailable" : "Receipt not saved",
-        detail: receiptResult?.message ?? "Checkout finished, but the local receipt record did not save.",
+        detail: receiptResult?.message ?? "Sale finished, but the local receipt record did not save.",
       })
       return
     }
@@ -9443,7 +10363,7 @@ export function App() {
     void refreshLocalSyncStatus()
     void runOperationalAutoSync()
     setActivityMessage({
-      title: "Checkout complete",
+      title: "Sale complete",
       detail:
         `${checkoutCustomerMode === "guest" ? "Guest sale" : `${activeCustomerName}'s sale`} saved as ${checkoutTenderLabel} payment ${checkoutPaymentReference}. ` +
         `${checkoutReceiptDelivery === "both" ? "Print and email receipt selected." : checkoutReceiptDelivery === "email" ? "Email receipt selected." : "Print receipt selected."}`,
@@ -10755,7 +11675,7 @@ export function App() {
     )
   }
 
-  function handlePrintLabel(targetItem = selectedItem) {
+  async function handlePrintLabel(targetItem = selectedItem) {
     if (targetItem.id === EMPTY_INVENTORY_ITEM.id) {
       setActiveSection("Inventory")
       setActivityMessage({
@@ -10766,19 +11686,15 @@ export function App() {
     }
 
     const labelJob = buildOfflineLabelPrintJob(targetItem, activeProfile)
-    const labelDetail =
-      `${labelJob.cardName} label ${labelJob.barcode} is ready for ${activeProfile.companyName}; ` +
-      "payload can be copied now and hardware printing remains deferred until the printer adapter is connected."
 
-    setLabelPrintJobs((jobs) => [
-      labelJob,
-      ...jobs.filter((job) => job.inventoryPublicId !== labelJob.inventoryPublicId),
-    ].slice(0, 4))
     setActiveSection("Inventory")
     setActivityMessage({
-      title: "Label preview prepared",
-      detail: labelDetail,
+      title: "Printing barcode label",
+      detail:
+        `${labelJob.cardName} label ${labelJob.barcode} is being sent directly to the DYMO LabelWriter 550 Turbo.`,
     })
+
+    await handleOpenDymoLabelPrint(labelJob)
   }
 
   function handlePrintCheckoutLabels() {
@@ -10793,7 +11709,7 @@ export function App() {
     if (labelItems.length === 0) {
       setActivityMessage({
         title: "No labels ready",
-        detail: "Add scanned products to checkout before preparing Dymo labels.",
+        detail: "Add scanned products to this sale before preparing Dymo labels.",
       })
       return
     }
@@ -10809,6 +11725,76 @@ export function App() {
       title: "Dymo labels prepared",
       detail:
         `${labelJobs.length} label job(s) are ready for Dymo LabelWriter 550 Turbo printing through the Windows print adapter.`,
+    })
+  }
+
+  async function handleOpenDymoLabelPrint(job: OfflineLabelPrintJob) {
+    setActivityMessage({
+      title: "Checking this PC for DYMO",
+      detail:
+        `${job.cardName} label ${job.barcode} will print from this workstation first. If no local printer answers, the app will send it to the LAN server printer.`,
+    })
+
+    const localPrinterResult = await printLabelOnThisPcDymo(job)
+
+    if (localPrinterResult.status === "ok") {
+      setActivityMessage({
+        title: "Local DYMO label sent",
+        detail:
+          `${job.cardName} printed on this PC using ${localPrinterResult.printerName}; scanner code ${localPrinterResult.scanCode}.`,
+      })
+      return
+    }
+
+    if (localSyncSessionToken) {
+      setActivityMessage({
+        title: "Trying LAN server printer",
+        detail:
+          `${localPrinterResult.message} Sending ${job.cardName} to the LAN server printer through ${localSyncClient.serverUrl}.`,
+      })
+
+      try {
+        const result = await localSyncClient.printDymoLabel(localSyncSessionToken, {
+          cardName: job.cardName,
+          setCode: job.setCode,
+          condition: job.condition,
+          barcode: job.barcode,
+        })
+
+        if (result.status === "ok") {
+          setActivityMessage({
+            title: "LAN DYMO label sent",
+            detail:
+              `${result.card_name} printed on ${result.label_stock} using ${result.barcode_format}; scanner code ${result.scan_code}.`,
+          })
+          return
+        }
+
+        setActivityMessage({
+          title: "DYMO direct print unavailable",
+          detail: `${result.message} Opening the browser print fallback instead.`,
+        })
+      } catch (error) {
+        setActivityMessage({
+          title: "DYMO direct print unavailable",
+          detail: `${error instanceof Error ? error.message : "DYMO printing failed."} Opening the browser print fallback instead.`,
+        })
+      }
+    } else {
+      setActivityMessage({
+        title: "DYMO direct print unavailable",
+        detail:
+          `${localPrinterResult.message} Start a PIN session with the LAN server to use the shared printer, or use the browser print fallback now.`,
+      })
+    }
+
+    const printWindowOpened = openDymoLabelPrintDialog(job)
+
+    setActivityMessage({
+      title: printWindowOpened ? "Dymo print dialog opened" : "Print window blocked",
+      detail: printWindowOpened
+        ? "Choose the Dymo LabelWriter 550 Turbo in the Windows print dialog. This fallback is only for when DYMO Connect direct printing is unavailable."
+        : "Allow pop-ups for this local app, then press Print again. The label data is still prepared.",
     })
   }
 
@@ -11183,11 +12169,6 @@ export function App() {
             <img src={thePugBrandLogo} alt="" />
             <span>The Pug Store App</span>
           </div>
-          <div className="window-controls" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
         </div>
         <section className="login-workspace" aria-label="Offline app login">
           <form
@@ -11287,12 +12268,62 @@ export function App() {
           <img src={thePugBrandLogo} alt="" />
           <span>The Pug Store App</span>
         </div>
-        <div className="window-controls" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
       </div>
+
+      {liveCardScanMode ? (
+        <div className="live-card-scanner-backdrop" role="dialog" aria-modal="true" aria-label="Live card scanner">
+          <section className="live-card-scanner">
+            <header>
+              <div>
+                <span className="micro-label">
+                  {liveCardScanMode === "inventory" ? "Inventory scanner" : "Trade-in scanner"}
+                </span>
+                <h2>Scan Card</h2>
+              </div>
+              <button type="button" className="icon-button" aria-label="Close scanner" onClick={closeLiveCardScanner}>
+                <Icon name="close" />
+              </button>
+            </header>
+            <div className="live-card-scanner__stage">
+              <video ref={liveCardScanVideoRef} playsInline muted />
+              <div className="live-card-scanner__guide" aria-hidden="true">
+                <span />
+              </div>
+              <canvas ref={liveCardScanCanvasRef} hidden />
+            </div>
+            <footer>
+              <div className={`live-card-scanner__status ${liveCardScanStatus}`}>
+                <strong>
+                  {liveCardScanStatus === "starting"
+                    ? "Starting camera"
+                    : liveCardScanStatus === "identifying"
+                      ? "Identifying"
+                      : liveCardScanStatus === "blocked"
+                        ? "Needs attention"
+                        : "Ready to scan"}
+                </strong>
+                <small>{liveCardScanDetail}</small>
+              </div>
+              {liveCardScanPreviewUrl ? (
+                <img className="live-card-scanner__preview" src={liveCardScanPreviewUrl} alt="Last scanned card crop" />
+              ) : null}
+              <div className="live-card-scanner__actions">
+                <button type="button" className="secondary-command" onClick={closeLiveCardScanner}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void identifyLiveCardScanFrame()}
+                  disabled={liveCardScanStatus === "starting" || liveCardScanStatus === "identifying"}
+                >
+                  <Icon name="scan" />
+                  <span>{liveCardScanStatus === "identifying" ? "Scanning" : "Scan Card"}</span>
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       <div className="app-layout">
         <aside className="nav-rail" aria-label="Offline app sections">
@@ -11304,25 +12335,28 @@ export function App() {
             </span>
           </div>
           <nav>
-            {workspace.navItems.filter((item) => canAccessSection(item.label)).map((item) => (
-              <button
-                className={[
-                  "nav-item",
-                  item.label === activeSection ? "is-active" : "",
-                  "",
-                ].filter(Boolean).join(" ")}
-                type="button"
-                aria-label={employeeSectionLabel(item.label)}
-                key={item.label}
-                onClick={() => handleNavSelection(item.label)}
-              >
-                <Icon name={item.icon} />
-                <span>{employeeSectionLabel(item.label)}</span>
-                {item.label === "Queue" ? <strong>{queueBadgeCount}</strong> : null}
-                {item.label === "Events" ? <strong>{eventBadgeCount}</strong> : null}
-                {item.label === "Conflicts" ? <strong>{conflictBadgeCount}</strong> : null}
-              </button>
-            ))}
+            {workspace.navItems
+              .filter((item) => canAccessSection(item.label))
+              .filter((item) => !HIDDEN_NORMAL_NAV_SECTIONS.has(item.label))
+              .map((item) => (
+                <button
+                  className={[
+                    "nav-item",
+                    item.label === activeSection ? "is-active" : "",
+                    "",
+                  ].filter(Boolean).join(" ")}
+                  type="button"
+                  aria-label={employeeSectionLabel(item.label)}
+                  key={item.label}
+                  onClick={() => handleNavSelection(item.label)}
+                >
+                  <Icon name={item.icon} />
+                  <span>{employeeSectionLabel(item.label)}</span>
+                  {item.label === "Queue" ? <strong>{queueBadgeCount}</strong> : null}
+                  {item.label === "Events" ? <strong>{eventBadgeCount}</strong> : null}
+                  {item.label === "Conflicts" ? <strong>{conflictBadgeCount}</strong> : null}
+                </button>
+              ))}
           </nav>
           {sessionRole === "owner" ? (
             <>
@@ -11809,6 +12843,10 @@ export function App() {
                     <button type="button" onClick={() => void handleScryDexLookup()}>
                       <Icon name="search" />
                       <span>Search Catalog</span>
+                    </button>
+                    <button type="button" onClick={() => void openLiveCardScanner("inventory")}>
+                      <Icon name="scan" />
+                      <span>Scan Card</span>
                     </button>
                   </div>
                   {visibleScryDexCards.length > 0 ? (
@@ -12321,8 +13359,7 @@ export function App() {
                     id="trade-in-customer-lookup"
                     value={tradeInCustomerLookupInput}
                     onChange={(event) => {
-                      setTradeInSelectedCustomerSnapshot(null)
-                      setTradeInSelectedCustomerPublicId("")
+                      clearTradeInSelectedCustomerForEdit()
                       setTradeInCustomerLookupInput(event.target.value)
                     }}
                     placeholder="Name, email, or phone"
@@ -12334,8 +13371,7 @@ export function App() {
                     id="trade-in-customer-name"
                     value={tradeInCustomerName}
                     onChange={(event) => {
-                      setTradeInSelectedCustomerSnapshot(null)
-                      setTradeInSelectedCustomerPublicId("")
+                      clearTradeInSelectedCustomerForEdit()
                       setTradeInCustomerName(event.target.value)
                     }}
                     placeholder="First and last name"
@@ -12348,8 +13384,7 @@ export function App() {
                     inputMode="tel"
                     value={tradeInCustomerPhone}
                     onChange={(event) => {
-                      setTradeInSelectedCustomerSnapshot(null)
-                      setTradeInSelectedCustomerPublicId("")
+                      clearTradeInSelectedCustomerForEdit()
                       setTradeInCustomerPhone(event.target.value)
                     }}
                     placeholder="Phone for lookup"
@@ -12362,8 +13397,7 @@ export function App() {
                     type="email"
                     value={tradeInCustomerEmail}
                     onChange={(event) => {
-                      setTradeInSelectedCustomerSnapshot(null)
-                      setTradeInSelectedCustomerPublicId("")
+                      clearTradeInSelectedCustomerForEdit()
                       setTradeInCustomerEmail(event.target.value)
                     }}
                     placeholder="Email for receipts/profile"
@@ -12411,6 +13445,7 @@ export function App() {
                     <span className="micro-label">Card search</span>
                     <input
                       id="trade-in-card-query"
+                      disabled={!tradeInCustomerSelected}
                       value={tradeInCardQuery}
                       onChange={(event) => {
                         setTradeInCardQuery(event.target.value)
@@ -12422,13 +13457,18 @@ export function App() {
                           void handleTradeInCardLookup()
                         }
                       }}
-                      placeholder="Search ScryDex by card, set, or number"
+                      placeholder={
+                        tradeInCustomerSelected
+                          ? "Search ScryDex by card, set, or number"
+                          : "Select a customer first"
+                      }
                     />
                   </label>
                   <label htmlFor="trade-in-card-game">
                     <span className="micro-label">Game</span>
                     <select
                       id="trade-in-card-game"
+                      disabled={!tradeInCustomerSelected}
                       value={tradeInCardGame}
                       onChange={(event) => {
                         setTradeInCardGame(event.target.value as LocalSyncScryDexCard["game"])
@@ -12447,7 +13487,7 @@ export function App() {
                       id="trade-in-card-set"
                       value={tradeInCardSetFilter}
                       onChange={(event) => handleTradeInCardSetFilterChange(event.target.value)}
-                      disabled={tradeInCardSetOptions.length === 0}
+                      disabled={!tradeInCustomerSelected || tradeInCardSetOptions.length === 0}
                     >
                       <option value="">All sets</option>
                       {tradeInCardSetOptions.map((option) => (
@@ -12462,21 +13502,39 @@ export function App() {
                     <strong>
                       {tradeInCardLookupStatus === "searching"
                         ? "Searching"
+                        : !tradeInCustomerSelected
+                          ? "Customer required"
                         : tradeInCardLookupStatus === "ready"
                           ? `${visibleTradeInCards.length} visible`
                           : tradeInCardLookupStatus === "blocked"
                             ? "Needs attention"
                             : "Ready"}
                     </strong>
-                    <small>{tradeInCardLookupDetail}</small>
-                    <button type="button" onClick={() => void handleTradeInCardLookup()}>
+                    <small>
+                      {tradeInCustomerSelected
+                        ? tradeInCardLookupDetail
+                        : "Select or create a customer before searching cards for this offer."}
+                    </small>
+                    <button
+                      type="button"
+                      disabled={!tradeInCustomerSelected}
+                      onClick={() => void handleTradeInCardLookup()}
+                    >
                       <Icon name="search" />
                       <span>Search</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!tradeInCustomerSelected}
+                      onClick={() => void openLiveCardScanner("trade-in")}
+                    >
+                      <Icon name="scan" />
+                      <span>Scan Card</span>
                     </button>
                   </div>
                 </div>
 
-                {visibleTradeInCards.length > 0 ? (
+                {tradeInCustomerSelected && visibleTradeInCards.length > 0 ? (
                   <div className="trade-in-card-results" aria-label="Trade-in card search results">
                     {visibleTradeInCards.map((card) => (
                       <article
@@ -12644,6 +13702,7 @@ export function App() {
                       <span className="micro-label">Type</span>
                       <select
                         id="trade-in-product-type"
+                        disabled={!tradeInCustomerSelected}
                         value={tradeInProductType}
                         onChange={(event) => handleTradeInProductTypeChange(event.target.value as "raw" | "graded")}
                       >
@@ -12657,6 +13716,7 @@ export function App() {
                       </span>
                       <select
                         id="trade-in-condition"
+                        disabled={!tradeInCustomerSelected}
                         value={tradeInCondition}
                         onChange={(event) => setTradeInCondition(event.target.value)}
                       >
@@ -12674,6 +13734,7 @@ export function App() {
                           <span className="micro-label">Grading company</span>
                           <select
                             id="trade-in-grading-company"
+                            disabled={!tradeInCustomerSelected}
                             value={tradeInGradingCompany}
                             onChange={(event) => setTradeInGradingCompany(event.target.value)}
                           >
@@ -12689,6 +13750,7 @@ export function App() {
                           <span className="micro-label">Grade</span>
                           <input
                             id="trade-in-grade"
+                            disabled={!tradeInCustomerSelected}
                             value={tradeInGrade}
                             onChange={(event) => setTradeInGrade(event.target.value)}
                             placeholder="10, 9.5, 8"
@@ -12698,6 +13760,7 @@ export function App() {
                           <span className="micro-label">Cert #</span>
                           <input
                             id="trade-in-cert"
+                            disabled={!tradeInCustomerSelected}
                             value={tradeInCertNumber}
                             onChange={(event) => setTradeInCertNumber(event.target.value)}
                             placeholder="Optional"
@@ -12709,6 +13772,7 @@ export function App() {
                       <span className="micro-label">Trade %</span>
                       <select
                         id="trade-in-percentage"
+                        disabled={!tradeInCustomerSelected}
                         value={tradeInPercentageBasisPoints}
                         onChange={(event) => setTradeInPercentageBasisPoints(Number(event.target.value))}
                       >
@@ -12723,6 +13787,7 @@ export function App() {
                       <span className="micro-label">Manual offer value</span>
                       <input
                         id="trade-in-manual-final-value"
+                        disabled={!tradeInCustomerSelected}
                         inputMode="decimal"
                         value={tradeInManualFinalValueInput}
                         onChange={(event) => setTradeInManualFinalValueInput(event.target.value)}
@@ -12733,6 +13798,7 @@ export function App() {
                       <span className="micro-label">Payout</span>
                       <select
                         id="trade-in-payout"
+                        disabled={!tradeInCustomerSelected}
                         value={tradeInPayoutType}
                         onChange={(event) => setTradeInPayoutType(event.target.value as TradeInPayoutType)}
                       >
@@ -12742,12 +13808,14 @@ export function App() {
                     </label>
                   </div>
                   <small className={tradeInManualFinalValueIssue ? "field-error" : "field-help"}>
-                    {tradeInManualFinalValueIssue ||
-                      (tradeInCurrentMarketMinorUnits > 0
-                        ? "Leave manual offer blank to use the calculated market-mid percentage."
-                        : "Enter a manual offer because no graded market value is available for this card.")}
+                    {!tradeInCustomerSelected
+                      ? "Select or create a customer before searching and adding trade-in cards."
+                      : tradeInManualFinalValueIssue ||
+                        (tradeInCurrentMarketMinorUnits > 0
+                          ? "Leave manual offer blank to use the calculated market-mid percentage."
+                          : "Enter a manual offer because no graded market value is available for this card.")}
                   </small>
-                  <button type="button" onClick={handleStageTradeInItem}>
+                  <button type="button" disabled={!tradeInCustomerSelected} onClick={handleStageTradeInItem}>
                     Add Card to Offer
                   </button>
                 </div>
@@ -12768,7 +13836,11 @@ export function App() {
                     </small>
                   </div>
                   <div className="trade-in-sync-actions">
-                    <button type="button" onClick={() => void handleSaveTradeInDraft()}>
+                    <button
+                      type="button"
+                      disabled={!tradeInCustomerSelected}
+                      onClick={() => void handleSaveTradeInDraft()}
+                    >
                       Save Draft
                     </button>
                     <button type="button" onClick={() => void refreshTradeInOrders()}>
@@ -12803,12 +13875,17 @@ export function App() {
                     declined offer on file for later lookup.
                   </small>
                 </div>
-                <button type="button" onClick={() => void handleSaveTradeInDraft()}>
+                <button
+                  type="button"
+                  disabled={!tradeInCustomerSelected}
+                  onClick={() => void handleSaveTradeInDraft()}
+                >
                   Save Quote
                 </button>
                 <button
                   type="button"
                   className="accept-command"
+                  disabled={!tradeInCustomerSelected}
                   onClick={() => void handleSaveTradeInDraft("approved")}
                 >
                   Customer Accepts
@@ -12816,6 +13893,7 @@ export function App() {
                 <button
                   type="button"
                   className="decline-command"
+                  disabled={!tradeInCustomerSelected}
                   onClick={() => void handleSaveTradeInDraft("rejected")}
                 >
                   Customer Declines
@@ -12830,6 +13908,7 @@ export function App() {
                       item.percentageBasisPoints,
                     )
                     const valueMinorUnits = item.finalValueMinorUnits
+                    const lineControlId = `trade-in-line-${item.id.replace(/[^a-zA-Z0-9_-]+/g, "-")}`
 
                     return (
                       <article className="trade-in-draft-card" key={item.id}>
@@ -12857,9 +13936,11 @@ export function App() {
                           </small>
                         </div>
                         <div className="trade-in-line-controls" aria-label={`${item.cardName} trade-in line controls`}>
-                          <label>
+                          <label htmlFor={`${lineControlId}-percentage`}>
                             <span className="micro-label">Line %</span>
                             <select
+                              id={`${lineControlId}-percentage`}
+                              name={`${lineControlId}-percentage`}
                               value={item.percentageBasisPoints}
                               onChange={(event) =>
                                 handleTradeInLinePercentageChange(item.id, Number(event.target.value))
@@ -12872,9 +13953,11 @@ export function App() {
                               ))}
                             </select>
                           </label>
-                          <label>
+                          <label htmlFor={`${lineControlId}-payout`}>
                             <span className="micro-label">Payout</span>
                             <select
+                              id={`${lineControlId}-payout`}
+                              name={`${lineControlId}-payout`}
                               value={item.payoutType}
                               onChange={(event) =>
                                 handleTradeInLinePayoutChange(item.id, event.target.value as TradeInPayoutType)
@@ -12884,9 +13967,11 @@ export function App() {
                               <option value="cash">Cash</option>
                             </select>
                           </label>
-                          <label>
+                          <label htmlFor={`${lineControlId}-final-value`}>
                             <span className="micro-label">Final value</span>
                             <input
+                              id={`${lineControlId}-final-value`}
+                              name={`${lineControlId}-final-value`}
                               inputMode="decimal"
                               value={creditRedemptionInputFromMinorUnits(valueMinorUnits)}
                               onChange={(event) => handleTradeInLineFinalValueChange(item.id, event.target.value)}
@@ -12907,8 +13992,9 @@ export function App() {
                   })
                 ) : (
                   <p className="panel-empty">
-                    No cards in this offer yet. Search ScryDex above, select the exact printing, choose condition,
-                    payout, and per-card percentage, then add it to this trade-in cart.
+                    {tradeInCustomerSelected
+                      ? "No cards in this offer yet. Search ScryDex above, select the exact printing, choose condition, payout, and per-card percentage, then add it to this trade-in cart."
+                      : "No cards in this offer yet. Select or create a customer before searching and adding trade-in cards."}
                   </p>
                 )}
               </div>
@@ -13021,42 +14107,42 @@ export function App() {
                         <button
                           type="button"
                           disabled={isLockedTradeIn}
-                          onClick={() => void handleTradeInStatus(order.order_id, "review")}
+                          onClick={() => void handleTradeInStatus(order, "review")}
                         >
                           Review
                         </button>
                         <button
                           type="button"
                           disabled={isLockedTradeIn}
-                          onClick={() => void handleTradeInStatus(order.order_id, "approved")}
+                          onClick={() => void handleTradeInStatus(order, "approved")}
                         >
                           Approve
                         </button>
                         <button
                           type="button"
                           disabled={isLockedTradeIn || order.status !== "approved"}
-                          onClick={() => void handleTradeInStatus(order.order_id, "paid")}
+                          onClick={() => void handleTradeInStatus(order, "paid")}
                         >
                           Paid
                         </button>
                         <button
                           type="button"
                           disabled={!canConvertTradeIn}
-                          onClick={() => void handleTradeInStatus(order.order_id, "converted")}
+                          onClick={() => void handleTradeInStatus(order, "converted")}
                         >
                           Converted
                         </button>
                         <button
                           type="button"
                           disabled={!canCompleteTradeIn}
-                          onClick={() => void handleTradeInStatus(order.order_id, "completed")}
+                          onClick={() => void handleTradeInStatus(order, "completed")}
                         >
                           Complete
                         </button>
                         <button
                           type="button"
                           disabled={isLockedTradeIn || order.status === "rejected"}
-                          onClick={() => void handleTradeInStatus(order.order_id, "rejected")}
+                          onClick={() => void handleTradeInStatus(order, "rejected")}
                         >
                           Reject
                         </button>
@@ -13168,6 +14254,14 @@ export function App() {
                   <dt>Product type</dt>
                   <dd>{selectedItem.rawOrGraded === "graded" ? "Graded Cards" : "Singles"}</dd>
                 </div>
+                <div>
+                  <dt>Game</dt>
+                  <dd>{gameDisplayLabel(selectedItem.game)}</dd>
+                </div>
+                <div>
+                  <dt>Set</dt>
+                  <dd>{selectedItem.setName || selectedItem.setCode || "Set pending"}</dd>
+                </div>
                 {selectedItem.rawOrGraded === "graded" ? (
                   <>
                     <div>
@@ -13185,25 +14279,8 @@ export function App() {
                   </>
                 ) : null}
                 <div>
-                  <dt>Website ID</dt>
-                  <dd>
-                    <small>Selected copy</small>
-                    {selectedItem.publicId}
-                  </dd>
-                </div>
-                <div>
                   <dt>Barcode</dt>
                   <dd>{selectedItem.barcode}</dd>
-                </div>
-                <div>
-                  <dt>POS mapping</dt>
-                  <dd>
-                    {selectedItem.squareCatalogVariationId
-                      ? `${selectedItem.externalSyncState ?? "mapped"} / ${selectedItem.squareCatalogVariationId}`
-                      : selectedItem.externalSyncState === "failed" || selectedItem.externalSyncState === "conflict"
-                        ? selectedItem.externalSyncState
-                        : "Pending Square mapping"}
-                  </dd>
                 </div>
                 <div>
                   <dt>Location</dt>
@@ -13221,49 +14298,33 @@ export function App() {
                   <dt>Price</dt>
                   <dd>{selectedItem.price}</dd>
                 </div>
-                <div>
-                  <dt>Sync source</dt>
-                  <dd>{selectedItem.source}</dd>
-                </div>
               </dl>
+              {inventoryTechnicalDetailsUnlocked ? (
+                <details className="inventory-technical-details">
+                  <summary>Technical details</summary>
+                  <dl className="detail-list">
+                    <div>
+                      <dt>Website ID</dt>
+                      <dd>{selectedItem.publicId}</dd>
+                    </div>
+                    <div>
+                      <dt>POS mapping</dt>
+                      <dd>
+                        {selectedItem.squareCatalogVariationId
+                          ? `${selectedItem.externalSyncState ?? "mapped"} / ${selectedItem.squareCatalogVariationId}`
+                          : selectedItem.externalSyncState === "failed" || selectedItem.externalSyncState === "conflict"
+                            ? selectedItem.externalSyncState
+                            : "Not mapped yet"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Sync source</dt>
+                      <dd>{selectedItem.source}</dd>
+                    </div>
+                  </dl>
+                </details>
+              ) : null}
               <div className="detail-actions">
-                <div className="square-sale-finalize-controls" aria-label="Square POS sold inventory handoff">
-                  <label htmlFor="square-sold-reference">
-                    <span className="micro-label">Square ref</span>
-                    <input
-                      id="square-sold-reference"
-                      value={squareSoldReference}
-                      onChange={(event) => setSquareSoldReference(event.target.value)}
-                      placeholder="Receipt or ticket"
-                    />
-                  </label>
-                  <label htmlFor="square-sold-order-id">
-                    <span className="micro-label">Order ID</span>
-                    <input
-                      id="square-sold-order-id"
-                      value={squareSoldOrderId}
-                      onChange={(event) => setSquareSoldOrderId(event.target.value)}
-                      placeholder="Optional"
-                    />
-                  </label>
-                  <div>
-                    <span>Selected scan</span>
-                    <strong>{selectedItem.barcode}</strong>
-                    <small>
-                      Finalizes {selectedItem.price}; payment capture stays in Square POS.
-                    </small>
-                  </div>
-                  {squareSoldReferenceIssue ? <small>{squareSoldReferenceIssue}</small> : null}
-                  <button
-                    className="wide-action"
-                    type="button"
-                    disabled={Boolean(squareSoldReferenceIssue) || !localSyncSessionToken}
-                    onClick={() => void handleSquareSaleFinalize()}
-                  >
-                    <Icon name="tag" />
-                    <span>Finalize Square Sale</span>
-                  </button>
-                </div>
                 <div className="inventory-adjustment-controls" aria-label="Inventory adjustment details">
                   <label htmlFor="quantity-delta">
                     <span className="micro-label">Qty delta</span>
@@ -13309,8 +14370,8 @@ export function App() {
                 <button type="button" onClick={() => void handleQuantityAdjustment()}>
                   Adjust Qty
                 </button>
-                <button type="button" onClick={() => handlePrintLabel()}>
-                  Print Label
+                <button type="button" onClick={() => void handlePrintLabel()}>
+                  Print Barcode Label
                 </button>
               </div>
               <div className="operation-preview" aria-live="polite">
@@ -13340,33 +14401,37 @@ export function App() {
                 <div className="label-job-list" aria-label="Prepared label jobs">
                   <span>Prepared labels</span>
                   {labelPrintJobs.map((job) => (
-                    <div key={job.jobId}>
+                    <article key={job.jobId} className="label-job-card">
                       <strong>{job.cardName}</strong>
                       <small>
-                        {job.barcode}; {job.price}; {job.location}; {job.companyShortName};{" "}
+                        {job.setCode}; {job.condition}; {printableCode39Value(job.barcode)};{" "}
                         {job.queuedAtLabel}
                       </small>
                       <code>{job.payloadText}</code>
-                    </div>
+                      <button type="button" onClick={() => void handleOpenDymoLabelPrint(job)}>
+                        <Icon name="tag" />
+                        <span>Print</span>
+                      </button>
+                    </article>
                   ))}
                 </div>
               ) : null}
             </aside>
 
-            <section className="checkout-panel" aria-label="Checkout POS">
+            <section className="checkout-panel" aria-label="Sale completion">
               <div className="section-heading section-heading-actions">
                 <div>
-                  <h2>Checkout</h2>
-                  <span>Scan products, load kiosk orders, use local credit, and save the receipt.</span>
+                  <h2>Sale Completion</h2>
+                  <span>Scan products, load kiosk orders, apply local credit, and save the Square receipt.</span>
                 </div>
-                <div className="checkout-mode-buttons" aria-label="Checkout start mode">
+                <div className="checkout-mode-buttons" aria-label="Sale start mode">
                   <button
                     type="button"
                     className={checkoutCustomerMode === "guest" ? "is-active" : ""}
                     onClick={() => setCheckoutMode("guest")}
                   >
                     <Icon name="checkout" />
-                    <span>Guest Checkout</span>
+                    <span>Guest Sale</span>
                   </button>
                   <button
                     type="button"
@@ -13374,20 +14439,20 @@ export function App() {
                     onClick={() => setCheckoutMode("customer")}
                   >
                     <Icon name="customer" />
-                    <span>Customer Checkout</span>
+                    <span>Customer Sale</span>
                   </button>
                 </div>
               </div>
 
-              <div className="checkout-customer-strip" aria-label="Checkout customer">
+              <div className="checkout-customer-strip" aria-label="Sale customer">
                 <div>
                   <span className="micro-label">Current sale</span>
                   <strong>
-                    {checkoutCustomerMode === "guest" ? "Guest checkout" : activeCustomerName}
+                    {checkoutCustomerMode === "guest" ? "Guest sale" : activeCustomerName}
                   </strong>
                   <small>
                     {checkoutCustomerMode === "guest"
-                      ? "No store credit on guest checkout."
+                      ? "No store credit on guest sales."
                       : `${formatMoney(displayedCreditMinorUnits, customerCredit.currency)} local credit available.`}
                   </small>
                 </div>
@@ -13587,7 +14652,7 @@ export function App() {
                   </div>
                 </div>
 
-                <div className="checkout-cart-panel" aria-label="Checkout cart">
+                <div className="checkout-cart-panel" aria-label="Sale cart">
                   <header>
                     <div>
                       <span className="micro-label">Sale cart</span>
@@ -13652,11 +14717,11 @@ export function App() {
                         )
                       })
                     ) : (
-                      <p className="panel-empty">No items in checkout yet.</p>
+                      <p className="panel-empty">No items in this sale yet.</p>
                     )}
                   </div>
 
-                  <div className="checkout-payment-panel" aria-label="Checkout payment">
+                  <div className="checkout-payment-panel" aria-label="Sale payment">
                     <div className="checkout-tender-mode" aria-label="Payment method">
                       <button
                         type="button"
@@ -13801,7 +14866,7 @@ export function App() {
                     </label>
                   </div>
 
-                  <div className="checkout-total-panel" aria-label="Checkout totals">
+                    <div className="checkout-total-panel" aria-label="Sale totals">
                     <div>
                       <span>Subtotal</span>
                       <strong>{formatMoney(checkoutSubtotalMinorUnits, "USD")}</strong>
@@ -13833,7 +14898,7 @@ export function App() {
                         <strong>
                           {squareTerminalStatus?.status === "ok"
                             ? squareTerminalStatus.can_create_terminal_checkout
-                              ? "Ready for reader checkout"
+                              ? "Ready for reader payment"
                               : "Manual receipt mode"
                             : "Not checked"}
                         </strong>
@@ -13874,7 +14939,7 @@ export function App() {
                         <span className="micro-label">Receipt saved</span>
                         <strong>{checkoutCompletedReceipt.square_receipt_reference}</strong>
                         <small>
-                          {checkoutCompletedReceipt.customer_name || "Guest checkout"} /{" "}
+                          {checkoutCompletedReceipt.customer_name || "Guest sale"} /{" "}
                           {formatMoney(checkoutCompletedReceipt.total_minor_units, checkoutCompletedReceipt.currency)}
                         </small>
                       </div>
@@ -16395,9 +17460,9 @@ export function App() {
                       </small>
                     </div>
                     <div>
-                      <span className="micro-label">Checkout receipts</span>
+                      <span className="micro-label">Sale receipts</span>
                       <strong>{activeCustomerProfileSummary.checkout_transaction_count ?? 0}</strong>
-                      <small>Saved POS and kiosk checkout history.</small>
+                      <small>Saved Square, cash, and kiosk sale history.</small>
                     </div>
                   </div>
                 ) : null}
@@ -16455,8 +17520,8 @@ export function App() {
                   </div>
                 ) : null}
                 {customerProfileCheckoutTransactions.length > 0 ? (
-                  <div className="customer-profile-trades" aria-label="Customer checkout receipt history">
-                    <span className="micro-label">Checkout receipts on this profile</span>
+                  <div className="customer-profile-trades" aria-label="Customer sale receipt history">
+                    <span className="micro-label">Sale receipts on this profile</span>
                     {customerProfileCheckoutTransactions.slice(0, 8).map((transaction) => (
                       <article key={transaction.transaction_id}>
                         <div>
@@ -16496,7 +17561,7 @@ export function App() {
                   <span className="micro-label">Credit available</span>
                   <strong>{formatMoney(displayedCreditMinorUnits, customerCredit.currency)}</strong>
                   <small>
-                    In-progress checkout hold {formatMoney(pendingCreditMinorUnits, customerCredit.currency)}.
+                    In-progress sale hold {formatMoney(pendingCreditMinorUnits, customerCredit.currency)}.
                   </small>
                 </div>
               </div>
@@ -16593,17 +17658,17 @@ export function App() {
                   </div>
                 </div>
               ) : null}
-              <div className="customer-kiosk-checkout" aria-label="Kiosk order checkout">
+              <div className="customer-kiosk-checkout" aria-label="Kiosk order sale completion">
                 <header>
                   <div>
-                    <span className="micro-label">Kiosk order checkout</span>
+                    <span className="micro-label">Kiosk order sale</span>
                     <strong>
                       {selectedCustomerKioskOrder
                         ? `${selectedCustomerKioskOrder.orderId} / ${selectedCustomerKioskOrder.totalLabel}`
                         : "Search kiosk orders"}
                     </strong>
                     <small>
-                      Pull a customer kiosk order into checkout, record Square payment, then attach the completed order to
+                      Pull a customer kiosk order into Sale Completion, record Square payment, then attach the completed order to
                       this customer profile.
                     </small>
                   </div>
@@ -16860,7 +17925,7 @@ export function App() {
                       {squareTerminalStatus
                         ? squareTerminalStatus.status === "ok"
                           ? squareTerminalStatus.can_create_terminal_checkout
-                            ? "Ready for reader checkout"
+                            ? "Ready for reader payment"
                             : "Manual receipt mode"
                           : "Reader check blocked"
                         : "Not checked"}
@@ -16900,7 +17965,7 @@ export function App() {
                     </small>
                   </div>
                   <div>
-                    <span className="micro-label">Checkout amount</span>
+                    <span className="micro-label">Payment amount</span>
                     <strong>
                       {squareSaleTotalMinorUnits === null
                         ? "Needs total"

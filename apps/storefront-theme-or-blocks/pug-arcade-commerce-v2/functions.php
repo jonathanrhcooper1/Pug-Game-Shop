@@ -200,14 +200,6 @@ function pug_arcade_seed_pages()
             'title' => 'Shop Singles',
             'body'  => '<!-- wp:heading --><h2>Shop Singles</h2><!-- /wp:heading --><!-- wp:shortcode -->[tcg_inventory_search limit="24"]<!-- /wp:shortcode -->',
         ),
-        'shop-sealed-products' => array(
-            'title' => 'Shop Sealed Products',
-            'body'  => '<!-- wp:heading --><h2>Shop Sealed Products</h2><!-- /wp:heading --><!-- wp:shortcode -->[products category="sealed-products" limit="24" columns="4" orderby="date" order="DESC"]<!-- /wp:shortcode -->',
-        ),
-        'shop-accessories' => array(
-            'title' => 'Shop Accessories',
-            'body'  => '<!-- wp:heading --><h2>Shop Accessories</h2><!-- /wp:heading --><!-- wp:shortcode -->[products category="accessories" limit="24" columns="4" orderby="date" order="DESC"]<!-- /wp:shortcode -->',
-        ),
         'buying' => array(
             'title' => 'Buying',
             'body'  => '<!-- wp:heading --><h2>Buying at The PUG</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Bring in your extra or unwanted cards. We buy and trade on singles and sealed products with competitive payouts based on current market value.</p><!-- /wp:paragraph -->',

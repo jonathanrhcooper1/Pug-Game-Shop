@@ -20,6 +20,7 @@ use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\ReportsController;
 use TCGStorePlatform\Api\V1\ScryDexCatalogController;
+use TCGStorePlatform\Api\V1\ScryDexWebhookController;
 use TCGStorePlatform\Auth\AdminAccess;
 use TCGStorePlatform\Auth\RoleManager;
 use TCGStorePlatform\Events\EventShortcodes;
@@ -34,6 +35,7 @@ use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
 use TCGStorePlatform\Staging\StagingSafety;
 use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshRunner;
+use TCGStorePlatform\ScryDex\ScryDexWebhookRefreshRunner;
 use TCGStorePlatform\WooCommerce\CustomerAccountPortalController;
 use TCGStorePlatform\WooCommerce\GroupedInventoryProductHooks;
 
@@ -71,6 +73,7 @@ final class Plugin {
 		$migration_runner = new MigrationRunner( $logger );
 		$scheduler        = new DailyScheduler( $logger );
 		$scrydex_runner   = new ScryDexScheduledRefreshRunner( $logger );
+		$scrydex_webhooks = new ScryDexWebhookRefreshRunner( $logger );
 
 		add_action( 'admin_init', array( $migration_runner, 'maybe_migrate' ), 5 );
 		add_action( 'admin_init', array( RoleManager::class, 'maybe_install' ), 6 );
@@ -97,8 +100,10 @@ final class Plugin {
 		( new FulfillmentOrderController() )->register();
 		( new ReportsController() )->register();
 		( new ScryDexCatalogController() )->register();
+		( new ScryDexWebhookController( $logger ) )->register();
 		( new EventShortcodes() )->register();
 		$scrydex_runner->register();
+		$scrydex_webhooks->register();
 		$scheduler->register();
 
 		add_action(

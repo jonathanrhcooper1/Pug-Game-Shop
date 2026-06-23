@@ -1,6 +1,7 @@
 import { createServer } from "node:http"
 
 import { createLocalSyncStore } from "./localSyncStore.mjs"
+import { getConnectedDymoPrinters, printDymoInventoryLabel } from "./dymoLabelPrinter.mjs"
 import { buildLocalSyncSetupStatus } from "./localSyncServerContract.mjs"
 
 export function createLocalSyncHttpServer(options = {}) {
@@ -33,6 +34,15 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressKioskOrderPushConnected: typeof storeOptions.wordpressKioskOrderPush === "function",
     wordpressReportsPullConnected: typeof storeOptions.wordpressReportsPull === "function",
     scrydexCatalogProxyConfigured: typeof storeOptions.websiteCatalogFallback === "function",
+    scrydexVisionConfigured:
+      typeof storeOptions.scryDexVisionIdentifier?.identifyCardImage === "function" &&
+      storeOptions.scryDexVisionIdentifier?.configured === true,
+    squareInventoryCountPullConnected:
+      typeof storeOptions.squareInventoryCountsPuller?.pullCounts === "function" ||
+      Boolean(storeOptions.squareInventoryCountsPuller?.status?.().configured),
+    squareSalesReportPullConnected:
+      typeof storeOptions.squareSalesReportsPuller?.pullSalesReport === "function" ||
+      Boolean(storeOptions.squareSalesReportsPuller?.status?.().configured),
     gradedPricingProviderConfigured:
       Boolean(storeOptions.gradedPricingProviderConfigured) ||
       (typeof storeOptions.gradedPricingLookup === "function" && storeOptions.gradedPricingLookup.configured === true),
@@ -62,7 +72,7 @@ export function createLocalSyncHttpServer(options = {}) {
     })
   }
 
-  return createServer(async (request, response) => {
+  const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://local-sync-server")
       const token = bearerToken(request.headers.authorization)
@@ -156,6 +166,10 @@ export function createLocalSyncHttpServer(options = {}) {
         )
       }
 
+      if (request.method === "POST" && url.pathname === "/scrydex/cards/identify-image") {
+        return sendStoreResult(response, await store.identifyScryDexCardImage(token, await readJson(request)))
+      }
+
       if (request.method === "GET" && url.pathname === "/trade-ins/graded-valuation") {
         return sendStoreResult(
           response,
@@ -185,6 +199,14 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.reconcileSquarePosInventoryCounts(token, await readJson(request)))
       }
 
+      if (request.method === "POST" && url.pathname === "/pos/square/sales/reconcile") {
+        return sendStoreResult(response, await store.reconcileSquareProviderInventoryCounts(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/pos/square/reports/sales/pull") {
+        return sendStoreResult(response, await store.pullSquareSalesReport(token, await readJson(request)))
+      }
+
       if (request.method === "POST" && url.pathname === "/pos/square/sales/finalize") {
         return sendStoreResult(response, await store.finalizeSquarePosSale(token, await readJson(request)))
       }
@@ -211,6 +233,32 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "POST" && url.pathname === "/inventory/locations") {
         return sendStoreResult(response, store.addInventoryLocation(token, await readJson(request)))
+      }
+
+      if (request.method === "GET" && url.pathname === "/labels/dymo/printers") {
+        const access = store.authorizeLabelPrinting(token)
+
+        if (access.status !== "ok") {
+          return sendStoreResult(response, access)
+        }
+
+        return sendStoreResult(response, await getConnectedDymoPrinters())
+      }
+
+      if (request.method === "POST" && url.pathname === "/labels/dymo/print") {
+        const access = store.authorizeLabelPrinting(token)
+
+        if (access.status !== "ok") {
+          return sendStoreResult(response, access)
+        }
+
+        return sendStoreResult(
+          response,
+          await printDymoInventoryLabel(await readJson(request), {
+            requestedByUserId: access.user_id,
+            requestedByUserName: access.user_name,
+          }),
+        )
       }
 
       if (request.method === "POST" && url.pathname === "/inventory/reservations") {
@@ -412,6 +460,9 @@ export function createLocalSyncHttpServer(options = {}) {
       })
     }
   })
+  server.localSyncStore = store
+
+  return server
 }
 
 export function listenLocalSyncHttpServer(options = {}) {

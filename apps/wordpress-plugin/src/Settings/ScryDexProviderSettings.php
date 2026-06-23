@@ -24,6 +24,8 @@ final class ScryDexProviderSettings {
 			'primary_api_key'              => '',
 			'secondary_api_key'            => '',
 			'request_timeout_seconds'      => 15,
+			'webhook_receiver_enabled'     => false,
+			'webhook_secret'               => '',
 			'webhook_registration_enabled' => false,
 		);
 	}
@@ -72,6 +74,12 @@ final class ScryDexProviderSettings {
 			'request_timeout_seconds'      => self::timeout_seconds(
 				$value['request_timeout_seconds'] ?? $existing['request_timeout_seconds']
 			),
+			'webhook_receiver_enabled'     => ! empty( $value['webhook_receiver_enabled'] ),
+			'webhook_secret'               => self::webhook_secret_value(
+				$value['webhook_secret'] ?? null,
+				(string) $existing['webhook_secret'],
+				! empty( $value['clear_webhook_secret'] )
+			),
 			'webhook_registration_enabled' => false,
 		);
 	}
@@ -99,6 +107,39 @@ final class ScryDexProviderSettings {
 	}
 
 	/**
+	 * Secret-bearing context for the server-side webhook receiver only.
+	 *
+	 * @param array<string, mixed> $settings Full platform settings or ScryDex settings.
+	 * @return array<string, mixed>
+	 */
+	public static function webhook_context( array $settings ): array {
+		$settings      = self::from_settings( $settings );
+		$secret_ready  = '' !== $settings['webhook_secret'];
+		$receiver_on   = true === $settings['webhook_receiver_enabled'];
+		$configured    = $receiver_on && $secret_ready;
+		$issues        = array();
+
+		if ( ! $receiver_on ) {
+			$issues[] = 'scrydex_webhook_receiver_disabled';
+		}
+
+		if ( ! $secret_ready ) {
+			$issues[] = 'scrydex_webhook_secret_missing';
+		}
+
+		return array(
+			'configured'                    => $configured,
+			'status'                        => $configured ? 'ready' : 'blocked',
+			'webhook_receiver_enabled'      => $receiver_on,
+			'webhook_secret'                => (string) $settings['webhook_secret'],
+			'webhook_secret_configured'     => $secret_ready,
+			'webhook_secret_prefix_required' => 'whsec_',
+			'credential_values_redacted'    => true,
+			'configuration_issues'          => array_values( array_unique( $issues ) ),
+		);
+	}
+
+	/**
 	 * @param array<string, mixed> $settings Full platform settings or ScryDex settings.
 	 * @return array<string, mixed>
 	 */
@@ -108,6 +149,7 @@ final class ScryDexProviderSettings {
 		$primary_configured   = '' !== $settings['primary_api_key'];
 		$secondary_configured = '' !== $settings['secondary_api_key'];
 		$key_configured       = $primary_configured || $secondary_configured;
+		$webhook_context      = self::webhook_context( $settings );
 		$configured           = true === $settings['enabled']
 			&& 'disabled' !== $settings['environment']
 			&& $team_configured
@@ -148,10 +190,17 @@ final class ScryDexProviderSettings {
 					: (string) $settings['secondary_api_key']
 			),
 			'request_timeout_seconds'       => $settings['request_timeout_seconds'],
+			'webhook_receiver_enabled'      => true === $settings['webhook_receiver_enabled'],
+			'webhook_receiver_configured'   => true === $webhook_context['configured'],
+			'webhook_secret_configured'     => true === $webhook_context['webhook_secret_configured'],
+			'webhook_secret_fingerprint'    => self::fingerprint( (string) $settings['webhook_secret'] ),
+			'webhook_secret_prefix_required' => 'whsec_',
+			'webhook_signature_verification_required' => true,
 			'credential_values_redacted'    => true,
 			'network_requests_deferred'     => true,
 			'webhook_registration_deferred' => true,
 			'webhook_registration_enabled'  => false,
+			'webhook_configuration_issues'  => $webhook_context['configuration_issues'],
 			'configuration_issues'          => array_values( array_unique( $issues ) ),
 		);
 	}
@@ -207,6 +256,16 @@ final class ScryDexProviderSettings {
 		}
 
 		return self::clean_secret( $value );
+	}
+
+	private static function webhook_secret_value( mixed $value, string $existing, bool $clear ): string {
+		$secret = self::secret_value( $value, $existing, $clear );
+
+		if ( '' === $secret ) {
+			return '';
+		}
+
+		return str_starts_with( $secret, 'whsec_' ) ? $secret : '';
 	}
 
 	private static function clean_secret( string $value ): string {

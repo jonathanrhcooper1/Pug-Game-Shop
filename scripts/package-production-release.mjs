@@ -6,9 +6,10 @@ import { fileURLToPath } from "node:url"
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
 const packageJson = JSON.parse(readFileSyncText(resolve(root, "package.json")))
 const distDir = resolve(root, "dist")
-const releaseDir = resolve(distDir, `the-pug-production-release-${packageJson.version}`)
+const releaseDir = resolve(distDir, `the-pug-store-deliverables-${packageJson.version}`)
 const offlineBundleDir = resolve(root, "apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis")
 const fallbackOfflineBundleDir = resolve(root, "apps/offline-app/src-tauri/target/release/bundle/nsis")
+const deliverableNames = ["Pug Store App", "LAN Server + Pug Store App", "Kiosk Page"]
 
 mkdirSync(distDir, { recursive: true })
 rmSync(releaseDir, { recursive: true, force: true })
@@ -17,98 +18,168 @@ mkdirSync(releaseDir, { recursive: true })
 run("npm.cmd", ["run", "package:wordpress"])
 run("npm.cmd", ["run", "package:wordpress-theme"])
 run("npm.cmd", ["run", "package:local-sync-server"])
+run("npm.cmd", ["run", "build:offline-app:windows"], { PUG_WINDOWS_APP_PROFILE: "store" })
+run("npm.cmd", ["run", "build:offline-app:windows"], { PUG_WINDOWS_APP_PROFILE: "kiosk" })
 
 const pluginZip = resolve(distDir, `tcg-store-platform-${packageJson.version}.zip`)
 const themeZip = resolve(distDir, `pug-arcade-commerce-v2-${packageJson.version}.zip`)
-const localServerZip = resolve(distDir, "pug-local-sync-middleman-server.zip")
+const localServerZip = resolve(distDir, "pug-lan-server.zip")
 const documentationDir = resolve(root, "release-package")
-const employeePackageDir = resolve(releaseDir, "employee-app")
-const kioskPackageDir = resolve(releaseDir, "customer-kiosk")
-const releaseDocumentationDir = resolve(releaseDir, "documentation")
+const pugStoreAppDir = resolve(releaseDir, "Pug Store App")
+const lanServerPlusAppDir = resolve(releaseDir, "LAN Server + Pug Store App")
+const kioskPageDir = resolve(releaseDir, "Kiosk Page")
+const lanWebsiteDir = resolve(lanServerPlusAppDir, "website")
+const lanDocumentationDir = resolve(lanServerPlusAppDir, "documentation")
 
-copyRequired(pluginZip, resolve(releaseDir, basename(pluginZip)))
-copyRequired(themeZip, resolve(releaseDir, basename(themeZip)))
-copyRequired(localServerZip, resolve(releaseDir, basename(localServerZip)))
-mkdirSync(employeePackageDir, { recursive: true })
-mkdirSync(kioskPackageDir, { recursive: true })
+mkdirSync(pugStoreAppDir, { recursive: true })
+mkdirSync(lanServerPlusAppDir, { recursive: true })
+mkdirSync(kioskPageDir, { recursive: true })
+mkdirSync(lanWebsiteDir, { recursive: true })
+
+copyRequired(pluginZip, resolve(lanWebsiteDir, basename(pluginZip)))
+copyRequired(themeZip, resolve(lanWebsiteDir, basename(themeZip)))
+copyRequired(localServerZip, resolve(lanServerPlusAppDir, basename(localServerZip)))
+writeLanServerStartupFiles(lanServerPlusAppDir, basename(localServerZip))
 
 // Bundle client handover docs with the installable package so the ZIP is a
 // complete owner/admin/support handoff, not only an installer collection.
 if (existsSync(documentationDir)) {
-  cpSync(documentationDir, resolve(releaseDocumentationDir, "release-package"), {
+  cpSync(documentationDir, resolve(lanDocumentationDir, "release-package"), {
     recursive: true,
     force: true,
   })
 }
 
-const appInstaller = findNewestInstaller(offlineBundleDir) ?? findNewestInstaller(fallbackOfflineBundleDir)
-const employeeManifest = releaseManifest("employee-app", appInstaller)
-const kioskManifest = releaseManifest("customer-kiosk", appInstaller)
+const appInstaller = findNewestInstallerMatching([offlineBundleDir, fallbackOfflineBundleDir], "Pug Store App")
+const kioskInstaller = findNewestInstallerMatching([offlineBundleDir, fallbackOfflineBundleDir], "Pug Kiosk App")
+const appInstallerFileName = `Pug Store App-${packageJson.version}.exe`
+const kioskInstallerFileName = `Pug Kiosk App-${packageJson.version}.exe`
+const pugStoreAppManifest = buildPugStoreAppManifest(appInstaller)
+const lanServerPlusAppManifest = buildLanServerPlusAppManifest(appInstaller)
+const kioskPageManifest = buildKioskPageManifest(kioskInstaller)
 
 if (appInstaller) {
-  copyFileSync(appInstaller, resolve(releaseDir, `the-pug-local-app-${packageJson.version}.exe`))
-  copyFileSync(appInstaller, resolve(employeePackageDir, `the-pug-employee-app-${packageJson.version}.exe`))
-  copyFileSync(appInstaller, resolve(kioskPackageDir, `the-pug-customer-kiosk-${packageJson.version}.exe`))
+  copyFileSync(appInstaller, resolve(pugStoreAppDir, appInstallerFileName))
+  copyFileSync(appInstaller, resolve(lanServerPlusAppDir, appInstallerFileName))
 }
 
-writeFileSync(resolve(releaseDir, "employee-app.install.json"), JSON.stringify(employeeManifest, null, 2) + "\n")
-writeFileSync(resolve(releaseDir, "customer-kiosk.install.json"), JSON.stringify(kioskManifest, null, 2) + "\n")
-writeFileSync(resolve(employeePackageDir, "employee-app.install.json"), JSON.stringify(employeeManifest, null, 2) + "\n")
-writeFileSync(resolve(kioskPackageDir, "customer-kiosk.install.json"), JSON.stringify(kioskManifest, null, 2) + "\n")
+if (kioskInstaller) {
+  copyFileSync(kioskInstaller, resolve(kioskPageDir, kioskInstallerFileName))
+}
+
 writeFileSync(
-  resolve(employeePackageDir, "README.txt"),
+  resolve(releaseDir, "deliverables.manifest.json"),
+  JSON.stringify(
+    {
+      schema_version: 1,
+      version: packageJson.version,
+      deliverables: deliverableNames,
+      deliverable_count: deliverableNames.length,
+      package_names_are_customer_facing: true,
+    },
+    null,
+    2,
+  ) + "\n",
+)
+writeFileSync(resolve(pugStoreAppDir, "pug-store-app.install.json"), JSON.stringify(pugStoreAppManifest, null, 2) + "\n")
+writeFileSync(
+  resolve(lanServerPlusAppDir, "lan-server-plus-pug-store-app.install.json"),
+  JSON.stringify(lanServerPlusAppManifest, null, 2) + "\n",
+)
+writeFileSync(resolve(kioskPageDir, "kiosk-page.install.json"), JSON.stringify(kioskPageManifest, null, 2) + "\n")
+writeFileSync(
+  resolve(pugStoreAppDir, "README.txt"),
   [
-    "The Pug employee app",
+    "Pug Store App",
     "",
-    "Use this package on staff machines for inventory, customer, trade-in, fulfillment, reporting, and sync work.",
-    "The app auto-discovers the local middleman server over UDP port 8788.",
-    "If discovery is blocked, enter the middleman URL manually, for example http://SERVER-IP:8787.",
+    "Use this deliverable on staff machines for inventory, customer, trade-in, fulfillment, reporting, and sync work.",
+    "Install the app, then let it auto-discover the LAN server over UDP port 8788.",
+    "If discovery is blocked, enter the LAN server URL manually, for example http://SERVER-IP:8787.",
+    appInstaller
+      ? `Installer: ${appInstallerFileName}`
+      : "Installer missing: run npm.cmd run build:offline-app:windows, then rerun npm.cmd run package:production-release.",
     "",
   ].join("\n"),
 )
 writeFileSync(
-  resolve(kioskPackageDir, "README.txt"),
+  resolve(lanServerPlusAppDir, "README.txt"),
   [
-    "The Pug customer kiosk",
+    "LAN Server + Pug Store App",
     "",
-    "Use this package on customer-facing lookup/order stations.",
-    "It is configured as the kiosk package and should be paired to the same local middleman server as staff machines.",
-    "The app auto-discovers the local middleman server over UDP port 8788.",
-    "If discovery is blocked, enter the middleman URL manually, for example http://SERVER-IP:8787.",
+    "Use this deliverable on the in-store host machine and any staff station that should connect to it.",
+    "Contents:",
+    `- ${basename(localServerZip)} for the LAN server source package.`,
+    appInstaller ? `- ${appInstallerFileName} for the Pug Store App installer.` : "- Pug Store App installer missing; build it before final handoff.",
+    "- website/ contains the WordPress plugin and storefront theme ZIPs needed by the website endpoints.",
+    "- documentation/ contains the owner/admin/support handoff docs.",
+    "",
+    "SQLite:",
+    "- The LAN server does not ship or install a SQLite database file.",
+    "- It requires Node 22.13+ or Node 24 with built-in node:sqlite.",
+    "- On startup it creates or reuses store-sync.sqlite unless LOCAL_SYNC_SQLITE_PATH or PUG_LOCAL_SYNC_DB points elsewhere.",
+    "- Use Start-Pug-LAN-Server-Hidden.vbs or Install-Pug-LAN-Server-Startup-Task.ps1 when you do not want a command prompt window visible.",
+    "",
+    "Connectivity:",
+    "- Allow inbound TCP 8787 and UDP 8788 through Windows Firewall.",
+    "- The Pug Store App auto-discovers the LAN server over UDP port 8788.",
+    "- If discovery is blocked, enter the LAN server URL manually, for example http://SERVER-IP:8787.",
+    "",
+  ].join("\n"),
+)
+writeFileSync(
+  resolve(kioskPageDir, "README.txt"),
+  [
+    "Kiosk Page",
+    "",
+    "Use this deliverable for the customer-facing inventory lookup and pickup request app.",
+    kioskInstaller ? `Installer: ${kioskInstallerFileName}` : "Installer missing: rerun npm.cmd run package:production-release after the kiosk app build succeeds.",
+    "The kiosk app opens fullscreen, hides staff screens, and connects to the same LAN server as the Pug Store App.",
+    "It auto-discovers the LAN server over UDP port 8788. If discovery is blocked, enter the LAN server URL manually.",
+    "Verify it can load inventory, add cards to the kiosk cart, and submit a pickup request.",
     "",
   ].join("\n"),
 )
 writeFileSync(
   resolve(releaseDir, "README-FIRST.txt"),
   [
-    "The Pug production release package",
+    "The Pug store deliverables",
     "",
-    "Install order:",
-    "1. Install/verify the WordPress plugin ZIP on production.",
-    "2. Install/verify the pug-arcade-commerce-v2 theme ZIP on production.",
-    "3. Install and start pug-local-sync-middleman-server.zip on the in-store host machine.",
-    "4. Install employee-app/the-pug-employee-app-*.exe on staff stations.",
-    "5. Install customer-kiosk/the-pug-customer-kiosk-*.exe on customer kiosk stations.",
+    "This package contains exactly three deliverables:",
+    "1. Pug Store App",
+    "2. LAN Server + Pug Store App",
+    "3. Kiosk Page",
+    "",
+    "Recommended install order:",
+    "1. Open LAN Server + Pug Store App, install/verify the website ZIPs, then start the LAN server on the in-store host machine.",
+    "2. Install Pug Store App on staff stations.",
+    "3. Install Kiosk Page on customer-facing kiosk stations.",
     "",
     "Connectivity:",
-    "- Employee and kiosk apps auto-discover the middleman over UDP pug-local-sync-discovery-v1 on port 8788.",
-    "- If auto-discovery is blocked, enter the middleman URL manually, for example http://SERVER-IP:8787.",
+    "- Pug Store App auto-discovers the LAN server over UDP pug-local-sync-discovery-v1 on port 8788.",
+    "- If auto-discovery is blocked, enter the LAN server URL manually, for example http://SERVER-IP:8787.",
     "- WordPress remains the source of truth; the LAN server caches and queues while offline.",
+    "",
+    "SQLite:",
+    "- The LAN server auto-creates or reuses store-sync.sqlite through Node built-in node:sqlite.",
+    "- The package does not include an existing SQLite database and does not install SQLite separately.",
     "",
     "Final release gate:",
     "Run npm.cmd run production:verify-active-syncs before signoff.",
     "",
     "Documentation:",
-    "- See documentation/release-package/README.md for owner, admin, staff, support, credential, and source-code handover guides.",
+    "- See LAN Server + Pug Store App/documentation/release-package/README.md for owner, admin, staff, support, credential, and source-code handover guides.",
     "",
     appInstaller
-      ? `Bundled app installer: the-pug-local-app-${packageJson.version}.exe`
+      ? `Bundled app installer: ${appInstallerFileName}`
       : "App installer was not found. Run npm.cmd run build:offline-app:windows, then rerun npm.cmd run package:production-release.",
+    kioskInstaller
+      ? `Bundled kiosk installer: ${kioskInstallerFileName}`
+      : "Kiosk installer was not found. Rerun npm.cmd run package:production-release after the kiosk app build succeeds.",
     "",
   ].join("\n"),
 )
 
-const releaseZip = resolve(distDir, `the-pug-production-release-${packageJson.version}.zip`)
+const releaseZip = resolve(distDir, `the-pug-store-deliverables-${packageJson.version}.zip`)
 rmSync(releaseZip, { force: true })
 run("tar", ["-a", "-cf", releaseZip, "-C", distDir, basename(releaseDir)])
 
@@ -118,15 +189,16 @@ console.log(
       action: "production_release_packaged",
       releaseDirectory: releaseDir,
       releaseZip,
-      wordpressPluginZip: pluginZip,
-      wordpressThemeZip: themeZip,
+      deliverables: deliverableNames,
+      wordpressPluginZip: resolve(lanWebsiteDir, basename(pluginZip)),
+      wordpressThemeZip: resolve(lanWebsiteDir, basename(themeZip)),
       localSyncServerZip: localServerZip,
-      documentationPackage: existsSync(documentationDir) ? releaseDocumentationDir : null,
+      documentationPackage: existsSync(documentationDir) ? lanDocumentationDir : null,
       appInstaller: appInstaller ?? null,
-      employeeAppPackage: employeePackageDir,
-      customerKioskPackage: kioskPackageDir,
-      employeeManifest: resolve(releaseDir, "employee-app.install.json"),
-      customerKioskManifest: resolve(releaseDir, "customer-kiosk.install.json"),
+      pugStoreAppPackage: pugStoreAppDir,
+      lanServerPlusAppPackage: lanServerPlusAppDir,
+      kioskPagePackage: kioskPageDir,
+      deliverablesManifest: resolve(releaseDir, "deliverables.manifest.json"),
       autoDiscovery: "udp:pug-local-sync-discovery-v1:8788",
       manualMiddlemanUrlFallback: true,
     },
@@ -135,15 +207,18 @@ console.log(
   ),
 )
 
-function releaseManifest(mode, installerPath) {
+function buildPugStoreAppManifest(installerPath) {
   return {
     schema_version: 1,
-    app: mode,
+    deliverable: "Pug Store App",
     version: packageJson.version,
-    installer: installerPath ? `the-pug-local-app-${packageJson.version}.exe` : null,
-    launch_mode: mode === "customer-kiosk" ? "kiosk" : "employee",
-    build_mode: mode === "customer-kiosk" ? "customer_kiosk" : "employee",
-    launch_url_hint: mode === "customer-kiosk" ? "?mode=kiosk or /kiosk" : "/",
+    installer: installerPath ? appInstallerFileName : null,
+    launch_mode: "staff",
+    build_mode: "pug_store_app",
+    fullscreen: true,
+    decorations: false,
+    command_prompt_window_required: false,
+    launch_url_hint: "/",
     sync_topology: "wordpress_woocommerce_plugin <-https-> local_middleman <-lan/offline-> app",
     auto_discovery: {
       protocol: "pug-local-sync-discovery-v1",
@@ -160,14 +235,132 @@ function releaseManifest(mode, installerPath) {
   }
 }
 
-function findNewestInstaller(directory) {
-  if (!existsSync(directory)) {
-    return null
+function buildLanServerPlusAppManifest(installerPath) {
+  return {
+    schema_version: 1,
+    deliverable: "LAN Server + Pug Store App",
+    version: packageJson.version,
+    lan_server_package: basename(localServerZip),
+    app_installer: installerPath ? appInstallerFileName : null,
+    app_launch_mode: "staff",
+    app_fullscreen: true,
+    app_decorations: false,
+    command_prompt_window_required: false,
+    hidden_start_helper: "Start-Pug-LAN-Server-Hidden.vbs",
+    startup_task_helper: "Install-Pug-LAN-Server-Startup-Task.ps1",
+    website_dependencies: [basename(pluginZip), basename(themeZip)],
+    local_database: "store-sync.sqlite",
+    sqlite_runtime: "Node built-in node:sqlite",
+    sqlite_database_auto_created: true,
+    sqlite_database_shipped: false,
+    sqlite_separate_install_required: false,
+    sync_topology: "wordpress_woocommerce_plugin <-https-> lan_server <-lan/offline-> pug_store_app",
+    auto_discovery: {
+      protocol: "pug-local-sync-discovery-v1",
+      transport: "udp",
+      port: 8788,
+      credentials_returned: false,
+    },
+    manual_fallback: {
+      supported: true,
+      example_url: "http://SERVER-IP:8787",
+    },
+    required_ports: {
+      http: 8787,
+      discovery_udp: 8788,
+    },
   }
+}
 
-  const installers = readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".exe"))
-    .map((entry) => resolve(directory, entry.name))
+function buildKioskPageManifest(installerPath) {
+  return {
+    schema_version: 1,
+    deliverable: "Kiosk Page",
+    version: packageJson.version,
+    delivery_type: "windows_desktop_kiosk_app",
+    installer: installerPath ? kioskInstallerFileName : null,
+    launch_mode: "customer_kiosk",
+    build_mode: "kiosk",
+    fullscreen: true,
+    decorations: false,
+    command_prompt_window_required: false,
+    launch_url_hint: "?mode=kiosk",
+    requires_lan_server: true,
+    staff_screens_exposed: false,
+    sync_topology: "kiosk_page <-lan/offline-> lan_server <-https-> wordpress_woocommerce_plugin",
+    validation: [
+      "Open the kiosk page on the kiosk station.",
+      "Confirm inventory search loads.",
+      "Add a card to the kiosk cart.",
+      "Submit a pickup request and verify it reaches fulfillment.",
+    ],
+  }
+}
+
+function writeLanServerStartupFiles(targetDir, serverZipName) {
+  writeFileSync(
+    resolve(targetDir, "Start-Pug-LAN-Server.ps1"),
+    [
+      "$ErrorActionPreference = 'Stop'",
+      "$Root = Split-Path -Parent $MyInvocation.MyCommand.Path",
+      `$Zip = Join-Path $Root '${serverZipName}'`,
+      "$ServerRoot = Join-Path $Root 'pug-lan-server'",
+      "if (!(Test-Path $ServerRoot)) {",
+      "  Expand-Archive -LiteralPath $Zip -DestinationPath $ServerRoot -Force",
+      "}",
+      "$Node = Get-Command node -ErrorAction SilentlyContinue",
+      "if (!$Node) { throw 'Node.js 22.13+ or Node.js 24+ is required for the Pug LAN server.' }",
+      "$env:LOCAL_SYNC_HOST = if ($env:LOCAL_SYNC_HOST) { $env:LOCAL_SYNC_HOST } else { '0.0.0.0' }",
+      "$env:LOCAL_SYNC_PORT = if ($env:LOCAL_SYNC_PORT) { $env:LOCAL_SYNC_PORT } else { '8787' }",
+      "$env:LOCAL_SYNC_DISCOVERY_PORT = if ($env:LOCAL_SYNC_DISCOVERY_PORT) { $env:LOCAL_SYNC_DISCOVERY_PORT } else { '8788' }",
+      "$env:PUG_LOCAL_SYNC_DB = if ($env:PUG_LOCAL_SYNC_DB) { $env:PUG_LOCAL_SYNC_DB } else { Join-Path $ServerRoot 'store-sync.sqlite' }",
+      "Set-Location $ServerRoot",
+      "node apps/local-sync-server/src/cli.mjs",
+      "",
+    ].join("\r\n"),
+  )
+
+  writeFileSync(
+    resolve(targetDir, "Start-Pug-LAN-Server-Hidden.vbs"),
+    [
+      "Set shell = CreateObject(\"WScript.Shell\")",
+      "scriptDir = CreateObject(\"Scripting.FileSystemObject\").GetParentFolderName(WScript.ScriptFullName)",
+      "command = \"powershell.exe -ExecutionPolicy Bypass -NoProfile -File \"\"\" & scriptDir & \"\\Start-Pug-LAN-Server.ps1\"\"\"",
+      "shell.Run command, 0, False",
+      "",
+    ].join("\r\n"),
+  )
+
+  writeFileSync(
+    resolve(targetDir, "Install-Pug-LAN-Server-Startup-Task.ps1"),
+    [
+      "$ErrorActionPreference = 'Stop'",
+      "$Root = Split-Path -Parent $MyInvocation.MyCommand.Path",
+      "$Script = Join-Path $Root 'Start-Pug-LAN-Server-Hidden.vbs'",
+      "$Action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument ('\"' + $Script + '\"')",
+      "$Trigger = New-ScheduledTaskTrigger -AtLogOn",
+      "$Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest",
+      "Register-ScheduledTask -TaskName 'Pug LAN Server' -Action $Action -Trigger $Trigger -Principal $Principal -Force",
+      "Write-Host 'Installed startup task: Pug LAN Server'",
+      "",
+    ].join("\r\n"),
+  )
+}
+
+function findNewestInstallerMatching(directories, productName) {
+  const normalizedProductName = productName.toLowerCase()
+  const installers = directories
+    .filter((directory) => existsSync(directory))
+    .flatMap((directory) =>
+      readdirSync(directory, { withFileTypes: true })
+        .filter(
+          (entry) =>
+            entry.isFile() &&
+            entry.name.toLowerCase().endsWith(".exe") &&
+            entry.name.toLowerCase().includes(normalizedProductName),
+        )
+        .map((entry) => resolve(directory, entry.name)),
+    )
     .sort((left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs)
 
   return installers[0] ?? null
@@ -181,10 +374,14 @@ function copyRequired(source, destination) {
   copyFileSync(source, destination)
 }
 
-function run(command, args) {
+function run(command, args, extraEnv = {}) {
   execFileSync(command, args, {
     cwd: root,
     stdio: "inherit",
+    env: {
+      ...process.env,
+      ...extraEnv,
+    },
     shell: process.platform === "win32" && command.toLowerCase().endsWith(".cmd"),
   })
 }

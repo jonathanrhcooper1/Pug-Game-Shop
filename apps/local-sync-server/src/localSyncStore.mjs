@@ -28,7 +28,7 @@ const CLIENT_DEVICE_MODES = Object.freeze(["employee", "manager", "kiosk"])
 const CLIENT_DEVICE_SETUP_STATUSES = Object.freeze(["setup_required", "configuring", "ready", "error"])
 const CLIENT_DEVICE_NETWORK_STATUSES = Object.freeze(["online", "offline", "degraded"])
 const DEFAULT_HEARTBEAT_TIMEOUT_SECONDS = 90
-const DEFAULT_CARD_HOLD_SECONDS = 30 * 60
+const DEFAULT_CARD_HOLD_SECONDS = 15 * 60
 const SEED_REFERENCE_CARD_IDS = Object.freeze([
   "scrydex-pokemon-base-004",
   "scrydex-pokemon-jungle-060",
@@ -53,6 +53,11 @@ export function createLocalSyncStore(options = {}) {
   )
   const cardHoldSeconds = boundedInt(options.cardHoldSeconds, 60, 24 * 60 * 60, DEFAULT_CARD_HOLD_SECONDS)
   const websiteCatalogFallback = typeof options.websiteCatalogFallback === "function" ? options.websiteCatalogFallback : null
+  const scryDexVisionIdentifier =
+    options.scryDexVisionIdentifier &&
+    typeof options.scryDexVisionIdentifier.identifyCardImage === "function"
+      ? options.scryDexVisionIdentifier
+      : null
   const wordpressCatalogExportPull =
     typeof options.wordpressCatalogExportPull === "function" ? options.wordpressCatalogExportPull : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
@@ -90,6 +95,8 @@ export function createLocalSyncStore(options = {}) {
   const squareLocationId = cleanExternalId(options.squareLocationId) || "LOCAL-SQUARE-POS"
   const squareEnvironment = cleanSquareEnvironment(options.squareEnvironment)
   const squareTerminalConnector = options.squareTerminalConnector ?? null
+  const squareInventoryCountsPuller = options.squareInventoryCountsPuller ?? null
+  const squareSalesReportsPuller = options.squareSalesReportsPuller ?? null
   const databasePath = options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH
   const seedDemoInventory =
     options.seedDemoInventory === true ||
@@ -125,6 +132,8 @@ export function createLocalSyncStore(options = {}) {
   const eventSnapshots = loadEventSnapshots(database)
   const referenceCards = loadReferenceCards(database)
   const clientDevices = loadClientDevices(database)
+  let squareSalesReportSnapshots = loadSquareSalesReportSnapshots(database)
+  let lastSquareInventoryReconciliationResult = null
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -206,6 +215,25 @@ export function createLocalSyncStore(options = {}) {
     }
 
     return sessionResult
+  }
+
+  function authorizeLabelPrinting(token) {
+    const sessionResult = requireWorkspaceAccess(token, "Inventory")
+
+    if (sessionResult.status !== "ok") {
+      return sessionResult
+    }
+
+    return {
+      status: "ok",
+      action: "dymo_label_print_authorized",
+      user_id: sessionResult.user.id,
+      user_name: sessionResult.user.name,
+      user_role: sessionResult.user.role,
+      access_section: "Inventory",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
   }
 
   function listAccessPolicy(token) {
@@ -636,6 +664,308 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function reconcileSquareProviderInventoryCounts(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    return reconcileSquareProviderInventoryCountsInternal({
+      actorId: manager.user.id,
+      actorName: manager.user.name,
+      source: cleanName(input.source) || "manager_manual_reconciliation",
+      input,
+    })
+  }
+
+  async function reconcileSquareProviderInventoryCountsForSystem(input = {}) {
+    return reconcileSquareProviderInventoryCountsInternal({
+      actorId: "square-inventory-poll",
+      actorName: "Square Inventory Poll",
+      source: cleanName(input.source) || "background_poll",
+      input,
+    })
+  }
+
+  async function reconcileSquareProviderInventoryCountsInternal({ actorId, actorName, source, input = {} }) {
+    cleanupExpiredLocalHolds()
+
+    const generatedAtUtc = now().toISOString()
+    const locationId = cleanExternalId(input.square_location_id ?? input.squareLocationId) || squareLocationId
+    const activeGroups = squareInventoryReconciliationGroups(inventoryItems)
+    const variationIds = [...activeGroups.keys()]
+
+    if (variationIds.length === 0) {
+      lastSquareInventoryReconciliationResult = {
+        status: "ok",
+        code: "square_inventory_reconciliation_no_mapped_inventory",
+        generated_at_utc: generatedAtUtc,
+        sold_count: 0,
+        checked_variation_count: 0,
+      }
+
+      return {
+        status: "ok",
+        action: "square_provider_inventory_count_reconciliation",
+        code: "square_inventory_reconciliation_no_mapped_inventory",
+        message: "No POS-visible local inventory has Square variation mappings yet.",
+        generated_at_utc: generatedAtUtc,
+        checked_variation_count: 0,
+        sold_count: 0,
+        wordpress_auto_sync_performed: false,
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const inputCountsPayload = squareCountsPayloadFromInput(input)
+    const hasInputCounts = squareCountsPayloadHasCounts(inputCountsPayload)
+    let countsPayload = inputCountsPayload
+    let pullResult = null
+
+    if (!hasInputCounts) {
+      if (!squareInventoryCountsPuller || typeof squareInventoryCountsPuller.pullCounts !== "function") {
+        const result = {
+          status: "blocked",
+          code: "square_inventory_counts_puller_unavailable",
+          message: "Square count polling is not configured on this LAN server.",
+          generated_at_utc: generatedAtUtc,
+          checked_variation_count: variationIds.length,
+          credentials_synced_to_client: false,
+          raw_credentials_returned: false,
+        }
+        lastSquareInventoryReconciliationResult = result
+        return result
+      }
+
+      pullResult = await squareInventoryCountsPuller.pullCounts({
+        catalogObjectIds: variationIds,
+        locationId,
+        updatedAfter: cleanIsoTimestamp(input.updated_after ?? input.updatedAfter),
+      })
+
+      if (pullResult.status !== "ok") {
+        const result = {
+          status: "blocked",
+          action: "square_provider_inventory_count_reconciliation",
+          code: pullResult.code || "square_inventory_counts_pull_failed",
+          message: pullResult.message || "Square inventory counts could not be pulled.",
+          generated_at_utc: generatedAtUtc,
+          pull_status: pullResult.status,
+          http_status: pullResult.http_status ?? 0,
+          errors: Array.isArray(pullResult.errors) ? pullResult.errors : [],
+          checked_variation_count: variationIds.length,
+          credentials_synced_to_client: false,
+          raw_credentials_returned: false,
+        }
+        lastSquareInventoryReconciliationResult = result
+        return result
+      }
+
+      countsPayload = { counts: pullResult.counts }
+    }
+
+    const countsByVariation = squareInventoryQuantityByVariation(countsPayload, locationId)
+    const comparisons = []
+    const operations = []
+    const soldItems = []
+    let shortageCount = 0
+    let overageCount = 0
+
+    for (const [variationId, items] of activeGroups.entries()) {
+      const actualQuantity = countsByVariation.has(variationId) ? countsByVariation.get(variationId) : 0
+      const expectedQuantity = items.length
+      const delta = actualQuantity - expectedQuantity
+      const soldQuantity = delta < 0 ? Math.min(items.length, Math.abs(delta)) : 0
+      const candidates = [...items].sort(squareInventorySaleCandidateSort)
+
+      if (soldQuantity > 0) {
+        shortageCount += soldQuantity
+      }
+
+      if (delta > 0) {
+        overageCount += delta
+      }
+
+      for (const item of candidates.slice(0, soldQuantity)) {
+        item.status = "sold"
+        item.source = "queued"
+        item.external_sync_state = "pending"
+        item.updated_by_user_id = actorId
+        item.updated_by_user_name = actorName
+        item.row_version += 1
+        saveInventoryItem(database, item, now)
+        soldItems.push(item)
+
+        const operation = appendQueueOperation(database, queue, "square_pos_sale", item.public_id, {
+          inventory_public_id: cleanPublicId(item.wordpress_public_id) || item.public_id,
+          local_inventory_public_id: item.public_id,
+          barcode: item.barcode,
+          square_receipt_reference: squareCountReconciliationReference(variationId, generatedAtUtc),
+          square_order_id: "",
+          sale_total_minor_units: 0,
+          sale_price_minor_units: Math.max(0, minorUnits(item.price_minor_units)),
+          actor_id: actorId,
+          actor_name: actorName,
+          sold_at_utc: generatedAtUtc,
+          sync_intent: "square_inventory_count_reconciliation",
+          source,
+          square_catalog_variation_id: variationId,
+          square_location_id: locationId,
+          square_actual_quantity: actualQuantity,
+          local_expected_quantity_before: expectedQuantity,
+        }, now)
+        operations.push(operation)
+      }
+
+      comparisons.push({
+        square_catalog_variation_id: variationId,
+        local_expected_quantity_before: expectedQuantity,
+        square_actual_quantity: actualQuantity,
+        sold_quantity: soldQuantity,
+        delta,
+        status: delta === 0 ? "matched" : delta < 0 ? "square_sold_locally_available" : "square_has_extra_quantity",
+        items: items.map((item) => ({
+          public_id: item.public_id,
+          wordpress_public_id: item.wordpress_public_id,
+          barcode: item.barcode,
+          card_name: item.card_name,
+          status: item.status,
+        })),
+      })
+    }
+
+    const autoSyncResults = []
+
+    if (wordpressInventorySalePush) {
+      for (const operation of operations) {
+        autoSyncResults.push(await pushSquareSaleOperation(operation))
+      }
+    }
+
+    const result = {
+      status: "ok",
+      action: "square_provider_inventory_count_reconciliation",
+      code: "square_inventory_counts_reconciled",
+      generated_at_utc: generatedAtUtc,
+      source,
+      location_id: locationId,
+      checked_variation_count: variationIds.length,
+      comparison_count: comparisons.length,
+      sold_count: soldItems.length,
+      shortage_count: shortageCount,
+      overage_count: overageCount,
+      comparisons,
+      sold_items: soldItems.map(publicInventoryItem),
+      square_pull_performed: Boolean(pullResult),
+      square_pull_count: Number(pullResult?.count_count ?? 0),
+      wordpress_acceptance_required: soldItems.length > 0,
+      wordpress_auto_sync_performed: autoSyncResults.length > 0,
+      wordpress_accepted_count: autoSyncResults.filter((item) => item.status === "accepted").length,
+      wordpress_retry_count: autoSyncResults.filter((item) => item.status === "retry").length,
+      auto_sync_results: autoSyncResults,
+      local_queue_depth: pendingQueueOperations(queue).length,
+      source_of_truth: "square_inventory_counts_for_pos_sale_detection",
+      square_payment_capture_supported: false,
+      payment_capture_authority: "official_woocommerce_square_extension",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+    lastSquareInventoryReconciliationResult = {
+      status: result.status,
+      code: result.code,
+      generated_at_utc: result.generated_at_utc,
+      sold_count: result.sold_count,
+      checked_variation_count: result.checked_variation_count,
+      wordpress_accepted_count: result.wordpress_accepted_count,
+      wordpress_retry_count: result.wordpress_retry_count,
+      local_queue_depth: result.local_queue_depth,
+    }
+
+    return result
+  }
+
+  async function pullSquareSalesReport(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    return pullSquareSalesReportSnapshot({
+      actorId: manager.user.id,
+      actorName: manager.user.name,
+      input,
+    })
+  }
+
+  async function pullSquareSalesReportSnapshot({ actorId, actorName, input = {} }) {
+    const generatedAtUtc = now().toISOString()
+
+    if (!squareSalesReportsPuller || typeof squareSalesReportsPuller.pullSalesReport !== "function") {
+      return blocked(
+        "square_sales_report_puller_unavailable",
+        "Square sales report polling is not configured on this LAN server.",
+        {
+          action: "square_sales_report_pull",
+          generated_at_utc: generatedAtUtc,
+          credentials_synced_to_client: false,
+          raw_credentials_returned: false,
+        },
+      )
+    }
+
+    const pullResult = await squareSalesReportsPuller.pullSalesReport({
+      date_from: input.date_from ?? input.dateFrom,
+      date_to: input.date_to ?? input.dateTo,
+      locationId: input.square_location_id ?? input.squareLocationId ?? squareLocationId,
+    })
+
+    if (pullResult.status !== "ok") {
+      return {
+        status: "blocked",
+        action: "square_sales_report_pull",
+        code: pullResult.code || "square_sales_report_pull_failed",
+        message: pullResult.message || "Square sales report could not be pulled.",
+        generated_at_utc: generatedAtUtc,
+        http_status: pullResult.http_status ?? 0,
+        errors: Array.isArray(pullResult.errors) ? pullResult.errors : [],
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const snapshot = buildSquareSalesReportSnapshot(pullResult, {
+      actorId,
+      actorName,
+      inventoryItems,
+      queue,
+      kioskOrders,
+      checkoutTransactions,
+      now,
+    })
+    saveSquareSalesReportSnapshot(database, snapshot)
+    squareSalesReportSnapshots = [
+      snapshot,
+      ...squareSalesReportSnapshots.filter((candidate) => candidate.snapshot_id !== snapshot.snapshot_id),
+    ].slice(0, 10)
+
+    return {
+      status: "ok",
+      action: "square_sales_report_snapshot_saved",
+      code: "square_sales_report_snapshot_saved",
+      ...publicSquareSalesReportSnapshot(snapshot),
+      payment_capture_authority: "square_payments_api_read_only",
+      customer_credit_authority: "local_store_credit_ledger_not_square",
+      square_payment_capture_supported: false,
+      inventory_mutated: false,
+      fake_sales_created: false,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
   async function searchScryDexCards(
     token,
     { query = "", game = "pokemon", setFilter = "", limit = "all", rawOrGraded = "" } = {},
@@ -766,6 +1096,89 @@ export function createLocalSyncStore(options = {}) {
       credential_storage: "wordpress_server_settings",
       credentials_synced_to_client: false,
       live_provider_request_performed: Boolean(fallbackResult?.live_provider_request_performed),
+    }
+  }
+
+  async function identifyScryDexCardImage(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    if (!scryDexVisionIdentifier) {
+      return blocked(
+        "scrydex_vision_not_configured",
+        "ScryDex Vision is not configured on this LAN server.",
+        {
+          action: "scrydex_vision_card_scan",
+          credential_storage: "lan_server_environment",
+          credentials_synced_to_client: false,
+        },
+      )
+    }
+
+    const normalizedGame = cleanGame(input.game)
+    const normalizedRawOrGraded = ["raw", "graded"].includes(String(input.raw_or_graded ?? input.rawOrGraded ?? "").toLowerCase())
+      ? String(input.raw_or_graded ?? input.rawOrGraded).toLowerCase()
+      : ""
+    const visionResult = await scryDexVisionIdentifier.identifyCardImage({
+      ...input,
+      game: normalizedGame,
+    })
+
+    if (visionResult.status !== "ok") {
+      return {
+        ...visionResult,
+        action: "scrydex_vision_card_scan",
+        credential_storage: "lan_server_environment",
+        credentials_synced_to_client: false,
+      }
+    }
+
+    const searchRequest = buildScryDexSearchRequestFromVision(visionResult, normalizedGame)
+
+    if (!searchRequest.query) {
+      return {
+        status: "ok",
+        action: "scrydex_vision_card_scan",
+        code: "scrydex_vision_no_catalog_query",
+        cards: [],
+        query: "",
+        game: searchRequest.game,
+        set_filter: "",
+        result_limit: "all",
+        source: "scrydex_vision",
+        lookup_order: ["scrydex_vision", "local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+        vision: visionResult,
+        message: "Vision completed, but it did not return enough card text to search the catalog.",
+        credential_storage: "lan_server_environment",
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+        live_provider_request_performed: true,
+      }
+    }
+
+    const searchResult = await searchScryDexCards(token, {
+      query: searchRequest.query,
+      game: searchRequest.game,
+      setFilter: searchRequest.setFilter,
+      limit: "all",
+      rawOrGraded: normalizedRawOrGraded,
+    })
+
+    return {
+      ...searchResult,
+      action: "scrydex_vision_card_scan",
+      code: searchResult.status === "ok" ? "scrydex_vision_catalog_results_ready" : searchResult.code,
+      vision: visionResult,
+      vision_query: searchRequest.query,
+      vision_set_filter: searchRequest.setFilter,
+      vision_match_count: visionResult.match_count,
+      vision_provider: "scrydex_vision",
+      credential_storage: "lan_server_environment",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
     }
   }
 
@@ -911,12 +1324,8 @@ export function createLocalSyncStore(options = {}) {
     const certNumber = cleanName(input.cert_number)
     const condition = cleanCondition(input.condition ?? input.condition_code)
     const barcodeBase = cleanBarcode(input.barcode) || `PUG-${randomUUID().slice(0, 8).toUpperCase()}`
-    const requestedPriceMinorUnits = roundSalePriceMinorUnits(
+    const inputPriceMinorUnits = roundSalePriceMinorUnits(
       Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units)),
-    )
-    const minimumSalePriceMinorUnits = Math.max(
-      0,
-      minorUnits(input.minimum_sale_price_minor_units ?? input.minimum_price_minor_units ?? requestedPriceMinorUnits),
     )
     const location = cleanInventoryLocation(input.location ?? input.location_label) || "Intake Queue"
     const imageUrl = cleanHttpUrl(input.image_url)
@@ -924,10 +1333,55 @@ export function createLocalSyncStore(options = {}) {
     const onlineVisibility = cleanVisibility(input.online_visibility, "visible")
     const kioskVisibility = cleanVisibility(input.kiosk_visibility, "visible")
     const posVisibility = cleanVisibility(input.pos_visibility, "visible")
+    const squareCatalogItemId = cleanExternalId(input.square_catalog_item_id)
+    const squareCatalogVariationId = cleanExternalId(input.square_catalog_variation_id)
     const quantity = boundedInt(input.quantity ?? input.quantity_added, 1, 200, 1)
+    const inputPriceSource = cleanName(input.price_source ?? input.pricing_source)
+    const referenceEnrichment = inventoryReferenceEnrichment(referenceCards, {
+      cardName,
+      game,
+      setName,
+      setCode,
+      cardNumber,
+      printedNumber,
+      variant,
+      finish,
+      rawOrGraded,
+      condition,
+      gradingCompany,
+      grade,
+    })
+    const referencePriceMinorUnits = referenceEnrichment.price_minor_units
+    const shouldUseReferencePrice =
+      inputPriceSource.includes("scrydex_required") && referencePriceMinorUnits > 0
+    const requestedPriceMinorUnits = shouldUseReferencePrice
+      ? roundSalePriceMinorUnits(referencePriceMinorUnits)
+      : inputPriceMinorUnits
+    const minimumSalePriceMinorUnits = Math.max(
+      0,
+      minorUnits(input.minimum_sale_price_minor_units ?? input.minimum_price_minor_units ?? requestedPriceMinorUnits),
+    )
+    const effectiveProviderCardId = providerCardId || referenceEnrichment.provider_card_id
+    const effectiveReferenceVariantId = referenceVariantId ?? referenceEnrichment.reference_variant_id
+    const effectiveProviderVariantId = providerVariantId || referenceEnrichment.provider_variant_id
+    const effectiveSetName = genericInventorySetName(setName) && referenceEnrichment.set_name
+      ? referenceEnrichment.set_name
+      : setName
+    const effectiveSetCode = setCode || referenceEnrichment.set_code
+    const effectiveCardNumber = cardNumber || referenceEnrichment.card_number
+    const effectivePrintedNumber = printedNumber || referenceEnrichment.printed_number
+    const effectiveVariant = variant || referenceEnrichment.variant
+    const effectiveFinish = finish || referenceEnrichment.finish
+    const effectiveLanguage = language || referenceEnrichment.language
+    const effectiveImageUrl = imageUrl || referenceEnrichment.image_url
+    const effectiveBackImageUrl = backImageUrl || referenceEnrichment.back_image_url
     const suggestedPriceMinorUnits = roundSalePriceMinorUnits(Math.max(
       0,
-      minorUnits(input.suggested_price_minor_units ?? input.market_price_minor_units ?? requestedPriceMinorUnits),
+      minorUnits(
+        shouldUseReferencePrice
+          ? referencePriceMinorUnits
+          : input.suggested_price_minor_units ?? input.market_price_minor_units ?? requestedPriceMinorUnits,
+      ),
     ))
     const autoPriceMinorUnits = roundSalePriceMinorUnits(Math.max(
       0,
@@ -938,8 +1392,8 @@ export function createLocalSyncStore(options = {}) {
       minorUnits(input.final_price_minor_units ?? requestedPriceMinorUnits),
     ))
     const priceSource =
-      cleanName(input.price_source ?? input.pricing_source) ||
-      (providerCardId || referenceVariantId || providerVariantId ? "scrydex_catalog" : "manual_intake")
+      (shouldUseReferencePrice ? "scrydex_catalog_reference_price" : inputPriceSource) ||
+      (effectiveProviderCardId || effectiveReferenceVariantId || effectiveProviderVariantId ? "scrydex_catalog" : "manual_intake")
     const priceObservedAtUtc =
       cleanIsoTimestamp(input.price_observed_at_utc ?? input.catalog_synced_at_utc) || now().toISOString()
     const priceOverrideReason =
@@ -966,18 +1420,18 @@ export function createLocalSyncStore(options = {}) {
       public_id: `local-inventory-${randomUUID()}`,
       wordpress_public_id: "",
       row_version: 1,
-      provider_card_id: providerCardId,
-      reference_variant_id: referenceVariantId,
-      provider_variant_id: providerVariantId,
+      provider_card_id: effectiveProviderCardId,
+      reference_variant_id: effectiveReferenceVariantId,
+      provider_variant_id: effectiveProviderVariantId,
       game,
       card_name: cardName,
-      set_name: setName,
-      set_code: setCode,
-      card_number: cardNumber,
-      printed_number: printedNumber,
-      variant,
-      finish,
-      language,
+      set_name: effectiveSetName,
+      set_code: effectiveSetCode,
+      card_number: effectiveCardNumber,
+      printed_number: effectivePrintedNumber,
+      variant: effectiveVariant,
+      finish: effectiveFinish,
+      language: effectiveLanguage,
       raw_or_graded: rawOrGraded,
       grading_company: rawOrGraded === "graded" ? gradingCompany : "",
       grade: rawOrGraded === "graded" ? grade : "",
@@ -993,13 +1447,13 @@ export function createLocalSyncStore(options = {}) {
       currency: "USD",
       location,
       status: "pending_intake",
-      image_url: imageUrl,
-      back_image_url: backImageUrl,
+      image_url: effectiveImageUrl,
+      back_image_url: effectiveBackImageUrl,
       online_visibility: onlineVisibility,
       kiosk_visibility: kioskVisibility,
       pos_visibility: posVisibility,
-      square_catalog_item_id: "",
-      square_catalog_variation_id: "",
+      square_catalog_item_id: squareCatalogItemId,
+      square_catalog_variation_id: squareCatalogVariationId,
       external_sync_state: "pending",
       created_by_user_id: session.user.id,
       created_by_user_name: session.user.name,
@@ -1027,8 +1481,8 @@ export function createLocalSyncStore(options = {}) {
           minimum_sale_price_minor_units: minimumSalePriceMinorUnits,
           final_price_minor_units: finalPriceMinorUnits,
           override_reason: priceOverrideReason,
-          reference_variant_id: referenceVariantId,
-          provider_variant_id: providerVariantId,
+          reference_variant_id: effectiveReferenceVariantId,
+          provider_variant_id: effectiveProviderVariantId,
         },
         wordpress_acceptance_required: true,
       }, now)
@@ -2720,6 +3174,22 @@ export function createLocalSyncStore(options = {}) {
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       graded_pricing_provider_connected: gradedPricingProviderConfigured,
       graded_pricing_primary_source: "scrydex_reference_cache",
+      square_inventory_count_poller_connected: Boolean(squareInventoryCountsPuller?.status?.().configured),
+      square_inventory_count_poller_status: squareInventoryCountsPuller?.status?.() ?? {
+        configured: false,
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      },
+      square_sales_report_puller_connected: Boolean(squareSalesReportsPuller?.status?.().configured),
+      square_sales_report_puller_status: squareSalesReportsPuller?.status?.() ?? {
+        configured: false,
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      },
+      last_square_inventory_reconciliation: lastSquareInventoryReconciliationResult,
+      last_square_sales_report_pull: publicSquareSalesReportSnapshot(latestSquareSalesReportSnapshot(), {
+        includeRows: false,
+      }),
       local_operations_preserved: true,
     }
   }
@@ -2807,6 +3277,82 @@ export function createLocalSyncStore(options = {}) {
       credit_total_minor_units: creditTotalMinorUnits,
       wordpress_acceptance_required: true,
     }
+  }
+
+  function latestSquareSalesReportSnapshot() {
+    return squareSalesReportSnapshots[0] ?? null
+  }
+
+  function squareSalesReportRows(filters, { includeMatched = false } = {}) {
+    const snapshot = latestSquareSalesReportSnapshot()
+
+    if (!snapshot) {
+      return []
+    }
+
+    return snapshot.rows
+      .filter((row) => includeMatched || row.local_reconciliation_status !== "matched_local_operation")
+      .filter((row) => reportDateMatches(row.date, filters))
+      .filter((row) => !filters.channel || row.channel === filters.channel)
+      .filter((row) => !filters.game || cleanGame(row.game) === filters.game)
+      .filter((row) => !filters.product_type || row.product_type === filters.product_type)
+      .filter((row) => !filters.condition || cleanCondition(row.condition) === filters.condition)
+      .map((row) => ({
+        date: row.date,
+        channel: row.channel,
+        staff_user_id: row.staff_user_id,
+        staff_user_name: row.staff_user_name,
+        product_type: row.product_type,
+        game: row.game,
+        set_name: row.set_name,
+        condition: row.condition,
+        card_name: row.card_name || row.item_name,
+        item_name: row.item_name,
+        sku: row.sku,
+        barcode: row.barcode,
+        square_catalog_variation_id: row.square_catalog_variation_id,
+        payment_id: row.payment_id,
+        order_id: row.order_id,
+        receipt_number: row.receipt_number,
+        receipt_url: row.receipt_url,
+        payment_method: row.payment_method,
+        payment_status: row.payment_status,
+        quantity: row.quantity,
+        gross_sales: row.gross_sales,
+        gross_sales_minor_units: row.gross_sales_minor_units,
+        source: row.source,
+        local_reconciliation_status: row.local_reconciliation_status,
+        square_sales_snapshot_id: snapshot.snapshot_id,
+      }))
+  }
+
+  function squareSalesSummaryRowsForReconciliation(snapshot, filters) {
+    if (!snapshot) {
+      return []
+    }
+
+    return snapshot.summary_by_item
+      .filter((row) => !filters.game || cleanGame(row.game) === filters.game)
+      .filter((row) => !filters.product_type || row.product_type === filters.product_type)
+      .map((row) => ({
+        date: reportDate(snapshot.pulled_at_utc),
+        channel: "square_pos",
+        item_name: row.item_name,
+        sku: row.sku,
+        barcode: row.barcode,
+        square_catalog_variation_id: row.square_catalog_variation_id,
+        quantity: row.quantity,
+        square_api_gross_sales: row.gross_sales,
+        square_api_gross_sales_minor_units: row.gross_sales_minor_units,
+        square_api_line_item_count: row.line_item_count,
+        local_reconciliation_status: row.local_reconciliation_status,
+        local_available_quantity: row.local_available_quantity,
+        local_sold_quantity: row.local_sold_quantity,
+        square_sales_snapshot_id: snapshot.snapshot_id,
+        payment_capture_authority: "square_payments_api_read_only",
+        inventory_authority: "tcg_store_platform",
+        customer_credit_authority: "local_store_credit_ledger_not_square",
+      }))
   }
 
   function buildLocalManagerReport(report, rawFilters = {}) {
@@ -2965,8 +3511,9 @@ export function createLocalSyncStore(options = {}) {
         gross_sales_minor_units: order.total_minor_units,
         source: order.source,
       }))
+    const squareReportRows = squareSalesReportRows(filters, { includeMatched: false })
 
-    return [...soldInventoryRows, ...kioskRows, ...websiteRows]
+    return [...soldInventoryRows, ...kioskRows, ...websiteRows, ...squareReportRows]
       .filter((row) => !filters.channel || row.channel === filters.channel)
       .filter((row) => !filters.staff_user_id || cleanPublicId(row.staff_user_id) === filters.staff_user_id)
       .filter((row) => !filters.game || cleanGame(row.game) === filters.game)
@@ -3087,17 +3634,31 @@ export function createLocalSyncStore(options = {}) {
 
   function squareReconciliationReportRows(filters) {
     const squareOperations = queue.filter((operation) => operation.operation_type === "square_pos_sale")
+    const snapshot = latestSquareSalesReportSnapshot()
+    const squareRows = squareSalesReportRows(filters, { includeMatched: true })
+    const squareOnlyRows = squareRows.filter((row) => row.local_reconciliation_status !== "matched_local_operation")
+    const squareSummaryRows = squareSalesSummaryRowsForReconciliation(snapshot, filters)
+
     return [
       {
         date: reportDate(now().toISOString()),
         channel: "square_pos",
         transaction_count: squareOperations.length,
+        square_api_payment_count: snapshot?.payment_count ?? 0,
+        square_api_line_item_count: squareRows.length,
+        square_api_unmatched_line_item_count: squareOnlyRows.length,
+        square_api_gross_sales: formatMoney(snapshot?.gross_sales_minor_units ?? 0, snapshot?.currency ?? "USD"),
+        square_api_gross_sales_minor_units: snapshot?.gross_sales_minor_units ?? 0,
+        square_sales_snapshot_id: snapshot?.snapshot_id ?? "",
+        square_sales_pulled_at_utc: snapshot?.pulled_at_utc ?? "",
         sold_inventory_count: inventoryItems.filter((item) => item.status === "sold").length,
         pending_queue_count: squareOperations.filter((operation) => operation.sync_status === "pending").length,
         accepted_queue_count: squareOperations.filter((operation) => operation.sync_status === "accepted").length,
-        payment_capture_authority: "official_square_pos",
+        payment_capture_authority: "square_payments_api_read_only",
         inventory_authority: "tcg_store_platform",
+        customer_credit_authority: "local_store_credit_ledger_not_square",
       },
+      ...squareSummaryRows,
     ].filter((row) => !filters.channel || row.channel === filters.channel)
   }
 
@@ -3274,6 +3835,15 @@ export function createLocalSyncStore(options = {}) {
       return manager
     }
 
+    const reportKey = localReportKey(report)
+    if (squareSalesReportRefreshRequested(reportKey, filters)) {
+      await pullSquareSalesReportSnapshot({
+        actorId: manager.user.id,
+        actorName: manager.user.name,
+        input: filters,
+      })
+    }
+
     const localReport = buildLocalManagerReport(report, filters)
 
     if (!wordpressReportsPull) {
@@ -3351,6 +3921,7 @@ export function createLocalSyncStore(options = {}) {
     let insertedCount = 0
     let updatedCount = 0
     let ignoredCount = 0
+    let reconciledPendingCount = 0
 
     if (shouldPullInventory) {
       inventoryPullResult = await wordpressInventoryPull({
@@ -3377,23 +3948,82 @@ export function createLocalSyncStore(options = {}) {
           continue
         }
 
-        const existingIndex = inventoryItems.findIndex((candidate) => candidate.public_id === pulledItem.public_id)
+        const existingIndex = inventoryItems.findIndex(
+          (candidate) =>
+            candidate.public_id === pulledItem.public_id ||
+            cleanPublicId(candidate.wordpress_public_id) === cleanPublicId(pulledItem.public_id) ||
+            (cleanBarcode(candidate.barcode) && cleanBarcode(candidate.barcode) === cleanBarcode(pulledItem.barcode)),
+        )
         const existing = existingIndex >= 0 ? inventoryItems[existingIndex] : null
 
         if (existing && (existing.source === "queued" || existing.status === "pending_intake")) {
+          const pulledPublicId = cleanPublicId(pulledItem.public_id)
+          const sameWordPressId =
+            cleanPublicId(existing.wordpress_public_id) && cleanPublicId(existing.wordpress_public_id) === pulledPublicId
+          const sameBarcode =
+            cleanBarcode(existing.barcode) && cleanBarcode(existing.barcode) === cleanBarcode(pulledItem.barcode)
+          const matchingQueuedOperations = queue.filter(
+            (operation) =>
+              operation.operation_type === "inventory_intake" &&
+              operation.entity_id === existing.public_id &&
+              operation.sync_status === "pending",
+          )
+
+          if ((sameWordPressId || sameBarcode) && matchingQueuedOperations.length > 0) {
+            const reconciledItem = {
+              ...existing,
+              ...pulledItem,
+              public_id: existing.public_id,
+              wordpress_public_id: cleanPublicId(pulledItem.wordpress_public_id) || cleanPublicId(pulledItem.public_id),
+              row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
+              source: "accepted",
+              external_sync_state: "synced",
+              created_by_user_id: existing.created_by_user_id || pulledItem.created_by_user_id,
+              created_by_user_name: existing.created_by_user_name || pulledItem.created_by_user_name,
+              square_catalog_item_id: cleanExternalId(pulledItem.square_catalog_item_id) || existing.square_catalog_item_id,
+              square_catalog_variation_id:
+                cleanExternalId(pulledItem.square_catalog_variation_id) || existing.square_catalog_variation_id,
+            }
+
+            inventoryItems[existingIndex] = reconciledItem
+            saveInventoryItem(database, reconciledItem, now)
+            removeInventoryDuplicateShadows(database, inventoryItems, reconciledItem)
+
+            for (const operation of matchingQueuedOperations) {
+              deleteQueueOperation(database, queue, operation.operation_id)
+            }
+
+            appliedItems.push(publicInventoryItem(reconciledItem))
+            reconciledPendingCount += 1
+            updatedCount += 1
+            continue
+          }
+
           ignoredCount += 1
           continue
         }
 
         if (existing) {
-          inventoryItems[existingIndex] = {
+          const pulledPublicId = cleanPublicId(pulledItem.public_id)
+          const pulledWordPressPublicId = cleanPublicId(pulledItem.wordpress_public_id) || pulledPublicId
+          const mergedItem = {
             ...existing,
             ...pulledItem,
+            public_id: existing.public_id,
+            wordpress_public_id: pulledWordPressPublicId || cleanPublicId(existing.wordpress_public_id),
             row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
-            source: "cached",
+            source: cleanPublicId(existing.wordpress_public_id) || existing.source === "accepted" ? "accepted" : "cached",
+            created_by_user_id: existing.created_by_user_id || pulledItem.created_by_user_id,
+            created_by_user_name: existing.created_by_user_name || pulledItem.created_by_user_name,
+            square_catalog_item_id: cleanExternalId(pulledItem.square_catalog_item_id) || existing.square_catalog_item_id,
+            square_catalog_variation_id:
+              cleanExternalId(pulledItem.square_catalog_variation_id) || existing.square_catalog_variation_id,
           }
-          saveInventoryItem(database, inventoryItems[existingIndex], now)
-          appliedItems.push(publicInventoryItem(inventoryItems[existingIndex]))
+
+          inventoryItems[existingIndex] = mergedItem
+          saveInventoryItem(database, mergedItem, now)
+          removeInventoryDuplicateShadows(database, inventoryItems, mergedItem)
+          appliedItems.push(publicInventoryItem(mergedItem))
           updatedCount += 1
         } else {
           inventoryItems.push(pulledItem)
@@ -3568,6 +4198,7 @@ export function createLocalSyncStore(options = {}) {
       applied_count: appliedItems.length,
       inserted_count: insertedCount,
       updated_count: updatedCount,
+      reconciled_pending_count: reconciledPendingCount,
       ignored_count: ignoredCount,
       items: appliedItems,
       events_pulled_count: (eventPullResult?.events ?? []).length,
@@ -4441,6 +5072,7 @@ export function createLocalSyncStore(options = {}) {
 
   return {
     addUser,
+    authorizeLabelPrinting,
     close: () => database.close(),
     createCreditAdjustment,
     createCreditRedemption,
@@ -4467,15 +5099,19 @@ export function createLocalSyncStore(options = {}) {
     listKioskOrders,
     listTradeInOrders,
     getManagerReport,
+    pullSquareSalesReport,
     createSession,
     listAccessPolicy,
     planSquarePosInventoryPull,
+    reconcileSquareProviderInventoryCounts,
+    reconcileSquareProviderInventoryCountsForSystem,
     reconcileSquarePosInventoryCounts,
     recordDeviceHeartbeat,
     reserveInventory,
     pullWebsiteInventory,
     searchCustomers,
     searchInventory,
+    identifyScryDexCardImage,
     searchScryDexCards,
     lookupGradedTradeInValuation,
     syncStatus,
@@ -4764,6 +5400,17 @@ function migrateLocalSyncDatabase(database) {
       setting_key TEXT PRIMARY KEY,
       setting_value_json TEXT NOT NULL,
       updated_at_utc TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS square_sales_report_snapshots (
+      snapshot_id TEXT PRIMARY KEY,
+      date_from_utc TEXT NOT NULL DEFAULT '',
+      date_to_utc TEXT NOT NULL DEFAULT '',
+      location_id TEXT NOT NULL DEFAULT '',
+      report_json TEXT NOT NULL DEFAULT '{}',
+      row_count INTEGER NOT NULL DEFAULT 0,
+      gross_sales_minor_units INTEGER NOT NULL DEFAULT 0,
+      pulled_at_utc TEXT NOT NULL
     );
   `)
 
@@ -5057,6 +5704,29 @@ function loadClientDevices(database) {
       last_seen_at_utc: cleanIsoTimestamp(row.last_seen_at_utc),
     }))
     .filter((device) => device.device_id)
+}
+
+function loadSquareSalesReportSnapshots(database) {
+  return database
+    .prepare(`
+      SELECT snapshot_id, date_from_utc, date_to_utc, location_id, report_json,
+        row_count, gross_sales_minor_units, pulled_at_utc
+      FROM square_sales_report_snapshots
+      ORDER BY pulled_at_utc DESC, snapshot_id DESC
+      LIMIT 10
+    `)
+    .all()
+    .map((row) => normalizeSquareSalesReportSnapshot({
+      ...parseJson(row.report_json, {}),
+      snapshot_id: row.snapshot_id,
+      date_from_utc: row.date_from_utc,
+      date_to_utc: row.date_to_utc,
+      location_id: row.location_id,
+      line_item_count: Number(row.row_count),
+      gross_sales_minor_units: Number(row.gross_sales_minor_units),
+      pulled_at_utc: row.pulled_at_utc,
+    }))
+    .filter((snapshot) => snapshot.snapshot_id)
 }
 
 function loadSetupConfig(database, defaults = {}) {
@@ -5704,6 +6374,37 @@ function saveClientDevice(database, device) {
     )
 }
 
+function saveSquareSalesReportSnapshot(database, snapshot) {
+  const normalized = normalizeSquareSalesReportSnapshot(snapshot)
+
+  database
+    .prepare(`
+      INSERT INTO square_sales_report_snapshots (
+        snapshot_id, date_from_utc, date_to_utc, location_id, report_json,
+        row_count, gross_sales_minor_units, pulled_at_utc
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(snapshot_id) DO UPDATE SET
+        date_from_utc = excluded.date_from_utc,
+        date_to_utc = excluded.date_to_utc,
+        location_id = excluded.location_id,
+        report_json = excluded.report_json,
+        row_count = excluded.row_count,
+        gross_sales_minor_units = excluded.gross_sales_minor_units,
+        pulled_at_utc = excluded.pulled_at_utc
+    `)
+    .run(
+      normalized.snapshot_id,
+      normalized.date_from_utc,
+      normalized.date_to_utc,
+      normalized.location_id,
+      JSON.stringify(normalized),
+      normalized.line_item_count,
+      normalized.gross_sales_minor_units,
+      normalized.pulled_at_utc,
+    )
+}
+
 function saveKioskOrder(database, order) {
   database
     .prepare(`
@@ -6028,6 +6729,52 @@ function deleteQueueOperation(database, queue, operationId) {
   if (index >= 0) {
     queue.splice(index, 1)
   }
+}
+
+function removeInventoryDuplicateShadows(database, inventoryItems, survivor) {
+  const survivorPublicId = cleanPublicId(survivor?.public_id)
+  const wordpressPublicId = cleanPublicId(survivor?.wordpress_public_id) || survivorPublicId
+  const barcode = cleanBarcode(survivor?.barcode)
+
+  if (!survivorPublicId || (!wordpressPublicId && !barcode)) {
+    return 0
+  }
+
+  const removePublicIds = inventoryItems
+    .filter((item) => {
+      const itemPublicId = cleanPublicId(item.public_id)
+
+      if (!itemPublicId || itemPublicId === survivorPublicId) {
+        return false
+      }
+
+      const itemWordPressPublicId = cleanPublicId(item.wordpress_public_id)
+      const itemBarcode = cleanBarcode(item.barcode)
+      const sameWordPressIdentity =
+        wordpressPublicId &&
+        (itemPublicId === wordpressPublicId ||
+          itemWordPressPublicId === wordpressPublicId ||
+          (itemWordPressPublicId && itemWordPressPublicId === survivorPublicId))
+      const sameAcceptedBarcode =
+        barcode &&
+        itemBarcode === barcode &&
+        wordpressPublicId &&
+        (itemPublicId === wordpressPublicId || itemWordPressPublicId === wordpressPublicId)
+
+      return sameWordPressIdentity || sameAcceptedBarcode
+    })
+    .map((item) => item.public_id)
+
+  for (const publicId of removePublicIds) {
+    database.prepare("DELETE FROM inventory_items WHERE public_id = ?").run(publicId)
+    const index = inventoryItems.findIndex((item) => item.public_id === publicId)
+
+    if (index >= 0) {
+      inventoryItems.splice(index, 1)
+    }
+  }
+
+  return removePublicIds.length
 }
 
 function pendingQueueOperations(queue) {
@@ -6710,6 +7457,102 @@ function squareCountsPayloadFromInput(input = {}) {
   }
 
   return { counts: [] }
+}
+
+function squareCountsPayloadHasCounts(payload = {}) {
+  return squareInventoryCountRowsFromPayload(payload).length > 0
+}
+
+function squareInventoryReconciliationGroups(inventoryItems) {
+  const groups = new Map()
+
+  for (const item of inventoryItems) {
+    const status = localInventoryStatus(item.status)
+    const variationId = cleanExternalId(item.square_catalog_variation_id)
+
+    if (!variationId || cleanVisibility(item.pos_visibility, "hidden") !== "visible") {
+      continue
+    }
+
+    if (!["available", "reserved"].includes(status)) {
+      continue
+    }
+
+    const group = groups.get(variationId) ?? []
+    group.push(item)
+    groups.set(variationId, group)
+  }
+
+  return groups
+}
+
+function squareInventoryQuantityByVariation(payload = {}, preferredLocationId = "") {
+  const countsByVariation = new Map()
+  const normalizedPreferredLocationId = cleanExternalId(preferredLocationId)
+
+  for (const count of squareInventoryCountRowsFromPayload(payload)) {
+    if (normalizedPreferredLocationId && count.location_id && count.location_id !== normalizedPreferredLocationId) {
+      continue
+    }
+
+    if (count.state && count.state !== "IN_STOCK") {
+      continue
+    }
+
+    countsByVariation.set(
+      count.catalog_object_id,
+      (countsByVariation.get(count.catalog_object_id) ?? 0) + count.quantity,
+    )
+  }
+
+  return countsByVariation
+}
+
+function squareInventoryCountRowsFromPayload(payload = {}) {
+  const rows = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.counts)
+      ? payload.counts
+      : Array.isArray(payload?.inventory_counts)
+        ? payload.inventory_counts
+        : Array.isArray(payload?.inventoryCounts)
+          ? payload.inventoryCounts
+          : []
+
+  return rows
+    .filter((row) => row && typeof row === "object" && !Array.isArray(row))
+    .map((row) => ({
+      catalog_object_id: cleanExternalId(
+        row.catalog_object_id ??
+          row.catalogObjectId ??
+          row.catalog_object ??
+          row.catalogObject ??
+          row.variation_id ??
+          row.variationId,
+      ),
+      location_id: cleanExternalId(row.location_id ?? row.locationId),
+      state: cleanName(row.state).toUpperCase(),
+      quantity: Math.max(0, Number.parseInt(String(row.quantity ?? row.count ?? "0"), 10) || 0),
+    }))
+    .filter((row) => row.catalog_object_id)
+}
+
+function squareInventorySaleCandidateSort(left, right) {
+  const leftStatus = localInventoryStatus(left.status) === "available" ? 0 : 1
+  const rightStatus = localInventoryStatus(right.status) === "available" ? 0 : 1
+
+  if (leftStatus !== rightStatus) {
+    return leftStatus - rightStatus
+  }
+
+  return boundedInt(left.row_version, 1, 999999999, 1) - boundedInt(right.row_version, 1, 999999999, 1)
+}
+
+function squareCountReconciliationReference(variationId, generatedAtUtc) {
+  const timestamp = generatedAtUtc.replace(/[^\d]/g, "").slice(0, 14)
+  const suffix = cleanExternalId(variationId).slice(-14) || "UNKNOWN"
+
+  return `SQ-COUNT-${suffix}-${timestamp}`.slice(0, 80)
 }
 
 function squarePosCountComparisonRows(inventoryItems, comparisons) {
@@ -7478,15 +8321,18 @@ function checkoutTransactionMatchesCustomer(transaction, customer, needle = "") 
 }
 
 function cleanLocalReportFilters(filters = {}) {
+  const rawGame = filters.game
+  const rawCondition = filters.condition
+
   return {
     date_from: cleanReportDate(filters.date_from ?? filters.dateFrom),
     date_to: cleanReportDate(filters.date_to ?? filters.dateTo),
     customer_id: cleanPublicId(filters.customer_id ?? filters.customerId),
     staff_user_id: cleanPublicId(filters.staff_user_id ?? filters.staffUserId),
     channel: cleanSlugValue(filters.channel),
-    game: cleanGame(filters.game),
+    game: String(rawGame ?? "").trim() ? cleanGame(rawGame) : "",
     product_type: cleanSlugValue(filters.product_type ?? filters.productType),
-    condition: cleanCondition(filters.condition),
+    condition: String(rawCondition ?? "").trim() ? cleanCondition(rawCondition) : "",
     grade: cleanName(filters.grade),
     grading_company: cleanName(filters.grading_company ?? filters.gradingCompany),
     order_status: cleanTradeInStatus(filters.order_status ?? filters.orderStatus) || cleanFulfillmentStatus(filters.order_status ?? filters.orderStatus),
@@ -7554,6 +8400,454 @@ function csvHeaderFromRows(rows) {
   return Object.keys(firstRow)
     .map((key) => `"${String(key).replace(/"/g, '""')}"`)
     .join(",") + "\n"
+}
+
+function squareSalesReportRefreshRequested(reportKey, filters = {}) {
+  if (!["sales", "square_reconciliation"].includes(localReportKey(reportKey))) {
+    return false
+  }
+
+  const value = filters.refresh_square ?? filters.refreshSquare ?? filters.square_refresh ?? filters.pull_square
+
+  return ["1", "true", "yes", "on"].includes(String(value ?? "").trim().toLowerCase())
+}
+
+function buildSquareSalesReportSnapshot(result, context = {}) {
+  const now = typeof context.now === "function" ? context.now : () => new Date()
+  const pulledAtUtc = now().toISOString()
+  const localMappings = squareLocalCatalogMappings(context.inventoryItems)
+  const localSaleIdentities = squareLocalSaleIdentities({
+    queue: context.queue,
+    kioskOrders: context.kioskOrders,
+    checkoutTransactions: context.checkoutTransactions,
+  })
+  const rows = cleanSquareSalesReportRows(result.rows)
+    .map((row) => enrichSquareSalesReportRow(row, localMappings, localSaleIdentities))
+  const currency = cleanCurrency(result.currency ?? rows[0]?.currency)
+  const grossSalesMinorUnits = rows
+    .filter((row) => row.payment_status === "COMPLETED")
+    .reduce((total, row) => total + minorUnits(row.gross_sales_minor_units), 0)
+
+  return normalizeSquareSalesReportSnapshot({
+    snapshot_id: cleanPublicId(`square-sales-${pulledAtUtc.replace(/[^0-9]/g, "")}-${randomUUID().slice(0, 8)}`),
+    report: "square_sales",
+    environment: cleanName(result.environment),
+    location_id: cleanExternalId(result.location_id),
+    location_id_source: cleanName(result.location_id_source),
+    date_from_utc: cleanIsoTimestamp(result.date_from_utc),
+    date_to_utc: cleanIsoTimestamp(result.date_to_utc),
+    pulled_at_utc: pulledAtUtc,
+    pulled_by_user_id: cleanPublicId(context.actorId),
+    pulled_by_user_name: cleanName(context.actorName) || "System",
+    payment_count: boundedInt(result.payment_count, 0, 1_000_000, 0),
+    completed_payment_count: boundedInt(result.completed_payment_count, 0, 1_000_000, 0),
+    order_count: boundedInt(result.order_count, 0, 1_000_000, 0),
+    line_item_count: rows.length,
+    gross_sales_minor_units: grossSalesMinorUnits,
+    gross_sales: formatMoney(grossSalesMinorUnits, currency),
+    refunded_minor_units: Math.max(0, minorUnits(result.refunded_minor_units)),
+    refunded: formatMoney(result.refunded_minor_units, currency),
+    processing_fee_minor_units: Math.max(0, minorUnits(result.processing_fee_minor_units)),
+    processing_fee: formatMoney(result.processing_fee_minor_units, currency),
+    currency,
+    rows,
+    summary_by_date: summarizeSquareSalesRows(rows, (row) => row.date),
+    summary_by_item: summarizeSquareSalesRows(rows, (row) =>
+      [
+        row.square_catalog_variation_id || "unmapped",
+        row.sku || row.barcode || row.item_name,
+      ].join("|"),
+    ),
+    cursor_exhausted: Boolean(result.cursor_exhausted),
+    max_page_guard_hit: Boolean(result.max_page_guard_hit),
+    payment_page_count: boundedInt(result.payment_page_count, 0, 10_000, 0),
+    order_request_count: boundedInt(result.order_request_count, 0, 10_000, 0),
+    payment_capture_authority: "square_payments_api_read_only",
+    customer_credit_authority: "local_store_credit_ledger_not_square",
+    square_payment_capture_supported: false,
+    inventory_mutated: false,
+    fake_sales_created: false,
+  })
+}
+
+function normalizeSquareSalesReportSnapshot(snapshot = {}) {
+  const rows = cleanSquareSalesReportRows(snapshot.rows)
+  const currency = cleanCurrency(snapshot.currency ?? rows[0]?.currency)
+  const grossSalesMinorUnits = Math.max(
+    0,
+    minorUnits(snapshot.gross_sales_minor_units) ||
+      rows
+        .filter((row) => row.payment_status === "COMPLETED")
+        .reduce((total, row) => total + minorUnits(row.gross_sales_minor_units), 0),
+  )
+
+  return {
+    snapshot_id: cleanPublicId(snapshot.snapshot_id),
+    report: "square_sales",
+    environment: cleanName(snapshot.environment),
+    location_id: cleanExternalId(snapshot.location_id),
+    location_id_source: cleanName(snapshot.location_id_source),
+    date_from_utc: cleanIsoTimestamp(snapshot.date_from_utc),
+    date_to_utc: cleanIsoTimestamp(snapshot.date_to_utc),
+    pulled_at_utc: cleanIsoTimestamp(snapshot.pulled_at_utc),
+    pulled_by_user_id: cleanPublicId(snapshot.pulled_by_user_id),
+    pulled_by_user_name: cleanName(snapshot.pulled_by_user_name),
+    payment_count: boundedInt(snapshot.payment_count, 0, 1_000_000, 0),
+    completed_payment_count: boundedInt(snapshot.completed_payment_count, 0, 1_000_000, 0),
+    order_count: boundedInt(snapshot.order_count, 0, 1_000_000, 0),
+    line_item_count: boundedInt(snapshot.line_item_count ?? rows.length, 0, 1_000_000, rows.length),
+    gross_sales_minor_units: grossSalesMinorUnits,
+    gross_sales: formatMoney(grossSalesMinorUnits, currency),
+    refunded_minor_units: Math.max(0, minorUnits(snapshot.refunded_minor_units)),
+    refunded: formatMoney(snapshot.refunded_minor_units, currency),
+    processing_fee_minor_units: Math.max(0, minorUnits(snapshot.processing_fee_minor_units)),
+    processing_fee: formatMoney(snapshot.processing_fee_minor_units, currency),
+    currency,
+    rows,
+    summary_by_date: cleanSquareSalesSummaryRows(
+      Array.isArray(snapshot.summary_by_date) && snapshot.summary_by_date.length > 0
+        ? snapshot.summary_by_date
+        : summarizeSquareSalesRows(rows, (row) => row.date),
+    ),
+    summary_by_item: cleanSquareSalesSummaryRows(
+      Array.isArray(snapshot.summary_by_item) && snapshot.summary_by_item.length > 0
+        ? snapshot.summary_by_item
+        : summarizeSquareSalesRows(rows, (row) =>
+            [
+              row.square_catalog_variation_id || "unmapped",
+              row.sku || row.barcode || row.item_name,
+            ].join("|"),
+          ),
+    ),
+    cursor_exhausted: Boolean(snapshot.cursor_exhausted),
+    max_page_guard_hit: Boolean(snapshot.max_page_guard_hit),
+    payment_page_count: boundedInt(snapshot.payment_page_count, 0, 10_000, 0),
+    order_request_count: boundedInt(snapshot.order_request_count, 0, 10_000, 0),
+    payment_capture_authority: "square_payments_api_read_only",
+    customer_credit_authority: "local_store_credit_ledger_not_square",
+    square_payment_capture_supported: false,
+    inventory_mutated: false,
+    fake_sales_created: false,
+  }
+}
+
+function publicSquareSalesReportSnapshot(snapshot, { includeRows = true } = {}) {
+  if (!snapshot) {
+    return null
+  }
+
+  const normalized = normalizeSquareSalesReportSnapshot(snapshot)
+  const payload = {
+    snapshot_id: normalized.snapshot_id,
+    report: normalized.report,
+    environment: normalized.environment,
+    location_id: normalized.location_id,
+    location_id_source: normalized.location_id_source,
+    date_from_utc: normalized.date_from_utc,
+    date_to_utc: normalized.date_to_utc,
+    pulled_at_utc: normalized.pulled_at_utc,
+    pulled_by_user_id: normalized.pulled_by_user_id,
+    pulled_by_user_name: normalized.pulled_by_user_name,
+    payment_count: normalized.payment_count,
+    completed_payment_count: normalized.completed_payment_count,
+    order_count: normalized.order_count,
+    line_item_count: normalized.line_item_count,
+    gross_sales_minor_units: normalized.gross_sales_minor_units,
+    gross_sales: normalized.gross_sales,
+    refunded_minor_units: normalized.refunded_minor_units,
+    refunded: normalized.refunded,
+    processing_fee_minor_units: normalized.processing_fee_minor_units,
+    processing_fee: normalized.processing_fee,
+    currency: normalized.currency,
+    summary_by_date: normalized.summary_by_date,
+    summary_by_item: normalized.summary_by_item,
+    cursor_exhausted: normalized.cursor_exhausted,
+    max_page_guard_hit: normalized.max_page_guard_hit,
+    payment_page_count: normalized.payment_page_count,
+    order_request_count: normalized.order_request_count,
+    payment_capture_authority: normalized.payment_capture_authority,
+    customer_credit_authority: normalized.customer_credit_authority,
+    square_payment_capture_supported: false,
+    inventory_mutated: false,
+    fake_sales_created: false,
+    credentials_synced_to_client: false,
+    raw_credentials_returned: false,
+  }
+
+  if (includeRows) {
+    payload.rows = normalized.rows
+  }
+
+  return payload
+}
+
+function squareLocalCatalogMappings(inventoryItems = []) {
+  const mappings = new Map()
+
+  for (const item of Array.isArray(inventoryItems) ? inventoryItems : []) {
+    const variationId = cleanExternalId(item.square_catalog_variation_id)
+
+    if (!variationId) {
+      continue
+    }
+
+    const current = mappings.get(variationId) ?? {
+      square_catalog_variation_id: variationId,
+      square_catalog_item_id: cleanExternalId(item.square_catalog_item_id),
+      sku: cleanBarcode(item.barcode),
+      barcode: cleanBarcode(item.barcode),
+      card_name: cleanName(item.card_name),
+      item_name: cleanName(item.card_name),
+      game: cleanGame(item.game),
+      set_name: cleanName(item.set_name),
+      condition: cleanCondition(item.condition),
+      product_type: item.raw_or_graded === "graded" ? "graded" : "singles",
+      local_available_quantity: 0,
+      local_sold_quantity: 0,
+    }
+
+    if (!current.sku) {
+      current.sku = cleanBarcode(item.barcode)
+      current.barcode = cleanBarcode(item.barcode)
+    }
+
+    if (["available", "reserved", "pending_intake"].includes(item.status)) {
+      current.local_available_quantity += 1
+    }
+
+    if (item.status === "sold") {
+      current.local_sold_quantity += 1
+    }
+
+    mappings.set(variationId, current)
+  }
+
+  return mappings
+}
+
+function squareLocalSaleIdentities({ queue = [], kioskOrders = [], checkoutTransactions = [] } = {}) {
+  const identities = new Set()
+
+  for (const operation of Array.isArray(queue) ? queue : []) {
+    if (operation.operation_type !== "square_pos_sale") {
+      continue
+    }
+
+    addSquareIdentity(identities, operation.payload?.square_receipt_reference)
+    addSquareIdentity(identities, operation.payload?.square_order_id)
+    addSquareIdentity(identities, operation.payload?.payment_id)
+  }
+
+  for (const order of Array.isArray(kioskOrders) ? kioskOrders : []) {
+    addSquareIdentity(identities, order.square_receipt_reference)
+    addSquareIdentity(identities, order.square_order_id)
+  }
+
+  for (const transaction of Array.isArray(checkoutTransactions) ? checkoutTransactions : []) {
+    addSquareIdentity(identities, transaction.square_receipt_reference)
+    addSquareIdentity(identities, transaction.square_order_id)
+  }
+
+  return identities
+}
+
+function addSquareIdentity(identities, value) {
+  const identity = cleanExternalId(value)
+
+  if (identity) {
+    identities.add(identity)
+  }
+}
+
+function enrichSquareSalesReportRow(row, localMappings, localSaleIdentities) {
+  const variationId = cleanExternalId(row.square_catalog_variation_id || row.catalog_object_id)
+  const mapping = localMappings.get(variationId)
+  const matchedLocalOperation = [
+    row.payment_id,
+    row.order_id,
+    row.receipt_number,
+  ].some((identity) => localSaleIdentities.has(cleanExternalId(identity)))
+  const localStatus = matchedLocalOperation
+    ? "matched_local_operation"
+    : mapping
+      ? "square_only_mapped"
+      : "square_only_unmapped"
+  const currency = cleanCurrency(row.currency)
+
+  return {
+    date: reportDate(row.date) || reportDate(row.created_at_utc),
+    channel: "square_pos",
+    payment_id: cleanExternalId(row.payment_id),
+    payment_status: cleanName(row.payment_status).toUpperCase() || "UNKNOWN",
+    order_id: cleanExternalId(row.order_id),
+    receipt_number: cleanExternalId(row.receipt_number),
+    receipt_url: cleanHttpUrl(row.receipt_url),
+    payment_method: cleanName(row.payment_method),
+    card_brand: cleanName(row.card_brand),
+    card_last_4: cleanExternalId(row.card_last_4),
+    team_member_id: cleanExternalId(row.team_member_id),
+    staff_user_id: cleanExternalId(row.team_member_id),
+    staff_user_name: cleanName(row.team_member_id),
+    location_id: cleanExternalId(row.location_id),
+    item_name: cleanName(row.item_name) || mapping?.item_name || "Square line item",
+    card_name: mapping?.card_name ?? cleanName(row.card_name) ?? cleanName(row.item_name),
+    quantity: Number(row.quantity) > 0 ? Number(row.quantity) : 1,
+    catalog_object_id: variationId,
+    square_catalog_variation_id: variationId,
+    square_catalog_item_id: mapping?.square_catalog_item_id ?? "",
+    catalog_version: positiveInt(row.catalog_version),
+    sku: cleanBarcode(row.sku) || mapping?.sku || variationId,
+    barcode: cleanBarcode(row.barcode) || mapping?.barcode || "",
+    product_type: mapping?.product_type ?? "square_catalog",
+    game: mapping?.game ?? "",
+    set_name: mapping?.set_name ?? "",
+    condition: mapping?.condition ?? "",
+    gross_sales_minor_units: Math.max(0, minorUnits(row.gross_sales_minor_units)),
+    gross_sales: formatMoney(row.gross_sales_minor_units, currency),
+    currency,
+    source: "square_api_report",
+    local_reconciliation_status: localStatus,
+    local_available_quantity: mapping?.local_available_quantity ?? 0,
+    local_sold_quantity: mapping?.local_sold_quantity ?? 0,
+  }
+}
+
+function cleanSquareSalesReportRows(rows = []) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && typeof row === "object" && !Array.isArray(row))
+    .map((row) => ({
+      date: reportDate(row.date) || reportDate(row.created_at_utc),
+      channel: cleanSlugValue(row.channel) || "square_pos",
+      payment_id: cleanExternalId(row.payment_id),
+      payment_status: cleanName(row.payment_status).toUpperCase() || "UNKNOWN",
+      order_id: cleanExternalId(row.order_id),
+      receipt_number: cleanExternalId(row.receipt_number),
+      receipt_url: cleanHttpUrl(row.receipt_url),
+      payment_method: cleanName(row.payment_method),
+      card_brand: cleanName(row.card_brand),
+      card_last_4: cleanExternalId(row.card_last_4),
+      team_member_id: cleanExternalId(row.team_member_id),
+      staff_user_id: cleanExternalId(row.staff_user_id ?? row.team_member_id),
+      staff_user_name: cleanName(row.staff_user_name ?? row.team_member_id),
+      location_id: cleanExternalId(row.location_id),
+      item_name: cleanName(row.item_name) || "Square line item",
+      card_name: cleanName(row.card_name ?? row.item_name),
+      quantity: Number(row.quantity) > 0 ? Number(row.quantity) : 1,
+      catalog_object_id: cleanExternalId(row.catalog_object_id),
+      square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id ?? row.catalog_object_id),
+      square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
+      catalog_version: positiveInt(row.catalog_version),
+      sku: cleanBarcode(row.sku),
+      barcode: cleanBarcode(row.barcode),
+      product_type: cleanSlugValue(row.product_type) || "square_catalog",
+      game: cleanGame(row.game),
+      set_name: cleanName(row.set_name),
+      condition: cleanCondition(row.condition),
+      gross_sales_minor_units: Math.max(0, minorUnits(row.gross_sales_minor_units)),
+      gross_sales: formatMoney(row.gross_sales_minor_units, row.currency),
+      currency: cleanCurrency(row.currency),
+      source: cleanSlugValue(row.source) || "square_api_report",
+      local_reconciliation_status: cleanSquareReconciliationStatus(row.local_reconciliation_status),
+      local_available_quantity: Math.max(0, minorUnits(row.local_available_quantity)),
+      local_sold_quantity: Math.max(0, minorUnits(row.local_sold_quantity)),
+    }))
+    .filter((row) => row.date && row.payment_id)
+}
+
+function summarizeSquareSalesRows(rows, keyFn) {
+  const groups = new Map()
+
+  for (const row of cleanSquareSalesReportRows(rows)) {
+    const key = cleanName(keyFn(row)) || "unknown"
+    const current = groups.get(key) ?? {
+      key,
+      date: row.date,
+      item_name: row.item_name,
+      sku: row.sku,
+      barcode: row.barcode,
+      square_catalog_variation_id: row.square_catalog_variation_id,
+      product_type: row.product_type,
+      game: row.game,
+      set_name: row.set_name,
+      condition: row.condition,
+      local_reconciliation_status: row.local_reconciliation_status,
+      local_available_quantity: row.local_available_quantity,
+      local_sold_quantity: row.local_sold_quantity,
+      quantity: 0,
+      line_item_count: 0,
+      gross_sales_minor_units: 0,
+      gross_sales: "$0.00",
+      currency: row.currency,
+    }
+
+    current.quantity += Number(row.quantity) || 0
+    current.line_item_count += 1
+    current.gross_sales_minor_units += Math.max(0, minorUnits(row.gross_sales_minor_units))
+    current.gross_sales = formatMoney(current.gross_sales_minor_units, current.currency)
+    current.local_reconciliation_status = mergeSquareReconciliationStatus(
+      current.local_reconciliation_status,
+      row.local_reconciliation_status,
+    )
+    groups.set(key, current)
+  }
+
+  return [...groups.values()]
+}
+
+function cleanSquareSalesSummaryRows(rows = []) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && typeof row === "object" && !Array.isArray(row))
+    .map((row) => {
+      const currency = cleanCurrency(row.currency)
+      const grossSalesMinorUnits = Math.max(0, minorUnits(row.gross_sales_minor_units))
+
+      return {
+        key: cleanName(row.key),
+        date: reportDate(row.date),
+        item_name: cleanName(row.item_name),
+        sku: cleanBarcode(row.sku),
+        barcode: cleanBarcode(row.barcode),
+        square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
+        product_type: cleanSlugValue(row.product_type) || "square_catalog",
+        game: cleanGame(row.game),
+        set_name: cleanName(row.set_name),
+        condition: cleanCondition(row.condition),
+        local_reconciliation_status: cleanSquareReconciliationStatus(row.local_reconciliation_status),
+        local_available_quantity: Math.max(0, minorUnits(row.local_available_quantity)),
+        local_sold_quantity: Math.max(0, minorUnits(row.local_sold_quantity)),
+        quantity: Number(row.quantity) > 0 ? Number(row.quantity) : 0,
+        line_item_count: Math.max(0, minorUnits(row.line_item_count)),
+        gross_sales_minor_units: grossSalesMinorUnits,
+        gross_sales: formatMoney(grossSalesMinorUnits, currency),
+        currency,
+      }
+    })
+}
+
+function cleanSquareReconciliationStatus(value) {
+  const status = cleanSlugValue(value)
+
+  return [
+    "matched_local_operation",
+    "square_only_mapped",
+    "square_only_unmapped",
+  ].includes(status)
+    ? status
+    : "square_only_unmapped"
+}
+
+function mergeSquareReconciliationStatus(left, right) {
+  const statuses = [cleanSquareReconciliationStatus(left), cleanSquareReconciliationStatus(right)]
+
+  if (statuses.includes("square_only_unmapped")) {
+    return "square_only_unmapped"
+  }
+
+  if (statuses.includes("square_only_mapped")) {
+    return "square_only_mapped"
+  }
+
+  return "matched_local_operation"
 }
 
 function cleanReportDate(value) {
@@ -8239,6 +9533,7 @@ function cleanGame(value) {
     mtg: "magicthegathering",
     "magic-the-gathering": "magicthegathering",
     onepiece: "onepiece",
+    one_piece: "onepiece",
     "one-piece": "onepiece",
     "one-piece-card-game": "onepiece",
   }
@@ -8290,6 +9585,23 @@ function normalizeReferenceCardsFromFallback(result, game, now, needle = "", set
     )
 
   return limit ? matches.slice(0, limit) : matches
+}
+
+function buildScryDexSearchRequestFromVision(visionResult, fallbackGame = "pokemon") {
+  const matches = Array.isArray(visionResult?.matches) ? visionResult.matches : []
+  const topMatch = matches[0] ?? {}
+  const query =
+    cleanScryDexQuery(topMatch.card_name) ||
+    cleanScryDexQuery(visionResult?.top_query) ||
+    cleanScryDexQuery(visionResult?.analysis?.graded_details?.cert)
+  const setFilter = cleanScryDexSearchText(topMatch.set_name || topMatch.set_code)
+  const game = cleanGame(topMatch.game || visionResult?.game || visionResult?.analysis?.game || fallbackGame)
+
+  return {
+    query,
+    setFilter,
+    game,
+  }
 }
 
 function mergeReferenceSearchResults(cachedCards, fallbackCards, needle) {
@@ -8862,6 +10174,168 @@ function inventoryMatchesScryDexCard(item, card) {
 
   return cleanScryDexQuery(item.card_name) === cleanScryDexQuery(card.card_name)
     && cleanScryDexQuery(item.set_name) === cleanScryDexQuery(card.set_name)
+}
+
+function inventoryReferenceEnrichment(referenceCards, draft = {}) {
+  const normalizedGame = cleanGame(draft.game)
+  const normalizedName = cleanScryDexQuery(draft.cardName)
+
+  if (!normalizedName) {
+    return emptyInventoryReferenceEnrichment()
+  }
+
+  const matches = (Array.isArray(referenceCards) ? referenceCards : [])
+    .filter((card) => card.game === normalizedGame)
+    .map((card) => ({
+      card,
+      score: inventoryReferenceMatchScore(card, draft),
+    }))
+    .filter((entry) => entry.score >= 800)
+    .sort((left, right) => right.score - left.score)
+
+  const card = matches[0]?.card
+
+  if (!card) {
+    return emptyInventoryReferenceEnrichment()
+  }
+
+  const variant = inventoryReferenceVariant(card, draft)
+  const pricePoint = inventoryReferencePricePoint(card, draft)
+
+  return {
+    provider_card_id: cleanPublicId(card.provider_card_id),
+    reference_variant_id: positiveInt(variant?.reference_variant_id),
+    provider_variant_id: cleanPublicId(variant?.provider_variant_id),
+    set_name: cleanName(card.set_name),
+    set_code: cleanName(card.set_code).toUpperCase(),
+    card_number: cleanName(card.card_number),
+    printed_number: cleanName(card.printed_number || card.card_number),
+    variant: cleanName(variant?.variant),
+    finish: cleanName(variant?.finish),
+    language: cleanName(variant?.language) || "EN",
+    image_url: cleanHttpUrl(variant?.front_image_url ?? variant?.image_url) || cleanHttpUrl(card.image_url),
+    back_image_url: cleanHttpUrl(variant?.back_image_url),
+    price_minor_units:
+      minorUnits(pricePoint?.market_price_minor_units) ||
+      minorUnits(pricePoint?.mid_price_minor_units) ||
+      minorUnits(pricePoint?.low_price_minor_units) ||
+      minorUnits(card.market_price_minor_units),
+  }
+}
+
+function emptyInventoryReferenceEnrichment() {
+  return {
+    provider_card_id: "",
+    reference_variant_id: null,
+    provider_variant_id: "",
+    set_name: "",
+    set_code: "",
+    card_number: "",
+    printed_number: "",
+    variant: "",
+    finish: "",
+    language: "",
+    image_url: "",
+    back_image_url: "",
+    price_minor_units: 0,
+  }
+}
+
+function inventoryReferenceMatchScore(card, draft = {}) {
+  const normalizedNeedle = cleanScryDexQuery(draft.cardName)
+  const cardName = cleanScryDexQuery(card.card_name)
+  const setNeedle = cleanScryDexSearchText(draft.setName)
+  const setText = cleanScryDexSearchText([card.set_name, card.set_code].join(" "))
+  const numberNeedle = cleanScryDexSearchText([draft.cardNumber, draft.printedNumber].join(" "))
+  const numberText = cleanScryDexSearchText([card.card_number, card.printed_number].join(" "))
+
+  let score = 0
+
+  if (!normalizedNeedle || !cardName) {
+    return 0
+  }
+
+  if (cardName === normalizedNeedle) {
+    score += 1000
+  } else if (cardName.startsWith(normalizedNeedle) || normalizedNeedle.startsWith(cardName)) {
+    score += 900
+  } else if (cardName.includes(normalizedNeedle) || normalizedNeedle.includes(cardName)) {
+    score += 800
+  }
+
+  if (score === 0) {
+    return 0
+  }
+
+  if (setNeedle && !genericInventorySetName(setNeedle) && setText.includes(setNeedle)) {
+    score += 250
+  }
+
+  if (numberNeedle && numberText && numberText.includes(numberNeedle)) {
+    score += 300
+  }
+
+  if (cleanHttpUrl(card.image_url)) {
+    score += 50
+  }
+
+  if (minorUnits(card.market_price_minor_units) > 0) {
+    score += 25
+  }
+
+  return score
+}
+
+function inventoryReferenceVariant(card, draft = {}) {
+  const variants = Array.isArray(card.variants) ? card.variants : []
+
+  if (variants.length === 0) {
+    return null
+  }
+
+  const finish = cleanScryDexSearchText(draft.finish || draft.variant)
+  const withImage = variants.find((variant) => cleanHttpUrl(variant?.front_image_url ?? variant?.image_url))
+  const finishMatch = finish
+    ? variants.find((variant) =>
+        cleanScryDexSearchText([variant?.variant, variant?.finish, variant?.parallel_name].join(" ")).includes(finish),
+      )
+    : null
+
+  return finishMatch ?? withImage ?? variants[0]
+}
+
+function inventoryReferencePricePoint(card, draft = {}) {
+  const points = Array.isArray(card.price_points) ? card.price_points : []
+
+  if (points.length === 0) {
+    return null
+  }
+
+  const condition = cleanCondition(draft.condition)
+  const rawOrGraded = cleanRawOrGraded(draft.rawOrGraded)
+  const gradingCompany = cleanScryDexSearchText(draft.gradingCompany)
+  const grade = cleanScryDexSearchText(draft.grade)
+
+  return points.find((point) =>
+    cleanRawOrGraded(point.raw_or_graded) === rawOrGraded &&
+    (!condition || cleanCondition(point.condition_code) === condition) &&
+    (rawOrGraded !== "graded" ||
+      (!gradingCompany || cleanScryDexSearchText(point.grading_company) === gradingCompany) &&
+        (!grade || cleanScryDexSearchText(point.grade) === grade)),
+  ) ?? points.find((point) => cleanRawOrGraded(point.raw_or_graded) === rawOrGraded) ?? points[0]
+}
+
+function genericInventorySetName(value) {
+  const normalized = cleanScryDexSearchText(value)
+
+  return !normalized ||
+    normalized.includes("singles") ||
+    normalized.includes("square category") ||
+    normalized.includes("manual intake") ||
+    normalized === "pokemon" ||
+    normalized === "magic the gathering" ||
+    normalized === "one piece" ||
+    normalized === "mtg"
 }
 
 function minorUnits(value) {
