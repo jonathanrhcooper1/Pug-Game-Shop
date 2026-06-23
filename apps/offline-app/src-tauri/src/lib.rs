@@ -2278,7 +2278,7 @@ mod tests {
     fn valid_pair_offline_device_request() -> PairOfflineDeviceRequest {
         PairOfflineDeviceRequest {
             endpoint:
-                "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/devices/register"
+                "https://thepuggaming.com/wp-json/tcg-store/v1/offline/devices/register"
                     .to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
             body: PairOfflineDeviceBody {
@@ -2328,7 +2328,7 @@ mod tests {
 
     fn valid_pull_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/pull"
+            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/pull"
                 .to_string(),
             route: "pull".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
@@ -2347,7 +2347,7 @@ mod tests {
 
     fn valid_push_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/push"
+            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/push"
                 .to_string(),
             route: "push".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
@@ -2384,7 +2384,7 @@ mod tests {
 
     fn valid_conflict_resolution_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://j84.285.myftpupload.com/wp-json/tcg-store/v1/offline/conflicts/conflict-inv-1004-location/resolve"
+            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/conflicts/conflict-inv-1004-location/resolve"
                 .to_string(),
             route: "conflict_resolution".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),

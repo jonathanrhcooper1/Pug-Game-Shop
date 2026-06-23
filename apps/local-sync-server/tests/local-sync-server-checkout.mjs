@@ -5,7 +5,7 @@ import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
   serverUrl: "http://127.0.0.1:8787",
-  websiteUrl: "https://j84.285.myftpupload.com/",
+  websiteUrl: "https://thepuggaming.com/",
   restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",

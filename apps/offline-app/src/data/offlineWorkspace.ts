@@ -307,6 +307,7 @@ export const PREPARED_PAIRING_STORAGE_KEY = "tcg-store-offline-prepared-pairings
 export const PAIRED_DEVICE_STORAGE_KEY = "tcg-store-offline-paired-devices-v1"
 export const OFFLINE_SESSION_STORAGE_KEY = "tcg-store-offline-session-state-v1"
 export const OFFLINE_SESSION_STORAGE_KEY_PREFIX = `${OFFLINE_SESSION_STORAGE_KEY}:`
+export const PUG_PRODUCTION_HOST = "thepuggaming.com"
 
 export type ConnectorProfileStorageSnapshot = {
   action: "offline_connector_profiles_local_storage"
@@ -938,7 +939,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       status: "needs_pairing",
       wordpress: {
         scheme: "https",
-        host: "j84.285.myftpupload.com",
+        host: PUG_PRODUCTION_HOST,
         restBasePath: "/wp-json/tcg-store/v1",
         authMode: "offline_device_token",
         credentialStorage: "desktop_secure_store",
@@ -3194,10 +3195,6 @@ function safeConnectorId(
 
 function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConnectorProfile[] {
   const safeProfiles: StoreConnectorProfile[] = []
-  const legacyPugHosts = new Set([
-    "vbf.2a7.myftpupload.com",
-    "0gt.f64.myftpupload.com",
-  ])
 
   for (const profile of profiles) {
     if (
@@ -3218,13 +3215,13 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
 
     const originalHost = profile.wordpress.host.toLowerCase()
     const correctedHost =
-      profile.companyName.toLowerCase() === "pug game shop" && legacyPugHosts.has(originalHost)
-        ? "j84.285.myftpupload.com"
+      profile.companyName.toLowerCase() === "pug game shop" && isLegacyManagedWordPressPreviewHost(originalHost)
+        ? PUG_PRODUCTION_HOST
         : profile.wordpress.host
-    const scheme = profile.wordpress.scheme === "http" && correctedHost !== "j84.285.myftpupload.com" ? "http" : "https"
+    const scheme = profile.wordpress.scheme === "http" && correctedHost !== PUG_PRODUCTION_HOST ? "http" : "https"
     const storedEnvironment = cleanConnectorEnvironment(profile.environment)
     const isPugProductionHost =
-      correctedHost.toLowerCase() === "j84.285.myftpupload.com" &&
+      correctedHost.toLowerCase() === PUG_PRODUCTION_HOST &&
       profile.companyName.toLowerCase() === "pug game shop"
     const environment = isPugProductionHost ? "production" : storedEnvironment
     const profileId =
@@ -3281,6 +3278,10 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
   }
 
   return safeProfiles.length > 0 ? [safeProfiles[0]] : offlineWorkspaceSeed.connectorProfiles.slice(0, 1)
+}
+
+function isLegacyManagedWordPressPreviewHost(host: string): boolean {
+  return host.endsWith(".myftpupload.com")
 }
 
 function sanitizePreparedPairingRequests(

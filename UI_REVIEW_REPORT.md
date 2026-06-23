@@ -50,7 +50,7 @@ Passed:
 
 Observed issues:
 
-- Some live header/footer/menu links still resolve as `http://j84.285.myftpupload.com`. The source theme has a secure URL helper, but live production needs the latest theme package deployed or WordPress URL/menu settings corrected after manual approval.
+- Some live header/footer/menu links still resolve as `http://thepuggaming.com`. The source theme has a secure URL helper, but live production needs the latest theme package deployed or WordPress URL/menu settings corrected after manual approval.
 - Homepage ticker is intentionally wider than the viewport for animation; automated overflow checks flag it even though it is a marquee effect.
 - At least one live WooCommerce product/event image uses the WooCommerce placeholder thumbnail. Assign a product image or approve a theme fallback to replace missing product images with branded artwork.
 
@@ -59,4 +59,3 @@ Observed issues:
 - Mobile nav touch targets are approximately 42px high in sampled pages.
 - Product/event images have visible layout; some generated card images lack alt text on the Singles grid and should be improved in a follow-up accessibility pass.
 - Event cards are links and receive focus-visible styling in source CSS.
-

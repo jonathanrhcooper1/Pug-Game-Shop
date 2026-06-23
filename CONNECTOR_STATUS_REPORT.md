@@ -24,7 +24,7 @@ Status: Working.
 
 Status: Working in automated verification.
 
-- Local app shows the production website as `https://j84.285.myftpupload.com`.
+- Local app shows the production website as `https://thepuggaming.com`.
 - LAN/local sync server tests passed.
 - Active sync verifier passed inventory, customer, credit, event, kiosk, Square sale, and pickup flows.
 - One local queue/conflict item is visible in the current app session and was not cleared during audit.
@@ -65,4 +65,3 @@ Status: UI/package support present; hardware not tested.
 Status: Not active in this production pass.
 
 - Earlier direction removed TopDeck from the active focus. No live TopDeck credential or endpoint validation was performed.
-

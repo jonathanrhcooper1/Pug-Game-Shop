@@ -8,7 +8,7 @@ let fulfillmentStatusPushCalls = 0
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
   serverUrl: "http://127.0.0.1:8787",
-  websiteUrl: "https://j84.285.myftpupload.com/",
+  websiteUrl: "https://thepuggaming.com/",
   restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",
@@ -22,7 +22,7 @@ const server = createLocalSyncHttpServer({
         order_count: 1,
         fulfillment_notifications: {
           audio_enabled: true,
-          notification_sound_url: "https://j84.285.myftpupload.com/wp-content/uploads/pickup-alert.mp3",
+          notification_sound_url: "https://thepuggaming.com/wp-content/uploads/pickup-alert.mp3",
           employee_only: true,
           ready_pickup_email_enabled: true,
           credentials_synced_to_client: false,
@@ -134,7 +134,7 @@ try {
   assert.equal(queue.fulfillment_notifications.audio_enabled, true)
   assert.equal(
     queue.fulfillment_notifications.notification_sound_url,
-    "https://j84.285.myftpupload.com/wp-content/uploads/pickup-alert.mp3",
+    "https://thepuggaming.com/wp-content/uploads/pickup-alert.mp3",
   )
   assert.equal(queue.fulfillment_notifications.employee_only, true)
   assert.equal(queue.fulfillment_notifications.credentials_synced_to_client, false)
@@ -149,7 +149,7 @@ try {
   assert.equal(notifications.fulfillment_notifications.audio_enabled, true)
   assert.equal(
     notifications.fulfillment_notifications.notification_sound_url,
-    "https://j84.285.myftpupload.com/wp-content/uploads/pickup-alert.mp3",
+    "https://thepuggaming.com/wp-content/uploads/pickup-alert.mp3",
   )
   assert.equal(notifications.fulfillment_notifications.employee_only, true)
   assert.equal(notifications.fulfillment_notifications.credentials_synced_to_client, false)

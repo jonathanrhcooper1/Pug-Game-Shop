@@ -60,7 +60,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
 export const LOCAL_CLIENT_MODES = Object.freeze(["employee", "manager", "kiosk"])
 
 export function buildLocalSyncServerContract(options = {}) {
-  const websiteUrl = normalizeUrl(options.websiteUrl ?? "https://j84.285.myftpupload.com/")
+  const websiteUrl = normalizeUrl(options.websiteUrl ?? "https://thepuggaming.com/")
   const serverUrl = normalizeUrl(options.serverUrl ?? "http://pug-local-sync:8787/")
   const syncIntervalSeconds = boundedInt(options.syncIntervalSeconds, 5, 3600, 30)
   const setupStatus = buildLocalSyncSetupStatus({

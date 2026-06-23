@@ -50,7 +50,7 @@ try {
     network_status: "online",
     setup_status: "ready",
     server_url: "http://127.0.0.1:8787",
-    website_url: "https://j84.285.myftpupload.com/",
+    website_url: "https://thepuggaming.com/",
     capabilities: ["Inventory", "Customers", "Sync", "Status"],
   })
   assert.equal(firstHeartbeat.status, "ok")

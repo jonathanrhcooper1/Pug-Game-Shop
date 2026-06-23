@@ -22,7 +22,7 @@ let gradedPricingLookupCalls = 0
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
   serverUrl: "http://127.0.0.1:8787",
-  websiteUrl: "https://j84.285.myftpupload.com/",
+  websiteUrl: "https://thepuggaming.com/",
   restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",
@@ -478,8 +478,8 @@ try {
   assert.equal(setupStatus.one_website_mode, true)
   assert.equal(setupStatus.setup_required, false)
   assert.equal(setupStatus.website_configured, true)
-  assert.equal(setupStatus.website_url, "https://j84.285.myftpupload.com/")
-  assert.equal(setupStatus.wordpress_rest_base, "https://j84.285.myftpupload.com/wp-json/tcg-store/v1")
+  assert.equal(setupStatus.website_url, "https://thepuggaming.com/")
+  assert.equal(setupStatus.wordpress_rest_base, "https://thepuggaming.com/wp-json/tcg-store/v1")
   assert.equal(setupStatus.local_database, "store-sync.sqlite")
   assert.equal(setupStatus.wordpress_pull_configured, true)
   assert.equal(setupStatus.wordpress_push_configured, true)
@@ -504,7 +504,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://j84.285.myftpupload.com/",
+      website_url: "https://thepuggaming.com/",
       capabilities: ["Inventory", "Kiosk", "Customers", "Sync", "Status", "Settings"],
       heartbeat_interval_seconds: 20,
     },

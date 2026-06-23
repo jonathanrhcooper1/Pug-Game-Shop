@@ -786,7 +786,7 @@ try {
       {
         id: "pug-game-shop-staging-1780918200000",
         companyName: "Pug Game Shop",
-        siteUrl: "https://j84.285.myftpupload.com",
+        siteUrl: "https://thepuggaming.com",
         operationCount: 1,
         pairingStatus: "Prepared locally",
         createdAtLabel: "8:30 AM",

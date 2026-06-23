@@ -20,7 +20,7 @@ function pug_arcade_secure_site_url($url)
     }
 
     $host = wp_parse_url($url, PHP_URL_HOST);
-    $should_force_https = is_ssl() || 'j84.285.myftpupload.com' === $host;
+    $should_force_https = is_ssl() || 'thepuggaming.com' === $host;
 
     if ($should_force_https && 0 === strpos($url, 'http://')) {
         return 'https://' . substr($url, 7);

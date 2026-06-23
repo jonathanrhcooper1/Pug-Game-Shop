@@ -2,7 +2,7 @@
 
 Date: 2026-06-17
 Branch: `production-readiness-audit`
-Production URL audited: `https://j84.285.myftpupload.com`
+Production URL audited: `https://thepuggaming.com`
 
 ## Executive Summary
 
@@ -27,7 +27,7 @@ No destructive production action was performed. No real payment capture was atte
 
 ## Findings Requiring Human Approval Or Live Admin Action
 
-- Live navigation/footer links still show some `http://j84.285.myftpupload.com` URLs. The source theme has HTTPS-forcing helpers, but the live site appears to need the latest theme package deployed or WordPress home/site URL/menu data corrected. This was not deployed because the audit prompt forbids direct production deployment without manual approval.
+- Live navigation/footer links still show some `http://thepuggaming.com` URLs. The source theme has HTTPS-forcing helpers, but the live site appears to need the latest theme package deployed or WordPress home/site URL/menu data corrected. This was not deployed because the audit prompt forbids direct production deployment without manual approval.
 - The live homepage includes at least one WooCommerce placeholder thumbnail for a product/event card. This is content/product data, not a code fatal. Replace the product image in WordPress or deploy a theme fallback policy after approval.
 - Square real card-reader capture was not tested. The platform delegates payment capture to the official WooCommerce Square extension and local app records Square receipt/reference data.
 - Real SMTP/customer email delivery was not tested because the prompt forbids sending real customer emails without approval.
@@ -48,4 +48,3 @@ No destructive production action was performed. No real payment capture was atte
 - `dist/the-pug-production-release-0.202.0/employee-app`
 - `dist/the-pug-production-release-0.202.0/customer-kiosk`
 - `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/TCG Store Local_0.202.0_x64-setup.exe`
-

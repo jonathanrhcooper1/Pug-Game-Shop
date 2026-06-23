@@ -73,7 +73,7 @@ workstation that should reach it:
 
 ```sh
 set LOCAL_SYNC_SERVER_URL=http://127.0.0.1:8787
-set LOCAL_SYNC_EXPECT_WEBSITE_URL=https://j84.285.myftpupload.com
+set LOCAL_SYNC_EXPECT_WEBSITE_URL=https://thepuggaming.com
 npm run local-sync:smoke
 ```
 

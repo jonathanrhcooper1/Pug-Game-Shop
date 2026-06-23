@@ -1,5 +1,68 @@
 # Revision Log
 
+## 2026-06-23 - Production Domain Sync Package Patch
+
+### What Changed
+
+- Rebuilt the production deliverables so the LAN server contract, staff app
+  seed profile, kiosk app, Tauri sync tests, release docs, and package tests
+  point to `https://thepuggaming.com`.
+- Removed exact old GoDaddy preview-host literals from the packaged app/runtime
+  paths and added a package scan/contract guard against those hosts returning.
+- Added a `local-sync.env.example` file directly beside the packaged LAN server
+  startup scripts.
+- Updated `Start-Pug-LAN-Server.ps1` to load `local-sync.env` before launching
+  the LAN server, so `PUG_WORDPRESS_USERNAME`,
+  `PUG_WORDPRESS_APP_PASSWORD`, Square, and SQLite settings work without
+  separate Windows environment-variable setup.
+- Updated the desktop install credential note with the required WordPress
+  Application Password creation steps.
+
+### Why
+
+The installer/signoff check correctly reported that authenticated WordPress
+inventory, catalog, fulfillment, event, customer, credit, and kiosk sync cannot
+run until a WordPress Application Password is configured. It also caught that
+the packaged app still defaulted to the production preview host instead of the
+canonical production domain.
+
+### Files Affected
+
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php`
+- `release-package/env/local-sync.env.example`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `dist/the-pug-store-deliverables-0.202.0.zip`
+- `dist/the-pug-store-deliverables-0.202.0/**`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `git diff --check`
+- `npm.cmd run package:production-release`
+- Rebuilt package scan confirmed no `myftpupload.com` strings in the release
+  directory or release ZIP.
+
+### Rollback Notes
+
+- Revert this revision if the store intentionally needs to package a GoDaddy
+  preview-domain build again.
+- Delete `local-sync.env` from the LAN server folder to disable locally entered
+  credentials without deleting the packaged example template.
+- No database rollback is required.
+
 ## 2026-06-23 - Small-Screen App Fix And Three-App Release Package
 
 ### What Changed

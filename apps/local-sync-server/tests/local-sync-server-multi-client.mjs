@@ -7,7 +7,7 @@ let currentTime = new Date("2026-06-09T14:00:00.000Z")
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
   serverUrl: "http://127.0.0.1:8787",
-  websiteUrl: "https://j84.285.myftpupload.com/",
+  websiteUrl: "https://thepuggaming.com/",
   restBasePath: "/wp-json/tcg-store/v1",
   storeOptions: {
     databasePath: ":memory:",
@@ -33,7 +33,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://j84.285.myftpupload.com/",
+      website_url: "https://thepuggaming.com/",
       capabilities: ["Inventory", "Kiosk", "Queue", "Customers", "Sync", "Status"],
     },
   })
@@ -54,7 +54,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://j84.285.myftpupload.com/",
+      website_url: "https://thepuggaming.com/",
       capabilities: ["Kiosk", "Status"],
     },
   })
@@ -75,7 +75,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://j84.285.myftpupload.com/",
+      website_url: "https://thepuggaming.com/",
       capabilities: ["Inventory", "Kiosk", "Queue", "Status"],
     },
   })
@@ -213,7 +213,7 @@ try {
       network_status: "online",
       setup_status: "ready",
       server_url: baseUrl,
-      website_url: "https://j84.285.myftpupload.com/",
+      website_url: "https://thepuggaming.com/",
     },
   })
 

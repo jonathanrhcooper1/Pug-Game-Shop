@@ -1,5 +1,18 @@
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+function Import-PugEnvFile {
+  param([string]$Path)
+  if (!(Test-Path -LiteralPath $Path)) { return }
+  Get-Content -LiteralPath $Path | ForEach-Object {
+    $Line = $_.Trim()
+    if (!$Line -or $Line.StartsWith('#') -or !$Line.Contains('=')) { return }
+    $Parts = $Line.Split('=', 2)
+    $Name = $Parts[0].Trim()
+    $Value = $Parts[1].Trim().Trim('"')
+    if ($Name) { [Environment]::SetEnvironmentVariable($Name, $Value, 'Process') }
+  }
+}
+Import-PugEnvFile (Join-Path $Root 'local-sync.env')
 $Zip = Join-Path $Root 'pug-lan-server.zip'
 $ServerRoot = Join-Path $Root 'pug-lan-server'
 if (!(Test-Path $ServerRoot)) {

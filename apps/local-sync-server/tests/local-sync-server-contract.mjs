@@ -10,7 +10,7 @@ import {
 const contract = buildLocalSyncServerContract({
   storeId: "Pug Game Shop",
   serverUrl: "http://192.168.1.20:8787/",
-  websiteUrl: "https://j84.285.myftpupload.com/",
+  websiteUrl: "https://thepuggaming.com/",
   syncIntervalSeconds: 20,
 })
 
@@ -61,8 +61,8 @@ assert.equal(contract.safety.scrydex_vision_uses_lan_server_credentials_only, tr
 assert.equal(contract.safety.graded_pricing_credentials_synced_to_clients, false)
 assert.equal(contract.safety.graded_pricing_secondary_to_scrydex, true)
 assert.equal(contract.setup_status.action, "local_sync_server_setup_status")
-assert.equal(contract.setup_status.website_url, "https://j84.285.myftpupload.com/")
-assert.equal(contract.setup_status.wordpress_rest_base, "https://j84.285.myftpupload.com/wp-json/tcg-store/v1")
+assert.equal(contract.setup_status.website_url, "https://thepuggaming.com/")
+assert.equal(contract.setup_status.wordpress_rest_base, "https://thepuggaming.com/wp-json/tcg-store/v1")
 assert.equal(contract.setup_status.credentials_synced_to_client, false)
 assert.equal(contract.setup_status.scrydex_vision_configured, false)
 assert.equal(contract.setup_status.graded_pricing_provider_configured, false)

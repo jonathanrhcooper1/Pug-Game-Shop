@@ -447,9 +447,13 @@ assert.ok(appSource.includes("operationKind: \"scan\""))
 assert.ok(appSource.includes("operationKind: \"quantity\""))
 assert.ok(appSource.includes("syncIntent: \"staff_barcode_scan\""))
 assert.ok(appSource.includes("syncIntent: \"staff_quantity_adjustment\""))
-assert.ok(workspaceSource.includes('"vbf.2a7.myftpupload.com"'))
-assert.ok(workspaceSource.includes('"0gt.f64.myftpupload.com"'))
-assert.ok(workspaceSource.includes('? "j84.285.myftpupload.com"'))
+assert.ok(workspaceSource.includes('PUG_PRODUCTION_HOST = "thepuggaming.com"'))
+for (const oldHost of [
+  ["vbf", "2a7", "myftpupload", "com"].join("."),
+  ["0gt", "f64", "myftpupload", "com"].join("."),
+]) {
+  assert.equal(workspaceSource.includes(`"${oldHost}"`), false)
+}
 
 for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "https://"]) {
   assert.equal(workspaceSource.includes(forbidden), false, `Forbidden workspace marker found: ${forbidden}`)

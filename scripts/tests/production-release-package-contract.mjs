@@ -37,9 +37,23 @@ for (const marker of [
   "pug-local-sync-discovery-v1",
   "manualMiddlemanUrlFallback",
   "http://SERVER-IP:8787",
+  "local-sync.env.example",
+  "Import-PugEnvFile",
+  "PUG_WORDPRESS_URL=https://thepuggaming.com",
+  "LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true",
+  "PUG_WORDPRESS_USERNAME=replace_with_secure_value",
+  "PUG_WORDPRESS_APP_PASSWORD=replace_with_secure_value",
   "deliverable_count: deliverableNames.length",
 ]) {
   assert.ok(releaseScript.includes(marker), `Missing release package marker: ${marker}`)
+}
+
+for (const forbiddenHost of [
+  ["j84", "285", "myftpupload", "com"].join("."),
+  ["vbf", "2a7", "myftpupload", "com"].join("."),
+  ["0gt", "f64", "myftpupload", "com"].join("."),
+]) {
+  assert.equal(releaseScript.includes(forbiddenHost), false, `Release script still includes old host: ${forbiddenHost}`)
 }
 
 for (const marker of [

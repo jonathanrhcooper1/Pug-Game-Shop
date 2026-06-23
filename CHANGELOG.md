@@ -4,6 +4,12 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Rebuilt the production release package so the staff app, kiosk app, LAN
+  server contract, tests, and release docs target `https://thepuggaming.com`
+  instead of the GoDaddy preview host.
+- Added a packaged `local-sync.env.example` and LAN startup env loader so the
+  WordPress Application Password credentials can be entered once beside the LAN
+  server scripts and picked up automatically on restart.
 - Fixed the employee app inventory workspace at compact desktop/small-screen
   widths so the inventory panel and selected-card detail panel stack cleanly
   without overlap or horizontal scrolling.
