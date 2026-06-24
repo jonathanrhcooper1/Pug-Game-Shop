@@ -147,6 +147,7 @@ final class MigrationRunner {
 			new Version0013ExternalInventoryMappings(),
 			new Version0014ReferenceVariantImages(),
 			new Version0015ProviderPriceReferenceBackfill(),
+			new Version0016InventoryQuantityOnHand(),
 		);
 	}
 	/**

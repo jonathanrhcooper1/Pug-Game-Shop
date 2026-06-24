@@ -4,6 +4,11 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Added WordPress migration 16 to repair production inventory quantity tracking
+  by ensuring `quantity_on_hand` exists on `tcg_inventory_items`. This fixes LAN
+  Store App quantity/price edits that reached WordPress but could not save.
+- Enabled the production inventory update REST route and verified the LAN server
+  can clear pending inventory update operations against `https://thepuggaming.com`.
 - Added manager-only LAN Server Maintenance controls in the Store App Settings
   screen. Managers can refresh server status, back up SQLite, clean/checkpoint
   SQLite, pull website inventory/catalog/events/fulfillment into the LAN cache,

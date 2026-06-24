@@ -1,5 +1,57 @@
 # Revision Log
 
+## 2026-06-24 - Production Inventory Quantity Route Repair
+
+### What Changed
+
+- Verified the LAN server at `10.1.10.116:8787` is reachable, healthy, and
+  running contract version 5.
+- Enabled the production WordPress inventory update REST route so the LAN server
+  can call `PUT /wp-json/tcg-store/v1/inventory/{inventory_id}`.
+- Added migration 16 to ensure the production inventory table has
+  `quantity_on_hand`.
+- Reinstalled the production WordPress plugin package and ran migrations from
+  database version 15 to 16.
+- Retried the LAN sync push and cleared the pending inventory update queue.
+
+### Why
+
+The LAN server and app were online, but pending inventory updates could not
+reach the site. WordPress first rejected the update route as missing, then after
+enabling the route the handler failed because the live inventory table did not
+have the quantity column expected by the app/server payload.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0016InventoryQuantityOnHand.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- `dist/tcg-store-platform-0.202.3.zip`
+
+### Migrations Added
+
+- `Version0016InventoryQuantityOnHand` adds
+  `quantity_on_hand int(10) unsigned NOT NULL DEFAULT 1` to
+  `tcg_inventory_items`.
+
+### Tests Added Or Run
+
+- `npm.cmd run test:local`
+- `npm.cmd run production:install-package`
+- LAN server ping, `/health`, `/setup/status`, `/sync/status`, and `/sync/push`
+  verification against `10.1.10.116:8787`.
+
+### Rollback Notes
+
+- The production installer created backups in `$HOME/tcg-production-backups/`
+  before applying the plugin update.
+- Roll back to the backup SQL and prior plugin package if the quantity column
+  causes an unexpected issue. The migration rollback removes only
+  `quantity_on_hand`.
+
 ## 2026-06-24 - LAN Server Maintenance And Production Plugin Refresh
 
 ### What Changed

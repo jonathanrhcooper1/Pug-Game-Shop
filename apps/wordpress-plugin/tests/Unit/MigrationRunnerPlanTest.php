@@ -16,17 +16,17 @@ final class MigrationRunnerPlanTest extends TestCase {
 		$runner = new MigrationRunner();
 
 		$this->assert_same(
-			array( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ),
+			array( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ),
 			$runner->pending_versions( 0 )
 		);
-		$this->assert_same( Version::DATABASE, 15 );
+		$this->assert_same( Version::DATABASE, 16 );
 	}
 
 	public function test_upgrade_from_prior_schema_plans_only_missing_versions(): void {
 		$runner = new MigrationRunner();
 
 		$this->assert_same(
-			array( 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ),
+			array( 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ),
 			$runner->pending_versions( 5 )
 		);
 	}
@@ -41,15 +41,15 @@ final class MigrationRunnerPlanTest extends TestCase {
 		$runner = new MigrationRunner();
 
 		$this->assert_same(
-			array( 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5 ),
-			$runner->rollback_versions( 15, 4 )
+			array( 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5 ),
+			$runner->rollback_versions( 16, 4 )
 		);
 	}
 
 	public function test_rollback_plan_is_empty_when_target_is_current_or_higher(): void {
 		$runner = new MigrationRunner();
 
-		$this->assert_same( array(), $runner->rollback_versions( 15, 15 ) );
-		$this->assert_same( array(), $runner->rollback_versions( 5, 15 ) );
+		$this->assert_same( array(), $runner->rollback_versions( 16, 16 ) );
+		$this->assert_same( array(), $runner->rollback_versions( 5, 16 ) );
 	}
 }
