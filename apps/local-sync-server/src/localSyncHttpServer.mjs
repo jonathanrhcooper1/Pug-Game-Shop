@@ -2,7 +2,7 @@ import { createServer } from "node:http"
 
 import { createLocalSyncStore } from "./localSyncStore.mjs"
 import { getConnectedDymoPrinters, printDymoInventoryLabel } from "./dymoLabelPrinter.mjs"
-import { buildLocalSyncSetupStatus } from "./localSyncServerContract.mjs"
+import { buildLocalSyncSetupStatus, LOCAL_SYNC_SERVER_CONTRACT_VERSION } from "./localSyncServerContract.mjs"
 
 export function createLocalSyncHttpServer(options = {}) {
   const storeOptions = options.storeOptions ?? {}
@@ -94,7 +94,7 @@ export function createLocalSyncHttpServer(options = {}) {
           status: "ok",
           service: "pug_local_sync_server",
           local_database: "store-sync.sqlite",
-          contract_version: 4,
+          contract_version: LOCAL_SYNC_SERVER_CONTRACT_VERSION,
           topology: "lan_middleman_server",
           setup_screen_mode: "single_configurable_website",
           one_website_mode: true,
@@ -457,6 +457,30 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "GET" && url.pathname === "/sync/status") {
         return sendStoreResult(response, store.syncStatus())
+      }
+
+      if (request.method === "GET" && url.pathname === "/server/maintenance/status") {
+        return sendStoreResult(response, store.getServerMaintenanceStatus(token))
+      }
+
+      if (request.method === "POST" && url.pathname === "/server/maintenance/sqlite/backup") {
+        return sendStoreResult(response, store.backupSqliteDatabase(token))
+      }
+
+      if (request.method === "POST" && url.pathname === "/server/maintenance/sqlite/checkpoint") {
+        return sendStoreResult(response, store.checkpointSqliteDatabase(token))
+      }
+
+      if (request.method === "POST" && url.pathname === "/server/maintenance/website-pull") {
+        return sendStoreResult(response, await store.pullWebsiteForMaintenance(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/server/maintenance/patch") {
+        return sendStoreResult(response, store.applyServerPatch(token, await readJson(request)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/server/maintenance/restart") {
+        return sendStoreResult(response, store.restartServer(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/sync/push") {

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
-import { mkdirSync } from "node:fs"
-import { dirname, resolve } from "node:path"
+import { spawn, spawnSync } from "node:child_process"
+import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs"
+import { basename, dirname, resolve } from "node:path"
 import { DatabaseSync } from "node:sqlite"
 import { fileURLToPath } from "node:url"
 
@@ -102,6 +103,16 @@ export function createLocalSyncStore(options = {}) {
   const squareInventoryCountsPuller = options.squareInventoryCountsPuller ?? null
   const squareSalesReportsPuller = options.squareSalesReportsPuller ?? null
   const databasePath = options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH
+  const resolvedDatabasePath = databasePath === ":memory:" ? ":memory:" : resolve(databasePath)
+  const maintenanceRoot = resolve(
+    options.maintenanceRoot ??
+      resolve(dirname(resolvedDatabasePath === ":memory:" ? DEFAULT_LOCAL_SYNC_DATABASE_PATH : resolvedDatabasePath), "server-maintenance"),
+  )
+  const serverInstallRoot = resolve(options.serverInstallRoot ?? findPugLanInstallRoot())
+  const serverPackageRoot = resolve(serverInstallRoot, "pug-lan-server")
+  const serverPort = boundedInt(options.port ?? options.localSyncPort, 1, 65535, 8787)
+  const restartCommand = typeof options.restartCommand === "function" ? options.restartCommand : null
+  const patchApplyCommand = typeof options.patchApplyCommand === "function" ? options.patchApplyCommand : null
   const seedDemoInventory =
     options.seedDemoInventory === true ||
     (options.seedDemoInventory !== false && !options.database && databasePath === ":memory:")
@@ -3542,6 +3553,327 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function getServerMaintenanceStatus(token) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    return {
+      status: "ok",
+      action: "server_maintenance_status",
+      generated_at_utc: now().toISOString(),
+      server: publicServerMaintenanceConfig(),
+      sqlite: sqliteMaintenanceStatus(),
+      sync_status: syncStatus(),
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+      arbitrary_command_execution_available: false,
+    }
+  }
+
+  function backupSqliteDatabase(token) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    if (resolvedDatabasePath === ":memory:") {
+      return blocked("sqlite_backup_memory_database", "The in-memory test database cannot be backed up to a durable file.")
+    }
+
+    const backupDir = resolve(maintenanceRoot, "backups")
+    mkdirSync(backupDir, { recursive: true })
+    const backupPath = resolve(backupDir, `store-sync-${timestampForFile(now())}.sqlite`)
+
+    database.exec(`VACUUM INTO ${sqliteStringLiteral(backupPath)}`)
+
+    return {
+      status: "ok",
+      action: "sqlite_backup_created",
+      backup_path: backupPath,
+      backup_file_name: basename(backupPath),
+      backup_size_bytes: fileSizeBytes(backupPath),
+      database_path: resolvedDatabasePath,
+      requested_by_user_id: manager.user.id,
+      requested_by_user_name: manager.user.name,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  function checkpointSqliteDatabase(token) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const checkpoint = database.prepare("PRAGMA wal_checkpoint(TRUNCATE)").get()
+    database.exec("PRAGMA optimize")
+
+    return {
+      status: "ok",
+      action: "sqlite_checkpoint_completed",
+      checkpoint,
+      sqlite: sqliteMaintenanceStatus(),
+      requested_by_user_id: manager.user.id,
+      requested_by_user_name: manager.user.name,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  async function pullWebsiteForMaintenance(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const domains = pullDomains(input.domains ?? input.domain)
+    const result = await pullWebsiteInventory(token, {
+      ...input,
+      domains: [...domains],
+    })
+
+    return {
+      ...result,
+      action: result.status === "ok" ? "maintenance_website_pull_completed" : "maintenance_website_pull_blocked",
+      requested_by_user_id: manager.user.id,
+      requested_by_user_name: manager.user.name,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  function applyServerPatch(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const packageBase64 = String(input.package_base64 ?? input.packageBase64 ?? "").trim()
+    const expectedSha256 = cleanSha256(input.sha256 ?? input.package_sha256 ?? input.packageSha256)
+    const applyNow = input.apply !== false
+    const restartAfterApply = input.restart !== false
+
+    if (!packageBase64) {
+      return blocked("server_patch_package_required", "Attach the pug-lan-server.zip package before applying a LAN server patch.")
+    }
+
+    let packageBytes
+    try {
+      packageBytes = Buffer.from(packageBase64, "base64")
+    } catch {
+      return blocked("server_patch_package_invalid", "The uploaded LAN server package was not valid base64.")
+    }
+
+    if (packageBytes.length < 1024 || packageBytes.length > 100 * 1024 * 1024) {
+      return blocked("server_patch_package_size_invalid", "The LAN server package size was outside the expected safe range.")
+    }
+
+    const actualSha256 = createHash("sha256").update(packageBytes).digest("hex")
+
+    if (expectedSha256 && expectedSha256 !== actualSha256) {
+      return blocked("server_patch_sha256_mismatch", "The LAN server package checksum did not match the expected SHA-256.", {
+        actual_sha256: actualSha256,
+      })
+    }
+
+    const patchDir = resolve(maintenanceRoot, "patches")
+    mkdirSync(patchDir, { recursive: true })
+    const stagedZip = resolve(patchDir, `pug-lan-server-${timestampForFile(now())}.zip`)
+    writeFileSync(stagedZip, packageBytes)
+
+    const result = {
+      status: "ok",
+      action: "server_patch_staged",
+      staged_zip_path: stagedZip,
+      staged_zip_file_name: basename(stagedZip),
+      staged_zip_size_bytes: packageBytes.length,
+      sha256: actualSha256,
+      server_install_root: serverInstallRoot,
+      server_package_root: serverPackageRoot,
+      applied: false,
+      restart_scheduled: false,
+      requested_by_user_id: manager.user.id,
+      requested_by_user_name: manager.user.name,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+      arbitrary_command_execution_available: false,
+    }
+
+    if (!applyNow) {
+      return result
+    }
+
+    const installedZip = resolve(serverInstallRoot, "pug-lan-server.zip")
+    mkdirSync(serverInstallRoot, { recursive: true })
+    copyFileSync(stagedZip, installedZip)
+    const applyResult = applyLanServerZip(installedZip, serverPackageRoot)
+
+    if (applyResult.status !== "ok") {
+      return {
+        ...result,
+        status: "blocked",
+        action: "server_patch_apply_blocked",
+        code: applyResult.code,
+        message: applyResult.message,
+        stdout_tail: applyResult.stdout_tail,
+        stderr_tail: applyResult.stderr_tail,
+        applied: false,
+      }
+    }
+
+    result.action = "server_patch_applied"
+    result.installed_zip_path = installedZip
+    result.applied = true
+    result.apply_stdout_tail = applyResult.stdout_tail
+    result.apply_stderr_tail = applyResult.stderr_tail
+
+    if (restartAfterApply) {
+      const restartResult = scheduleServerRestartInternal({ delaySeconds: 2, reason: "patch_applied" })
+      result.restart_scheduled = restartResult.status === "ok"
+      result.restart = restartResult
+    }
+
+    return result
+  }
+
+  function restartServer(token, input = {}) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    return {
+      ...scheduleServerRestartInternal({
+        delaySeconds: boundedInt(input.delay_seconds ?? input.delaySeconds, 1, 60, 2),
+        reason: cleanName(input.reason) || "manager_requested_restart",
+      }),
+      requested_by_user_id: manager.user.id,
+      requested_by_user_name: manager.user.name,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+      arbitrary_command_execution_available: false,
+    }
+  }
+
+  function publicServerMaintenanceConfig() {
+    return {
+      install_root: serverInstallRoot,
+      package_root: serverPackageRoot,
+      maintenance_root: maintenanceRoot,
+      database_path: resolvedDatabasePath,
+      port: serverPort,
+      process_id: process.pid,
+      restart_script_available:
+        existsSync(resolve(serverInstallRoot, "Start-Pug-LAN-Server-Hidden.vbs")) ||
+        existsSync(resolve(serverInstallRoot, "Start-Pug-LAN-Server.ps1")),
+      update_package_expected: "pug-lan-server.zip",
+    }
+  }
+
+  function sqliteMaintenanceStatus() {
+    const pageCount = pragmaInteger(database, "page_count")
+    const pageSize = pragmaInteger(database, "page_size")
+
+    return {
+      database_path: resolvedDatabasePath,
+      page_count: pageCount,
+      page_size: pageSize,
+      freelist_count: pragmaInteger(database, "freelist_count"),
+      approximate_size_bytes: pageCount * pageSize,
+      journal_mode: pragmaValue(database, "journal_mode"),
+      synchronous: pragmaValue(database, "synchronous"),
+      inventory_count: inventoryItems.length,
+      reference_card_count: referenceCards.length,
+      queue_depth: pendingQueueOperations(queue).length,
+    }
+  }
+
+  function applyLanServerZip(zipPath, destinationPath) {
+    if (patchApplyCommand) {
+      return patchApplyCommand({ zipPath, destinationPath })
+    }
+
+    mkdirSync(destinationPath, { recursive: true })
+    const result = spawnSync(
+      "powershell.exe",
+      [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        `Expand-Archive -LiteralPath ${powerShellStringLiteral(zipPath)} -DestinationPath ${powerShellStringLiteral(destinationPath)} -Force`,
+      ],
+      {
+        encoding: "utf8",
+        windowsHide: true,
+      },
+    )
+
+    if (result.status !== 0) {
+      return {
+        status: "blocked",
+        code: "server_patch_expand_failed",
+        message: "The LAN server package could not be expanded on the server PC.",
+        stdout_tail: tailForMaintenance(result.stdout),
+        stderr_tail: tailForMaintenance(result.stderr || result.error?.message),
+      }
+    }
+
+    return {
+      status: "ok",
+      stdout_tail: tailForMaintenance(result.stdout),
+      stderr_tail: tailForMaintenance(result.stderr),
+    }
+  }
+
+  function scheduleServerRestartInternal({ delaySeconds, reason }) {
+    if (restartCommand) {
+      return restartCommand({ delaySeconds, reason, serverInstallRoot, serverPort, processId: process.pid })
+    }
+
+    const restartDir = resolve(maintenanceRoot, "restart")
+    mkdirSync(restartDir, { recursive: true })
+    const scriptPath = resolve(restartDir, `restart-${timestampForFile(now())}.ps1`)
+    writeFileSync(scriptPath, restartScriptSource({
+      delaySeconds,
+      installRoot: serverInstallRoot,
+      port: serverPort,
+      processId: process.pid,
+    }))
+
+    const child = spawn(
+      "powershell.exe",
+      ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
+      {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      },
+    )
+    child.unref()
+
+    return {
+      status: "ok",
+      action: "server_restart_scheduled",
+      reason,
+      delay_seconds: delaySeconds,
+      restart_script_path: scriptPath,
+      server_install_root: serverInstallRoot,
+      port: serverPort,
+      process_id: process.pid,
+    }
+  }
+
   function applyApprovedTradeInCredit(order, actorUser) {
     const items = cleanTradeInItems(order.items)
     const creditItems = items.filter((item) => item.payout_type === "credit")
@@ -5521,6 +5853,7 @@ export function createLocalSyncStore(options = {}) {
     listKioskOrders,
     listTradeInOrders,
     getManagerReport,
+    getServerMaintenanceStatus,
     pullSquareSalesReport,
     createSession,
     listAccessPolicy,
@@ -5528,8 +5861,13 @@ export function createLocalSyncStore(options = {}) {
     reconcileSquareProviderInventoryCounts,
     reconcileSquareProviderInventoryCountsForSystem,
     reconcileSquarePosInventoryCounts,
+    applyServerPatch,
+    backupSqliteDatabase,
+    checkpointSqliteDatabase,
     recordDeviceHeartbeat,
     reserveInventory,
+    restartServer,
+    pullWebsiteForMaintenance,
     pullWebsiteInventory,
     searchCustomers,
     searchInventory,
@@ -11246,6 +11584,106 @@ function boundedInt(value, min, max, fallback) {
   }
 
   return Math.min(max, Math.max(min, parsed))
+}
+
+function findPugLanInstallRoot() {
+  const envRoot = process.env.PUG_LAN_SERVER_INSTALL_ROOT || process.env.LOCAL_SYNC_INSTALL_ROOT
+
+  if (envRoot) {
+    return envRoot
+  }
+
+  if (process.platform === "win32") {
+    return "C:\\PugGameShop\\LANServer"
+  }
+
+  return resolve(dirname(DEFAULT_LOCAL_SYNC_DATABASE_PATH), "..")
+}
+
+function timestampForFile(date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "Z")
+}
+
+function fileSizeBytes(path) {
+  try {
+    return statSync(path).size
+  } catch {
+    return 0
+  }
+}
+
+function cleanSha256(value) {
+  const hash = String(value ?? "").trim().toLowerCase()
+
+  return /^[a-f0-9]{64}$/.test(hash) ? hash : ""
+}
+
+function sqliteStringLiteral(value) {
+  return `'${String(value).replace(/'/g, "''")}'`
+}
+
+function pragmaInteger(database, name) {
+  const value = pragmaValue(database, name)
+  const parsed = Number.parseInt(String(value ?? "0"), 10)
+
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function pragmaValue(database, name) {
+  const allowed = new Set(["page_count", "page_size", "freelist_count", "journal_mode", "synchronous"])
+
+  if (!allowed.has(name)) {
+    return null
+  }
+
+  try {
+    const row = database.prepare(`PRAGMA ${name}`).get()
+    const values = Object.values(row ?? {})
+
+    return values[0] ?? null
+  } catch {
+    return null
+  }
+}
+
+function powerShellStringLiteral(value) {
+  return `'${String(value).replace(/'/g, "''")}'`
+}
+
+function tailForMaintenance(value, maxLength = 500) {
+  const text = String(value ?? "").trim()
+
+  return text.length > maxLength ? text.slice(-maxLength) : text
+}
+
+function restartScriptSource({ delaySeconds, installRoot, port, processId }) {
+  const safeDelay = Math.max(1, Math.min(60, Number.parseInt(String(delaySeconds ?? 2), 10) || 2))
+
+  return [
+    "$ErrorActionPreference = 'SilentlyContinue'",
+    `Start-Sleep -Seconds ${safeDelay}`,
+    `$installRoot = ${powerShellStringLiteral(installRoot)}`,
+    `$port = ${Math.max(1, Math.min(65535, Number.parseInt(String(port ?? 8787), 10) || 8787))}`,
+    `$currentPid = ${Math.max(0, Number.parseInt(String(processId ?? 0), 10) || 0)}`,
+    "try { Stop-ScheduledTask -TaskName 'Pug LAN Server' } catch {}",
+    "try {",
+    "  $connections = Get-NetTCPConnection -LocalPort $port -State Listen",
+    "  foreach ($connection in $connections) {",
+    "    if ($connection.OwningProcess -and $connection.OwningProcess -ne $PID) {",
+    "      Stop-Process -Id $connection.OwningProcess -Force",
+    "    }",
+    "  }",
+    "} catch {}",
+    "if ($currentPid -gt 0 -and $currentPid -ne $PID) { try { Stop-Process -Id $currentPid -Force } catch {} }",
+    "$hiddenStart = Join-Path $installRoot 'Start-Pug-LAN-Server-Hidden.vbs'",
+    "$visibleStart = Join-Path $installRoot 'Start-Pug-LAN-Server.ps1'",
+    "if (Test-Path -LiteralPath $hiddenStart) {",
+    "  Start-Process -FilePath 'wscript.exe' -ArgumentList \"`\"$hiddenStart`\"\" -WindowStyle Hidden",
+    "} elseif (Test-Path -LiteralPath $visibleStart) {",
+    "  Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',\"`\"$visibleStart`\"\") -WindowStyle Hidden",
+    "}",
+    "",
+  ].join("\r\n")
 }
 
 function positiveInt(value) {

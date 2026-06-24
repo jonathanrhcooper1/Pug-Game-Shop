@@ -4,6 +4,20 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Added manager-only LAN Server Maintenance controls in the Store App Settings
+  screen. Managers can refresh server status, back up SQLite, clean/checkpoint
+  SQLite, pull website inventory/catalog/events/fulfillment into the LAN cache,
+  upload/apply `pug-lan-server.zip`, and schedule a LAN server restart without
+  exposing arbitrary command execution.
+- Added LAN server maintenance HTTP routes and contract entries for
+  `/server/maintenance/*`, and published the live inventory update endpoint
+  `PATCH /inventory/items/:inventory_public_id` in contract version 5 so mismatched
+  app/server installs are easier to diagnose.
+- Added a focused LAN maintenance test covering manager auth, backup,
+  checkpoint, patch staging/apply, and restart scheduling.
+- Refreshed the USB installer package and readme so the server patch, Store App,
+  Kiosk App, WordPress plugin ZIP, and release notes include the maintenance
+  controls.
 - Added Inventory Intake recovery actions for `Set Not Found` and `Card Not
   Found`. The app now asks the LAN server to trigger WordPress/ScryDex full-set
   indexing when a set can be resolved, or to search/import the entered card

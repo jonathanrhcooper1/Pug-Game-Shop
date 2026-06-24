@@ -1273,6 +1273,95 @@ export type LocalSyncPullResult = LocalSyncResult<{
   local_queue_depth: number
 }>
 
+export type LocalSyncServerMaintenanceStatusResult = LocalSyncResult<{
+  action: "server_maintenance_status"
+  generated_at_utc: string
+  server: {
+    install_root: string
+    package_root: string
+    maintenance_root: string
+    database_path: string
+    port: number
+    process_id: number
+    restart_script_available: boolean
+    update_package_expected: string
+  }
+  sqlite: {
+    database_path: string
+    page_count: number
+    page_size: number
+    freelist_count: number
+    approximate_size_bytes: number
+    journal_mode: string
+    synchronous: string
+    inventory_count: number
+    reference_card_count: number
+    queue_depth: number
+  }
+  sync_status: Extract<LocalSyncStatusResult, { status: "ok" }>
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+  arbitrary_command_execution_available: false
+}>
+
+export type LocalSyncSqliteBackupResult = LocalSyncResult<{
+  action: "sqlite_backup_created"
+  backup_path: string
+  backup_file_name: string
+  backup_size_bytes: number
+  database_path: string
+  requested_by_user_id: string
+  requested_by_user_name: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncSqliteCheckpointResult = LocalSyncResult<{
+  action: "sqlite_checkpoint_completed"
+  checkpoint: Record<string, unknown>
+  sqlite: Extract<LocalSyncServerMaintenanceStatusResult, { status: "ok" }>["sqlite"]
+  requested_by_user_id: string
+  requested_by_user_name: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncServerPatchResult = LocalSyncResult<{
+  action: "server_patch_staged" | "server_patch_applied"
+  staged_zip_path: string
+  staged_zip_file_name: string
+  staged_zip_size_bytes: number
+  sha256: string
+  server_install_root: string
+  server_package_root: string
+  installed_zip_path?: string
+  applied: boolean
+  restart_scheduled: boolean
+  restart?: LocalSyncServerRestartResult
+  apply_stdout_tail?: string
+  apply_stderr_tail?: string
+  requested_by_user_id: string
+  requested_by_user_name: string
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+  arbitrary_command_execution_available: false
+}>
+
+export type LocalSyncServerRestartResult = LocalSyncResult<{
+  action: "server_restart_scheduled"
+  reason: string
+  delay_seconds: number
+  restart_script_path: string
+  server_install_root: string
+  port: number
+  process_id: number
+  requested_by_user_id?: string
+  requested_by_user_name?: string
+  credentials_synced_to_client?: false
+  raw_credentials_returned?: false
+  arbitrary_command_execution_available?: false
+}>
+
 export type LocalSyncPushResult = LocalSyncResult<{
   operation_count: number
   accepted_count: number
@@ -1950,6 +2039,34 @@ export type LocalSyncServerClient = {
       pageSize?: number
     },
   ) => Promise<LocalSyncPullResult>
+  getServerMaintenanceStatus: (
+    sessionToken: string,
+  ) => Promise<LocalSyncServerMaintenanceStatusResult>
+  backupSqliteDatabase: (sessionToken: string) => Promise<LocalSyncSqliteBackupResult>
+  checkpointSqliteDatabase: (sessionToken: string) => Promise<LocalSyncSqliteCheckpointResult>
+  pullWebsiteForMaintenance: (
+    sessionToken: string,
+    input?: {
+      domains?: ("inventory" | "events" | "fulfillment" | "catalog")[]
+      catalogPage?: number
+      catalogPageSize?: number
+      page?: number
+      pageSize?: number
+    },
+  ) => Promise<LocalSyncPullResult>
+  applyServerPatch: (
+    sessionToken: string,
+    input: {
+      packageBase64: string
+      sha256?: string
+      apply?: boolean
+      restart?: boolean
+    },
+  ) => Promise<LocalSyncServerPatchResult>
+  restartServer: (
+    sessionToken: string,
+    input?: { delaySeconds?: number; reason?: string },
+  ) => Promise<LocalSyncServerRestartResult>
   planSquarePosInventoryPull: (
     sessionToken: string,
     input?: { squareLocationId?: string; updatedAfter?: string; limit?: number },
@@ -2707,6 +2824,52 @@ export function createLocalSyncServerClient(
           page_size: input.pageSize,
         },
       }) as Promise<LocalSyncPullResult>,
+    getServerMaintenanceStatus: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/server/maintenance/status", {
+        sessionToken,
+      }) as Promise<LocalSyncServerMaintenanceStatusResult>,
+    backupSqliteDatabase: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/server/maintenance/sqlite/backup", {
+        method: "POST",
+        sessionToken,
+      }) as Promise<LocalSyncSqliteBackupResult>,
+    checkpointSqliteDatabase: (sessionToken) =>
+      requestLocalSync(fetcher, baseUrl, "/server/maintenance/sqlite/checkpoint", {
+        method: "POST",
+        sessionToken,
+      }) as Promise<LocalSyncSqliteCheckpointResult>,
+    pullWebsiteForMaintenance: (sessionToken, input = {}) =>
+      requestLocalSync(fetcher, baseUrl, "/server/maintenance/website-pull", {
+        method: "POST",
+        sessionToken,
+        body: {
+          domains: input.domains ?? ["inventory", "events", "fulfillment", "catalog"],
+          catalog_page: input.catalogPage,
+          catalog_page_size: input.catalogPageSize,
+          page: input.page,
+          page_size: input.pageSize,
+        },
+      }) as Promise<LocalSyncPullResult>,
+    applyServerPatch: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/server/maintenance/patch", {
+        method: "POST",
+        sessionToken,
+        body: {
+          package_base64: input.packageBase64,
+          sha256: input.sha256 ?? "",
+          apply: input.apply ?? true,
+          restart: input.restart ?? true,
+        },
+      }) as Promise<LocalSyncServerPatchResult>,
+    restartServer: (sessionToken, input = {}) =>
+      requestLocalSync(fetcher, baseUrl, "/server/maintenance/restart", {
+        method: "POST",
+        sessionToken,
+        body: {
+          delay_seconds: input.delaySeconds ?? 2,
+          reason: input.reason ?? "manager_requested_restart",
+        },
+      }) as Promise<LocalSyncServerRestartResult>,
     planSquarePosInventoryPull: (sessionToken, input = {}) =>
       requestLocalSync(fetcher, baseUrl, "/pos/square/inventory-pull-plan", {
         method: "POST",

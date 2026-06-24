@@ -72,6 +72,8 @@ writeFileSync(
     "What this patch updates:",
     "- LAN server auto-advertises the real LAN IP instead of the old placeholder server URL.",
     "- LAN server startup attempts to add Windows Firewall rules for TCP 8787 and UDP 8788.",
+    "- Store App Settings now has manager LAN Server Maintenance controls: status, database backup, database cleanup, website pull, server patch upload, and server restart.",
+    "- LAN server contract version 5 now advertises the live inventory update route plus maintenance routes.",
     "- Trade-in acceptance requires DL number and two-letter state, logs it, and shows only a masked ID in app history.",
     "- Past events no longer appear as active event selections after their start date has passed.",
     "- Updated staff app, kiosk app, LAN server package, WordPress plugin/theme ZIPs, release docs, and manifests are included.",

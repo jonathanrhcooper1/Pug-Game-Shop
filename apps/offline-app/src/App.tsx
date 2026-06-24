@@ -135,6 +135,11 @@ import {
   type LocalSyncPullResult,
   type LocalSyncPushResult,
   type LocalSyncReportKey,
+  type LocalSyncServerMaintenanceStatusResult,
+  type LocalSyncServerPatchResult,
+  type LocalSyncServerRestartResult,
+  type LocalSyncSqliteBackupResult,
+  type LocalSyncSqliteCheckpointResult,
   type LocalSyncSetupStatusResult,
   type LocalSyncSquarePosInventoryCountReconciliationResult,
   type LocalSyncSquarePosInventoryPullPlanResult,
@@ -541,6 +546,17 @@ type LanSetupProbeState = {
   credentialsSyncedToApp: false
 }
 
+type LanServerMaintenanceState = {
+  status: "idle" | "loading" | "ready" | "warning" | "blocked"
+  detail: string
+  lastUpdatedAtUtc: string
+  statusResult: Extract<LocalSyncServerMaintenanceStatusResult, { status: "ok" }> | null
+  backupResult: Extract<LocalSyncSqliteBackupResult, { status: "ok" }> | null
+  checkpointResult: Extract<LocalSyncSqliteCheckpointResult, { status: "ok" }> | null
+  patchResult: Extract<LocalSyncServerPatchResult, { status: "ok" }> | null
+  restartResult: Extract<LocalSyncServerRestartResult, { status: "ok" }> | null
+}
+
 type PairingTokenRequestState = {
   status: "idle" | "loading" | "stored" | "blocked"
   endpoint: string
@@ -732,6 +748,41 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.addEventListener("error", () => reject(reader.error ?? new Error("file_read_failed")))
     reader.readAsDataURL(file)
   })
+}
+
+async function fileToBase64Payload(file: File) {
+  const dataUrl = await fileToDataUrl(file)
+  const [, base64Payload = ""] = dataUrl.split(",", 2)
+
+  return base64Payload
+}
+
+async function fileSha256Hex(file: File) {
+  if (!globalThis.crypto?.subtle) {
+    return ""
+  }
+
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", await file.arrayBuffer())
+
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+}
+
+function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return "unknown size"
+  }
+
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function loadConnectorProfileStorage(): ConnectorProfileStorageRestoreResult {
@@ -3975,6 +4026,17 @@ export function App() {
     oneWebsiteMode: true,
     credentialsSyncedToApp: false,
   })
+  const [lanServerMaintenance, setLanServerMaintenance] = useState<LanServerMaintenanceState>({
+    status: "idle",
+    detail: "Manager server maintenance has not run.",
+    lastUpdatedAtUtc: "",
+    statusResult: null,
+    backupResult: null,
+    checkpointResult: null,
+    patchResult: null,
+    restartResult: null,
+  })
+  const [lanServerPatchFile, setLanServerPatchFile] = useState<File | null>(null)
   const [localSyncDiscovery, setLocalSyncDiscovery] = useState<LocalSyncDiscoveryState>({
     status: "idle",
     detail: "Desktop LAN discovery has not run. Manual server URL setup is always available.",
@@ -7040,6 +7102,401 @@ export function App() {
             ? "LAN setup mismatch"
             : "LAN setup blocked",
       detail: probeMessage.detail,
+    })
+  }
+
+  function requireLanServerMaintenanceAccess(actionTitle: string) {
+    if (!managerControlsUnlocked) {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: "Unlock manager settings before using LAN server maintenance.",
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: actionTitle,
+        detail: "Unlock manager settings before backing up, updating, or restarting the LAN server.",
+      })
+      setActiveSection("Settings")
+      return false
+    }
+
+    if (!localSyncSessionToken) {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: "Sign in with a manager or owner PIN before using LAN server maintenance.",
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: actionTitle,
+        detail: "Sign in with a manager or owner PIN before backing up, updating, or restarting the LAN server.",
+      })
+      setActiveSection("Settings")
+      return false
+    }
+
+    return true
+  }
+
+  async function handleRefreshServerMaintenance() {
+    if (!requireLanServerMaintenanceAccess("LAN server status blocked")) {
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "loading",
+      detail: "Checking the LAN server and SQLite database.",
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+
+    const result = await localSyncClient.getServerMaintenanceStatus(localSyncSessionToken)
+
+    if (handleBlockedLocalSyncSession(result, "LAN server maintenance locked")) {
+      setActiveSection("Settings")
+      return
+    }
+
+    if (result.status !== "ok") {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: result.message,
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "LAN server status blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "ready",
+      detail: `Server ready on port ${result.server.port}; ${result.sqlite.inventory_count} inventory item(s), ${result.sqlite.reference_card_count} card reference(s), ${result.sqlite.queue_depth} queued operation(s).`,
+      lastUpdatedAtUtc: result.generated_at_utc,
+      statusResult: result,
+    }))
+    setLocalSyncStatus(result.sync_status)
+    setLocalSyncLastCheckedAtUtc(result.generated_at_utc)
+    setActivityMessage({
+      title: "LAN server status ready",
+      detail: `Database ${result.server.database_path}; server package root ${result.server.package_root}.`,
+    })
+  }
+
+  async function handleBackupServerSqlite() {
+    if (!requireLanServerMaintenanceAccess("Database backup blocked")) {
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "loading",
+      detail: "Creating a server-side SQLite backup.",
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+
+    const result = await localSyncClient.backupSqliteDatabase(localSyncSessionToken)
+
+    if (handleBlockedLocalSyncSession(result, "Database backup locked")) {
+      setActiveSection("Settings")
+      return
+    }
+
+    if (result.status !== "ok") {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: result.message,
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Database backup blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "ready",
+      detail: `Backup created: ${result.backup_file_name} (${formatFileSize(result.backup_size_bytes)}).`,
+      lastUpdatedAtUtc: new Date().toISOString(),
+      backupResult: result,
+    }))
+    setActivityMessage({
+      title: "Database backup created",
+      detail: `${result.backup_file_name} saved on the LAN server before maintenance changes.`,
+    })
+  }
+
+  async function handleCheckpointServerSqlite() {
+    if (!requireLanServerMaintenanceAccess("Database cleanup blocked")) {
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "loading",
+      detail: "Cleaning up the SQLite database and truncating the write-ahead log.",
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+
+    const result = await localSyncClient.checkpointSqliteDatabase(localSyncSessionToken)
+
+    if (handleBlockedLocalSyncSession(result, "Database cleanup locked")) {
+      setActiveSection("Settings")
+      return
+    }
+
+    if (result.status !== "ok") {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: result.message,
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Database cleanup blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "ready",
+      detail: `Database cleanup complete; ${result.sqlite.freelist_count} free page(s) remain.`,
+      lastUpdatedAtUtc: new Date().toISOString(),
+      checkpointResult: result,
+    }))
+    setActivityMessage({
+      title: "Database cleanup complete",
+      detail: "The LAN server SQLite checkpoint and optimize step finished.",
+    })
+  }
+
+  async function handleMaintenanceWebsitePull() {
+    if (!requireLanServerMaintenanceAccess("Website pull blocked")) {
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "loading",
+      detail: "Pulling website inventory, events, fulfillment, and card catalog into the LAN server.",
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+
+    const result = await localSyncClient.pullWebsiteForMaintenance(localSyncSessionToken, {
+      domains: ["inventory", "events", "fulfillment", "catalog"],
+      catalogPageSize: 250,
+      pageSize: 100,
+    })
+
+    if (handleBlockedLocalSyncSession(result, "Website pull locked")) {
+      setActiveSection("Settings")
+      return
+    }
+
+    if (result.status !== "ok") {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: result.message,
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "Website pull blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    if (result.items.length > 0) {
+      setInventoryItems((items) => {
+        const merged = [...items]
+        let nextId = Math.max(0, ...merged.map((item) => item.id)) + 1
+
+        for (const pulledItem of result.items) {
+          const existingIndex = merged.findIndex((item) => item.publicId === pulledItem.public_id)
+          const mappedItem = inventoryItemFromLocalSync(
+            pulledItem,
+            existingIndex >= 0 ? merged[existingIndex].id : nextId++,
+          )
+
+          if (existingIndex >= 0) {
+            merged[existingIndex] = { ...mappedItem, id: merged[existingIndex].id }
+          } else {
+            merged.push(mappedItem)
+          }
+        }
+
+        return merged
+      })
+    }
+
+    if (result.events.length > 0) {
+      setEventSnapshots((events) => mergeLocalSyncEventSnapshots(events, result.events))
+    }
+
+    await refreshLocalSyncStatus()
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "ready",
+      detail: `Website pull complete: ${result.applied_count} inventory, ${result.events_applied_count} events, ${result.catalog_applied_count ?? 0} catalog card(s).`,
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+    setActivityMessage({
+      title: "Website pulled into LAN server",
+      detail: `${result.local_inventory_count} inventory item(s) and ${result.local_reference_card_count ?? 0} card reference(s) are now in the local server cache.`,
+    })
+  }
+
+  async function handleApplyServerPatch() {
+    if (!requireLanServerMaintenanceAccess("Server patch blocked")) {
+      return
+    }
+
+    if (!lanServerPatchFile) {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: "Choose the pug-lan-server.zip file before applying a LAN server patch.",
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: "Server patch blocked",
+        detail: "Choose the pug-lan-server.zip file before applying the LAN server patch.",
+      })
+      return
+    }
+
+    if (!lanServerPatchFile.name.toLowerCase().endsWith(".zip")) {
+      setActivityMessage({
+        title: "Server patch blocked",
+        detail: "Choose the packaged pug-lan-server.zip file.",
+      })
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "loading",
+      detail: `Uploading ${lanServerPatchFile.name} to the LAN server for patching.`,
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+
+    try {
+      const [packageBase64, sha256] = await Promise.all([
+        fileToBase64Payload(lanServerPatchFile),
+        fileSha256Hex(lanServerPatchFile),
+      ])
+      const result = await localSyncClient.applyServerPatch(localSyncSessionToken, {
+        packageBase64,
+        sha256,
+        apply: true,
+        restart: true,
+      })
+
+      if (handleBlockedLocalSyncSession(result, "Server patch locked")) {
+        setActiveSection("Settings")
+        return
+      }
+
+      if (result.status !== "ok") {
+        setLanServerMaintenance((state) => ({
+          ...state,
+          status: "blocked",
+          detail: result.message,
+          lastUpdatedAtUtc: new Date().toISOString(),
+        }))
+        setActivityMessage({
+          title: result.status === "unavailable" ? "LAN server unavailable" : "Server patch blocked",
+          detail: result.message,
+        })
+        return
+      }
+
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: result.restart_scheduled ? "warning" : "ready",
+        detail: result.restart_scheduled
+          ? "Patch applied and LAN server restart was scheduled. Reconnect after a few seconds."
+          : "Patch applied; restart was not scheduled.",
+        lastUpdatedAtUtc: new Date().toISOString(),
+        patchResult: result,
+        restartResult: result.restart?.status === "ok" ? result.restart : state.restartResult,
+      }))
+      setActivityMessage({
+        title: "LAN server patch applied",
+        detail: result.restart_scheduled
+          ? "The server package was applied and a restart was scheduled. Wait a few seconds, then refresh LAN server status."
+          : "The server package was applied. Restart the LAN server before testing live inventory saves.",
+      })
+    } catch (error) {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: error instanceof Error ? error.message : "The LAN server patch file could not be read.",
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: "Server patch blocked",
+        detail: "The LAN server patch file could not be read from this computer.",
+      })
+    }
+  }
+
+  async function handleRestartLanServer() {
+    if (!requireLanServerMaintenanceAccess("LAN server restart blocked")) {
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "loading",
+      detail: "Scheduling a LAN server restart.",
+      lastUpdatedAtUtc: new Date().toISOString(),
+    }))
+
+    const result = await localSyncClient.restartServer(localSyncSessionToken, {
+      delaySeconds: 2,
+      reason: "manager_requested_restart",
+    })
+
+    if (handleBlockedLocalSyncSession(result, "LAN server restart locked")) {
+      setActiveSection("Settings")
+      return
+    }
+
+    if (result.status !== "ok") {
+      setLanServerMaintenance((state) => ({
+        ...state,
+        status: "blocked",
+        detail: result.message,
+        lastUpdatedAtUtc: new Date().toISOString(),
+      }))
+      setActivityMessage({
+        title: result.status === "unavailable" ? "LAN server unavailable" : "LAN server restart blocked",
+        detail: result.message,
+      })
+      return
+    }
+
+    setLanServerMaintenance((state) => ({
+      ...state,
+      status: "warning",
+      detail: `Restart scheduled in ${result.delay_seconds} second(s). Reconnect after the server comes back online.`,
+      lastUpdatedAtUtc: new Date().toISOString(),
+      restartResult: result,
+    }))
+    setActivityMessage({
+      title: "LAN server restart scheduled",
+      detail: "Wait a few seconds, then refresh the LAN server status before saving more inventory.",
     })
   }
 
@@ -19098,6 +19555,162 @@ export function App() {
                   <Icon name="history" />
                   <span>Lock App</span>
                 </button>
+              </div>
+              <div className="local-discovery-panel" aria-label="LAN Server Maintenance">
+                <header>
+                  <div>
+                    <span className="micro-label">LAN Server Maintenance</span>
+                    <strong>
+                      {lanServerMaintenance.status === "loading"
+                        ? "Working"
+                        : lanServerMaintenance.status === "ready"
+                          ? "Ready"
+                          : lanServerMaintenance.status === "warning"
+                            ? "Restart pending"
+                            : lanServerMaintenance.status === "blocked"
+                              ? "Needs review"
+                              : "Not checked"}
+                    </strong>
+                    <small>
+                      Manager-only server tools for backups, website pulls, server package updates, and
+                      restarts. This does not allow arbitrary command entry.
+                    </small>
+                  </div>
+                  <span className={`status-pill ${lanServerMaintenance.status}`}>
+                    {lanServerMaintenance.status}
+                  </span>
+                </header>
+                <div className="connector-test-report pass" aria-label="LAN server maintenance status">
+                  <div className="connector-test-heading">
+                    <span className="micro-label">Current server</span>
+                    <strong>{localSyncClient.serverUrl}</strong>
+                    <small>{lanServerMaintenance.detail}</small>
+                  </div>
+                  <div className="connector-test-checks">
+                    <div className="connector-test-check pass">
+                      <span>Database</span>
+                      <strong>
+                        {lanServerMaintenance.statusResult
+                          ? formatFileSize(lanServerMaintenance.statusResult.sqlite.approximate_size_bytes)
+                          : "Unknown"}
+                      </strong>
+                      <small>
+                        {lanServerMaintenance.statusResult?.server.database_path ?? "Refresh status to read the server database path."}
+                      </small>
+                    </div>
+                    <div className="connector-test-check pass">
+                      <span>Inventory</span>
+                      <strong>{lanServerMaintenance.statusResult?.sqlite.inventory_count ?? "?"}</strong>
+                      <small>
+                        {lanServerMaintenance.statusResult?.sqlite.reference_card_count ?? "?"} card reference(s)
+                      </small>
+                    </div>
+                    <div className="connector-test-check pass">
+                      <span>Queue</span>
+                      <strong>{lanServerMaintenance.statusResult?.sqlite.queue_depth ?? "?"}</strong>
+                      <small>Queued operation(s) waiting for website/Square sync</small>
+                    </div>
+                    <div className="connector-test-check pass">
+                      <span>Package root</span>
+                      <strong>
+                        {lanServerMaintenance.statusResult?.server.restart_script_available ? "Restart ready" : "Script unknown"}
+                      </strong>
+                      <small>
+                        {lanServerMaintenance.statusResult?.server.package_root ??
+                          "Refresh status to read where server patches install."}
+                      </small>
+                    </div>
+                  </div>
+                  {lanServerMaintenance.backupResult ? (
+                    <small className="connector-test-footnote">
+                      Last backup: {lanServerMaintenance.backupResult.backup_file_name} (
+                      {formatFileSize(lanServerMaintenance.backupResult.backup_size_bytes)})
+                    </small>
+                  ) : null}
+                  {lanServerMaintenance.patchResult ? (
+                    <small className="connector-test-footnote">
+                      Last patch: {lanServerMaintenance.patchResult.staged_zip_file_name}; restart scheduled:{" "}
+                      {lanServerMaintenance.patchResult.restart_scheduled ? "yes" : "no"}
+                    </small>
+                  ) : null}
+                </div>
+                <div className="connector-actions">
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading"}
+                    onClick={() => void handleRefreshServerMaintenance()}
+                  >
+                    <Icon name="refresh" />
+                    <span>Refresh Server</span>
+                  </button>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading"}
+                    onClick={() => void handleBackupServerSqlite()}
+                  >
+                    <Icon name="database" />
+                    <span>Backup Database</span>
+                  </button>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading"}
+                    onClick={() => void handleCheckpointServerSqlite()}
+                  >
+                    <Icon name="check" />
+                    <span>Clean Database</span>
+                  </button>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading"}
+                    onClick={() => void handleMaintenanceWebsitePull()}
+                  >
+                    <Icon name="sync" />
+                    <span>Pull Website</span>
+                  </button>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading"}
+                    onClick={() => void handleRestartLanServer()}
+                  >
+                    <Icon name="history" />
+                    <span>Restart Server</span>
+                  </button>
+                </div>
+                <div className="manager-session-panel" aria-label="Apply LAN server patch">
+                  <label htmlFor="lan-server-patch-file">
+                    <span className="micro-label">Server patch file</span>
+                    <input
+                      id="lan-server-patch-file"
+                      type="file"
+                      accept=".zip,application/zip"
+                      disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading"}
+                      onChange={(event) => setLanServerPatchFile(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <div>
+                    <span className="micro-label">Selected file</span>
+                    <strong>{lanServerPatchFile?.name ?? "No patch selected"}</strong>
+                    <small>
+                      {lanServerPatchFile
+                        ? `${formatFileSize(lanServerPatchFile.size)}; expected package name is pug-lan-server.zip.`
+                        : "Use the packaged LAN server ZIP from the latest release folder or USB installer set."}
+                    </small>
+                  </div>
+                  <button
+                    className="danger-command"
+                    type="button"
+                    disabled={!managerControlsUnlocked || lanServerMaintenance.status === "loading" || !lanServerPatchFile}
+                    onClick={() => void handleApplyServerPatch()}
+                  >
+                    <Icon name="upload" />
+                    <span>Apply Server Patch</span>
+                  </button>
+                </div>
               </div>
               <div className="user-access-panel" aria-label="Users & Access">
                 <header>

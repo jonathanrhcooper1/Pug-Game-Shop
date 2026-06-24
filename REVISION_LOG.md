@@ -1,5 +1,81 @@
 # Revision Log
 
+## 2026-06-24 - LAN Server Maintenance And Production Plugin Refresh
+
+### What Changed
+
+- Added manager-only LAN Server Maintenance controls to the Store App Settings
+  page.
+- Added LAN server HTTP routes for status, SQLite backup, SQLite checkpoint,
+  website pull, server patch upload/apply, and restart scheduling.
+- Updated `/health` to report the shared local sync contract version instead of
+  a hardcoded value.
+- Added the inventory item update route to the published LAN server contract so
+  remote installs can verify they support live inventory saves.
+- Added typed Store App client methods for the new maintenance routes.
+- Updated the USB copy readme to mention the maintenance panel and contract
+  version 5.
+- Applied the production WordPress plugin package
+  `tcg-store-platform-0.202.3.zip`; the installer created database and
+  `wp-content` backups first, verified plugin version `0.202.3` active, and
+  confirmed migrations at version 15.
+
+### Why
+
+The app UI patch alone can show the new inventory editor, but live save logic
+still depends on the LAN server and WordPress plugin accepting the matching
+inventory update contract. Adding a manager maintenance panel lets the Store App
+back up, update, pull, and restart the LAN server from the counter PC instead of
+requiring manual file-copy troubleshooting for every patch.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-maintenance.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- Release ZIPs under `dist/`
+
+### Migrations Added
+
+- None. The production plugin installer verified the existing WordPress database
+  target version remains 15.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:maintenance`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node apps/offline-app/tests/windows-package-contract.mjs`
+- `npm.cmd run package:production-release`
+- `npm.cmd run release:copy-usb -- 'D:\The Pug Installers'`
+- `npm.cmd run production:install-package -- --dry-run`
+- `npm.cmd run production:install-package`
+
+### Rollback Notes
+
+- Restore the previous Store App installer and LAN server package from the prior
+  USB/release bundle if the maintenance UI causes workstation issues.
+- On the WordPress site, the production install created backups in
+  `$HOME/tcg-production-backups/` before updating the plugin. Use the backup SQL
+  and `wp-content` archive from the install timestamp if a site rollback is
+  required.
+- No database rollback is required for the LAN maintenance routes because they
+  add operational controls and do not alter schema.
+
 ## 2026-06-24 - ScryDex Missing Set And Card Recovery
 
 ### What Changed

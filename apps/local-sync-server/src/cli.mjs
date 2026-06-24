@@ -306,6 +306,9 @@ const server = await listenLocalSyncHttpServer({
   localDatabase: "store-sync.sqlite",
   storeOptions: {
     databasePath,
+    localSyncPort: port,
+    maintenanceRoot: firstEnv("PUG_LAN_SERVER_MAINTENANCE_ROOT", "LOCAL_SYNC_MAINTENANCE_ROOT"),
+    serverInstallRoot: firstEnv("PUG_LAN_SERVER_INSTALL_ROOT", "LOCAL_SYNC_INSTALL_ROOT"),
     removeSeedReferenceCards,
     websiteCatalogFallback,
     wordpressCatalogIndexer,
