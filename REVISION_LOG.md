@@ -1,5 +1,382 @@
 # Revision Log
 
+## 2026-06-24 - ScryDex Missing Set And Card Recovery
+
+### What Changed
+
+- Added a LAN-server WordPress catalog index bridge for
+  `POST /scrydex/catalog/index`, keeping WordPress/ScryDex credentials on the
+  LAN server side.
+- Added Inventory Intake `Set Not Found` and `Card Not Found` actions.
+- `Set Not Found` resolves the entered set/code through live ScryDex search,
+  requests WordPress full-set indexing when an expansion id is available, then
+  pulls the catalog back into the local app cache.
+- `Card Not Found` searches the entered card across Pokemon, MTG, Lorcana, and
+  One Piece, imports any live ScryDex matches, and leaves the results visible
+  for exact printing/version selection.
+- Bumped release metadata to `0.202.3` for the rebuilt installers/packages.
+
+### Why
+
+Staff needed a plain-English recovery path when a card or special printing, such
+as MTG List-style printings, does not appear in the normal local catalog search.
+The app should be able to ask ScryDex/WordPress to repair the catalog without
+giving every workstation WordPress or ScryDex credentials.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressCatalogIndex.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- Package/version metadata files
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/wordpressCatalogIndex.mjs`
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Revert this revision to remove the new missing set/card recovery buttons and
+  the LAN catalog index bridge.
+- No database rollback is required. The feature only triggers existing
+  WordPress ScryDex catalog indexing/export behavior and local cache refreshes.
+
+## 2026-06-24 - Inventory Quantity Adjustment Live Sync
+
+### What Changed
+
+- Reworked the employee app Inventory `Adjust Qty` action so it no longer stages
+  a generic queued inventory update that redirects staff to the Queue/Sync
+  screen.
+- Positive quantity adjustments now create additional inventory copies through
+  the authenticated LAN inventory intake route and preserve the
+  `staff_quantity_adjustment` sync intent for audit/reporting.
+- Negative quantity adjustments now remove the requested number of saleable
+  copies through the same authenticated exact-inventory removal path used by
+  `Remove from Inventory`.
+- Added a LAN intake payload `sync_intent` override so quantity corrections can
+  be distinguished from normal intake.
+
+### Why
+
+Staff reported that adjusting quantity did not actually change visible stock and
+still redirected to the sync page. The old flow only queued metadata; it did not
+perform a concrete inventory add/remove mutation that WordPress, WooCommerce,
+and Square sync can understand.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-catalog`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-push`
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+
+### Rollback Notes
+
+- Revert this revision to restore the previous queued-only quantity adjustment
+  behavior.
+- No database rollback is required. New quantity additions use the existing
+  inventory intake queue/table shape and removals use the existing sale/removal
+  path.
+
+## 2026-06-23 - Selected Card ScryDex Force Refresh
+
+### What Changed
+
+- Added `force_live=1` support to the WordPress reference search route so a
+  selected card can deliberately refresh ScryDex provider pricing even when a
+  cached WordPress catalog row already exists.
+- Threaded the forced refresh flag through the LAN WordPress catalog fallback,
+  LAN ScryDex search route, and employee app local-sync client.
+- Added `Force ScryDex Pricing` actions to the selected Inventory card preview
+  and the selected Trade-In market-value panel.
+- Added selected-card reference links: TCGplayer for singles, and graded comp
+  links for graded cards.
+- Expanded ScryDex low/mid/high price parsing to accept common alias fields
+  such as `market_low`, `market_high`, `low_value`, and `high_value`.
+
+### Why
+
+Some cards were stuck at `$0.00` or only displayed a low value because the app
+trusted stale cached catalog rows and the parser did not preserve every provider
+price-field alias. Staff needed an explicit one-card refresh to repair the
+selected record without running a full catalog sync.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-catalog`
+- `npm.cmd --prefix apps/local-sync-server run test:scrydex-reference-search`
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert this revision to remove selected-card forced ScryDex refresh and the
+  new reference-link rows.
+- No database rollback is required. The refresh reuses the existing ScryDex
+  catalog persistence tables and LAN reference-card cache.
+
+## 2026-06-23 - Inventory Zero/Delete Controls
+
+### What Changed
+
+- Added Inventory screen staff actions to set the selected card/version group
+  stock to zero and to remove the exact selected copy from active inventory.
+- Routed both actions through the authenticated LAN exact-inventory removal
+  path so the local item is marked out of saleable stock and WordPress/WooCommerce
+  receives the sold/zero-state update for Square sync.
+- Added distinct queue sync intents for staff inventory zero-outs and staff
+  inventory removals so they are auditable separately from normal Square POS
+  sale finalization.
+- Updated the employee app contract checks and local sync server runtime checks
+  for the new controls and sync-intent payload.
+
+### Why
+
+Staff needed a direct way to remove a card from stock or set a card group to
+zero without using the separate Square sale completion workflow. The website is
+still the inventory authority, and Square receives stock changes through the
+WooCommerce Square inventory sync.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `npm.cmd --prefix apps/offline-app run build`
+- Browser QA at `http://127.0.0.1:1420/`: verified the Inventory screen renders
+  `Set Stock to 0` and `Remove from Inventory` with no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to remove the two Inventory screen actions and the custom
+  staff inventory sync intents.
+- No database rollback is required because the changes reuse the existing
+  exact-inventory sold/zero-state queue path.
+
+## 2026-06-23 - USB Patch Installer And LAN Audit Fixes
+
+### What Changed
+
+- Added `release:copy-usb` and `scripts/copy-production-release-to-usb.mjs`
+  so the rebuilt release package can be copied to the attached USB installer
+  folder with one command.
+- Updated the production release package LAN env template to leave
+  `LOCAL_SYNC_SERVER_URL` blank by default, allowing the LAN server to advertise
+  the host computer's real LAN IP automatically.
+- Added non-fatal Windows Firewall setup to the generated LAN startup script for
+  TCP 8787 and UDP 8788.
+- Added trade-in acceptance DL number/state capture. The server requires those
+  fields before approving an offer, logs who recorded them, and only returns a
+  masked ID to the app.
+- Updated the trade-in UI to prompt for DL number/state on accepted offers and
+  show the masked ID in trade-in/customer history.
+- Fixed active event selection so past cached/staged events are not shown as
+  active after their start date.
+
+### Why
+
+Store deployment needed a repeatable USB copy step and fewer manual LAN setup
+steps. Trade-in acceptance also needed an auditable ID record attached to the
+customer/trade history without exposing the full DL number in normal app views.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/lanServerUrl.mjs`
+- `apps/local-sync-server/src/localSyncDiscovery.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-discovery.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/tauriLocalSyncDiscoveryAdapter.ts`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `package.json`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md`
+- `release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md`
+- `release-package/env/local-sync.env.example`
+- `release-package/env/offline-app.env.example`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added safe local SQLite columns to `trade_in_orders`:
+  `customer_id_number`, `customer_id_state`,
+  `customer_id_recorded_at_utc`, and
+  `customer_id_recorded_by_user_id`.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`
+- `npm.cmd --prefix apps/local-sync-server run test:discovery`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/offline-app/tests/tauri-command-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the USB copy command, LAN IP auto-advertise
+  package changes, firewall helper, and trade-in ID acceptance requirement.
+- Existing SQLite databases can keep the added nullable/defaulted audit columns;
+  older code will ignore them.
+
+## 2026-06-23 - LAN Inventory Dump And Website Pull Tools
+
+### What Changed
+
+- Added packaged LAN-server operator scripts for inventory/catalog support:
+  `ops:dump-inventory`, `ops:force-pull-website`, and
+  `ops:daily-price-sync`.
+- Added root npm aliases for the same commands:
+  `local-sync:dump-inventory`, `local-sync:force-pull-website`, and
+  `local-sync:daily-price-sync`.
+- The dump script exports local app inventory, local reference cards, local
+  queue rows, website inventory, website reference cards, website price points,
+  website price observations, full Square inventory counts, and mapped Square
+  counts to timestamped JSON/CSV files.
+- The force-pull and daily refresh scripts page through WordPress data and use
+  the existing LAN store merge logic so local inventory/reference-card updates
+  follow the same dedupe and persistence path as the live server.
+- Updated release docs and the LAN package contract so these tools ship inside
+  `dist/pug-lan-server.zip`.
+
+### Why
+
+Operations needed repeatable scripts to compare all three inventory views,
+rebuild the local app cache from the website database, and refresh local prices
+from the website without manually stepping through app screens.
+
+### Files Affected
+
+- `apps/local-sync-server/tools/lib/ops-common.mjs`
+- `apps/local-sync-server/tools/dump-inventory-snapshots.mjs`
+- `apps/local-sync-server/tools/force-pull-website.mjs`
+- `apps/local-sync-server/tools/daily-price-sync.mjs`
+- `apps/local-sync-server/package.json`
+- `package.json`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `release-package/OWNER_OPERATIONS_GUIDE.md`
+- `release-package/SYNC_ENGINE_GUIDE.md`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- `dist/pug-lan-server.zip`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/tools/lib/ops-common.mjs`
+- `node --check apps/local-sync-server/tools/dump-inventory-snapshots.mjs`
+- `node --check apps/local-sync-server/tools/force-pull-website.mjs`
+- `node --check apps/local-sync-server/tools/daily-price-sync.mjs`
+- Safe fake-credential force-pull check against `https://127.0.0.1:9`.
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the operator scripts and npm aliases.
+- Existing SQLite databases are unaffected unless an operator intentionally runs
+  `ops:force-pull-website -- --replace-local`; that command creates a SQLite
+  backup before clearing local inventory/reference cache tables.
+
 ## 2026-06-23 - Production Domain Sync Package Patch
 
 ### What Changed

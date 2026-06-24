@@ -23,6 +23,7 @@ export function createLocalSyncHttpServer(options = {}) {
       typeof storeOptions.wordpressCatalogExportPull === "function",
     wordpressCatalogPullConnected: typeof storeOptions.wordpressCatalogExportPull === "function",
     wordpressInventoryPushConnected: typeof storeOptions.wordpressInventoryPush === "function",
+    wordpressInventoryUpdatePushConnected: typeof storeOptions.wordpressInventoryUpdatePush === "function",
     wordpressInventorySalePushConnected: typeof storeOptions.wordpressInventorySalePush === "function",
     wordpressFulfillmentPullConnected: typeof storeOptions.wordpressFulfillmentPull === "function",
     wordpressFulfillmentStatusPushConnected: typeof storeOptions.wordpressFulfillmentStatusPush === "function",
@@ -34,6 +35,7 @@ export function createLocalSyncHttpServer(options = {}) {
     wordpressKioskOrderPushConnected: typeof storeOptions.wordpressKioskOrderPush === "function",
     wordpressReportsPullConnected: typeof storeOptions.wordpressReportsPull === "function",
     scrydexCatalogProxyConfigured: typeof storeOptions.websiteCatalogFallback === "function",
+    scrydexCatalogIndexConnected: typeof storeOptions.wordpressCatalogIndexer === "function",
     scrydexVisionConfigured:
       typeof storeOptions.scryDexVisionIdentifier?.identifyCardImage === "function" &&
       storeOptions.scryDexVisionIdentifier?.configured === true,
@@ -162,8 +164,13 @@ export function createLocalSyncHttpServer(options = {}) {
             setFilter: url.searchParams.get("set") ?? url.searchParams.get("set_filter") ?? "",
             limit: url.searchParams.get("limit") ?? "all",
             rawOrGraded: url.searchParams.get("raw_or_graded") ?? url.searchParams.get("product_type") ?? "",
+            forceLive: truthySearchParam(url.searchParams.get("force_live") ?? url.searchParams.get("forceLive")),
           }),
         )
+      }
+
+      if (request.method === "POST" && url.pathname === "/scrydex/catalog/index") {
+        return sendStoreResult(response, await store.indexScryDexCatalog(token, await readJson(request)))
       }
 
       if (request.method === "POST" && url.pathname === "/scrydex/cards/identify-image") {
@@ -225,6 +232,15 @@ export function createLocalSyncHttpServer(options = {}) {
 
       if (request.method === "POST" && url.pathname === "/inventory/intake") {
         return sendStoreResult(response, await store.createInventoryIntake(token, await readJson(request)))
+      }
+
+      const inventoryItemMatch = url.pathname.match(/^\/inventory\/items\/([^/]+)$/)
+
+      if (request.method === "PATCH" && inventoryItemMatch) {
+        return sendStoreResult(
+          response,
+          await store.updateInventoryItem(token, decodeURIComponent(inventoryItemMatch[1]), await readJson(request)),
+        )
       }
 
       if (request.method === "GET" && url.pathname === "/inventory/locations") {
@@ -518,4 +534,8 @@ function bearerToken(value) {
   const match = text.match(/^Bearer\s+(.+)$/i)
 
   return match ? match[1].trim() : ""
+}
+
+function truthySearchParam(value) {
+  return ["1", "true", "yes", "on"].includes(String(value ?? "").trim().toLowerCase())
 }

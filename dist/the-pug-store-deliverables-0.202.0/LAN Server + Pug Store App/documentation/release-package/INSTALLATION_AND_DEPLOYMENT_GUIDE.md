@@ -69,7 +69,7 @@ Required variables and WordPress fields are documented in `ENVIRONMENT_VARIABLES
 2. Allow inbound LAN traffic to the configured server port and UDP discovery port.
 3. Install the Pug Store App on staff stations.
 4. Install Kiosk Page on customer-facing kiosk stations.
-5. Let apps auto-discover the middleman; if blocked, enter `http://STORE-SERVER-IP:8787` manually.
+5. Let apps auto-discover the middleman; if blocked, enter the LAN server URL manually, for example `http://SERVER-IP:8787`.
 6. Pair devices using the configured pairing process.
 7. Verify pull inventory, push inventory, customer lookup, kiosk order, fulfillment, and queue replay.
 

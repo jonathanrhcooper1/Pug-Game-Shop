@@ -319,8 +319,8 @@ final class ScryDexCardNormalizerTest extends TestCase {
 							'PSA'     => array(
 								'10' => array(
 									'market_mid' => '187.25',
-									'low'        => '150.00',
-									'high'       => '220.00',
+									'market_low' => '150.00',
+									'market_high' => '220.00',
 									'currency'   => 'USD',
 								),
 								'9'  => '125.00',

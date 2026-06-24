@@ -3,7 +3,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::io::ErrorKind;
-use std::net::{SocketAddr, UdpSocket};
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tauri::Manager;
@@ -2109,9 +2109,15 @@ fn local_sync_discovered_server(
     }
 
     let mut server_url = response.server_url.unwrap_or_default();
+    let advertised_port = local_sync_server_url_port(&server_url).unwrap_or(8787);
 
-    if !valid_local_sync_server_url(&server_url) {
-        server_url = format!("http://{}:8787", source.ip());
+    if !valid_local_sync_server_url(&server_url)
+        || discovered_server_url_needs_source_ip(&server_url, source)
+    {
+        server_url = format!(
+            "http://{}:{advertised_port}",
+            local_sync_source_host_for_url(source.ip())
+        );
     }
 
     if !valid_local_sync_server_url(&server_url) {
@@ -2135,10 +2141,112 @@ fn local_sync_discovered_server(
 }
 
 fn valid_local_sync_server_url(value: &str) -> bool {
-    value.starts_with("https://")
-        || value.starts_with("http://")
-        || value.starts_with("http://localhost")
-        || value.starts_with("http://127.0.0.1")
+    let trimmed = value.trim();
+
+    if !(trimmed.starts_with("https://") || trimmed.starts_with("http://")) {
+        return false;
+    }
+
+    let Some(host) = local_sync_server_url_host(trimmed) else {
+        return false;
+    };
+
+    !host.is_empty() && !is_placeholder_or_wildcard_local_sync_host(&host)
+}
+
+fn discovered_server_url_needs_source_ip(value: &str, source: SocketAddr) -> bool {
+    if source.ip().is_loopback() {
+        return false;
+    }
+
+    let Some(host) = local_sync_server_url_host(value) else {
+        return true;
+    };
+
+    is_loopback_local_sync_host(&host) || is_placeholder_or_wildcard_local_sync_host(&host)
+}
+
+fn local_sync_server_url_host(value: &str) -> Option<String> {
+    let without_scheme = value
+        .trim()
+        .strip_prefix("http://")
+        .or_else(|| value.trim().strip_prefix("https://"))?;
+    let authority = without_scheme
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
+        .rsplit('@')
+        .next()
+        .unwrap_or_default();
+
+    if authority.starts_with('[') {
+        return authority
+            .split(']')
+            .next()
+            .map(|host| host.trim_start_matches('[').to_string());
+    }
+
+    authority
+        .split(':')
+        .next()
+        .map(|host| host.trim().to_string())
+}
+
+fn local_sync_server_url_port(value: &str) -> Option<u16> {
+    let without_scheme = value
+        .trim()
+        .strip_prefix("http://")
+        .or_else(|| value.trim().strip_prefix("https://"))?;
+    let authority = without_scheme
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
+        .rsplit('@')
+        .next()
+        .unwrap_or_default();
+    let port_text = if authority.starts_with('[') {
+        authority.split("]:").nth(1)
+    } else {
+        authority.split(':').nth(1)
+    }?;
+
+    port_text.parse::<u16>().ok()
+}
+
+fn is_placeholder_or_wildcard_local_sync_host(host: &str) -> bool {
+    let normalized = host
+        .trim()
+        .trim_matches(['[', ']'])
+        .to_ascii_lowercase();
+
+    normalized.is_empty()
+        || normalized == "0.0.0.0"
+        || normalized == "::"
+        || normalized.contains("store-server-ip")
+        || normalized.contains("server-ip")
+        || normalized.contains("your-server-ip")
+        || normalized.contains("replace-with")
+        || normalized.contains("replace_with")
+}
+
+fn is_loopback_local_sync_host(host: &str) -> bool {
+    let normalized = host
+        .trim()
+        .trim_matches(['[', ']'])
+        .to_ascii_lowercase();
+
+    normalized == "localhost"
+        || normalized == "::1"
+        || normalized == "127.0.0.1"
+        || normalized.starts_with("127.")
+}
+
+fn local_sync_source_host_for_url(ip: IpAddr) -> String {
+    if ip.is_ipv6() {
+        format!("[{ip}]")
+    } else {
+        ip.to_string()
+    }
 }
 
 fn clean_discovery_url(value: Option<String>) -> Option<String> {

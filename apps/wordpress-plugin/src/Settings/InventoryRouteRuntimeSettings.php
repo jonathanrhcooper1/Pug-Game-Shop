@@ -17,6 +17,7 @@ final class InventoryRouteRuntimeSettings {
 		return array(
 			'staff_search_route_enabled'  => false,
 			'staff_create_route_enabled'  => false,
+			'staff_update_route_enabled'  => false,
 			'staff_mark_sold_route_enabled' => false,
 			'public_search_route_enabled' => false,
 		);
@@ -38,11 +39,13 @@ final class InventoryRouteRuntimeSettings {
 		$value                = is_array( $value ) ? $value : array();
 		$staff_search_enabled = ! empty( $value['staff_search_route_enabled'] );
 		$staff_create_enabled = ! empty( $value['staff_create_route_enabled'] );
+		$staff_update_enabled = ! empty( $value['staff_update_route_enabled'] );
 		$staff_mark_sold_enabled = ! empty( $value['staff_mark_sold_route_enabled'] );
 
 		return array(
 			'staff_search_route_enabled'  => $staff_search_enabled,
 			'staff_create_route_enabled'  => $staff_create_enabled,
+			'staff_update_route_enabled'  => $staff_update_enabled,
 			'staff_mark_sold_route_enabled' => $staff_mark_sold_enabled,
 			'public_search_route_enabled' => $staff_search_enabled
 				&& ! empty( $value['public_search_route_enabled'] ),

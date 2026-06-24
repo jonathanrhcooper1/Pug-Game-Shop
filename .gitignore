@@ -11,6 +11,7 @@ playwright-report/
 test-results/
 tmp/
 .local/
+exports/
 apps/offline-app/src-tauri/gen/
 *.log
 *.sqlite

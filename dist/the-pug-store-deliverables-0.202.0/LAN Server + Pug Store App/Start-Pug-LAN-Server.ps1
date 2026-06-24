@@ -24,5 +24,19 @@ $env:LOCAL_SYNC_HOST = if ($env:LOCAL_SYNC_HOST) { $env:LOCAL_SYNC_HOST } else {
 $env:LOCAL_SYNC_PORT = if ($env:LOCAL_SYNC_PORT) { $env:LOCAL_SYNC_PORT } else { '8787' }
 $env:LOCAL_SYNC_DISCOVERY_PORT = if ($env:LOCAL_SYNC_DISCOVERY_PORT) { $env:LOCAL_SYNC_DISCOVERY_PORT } else { '8788' }
 $env:PUG_LOCAL_SYNC_DB = if ($env:PUG_LOCAL_SYNC_DB) { $env:PUG_LOCAL_SYNC_DB } else { Join-Path $ServerRoot 'store-sync.sqlite' }
+function Ensure-PugFirewallRule {
+  param([string]$Name, [string]$Protocol, [string]$Port)
+  try {
+    if (-not (Get-Command New-NetFirewallRule -ErrorAction SilentlyContinue)) { return }
+    $Existing = Get-NetFirewallRule -DisplayName $Name -ErrorAction SilentlyContinue
+    if ($Existing) { return }
+    New-NetFirewallRule -DisplayName $Name -Direction Inbound -Action Allow -Protocol $Protocol -LocalPort $Port | Out-Null
+    Write-Host "Created firewall rule: $Name"
+  } catch {
+    Write-Warning "Could not create firewall rule '$Name'. If other PCs cannot connect, allow $Protocol port $Port inbound."
+  }
+}
+Ensure-PugFirewallRule -Name 'Pug LAN Server HTTP 8787' -Protocol TCP -Port $env:LOCAL_SYNC_PORT
+Ensure-PugFirewallRule -Name 'Pug LAN Server Discovery 8788' -Protocol UDP -Port $env:LOCAL_SYNC_DISCOVERY_PORT
 Set-Location $ServerRoot
 node apps/local-sync-server/src/cli.mjs

@@ -25,6 +25,8 @@ const pluginZip = resolve(distDir, `tcg-store-platform-${packageJson.version}.zi
 const themeZip = resolve(distDir, `pug-arcade-commerce-v2-${packageJson.version}.zip`)
 const localServerZip = resolve(distDir, "pug-lan-server.zip")
 const documentationDir = resolve(root, "release-package")
+const lanServerDeployScript = resolve(root, "scripts/Deploy-Pug-LAN-Server-Patch.ps1")
+const dymoLocalServiceScript = resolve(root, "scripts/Start-Pug-Dymo-Local-Service.ps1")
 const pugStoreAppDir = resolve(releaseDir, "Pug Store App")
 const lanServerPlusAppDir = resolve(releaseDir, "LAN Server + Pug Store App")
 const kioskPageDir = resolve(releaseDir, "Kiosk Page")
@@ -40,6 +42,9 @@ copyRequired(pluginZip, resolve(lanWebsiteDir, basename(pluginZip)))
 copyRequired(themeZip, resolve(lanWebsiteDir, basename(themeZip)))
 copyRequired(localServerZip, resolve(lanServerPlusAppDir, basename(localServerZip)))
 writeLanServerStartupFiles(lanServerPlusAppDir, basename(localServerZip))
+copyRequired(lanServerDeployScript, resolve(lanServerPlusAppDir, "Deploy-Pug-LAN-Server-Patch.ps1"))
+copyRequired(dymoLocalServiceScript, resolve(pugStoreAppDir, "Start-Pug-Dymo-Local-Service.ps1"))
+copyRequired(dymoLocalServiceScript, resolve(lanServerPlusAppDir, "Start-Pug-Dymo-Local-Service.ps1"))
 
 // Bundle client handover docs with the installable package so the ZIP is a
 // complete owner/admin/support handoff, not only an installer collection.
@@ -95,6 +100,7 @@ writeFileSync(
     "Use this deliverable on staff machines for inventory, customer, trade-in, fulfillment, reporting, and sync work.",
     "Install the app, then let it auto-discover the LAN server over UDP port 8788.",
     "If discovery is blocked, enter the LAN server URL manually, for example http://SERVER-IP:8787.",
+    "For local DYMO label printing, run Start-Pug-Dymo-Local-Service.ps1 on any staff PC with the LabelWriter attached.",
     appInstaller
       ? `Installer: ${appInstallerFileName}`
       : "Installer missing: run npm.cmd run build:offline-app:windows, then rerun npm.cmd run package:production-release.",
@@ -118,6 +124,8 @@ writeFileSync(
     "- It requires Node 22.13+ or Node 24 with built-in node:sqlite.",
     "- On startup it creates or reuses store-sync.sqlite unless LOCAL_SYNC_SQLITE_PATH or PUG_LOCAL_SYNC_DB points elsewhere.",
     "- Use Start-Pug-LAN-Server-Hidden.vbs or Install-Pug-LAN-Server-Startup-Task.ps1 when you do not want a command prompt window visible.",
+    "- Use Deploy-Pug-LAN-Server-Patch.ps1 when updating the LAN server package on a different computer from this USB.",
+    "- Use Start-Pug-Dymo-Local-Service.ps1 on any PC that prints DYMO labels locally.",
     "",
     "Connectivity:",
     "- Allow inbound TCP 8787 and UDP 8788 through Windows Firewall.",
@@ -153,6 +161,7 @@ writeFileSync(
     "1. Open LAN Server + Pug Store App, install/verify the website ZIPs, then start the LAN server on the in-store host machine.",
     "2. Install Pug Store App on staff stations.",
     "3. Install Kiosk Page on customer-facing kiosk stations.",
+    "4. On any staff PC with a DYMO LabelWriter attached, run Start-Pug-Dymo-Local-Service.ps1 and confirm the local service answers.",
     "",
     "Connectivity:",
     "- Pug Store App auto-discovers the LAN server over UDP pug-local-sync-discovery-v1 on port 8788.",
@@ -218,6 +227,8 @@ function buildPugStoreAppManifest(installerPath) {
     fullscreen: true,
     decorations: false,
     command_prompt_window_required: false,
+    dymo_local_service_helper: "Start-Pug-Dymo-Local-Service.ps1",
+    dymo_local_printing_url: "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
     launch_url_hint: "/",
     sync_topology: "wordpress_woocommerce_plugin <-https-> local_middleman <-lan/offline-> app",
     auto_discovery: {
@@ -247,7 +258,10 @@ function buildLanServerPlusAppManifest(installerPath) {
     app_decorations: false,
     command_prompt_window_required: false,
     hidden_start_helper: "Start-Pug-LAN-Server-Hidden.vbs",
+    patch_deploy_helper: "Deploy-Pug-LAN-Server-Patch.ps1",
     startup_task_helper: "Install-Pug-LAN-Server-Startup-Task.ps1",
+    dymo_local_service_helper: "Start-Pug-Dymo-Local-Service.ps1",
+    dymo_local_printing_url: "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
     website_dependencies: [basename(pluginZip), basename(themeZip)],
     local_database: "store-sync.sqlite",
     sqlite_runtime: "Node built-in node:sqlite",
@@ -304,7 +318,8 @@ function writeLanServerStartupFiles(targetDir, serverZipName) {
       "# Copy this file to local-sync.env and fill in the secret values before starting the LAN server.",
       "LOCAL_SYNC_HOST=0.0.0.0",
       "LOCAL_SYNC_PORT=8787",
-      "LOCAL_SYNC_SERVER_URL=http://STORE-SERVER-IP:8787",
+      "# Leave blank to advertise this computer's LAN IP automatically.",
+      "LOCAL_SYNC_SERVER_URL=",
       "LOCAL_SYNC_SQLITE_PATH=store-sync.sqlite",
       "LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true",
       "PUG_WORDPRESS_URL=https://thepuggaming.com",
@@ -356,6 +371,20 @@ function writeLanServerStartupFiles(targetDir, serverZipName) {
       "$env:LOCAL_SYNC_PORT = if ($env:LOCAL_SYNC_PORT) { $env:LOCAL_SYNC_PORT } else { '8787' }",
       "$env:LOCAL_SYNC_DISCOVERY_PORT = if ($env:LOCAL_SYNC_DISCOVERY_PORT) { $env:LOCAL_SYNC_DISCOVERY_PORT } else { '8788' }",
       "$env:PUG_LOCAL_SYNC_DB = if ($env:PUG_LOCAL_SYNC_DB) { $env:PUG_LOCAL_SYNC_DB } else { Join-Path $ServerRoot 'store-sync.sqlite' }",
+      "function Ensure-PugFirewallRule {",
+      "  param([string]$Name, [string]$Protocol, [string]$Port)",
+      "  try {",
+      "    if (-not (Get-Command New-NetFirewallRule -ErrorAction SilentlyContinue)) { return }",
+      "    $Existing = Get-NetFirewallRule -DisplayName $Name -ErrorAction SilentlyContinue",
+      "    if ($Existing) { return }",
+      "    New-NetFirewallRule -DisplayName $Name -Direction Inbound -Action Allow -Protocol $Protocol -LocalPort $Port | Out-Null",
+      "    Write-Host \"Created firewall rule: $Name\"",
+      "  } catch {",
+      "    Write-Warning \"Could not create firewall rule '$Name'. If other PCs cannot connect, allow $Protocol port $Port inbound.\"",
+      "  }",
+      "}",
+      "Ensure-PugFirewallRule -Name 'Pug LAN Server HTTP 8787' -Protocol TCP -Port $env:LOCAL_SYNC_PORT",
+      "Ensure-PugFirewallRule -Name 'Pug LAN Server Discovery 8788' -Protocol UDP -Port $env:LOCAL_SYNC_DISCOVERY_PORT",
       "Set-Location $ServerRoot",
       "node apps/local-sync-server/src/cli.mjs",
       "",

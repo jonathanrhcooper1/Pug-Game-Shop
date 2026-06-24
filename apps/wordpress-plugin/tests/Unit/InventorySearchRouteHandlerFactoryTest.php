@@ -543,6 +543,52 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( $response['data']['cards'][0]['credentials_in_response'] );
 		}
 
+		public function test_reference_handler_force_live_refreshes_provider_card_when_cache_exists(): void {
+			$database = new \InventorySearchRouteHandlerWpdb(
+				array( $this->reference_card_row() ),
+				'1',
+				'wp_',
+				array(),
+				array(),
+				array()
+			);
+			$provider = new ReferenceSearchFallbackProvider(
+				new ScryDexResult(
+					ScryDexResult::SUCCESS,
+					200,
+					array(
+						'data' => array( $this->provider_reference_card() ),
+					)
+				)
+			);
+			$handler  = new ReferenceCardSearchRouteHandler(
+				$database,
+				'wp_',
+				$provider,
+				new ScryDexPersistenceRepository( $database )
+			);
+
+			$response = $handler->search_reference_cards(
+				$this->request(
+					array(
+						'q'          => 'moonbreon',
+						'game'       => 'pokemon',
+						'limit'      => '8',
+						'force_live' => '1',
+					)
+				)
+			);
+
+			$this->assert_same( 'ready', $response['status'] );
+			$this->assert_same( 'scrydex_provider', $response['data']['source'] );
+			$this->assert_same( 1, $provider->search_count );
+			$this->assert_true( $response['data']['meta']['live_provider_request'] );
+			$this->assert_true( $response['data']['meta']['force_live_refresh'] );
+			$this->assert_true( $response['data']['meta']['wordpress_catalog_cache_hit'] );
+			$this->assert_same( 'executed', $response['data']['meta']['scrydex_persistence_status'] );
+			$this->assert_true( $database->query_count > 0 );
+		}
+
 		public function test_reference_handler_allows_large_intake_lookup_page_size(): void {
 			$database = new \InventorySearchRouteHandlerWpdb(
 				array( $this->reference_card_row() ),

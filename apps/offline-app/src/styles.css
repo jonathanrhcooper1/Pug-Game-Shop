@@ -210,6 +210,10 @@ h2 {
   grid-template-rows: 42px minmax(0, 1fr);
 }
 
+.prelaunch-shell {
+  min-height: 100dvh;
+}
+
 .login-workspace {
   display: grid;
   place-items: center;
@@ -217,7 +221,16 @@ h2 {
   padding: 28px;
 }
 
-.login-card {
+.prelaunch-workspace {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(18px, 4vw, 44px);
+}
+
+.login-card,
+.prelaunch-card {
   display: grid;
   gap: 16px;
   width: min(520px, 100%);
@@ -231,7 +244,12 @@ h2 {
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
 }
 
-.login-card img {
+.prelaunch-card {
+  width: min(680px, 100%);
+}
+
+.login-card img,
+.prelaunch-card img {
   width: min(260px, 100%);
   height: 118px;
   object-fit: contain;
@@ -243,8 +261,138 @@ h2 {
     0 18px 34px rgba(7, 19, 29, 0.24);
 }
 
-.login-card h1 {
+.login-card h1,
+.prelaunch-card h1 {
   color: #172016;
+}
+
+.prelaunch-card p {
+  max-width: 56ch;
+  color: #52605a;
+  line-height: 1.45;
+}
+
+.prelaunch-status,
+.prelaunch-help,
+.login-connection-summary {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px;
+  color: #172016;
+  background: rgba(15, 22, 19, 0.045);
+  border: 1px solid rgba(15, 22, 19, 0.11);
+  border-radius: 8px;
+}
+
+.prelaunch-status strong,
+.prelaunch-status small,
+.prelaunch-help strong,
+.prelaunch-help small,
+.login-connection-summary strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.prelaunch-status strong,
+.prelaunch-help strong,
+.login-connection-summary strong {
+  color: #172016;
+}
+
+.prelaunch-status small,
+.prelaunch-help small {
+  color: #52605a;
+  line-height: 1.45;
+}
+
+.prelaunch-status.checking {
+  background: rgba(246, 199, 96, 0.16);
+  border-color: rgba(217, 159, 49, 0.32);
+}
+
+.prelaunch-status.manual {
+  background: rgba(73, 220, 244, 0.12);
+  border-color: rgba(50, 165, 190, 0.28);
+}
+
+.prelaunch-status.blocked {
+  background: rgba(240, 126, 103, 0.12);
+  border-color: rgba(194, 72, 61, 0.28);
+}
+
+.prelaunch-server-field {
+  display: grid;
+  gap: 6px;
+}
+
+.prelaunch-server-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  color: #172016;
+  background: #ffffff;
+  border: 1px solid rgba(15, 22, 19, 0.16);
+  border-radius: 8px;
+  font-weight: 850;
+}
+
+.prelaunch-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prelaunch-actions button,
+.login-connection-summary button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: #172016;
+  background: var(--gold);
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.prelaunch-actions button:nth-child(2),
+.login-connection-summary button {
+  background: #ffffff;
+  border: 1px solid rgba(15, 22, 19, 0.14);
+}
+
+.prelaunch-actions button:disabled {
+  cursor: progress;
+  opacity: 0.66;
+}
+
+.prelaunch-discovery-list {
+  display: grid;
+  gap: 8px;
+}
+
+.prelaunch-discovery-list > button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  color: #172016;
+  text-align: left;
+  background: rgba(73, 220, 244, 0.1);
+  border: 1px solid rgba(50, 165, 190, 0.22);
+  border-radius: 8px;
+}
+
+.prelaunch-discovery-list strong,
+.prelaunch-discovery-list small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.prelaunch-discovery-list small {
+  color: #52605a;
 }
 
 .login-fields,
@@ -319,6 +467,15 @@ h2 {
 .pin-display small {
   color: #52605a;
   font-size: 12px;
+}
+
+.login-connection-summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.login-connection-summary .micro-label {
+  grid-column: 1 / -1;
 }
 
 .pin-pad {
@@ -2866,9 +3023,14 @@ h2 {
   text-transform: uppercase;
 }
 
-.trade-in-valuation-links a {
+.trade-in-valuation-links a,
+.trade-in-valuation-links button,
+.selected-scrydex-preview__links a,
+.selected-scrydex-preview__refresh button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 30px;
   padding: 6px 9px;
   color: #163749;
@@ -2880,10 +3042,19 @@ h2 {
   border-radius: 999px;
 }
 
-.trade-in-valuation-links a:hover {
+.trade-in-valuation-links a:hover,
+.trade-in-valuation-links button:hover,
+.selected-scrydex-preview__links a:hover,
+.selected-scrydex-preview__refresh button:hover {
   color: #0c271d;
   background: #ffffff;
   border-color: rgba(121, 215, 143, 0.44);
+}
+
+.trade-in-valuation-links button:disabled,
+.selected-scrydex-preview__refresh button:disabled {
+  cursor: wait;
+  opacity: 0.66;
 }
 
 .trade-in-customer-hero {
@@ -4847,6 +5018,42 @@ h2 {
   border-color: var(--gold);
 }
 
+.inventory-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 6px;
+  background: rgba(20, 23, 19, 0.055);
+  border: 1px solid rgba(20, 23, 19, 0.1);
+  border-radius: 8px;
+}
+
+.inventory-mode-tabs button {
+  min-height: 40px;
+  color: #202a25;
+  background: #ffffff;
+  border: 1px solid rgba(15, 22, 19, 0.14);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.inventory-mode-tabs button.is-active {
+  color: #fffaf0;
+  background: #18201e;
+  border-color: #18201e;
+}
+
+.filter-tray-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  color: #52605a;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .inventory-intake-control {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -4885,6 +5092,45 @@ h2 {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.scrydex-recovery-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.scrydex-recovery-actions button {
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.scrydex-recovery-status {
+  display: block;
+  padding: 8px 10px;
+  color: #284036;
+  background: rgba(73, 220, 244, 0.1);
+  border: 1px solid rgba(73, 220, 244, 0.22);
+  border-radius: 8px;
+}
+
+.scrydex-recovery-status.working {
+  color: #5f4300;
+  background: rgba(245, 194, 66, 0.18);
+  border-color: rgba(245, 194, 66, 0.35);
+}
+
+.scrydex-recovery-status.ready {
+  color: #0f5134;
+  background: rgba(31, 197, 115, 0.12);
+  border-color: rgba(31, 197, 115, 0.3);
+}
+
+.scrydex-recovery-status.blocked {
+  color: #6f1d1b;
+  background: rgba(255, 97, 97, 0.12);
+  border-color: rgba(255, 97, 97, 0.28);
 }
 
 .inventory-intake-control input,
@@ -5104,6 +5350,39 @@ h2 {
   text-transform: uppercase;
 }
 
+.selected-scrydex-preview__prices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.selected-scrydex-preview__prices div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(244, 251, 255, 0.1);
+  border-radius: 7px;
+}
+
+.selected-scrydex-preview__prices dt {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.selected-scrydex-preview__prices dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .selected-scrydex-preview__variant-select {
   display: grid;
   gap: 6px;
@@ -5123,6 +5402,36 @@ h2 {
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
+}
+
+.selected-scrydex-preview__links,
+.selected-scrydex-preview__refresh {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.selected-scrydex-preview__links > span {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.selected-scrydex-preview__refresh {
+  padding: 9px;
+  color: rgba(244, 251, 255, 0.78);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(73, 220, 244, 0.18);
+  border-radius: 7px;
+}
+
+.selected-scrydex-preview__refresh small {
+  flex: 1 1 220px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .selected-scrydex-preview__pill-row span {
@@ -5834,6 +6143,12 @@ dd {
 .detail-actions button:not(.wide-action) {
   color: #f8fbf4;
   background: #202927;
+}
+
+.detail-actions button.danger-command:not(.wide-action) {
+  color: #7b332b;
+  background: rgba(240, 126, 103, 0.12);
+  border-color: rgba(240, 126, 103, 0.36);
 }
 
 .wide-action {
@@ -7950,6 +8265,24 @@ dd {
 
   .window-brand img {
     width: 42px;
+  }
+
+  .prelaunch-workspace,
+  .login-workspace {
+    align-items: start;
+    padding: 12px;
+  }
+
+  .prelaunch-card,
+  .login-card {
+    padding: 16px;
+  }
+
+  .prelaunch-actions,
+  .login-fields,
+  .login-actions,
+  .login-connection-summary {
+    grid-template-columns: 1fr;
   }
 
   .workspace {

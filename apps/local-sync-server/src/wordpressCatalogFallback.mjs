@@ -8,7 +8,13 @@ export function createWordPressCatalogFallback(options = {}) {
     return null
   }
 
-  return async function wordpressCatalogFallback({ query = "", game = "pokemon", limit = 250, rawOrGraded = "" } = {}) {
+  return async function wordpressCatalogFallback({
+    query = "",
+    game = "pokemon",
+    limit = 250,
+    rawOrGraded = "",
+    forceLive = false,
+  } = {}) {
     if (isUnlimitedLimit(limit)) {
       return fetchAllCatalogFallbackPages({
         endpointBase,
@@ -18,6 +24,7 @@ export function createWordPressCatalogFallback(options = {}) {
         query,
         game,
         rawOrGraded,
+        forceLive,
       })
     }
 
@@ -30,6 +37,7 @@ export function createWordPressCatalogFallback(options = {}) {
       query,
       game,
       rawOrGraded,
+      forceLive,
       limit: requestedLimit,
       page: 1,
       retriedWithLegacyLimit: false,
@@ -44,6 +52,7 @@ export function createWordPressCatalogFallback(options = {}) {
         query,
         game,
         rawOrGraded,
+        forceLive,
         limit: 50,
         page: 1,
         retriedWithLegacyLimit: true,
@@ -62,6 +71,7 @@ async function fetchAllCatalogFallbackPages({
   query = "",
   game = "pokemon",
   rawOrGraded = "",
+  forceLive = false,
 } = {}) {
   let page = 1
   let pageSize = 250
@@ -78,6 +88,7 @@ async function fetchAllCatalogFallbackPages({
       query,
       game,
       rawOrGraded,
+      forceLive,
       limit: pageSize,
       page,
       retriedWithLegacyLimit,
@@ -134,6 +145,7 @@ async function fetchCatalogFallbackPage({
   query = "",
   game = "pokemon",
   rawOrGraded = "",
+  forceLive = false,
   limit = 250,
   page = 1,
   retriedWithLegacyLimit = false,
@@ -146,6 +158,9 @@ async function fetchCatalogFallbackPage({
   const rawOrGradedFilter = cleanRawOrGradedFilter(rawOrGraded)
   if (rawOrGradedFilter) {
     endpoint.searchParams.set("raw_or_graded", rawOrGradedFilter)
+  }
+  if (forceLive === true) {
+    endpoint.searchParams.set("force_live", "1")
   }
 
   const controller = typeof AbortController === "function" ? new AbortController() : null

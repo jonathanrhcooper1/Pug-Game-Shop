@@ -41,7 +41,7 @@ final class InventoryRouteContracts {
 			),
 			array(
 				'namespace'               => self::NAMESPACE,
-				'path'                    => '/inventory/(?P<inventory_id>\d+)',
+				'path'                    => '/inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)',
 				'method'                  => 'PUT',
 				'callback'                => 'update_inventory_item',
 				'permission'              => 'edit_inventory',

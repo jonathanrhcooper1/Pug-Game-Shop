@@ -167,14 +167,38 @@ try {
   assert.equal(paidTooEarly.status, "blocked")
   assert.equal(paidTooEarly.code, "trade_in_payment_requires_approval")
 
-  const approved = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/status`, {
+  const approvalMissingId = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/status`, {
     method: "PATCH",
     token: auth.session.token,
     body: { status: "approved", notes: "Approved by owner." },
   })
 
+  assert.equal(approvalMissingId.status, "blocked")
+  assert.equal(approvalMissingId.code, "trade_in_customer_id_required")
+
+  const approved = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: {
+      status: "approved",
+      notes: "Approved by owner.",
+      customer_id_number: "TN-123456789",
+      customer_id_state: "tn",
+    },
+  })
+
   assert.equal(approved.status, "ok")
   assert.equal(approved.order.status, "approved")
+  assert.equal(approved.order.customer_id_number_masked, "****6789")
+  assert.equal(approved.order.customer_id_state, "TN")
+  assert.equal(approved.order.customer_id_recorded_by_user_id, auth.user.id)
+  assert.equal(approved.order.customer_id_recorded_by_user_name, auth.user.name)
+
+  const idLookup = await fetchJson(`${baseUrl}/trade-ins/orders?q=${encodeURIComponent("6789")}`, {
+    token: auth.session.token,
+  })
+  assert.equal(idLookup.status, "ok")
+  assert.equal(idLookup.order_count, 1)
 
   const approvedUpdate = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}`, {
     method: "PATCH",

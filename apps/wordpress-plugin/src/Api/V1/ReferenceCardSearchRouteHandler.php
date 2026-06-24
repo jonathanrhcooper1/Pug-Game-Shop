@@ -139,18 +139,19 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
-	 * @return array{query:string,game:string,raw_or_graded:string,page:int,page_size:int,errors:list<string>}
+	 * @return array{query:string,game:string,raw_or_graded:string,force_live:bool,page:int,page_size:int,errors:list<string>}
 	 */
 	private function parse_request( OfflineRestRequestData $data ): array {
-		$params    = array_merge( $data->query_params(), $data->body_params() );
-		$query     = trim( (string) ( $params['q'] ?? ( $params['query'] ?? '' ) ) );
-		$game      = strtolower( trim( (string) ( $params['game'] ?? '' ) ) );
+		$params        = array_merge( $data->query_params(), $data->body_params() );
+		$query         = trim( (string) ( $params['q'] ?? ( $params['query'] ?? '' ) ) );
+		$game          = strtolower( trim( (string) ( $params['game'] ?? '' ) ) );
 		$raw_or_graded = strtolower( trim( (string) ( $params['raw_or_graded'] ?? ( $params['product_type'] ?? '' ) ) ) );
-		$page_raw  = $params['page'] ?? 1;
-		$limit_raw = $params['page_size'] ?? ( $params['limit'] ?? 25 );
-		$page      = $this->positive_int( $page_raw, 1 );
-		$page_size = $this->positive_int( $limit_raw, 25 );
-		$errors    = array();
+		$force_live    = $this->truthy( $params['force_live'] ?? ( $params['forceLive'] ?? false ) );
+		$page_raw      = $params['page'] ?? 1;
+		$limit_raw     = $params['page_size'] ?? ( $params['limit'] ?? 25 );
+		$page          = $this->positive_int( $page_raw, 1 );
+		$page_size     = $this->positive_int( $limit_raw, 25 );
+		$errors        = array();
 
 		if ( '' === $query ) {
 			$errors[] = 'reference_search_query_required';
@@ -187,12 +188,13 @@ final class ReferenceCardSearchRouteHandler {
 		}
 
 		return array(
-			'query'     => $query,
-			'game'      => $game,
+			'query'         => $query,
+			'game'          => $game,
 			'raw_or_graded' => $raw_or_graded,
-			'page'      => $page,
-			'page_size' => $page_size,
-			'errors'    => array_values( array_unique( $errors ) ),
+			'force_live'    => $force_live,
+			'page'          => $page,
+			'page_size'     => $page_size,
+			'errors'        => array_values( array_unique( $errors ) ),
 		);
 	}
 
@@ -614,13 +616,18 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
-	 * @param array{query:string,game:string,page:int,page_size:int,errors:list<string>} $request Parsed request.
+	 * @param array{query:string,game:string,force_live:bool,page:int,page_size:int,errors:list<string>} $request Parsed request.
 	 * @param array<string, mixed>                                                      $query Query plan.
 	 * @param list<array<string, mixed>>                                                $rows Reference rows.
 	 * @return array<string, mixed>|null
 	 */
 	private function maybe_provider_fallback( array $request, array $query, array $rows, int $total ): ?array {
-		if ( null === $this->scrydex_provider || 0 !== $total || array() !== $rows || 1 !== (int) $request['page'] ) {
+		$force_live = true === ( $request['force_live'] ?? false );
+		if ( null === $this->scrydex_provider || 1 !== (int) $request['page'] ) {
+			return null;
+		}
+
+		if ( ! $force_live && ( 0 !== $total || array() !== $rows ) ) {
 			return null;
 		}
 
@@ -688,7 +695,8 @@ final class ReferenceCardSearchRouteHandler {
 					'public_catalog_safe'         => true,
 					'credentials_in_response'     => false,
 					'live_provider_request'       => true,
-					'wordpress_catalog_cache_hit' => false,
+					'wordpress_catalog_cache_hit' => $force_live && ( $total > 0 || array() !== $rows ),
+					'force_live_refresh'          => $force_live,
 					'scrydex_fallback_status'     => 'completed',
 					'scrydex_persistence_status'  => $persistence['status'],
 					'scrydex_persistence_errors'  => $persistence['errors'],
@@ -702,7 +710,8 @@ final class ReferenceCardSearchRouteHandler {
 					'row_count'                     => count( $provider_cards ),
 					'total'                         => count( $provider_cards ),
 					'live_provider_request'         => true,
-					'wordpress_catalog_cache_hit'   => false,
+					'wordpress_catalog_cache_hit'   => $force_live && ( $total > 0 || array() !== $rows ),
+					'force_live_refresh'            => $force_live,
 					'scrydex_persistence_status'    => $persistence['status'],
 					'scrydex_credentials_in_response' => false,
 				)
@@ -711,7 +720,7 @@ final class ReferenceCardSearchRouteHandler {
 	}
 
 	/**
-	 * @param array{query:string,game:string,page:int,page_size:int,errors:list<string>} $request Parsed request.
+	 * @param array{query:string,game:string,force_live:bool,page:int,page_size:int,errors:list<string>} $request Parsed request.
 	 * @param array<string, mixed>                                                      $query Query plan.
 	 * @return array<string, mixed>
 	 */
@@ -740,7 +749,8 @@ final class ReferenceCardSearchRouteHandler {
 					'public_catalog_safe'         => true,
 					'credentials_in_response'     => false,
 					'live_provider_request'       => true,
-					'wordpress_catalog_cache_hit' => false,
+					'wordpress_catalog_cache_hit' => true === ( $request['force_live'] ?? false ),
+					'force_live_refresh'          => true === ( $request['force_live'] ?? false ),
 					'scrydex_fallback_status'     => 'blocked',
 					'scrydex_provider_status'     => null === $result ? 'failed' : $result->status(),
 					'scrydex_provider_http_status' => null === $result ? 0 : $result->http_status(),
@@ -753,7 +763,8 @@ final class ReferenceCardSearchRouteHandler {
 				$this->ready_meta( $query, 0, 0 ),
 				array(
 					'live_provider_request'          => true,
-					'wordpress_catalog_cache_hit'    => false,
+					'wordpress_catalog_cache_hit'    => true === ( $request['force_live'] ?? false ),
+					'force_live_refresh'             => true === ( $request['force_live'] ?? false ),
 					'scrydex_fallback_status'        => 'blocked',
 					'scrydex_provider_error_code'    => $error_code,
 					'scrydex_credentials_in_response' => false,
@@ -1210,9 +1221,9 @@ final class ReferenceCardSearchRouteHandler {
 					'grading_company'        => strtoupper( $this->text( $price['company'] ?? ( $price['grading_company'] ?? ( $price['grader'] ?? '' ) ) ) ),
 					'grade'                  => $this->history_price_grade( $price ),
 					'market_price'           => null === $market ? $mid : $market,
-					'low_price'              => $this->history_price_amount( $price, array( 'low', 'low_price', 'lowPrice' ) ),
+					'low_price'              => $this->history_price_amount( $price, array( 'low', 'low_price', 'lowPrice', 'market_low', 'marketLow', 'low_value', 'lowValue' ) ),
 					'mid_price'              => $mid,
-					'high_price'             => $this->history_price_amount( $price, array( 'high', 'high_price', 'highPrice' ) ),
+					'high_price'             => $this->history_price_amount( $price, array( 'high', 'high_price', 'highPrice', 'market_high', 'marketHigh', 'high_value', 'highValue' ) ),
 					'currency'               => $this->currency( $price['currency'] ?? null ),
 					'source_observed_at'     => $this->mysql_datetime( $entry['date'] ?? '' ),
 					'provider_updated_at'    => $this->mysql_datetime( $entry['date'] ?? '' ),
@@ -1619,6 +1630,10 @@ final class ReferenceCardSearchRouteHandler {
 	private function is_positive_intish( mixed $value ): bool {
 		return ( is_int( $value ) && $value > 0 )
 			|| ( is_string( $value ) && 1 === preg_match( '/^\d+$/', $value ) && (int) $value > 0 );
+	}
+
+	private function truthy( mixed $value ): bool {
+		return in_array( strtolower( trim( (string) $value ) ), array( '1', 'true', 'yes', 'on' ), true );
 	}
 
 	private function non_negative_int( mixed $value ): ?int {

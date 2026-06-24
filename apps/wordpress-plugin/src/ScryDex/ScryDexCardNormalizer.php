@@ -159,9 +159,9 @@ final class ScryDexCardNormalizer {
 		?string $provider_updated_at
 	): ?array {
 		$market = $this->decimal_amount( $this->first_present( $source, array( 'amount', 'market_price', 'marketPrice', 'market', 'market_value', 'marketValue', 'avg_price', 'avgPrice', 'average_price', 'averagePrice', 'average', 'avg', 'value', 'price' ) ) );
-		$low    = $this->decimal_amount( $this->first_present( $source, array( 'low_price', 'lowPrice', 'low' ) ) );
+		$low    = $this->decimal_amount( $this->first_present( $source, array( 'low_price', 'lowPrice', 'low', 'market_low', 'marketLow', 'low_value', 'lowValue' ) ) );
 		$mid    = $this->decimal_amount( $this->first_present( $source, array( 'mid_price', 'midPrice', 'mid', 'market_mid', 'marketMid', 'mid_value', 'midValue' ) ) );
-		$high   = $this->decimal_amount( $this->first_present( $source, array( 'high_price', 'highPrice', 'high' ) ) );
+		$high   = $this->decimal_amount( $this->first_present( $source, array( 'high_price', 'highPrice', 'high', 'market_high', 'marketHigh', 'high_value', 'highValue' ) ) );
 
 		if ( null === $market && null === $low && null === $mid && null === $high ) {
 			return null;

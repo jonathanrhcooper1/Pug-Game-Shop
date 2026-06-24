@@ -113,6 +113,7 @@ import {
 } from "./data/offlineWorkspace"
 import {
   createLocalSyncServerClient,
+  normalizeLocalSyncServerUrl,
   type LocalSyncAuthResult,
   type LocalSyncCreditLedgerEntry,
   type LocalSyncCustomer,
@@ -184,10 +185,12 @@ type AppIconName =
   | "copy"
   | "close"
   | "trash"
+  | "refresh"
 
 type ViewMode = "list" | "grid"
 type AppSessionRole = "locked" | "staff" | "manager" | "owner"
 type InventoryVisibility = LocalSyncInventoryItem["online_visibility"]
+type InventoryPageMode = "updates" | "intake"
 const INVENTORY_STATUS_FILTERS = [
   "all",
   "available",
@@ -195,6 +198,9 @@ const INVENTORY_STATUS_FILTERS = [
   "reserved",
   "sold",
   "conflict",
+  "return_review",
+  "damaged",
+  "removed",
 ] as const
 const INVENTORY_PRODUCT_TYPE_FILTERS: Array<{ value: InventoryProductTypeFilter; label: string }> = [
   { value: "all", label: "All inventory" },
@@ -226,6 +232,18 @@ const DEFAULT_FULFILLMENT_NOTIFICATION_SETTINGS: LocalSyncFulfillmentNotificatio
   credentials_synced_to_client: false,
   raw_credentials_returned: false,
 }
+const EMPTY_CUSTOMER_CREDIT_SNAPSHOT: CustomerCreditSnapshot = {
+  customerId: 0,
+  customerPublicId: "",
+  rowVersion: 0,
+  label: "Customer credit",
+  customerName: "No customer selected",
+  customerLookup: "",
+  availableMinorUnits: 0,
+  redemptionPreviewMinorUnits: 0,
+  currency: "USD",
+  note: "Search and select a customer before issuing credit, redeeming credit, or reviewing account history.",
+}
 const ACCESS_SECTIONS = [
   "Inventory",
   "Trade-Ins",
@@ -242,7 +260,7 @@ const ACCESS_SECTIONS = [
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
 const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
-const OFFLINE_APP_VERSION = "0.202.0"
+const OFFLINE_APP_VERSION = "0.202.2"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
@@ -314,6 +332,7 @@ type CheckoutCustomerMode = "guest" | "customer"
 type CheckoutReceiptDelivery = "print" | "email" | "both"
 type CheckoutTenderMode = "card" | "cash" | "split"
 type LiveCardScanMode = "inventory" | "trade-in"
+type LabelPrinterTarget = "auto" | "this_pc" | "lan_server"
 
 type CheckoutCartLine = {
   lineId: string
@@ -365,6 +384,10 @@ type TradeInDraftItem = {
 type ActivityMessage = {
   title: string
   detail: string
+}
+
+type StageOfflineOperationOptions = {
+  nextSection?: string
 }
 
 type StatusTone = "ready" | "working" | "blocked" | "idle" | "warning"
@@ -435,6 +458,13 @@ type LocalSyncDiscoveryState = {
   servers: LocalSyncDiscoveredServer[]
   rawCredentialsReturned: false
   credentialsSyncedToApp: false
+}
+
+type PrelaunchConnectionState = {
+  status: "checking" | "ready" | "manual" | "blocked"
+  detail: string
+  serverUrl: string
+  checkedAtUtc: string
 }
 
 type QueueExportStatus = {
@@ -534,7 +564,30 @@ type ConflictReviewStorageRestoreResult = {
 
 const CONFLICT_REVIEW_STORAGE_KEY_PREFIX = "pug-offline-conflict-review:"
 const EMPLOYEE_ORDER_SOUND_STORAGE_KEY = "pug-employee-order-notification-sound:v1"
+const LABEL_PRINTER_TARGET_STORAGE_KEY = "pug-label-printer-target:v1"
 const MAX_EMPLOYEE_ORDER_SOUND_BYTES = 1.5 * 1024 * 1024
+
+const LABEL_PRINTER_TARGET_OPTIONS: Array<{
+  value: LabelPrinterTarget
+  label: string
+  detail: string
+}> = [
+  {
+    value: "auto",
+    label: "Auto: this PC, then LAN server",
+    detail: "Best default for the counter. The app tries DYMO Connect on this PC first, then the LAN server.",
+  },
+  {
+    value: "this_pc",
+    label: "This PC only",
+    detail: "Use the DYMO printer attached to this workstation. Do not fall back to the LAN server.",
+  },
+  {
+    value: "lan_server",
+    label: "LAN server only",
+    detail: "Send labels straight to the LAN server printer. Use this when the printer is attached to the server.",
+  },
+]
 
 type EmployeeOrderSoundSettings = {
   enabled: boolean
@@ -597,6 +650,35 @@ function persistEmployeeOrderSoundSettings(settings: EmployeeOrderSoundSettings)
   } catch {
     window.localStorage.removeItem(EMPLOYEE_ORDER_SOUND_STORAGE_KEY)
   }
+}
+
+function isLabelPrinterTarget(value: string): value is LabelPrinterTarget {
+  return LABEL_PRINTER_TARGET_OPTIONS.some((option) => option.value === value)
+}
+
+function loadLabelPrinterTarget(): LabelPrinterTarget {
+  if (typeof window === "undefined") {
+    return "auto"
+  }
+
+  const storedTarget = window.localStorage.getItem(LABEL_PRINTER_TARGET_STORAGE_KEY) ?? ""
+
+  return isLabelPrinterTarget(storedTarget) ? storedTarget : "auto"
+}
+
+function persistLabelPrinterTarget(target: LabelPrinterTarget) {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  window.localStorage.setItem(LABEL_PRINTER_TARGET_STORAGE_KEY, target)
+}
+
+function labelPrinterTargetOption(target: LabelPrinterTarget) {
+  return (
+    LABEL_PRINTER_TARGET_OPTIONS.find((option) => option.value === target) ??
+    LABEL_PRINTER_TARGET_OPTIONS[0]
+  )
 }
 
 function employeeOrderSoundFileIssue(file: File): string {
@@ -849,6 +931,7 @@ function Icon({ name }: { name: AppIconName }) {
     copy: "M8 8h10v12H8V8Zm-4 8V4h10",
     close: "M6 6l12 12M18 6 6 18",
     trash: "M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3",
+    refresh: "M17 3v4h-4M7 21v-4h4m6-10a7 7 0 0 0-11.7 3M7 17a7 7 0 0 0 11.7-3",
   }
 
   return (
@@ -995,6 +1078,24 @@ function gameDisplayLabel(value?: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
+function localSyncGameFromInventory(value?: string): LocalSyncScryDexCard["game"] {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "")
+
+  if (["magicthegathering", "magic", "mtg"].includes(normalized)) {
+    return "magicthegathering"
+  }
+
+  if (["onepiece", "onepiececardgame"].includes(normalized)) {
+    return "onepiece"
+  }
+
+  if (normalized === "lorcana") {
+    return "lorcana"
+  }
+
+  return "pokemon"
+}
+
 function statusToneFromRemoteState(status: string): StatusTone {
   if (status === "loading" || status === "searching") {
     return "working"
@@ -1122,7 +1223,9 @@ function buildOperationSyncVisibilityRows(options: {
     ? "Push-capable through LAN sync"
     : "Push waits for LAN/WordPress connection"
   const inventoryPushConnected =
-    localStatus?.wordpress_inventory_push_connected ?? localStatus?.wordpress_push_connected ?? false
+    (localStatus?.wordpress_inventory_push_connected ?? false) ||
+    (localStatus?.wordpress_inventory_update_push_connected ?? false) ||
+    (localStatus?.wordpress_push_connected ?? false)
   const eventPushConnected =
     localStatus?.wordpress_event_registration_push_connected ?? localStatus?.wordpress_push_connected ?? false
   const eventCheckinPushConnected =
@@ -1497,9 +1600,7 @@ function isActiveEventSnapshot(event: EventSnapshot, nowMs = Date.now()) {
     return true
   }
 
-  const activeWindowMs = 8 * 60 * 60 * 1000
-
-  return startsAtMs + activeWindowMs >= nowMs
+  return startsAtMs >= nowMs
 }
 
 function eventPriceInputToMinorUnits(value: string) {
@@ -1766,6 +1867,19 @@ function scryDexPricePointSummary(point: LocalSyncScryDexPricePoint | null, pref
   return `${labels.join(" / ")}${price > 0 ? ` ${formatMoney(price, point.currency)}` : ""}`.trim()
 }
 
+function scryDexPriceBreakdownRows(point: LocalSyncScryDexPricePoint | null) {
+  if (!point) {
+    return []
+  }
+
+  return [
+    { label: "Low", value: point.low_price_minor_units > 0 ? formatMoney(point.low_price_minor_units, point.currency) : "" },
+    { label: "Mid", value: point.mid_price_minor_units > 0 ? formatMoney(point.mid_price_minor_units, point.currency) : "" },
+    { label: "High", value: point.high_price_minor_units > 0 ? formatMoney(point.high_price_minor_units, point.currency) : "" },
+    { label: "Observed", value: point.observed_at_utc ? formatUtcLabel(point.observed_at_utc) : "" },
+  ].filter((row) => row.value !== "")
+}
+
 function scryDexResultPriceSummary(card: LocalSyncScryDexCard) {
   const rawPoint = bestScryDexPricePoint(card, card.variants[0] ?? null, "NM", "raw", "", "")
   const gradedPoint = scryDexBestGradedPricePoint(card, card.variants[0] ?? null)
@@ -1895,6 +2009,102 @@ function valuationLinksForCard(
       href: `https://www.tcgplayer.com/search/all/product?q=${encodedQuery}`,
     },
   ]
+}
+
+function referenceLinksForCard(
+  card: LocalSyncScryDexCard,
+  variant: LocalSyncScryDexVariant | null,
+  productType: "raw" | "graded",
+  gradingCompany = "",
+  grade = "",
+): ValuationLink[] {
+  const query = [
+    card.card_name,
+    card.set_name,
+    card.printed_number || card.card_number,
+    variant?.variant,
+    variant?.finish,
+    productType === "graded" ? gradingCompany : "",
+    productType === "graded" && grade ? `grade ${grade}` : "",
+  ]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(" ")
+  const tcgPlayerLink = {
+    label: "TCGplayer",
+    href: `https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(query || card.card_name)}`,
+  }
+
+  if (productType !== "graded") {
+    return [tcgPlayerLink]
+  }
+
+  const linksByLabel = new Map<string, ValuationLink>()
+  for (const link of [...valuationLinksForCard(card, gradingCompany, grade), tcgPlayerLink]) {
+    linksByLabel.set(link.label, link)
+  }
+
+  return [...linksByLabel.values()]
+}
+
+function mergeScryDexCards(
+  currentCards: LocalSyncScryDexCard[],
+  refreshedCards: LocalSyncScryDexCard[],
+): LocalSyncScryDexCard[] {
+  const cardsByProviderId = new Map(currentCards.map((card) => [card.provider_card_id, card] as const))
+
+  for (const card of refreshedCards) {
+    cardsByProviderId.set(card.provider_card_id, card)
+  }
+
+  return [...cardsByProviderId.values()]
+}
+
+function bestScryDexRefreshMatch(
+  target: LocalSyncScryDexCard,
+  cards: LocalSyncScryDexCard[],
+) {
+  const targetSet = scryDexSetFilterValue(target)
+  const targetNumber = normalizedScryDexPriceText(target.printed_number || target.card_number)
+  const targetName = normalizedScryDexPriceText(target.card_name)
+
+  return cards.find((card) => card.provider_card_id === target.provider_card_id) ??
+    cards.find(
+      (card) =>
+        scryDexSetFilterValue(card) === targetSet &&
+        normalizedScryDexPriceText(card.printed_number || card.card_number) === targetNumber,
+    ) ??
+    cards.find(
+      (card) =>
+        scryDexSetFilterValue(card) === targetSet &&
+        normalizedScryDexPriceText(card.card_name) === targetName,
+    ) ??
+    cards[0] ??
+    null
+}
+
+function preferredScryDexVariantId(
+  card: LocalSyncScryDexCard,
+  previousVariant: LocalSyncScryDexVariant | null,
+) {
+  const variantIndex = card.variants.findIndex((variant) => {
+    if (previousVariant?.provider_variant_id && variant.provider_variant_id === previousVariant.provider_variant_id) {
+      return true
+    }
+
+    if (
+      previousVariant?.reference_variant_id &&
+      variant.reference_variant_id === previousVariant.reference_variant_id
+    ) {
+      return true
+    }
+
+    return false
+  })
+  const index = variantIndex >= 0 ? variantIndex : 0
+  const variant = card.variants[index] ?? null
+
+  return variant ? scryDexVariantId(card.provider_card_id, variant, index) : ""
 }
 
 function staffSafeSecondaryProviderMessage(providerStatus?: LocalSyncGradedProviderStatus | null) {
@@ -2338,6 +2548,20 @@ function inventoryItemForCondition(group: InventoryDisplayGroup, condition: stri
     conditionGroup?.items[0] ??
     group.representative
   )
+}
+
+function isSaleableInventoryItem(item: InventoryItem) {
+  return item.status === "available" || item.status === "reserved"
+}
+
+function staffInventoryRemovalReference(action: "zero" | "remove", items: InventoryItem[]) {
+  const firstItem = items[0]
+  const identity = (firstItem?.publicId || firstItem?.barcode || "inventory")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 36)
+  const timestamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14)
+
+  return `staff-${action}-${identity || "inventory"}-${timestamp}`
 }
 
 function inventoryVisibilityLabel(value?: InventoryVisibility) {
@@ -3196,6 +3420,7 @@ export function App() {
   const liveCardScanVideoRef = useRef<HTMLVideoElement | null>(null)
   const liveCardScanCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const liveCardScanStreamRef = useRef<MediaStream | null>(null)
+  const autoLocalSyncDiscoveryAttemptedRef = useRef(false)
   const connectorProfileStorageRef = useRef<ConnectorProfileStorageRestoreResult | null>(null)
   if (connectorProfileStorageRef.current === null) {
     connectorProfileStorageRef.current = loadConnectorProfileStorage()
@@ -3245,7 +3470,7 @@ export function App() {
   const [localInventoryIntakeReceipts, setLocalInventoryIntakeReceipts] = useState<
     LocalInventoryIntakeSyncReceipt[]
   >([])
-  const [activeCustomerId, setActiveCustomerId] = useState(workspace.customerCredit.customerId)
+  const [activeCustomerId, setActiveCustomerId] = useState(0)
   const [pendingCreditByCustomer, setPendingCreditByCustomer] = useState<Record<number, number>>({})
   const [creditRedemptionInput, setCreditRedemptionInput] = useState(() =>
     creditRedemptionInputFromMinorUnits(workspace.customerCredit.redemptionPreviewMinorUnits),
@@ -3298,6 +3523,8 @@ export function App() {
   const [squareTerminalProbeStatus, setSquareTerminalProbeStatus] = useState<StatusTone>("idle")
   const [showEventQueue, setShowEventQueue] = useState(false)
   const [labelPrintJobs, setLabelPrintJobs] = useState<OfflineLabelPrintJob[]>([])
+  const [labelPrinterTarget, setLabelPrinterTarget] = useState<LabelPrinterTarget>(loadLabelPrinterTarget)
+  const [inventoryMode, setInventoryMode] = useState<InventoryPageMode>("updates")
   const [query, setQuery] = useState("")
   const [lanInventorySearchStatus, setLanInventorySearchStatus] = useState<
     "idle" | "searching" | "ready" | "blocked"
@@ -3381,6 +3608,18 @@ export function App() {
     "idle" | "searching" | "ready" | "blocked"
   >("idle")
   const [scryDexLookupDetail, setScryDexLookupDetail] = useState("Ready")
+  const [scryDexRefreshStatus, setScryDexRefreshStatus] = useState<
+    "idle" | "refreshing" | "ready" | "blocked"
+  >("idle")
+  const [scryDexRefreshDetail, setScryDexRefreshDetail] = useState(
+    "Select a card, then force ScryDex pricing if the market price looks stale or missing.",
+  )
+  const [scryDexRecoveryStatus, setScryDexRecoveryStatus] = useState<
+    "idle" | "working" | "ready" | "blocked"
+  >("idle")
+  const [scryDexRecoveryDetail, setScryDexRecoveryDetail] = useState(
+    "Use Set not found or Card not found when the normal catalog search misses a printing.",
+  )
   const [liveCardScanMode, setLiveCardScanMode] = useState<LiveCardScanMode | null>(null)
   const [liveCardScanStatus, setLiveCardScanStatus] = useState<
     "idle" | "starting" | "ready" | "identifying" | "blocked"
@@ -3389,7 +3628,9 @@ export function App() {
   const [liveCardScanPreviewUrl, setLiveCardScanPreviewUrl] = useState("")
   const [selectedId, setSelectedId] = useState(42)
   const [intakeQuantityInput, setIntakeQuantityInput] = useState("1")
-  const [selectedEventId, setSelectedEventId] = useState(workspace.eventSnapshots[0]?.eventId ?? "")
+  const [selectedEventId, setSelectedEventId] = useState(
+    () => workspace.eventSnapshots.find((event) => isActiveEventSnapshot(event))?.eventId ?? "",
+  )
   const [newEventTitle, setNewEventTitle] = useState("")
   const [newEventStartsAt, setNewEventStartsAt] = useState("")
   const [newEventGame, setNewEventGame] = useState("pokemon")
@@ -3666,10 +3907,143 @@ export function App() {
     () => buildOneWebsiteConnectorSetupPlan(activeProfile),
     [activeProfile],
   )
+  const localSyncServerUrl = localSyncServerDisplayUrl(activeProfile)
   const localSyncClient = useMemo(
-    () => createLocalSyncServerClient(localSyncServerDisplayUrl(activeProfile)),
-    [activeProfile],
+    () => createLocalSyncServerClient(localSyncServerUrl),
+    [localSyncServerUrl],
   )
+  const [prelaunchServerUrlInput, setPrelaunchServerUrlInput] = useState(() =>
+    localSyncServerUrl,
+  )
+  const [prelaunchConnection, setPrelaunchConnection] = useState<PrelaunchConnectionState>({
+    status: "checking",
+    detail: "Looking for the Pug LAN server before the app opens.",
+    serverUrl: localSyncServerDisplayUrl(activeProfile),
+    checkedAtUtc: "",
+  })
+  const [prelaunchConnectInFlight, setPrelaunchConnectInFlight] = useState(false)
+  useEffect(() => {
+    if (!localSyncDiscoveryAdapter || autoLocalSyncDiscoveryAttemptedRef.current) {
+      return
+    }
+
+    autoLocalSyncDiscoveryAttemptedRef.current = true
+    let cancelled = false
+
+    void localSyncDiscoveryAdapter.discoverLocalSyncServers({ timeoutMs: 2500 }).then((result) => {
+      if (cancelled) {
+        return
+      }
+
+      const firstServer = result.servers[0]
+
+      setLocalSyncDiscovery({
+        status: result.server_count > 0 ? "ready" : "blocked",
+        detail:
+          result.server_count > 0
+            ? `${result.server_count} local sync server${result.server_count === 1 ? "" : "s"} found automatically.`
+            : "No local sync server auto-discovered. Enter the LAN server URL manually if Windows firewall or router settings block discovery.",
+        servers: result.servers,
+        rawCredentialsReturned: result.raw_credentials_returned,
+        credentialsSyncedToApp: result.credentials_synced_to_app,
+      })
+
+      if (firstServer) {
+        applyLocalSyncDiscoveryServer(firstServer, { announce: false })
+      }
+    }).catch((error) => {
+      if (cancelled) {
+        return
+      }
+
+      setLocalSyncDiscovery({
+        status: "blocked",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Local sync auto-discovery failed. Manual LAN server URL setup remains available.",
+        servers: [],
+        rawCredentialsReturned: false,
+        credentialsSyncedToApp: false,
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [localSyncDiscoveryAdapter])
+  useEffect(() => {
+    let cancelled = false
+    if (!customerKioskMode && sessionRole !== "locked") {
+      return
+    }
+
+    const serverUrl = localSyncClient.serverUrl
+
+    setPrelaunchServerUrlInput(serverUrl)
+    setPrelaunchConnection({
+      status: "checking",
+      detail: `Checking ${serverUrl} before the app opens.`,
+      serverUrl,
+      checkedAtUtc: "",
+    })
+
+    void Promise.all([
+      localSyncClient.getSetupStatus(),
+      localSyncClient.getSyncStatus(),
+    ]).then(([setupResult, syncStatusResult]) => {
+      if (cancelled) {
+        return
+      }
+
+      const checkedAtUtc = new Date().toISOString()
+      setLocalSyncStatus(syncStatusResult)
+      setLocalSyncLastCheckedAtUtc(checkedAtUtc)
+
+      if (setupResult.status !== "ok") {
+        setPrelaunchConnection({
+          status: "manual",
+          detail: `${setupResult.message} Enter the LAN server IP or URL to continue.`,
+          serverUrl,
+          checkedAtUtc,
+        })
+        return
+      }
+
+      if (!setupResult.website_configured || setupResult.setup_required) {
+        setPrelaunchConnection({
+          status: "manual",
+          detail:
+            `${serverUrl} is running, but it still needs WordPress setup before staff PINs and kiosk inventory can load.`,
+          serverUrl,
+          checkedAtUtc,
+        })
+        return
+      }
+
+      setPrelaunchConnection({
+        status: "ready",
+        detail: `Connected to ${serverUrl}.`,
+        serverUrl,
+        checkedAtUtc,
+      })
+    }).catch(() => {
+      if (cancelled) {
+        return
+      }
+
+      setPrelaunchConnection({
+        status: "manual",
+        detail: "Could not check the saved LAN server. Enter the server IP or URL to continue.",
+        serverUrl,
+        checkedAtUtc: new Date().toISOString(),
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [customerKioskMode, localSyncClient, sessionRole])
   const manifestPreview = useMemo(() => buildConnectorManifestPreview(activeProfile), [activeProfile])
   const activePreparedPairingRequests = useMemo(
     () => preparedPairingRequests.filter((request) => request.profileId === activeProfile.id),
@@ -3739,8 +4113,19 @@ export function App() {
     ? formatScryDexVariant(selectedScryDexVariant) || "Selected version"
     : "Default version"
   const selectedScryDexImageUrl = cardImageForSelectedVariant(selectedScryDexCard, selectedScryDexVariant)
+  const selectedScryDexPricePoint = selectedScryDexCard
+    ? bestScryDexPricePoint(
+        selectedScryDexCard,
+        selectedScryDexVariant,
+        intakeCondition,
+        intakeProductType,
+        intakeGradingCompany,
+        intakeGrade,
+      )
+    : null
+  const selectedScryDexPriceBreakdownRows = scryDexPriceBreakdownRows(selectedScryDexPricePoint)
   const selectedScryDexIntakePriceMinorUnits = selectedScryDexCard
-    ? scryDexIntakePriceMinorUnits(
+    ? (selectedScryDexPricePoint ? pricePointMinorUnits(selectedScryDexPricePoint) : 0) || scryDexIntakePriceMinorUnits(
         selectedScryDexCard,
         selectedScryDexVariant,
         intakeCondition,
@@ -3749,6 +4134,24 @@ export function App() {
         intakeGrade,
       )
     : 0
+  const selectedScryDexReferenceLinks = selectedScryDexCard
+    ? referenceLinksForCard(
+        selectedScryDexCard,
+        selectedScryDexVariant,
+        intakeProductType,
+        intakeGradingCompany,
+        intakeGrade,
+      )
+    : []
+  const selectedTradeInReferenceLinks = selectedTradeInCard
+    ? referenceLinksForCard(
+        selectedTradeInCard,
+        selectedTradeInVariant,
+        tradeInProductType,
+        tradeInGradingCompany,
+        tradeInGrade,
+      )
+    : selectedTradeInValuation.links
   const selectedInventoryImageUrl = selectedItem.imageUrl || ""
   const selectedInventoryVersionLabel = inventoryVersionLabel(selectedItem)
   const selectedInventoryVisibilitySummary = inventoryVisibilitySummary(selectedItem)
@@ -3758,10 +4161,10 @@ export function App() {
   )
   const selectedEvent =
     visibleEventSnapshots.find((event) => event.eventId === selectedEventId) ??
-    visibleEventSnapshots[0] ??
-    eventSnapshots[0]
+    visibleEventSnapshots[0]
   const customerCredit =
-    findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? workspace.customerCredit
+    findCustomerCreditSnapshot(customerCreditDirectory, activeCustomerId) ?? EMPTY_CUSTOMER_CREDIT_SNAPSHOT
+  const hasSelectedCustomer = Boolean(customerCredit.customerPublicId || customerCredit.customerId > 0)
   const activeCustomerName = customerCreditDisplayName(customerCredit)
   const queuedPendingCreditMinorUnits = customerCreditPendingMinorUnitsFromOperations(
     queuedOperations,
@@ -3803,8 +4206,11 @@ export function App() {
     ? queueOperationReviewSummary(selectedQueuedOperation)
     : ""
   const filteredItems = useMemo(() => {
-    return filterInventoryItems(inventoryItems, query, statusFilter, productTypeFilter)
-  }, [query, statusFilter, productTypeFilter, inventoryItems])
+    const effectiveStatusFilter = inventoryMode === "updates" ? "available" : statusFilter
+
+    return filterInventoryItems(inventoryItems, query, effectiveStatusFilter, productTypeFilter)
+      .filter((item) => inventoryMode !== "updates" || item.status === "available")
+  }, [query, statusFilter, productTypeFilter, inventoryItems, inventoryMode])
   const filteredInventoryGroups = useMemo(
     () => groupInventoryItems(filteredItems, selectedId),
     [filteredItems, selectedId],
@@ -3815,6 +4221,14 @@ export function App() {
         group.items.some((item) => item.id === selectedId),
       ) ?? null,
     [inventoryItems, selectedId],
+  )
+  const selectedInventoryGroupSaleableItems = useMemo(
+    () => (selectedInventoryGroup?.items ?? []).filter(isSaleableInventoryItem),
+    [selectedInventoryGroup],
+  )
+  const selectedInventoryGroupAvailableItems = useMemo(
+    () => (selectedInventoryGroup?.items ?? []).filter((item) => item.status === "available"),
+    [selectedInventoryGroup],
   )
   const kioskFilteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, kioskSearchQuery, "available")
@@ -3897,10 +4311,14 @@ export function App() {
     () => findInventoryItemByScan(inventoryItems, query),
     [inventoryItems, query],
   )
-  const addScanTarget =
-    query.trim() === ""
-      ? selectedItem
-      : scannedInventoryItem ?? (filteredItems.length === 1 ? filteredItems[0] : null)
+  const addScanTarget = (() => {
+    const target =
+      query.trim() === ""
+        ? selectedItem
+        : scannedInventoryItem ?? (filteredItems.length === 1 ? filteredItems[0] : null)
+
+    return target && target.status === "available" ? target : null
+  })()
   const seededQueueCount = workspace.queueItems.reduce((total, item) => total + item.count, 0)
   const liveLanQueueIsAuthoritative = localSyncStatus?.status === "ok"
   const queueBadgeCount =
@@ -4472,9 +4890,11 @@ export function App() {
       ? "Enter a credit amount before adding."
       : creditAdjustmentMinorUnits === null
         ? "Use a valid dollar amount with up to two decimals."
-        : creditAdjustmentMinorUnits <= 0
-          ? "Credit add must be greater than $0.00."
-          : ""
+        : !hasSelectedCustomer
+          ? "Select a customer before adding store credit."
+          : creditAdjustmentMinorUnits <= 0
+            ? "Credit add must be greater than $0.00."
+            : ""
   const creditAdjustmentCanSubmit =
     !creditAdjustmentIssue &&
     Boolean(localSyncSessionToken)
@@ -5131,6 +5551,10 @@ export function App() {
   }, [employeeOrderSoundSettings])
 
   useEffect(() => {
+    persistLabelPrinterTarget(labelPrinterTarget)
+  }, [labelPrinterTarget])
+
+  useEffect(() => {
     window.localStorage.setItem(
       PREPARED_PAIRING_STORAGE_KEY,
       JSON.stringify(buildPreparedPairingStorageSnapshot(preparedPairingRequests, connectorProfiles)),
@@ -5514,6 +5938,211 @@ export function App() {
     setLocalSyncLastCheckedAtUtc(new Date().toISOString())
 
     return nextStatus
+  }
+
+  function applyLocalSyncServerUrl(
+    serverUrl: string,
+    options: { websiteUrl?: string; announce?: boolean; title?: string; detail?: string } = {},
+  ) {
+    const nextServerUrl = normalizeLocalSyncServerUrl(serverUrl)
+
+    setConnectorProfiles((profiles) => {
+      const currentProfile = findConnectorProfile(profiles, activeProfileId)
+      const nextProfile: StoreConnectorProfile = {
+        ...currentProfile,
+        localSync: {
+          ...currentProfile.localSync,
+          serverUrl: nextServerUrl,
+        },
+      }
+
+      return upsertConnectorProfile(profiles, nextProfile)
+    })
+    setConnectorDraft((draft) => ({
+      ...draft,
+      localSyncServerUrl: nextServerUrl,
+      siteUrl: options.websiteUrl || draft.siteUrl,
+    }))
+    setPrelaunchServerUrlInput(nextServerUrl)
+
+    if (options.announce !== false) {
+      setActivityMessage({
+        title: options.title ?? "Local server applied",
+        detail: options.detail ?? `This app will use ${nextServerUrl} as the LAN middleman server.`,
+      })
+    }
+  }
+
+  async function probePrelaunchLocalSyncServer(
+    serverUrl: string,
+    options: { source?: "saved" | "manual" | "discovered"; websiteUrl?: string; announce?: boolean } = {},
+  ) {
+    const nextServerUrl = normalizeLocalSyncServerUrl(serverUrl)
+    const probeClient = createLocalSyncServerClient(nextServerUrl)
+
+    setPrelaunchServerUrlInput(nextServerUrl)
+    setPrelaunchConnectInFlight(true)
+    setPrelaunchConnection({
+      status: "checking",
+      detail: `Checking ${nextServerUrl} before the app opens.`,
+      serverUrl: nextServerUrl,
+      checkedAtUtc: "",
+    })
+
+    try {
+      const [setupResult, syncStatusResult] = await Promise.all([
+        probeClient.getSetupStatus(),
+        probeClient.getSyncStatus(),
+      ])
+      const checkedAtUtc = new Date().toISOString()
+
+      setLocalSyncStatus(syncStatusResult)
+      setLocalSyncLastCheckedAtUtc(checkedAtUtc)
+
+      if (setupResult.status !== "ok") {
+        setPrelaunchConnection({
+          status: "blocked",
+          detail: setupResult.message,
+          serverUrl: nextServerUrl,
+          checkedAtUtc,
+        })
+        return false
+      }
+
+      applyLocalSyncServerUrl(nextServerUrl, {
+        websiteUrl: setupResult.website_url || options.websiteUrl,
+        announce: options.announce ?? false,
+      })
+
+      if (!setupResult.website_configured || setupResult.setup_required) {
+        setPrelaunchConnection({
+          status: "manual",
+          detail:
+            `${nextServerUrl} is running, but it still needs WordPress setup before staff PINs and kiosk inventory can load.`,
+          serverUrl: nextServerUrl,
+          checkedAtUtc,
+        })
+        return false
+      }
+
+      setPrelaunchConnection({
+        status: "ready",
+        detail:
+          options.source === "discovered"
+            ? `Auto-detected and connected to ${nextServerUrl}.`
+            : `Connected to ${nextServerUrl}.`,
+        serverUrl: nextServerUrl,
+        checkedAtUtc,
+      })
+      return true
+    } finally {
+      setPrelaunchConnectInFlight(false)
+    }
+  }
+
+  async function handlePrelaunchManualConnect() {
+    const nextServerUrl = normalizeLocalSyncServerUrl(prelaunchServerUrlInput)
+
+    const connected = await probePrelaunchLocalSyncServer(nextServerUrl, {
+      source: "manual",
+      announce: true,
+    })
+
+    if (!connected) {
+      setActivityMessage({
+        title: "LAN server not connected",
+        detail: `Could not open the app through ${nextServerUrl}. Confirm the LAN server is running and Windows Firewall allows port 8787.`,
+      })
+    }
+  }
+
+  async function handlePrelaunchAutoDetect() {
+    if (!localSyncDiscoveryAdapter) {
+      setPrelaunchConnection({
+        status: "manual",
+        detail:
+          "Auto-detect is only available in the installed Windows app. Enter the LAN server IP or URL manually.",
+        serverUrl: localSyncClient.serverUrl,
+        checkedAtUtc: new Date().toISOString(),
+      })
+      setLocalSyncDiscovery({
+        status: "blocked",
+        detail:
+          "Auto-detect is only available in the installed Windows app. Enter the LAN server URL manually in this preview.",
+        servers: [],
+        rawCredentialsReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      return
+    }
+
+    setPrelaunchConnectInFlight(true)
+    setPrelaunchConnection({
+      status: "checking",
+      detail: "Searching this network for the Pug LAN server.",
+      serverUrl: localSyncClient.serverUrl,
+      checkedAtUtc: "",
+    })
+    setLocalSyncDiscovery({
+      status: "searching",
+      detail: "Searching this LAN for Pug local sync middleman servers.",
+      servers: [],
+      rawCredentialsReturned: false,
+      credentialsSyncedToApp: false,
+    })
+
+    try {
+      const result = await localSyncDiscoveryAdapter.discoverLocalSyncServers()
+      const firstServer = result.servers[0]
+
+      setLocalSyncDiscovery({
+        status: result.server_count > 0 ? "ready" : "blocked",
+        detail:
+          result.server_count > 0
+            ? `${result.server_count} local sync server${result.server_count === 1 ? "" : "s"} found.`
+            : "No local sync server responded. Start the middleman host or enter its URL manually.",
+        servers: result.servers,
+        rawCredentialsReturned: result.raw_credentials_returned,
+        credentialsSyncedToApp: result.credentials_synced_to_app,
+      })
+
+      if (!firstServer) {
+        setPrelaunchConnection({
+          status: "manual",
+          detail: "Auto-detect did not find a LAN server. Enter the server IP or URL manually.",
+          serverUrl: localSyncClient.serverUrl,
+          checkedAtUtc: new Date().toISOString(),
+        })
+        return
+      }
+
+      await probePrelaunchLocalSyncServer(firstServer.server_url, {
+        source: "discovered",
+        websiteUrl: firstServer.website_url,
+        announce: false,
+      })
+    } catch (error) {
+      const detail =
+        error instanceof Error
+          ? error.message
+          : "Local sync discovery failed. Enter the LAN server URL manually."
+
+      setLocalSyncDiscovery({
+        status: "blocked",
+        detail,
+        servers: [],
+        rawCredentialsReturned: false,
+        credentialsSyncedToApp: false,
+      })
+      setPrelaunchConnection({
+        status: "manual",
+        detail: `${detail} Manual server entry is available below.`,
+        serverUrl: localSyncClient.serverUrl,
+        checkedAtUtc: new Date().toISOString(),
+      })
+    } finally {
+      setPrelaunchConnectInFlight(false)
+    }
   }
 
   async function handleRefreshReferenceCatalog() {
@@ -6109,6 +6738,20 @@ export function App() {
     return heartbeatResult
   }
 
+  function applyLocalSyncDiscoveryServer(
+    server: LocalSyncDiscoveredServer,
+    options: { announce?: boolean } = {},
+  ) {
+    const nextServerUrl = normalizeLocalSyncServerUrl(server.server_url)
+
+    applyLocalSyncServerUrl(nextServerUrl, {
+      websiteUrl: server.website_url,
+      announce: options.announce,
+      title: "Local server applied",
+      detail: `${server.hostname} is selected as the LAN middleman at ${nextServerUrl}.`,
+    })
+  }
+
   async function handleDiscoverLocalSyncServers() {
     if (!managerControlsUnlocked) {
       setLocalSyncDiscovery({
@@ -6163,11 +6806,7 @@ export function App() {
       })
 
       if (firstServer) {
-        setConnectorDraft((draft) => ({
-          ...draft,
-          localSyncServerUrl: firstServer.server_url,
-          siteUrl: firstServer.website_url || draft.siteUrl,
-        }))
+        applyLocalSyncDiscoveryServer(firstServer, { announce: false })
       }
 
       setActivityMessage({
@@ -6199,15 +6838,7 @@ export function App() {
       return
     }
 
-    setConnectorDraft((draft) => ({
-      ...draft,
-      localSyncServerUrl: server.server_url,
-      siteUrl: server.website_url || draft.siteUrl,
-    }))
-    setActivityMessage({
-      title: "Local server applied",
-      detail: `${server.hostname} is selected as the LAN middleman; run Probe LAN Server to verify the website binding.`,
-    })
+    applyLocalSyncDiscoveryServer(server)
   }
 
   async function handleProbeLanSetup() {
@@ -6302,6 +6933,19 @@ export function App() {
     })
 
     if (authResult.status === "ok") {
+      const sessionTtlSeconds =
+        Number.isFinite(authResult.session.ttlSeconds) && Number(authResult.session.ttlSeconds) > 0
+          ? Math.min(240 * 60, Math.max(5 * 60, Number(authResult.session.ttlSeconds)))
+          : requestedTtlMinutes * 60
+      const localSessionExpiresAtUtc = new Date(Date.now() + sessionTtlSeconds * 1000).toISOString()
+      const serverTimeMs = Date.parse(
+        authResult.session.serverTimeUtc || authResult.session.issuedAtUtc || authResult.session.expiresAtUtc,
+      )
+      const clockSkewMs = Number.isFinite(serverTimeMs) ? Date.now() - serverTimeMs : 0
+      const clockSkewDetail =
+        Math.abs(clockSkewMs) > 2 * 60 * 1000
+          ? ` Workstation clock differs from the LAN server by about ${Math.round(Math.abs(clockSkewMs) / 60000)} minute(s); auto-lock is using the server session length so this PC will not bounce back to login.`
+          : ""
       const user = upsertLocalSyncUser(authResult)
       const policyResult = await localSyncClient.getAccessPolicy(authResult.session.token)
       const policyUsers =
@@ -6314,7 +6958,7 @@ export function App() {
           : ` Access policy refresh skipped: ${policyResult.message}`
 
       setLocalSyncSessionToken(authResult.session.token)
-      setLocalSyncSessionExpiresAtUtc(authResult.session.expiresAtUtc)
+      setLocalSyncSessionExpiresAtUtc(localSessionExpiresAtUtc)
       void refreshLocalSyncStatus()
       void localSyncClient.getSetupStatus().then((setupResult) => {
         if (setupResult.status === "ok") {
@@ -6339,8 +6983,8 @@ export function App() {
       startOfflineUserSession(
         sessionUser,
         ["manager", "owner"].includes(sessionUser.role)
-          ? `${sessionUser.role === "owner" ? "Owner" : "Manager"} session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); operational settings and user access can be unlocked.${policyDetail}`
-          : `${sessionUser.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s).${policyDetail}`,
+          ? `${sessionUser.role === "owner" ? "Owner" : "Manager"} session verified by ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s); operational settings and user access can be unlocked.${policyDetail}${clockSkewDetail}`
+          : `${sessionUser.access.join(", ")} workspaces are available for this PIN from ${localSyncClient.serverUrl} for ${requestedTtlMinutes} minute(s).${policyDetail}${clockSkewDetail}`,
       )
       return
     }
@@ -6646,6 +7290,7 @@ export function App() {
     operation: OfflineOperationEnvelope,
     actionTitle: string,
     detail: string,
+    options: StageOfflineOperationOptions = {},
   ) {
     const batch = buildOfflinePushBatchPayload(
       [operation],
@@ -6717,11 +7362,43 @@ export function App() {
 
       return [operation, ...currentOperations]
     })
-    setActiveSection("Queue")
+    setActiveSection(options.nextSection ?? "Queue")
     setActivityMessage({
       title: actionTitle,
       detail,
     })
+  }
+
+  function resetInventoryIntakeForm(detail = "Ready for the next inventory item.") {
+    setSelectedId(EMPTY_INVENTORY_ITEM.id)
+    setQuery("")
+    setScryDexQuery("")
+    setScryDexCards([])
+    setScryDexSetFilter("")
+    setSelectedScryDexCardId("")
+    setSelectedScryDexVariantId("")
+    setScryDexLookupStatus("idle")
+    setScryDexLookupDetail(detail)
+    setIntakeCardName("")
+    setIntakeSetName("")
+    setIntakeCondition("LP")
+    setIntakeBarcode("")
+    setIntakePriceInput("0.00")
+    setIntakeMinimumPriceInput("0.00")
+    setIntakeLocation("Intake Queue")
+    setNewInventoryLocation("")
+    setIntakeQuantityInput("1")
+    setIntakeProductType("raw")
+    setIntakeGradingCompany("PSA")
+    setIntakeGrade("")
+    setIntakeCertNumber("")
+  }
+
+  function clearInventorySelectionAfterSave() {
+    setSelectedId(EMPTY_INVENTORY_ITEM.id)
+    setQuery("")
+    setQuantityDeltaInput("1")
+    setQuantityAdjustmentReason("staff offline quantity correction")
   }
 
   async function handleCopySelectedQueueOperation() {
@@ -6979,6 +7656,7 @@ export function App() {
     operationOptions: InventoryUpdateOptions = {},
     detailOverride?: string,
     targetItem = selectedItem,
+    options: { stayOnInventory?: boolean; clearSelectedCard?: boolean } = {},
   ) {
     if (targetItem.id === EMPTY_INVENTORY_ITEM.id) {
       setActiveSection("Inventory")
@@ -6989,22 +7667,74 @@ export function App() {
       return
     }
 
-    await stageOfflineOperation(
-      buildInventoryUpdateOperation(targetItem, operationOptions),
-      actionTitle,
-      detailOverride ??
-        `${targetItem.cardName} was saved for ${activeProfile.companyName}; it will sync after the device connector is paired.`,
-    )
+    void operationOptions
+
+    if (!localSyncSessionToken) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with an employee, manager, or owner PIN before saving live inventory updates.",
+      })
+      return
+    }
+
+    const updateResult = await localSyncClient.updateInventoryItem(localSyncSessionToken, targetItem.publicId, {
+      status: targetItem.status,
+      barcode: targetItem.barcode,
+      priceMinorUnits: targetItem.priceMinorUnits,
+      salePriceMinorUnits: targetItem.priceMinorUnits,
+      minimumSalePriceMinorUnits: targetItem.priceMinorUnits,
+      location: targetItem.location,
+      onlineVisibility: targetItem.onlineVisibility,
+      kioskVisibility: targetItem.kioskVisibility,
+      posVisibility: targetItem.posVisibility,
+      reason: cleanInventoryAdjustmentReason(quantityAdjustmentReason || "staff inventory update"),
+      syncIntent: "staff_inventory_update",
+    })
+
+    if (handleBlockedLocalSyncSession(updateResult, "Inventory update locked")) {
+      setActiveSection("Inventory")
+      return
+    }
+
+    if (updateResult.status !== "ok") {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: updateResult.status === "unavailable" ? "LAN server unavailable" : "Inventory update blocked",
+        detail:
+          updateResult.status === "unavailable"
+            ? updateResult.message
+            : `${updateResult.message} WordPress remains the final inventory authority.`,
+      })
+      return
+    }
+
+    const updatedItem = inventoryItemFromLocalSync(updateResult.item, targetItem.id)
     setInventoryItems((items) =>
       items.map((item) =>
         item.id === targetItem.id
-          ? {
-              ...item,
-              source: "queued",
-            }
+          ? updatedItem
           : item,
       ),
     )
+
+    if (options.clearSelectedCard) {
+      clearInventorySelectionAfterSave()
+    }
+    setActiveSection("Inventory")
+    void refreshLocalSyncStatus()
+    const syncDetail =
+      updateResult.wordpress_auto_sync_performed && updateResult.wordpress_accepted_count > 0
+        ? "WordPress accepted the update and WooCommerce stock sync was requested."
+        : updateResult.wordpress_retry_count > 0
+          ? "Saved locally and queued for website/Square sync retry."
+          : "Saved locally; run sync when the website connector is available."
+    setActivityMessage({
+      title: actionTitle,
+      detail:
+        detailOverride ??
+        `${targetItem.cardName} was updated for ${activeProfile.companyName}. ${syncDetail}`,
+    })
   }
 
   async function handleInventoryReservation() {
@@ -7157,6 +7887,147 @@ export function App() {
       title: "Square sale finalized",
       detail: `${selectedItem.cardName} sold against ${saleResult.square_receipt_reference}. ${syncDetail}`,
     })
+  }
+
+  async function finalizeStaffInventoryRemoval(
+    action: "zero" | "remove",
+    requestedItems: InventoryItem[],
+  ) {
+    const targetItems = requestedItems.filter(isSaleableInventoryItem)
+    const actionTitle = action === "zero" ? "Stock set to zero" : "Inventory removed"
+    const syncIntent = action === "zero" ? "staff_inventory_zero_out" : "staff_inventory_remove"
+
+    if (targetItems.length === 0) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: `${actionTitle} blocked`,
+        detail: "Select an available or held inventory item before changing stock.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with an employee, manager, or owner PIN before changing live inventory stock.",
+      })
+      return
+    }
+
+    const removalReference = staffInventoryRemovalReference(action, targetItems)
+    const removalResults = await Promise.all(
+      targetItems.map((item) =>
+        localSyncClient.updateInventoryItem(localSyncSessionToken, item.publicId, {
+          status: "removed",
+          barcode: item.barcode,
+          priceMinorUnits: item.priceMinorUnits,
+          salePriceMinorUnits: item.priceMinorUnits,
+          minimumSalePriceMinorUnits: item.priceMinorUnits,
+          location: item.location,
+          onlineVisibility: "hidden",
+          kioskVisibility: "hidden",
+          posVisibility: "hidden",
+          reason: removalReference,
+          syncIntent,
+        }),
+      ),
+    )
+    const blockedResult = removalResults.find((result) => result.status !== "ok")
+
+    if (blockedResult) {
+      setActivityMessage({
+        title: blockedResult.status === "unavailable" ? "LAN server unavailable" : `${actionTitle} blocked`,
+        detail:
+          blockedResult.status === "unavailable"
+            ? blockedResult.message
+            : `${blockedResult.message} WordPress remains the final inventory authority.`,
+      })
+      return
+    }
+
+    const targetPublicIds = new Set(targetItems.map((item) => item.publicId))
+    const okRemovalResults = removalResults.filter((result) => result.status === "ok") as Array<
+      Extract<(typeof removalResults)[number], { status: "ok" }>
+    >
+    const updatedItemsByPublicId = new Map(okRemovalResults.map((result) => [result.item.public_id, result.item]))
+    const acceptedByWebsite = okRemovalResults.some((result) => result.wordpress_accepted_count > 0)
+    const retryCount = okRemovalResults.reduce((total, result) => total + result.wordpress_retry_count, 0)
+
+    setInventoryItems((items) =>
+      action === "remove"
+        ? items.filter((item) => !targetPublicIds.has(item.publicId))
+        : items.map((item) => {
+            if (!targetPublicIds.has(item.publicId)) {
+              return item
+            }
+
+            const serverItem = updatedItemsByPublicId.get(item.publicId)
+
+            if (serverItem) {
+              return {
+                ...inventoryItemFromLocalSync(serverItem, item.id),
+                onlineVisibility: "hidden",
+                kioskVisibility: "hidden",
+                posVisibility: "hidden",
+              }
+            }
+
+            return {
+              ...item,
+              status: "removed",
+              source: acceptedByWebsite ? "accepted" : "queued",
+              externalSyncState: acceptedByWebsite ? "synced" : "pending",
+              onlineVisibility: "hidden",
+              kioskVisibility: "hidden",
+              posVisibility: "hidden",
+              rowVersion: item.rowVersion + 1,
+            }
+          }),
+    )
+
+    clearInventorySelectionAfterSave()
+    setActiveSection("Inventory")
+    void refreshLocalSyncStatus()
+
+    const copyLabel = `${targetItems.length} ${targetItems.length === 1 ? "copy" : "copies"}`
+    const syncDetail =
+      acceptedByWebsite
+        ? "WordPress accepted the change and WooCommerce stock sync was requested; Square receives the zero count through the WooCommerce Square inventory sync."
+        : retryCount > 0
+          ? "The change is saved locally and queued for website/Square sync retry."
+          : "The change is saved locally; run sync when the website connector is available."
+
+    setActivityMessage({
+      title: actionTitle,
+      detail: `${copyLabel} removed from saleable inventory with audit reference ${removalReference}. ${syncDetail}`,
+    })
+  }
+
+  async function handleInventorySetStockToZero() {
+    if (!selectedInventoryGroup || selectedInventoryGroupAvailableItems.length === 0) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Stock set to zero blocked",
+        detail: "Select a card group with available in-stock copies before setting stock to zero.",
+      })
+      return
+    }
+
+    await finalizeStaffInventoryRemoval("zero", selectedInventoryGroupAvailableItems)
+  }
+
+  async function handleInventoryRemoveSelected() {
+    if (!hasSelectedInventoryItem || selectedItem.status !== "available") {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Inventory removal blocked",
+        detail: "Select one available in-stock card copy before removing it from inventory.",
+      })
+      return
+    }
+
+    await finalizeStaffInventoryRemoval("remove", [selectedItem])
   }
 
   async function handleInventoryIntake() {
@@ -7338,18 +8209,8 @@ export function App() {
 
     setInventoryItems((items) => [...displayedNextItems, ...items])
     setLocalInventoryIntakeReceipts((receipts) => [...displayedIntakeReceipts, ...receipts].slice(0, 50))
-    setSelectedId(nextItem.id)
-    setQuery(nextItem.cardName)
-    setIntakeCardName("")
-    setIntakeSetName("")
-    setIntakeCondition("LP")
-    setIntakeBarcode("")
-    setIntakePriceInput("0.00")
-    setIntakeMinimumPriceInput("0.00")
-    setIntakeLocation("Intake Queue")
-    setIntakeQuantityInput("1")
-    setIntakeGrade("")
-    setIntakeCertNumber("")
+    resetInventoryIntakeForm("Inventory added. Search or scan the next card.")
+    setActiveSection("Inventory")
     void refreshLocalSyncStatus()
     setActivityMessage({
       title: "Inventory added",
@@ -7631,6 +8492,180 @@ export function App() {
     )
   }
 
+  function applyScryDexRecoveryCards(cards: LocalSyncScryDexCard[], detail: string) {
+    const firstCard = cards[0] ?? null
+    const firstVariant = firstCard?.variants[0] ?? null
+
+    setScryDexCards((currentCards) => mergeScryDexCards(currentCards, cards))
+    setSelectedScryDexCardId(firstCard?.provider_card_id ?? "")
+    setSelectedScryDexVariantId(
+      firstCard && firstVariant
+        ? scryDexVariantId(firstCard.provider_card_id, firstVariant, 0)
+        : "",
+    )
+    if (firstCard) {
+      setScryDexGame(firstCard.game)
+    }
+    setScryDexSetFilter("")
+    setScryDexLookupStatus("ready")
+    setScryDexLookupDetail(detail)
+  }
+
+  function currentScryDexSetQuery() {
+    const selectedSetOption = scryDexSetOptions.find((option) => option.value === scryDexSetFilter)
+    const selectedSetLabel = selectedSetOption?.label.replace(/\s+\([^)]+\)\s*$/, "").trim() ?? ""
+
+    return (
+      selectedScryDexCard?.set_code ||
+      selectedScryDexCard?.set_name ||
+      selectedSetLabel ||
+      intakeSetName.trim() ||
+      scryDexQuery.trim()
+    ).trim()
+  }
+
+  async function handleIndexMissingScryDexSet() {
+    const setQuery = currentScryDexSetQuery()
+
+    if (!setQuery) {
+      setScryDexRecoveryStatus("blocked")
+      setScryDexRecoveryDetail("Enter a set name or code, then choose Set not found.")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setScryDexRecoveryStatus("blocked")
+      setScryDexRecoveryDetail("Staff PIN session required before indexing a ScryDex set.")
+      return
+    }
+
+    setScryDexRecoveryStatus("working")
+    setScryDexRecoveryDetail(`Indexing ${setQuery} from ScryDex, then pulling the updated catalog into this app.`)
+    setScryDexLookupStatus("searching")
+    setScryDexLookupDetail("Indexing missing set")
+
+    const result = await localSyncClient.indexScryDexCatalog(localSyncSessionToken, {
+      mode: "set",
+      setQuery,
+      game: scryDexGame,
+      rawOrGraded: intakeProductType === "graded" ? "graded" : "raw",
+      pageSize: 100,
+      maxPages: 10000,
+    })
+
+    if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "ScryDex set index locked")) {
+        setScryDexRecoveryDetail("PIN session expired. Enter your 4-digit PIN, then index the set again.")
+      } else {
+        setScryDexRecoveryDetail(result.message)
+      }
+      setScryDexRecoveryStatus("blocked")
+      setScryDexLookupStatus("blocked")
+      setScryDexLookupDetail("ScryDex set index was blocked.")
+      return
+    }
+
+    if (result.cards.length > 0) {
+      applyScryDexRecoveryCards(
+        result.cards,
+        `${result.cards.length} set lookup result${result.cards.length === 1 ? "" : "s"} loaded while indexing ${setQuery}.`,
+      )
+    }
+
+    let catalogPullDetail = ""
+    try {
+      const pullResult = await localSyncClient.pullWebsiteInventory(localSyncSessionToken, {
+        domains: ["catalog"],
+        catalogPageSize: 1000,
+      })
+
+      if (pullResult.status === "ok") {
+        catalogPullDetail = ` Local catalog pull applied ${pullResult.catalog_applied_count ?? 0} reference row${(pullResult.catalog_applied_count ?? 0) === 1 ? "" : "s"}.`
+      } else {
+        catalogPullDetail = " Set indexing completed, but the local catalog pull will retry during normal sync."
+      }
+    } catch {
+      catalogPullDetail = " Set indexing completed, but the local catalog pull will retry during normal sync."
+    }
+
+    const indexDetail =
+      result.catalog_index_status === "completed"
+        ? `ScryDex set index completed for ${result.expansion_id || setQuery}.`
+        : result.message || `ScryDex returned cards for ${setQuery}; full-set indexing needs provider support for that expansion.`
+
+    setScryDexRecoveryStatus("ready")
+    setScryDexRecoveryDetail(`${indexDetail}${catalogPullDetail}`)
+    setActivityMessage({
+      title: "ScryDex set index finished",
+      detail: `${indexDetail}${catalogPullDetail}`,
+    })
+  }
+
+  async function handleSearchMissingScryDexCardAcrossGames() {
+    const query = (scryDexQuery.trim() || intakeCardName.trim()).trim()
+
+    if (!query) {
+      setScryDexRecoveryStatus("blocked")
+      setScryDexRecoveryDetail("Enter the missing card name, then choose Card not found.")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setScryDexRecoveryStatus("blocked")
+      setScryDexRecoveryDetail("Staff PIN session required before searching all ScryDex games.")
+      return
+    }
+
+    setScryDexRecoveryStatus("working")
+    setScryDexRecoveryDetail(`Searching ScryDex for ${query} across every supported game and importing any matches.`)
+    setScryDexLookupStatus("searching")
+    setScryDexLookupDetail("Searching all supported ScryDex games")
+
+    const result = await localSyncClient.indexScryDexCatalog(localSyncSessionToken, {
+      mode: "card",
+      query,
+      rawOrGraded: intakeProductType === "graded" ? "graded" : "raw",
+    })
+
+    if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "ScryDex all-game search locked")) {
+        setScryDexRecoveryDetail("PIN session expired. Enter your 4-digit PIN, then search again.")
+      } else {
+        setScryDexRecoveryDetail(result.message)
+      }
+      setScryDexRecoveryStatus("blocked")
+      setScryDexLookupStatus("blocked")
+      setScryDexLookupDetail("ScryDex all-game search was blocked.")
+      return
+    }
+
+    if (result.cards.length === 0) {
+      const blockedGames = result.blocked_games?.map((game) => game.game).join(", ")
+      setScryDexRecoveryStatus("blocked")
+      setScryDexRecoveryDetail(
+        blockedGames
+          ? `No ScryDex cards matched ${query}. Some games were blocked: ${blockedGames}.`
+          : `No ScryDex cards matched ${query} across the supported games.`,
+      )
+      setScryDexLookupStatus("blocked")
+      setScryDexLookupDetail("No all-game ScryDex matches were found.")
+      return
+    }
+
+    applyScryDexRecoveryCards(
+      result.cards,
+      `${result.cards.length} ScryDex match${result.cards.length === 1 ? "" : "es"} imported across ${result.games?.length ?? 4} game${(result.games?.length ?? 4) === 1 ? "" : "s"}.`,
+    )
+    setScryDexRecoveryStatus("ready")
+    setScryDexRecoveryDetail(
+      `${result.cards.length} match${result.cards.length === 1 ? "" : "es"} loaded. Choose the exact printing, then Use Single or Use Graded.`,
+    )
+    setActivityMessage({
+      title: "ScryDex all-game search finished",
+      detail: `${result.cards.length} catalog match${result.cards.length === 1 ? "" : "es"} are ready for intake review.`,
+    })
+  }
+
   function handleScryDexSetFilterChange(nextFilter: string) {
     setScryDexSetFilter(nextFilter)
 
@@ -7656,6 +8691,28 @@ export function App() {
     setTradeInSelectedVariantId("")
     setTradeInCardLookupStatus("idle")
     setTradeInCardLookupDetail(detail)
+  }
+
+  function promptTradeInAcceptanceIdentity(customerName: string) {
+    const customerLabel = customerName.trim() || "this customer"
+    const customerIdNumber = window.prompt(`Enter DL number for ${customerLabel} before accepting this trade-in:`)
+      ?.trim() ?? ""
+
+    if (!customerIdNumber) {
+      return null
+    }
+
+    const customerIdState = window.prompt("Enter DL issuing state, two letters:")?.trim().toUpperCase() ?? ""
+
+    if (!/^[A-Z]{2}$/.test(customerIdState)) {
+      setActivityMessage({
+        title: "DL state required",
+        detail: "Enter the two-letter issuing state before accepting the trade-in offer.",
+      })
+      return null
+    }
+
+    return { customerIdNumber, customerIdState }
   }
 
   function clearTradeInSelectedCustomerForEdit() {
@@ -7770,6 +8827,127 @@ export function App() {
     setTradeInCardLookupDetail(
       `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} loaded; use set filter to choose the exact printing.`,
     )
+  }
+
+  async function handleForceSelectedScryDexPricingRefresh(mode: "inventory" | "trade-in") {
+    const card = mode === "inventory" ? selectedScryDexCard : selectedTradeInCard
+    const variant = mode === "inventory" ? selectedScryDexVariant : selectedTradeInVariant
+    const productType = mode === "inventory" ? intakeProductType : tradeInProductType
+    const query = card?.card_name.trim() ?? ""
+
+    if (!card || !query) {
+      setScryDexRefreshStatus("blocked")
+      setScryDexRefreshDetail("Select a catalog card before forcing a ScryDex pricing refresh.")
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setScryDexRefreshStatus("blocked")
+      setScryDexRefreshDetail("Staff PIN session required before forcing a ScryDex refresh.")
+      return
+    }
+
+    const setFilter = scryDexSetFilterValue(card)
+    setScryDexRefreshStatus("refreshing")
+    setScryDexRefreshDetail(`Asking ScryDex for fresh ${productType === "graded" ? "graded" : "single"} pricing on ${card.card_name}.`)
+
+    if (mode === "inventory") {
+      setScryDexLookupStatus("searching")
+      setScryDexLookupDetail("Forcing ScryDex pricing refresh")
+    } else {
+      setTradeInCardLookupStatus("searching")
+      setTradeInCardLookupDetail("Forcing ScryDex pricing refresh")
+    }
+
+    const result = await localSyncClient.searchScryDexCards(localSyncSessionToken, query, card.game, {
+      limit: "all",
+      setFilter,
+      rawOrGraded: productType === "graded" ? "graded" : "raw",
+      forceLive: true,
+    })
+
+    if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "ScryDex refresh locked")) {
+        setScryDexRefreshDetail("PIN session expired. Enter your 4-digit PIN, then refresh pricing again.")
+      } else {
+        setScryDexRefreshDetail(result.message)
+      }
+
+      setScryDexRefreshStatus("blocked")
+      if (mode === "inventory") {
+        setScryDexLookupStatus("blocked")
+        setScryDexLookupDetail("ScryDex pricing refresh was blocked.")
+      } else {
+        setTradeInCardLookupStatus("blocked")
+        setTradeInCardLookupDetail("ScryDex pricing refresh was blocked.")
+      }
+      return
+    }
+
+    const refreshedCard = bestScryDexRefreshMatch(card, result.cards)
+
+    if (!refreshedCard) {
+      setScryDexRefreshStatus("blocked")
+      setScryDexRefreshDetail("ScryDex did not return a matching card for this selected item.")
+      if (mode === "inventory") {
+        setScryDexLookupStatus("blocked")
+        setScryDexLookupDetail("No matching ScryDex refresh result returned.")
+      } else {
+        setTradeInCardLookupStatus("blocked")
+        setTradeInCardLookupDetail("No matching ScryDex refresh result returned.")
+      }
+      return
+    }
+
+    const nextVariantId = preferredScryDexVariantId(refreshedCard, variant)
+    const nextVariant =
+      refreshedCard.variants.find(
+        (candidate, index) => scryDexVariantId(refreshedCard.provider_card_id, candidate, index) === nextVariantId,
+      ) ?? null
+    const liveDetail = result.live_provider_request_performed
+      ? "ScryDex live refresh ran and WordPress accepted the returned catalog/pricing rows."
+      : "WordPress returned catalog data without a live ScryDex response; use the reference links if pricing still looks off."
+
+    if (mode === "inventory") {
+      setScryDexCards((cards) => mergeScryDexCards(cards, result.cards))
+      setSelectedScryDexCardId(refreshedCard.provider_card_id)
+      setSelectedScryDexVariantId(nextVariantId)
+      const refreshedPrice = scryDexIntakePriceMinorUnits(
+        refreshedCard,
+        nextVariant,
+        intakeCondition,
+        productType,
+        intakeGradingCompany,
+        intakeGrade,
+      )
+      if (refreshedPrice > 0) {
+        setIntakePriceInput(creditRedemptionInputFromMinorUnits(refreshedPrice))
+        if ((intakeMinimumPriceMinorUnits ?? 0) <= 0) {
+          setIntakeMinimumPriceInput(creditRedemptionInputFromMinorUnits(refreshedPrice))
+        }
+      }
+      setScryDexLookupStatus("ready")
+      setScryDexLookupDetail(
+        `${result.cards.length} refreshed result${result.cards.length === 1 ? "" : "s"} loaded for ${refreshedCard.card_name}.`,
+      )
+    } else {
+      setTradeInCardResults((cards) => mergeScryDexCards(cards, result.cards))
+      setTradeInSelectedCardId(refreshedCard.provider_card_id)
+      setTradeInSelectedVariantId(nextVariantId)
+      setTradeInSecondaryValuation(null)
+      setTradeInSecondaryValuationStatus("ScryDex/reference cache is the primary pricing source after forced refresh.")
+      setTradeInCardLookupStatus("ready")
+      setTradeInCardLookupDetail(
+        `${result.cards.length} refreshed result${result.cards.length === 1 ? "" : "s"} loaded for this trade-in card.`,
+      )
+    }
+
+    setScryDexRefreshStatus("ready")
+    setScryDexRefreshDetail(liveDetail)
+    setActivityMessage({
+      title: "ScryDex pricing refreshed",
+      detail: liveDetail,
+    })
   }
 
   function handleTradeInCardSetFilterChange(nextFilter: string) {
@@ -8425,6 +9603,20 @@ export function App() {
       return
     }
 
+    const acceptanceIdentity =
+      nextStatus === "approved"
+        ? promptTradeInAcceptanceIdentity(tradeInSelectedCustomer.display_name || tradeInCustomerName)
+        : null
+
+    if (nextStatus === "approved" && !acceptanceIdentity) {
+      setTradeInSyncStatus("blocked")
+      setActivityMessage({
+        title: "Trade-in acceptance paused",
+        detail: "DL number and state are required before accepting the offer. The trade-in was not approved.",
+      })
+      return
+    }
+
     setTradeInSyncStatus("saving")
     const itemsForInventoryConversion = [...tradeInDraftItems]
     const loadedOrderId = tradeInLoadedOrderId
@@ -8481,6 +9673,7 @@ export function App() {
         localSyncSessionToken,
         result.order.order_id,
         nextStatus,
+        acceptanceIdentity ?? undefined,
       )
 
       if (statusResult.status === "ok") {
@@ -8560,7 +9753,23 @@ export function App() {
       return
     }
 
-    const result = await localSyncClient.updateTradeInOrderStatus(localSyncSessionToken, order.order_id, status)
+    const acceptanceIdentity =
+      status === "approved" ? promptTradeInAcceptanceIdentity(order.customer_name) : null
+
+    if (status === "approved" && !acceptanceIdentity) {
+      setActivityMessage({
+        title: "Trade-in acceptance paused",
+        detail: "DL number and state are required before accepting the offer. The trade-in status was not changed.",
+      })
+      return
+    }
+
+    const result = await localSyncClient.updateTradeInOrderStatus(
+      localSyncSessionToken,
+      order.order_id,
+      status,
+      acceptanceIdentity ?? undefined,
+    )
 
     if (result.status !== "ok") {
       setActivityMessage({ title: "Trade-in status blocked", detail: result.message })
@@ -9084,6 +10293,15 @@ export function App() {
       return
     }
 
+    if (selectedItem.status !== "available") {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Quantity adjustment blocked",
+        detail: "Inventory Updates can only adjust available in-stock items.",
+      })
+      return
+    }
+
     if (quantityDelta === null) {
       setActiveSection("Inventory")
       setActivityMessage({
@@ -9093,20 +10311,214 @@ export function App() {
       return
     }
 
+    if (inventoryMode === "updates" && quantityDelta > 0) {
+      setInventoryMode("intake")
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Use Inventory Intake",
+        detail:
+          "Positive quantity adds create new inventory copies. Use Inventory Intake so catalog lookup and add-new-inventory stay separate from existing stock updates.",
+      })
+      return
+    }
+
     const reason = cleanInventoryAdjustmentReason(quantityAdjustmentReason)
     const signedDelta = quantityDelta > 0 ? `+${quantityDelta}` : String(quantityDelta)
     setQuantityAdjustmentReason(reason)
 
-    await handleStageInventoryUpdate(
-      "Quantity adjustment saved",
-      {
-        operationKind: "quantity",
-        quantityDelta,
-        syncIntent: "staff_quantity_adjustment",
-        adjustmentReason: reason,
-      },
-      `${selectedItem.cardName} quantity correction (${signedDelta}) is queued locally with reason "${reason}"; exact website inventory remains authoritative after sync acceptance.`,
-    )
+    if (!localSyncSessionToken) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in with an employee, manager, or owner PIN before adjusting live inventory quantity.",
+      })
+      return
+    }
+
+    if (quantityDelta < 0) {
+      const removalCount = Math.abs(quantityDelta)
+
+      if (selectedInventoryGroupAvailableItems.length < removalCount) {
+        setActiveSection("Inventory")
+        setActivityMessage({
+          title: "Quantity adjustment blocked",
+          detail: `${selectedItem.cardName} only has ${selectedInventoryGroupAvailableItems.length} available ${selectedInventoryGroupAvailableItems.length === 1 ? "copy" : "copies"} in stock locally.`,
+        })
+        return
+      }
+
+      await finalizeStaffInventoryRemoval("remove", selectedInventoryGroupAvailableItems.slice(0, removalCount))
+      setQuantityDeltaInput("1")
+      setQuantityAdjustmentReason("staff offline quantity correction")
+      return
+    }
+
+    if (selectedItem.priceMinorUnits <= 0) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Quantity adjustment blocked",
+        detail: "Set a positive sale price or force a ScryDex price refresh before adding more copies.",
+      })
+      return
+    }
+
+    const intakeResult = await localSyncClient.createInventoryIntake(localSyncSessionToken, {
+      cardName: selectedItem.cardName,
+      setName: selectedItem.setName || "Quantity Adjustment",
+      condition: selectedItem.condition || "LP",
+      barcode: "",
+      priceMinorUnits: selectedItem.priceMinorUnits,
+      location: selectedItem.location || "Intake Queue",
+      quantity: quantityDelta,
+      providerCardId: selectedItem.providerCardId,
+      referenceVariantId: selectedItem.referenceVariantId,
+      providerVariantId: selectedItem.providerVariantId,
+      game: localSyncGameFromInventory(selectedItem.game),
+      setCode: selectedItem.setCode,
+      cardNumber: selectedItem.number,
+      printedNumber: selectedItem.number,
+      variant: selectedItem.variant,
+      finish: selectedItem.finish,
+      language: selectedItem.language,
+      rawOrGraded: selectedItem.rawOrGraded ?? "raw",
+      gradingCompany: selectedItem.rawOrGraded === "graded" ? selectedItem.gradingCompany : "",
+      grade: selectedItem.rawOrGraded === "graded" ? selectedItem.grade : "",
+      certNumber: selectedItem.rawOrGraded === "graded" ? selectedItem.certNumber : "",
+      imageUrl: selectedItem.imageUrl,
+      backImageUrl: selectedItem.backImageUrl,
+      priceSource: "staff_quantity_adjustment",
+      suggestedPriceMinorUnits: selectedItem.priceMinorUnits,
+      autoPriceMinorUnits: selectedItem.priceMinorUnits,
+      minimumSalePriceMinorUnits: selectedItem.priceMinorUnits,
+      finalPriceMinorUnits: selectedItem.priceMinorUnits,
+      priceOverrideReason: reason,
+      syncIntent: "staff_quantity_adjustment",
+      onlineVisibility: selectedItem.onlineVisibility ?? "visible",
+      kioskVisibility: selectedItem.kioskVisibility ?? "visible",
+      posVisibility: selectedItem.posVisibility ?? "visible",
+    })
+
+    if (handleBlockedLocalSyncSession(intakeResult, "Quantity adjustment locked")) {
+      setActiveSection("Inventory")
+      return
+    }
+
+    if (intakeResult.status !== "ok") {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: intakeResult.status === "unavailable" ? "LAN server unavailable" : "Quantity adjustment blocked",
+        detail:
+          intakeResult.status === "unavailable"
+            ? intakeResult.message
+            : `${intakeResult.message} WordPress remains the final inventory authority.`,
+      })
+      return
+    }
+
+    const responseItems =
+      intakeResult.items && intakeResult.items.length > 0
+        ? intakeResult.items
+        : [intakeResult.item]
+    const nextId = inventoryItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
+    const nextItems = responseItems.map((item, index) => inventoryItemFromLocalSync(item, nextId + index))
+    const intakeReceipts = buildLocalInventoryIntakeSyncReceipts(nextItems, {
+      profileId: activeProfile.id,
+      companyName: activeProfile.companyName,
+      localSyncServerUrl: localSyncClient.serverUrl,
+    })
+    let displayedNextItems = nextItems
+    let displayedIntakeReceipts = intakeReceipts
+    let autoPublishDetail =
+      "Queued locally; the LAN server will publish it when the website connector is available."
+
+    if (intakeResult.wordpress_auto_sync_performed) {
+      const autoPushResult = localSyncPushResultFromAutoSync(intakeResult.auto_sync_results)
+      const intakePublicIds = new Set(nextItems.map((item) => item.publicId))
+      const acceptedIntakeResults = autoPushResult.results.filter(
+        (result) => result.status === "accepted" && intakePublicIds.has(result.entity_id),
+      )
+      const acceptedPublicIds = new Set(acceptedIntakeResults.map((result) => result.entity_id))
+      const wooSyncedCount = acceptedIntakeResults.filter(
+        (result) => result.woocommerce_product_sync?.synced,
+      ).length
+
+      displayedNextItems = nextItems.map((item) =>
+        acceptedPublicIds.has(item.publicId)
+          ? {
+              ...item,
+              status: inventoryStatusFromWordPressPushResult(autoPushResult, item.publicId) ?? item.status,
+              source: "accepted",
+              rowVersion: item.rowVersion + 1,
+            }
+          : item,
+      )
+      displayedIntakeReceipts = applyLocalInventoryIntakePushResults(
+        intakeReceipts,
+        autoPushResult.results,
+      ).receipts
+
+      if (acceptedIntakeResults.length > 0 && wooSyncedCount > 0) {
+        autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; ${wooSyncedCount} WooCommerce product sync(s) completed.`
+      } else if (acceptedIntakeResults.length > 0) {
+        autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; WooCommerce publish is still pending review in the sync status screen.`
+      } else if (autoPushResult.retry_count > 0) {
+        autoPublishDetail = "Saved locally; website publish will retry from the LAN queue."
+      }
+    } else if (effectiveAccess.includes("Sync")) {
+      const autoPushResult = await localSyncClient.pushQueuedOperations(localSyncSessionToken)
+
+      if (autoPushResult.status === "ok") {
+        const intakePublicIds = new Set(nextItems.map((item) => item.publicId))
+        const acceptedIntakeResults = autoPushResult.results.filter(
+          (result) => result.status === "accepted" && intakePublicIds.has(result.entity_id),
+        )
+        const acceptedPublicIds = new Set(acceptedIntakeResults.map((result) => result.entity_id))
+        const wooSyncedCount = acceptedIntakeResults.filter(
+          (result) => result.woocommerce_product_sync?.synced,
+        ).length
+
+        displayedNextItems = nextItems.map((item) =>
+          acceptedPublicIds.has(item.publicId)
+            ? {
+                ...item,
+                status: inventoryStatusFromWordPressPushResult(autoPushResult, item.publicId) ?? item.status,
+                source: "accepted",
+                rowVersion: item.rowVersion + 1,
+              }
+            : item,
+        )
+        displayedIntakeReceipts = applyLocalInventoryIntakePushResults(
+          intakeReceipts,
+          autoPushResult.results,
+        ).receipts
+
+        if (acceptedIntakeResults.length > 0 && wooSyncedCount > 0) {
+          autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; ${wooSyncedCount} WooCommerce product sync(s) completed.`
+        } else if (acceptedIntakeResults.length > 0) {
+          autoPublishDetail = `${acceptedIntakeResults.length} item(s) accepted by WordPress; WooCommerce publish is still pending review in the sync status screen.`
+        } else if (autoPushResult.retry_count > 0) {
+          autoPublishDetail = "Saved locally; website publish will retry from the LAN queue."
+        }
+      } else if (autoPushResult.status === "blocked") {
+        autoPublishDetail = `${autoPushResult.message} Saved locally for retry.`
+      } else {
+        autoPublishDetail = `${autoPushResult.message} Saved locally for retry.`
+      }
+    } else {
+      autoPublishDetail =
+        "Saved locally; this PIN does not have Sync access, so a manager or sync-enabled user must publish the queue."
+    }
+
+    setInventoryItems((items) => [...displayedNextItems, ...items])
+    setLocalInventoryIntakeReceipts((receipts) => [...displayedIntakeReceipts, ...receipts].slice(0, 50))
+    setQuantityDeltaInput("1")
+    setQuantityAdjustmentReason("staff offline quantity correction")
+    setActiveSection("Inventory")
+    void refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "Quantity adjustment saved",
+      detail: `${selectedItem.cardName} quantity correction (${signedDelta}) saved with reason "${reason}". ${autoPublishDetail}`,
+    })
   }
 
   function focusEventCheckinPanel() {
@@ -9456,6 +10868,12 @@ export function App() {
 
     setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
     setActiveCustomerId(nextCreditSnapshot.customerId)
+    setCheckoutCustomerMode("customer")
+    setCustomerSearchQuery(nextCreditSnapshot.customerLookup ?? nextCreditSnapshot.customerName ?? "")
+    setCustomerSearchResults([])
+    setCustomerProfileResult(null)
+    setCustomerProfileStatus("idle")
+    setCustomerProfileDetail("Customer created locally. Refresh profile after WordPress sync accepts the record.")
     setNewCustomerFirstName("")
     setNewCustomerLastName("")
     setNewCustomerEmail("")
@@ -9612,6 +11030,8 @@ export function App() {
     setCustomerCreditDirectory((credits) => upsertCustomerCreditSnapshot(credits, nextCreditSnapshot))
     setActiveCustomerId(nextCreditSnapshot.customerId)
     setCustomerSearchQuery(customer.customer_lookup || customer.email || customer.display_name)
+    setCustomerSearchResults([])
+    setCheckoutCustomerMode("customer")
     setActiveSection("Customers")
     await refreshCustomerProfile(customer.customer_public_id)
   }
@@ -9670,10 +11090,27 @@ export function App() {
     setCheckoutReceiptEmail("")
   }
 
+  function clearSelectedCustomer() {
+    setActiveCustomerId(0)
+    setCheckoutCustomerMode("guest")
+    setCustomerSearchQuery("")
+    setCustomerSearchResults([])
+    setCustomerProfileResult(null)
+    setCustomerProfileStatus("idle")
+    setCustomerProfileDetail("Search or select a customer to load profile history.")
+    setSelectedCustomerKioskOrderId("")
+    setCreditRedemptionInput("0.00")
+    setCheckoutReceiptEmail("")
+    setShowCreditLedger(true)
+  }
+
   function setCheckoutMode(mode: CheckoutCustomerMode) {
     setCheckoutCustomerMode(mode)
     setSelectedCustomerKioskOrderId("")
     resetCheckoutPaymentFields()
+    if (mode === "guest") {
+      clearSelectedCustomer()
+    }
     setActivityMessage({
       title: mode === "guest" ? "Guest sale started" : "Customer sale started",
       detail:
@@ -11656,7 +13093,7 @@ export function App() {
       setActivityMessage({
         title: "Scan needs one match",
         detail:
-          "Enter an exact barcode or public inventory ID, or narrow search to one cached card before adding a scan.",
+          "Enter an exact barcode or public inventory ID for an available in-stock item, or narrow search to one cached card before saving an update.",
       })
       return
     }
@@ -11729,28 +13166,35 @@ export function App() {
   }
 
   async function handleOpenDymoLabelPrint(job: OfflineLabelPrintJob) {
+    const targetOption = labelPrinterTargetOption(labelPrinterTarget)
+    const allowThisPcPrinter = labelPrinterTarget !== "lan_server"
+    const allowLanServerPrinter = labelPrinterTarget !== "this_pc"
+    let localPrinterMessage = "This PC printer was skipped by the selected label printer target."
+
     setActivityMessage({
-      title: "Checking this PC for DYMO",
-      detail:
-        `${job.cardName} label ${job.barcode} will print from this workstation first. If no local printer answers, the app will send it to the LAN server printer.`,
+      title: allowThisPcPrinter ? "Checking this PC for DYMO" : "Sending to LAN server printer",
+      detail: `${job.cardName} label ${job.barcode} is using ${targetOption.label}. ${targetOption.detail}`,
     })
 
-    const localPrinterResult = await printLabelOnThisPcDymo(job)
+    if (allowThisPcPrinter) {
+      const localPrinterResult = await printLabelOnThisPcDymo(job)
+      localPrinterMessage = localPrinterResult.status === "blocked" ? localPrinterResult.message : ""
 
-    if (localPrinterResult.status === "ok") {
-      setActivityMessage({
-        title: "Local DYMO label sent",
-        detail:
-          `${job.cardName} printed on this PC using ${localPrinterResult.printerName}; scanner code ${localPrinterResult.scanCode}.`,
-      })
-      return
+      if (localPrinterResult.status === "ok") {
+        setActivityMessage({
+          title: "Local DYMO label sent",
+          detail:
+            `${job.cardName} printed on this PC using ${localPrinterResult.printerName}; scanner code ${localPrinterResult.scanCode}.`,
+        })
+        return
+      }
     }
 
-    if (localSyncSessionToken) {
+    if (allowLanServerPrinter && localSyncSessionToken) {
       setActivityMessage({
         title: "Trying LAN server printer",
         detail:
-          `${localPrinterResult.message} Sending ${job.cardName} to the LAN server printer through ${localSyncClient.serverUrl}.`,
+          `${localPrinterMessage} Sending ${job.cardName} to the LAN server printer through ${localSyncClient.serverUrl}.`,
       })
 
       try {
@@ -11780,11 +13224,17 @@ export function App() {
           detail: `${error instanceof Error ? error.message : "DYMO printing failed."} Opening the browser print fallback instead.`,
         })
       }
-    } else {
+    } else if (allowLanServerPrinter) {
       setActivityMessage({
         title: "DYMO direct print unavailable",
         detail:
-          `${localPrinterResult.message} Start a PIN session with the LAN server to use the shared printer, or use the browser print fallback now.`,
+          `${localPrinterMessage} Start a PIN session with the LAN server to use the shared printer, or use the browser print fallback now.`,
+      })
+    } else {
+      setActivityMessage({
+        title: "Local DYMO unavailable",
+        detail:
+          `${localPrinterMessage} Label printer target is set to This PC only, so the LAN server was not used. Opening the browser print fallback instead.`,
       })
     }
 
@@ -11939,6 +13389,107 @@ export function App() {
           ))}
         </div>
       </section>
+    )
+  }
+
+  if (prelaunchConnection.status !== "ready") {
+    const connectionModeLabel = customerKioskMode ? "Customer Kiosk" : "Store App"
+    const connectionStatusLabel =
+      prelaunchConnection.status === "checking"
+        ? "Searching"
+        : prelaunchConnection.status === "blocked"
+          ? "Not connected"
+          : "Manual setup"
+
+    return (
+      <main className="offline-shell login-shell prelaunch-shell">
+        <div className="app-window-bar" aria-label="Desktop app window">
+          <div className="window-brand">
+            <img src={thePugBrandLogo} alt="" />
+            <span>The Pug {connectionModeLabel}</span>
+          </div>
+        </div>
+        <section className="prelaunch-workspace" aria-label="Connect to local server">
+          <form
+            className="prelaunch-card"
+            autoComplete="off"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handlePrelaunchManualConnect()
+            }}
+          >
+            <img src={thePugBrandLogo} alt="" />
+            <span className="micro-label">Before opening {connectionModeLabel}</span>
+            <h1>Connect to the store server</h1>
+            <p>
+              The app needs the LAN Server before PIN login, kiosk inventory, holds, pickup orders,
+              and sync can work.
+            </p>
+            <div className={`prelaunch-status ${prelaunchConnection.status}`} aria-live="polite">
+              <span>{connectionStatusLabel}</span>
+              <strong>{prelaunchConnection.serverUrl || localSyncClient.serverUrl}</strong>
+              <small>{prelaunchConnection.detail}</small>
+            </div>
+            <label className="prelaunch-server-field" htmlFor="pug-prelaunch-server">
+              <span className="micro-label">LAN server IP or URL</span>
+              <input
+                id="pug-prelaunch-server"
+                value={prelaunchServerUrlInput}
+                onChange={(event) => setPrelaunchServerUrlInput(event.target.value)}
+                placeholder="192.168.1.25:8787"
+                inputMode="url"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                autoFocus={prelaunchConnection.status !== "checking"}
+              />
+            </label>
+            <div className="prelaunch-actions">
+              <button type="submit" disabled={prelaunchConnectInFlight}>
+                <Icon name="link" />
+                <span>{prelaunchConnectInFlight ? "Checking" : "Connect"}</span>
+              </button>
+              <button
+                type="button"
+                disabled={prelaunchConnectInFlight || localSyncDiscovery.status === "searching"}
+                onClick={() => void handlePrelaunchAutoDetect()}
+              >
+                <Icon name="search" />
+                <span>{localSyncDiscovery.status === "searching" ? "Searching" : "Auto-detect"}</span>
+              </button>
+            </div>
+            {localSyncDiscovery.servers.length > 0 ? (
+              <div className="prelaunch-discovery-list" aria-label="Discovered LAN servers">
+                <span className="micro-label">Found on this network</span>
+                {localSyncDiscovery.servers.map((server) => (
+                  <button
+                    type="button"
+                    key={`${server.hostname}-${server.server_url}`}
+                    onClick={() =>
+                      void probePrelaunchLocalSyncServer(server.server_url, {
+                        source: "discovered",
+                        websiteUrl: server.website_url,
+                        announce: true,
+                      })
+                    }
+                  >
+                    <strong>{server.hostname || "Pug LAN Server"}</strong>
+                    <small>{normalizeLocalSyncServerUrl(server.server_url)}</small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="prelaunch-help">
+              <strong>Where do I find this?</strong>
+              <small>
+                On the LAN Server computer, use its IPv4 address plus port 8787. Example:
+                192.168.1.25:8787. If auto-detect fails, Windows Firewall or the router is probably
+                blocking broadcast discovery, but manual IP connection can still work.
+              </small>
+            </div>
+          </form>
+        </section>
+      </main>
     )
   }
 
@@ -12220,6 +13771,23 @@ export function App() {
             <div className="pin-display" aria-live="polite">
               <span>{"*".repeat(loginPin.length).padEnd(4, "-")}</span>
               {loginIssue ? <small>{loginIssue}</small> : <small>Use your assigned store PIN.</small>}
+            </div>
+            <div className="login-connection-summary">
+              <span className="micro-label">Connected server</span>
+              <strong>{localSyncClient.serverUrl}</strong>
+              <button
+                type="button"
+                onClick={() =>
+                  setPrelaunchConnection({
+                    status: "manual",
+                    detail: "Enter a different LAN server IP or run auto-detect again.",
+                    serverUrl: localSyncClient.serverUrl,
+                    checkedAtUtc: new Date().toISOString(),
+                  })
+                }
+              >
+                Change Server
+              </button>
             </div>
             <div className="pin-pad" aria-label="PIN keypad">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
@@ -12687,10 +14255,28 @@ export function App() {
 
           <section className={`content-grid is-paged page-${activeSection.toLowerCase()}`}>
             <section className="inventory-panel" aria-label="Offline inventory" ref={inventoryPanelRef}>
+              <div className="inventory-mode-tabs" aria-label="Inventory workflow mode">
+                <button
+                  type="button"
+                  className={inventoryMode === "updates" ? "is-active" : ""}
+                  onClick={() => setInventoryMode("updates")}
+                >
+                  Inventory Updates
+                </button>
+                <button
+                  type="button"
+                  className={inventoryMode === "intake" ? "is-active" : ""}
+                  onClick={() => setInventoryMode("intake")}
+                >
+                  Inventory Intake
+                </button>
+              </div>
+
+              {inventoryMode === "updates" ? (
               <div className="scanner-row">
                 <label htmlFor="offline-search">
                   <Icon name="scan" />
-                  <span>Scan or search</span>
+                  <span>Update stock</span>
                 </label>
                 <div className="search-box">
                   <Icon name="search" />
@@ -12704,7 +14290,7 @@ export function App() {
                         handleAddScan()
                       }
                     }}
-                    placeholder="Barcode, card, set, or location"
+                    placeholder="Barcode, card, set, or location in stock"
                   />
                   <span className="scan-beam" aria-hidden="true" />
                 </div>
@@ -12750,19 +14336,11 @@ export function App() {
                   <small>{lanInventorySearchDetail}</small>
                 </div>
               </div>
+              ) : null}
 
-              {filtersOpen ? (
+              {inventoryMode === "updates" && filtersOpen ? (
                 <div className="filter-tray" aria-label="Inventory filters">
-                  {INVENTORY_STATUS_FILTERS.map((status) => (
-                    <button
-                      type="button"
-                      className={statusFilter === status ? "is-active" : ""}
-                      onClick={() => setStatusFilter(status)}
-                      key={status}
-                    >
-                      {status === "all" ? "All" : statusLabel(status)}
-                    </button>
-                  ))}
+                  <span className="filter-tray-note">Showing available in-stock inventory only.</span>
                   {INVENTORY_PRODUCT_TYPE_FILTERS.map((filter) => (
                     <button
                       type="button"
@@ -12776,6 +14354,7 @@ export function App() {
                 </div>
               ) : null}
 
+              {inventoryMode === "intake" ? (
               <div className="inventory-intake-control" aria-label="Local inventory intake">
                 <div className="scrydex-lookup-control" aria-label="ScryDex card lookup">
                   <label htmlFor="scrydex-card-query">
@@ -12848,6 +14427,27 @@ export function App() {
                       <Icon name="scan" />
                       <span>Scan Card</span>
                     </button>
+                    <div className={`scrydex-recovery-actions ${scryDexRecoveryStatus}`}>
+                      <button
+                        type="button"
+                        onClick={() => void handleIndexMissingScryDexSet()}
+                        disabled={scryDexRecoveryStatus === "working"}
+                      >
+                        <Icon name="refresh" />
+                        <span>Set Not Found</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleSearchMissingScryDexCardAcrossGames()}
+                        disabled={scryDexRecoveryStatus === "working"}
+                      >
+                        <Icon name="search" />
+                        <span>Card Not Found</span>
+                      </button>
+                    </div>
+                    <small className={`scrydex-recovery-status ${scryDexRecoveryStatus}`}>
+                      {scryDexRecoveryDetail}
+                    </small>
                   </div>
                   {visibleScryDexCards.length > 0 ? (
                     <div className="scrydex-result-list" aria-label="ScryDex card results">
@@ -12937,6 +14537,16 @@ export function App() {
                             {selectedScryDexIntakeSummary}
                           </span>
                         </div>
+                        {selectedScryDexPriceBreakdownRows.length > 0 ? (
+                          <dl className="selected-scrydex-preview__prices" aria-label="Selected card price breakdown">
+                            {selectedScryDexPriceBreakdownRows.map((row) => (
+                              <div key={row.label}>
+                                <dt>{row.label}</dt>
+                                <dd>{row.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : null}
                         {selectedScryDexCard.variants.length > 0 ? (
                           <label htmlFor="scrydex-variant-select" className="selected-scrydex-preview__variant-select">
                             <span className="micro-label">Version</span>
@@ -12970,6 +14580,25 @@ export function App() {
                           ) : (
                             <span>Variant details pending</span>
                           )}
+                        </div>
+                        <div className="selected-scrydex-preview__links" aria-label="Selected card reference links">
+                          <span>Reference links</span>
+                          {selectedScryDexReferenceLinks.map((link) => (
+                            <a href={link.href} target="_blank" rel="noreferrer" key={link.label}>
+                              {link.label}
+                            </a>
+                          ))}
+                        </div>
+                        <div className="selected-scrydex-preview__refresh">
+                          <button
+                            type="button"
+                            onClick={() => void handleForceSelectedScryDexPricingRefresh("inventory")}
+                            disabled={scryDexRefreshStatus === "refreshing"}
+                          >
+                            <Icon name="refresh" />
+                            <span>{scryDexRefreshStatus === "refreshing" ? "Refreshing ScryDex" : "Force ScryDex Pricing"}</span>
+                          </button>
+                          <small>{scryDexRefreshDetail}</small>
                         </div>
                         <small className="selected-scrydex-preview__path">
                           {scryDexLookupOrderLabel}
@@ -13214,13 +14843,18 @@ export function App() {
                   </button>
                 </div>
               </div>
+              ) : null}
 
               <div className="table-meta">
                 <span>
                   {filteredInventoryGroups.length} card printing
                   {filteredInventoryGroups.length === 1 ? "" : "s"} / {filteredItems.length} physical copies
                 </span>
-                <strong>{activeProfile.companyName} website authority after sync acceptance</strong>
+                <strong>
+                  {inventoryMode === "updates"
+                    ? "Available stock only; updates never create new inventory"
+                    : `${activeProfile.companyName} website authority after sync acceptance`}
+                </strong>
               </div>
 
               {viewMode === "list" ? (
@@ -13685,16 +15319,28 @@ export function App() {
                           </div>
                         </dl>
                       ) : null}
-                      {selectedTradeInValuation.links.length > 0 ? (
+                      {selectedTradeInReferenceLinks.length > 0 ? (
                         <div className="trade-in-valuation-links" aria-label="External valuation links">
-                          <span>Check comps</span>
-                          {selectedTradeInValuation.links.map((link) => (
+                          <span>Reference links</span>
+                          {selectedTradeInReferenceLinks.map((link) => (
                             <a href={link.href} target="_blank" rel="noreferrer" key={link.label}>
                               {link.label}
                             </a>
                           ))}
                         </div>
                       ) : null}
+                      <div className="trade-in-valuation-links" aria-label="ScryDex refresh controls">
+                        <span>ScryDex pricing</span>
+                        <button
+                          type="button"
+                          onClick={() => void handleForceSelectedScryDexPricingRefresh("trade-in")}
+                          disabled={scryDexRefreshStatus === "refreshing"}
+                        >
+                          <Icon name="refresh" />
+                          <span>{scryDexRefreshStatus === "refreshing" ? "Refreshing" : "Force ScryDex Pricing"}</span>
+                        </button>
+                        <small>{scryDexRefreshDetail}</small>
+                      </div>
                     </div>
                   ) : null}
                   <div className="trade-in-card-controls">
@@ -14079,6 +15725,15 @@ export function App() {
                           Processed by {order.staff_user_name || order.staff_user_id || "Unknown staff"} / receipt{" "}
                           {order.order_id}
                         </small>
+                        {order.customer_id_number_masked ? (
+                          <small>
+                            DL {order.customer_id_state ? `${order.customer_id_state} ` : ""}
+                            {order.customer_id_number_masked}
+                            {order.customer_id_recorded_by_user_name || order.customer_id_recorded_by_user_id
+                              ? ` recorded by ${order.customer_id_recorded_by_user_name || order.customer_id_recorded_by_user_id}`
+                              : ""}
+                          </small>
+                        ) : null}
                         {order.converted_at_utc ? (
                           <small>
                             Converted {formatUtcLabel(order.converted_at_utc)}
@@ -14239,7 +15894,7 @@ export function App() {
                     </div>
                   </div>
                 ) : null}
-                {selectedScryDexCard ? (
+                {inventoryMode === "intake" && selectedScryDexCard ? (
                   <div className="detail-catalog-context" aria-label="Separate selected catalog intake draft">
                     <span>Catalog intake draft</span>
                     <strong>{selectedScryDexCard.card_name}</strong>
@@ -14324,6 +15979,8 @@ export function App() {
                   </dl>
                 </details>
               ) : null}
+              {inventoryMode === "updates" ? (
+              <>
               <div className="detail-actions">
                 <div className="inventory-adjustment-controls" aria-label="Inventory adjustment details">
                   <label htmlFor="quantity-delta">
@@ -14355,7 +16012,16 @@ export function App() {
                 <button
                   className="wide-action"
                   type="button"
-                  onClick={() => void handleStageInventoryUpdate()}
+                  disabled={selectedItem.status !== "available"}
+                  onClick={() =>
+                    void handleStageInventoryUpdate(
+                      "Inventory update saved",
+                      {},
+                      undefined,
+                      selectedItem,
+                      { stayOnInventory: true, clearSelectedCard: true },
+                    )
+                  }
                 >
                   <Icon name="upload" />
                   <span>Save Inventory Update</span>
@@ -14367,8 +16033,27 @@ export function App() {
                 >
                   Hold Item
                 </button>
-                <button type="button" onClick={() => void handleQuantityAdjustment()}>
+                <button
+                  type="button"
+                  disabled={selectedItem.status !== "available"}
+                  onClick={() => void handleQuantityAdjustment()}
+                >
                   Adjust Qty
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedInventoryGroupAvailableItems.length === 0}
+                  onClick={() => void handleInventorySetStockToZero()}
+                >
+                  Set Stock to 0
+                </button>
+                <button
+                  className="danger-command"
+                  type="button"
+                  disabled={!hasSelectedInventoryItem || selectedItem.status !== "available"}
+                  onClick={() => void handleInventoryRemoveSelected()}
+                >
+                  Remove from Inventory
                 </button>
                 <button type="button" onClick={() => void handlePrintLabel()}>
                   Print Barcode Label
@@ -14397,6 +16082,8 @@ export function App() {
                   </>
                 )}
               </div>
+              </>
+              ) : null}
               {labelPrintJobs.length > 0 ? (
                 <div className="label-job-list" aria-label="Prepared label jobs">
                   <span>Prepared labels</span>
@@ -14492,6 +16179,12 @@ export function App() {
                   <Icon name="plus" />
                   <span>New Customer</span>
                 </button>
+                {hasSelectedCustomer ? (
+                  <button type="button" onClick={clearSelectedCustomer}>
+                    <Icon name="close" />
+                    <span>Clear Customer</span>
+                  </button>
+                ) : null}
               </div>
 
               {checkoutCustomerMode === "customer" && customerSearchResults.length > 0 ? (
@@ -16583,6 +18276,28 @@ export function App() {
                   </small>
                 </div>
                 <div>
+                  <label htmlFor="label-printer-target">
+                    <span className="micro-label">Label print target</span>
+                    <select
+                      id="label-printer-target"
+                      value={labelPrinterTarget}
+                      onChange={(event) => setLabelPrinterTarget(event.target.value as LabelPrinterTarget)}
+                    >
+                      {LABEL_PRINTER_TARGET_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <strong>{labelPrinterTargetOption(labelPrinterTarget).label}</strong>
+                  <small>{labelPrinterTargetOption(labelPrinterTarget).detail}</small>
+                  <small>
+                    LAN fallback prints through {localSyncClient.serverUrl}; local DYMO uses DYMO Connect on
+                    this PC first.
+                  </small>
+                </div>
+                <div>
                   <span className="micro-label">Device token</span>
                   <strong>
                     {activePairedDevice
@@ -17484,6 +19199,12 @@ export function App() {
                               Credit {formatMoney(order.credit_total_minor_units, order.currency)} / cash{" "}
                               {formatMoney(order.cash_total_minor_units, order.currency)}
                             </small>
+                            {order.customer_id_number_masked ? (
+                              <small>
+                                DL {order.customer_id_state ? `${order.customer_id_state} ` : ""}
+                                {order.customer_id_number_masked}
+                              </small>
+                            ) : null}
                           </div>
                           <button
                             type="button"
@@ -17555,7 +19276,11 @@ export function App() {
                 <div>
                   <span className="micro-label">Selected customer</span>
                   <strong>{activeCustomerName}</strong>
-                  <small>{customerCredit.customerLookup ?? `Customer #${customerCredit.customerId}`}</small>
+                  <small>
+                    {hasSelectedCustomer
+                      ? customerCredit.customerLookup || `Customer #${customerCredit.customerId}`
+                      : "No profile is loaded."}
+                  </small>
                 </div>
                 <div>
                   <span className="micro-label">Credit available</span>
@@ -17564,6 +19289,12 @@ export function App() {
                     In-progress sale hold {formatMoney(pendingCreditMinorUnits, customerCredit.currency)}.
                   </small>
                 </div>
+                {hasSelectedCustomer ? (
+                  <button type="button" onClick={clearSelectedCustomer}>
+                    <Icon name="close" />
+                    <span>Clear Customer</span>
+                  </button>
+                ) : null}
               </div>
               <div className="customer-credit-issue" aria-label="Issue local store credit">
                 <div>

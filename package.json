@@ -1,6 +1,6 @@
 {
   "name": "pug-game-shop-tcg-store-platform",
-  "version": "0.202.0",
+  "version": "0.202.3",
   "private": true,
   "description": "Trading card store platform development, testing, staging, and deployment tooling.",
   "scripts": {
@@ -15,6 +15,7 @@
     "build:offline-app:windows": "node scripts/run-offline-app-windows-build.mjs",
     "package:local-sync-server": "node scripts/package-local-sync-server.mjs",
     "package:production-release": "node scripts/package-production-release.mjs",
+    "release:copy-usb": "node scripts/copy-production-release-to-usb.mjs",
     "demo:start": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/start-pug-store.ps1",
     "demo:stop": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/stop-pug-store.ps1",
     "package:wordpress": "node scripts/package-wordpress-plugin.mjs",
@@ -52,6 +53,9 @@
     "production:upload-notification-sound": "node scripts/production-upload-notification-sound.mjs",
     "local-sync:start": "npm --prefix apps/local-sync-server run start",
     "local-sync:clear-demo-data": "node scripts/local-clear-card-inventory-and-queues.mjs",
+    "local-sync:dump-inventory": "npm --prefix apps/local-sync-server run ops:dump-inventory",
+    "local-sync:force-pull-website": "npm --prefix apps/local-sync-server run ops:force-pull-website",
+    "local-sync:daily-price-sync": "npm --prefix apps/local-sync-server run ops:daily-price-sync",
     "local-sync:test": "npm --prefix apps/local-sync-server run test",
     "local-sync:smoke": "node scripts/local-sync-smoke.mjs",
     "inventory:prepare-pug-grading-singles": "node scripts/prepare-pug-grading-singles-import.mjs",

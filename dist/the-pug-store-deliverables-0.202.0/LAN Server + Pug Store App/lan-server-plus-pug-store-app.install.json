@@ -9,6 +9,7 @@
   "app_decorations": false,
   "command_prompt_window_required": false,
   "hidden_start_helper": "Start-Pug-LAN-Server-Hidden.vbs",
+  "patch_deploy_helper": "Deploy-Pug-LAN-Server-Patch.ps1",
   "startup_task_helper": "Install-Pug-LAN-Server-Startup-Task.ps1",
   "website_dependencies": [
     "tcg-store-platform-0.202.0.zip",

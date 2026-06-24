@@ -15,7 +15,8 @@ instead of each keeping an isolated local authority.
 - The packaged LAN server does not ship an existing SQLite database and does
   not install SQLite separately. It uses Node's built-in `node:sqlite` module
   and creates or reuses the configured database path on startup.
-- `npm start` starts the local HTTP server on `127.0.0.1:8787` by default.
+- `npm start` binds the local HTTP server to `0.0.0.0:8787` by default so
+  other in-store devices can reach the middleman.
 - Configuration is read from process env plus optional ignored local files:
   repository `.env.local-sync`, app `.env.local`, then repository `.env.local`.
 - Set `LOCAL_SYNC_SQLITE_PATH` or `PUG_LOCAL_SYNC_DB` to choose the durable
@@ -62,7 +63,11 @@ npm --prefix apps/local-sync-server run test
 npm run local-sync:smoke
 ```
 
-Default URL: `http://127.0.0.1:8787`
+Default URL from the same PC: `http://127.0.0.1:8787`
+
+Default URL from other PCs: the server advertises the host computer's first LAN
+IPv4 address over UDP discovery on port `8788`. Leave `LOCAL_SYNC_SERVER_URL`
+blank unless you need to force a specific hostname/IP.
 
 Default manager PIN: `1420`
 
@@ -72,13 +77,13 @@ After starting the server on the central in-store machine, run this from any
 workstation that should reach it:
 
 ```sh
-set LOCAL_SYNC_SERVER_URL=http://127.0.0.1:8787
+set LOCAL_SYNC_SERVER_URL=http://SERVER-IP:8787
 set LOCAL_SYNC_EXPECT_WEBSITE_URL=https://thepuggaming.com
 npm run local-sync:smoke
 ```
 
-Use the central machine's LAN IP in `LOCAL_SYNC_SERVER_URL` when checking another
-computer. The smoke reads `/health`, `/setup/status`, and `/devices/status`, then
+Use `http://127.0.0.1:8787` only when checking from the LAN server machine
+itself. The smoke reads `/health`, `/setup/status`, and `/devices/status`, then
 writes one local smoke heartbeat through `/devices/heartbeat`. It does not mutate
 WordPress, call Square, capture payments, print credentials, or print raw
 provider responses.

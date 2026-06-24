@@ -60,12 +60,16 @@ export function createLocalSyncStore(options = {}) {
       : null
   const wordpressCatalogExportPull =
     typeof options.wordpressCatalogExportPull === "function" ? options.wordpressCatalogExportPull : null
+  const wordpressCatalogIndexer =
+    typeof options.wordpressCatalogIndexer === "function" ? options.wordpressCatalogIndexer : null
   const wordpressInventoryPull = typeof options.wordpressInventoryPull === "function" ? options.wordpressInventoryPull : null
   const wordpressEventsPull = typeof options.wordpressEventsPull === "function" ? options.wordpressEventsPull : null
   const wordpressFulfillmentPull =
     typeof options.wordpressFulfillmentPull === "function" ? options.wordpressFulfillmentPull : null
   const wordpressReportsPull = typeof options.wordpressReportsPull === "function" ? options.wordpressReportsPull : null
   const wordpressInventoryPush = typeof options.wordpressInventoryPush === "function" ? options.wordpressInventoryPush : null
+  const wordpressInventoryUpdatePush =
+    typeof options.wordpressInventoryUpdatePush === "function" ? options.wordpressInventoryUpdatePush : null
   const wordpressInventorySalePush =
     typeof options.wordpressInventorySalePush === "function" ? options.wordpressInventorySalePush : null
   const wordpressFulfillmentStatusPush =
@@ -143,13 +147,18 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const token = `ls_${randomUUID()}`
-    const expiresAt = new Date(now().getTime() + boundedInt(ttlMinutes, 5, 240, 30) * 60_000)
+    const issuedAt = now()
+    const ttlSeconds = boundedInt(ttlMinutes, 5, 240, 30) * 60
+    const expiresAt = new Date(issuedAt.getTime() + ttlSeconds * 1000)
     const session = {
       token,
       userId: user.id,
       role: user.role,
       access: [...user.access],
       expiresAtUtc: expiresAt.toISOString(),
+      issuedAtUtc: issuedAt.toISOString(),
+      serverTimeUtc: issuedAt.toISOString(),
+      ttlSeconds,
     }
 
     sessions.set(token, session)
@@ -968,7 +977,7 @@ export function createLocalSyncStore(options = {}) {
 
   async function searchScryDexCards(
     token,
-    { query = "", game = "pokemon", setFilter = "", limit = "all", rawOrGraded = "" } = {},
+    { query = "", game = "pokemon", setFilter = "", limit = "all", rawOrGraded = "", forceLive = false } = {},
   ) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
@@ -983,6 +992,7 @@ export function createLocalSyncStore(options = {}) {
     const normalizedRawOrGraded = ["raw", "graded"].includes(String(rawOrGraded ?? "").toLowerCase())
       ? String(rawOrGraded).toLowerCase()
       : ""
+    const forceLiveRefresh = forceLive === true
 
     if (!needle) {
       return blocked("scrydex_query_required", "Enter a card name, set, or number before searching ScryDex.")
@@ -990,7 +1000,7 @@ export function createLocalSyncStore(options = {}) {
 
     const cachedCards = searchReferenceCards(referenceCards, needle, normalizedGame, normalizedSetFilter, resultLimit)
 
-    if (cachedCards.length > 0) {
+    if (cachedCards.length > 0 && !forceLiveRefresh) {
       if (
         resultLimit === null &&
         !normalizedSetFilter &&
@@ -1002,6 +1012,7 @@ export function createLocalSyncStore(options = {}) {
           game: normalizedGame,
           limit: "all",
           rawOrGraded: normalizedRawOrGraded,
+          forceLive: false,
         })
         const fallbackCards = normalizeReferenceCardsFromFallback(
           fallbackResult,
@@ -1063,6 +1074,7 @@ export function createLocalSyncStore(options = {}) {
           game: normalizedGame,
           limit: resultLimit ?? "all",
           rawOrGraded: normalizedRawOrGraded,
+          forceLive: forceLiveRefresh,
         })
       : null
     const fallbackCards = normalizeReferenceCardsFromFallback(
@@ -1079,7 +1091,10 @@ export function createLocalSyncStore(options = {}) {
       saveReferenceCard(database, card, now)
     }
 
-    const cards = fallbackCards.map((card) => enrichScryDexCard(card, inventoryItems))
+    const mergedCards = cachedCards.length > 0
+      ? mergeReferenceSearchResults(cachedCards, fallbackCards, needle)
+      : fallbackCards
+    const cards = mergedCards.map((card) => enrichScryDexCard(card, inventoryItems))
 
     return {
       status: "ok",
@@ -1088,14 +1103,180 @@ export function createLocalSyncStore(options = {}) {
       game: normalizedGame,
       set_filter: normalizedSetFilter,
       result_limit: resultLimit ?? "all",
-      source: fallbackCards.length > 0 ? "wordpress_proxy" : "local_reference_cache",
+      source: fallbackCards.length > 0
+        ? cachedCards.length > 0
+          ? "wordpress_catalog_cache+wordpress_proxy"
+          : "wordpress_proxy"
+        : cachedCards.length > 0
+          ? "wordpress_catalog_cache"
+          : "local_reference_cache",
       lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
-      local_reference_cache_hit: false,
+      local_reference_cache_hit: cachedCards.length > 0,
       wordpress_proxy_performed: Boolean(websiteCatalogFallback),
       wordpress_proxy_required: fallbackCards.length === 0,
       credential_storage: "wordpress_server_settings",
       credentials_synced_to_client: false,
       live_provider_request_performed: Boolean(fallbackResult?.live_provider_request_performed),
+      force_live_refresh: forceLiveRefresh,
+    }
+  }
+
+  async function indexScryDexCatalog(token, input = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const mode = cleanScryDexCatalogIndexMode(input.mode)
+    const normalizedRawOrGraded = ["raw", "graded"].includes(String(input.rawOrGraded ?? input.raw_or_graded ?? "").toLowerCase())
+      ? String(input.rawOrGraded ?? input.raw_or_graded).toLowerCase()
+      : ""
+
+    if (mode === "card") {
+      const query = cleanScryDexQuery(input.query ?? input.card_name ?? input.cardName)
+
+      if (!query) {
+        return blocked("scrydex_card_query_required", "Enter the missing card name before searching every game.")
+      }
+
+      const games = supportedScryDexGames(input.games)
+      const results = []
+      const blockedResults = []
+
+      for (const game of games) {
+        const result = await searchScryDexCards(token, {
+          query,
+          game,
+          limit: "all",
+          rawOrGraded: normalizedRawOrGraded,
+          forceLive: true,
+        })
+
+        if (result.status === "ok") {
+          results.push(...result.cards)
+        } else {
+          blockedResults.push({
+            game,
+            code: result.code ?? "scrydex_card_search_blocked",
+            message: result.message ?? "ScryDex card search was blocked.",
+          })
+        }
+      }
+
+      const mergedCards = mergeReferenceSearchResults([], results, query)
+
+      return {
+        status: "ok",
+        action: "scrydex_missing_card_live_search_completed",
+        code: "scrydex_missing_card_live_search_completed",
+        query,
+        games,
+        cards: mergedCards,
+        imported_count: mergedCards.length,
+        blocked_games: blockedResults,
+        lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const game = cleanGame(input.game)
+    const setQuery = cleanScryDexSearchText(input.setQuery ?? input.set_query ?? input.query ?? input.expansionId ?? input.expansion_id)
+
+    if (!setQuery) {
+      return blocked("scrydex_set_query_required", "Enter a set name or code before indexing a missing set.")
+    }
+
+    const liveSearch = await searchScryDexCards(token, {
+      query: setQuery,
+      game,
+      limit: "all",
+      rawOrGraded: normalizedRawOrGraded,
+      forceLive: true,
+    })
+    const liveCards = liveSearch.status === "ok" ? liveSearch.cards : []
+    const resolvedExpansionId =
+      cleanProviderResourceId(input.expansionId ?? input.expansion_id) || bestExpansionIdFromCards(liveCards, setQuery)
+
+    if (!wordpressCatalogIndexer) {
+      return {
+        status: "ok",
+        action: "scrydex_missing_set_live_search_completed",
+        code: "scrydex_catalog_index_route_unavailable",
+        message:
+          "The LAN server can search and import matching ScryDex cards, but the WordPress catalog index route is not configured for full-set indexing.",
+        game,
+        set_query: setQuery,
+        expansion_id: resolvedExpansionId,
+        cards: liveCards,
+        imported_count: liveCards.length,
+        catalog_index_status: "unavailable",
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    if (!resolvedExpansionId) {
+      return {
+        status: "ok",
+        action: "scrydex_missing_set_live_search_completed",
+        code: "scrydex_set_expansion_not_resolved",
+        message:
+          "ScryDex returned matching card rows, but did not expose a set code/expansion id that can be used for whole-set indexing.",
+        game,
+        set_query: setQuery,
+        cards: liveCards,
+        imported_count: liveCards.length,
+        catalog_index_status: "not_resolved",
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const indexResult = await wordpressCatalogIndexer({
+      game,
+      expansionId: resolvedExpansionId,
+      pageSize: input.pageSize ?? input.page_size ?? 100,
+      maxPages: input.maxPages ?? input.max_pages ?? 10000,
+      maxExpansionPages: input.maxExpansionPages ?? input.max_expansion_pages ?? 10000,
+      indexExpansions: false,
+      skipCards: false,
+      executeDatabaseWrites: true,
+      includeUsageSnapshot: false,
+    })
+
+    if (indexResult.status !== "ok") {
+      return {
+        status: "ok",
+        action: "scrydex_missing_set_live_search_completed",
+        code: "scrydex_set_live_search_completed_catalog_index_blocked",
+        message: indexResult.message ?? "ScryDex set lookup worked, but full-set indexing was blocked.",
+        game,
+        set_query: setQuery,
+        expansion_id: resolvedExpansionId,
+        cards: liveCards,
+        imported_count: liveCards.length,
+        catalog_index_status: "blocked",
+        catalog_index_error: indexResult,
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    return {
+      status: "ok",
+      action: "scrydex_missing_set_index_completed",
+      code: "scrydex_missing_set_index_completed",
+      game,
+      set_query: setQuery,
+      expansion_id: resolvedExpansionId,
+      cards: liveCards,
+      imported_count: liveCards.length,
+      catalog_index_status: "completed",
+      catalog_index: indexResult,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
     }
   }
 
@@ -1396,6 +1577,8 @@ export function createLocalSyncStore(options = {}) {
       (effectiveProviderCardId || effectiveReferenceVariantId || effectiveProviderVariantId ? "scrydex_catalog" : "manual_intake")
     const priceObservedAtUtc =
       cleanIsoTimestamp(input.price_observed_at_utc ?? input.catalog_synced_at_utc) || now().toISOString()
+    const syncIntent =
+      cleanExternalId(input.sync_intent ?? input.syncIntent) || "offline_inventory_intake"
     const priceOverrideReason =
       finalPriceMinorUnits !== suggestedPriceMinorUnits || finalPriceMinorUnits !== requestedPriceMinorUnits
         ? cleanReason(input.price_override_reason ?? "staff_price_override")
@@ -1472,7 +1655,7 @@ export function createLocalSyncStore(options = {}) {
         item: publicInventoryItem(item),
         actor_id: session.user.id,
         actor_name: session.user.name,
-        sync_intent: "offline_inventory_intake",
+        sync_intent: syncIntent,
         pricing: {
           source: priceSource,
           observed_at_utc: priceObservedAtUtc,
@@ -1514,6 +1697,106 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function updateInventoryItem(token, publicId, input = {}) {
+    const session = requireWorkspaceAccess(token, "Inventory")
+
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const requestedPublicId = cleanPublicId(publicId ?? input.public_id ?? input.inventory_public_id)
+    const item = inventoryItems.find((candidate) =>
+      candidate.public_id === requestedPublicId ||
+      cleanPublicId(candidate.wordpress_public_id) === requestedPublicId ||
+      (requestedPublicId && cleanBarcode(candidate.barcode) === requestedPublicId),
+    )
+
+    if (!item) {
+      return blocked("inventory_item_not_found", "No cached inventory item matched that inventory ID.")
+    }
+
+    const nextBarcode = cleanBarcode(input.barcode ?? item.barcode)
+    const duplicateBarcode = nextBarcode
+      ? inventoryItems.find((candidate) =>
+          candidate.public_id !== item.public_id &&
+          cleanBarcode(candidate.barcode).toLowerCase() === nextBarcode.toLowerCase(),
+        )
+      : null
+
+    if (duplicateBarcode) {
+      return blocked("duplicate_barcode", "Another cached inventory item already uses that barcode.")
+    }
+
+    const nextStatus = localInventoryStatus(input.status) ?? item.status
+    const nextPriceMinorUnits = roundSalePriceMinorUnits(
+      Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units ?? item.price_minor_units)),
+    )
+    const nextLocation = cleanInventoryLocation(input.location ?? input.location_label ?? item.location) || item.location
+    const nextOnlineVisibility = cleanVisibility(input.online_visibility ?? item.online_visibility, "visible")
+    const nextKioskVisibility = cleanVisibility(input.kiosk_visibility ?? item.kiosk_visibility, "visible")
+    const nextPosVisibility = cleanVisibility(input.pos_visibility ?? item.pos_visibility, "visible")
+    const syncIntent = cleanExternalId(input.sync_intent ?? input.syncIntent) || "staff_inventory_update"
+    const updateReason = cleanReason(input.reason ?? input.update_reason ?? "staff inventory update")
+
+    item.status = nextStatus
+    item.price_minor_units = nextPriceMinorUnits
+    item.location = nextLocation
+    item.barcode = nextBarcode || item.barcode
+    item.online_visibility = nextOnlineVisibility
+    item.kiosk_visibility = nextKioskVisibility
+    item.pos_visibility = nextPosVisibility
+    item.source = "queued"
+    item.external_sync_state = "pending"
+    item.updated_by_user_id = session.user.id
+    item.updated_by_user_name = session.user.name
+    item.row_version += 1
+    saveInventoryItem(database, item, now)
+    mergeInventoryLocation(database, inventoryLocations, nextLocation, now)
+
+    const operation = appendQueueOperation(database, queue, "inventory_update", item.public_id, {
+      item: publicInventoryItem(item),
+      inventory_public_id: cleanPublicId(item.wordpress_public_id) || item.public_id,
+      local_inventory_public_id: item.public_id,
+      barcode: item.barcode,
+      status: item.status,
+      location: item.location,
+      price_minor_units: item.price_minor_units,
+      online_visibility: item.online_visibility,
+      kiosk_visibility: item.kiosk_visibility,
+      pos_visibility: item.pos_visibility,
+      actor_id: session.user.id,
+      actor_name: session.user.name,
+      reason: updateReason,
+      sync_intent: syncIntent,
+      wordpress_acceptance_required: true,
+    }, now)
+
+    const autoSyncResults = []
+
+    if (wordpressInventoryUpdatePush) {
+      autoSyncResults.push(await pushInventoryUpdateOperation(operation))
+    }
+
+    return {
+      status: "ok",
+      action: "inventory_item_updated",
+      item: publicInventoryItem(item),
+      operation: {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        sync_status: operation.sync_status,
+      },
+      wordpress_acceptance_required: true,
+      wordpress_auto_sync_performed: autoSyncResults.length > 0,
+      wordpress_accepted_count: autoSyncResults.filter((result) => result.status === "accepted").length,
+      wordpress_retry_count: autoSyncResults.filter((result) => result.status === "retry").length,
+      auto_sync_results: autoSyncResults,
+      local_queue_depth: pendingQueueOperations(queue).length,
+      credentials_synced_to_client: false,
+    }
+  }
+
   async function finalizeSquarePosSale(token, input = {}) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
@@ -1533,6 +1816,8 @@ export function createLocalSyncStore(options = {}) {
     )
     const squareOrderId = cleanExternalId(input.square_order_id ?? input.squareOrderId ?? input.external_order_id ?? "")
     const saleTotalMinorUnits = Math.max(0, minorUnits(input.sale_total_minor_units ?? input.saleTotalMinorUnits))
+    const syncIntent =
+      cleanExternalId(input.sync_intent ?? input.syncIntent) || "square_pos_exact_inventory_sale"
     const scanInputs = normalizeSquareSaleScanInputs(input)
 
     if (!squareReceiptReference) {
@@ -1593,7 +1878,7 @@ export function createLocalSyncStore(options = {}) {
         actor_id: session.user.id,
         actor_name: session.user.name,
         sold_at_utc: soldAtUtc,
-        sync_intent: "square_pos_exact_inventory_sale",
+        sync_intent: syncIntent,
       }, now)
       operations.push(operation)
     }
@@ -2237,6 +2522,10 @@ export function createLocalSyncStore(options = {}) {
       status: "draft",
       staff_user_id: session.user.id,
       notes: cleanOptionalReason(input.notes),
+      customer_id_number: "",
+      customer_id_state: "",
+      customer_id_recorded_at_utc: "",
+      customer_id_recorded_by_user_id: "",
       items,
       cash_total_minor_units: tradeInTotalMinorUnits(items, "cash"),
       credit_total_minor_units: tradeInTotalMinorUnits(items, "credit"),
@@ -2341,6 +2630,31 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const previousStatus = cleanTradeInStatus(order.status) || "draft"
+    const idNumberForAcceptance = cleanTradeInCustomerIdNumber(
+      input.customer_id_number ?? input.customerIdNumber ?? order.customer_id_number,
+    )
+    const idStateForAcceptance = cleanTradeInCustomerIdState(
+      input.customer_id_state ?? input.customerIdState ?? order.customer_id_state,
+    )
+
+    if (nextStatus === "approved" && previousStatus !== "approved") {
+      if (!idNumberForAcceptance || !idStateForAcceptance) {
+        return blocked(
+          "trade_in_customer_id_required",
+          "Driver license number and state are required before accepting a trade-in offer.",
+          {
+            order: publicTradeInOrder(order, users),
+            sellable_inventory_created: false,
+          },
+        )
+      }
+
+      order.customer_id_number = idNumberForAcceptance
+      order.customer_id_state = idStateForAcceptance
+      order.customer_id_recorded_at_utc = now().toISOString()
+      order.customer_id_recorded_by_user_id = session.user.id
+    }
+
     order.status = nextStatus
     order.notes = cleanOptionalReason(input.notes ?? order.notes)
     if (nextStatus === "converted" && !order.converted_at_utc) {
@@ -3172,6 +3486,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_kiosk_order_push_connected: Boolean(wordpressKioskOrderPush),
       scrydex_lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
+      scrydex_catalog_index_connected: Boolean(wordpressCatalogIndexer),
       graded_pricing_provider_connected: gradedPricingProviderConfigured,
       graded_pricing_primary_source: "scrydex_reference_cache",
       square_inventory_count_poller_connected: Boolean(squareInventoryCountsPuller?.status?.().configured),
@@ -4305,6 +4620,73 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function pushInventoryUpdateOperation(operation) {
+    if (!wordpressInventoryUpdatePush) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: "wordpress_inventory_update_push_unavailable",
+        message: "WordPress inventory update push is not configured on this LAN server.",
+      }
+    }
+
+    const item = inventoryItems.find((candidate) => candidate.public_id === operation.entity_id) ?? operation.payload?.item
+
+    if (!item) {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "rejected",
+        code: "local_inventory_item_missing",
+      }
+    }
+
+    const pushResult = await wordpressInventoryUpdatePush({ operation, item })
+
+    if (pushResult.status !== "ok") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: pushResult.code,
+        message: pushResult.message,
+        wordpress_code: pushResult.wordpress_code ?? "",
+        http_status: pushResult.http_status ?? 0,
+        errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
+      }
+    }
+
+    const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+
+    if (localItem) {
+      localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? localItem.status
+      localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id) || localItem.wordpress_public_id
+      localItem.source = "accepted"
+      localItem.external_sync_state = "synced"
+      localItem.row_version = positiveInt(pushResult.inventory?.row_version) ?? localItem.row_version + 1
+      saveInventoryItem(database, localItem, now)
+    }
+
+    deleteQueueOperation(database, queue, operation.operation_id)
+
+    return {
+      operation_id: operation.operation_id,
+      operation_type: operation.operation_type,
+      entity_id: operation.entity_id,
+      status: "accepted",
+      code: pushResult.code,
+      wordpress_code: pushResult.wordpress_code,
+      wordpress_inventory: pushResult.inventory,
+      woocommerce_product_sync: pushResult.woocommerce_product_sync,
+      square_payment_capture_supported: false,
+      payment_capture_authority: "official_woocommerce_square_extension",
+    }
+  }
+
   async function pushSquareSaleOperation(operation) {
     if (!wordpressInventorySalePush) {
       return {
@@ -4460,6 +4842,7 @@ export function createLocalSyncStore(options = {}) {
 
     if (
       !wordpressInventoryPush &&
+      !wordpressInventoryUpdatePush &&
       !wordpressInventorySalePush &&
       !wordpressFulfillmentStatusPush &&
       !wordpressEventUpsertPush &&
@@ -4475,6 +4858,7 @@ export function createLocalSyncStore(options = {}) {
     const expiryCleanup = cleanupExpiredLocalHolds()
     const pendingOperations = pendingQueueOperations(queue)
     const inventoryOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_intake")
+    const inventoryUpdateOperations = pendingOperations.filter((operation) => operation.operation_type === "inventory_update")
     const squareSaleOperations = pendingOperations.filter((operation) => operation.operation_type === "square_pos_sale")
     const fulfillmentStatusOperations = pendingOperations.filter(
       (operation) => operation.operation_type === "woocommerce_fulfillment_status",
@@ -4497,6 +4881,10 @@ export function createLocalSyncStore(options = {}) {
 
     for (const operation of inventoryOperations) {
       results.push(await pushInventoryIntakeOperation(operation))
+    }
+
+    for (const operation of inventoryUpdateOperations) {
+      results.push(await pushInventoryUpdateOperation(operation))
     }
 
     for (const operation of squareSaleOperations) {
@@ -5084,6 +5472,7 @@ export function createLocalSyncStore(options = {}) {
     createEventCheckin,
     createEventRegistration,
     createInventoryIntake,
+    updateInventoryItem,
     createKioskOrder,
     createSquareTerminalCheckout,
     createSquareTerminalDeviceCode,
@@ -5112,6 +5501,7 @@ export function createLocalSyncStore(options = {}) {
     searchCustomers,
     searchInventory,
     identifyScryDexCardImage,
+    indexScryDexCatalog,
     searchScryDexCards,
     lookupGradedTradeInValuation,
     syncStatus,
@@ -5286,6 +5676,10 @@ function migrateLocalSyncDatabase(database) {
       status TEXT NOT NULL,
       staff_user_id TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
+      customer_id_number TEXT NOT NULL DEFAULT '',
+      customer_id_state TEXT NOT NULL DEFAULT '',
+      customer_id_recorded_at_utc TEXT NOT NULL DEFAULT '',
+      customer_id_recorded_by_user_id TEXT NOT NULL DEFAULT '',
       items_json TEXT NOT NULL DEFAULT '[]',
       cash_total_minor_units INTEGER NOT NULL DEFAULT 0,
       credit_total_minor_units INTEGER NOT NULL DEFAULT 0,
@@ -5474,6 +5868,10 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "trade_in_orders", "customer_public_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "trade_in_orders", "staff_user_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "trade_in_orders", "notes", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "customer_id_number", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "customer_id_state", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "customer_id_recorded_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "trade_in_orders", "customer_id_recorded_by_user_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "trade_in_orders", "items_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "trade_in_orders", "cash_total_minor_units", "INTEGER NOT NULL DEFAULT 0")
   ensureLocalSyncColumn(database, "trade_in_orders", "credit_total_minor_units", "INTEGER NOT NULL DEFAULT 0")
@@ -5958,7 +6356,8 @@ function loadTradeInOrders(database) {
   return database
     .prepare(`
       SELECT order_id, customer_name, customer_phone, customer_public_id, status, staff_user_id,
-        notes, items_json, cash_total_minor_units, credit_total_minor_units,
+        notes, customer_id_number, customer_id_state, customer_id_recorded_at_utc,
+        customer_id_recorded_by_user_id, items_json, cash_total_minor_units, credit_total_minor_units,
         combined_total_minor_units, converted_at_utc, converted_by_user_id,
         created_at_utc, updated_at_utc
       FROM trade_in_orders
@@ -5973,6 +6372,10 @@ function loadTradeInOrders(database) {
       status: cleanTradeInStatus(row.status) || "draft",
       staff_user_id: cleanPublicId(row.staff_user_id),
       notes: cleanOptionalReason(row.notes),
+      customer_id_number: cleanTradeInCustomerIdNumber(row.customer_id_number),
+      customer_id_state: cleanTradeInCustomerIdState(row.customer_id_state),
+      customer_id_recorded_at_utc: cleanIsoTimestamp(row.customer_id_recorded_at_utc),
+      customer_id_recorded_by_user_id: cleanPublicId(row.customer_id_recorded_by_user_id),
       items: cleanTradeInItems(parseJson(row.items_json, [])),
       cash_total_minor_units: Math.max(0, minorUnits(row.cash_total_minor_units)),
       credit_total_minor_units: Math.max(0, minorUnits(row.credit_total_minor_units)),
@@ -6199,11 +6602,12 @@ function saveTradeInOrder(database, order) {
     .prepare(`
       INSERT INTO trade_in_orders (
         order_id, customer_name, customer_phone, customer_public_id, status, staff_user_id,
-        notes, items_json, cash_total_minor_units, credit_total_minor_units,
+        notes, customer_id_number, customer_id_state, customer_id_recorded_at_utc,
+        customer_id_recorded_by_user_id, items_json, cash_total_minor_units, credit_total_minor_units,
         combined_total_minor_units, converted_at_utc, converted_by_user_id,
         created_at_utc, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_id) DO UPDATE SET
         customer_name = excluded.customer_name,
         customer_phone = excluded.customer_phone,
@@ -6211,6 +6615,10 @@ function saveTradeInOrder(database, order) {
         status = excluded.status,
         staff_user_id = excluded.staff_user_id,
         notes = excluded.notes,
+        customer_id_number = excluded.customer_id_number,
+        customer_id_state = excluded.customer_id_state,
+        customer_id_recorded_at_utc = excluded.customer_id_recorded_at_utc,
+        customer_id_recorded_by_user_id = excluded.customer_id_recorded_by_user_id,
         items_json = excluded.items_json,
         cash_total_minor_units = excluded.cash_total_minor_units,
         credit_total_minor_units = excluded.credit_total_minor_units,
@@ -6227,6 +6635,10 @@ function saveTradeInOrder(database, order) {
       cleanTradeInStatus(order.status) || "draft",
       cleanPublicId(order.staff_user_id),
       cleanOptionalReason(order.notes),
+      cleanTradeInCustomerIdNumber(order.customer_id_number),
+      cleanTradeInCustomerIdState(order.customer_id_state),
+      cleanIsoTimestamp(order.customer_id_recorded_at_utc),
+      cleanPublicId(order.customer_id_recorded_by_user_id),
       JSON.stringify(cleanTradeInItems(order.items)),
       Math.max(0, minorUnits(order.cash_total_minor_units)),
       Math.max(0, minorUnits(order.credit_total_minor_units)),
@@ -6838,7 +7250,9 @@ function cleanQueueSyncStatus(value) {
 function localInventoryStatus(value) {
   const status = String(value ?? "").trim()
 
-  return ["available", "reserved", "sold", "conflict", "pending_intake"].includes(status) ? status : null
+  return ["available", "reserved", "sold", "conflict", "pending_intake", "return_review", "damaged", "removed"].includes(status)
+    ? status
+    : null
 }
 
 function seedUsers() {
@@ -7854,6 +8268,34 @@ function cleanTradeInFinalValueMinorUnits(value) {
   return Math.max(0, minorUnits(value))
 }
 
+function cleanTradeInCustomerIdNumber(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-zA-Z0-9\- ]/g, "")
+    .slice(0, 64)
+}
+
+function cleanTradeInCustomerIdState(value) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .slice(0, 2)
+}
+
+function maskTradeInCustomerIdNumber(value) {
+  const cleaned = cleanTradeInCustomerIdNumber(value)
+
+  if (!cleaned) {
+    return ""
+  }
+
+  const visible = cleaned.replace(/[^a-zA-Z0-9]/g, "").slice(-4)
+
+  return visible ? `****${visible}` : "****"
+}
+
 function tradeInValueMinorUnits(marketMidMinorUnits, percentageBasisPoints) {
   const raw = Math.floor((Math.max(0, minorUnits(marketMidMinorUnits)) * cleanTradeInPercentageBasisPoints(percentageBasisPoints)) / 10000)
 
@@ -8106,6 +8548,8 @@ function publicTradeInOrder(order, users = []) {
   const staffUser = users.find((user) => cleanPublicId(user.id) === staffUserId)
   const convertedByUserId = cleanPublicId(order.converted_by_user_id)
   const convertedByUser = users.find((user) => cleanPublicId(user.id) === convertedByUserId)
+  const idRecordedByUserId = cleanPublicId(order.customer_id_recorded_by_user_id)
+  const idRecordedByUser = users.find((user) => cleanPublicId(user.id) === idRecordedByUserId)
 
   return {
     order_id: cleanPublicId(order.order_id),
@@ -8116,6 +8560,11 @@ function publicTradeInOrder(order, users = []) {
     staff_user_id: staffUserId,
     staff_user_name: staffUser ? cleanName(staffUser.name) : "",
     notes: cleanOptionalReason(order.notes),
+    customer_id_number_masked: maskTradeInCustomerIdNumber(order.customer_id_number),
+    customer_id_state: cleanTradeInCustomerIdState(order.customer_id_state),
+    customer_id_recorded_at_utc: cleanIsoTimestamp(order.customer_id_recorded_at_utc),
+    customer_id_recorded_by_user_id: idRecordedByUserId,
+    customer_id_recorded_by_user_name: idRecordedByUser ? cleanName(idRecordedByUser.name) : "",
     items,
     item_count: items.length,
     cash_total_minor_units: cashTotalMinorUnits,
@@ -8192,6 +8641,10 @@ function tradeInOrderMatchesNeedle(order, needle, users = []) {
     publicOrder.customer_name,
     publicOrder.customer_phone,
     publicOrder.customer_public_id,
+    publicOrder.customer_id_number_masked,
+    publicOrder.customer_id_state,
+    publicOrder.customer_id_recorded_by_user_id,
+    publicOrder.customer_id_recorded_by_user_name,
     publicOrder.staff_user_id,
     publicOrder.staff_user_name,
     publicOrder.status,
@@ -9484,7 +9937,7 @@ function isActiveEventSnapshot(event, now = () => new Date()) {
     return true
   }
 
-  return startsAtMs + 8 * 60 * 60 * 1000 >= now().getTime()
+  return startsAtMs >= now().getTime()
 }
 
 function nullableNonNegativeInt(value) {
@@ -9542,6 +9995,52 @@ function cleanGame(value) {
   return ["pokemon", "magicthegathering", "lorcana", "onepiece"].includes(normalizedGame)
     ? normalizedGame
     : "pokemon"
+}
+
+function cleanScryDexCatalogIndexMode(value) {
+  const mode = String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_")
+
+  return mode === "card" ? "card" : "set"
+}
+
+function supportedScryDexGames(value) {
+  const requested = Array.isArray(value)
+    ? value
+    : String(value ?? "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+  const games = requested.length > 0 ? requested.map(cleanGame) : ["pokemon", "magicthegathering", "lorcana", "onepiece"]
+
+  return [...new Set(games)]
+}
+
+function cleanProviderResourceId(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^A-Za-z0-9_:-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 191)
+}
+
+function bestExpansionIdFromCards(cards, setQuery) {
+  const normalizedSetQuery = normalizeCacheText(setQuery)
+  const candidates = Array.isArray(cards) ? cards : []
+  const exactMatch = candidates.find((card) => {
+    const setCode = normalizeCacheText(card?.set_code)
+    const setName = normalizeCacheText(card?.set_name)
+
+    return normalizedSetQuery && (setCode === normalizedSetQuery || setName === normalizedSetQuery)
+  })
+  const looseMatch = candidates.find((card) => {
+    const setCode = normalizeCacheText(card?.set_code)
+    const setName = normalizeCacheText(card?.set_name)
+
+    return normalizedSetQuery && (setCode.includes(normalizedSetQuery) || setName.includes(normalizedSetQuery))
+  })
+  const selected = exactMatch ?? looseMatch ?? candidates[0]
+
+  return cleanProviderResourceId(selected?.set_code ?? selected?.set_name ?? "")
 }
 
 function searchReferenceCards(referenceCards, needle, game, setFilter = "", limit = null) {
@@ -9897,9 +10396,18 @@ function cleanReferencePricePoints(value) {
         point.market_price_minor_units,
         point.market_price ?? point.market ?? point.market_value ?? point.marketValue ?? point.value,
       )
-      const lowPriceMinorUnits = pricePointMinorUnits(point.low_price_minor_units, point.low_price ?? point.low)
-      const midPriceMinorUnits = pricePointMinorUnits(point.mid_price_minor_units, point.mid_price ?? point.mid)
-      const highPriceMinorUnits = pricePointMinorUnits(point.high_price_minor_units, point.high_price ?? point.high)
+      const lowPriceMinorUnits = pricePointMinorUnits(
+        point.low_price_minor_units,
+        point.low_price ?? point.lowPrice ?? point.low ?? point.market_low ?? point.marketLow ?? point.low_value ?? point.lowValue,
+      )
+      const midPriceMinorUnits = pricePointMinorUnits(
+        point.mid_price_minor_units,
+        point.mid_price ?? point.midPrice ?? point.mid ?? point.market_mid ?? point.marketMid ?? point.mid_value ?? point.midValue,
+      )
+      const highPriceMinorUnits = pricePointMinorUnits(
+        point.high_price_minor_units,
+        point.high_price ?? point.highPrice ?? point.high ?? point.market_high ?? point.marketHigh ?? point.high_value ?? point.highValue,
+      )
       const rawOrGraded = cleanRawOrGraded(
         point.raw_or_graded ?? point.rawOrGraded ?? point.type ?? (point.is_perfect === true ? "graded" : ""),
       )

@@ -1,13 +1,15 @@
 import dgram from "node:dgram"
 import { hostname } from "node:os"
 
+import { cleanLanPublicServerUrl } from "./lanServerUrl.mjs"
+
 export const LOCAL_SYNC_DISCOVERY_PROTOCOL = "pug-local-sync-discovery-v1"
 export const LOCAL_SYNC_DISCOVERY_PORT = 8788
 
 export function createLocalSyncDiscoveryResponder(options = {}) {
   const socket = dgram.createSocket("udp4")
   const discoveryPort = normalizePort(options.discoveryPort, LOCAL_SYNC_DISCOVERY_PORT)
-  const serverUrl = cleanUrl(options.serverUrl) || "http://127.0.0.1:8787"
+  const serverUrl = cleanLanPublicServerUrl(options.serverUrl) || "http://127.0.0.1:8787"
   const websiteUrl = cleanUrl(options.websiteUrl)
   const storeId = cleanId(options.storeId) || "pug-game-shop"
   const hostName = cleanLabel(options.hostname) || hostname() || "local-sync-host"

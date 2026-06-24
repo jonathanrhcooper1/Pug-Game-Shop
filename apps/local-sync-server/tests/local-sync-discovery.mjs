@@ -5,6 +5,43 @@ import {
   LOCAL_SYNC_DISCOVERY_PROTOCOL,
   listenLocalSyncDiscoveryResponder,
 } from "../src/localSyncDiscovery.mjs"
+import { resolveLanListenHost, resolveLanPublicServerUrl } from "../src/lanServerUrl.mjs"
+
+assert.equal(resolveLanListenHost(""), "0.0.0.0")
+assert.equal(
+  resolveLanPublicServerUrl({
+    configuredServerUrl: "http://STORE-SERVER-IP:8787",
+    host: "0.0.0.0",
+    port: "8787",
+    networkInterfaces: {
+      Ethernet: [
+        { address: "127.0.0.1", family: "IPv4", internal: true },
+        { address: "192.168.1.44", family: "IPv4", internal: false },
+      ],
+    },
+  }),
+  "http://192.168.1.44:8787",
+)
+assert.equal(
+  resolveLanPublicServerUrl({
+    configuredServerUrl: "http://127.0.0.1:8787",
+    host: "0.0.0.0",
+    port: "8787",
+    networkInterfaces: {
+      WiFi: [{ address: "10.0.0.25", family: "IPv4", internal: false }],
+    },
+  }),
+  "http://10.0.0.25:8787",
+)
+assert.equal(
+  resolveLanPublicServerUrl({
+    configuredServerUrl: "https://lan-server.example.test:9443",
+    host: "0.0.0.0",
+    port: "8787",
+    networkInterfaces: {},
+  }),
+  "https://lan-server.example.test:9443",
+)
 
 const discoveryPort = 18788
 const responder = await listenLocalSyncDiscoveryResponder({

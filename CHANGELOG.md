@@ -4,6 +4,45 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Added Inventory Intake recovery actions for `Set Not Found` and `Card Not
+  Found`. The app now asks the LAN server to trigger WordPress/ScryDex full-set
+  indexing when a set can be resolved, or to search/import the entered card
+  across every supported ScryDex game when the exact card is missing.
+- Fixed Inventory `Adjust Qty` so it stays on the Inventory screen and performs
+  real live stock changes: positive adjustments create additional inventory
+  copies through the LAN intake/WordPress sync path, while negative adjustments
+  remove exact saleable copies through the existing stock removal path.
+- Added a selected-card `Force ScryDex Pricing` refresh for Inventory and
+  Trade-In screens. The action bypasses stale local/WordPress cache, calls the
+  WordPress ScryDex provider with `force_live=1`, persists returned catalog and
+  pricing rows, refreshes the LAN local cache, and updates the selected price
+  field when a usable market value is returned.
+- Added selected-card reference links, including TCGplayer for singles and
+  graded-card comp links for graded entries, directly on the Inventory and
+  Trade-In selected-card panels.
+- Expanded ScryDex price parsing to preserve `market_low`, `market_high`,
+  `low_value`, and `high_value` aliases so low/mid/high values do not disappear
+  when the provider uses alternate field names.
+- Added Inventory screen actions for `Set Stock to 0` and `Remove from
+  Inventory`. Both actions use the LAN server's exact-inventory removal path,
+  mark selected copies out of saleable stock locally, push the sold/zero state
+  to WordPress/WooCommerce, and rely on the WooCommerce Square inventory sync
+  for Square stock updates.
+- Added `npm run release:copy-usb` to copy the rebuilt production release
+  folder, release ZIP, LAN server ZIP, staff installer, kiosk installer, and a
+  printable patch install checklist to `D:\The Pug Installers` or a supplied USB
+  target path.
+- Updated LAN server startup/package behavior so the server advertises the real
+  LAN IP automatically when `LOCAL_SYNC_SERVER_URL` is blank and attempts to add
+  Windows Firewall rules for TCP 8787 and UDP 8788.
+- Added trade-in acceptance ID logging: approving a trade-in now requires DL
+  number and two-letter state, stores the audit fields with the trade record,
+  and only returns a masked ID to the employee app/customer history screens.
+- Fixed active event filtering so past/staged cached events do not remain
+  selected after their event start time has passed.
+- Added packaged LAN operator scripts to dump local app, website, and Square
+  inventory snapshots, force-pull website inventory/reference cards into the
+  local SQLite cache, and run a daily website price/catalog refresh.
 - Rebuilt the production release package so the staff app, kiosk app, LAN
   server contract, tests, and release docs target `https://thepuggaming.com`
   instead of the GoDaddy preview host.

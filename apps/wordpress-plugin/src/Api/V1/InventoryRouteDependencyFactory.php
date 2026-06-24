@@ -15,6 +15,7 @@ final class InventoryRouteDependencyFactory {
 		'search_inventory_items',
 		'search_reference_cards',
 		'create_inventory_item',
+		'update_inventory_item',
 		'mark_inventory_item_sold',
 	);
 

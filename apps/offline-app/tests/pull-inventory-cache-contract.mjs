@@ -239,8 +239,8 @@ try {
     "Avery Chen",
   )
   assert.equal(
-    findCustomerCreditSnapshot(offlineWorkspaceSeed.customerCreditDirectory, 999).customerId,
-    91,
+    findCustomerCreditSnapshot(offlineWorkspaceSeed.customerCreditDirectory, 999),
+    null,
   )
   const updatedCreditDirectory = upsertCustomerCreditSnapshot(
     offlineWorkspaceSeed.customerCreditDirectory,

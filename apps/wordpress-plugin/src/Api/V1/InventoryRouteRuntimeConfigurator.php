@@ -13,6 +13,7 @@ final class InventoryRouteRuntimeConfigurator {
 	private const STAFF_SEARCH_ROUTE_KEY = 'GET /inventory/search';
 	private const REFERENCE_SEARCH_ROUTE_KEY = 'GET /reference/search';
 	private const STAFF_CREATE_ROUTE_KEY = 'POST /inventory';
+	private const STAFF_UPDATE_ROUTE_KEY = 'PUT /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)';
 	private const STAFF_MARK_SOLD_ROUTE_KEY = 'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold';
 
 	/**
@@ -46,6 +47,13 @@ final class InventoryRouteRuntimeConfigurator {
 			if (
 				self::STAFF_CREATE_ROUTE_KEY === InventoryRoutePermissionCallbackFactory::route_key( $route_contract )
 				&& true === $settings['staff_create_route_enabled']
+			) {
+				$route_contract = $this->enable_write_route( $route_contract );
+			}
+
+			if (
+				self::STAFF_UPDATE_ROUTE_KEY === InventoryRoutePermissionCallbackFactory::route_key( $route_contract )
+				&& true === $settings['staff_update_route_enabled']
 			) {
 				$route_contract = $this->enable_write_route( $route_contract );
 			}
@@ -88,6 +96,7 @@ final class InventoryRouteRuntimeConfigurator {
 		$settings = InventoryRouteRuntimeSettings::sanitize( $runtime_settings );
 
 		return true === $settings['staff_create_route_enabled']
+			|| true === $settings['staff_update_route_enabled']
 			|| true === $settings['staff_mark_sold_route_enabled'];
 	}
 

@@ -49,7 +49,7 @@ export function createTauriLocalSyncDiscoveryAdapter(): LocalSyncDiscoveryAdapte
     discoverLocalSyncServers: (options = {}) =>
       invoke(localSyncDiscoveryCommandName, {
         request: {
-          timeout_ms: options.timeoutMs ?? 900,
+          timeout_ms: options.timeoutMs ?? 2500,
           discovery_port: options.discoveryPort ?? 8788,
         },
       }) as Promise<LocalSyncDiscoveryResponse>,

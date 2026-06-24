@@ -12,7 +12,15 @@ export type IconName =
   | "history"
   | "checkout"
 
-export type InventoryStatus = "available" | "reserved" | "sold" | "conflict" | "pending_intake"
+export type InventoryStatus =
+  | "available"
+  | "reserved"
+  | "sold"
+  | "conflict"
+  | "pending_intake"
+  | "return_review"
+  | "damaged"
+  | "removed"
 export type InventoryProductTypeFilter = "all" | "raw" | "graded"
 export type InventorySource = "cached" | "queued" | "accepted"
 export type QueueTone = "success" | "warning" | "neutral"
@@ -1523,7 +1531,7 @@ export function findCustomerCreditSnapshot(
   credits: CustomerCreditSnapshot[],
   customerId: number,
 ): CustomerCreditSnapshot | null {
-  return credits.find((credit) => credit.customerId === customerId) ?? credits[0] ?? null
+  return credits.find((credit) => credit.customerId === customerId) ?? null
 }
 
 export function upsertCustomerCreditSnapshot(

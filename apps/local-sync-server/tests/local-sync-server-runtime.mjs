@@ -240,6 +240,7 @@ const server = createLocalSyncHttpServer({
       assert.equal(item.barcode, "PUG-WP-CHARIZARD")
       assert.equal(operation.payload.square_receipt_reference, "SQ-SALE-CHARIZARD-25000")
       assert.equal(operation.payload.inventory_public_id, "wp-inventory-charizard")
+      assert.equal(operation.payload.sync_intent, "square_pos_exact_inventory_sale")
 
       return {
         status: "ok",

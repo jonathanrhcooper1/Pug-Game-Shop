@@ -1,4 +1,4 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 4
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 5
 export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 3
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
@@ -14,6 +14,7 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "PATCH", path: "/users/:user_id/access", purpose: "Manager role/access policy update queue" },
   { method: "GET", path: "/inventory/search", purpose: "Shared local inventory cache search" },
   { method: "GET", path: "/scrydex/cards/search", purpose: "Server-side ScryDex reference lookup for inventory intake" },
+  { method: "POST", path: "/scrydex/catalog/index", purpose: "Server-side missing set/card ScryDex import and full-set catalog indexing" },
   { method: "POST", path: "/scrydex/cards/identify-image", purpose: "Server-side ScryDex Vision live card scan lookup for inventory and trade-ins" },
   { method: "GET", path: "/trade-ins/graded-valuation", purpose: "Server-side secondary graded-card comp lookup for Trade-Ins" },
   { method: "POST", path: "/pos/square/inventory-pull-plan", purpose: "Manager Square POS barcode/SKU inventory-readiness plan" },
@@ -184,6 +185,7 @@ export function buildLocalSyncSetupStatus(options = {}) {
   const wordpressPushConfigured = Boolean(
       options.wordpressPushConfigured ??
       options.wordpressInventoryPushConnected ??
+        options.wordpressInventoryUpdatePushConnected ??
         options.wordpressInventorySalePushConnected ??
         options.wordpressFulfillmentStatusPushConnected ??
         options.wordpressEventUpsertPushConnected ??
@@ -225,6 +227,7 @@ export function buildLocalSyncSetupStatus(options = {}) {
     wordpress_pull_configured: Boolean(options.wordpressPullConfigured),
     wordpress_push_configured: wordpressPushConfigured,
     wordpress_inventory_push_configured: Boolean(options.wordpressInventoryPushConnected),
+    wordpress_inventory_update_push_configured: Boolean(options.wordpressInventoryUpdatePushConnected),
     wordpress_inventory_sale_push_configured: Boolean(options.wordpressInventorySalePushConnected),
     wordpress_fulfillment_pull_configured: Boolean(options.wordpressFulfillmentPullConnected),
     wordpress_fulfillment_status_push_configured: Boolean(options.wordpressFulfillmentStatusPushConnected),
@@ -235,6 +238,7 @@ export function buildLocalSyncSetupStatus(options = {}) {
     wordpress_credit_push_configured: Boolean(options.wordpressCreditPushConnected),
     wordpress_kiosk_order_push_configured: Boolean(options.wordpressKioskOrderPushConnected),
     scrydex_catalog_proxy_configured: Boolean(options.scrydexCatalogProxyConfigured),
+    scrydex_catalog_index_configured: Boolean(options.scrydexCatalogIndexConnected),
     scrydex_vision_configured: Boolean(options.scrydexVisionConfigured),
     square_inventory_count_pull_configured: Boolean(options.squareInventoryCountPullConnected),
     square_sales_report_pull_configured: Boolean(options.squareSalesReportPullConnected),

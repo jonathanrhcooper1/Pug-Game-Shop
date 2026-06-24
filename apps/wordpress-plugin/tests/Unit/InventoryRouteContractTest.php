@@ -28,7 +28,7 @@ final class InventoryRouteContractTest extends TestCase {
 				'GET /inventory'                                           => 'view_inventory',
 				'GET /inventory/(?P<inventory_id>\d+)'                    => 'public_visibility_or_view_inventory',
 				'POST /inventory'                                          => 'create_inventory',
-				'PUT /inventory/(?P<inventory_id>\d+)'                    => 'edit_inventory',
+				'PUT /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)'         => 'edit_inventory',
 				'POST /inventory/(?P<inventory_id>\d+)/reserve'           => 'source_authenticated_principal',
 				'POST /inventory/(?P<inventory_id>\d+)/release'           => 'reservation_owner_or_staff',
 				'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold' => 'staff_or_pos_device',

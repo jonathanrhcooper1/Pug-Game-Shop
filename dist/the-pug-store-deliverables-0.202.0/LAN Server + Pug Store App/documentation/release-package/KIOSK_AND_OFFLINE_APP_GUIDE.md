@@ -27,7 +27,7 @@ The packaged handoff has exactly three deliverables: `Pug Store App`, `LAN Serve
 
 ## Auto-Discovery And Manual Fallback
 
-Apps attempt auto-discovery using `pug-local-sync-discovery-v1` over UDP port `8788`. If the network blocks discovery, staff can manually enter the middleman URL, for example `http://STORE-SERVER-IP:8787`.
+Apps attempt auto-discovery using `pug-local-sync-discovery-v1` over UDP port `8788`. If the network blocks discovery, staff can manually enter the middleman URL, for example `http://SERVER-IP:8787`.
 
 ## Offline Behavior
 

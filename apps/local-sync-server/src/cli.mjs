@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import { listenLocalSyncHttpServer } from "./localSyncHttpServer.mjs"
 import { createWordPressCatalogExportPull } from "./wordpressCatalogExportPull.mjs"
 import { createWordPressCatalogFallback } from "./wordpressCatalogFallback.mjs"
+import { createWordPressCatalogIndexer } from "./wordpressCatalogIndex.mjs"
 import { createWordPressCreditPush } from "./wordpressCreditPush.mjs"
 import { createWordPressEventCheckinPush } from "./wordpressEventCheckinPush.mjs"
 import { createWordPressCustomerUpsertPush } from "./wordpressCustomerUpsertPush.mjs"
@@ -16,7 +17,11 @@ import {
   createWordPressFulfillmentStatusPush,
 } from "./wordpressFulfillmentPull.mjs"
 import { createWordPressInventoryPull } from "./wordpressInventoryPull.mjs"
-import { createWordPressInventoryPush, createWordPressInventorySalePush } from "./wordpressInventoryPush.mjs"
+import {
+  createWordPressInventoryPush,
+  createWordPressInventorySalePush,
+  createWordPressInventoryUpdatePush,
+} from "./wordpressInventoryPush.mjs"
 import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 import { createWordPressReportsPull } from "./wordpressReportsPull.mjs"
 import { listenLocalSyncDiscoveryResponder } from "./localSyncDiscovery.mjs"
@@ -25,6 +30,7 @@ import { createSquareInventoryCountsPuller } from "./squareInventoryCountsPuller
 import { createSquareSalesReportsPuller } from "./squareSalesReportsPuller.mjs"
 import { createSquareTerminalConnector } from "./squareTerminalConnector.mjs"
 import { createScryDexVisionIdentifier } from "./scrydexVisionIdentifier.mjs"
+import { resolveLanListenHost, resolveLanPublicServerUrl } from "./lanServerUrl.mjs"
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = resolve(appRoot, "..", "..")
@@ -35,12 +41,16 @@ loadLocalEnv([
   resolve(repoRoot, ".env.local"),
 ])
 
-const host = firstEnv("LOCAL_SYNC_HOST", "PUG_LOCAL_SYNC_HOST") ?? "127.0.0.1"
+const host = resolveLanListenHost(firstEnv("LOCAL_SYNC_HOST", "PUG_LOCAL_SYNC_HOST"))
 const port = firstEnv("LOCAL_SYNC_PORT", "PUG_LOCAL_SYNC_PORT") ?? "8787"
 const discoveryEnabled = !envFlag("LOCAL_SYNC_DISCOVERY_DISABLED", "PUG_LOCAL_SYNC_DISCOVERY_DISABLED")
 const discoveryPort = firstEnv("LOCAL_SYNC_DISCOVERY_PORT", "PUG_LOCAL_SYNC_DISCOVERY_PORT") ?? "8788"
 const databasePath = firstEnv("LOCAL_SYNC_SQLITE_PATH", "PUG_LOCAL_SYNC_DB")
-const serverUrl = firstEnv("LOCAL_SYNC_SERVER_URL", "PUG_LOCAL_SYNC_PUBLIC_URL") ?? `http://${host}:${port}`
+const serverUrl = resolveLanPublicServerUrl({
+  configuredServerUrl: firstEnv("LOCAL_SYNC_SERVER_URL", "PUG_LOCAL_SYNC_PUBLIC_URL"),
+  host,
+  port,
+})
 const websiteUrl = firstEnv("PUG_WORDPRESS_URL", "LOCAL_SYNC_WORDPRESS_URL")
 const restBasePath = firstEnv("PUG_WORDPRESS_REST_BASE", "LOCAL_SYNC_WORDPRESS_REST_BASE")
 const wordpressPushEnabled = envFlag("LOCAL_SYNC_WORDPRESS_PUSH_ENABLED", "PUG_LOCAL_SYNC_WORDPRESS_PUSH_ENABLED")
@@ -133,6 +143,14 @@ const wordpressCatalogExportPull = createWordPressCatalogExportPull({
   timeoutMs: catalogTimeoutMs,
   pageSize: process.env.PUG_WORDPRESS_CATALOG_PULL_PAGE_SIZE,
 })
+const wordpressCatalogIndexer = createWordPressCatalogIndexer({
+  websiteUrl,
+  restBasePath,
+  authHeader: catalogAuthHeader,
+  username: catalogUsername,
+  applicationPassword: catalogApplicationPassword,
+  timeoutMs: firstEnv("PUG_WORDPRESS_CATALOG_INDEX_TIMEOUT_MS", "LOCAL_SYNC_WORDPRESS_CATALOG_INDEX_TIMEOUT_MS") ?? "120000",
+})
 const wordpressInventoryPush = wordpressPushEnabled
   ? createWordPressInventoryPush({
       websiteUrl,
@@ -144,6 +162,15 @@ const wordpressInventoryPush = wordpressPushEnabled
       defaultOnlineVisibility: inventoryDefaultOnlineVisibility,
       defaultKioskVisibility: inventoryDefaultKioskVisibility,
       defaultPosVisibility: inventoryDefaultPosVisibility,
+    })
+  : null
+const wordpressInventoryUpdatePush = wordpressPushEnabled
+  ? createWordPressInventoryUpdatePush({
+      websiteUrl,
+      restBasePath,
+      authHeader: inventoryAuthHeader ?? catalogAuthHeader,
+      username: inventoryUsername ?? catalogUsername,
+      applicationPassword: inventoryApplicationPassword ?? catalogApplicationPassword,
     })
   : null
 const wordpressInventorySalePush = wordpressPushEnabled
@@ -281,12 +308,14 @@ const server = await listenLocalSyncHttpServer({
     databasePath,
     removeSeedReferenceCards,
     websiteCatalogFallback,
+    wordpressCatalogIndexer,
     wordpressCatalogExportPull,
     wordpressInventoryPull,
     wordpressEventsPull,
     wordpressFulfillmentPull,
     wordpressReportsPull,
     wordpressInventoryPush,
+    wordpressInventoryUpdatePush,
     wordpressInventorySalePush,
     wordpressFulfillmentStatusPush,
     wordpressEventUpsertPush,

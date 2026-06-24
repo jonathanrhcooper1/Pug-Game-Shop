@@ -28,6 +28,9 @@ export type LocalSyncSession = {
   role: LocalSyncUserRole
   access: LocalSyncAccessSection[]
   expiresAtUtc: string
+  issuedAtUtc?: string
+  serverTimeUtc?: string
+  ttlSeconds?: number
 }
 
 export type LocalSyncOk<T extends Record<string, unknown> = Record<string, never>> = {
@@ -86,6 +89,7 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   wordpress_pull_configured: boolean
   wordpress_push_configured: boolean
   wordpress_inventory_push_configured: boolean
+  wordpress_inventory_update_push_configured?: boolean
   wordpress_inventory_sale_push_configured?: boolean
   wordpress_fulfillment_pull_configured?: boolean
   wordpress_fulfillment_status_push_configured?: boolean
@@ -95,6 +99,7 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   wordpress_credit_push_configured: boolean
   wordpress_kiosk_order_push_configured: boolean
   scrydex_catalog_proxy_configured: boolean
+  scrydex_catalog_index_configured?: boolean
   scrydex_vision_configured?: boolean
   graded_pricing_provider_configured?: boolean
   graded_pricing_primary_source?: "scrydex_reference_cache"
@@ -213,7 +218,7 @@ export type LocalSyncInventoryItem = {
   price_minor_units: number
   currency: "USD"
   location: string
-  status: "available" | "reserved" | "sold" | "conflict" | "pending_intake"
+  status: "available" | "reserved" | "sold" | "conflict" | "pending_intake" | "return_review" | "damaged" | "removed"
   image_url: string
   back_image_url: string
   online_visibility: "hidden" | "visible" | "staff_only"
@@ -309,6 +314,24 @@ export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
   auto_sync_results: LocalSyncAutoSyncOperationResult[]
   local_queue_depth: number
   label_print_deferred: true
+}>
+
+export type LocalSyncInventoryUpdateResult = LocalSyncResult<{
+  action: "inventory_item_updated"
+  item: LocalSyncInventoryItem
+  operation: {
+    operation_id: string
+    operation_type: "inventory_update"
+    entity_id: string
+    sync_status: string
+  }
+  wordpress_acceptance_required: true
+  wordpress_auto_sync_performed: boolean
+  wordpress_accepted_count: number
+  wordpress_retry_count: number
+  auto_sync_results: LocalSyncAutoSyncOperationResult[]
+  local_queue_depth: number
+  credentials_synced_to_client?: false
 }>
 
 export type LocalSyncDymoPrinter = {
@@ -411,7 +434,7 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   game: LocalSyncScryDexCard["game"]
   set_filter?: string
   result_limit?: number | "all"
-  source: "wordpress_catalog_cache" | "local_reference_cache" | "wordpress_proxy"
+  source: "wordpress_catalog_cache" | "local_reference_cache" | "wordpress_proxy" | "wordpress_catalog_cache+wordpress_proxy"
   lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   local_reference_cache_hit: boolean
   wordpress_proxy_performed: boolean
@@ -419,6 +442,27 @@ export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   credential_storage: "wordpress_server_settings"
   credentials_synced_to_client: false
   live_provider_request_performed: boolean
+  force_live_refresh?: boolean
+}>
+
+export type LocalSyncScryDexCatalogIndexResult = LocalSyncResult<{
+  action: "scrydex_missing_set_index_completed" | "scrydex_missing_set_live_search_completed" | "scrydex_missing_card_live_search_completed"
+  code: string
+  message?: string
+  query?: string
+  set_query?: string
+  game?: LocalSyncScryDexCard["game"]
+  games?: LocalSyncScryDexCard["game"][]
+  expansion_id?: string
+  cards: LocalSyncScryDexCard[]
+  imported_count: number
+  catalog_index_status?: "completed" | "blocked" | "unavailable" | "not_resolved"
+  catalog_index?: Record<string, unknown>
+  catalog_index_error?: Record<string, unknown>
+  blocked_games?: Array<{ game: string; code: string; message: string }>
+  lookup_order?: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
 }>
 
 export type LocalSyncScryDexVisionScanResult = LocalSyncResult<{
@@ -762,6 +806,11 @@ export type LocalSyncTradeInOrder = {
   staff_user_id: string
   staff_user_name: string
   notes: string
+  customer_id_number_masked: string
+  customer_id_state: string
+  customer_id_recorded_at_utc: string
+  customer_id_recorded_by_user_id: string
+  customer_id_recorded_by_user_name?: string
   items: LocalSyncTradeInItem[]
   item_count: number
   cash_total_minor_units: number
@@ -1138,6 +1187,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   active_session_count: number
   wordpress_push_connected: boolean
   wordpress_inventory_push_connected?: boolean
+  wordpress_inventory_update_push_connected?: boolean
   wordpress_inventory_sale_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
   wordpress_event_checkin_push_connected?: boolean
@@ -1147,6 +1197,7 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   wordpress_fulfillment_status_push_connected?: boolean
   wordpress_pull_connected: boolean
   wordpress_catalog_pull_connected?: boolean
+  scrydex_catalog_index_connected?: boolean
   wordpress_inventory_pull_connected?: boolean
   wordpress_events_pull_connected?: boolean
   wordpress_fulfillment_pull_connected?: boolean
@@ -1249,6 +1300,7 @@ export type LocalSyncPushResult = LocalSyncResult<{
   }>
   wordpress_push_connected: true
   wordpress_inventory_push_connected?: boolean
+  wordpress_inventory_update_push_connected?: boolean
   wordpress_inventory_sale_push_connected?: boolean
   wordpress_event_registration_push_connected?: boolean
   wordpress_event_checkin_push_connected?: boolean
@@ -1572,17 +1624,48 @@ export type LocalSyncServerClient = {
       minimumSalePriceMinorUnits?: number
       finalPriceMinorUnits?: number
       priceOverrideReason?: string
+      syncIntent?: string
       onlineVisibility?: LocalSyncInventoryItem["online_visibility"]
       kioskVisibility?: LocalSyncInventoryItem["kiosk_visibility"]
       posVisibility?: LocalSyncInventoryItem["pos_visibility"]
     },
   ) => Promise<LocalSyncInventoryIntakeResult>
+  updateInventoryItem: (
+    sessionToken: string,
+    inventoryPublicId: string,
+    input: {
+      status?: LocalSyncInventoryItem["status"]
+      barcode?: string
+      priceMinorUnits?: number
+      salePriceMinorUnits?: number
+      minimumSalePriceMinorUnits?: number
+      location?: string
+      onlineVisibility?: LocalSyncInventoryItem["online_visibility"]
+      kioskVisibility?: LocalSyncInventoryItem["kiosk_visibility"]
+      posVisibility?: LocalSyncInventoryItem["pos_visibility"]
+      reason?: string
+      syncIntent?: string
+    },
+  ) => Promise<LocalSyncInventoryUpdateResult>
   searchScryDexCards: (
     sessionToken: string,
     query: string,
     game?: LocalSyncScryDexCard["game"],
-    options?: { limit?: number | "all"; setFilter?: string; rawOrGraded?: "raw" | "graded" },
+    options?: { limit?: number | "all"; setFilter?: string; rawOrGraded?: "raw" | "graded"; forceLive?: boolean },
   ) => Promise<LocalSyncScryDexSearchResult>
+  indexScryDexCatalog: (
+    sessionToken: string,
+    input: {
+      mode: "set" | "card"
+      query?: string
+      setQuery?: string
+      game?: LocalSyncScryDexCard["game"]
+      games?: LocalSyncScryDexCard["game"][]
+      rawOrGraded?: "raw" | "graded"
+      maxPages?: number
+      pageSize?: number
+    },
+  ) => Promise<LocalSyncScryDexCatalogIndexResult>
   identifyScryDexCardImage: (
     sessionToken: string,
     input: {
@@ -1754,7 +1837,7 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     orderId: string,
     status: LocalSyncTradeInOrderStatus,
-    input?: { notes?: string },
+    input?: { notes?: string; customerIdNumber?: string; customerIdState?: string },
   ) => Promise<LocalSyncTradeInOrderStatusUpdateResult>
   getManagerReport: (
     sessionToken: string,
@@ -1881,6 +1964,7 @@ export type LocalSyncServerClient = {
       squareReceiptReference: string
       squareOrderId?: string
       saleTotalMinorUnits?: number
+      syncIntent?: string
     },
   ) => Promise<LocalSyncSquarePosSaleFinalizeResult>
   getSquareTerminalStatus: (sessionToken: string) => Promise<LocalSyncSquareTerminalStatusResult>
@@ -2048,11 +2132,30 @@ export function createLocalSyncServerClient(
           minimum_sale_price_minor_units: input.minimumSalePriceMinorUnits ?? input.priceMinorUnits,
           final_price_minor_units: input.finalPriceMinorUnits ?? input.priceMinorUnits,
           price_override_reason: input.priceOverrideReason ?? "",
+          sync_intent: input.syncIntent ?? "",
           online_visibility: input.onlineVisibility ?? "visible",
           kiosk_visibility: input.kioskVisibility ?? "visible",
           pos_visibility: input.posVisibility ?? "visible",
         },
       }) as Promise<LocalSyncInventoryIntakeResult>,
+    updateInventoryItem: (sessionToken, inventoryPublicId, input) =>
+      requestLocalSync(fetcher, baseUrl, `/inventory/items/${encodeURIComponent(inventoryPublicId)}`, {
+        method: "PATCH",
+        sessionToken,
+        body: {
+          status: input.status ?? undefined,
+          barcode: input.barcode ?? undefined,
+          price_minor_units: input.priceMinorUnits ?? input.salePriceMinorUnits ?? undefined,
+          sale_price_minor_units: input.salePriceMinorUnits ?? input.priceMinorUnits ?? undefined,
+          minimum_sale_price_minor_units: input.minimumSalePriceMinorUnits ?? input.priceMinorUnits ?? undefined,
+          location: input.location ?? undefined,
+          online_visibility: input.onlineVisibility ?? undefined,
+          kiosk_visibility: input.kioskVisibility ?? undefined,
+          pos_visibility: input.posVisibility ?? undefined,
+          reason: input.reason ?? "",
+          sync_intent: input.syncIntent ?? "",
+        },
+      }) as Promise<LocalSyncInventoryUpdateResult>,
     searchScryDexCards: (sessionToken, query, game = "pokemon", options = {}) => {
       const params = new URLSearchParams({
         q: query,
@@ -2068,10 +2171,29 @@ export function createLocalSyncServerClient(
         params.set("raw_or_graded", options.rawOrGraded)
       }
 
+      if (options.forceLive === true) {
+        params.set("force_live", "1")
+      }
+
       return requestLocalSync(fetcher, baseUrl, `/scrydex/cards/search?${params.toString()}`, {
         sessionToken,
       }) as Promise<LocalSyncScryDexSearchResult>
     },
+    indexScryDexCatalog: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/scrydex/catalog/index", {
+        method: "POST",
+        sessionToken,
+        body: {
+          mode: input.mode,
+          query: input.query ?? "",
+          set_query: input.setQuery ?? "",
+          game: input.game ?? "pokemon",
+          games: input.games ?? [],
+          raw_or_graded: input.rawOrGraded ?? "",
+          max_pages: input.maxPages ?? 10000,
+          page_size: input.pageSize ?? 100,
+        },
+      }) as Promise<LocalSyncScryDexCatalogIndexResult>,
     identifyScryDexCardImage: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/scrydex/cards/identify-image", {
         method: "POST",
@@ -2291,7 +2413,12 @@ export function createLocalSyncServerClient(
       requestLocalSync(fetcher, baseUrl, `/trade-ins/orders/${encodeURIComponent(orderId)}/status`, {
         method: "PATCH",
         sessionToken,
-        body: { status, notes: input.notes ?? "" },
+        body: {
+          status,
+          notes: input.notes ?? "",
+          customer_id_number: input.customerIdNumber ?? "",
+          customer_id_state: input.customerIdState ?? "",
+        },
       }) as Promise<LocalSyncTradeInOrderStatusUpdateResult>,
     getManagerReport: (sessionToken, report, filters = {}) => {
       const params = new URLSearchParams()
@@ -2484,6 +2611,7 @@ export function createLocalSyncServerClient(
           square_receipt_reference: input.squareReceiptReference,
           square_order_id: input.squareOrderId ?? "",
           sale_total_minor_units: input.saleTotalMinorUnits ?? 0,
+          sync_intent: input.syncIntent ?? "",
         },
       }) as Promise<LocalSyncSquarePosSaleFinalizeResult>,
     getSquareTerminalStatus: (sessionToken) =>
@@ -2520,8 +2648,15 @@ export function createLocalSyncServerClient(
 }
 
 export function normalizeLocalSyncServerUrl(value: string) {
+  const rawValue = String(value).trim()
+
+  if (!rawValue) {
+    return "http://127.0.0.1:8787"
+  }
+
   try {
-    const url = new URL(String(value).trim())
+    const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(rawValue)
+    const url = new URL(hasScheme ? rawValue : `http://${rawValue}`)
 
     if (!["http:", "https:"].includes(url.protocol)) {
       return "http://127.0.0.1:8787"

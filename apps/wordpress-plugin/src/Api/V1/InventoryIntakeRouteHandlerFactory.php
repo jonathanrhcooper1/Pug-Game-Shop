@@ -70,6 +70,19 @@ final class InventoryIntakeRouteHandlerFactory {
 		return new InventoryMarkSoldRouteHandler( $database, (string) $database->prefix );
 	}
 
+	public function update_handler(): ?InventoryUpdateRouteHandler {
+		if ( ! $this->route_dependencies_ready() ) {
+			return null;
+		}
+
+		$database = $this->database();
+		if ( null === $database || ! $this->table_prefix_ready( (string) $database->prefix ) ) {
+			return null;
+		}
+
+		return new InventoryUpdateRouteHandler( $database, (string) $database->prefix );
+	}
+
 	/**
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
@@ -82,6 +95,12 @@ final class InventoryIntakeRouteHandlerFactory {
 
 		return array(
 			'create_inventory_item' => fn ( OfflineRestRequestData $data ): array => $handler->create_inventory_item( $data ),
+			'update_inventory_item' => fn ( OfflineRestRequestData $data ): array => $this->update_handler()?->update_inventory_item( $data )
+				?? array(
+					'status'      => 'disabled',
+					'status_code' => 501,
+					'code'        => 'inventory_update_route_disabled',
+				),
 			'mark_inventory_item_sold' => fn ( OfflineRestRequestData $data ): array => $this->mark_sold_handler()?->mark_inventory_item_sold( $data )
 				?? array(
 					'status'      => 'disabled',
@@ -127,6 +146,7 @@ final class InventoryIntakeRouteHandlerFactory {
 			'woocommerce_product_write_request_planner_ready' => method_exists( InventoryProductWriteRequestPlanner::class, 'plan' ),
 			'woocommerce_product_writer_ready'            => class_exists( WooCommerceInventoryProductWriter::class ),
 			'inventory_external_mapping_repository_ready' => method_exists( InventoryExternalMappingRepository::class, 'mark_woocommerce_product_synced' ),
+			'inventory_update_route_handler_ready'        => class_exists( InventoryUpdateRouteHandler::class ),
 			'inventory_mark_sold_route_handler_ready'     => class_exists( InventoryMarkSoldRouteHandler::class ),
 			'square_inventory_projection_planner_ready'   => method_exists( SquareInventoryProjectionPlanner::class, 'plan_row' ),
 			'square_inventory_sync_request_planner_ready' => method_exists( SquareInventorySyncRequestPlanner::class, 'plan' ),

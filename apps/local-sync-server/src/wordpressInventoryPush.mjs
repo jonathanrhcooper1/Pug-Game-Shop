@@ -86,6 +86,92 @@ export function createWordPressInventoryPush(options = {}) {
   }
 }
 
+export function createWordPressInventoryUpdatePush(options = {}) {
+  const endpointBase = normalizeWordPressCatalogBaseUrl(options.websiteUrl, options.restBasePath)
+  const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
+  const timeoutMs = boundedTimeout(options.timeoutMs)
+  const authorizationHeader = catalogAuthorizationHeader(options)
+
+  if (!endpointBase || typeof fetcher !== "function" || !authorizationHeader) {
+    return null
+  }
+
+  return async function wordpressInventoryUpdatePush({ operation, item } = {}) {
+    const identity = inventoryUpdateIdentity(item, operation)
+
+    if (!identity) {
+      return {
+        status: "blocked",
+        code: "wordpress_inventory_update_identity_required",
+        message: "WordPress public inventory ID is required before updating an existing inventory row.",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+      }
+    }
+
+    const endpoint = new URL(`${endpointBase}/inventory/${encodeURIComponent(identity)}`)
+    const body = inventoryUpdateBody(operation, item)
+    const controller = typeof AbortController === "function" ? new AbortController() : null
+    const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
+
+    try {
+      const response = await fetcher(endpoint, {
+        method: "PUT",
+        headers: {
+          accept: "application/json",
+          authorization: authorizationHeader,
+          "content-type": "application/json",
+          "idempotency-key": String(operation?.operation_id ?? item?.public_id ?? ""),
+        },
+        body: JSON.stringify(body),
+        signal: controller?.signal,
+      })
+      const responseBody = await safeJson(response)
+
+      if (!response?.ok || responseBody?.status !== "updated") {
+        return {
+          status: "blocked",
+          code: "wordpress_inventory_update_rejected",
+          http_status: Number(response?.status ?? 0),
+          wordpress_code: String(responseBody?.code ?? ""),
+          message: "WordPress rejected this inventory update.",
+          errors: Array.isArray(responseBody?.errors) ? responseBody.errors : [],
+          credentials_synced_to_client: false,
+          authorization_header_printed: false,
+          endpoint: secretSafeEndpoint(endpoint),
+        }
+      }
+
+      return {
+        status: "ok",
+        code: "wordpress_inventory_item_updated",
+        http_status: Number(response.status ?? 200),
+        wordpress_code: String(responseBody.code ?? "inventory_item_updated"),
+        inventory: inventoryUpdateResponseData(responseBody),
+        woocommerce_product_sync: woocommerceProductSyncResponse(responseBody),
+        square_payment_capture_supported: false,
+        payment_capture_authority: "official_woocommerce_square_extension",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+        endpoint: secretSafeEndpoint(endpoint),
+      }
+    } catch (error) {
+      return {
+        status: "blocked",
+        code: "wordpress_inventory_update_unavailable",
+        message: error instanceof Error ? error.message : "WordPress inventory update unavailable.",
+        credentials_synced_to_client: false,
+        authorization_header_printed: false,
+        endpoint: secretSafeEndpoint(endpoint),
+      }
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+    }
+  }
+}
+
 export function createWordPressInventorySalePush(options = {}) {
   const endpointBase = normalizeWordPressCatalogBaseUrl(options.websiteUrl, options.restBasePath)
   const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
@@ -318,6 +404,56 @@ function inventorySaleIdentity(item = {}, operation = {}) {
   )
 }
 
+function inventoryUpdateIdentity(item = {}, operation = {}) {
+  return cleanPublicIdentity(
+    item.wordpress_public_id ??
+      operation.payload?.wordpress_public_id ??
+      operation.payload?.inventory_public_id ??
+      item.public_id ??
+      operation.entity_id,
+  )
+}
+
+function inventoryUpdateBody(operation = {}, item = {}) {
+  const payload = operation.payload && typeof operation.payload === "object" ? operation.payload : {}
+  const priceMinorUnits = roundSalePriceMinorUnits(payload.price_minor_units ?? item.price_minor_units)
+
+  return {
+    source: "offline",
+    status: cleanInventoryStatus(payload.status ?? item.status),
+    barcode: cleanBarcode(payload.barcode ?? item.barcode),
+    sku: cleanBarcode(payload.barcode ?? item.barcode),
+    sale_currency: "USD",
+    minimum_sale_price_minor_units: priceMinorUnits,
+    sale_price_minor_units: priceMinorUnits,
+    online_visibility: cleanVisibility(payload.online_visibility ?? item.online_visibility, "visible"),
+    kiosk_visibility: cleanVisibility(payload.kiosk_visibility ?? item.kiosk_visibility, "visible"),
+    pos_visibility: cleanVisibility(payload.pos_visibility ?? item.pos_visibility, "visible"),
+    staff_notes: cleanText(
+      `Updated from LAN sync server by ${payload.actor_name || item.updated_by_user_name || payload.actor_id || "Unknown staff"}; reason: ${payload.reason || "staff inventory update"}; location: ${payload.location || item.location || "Inventory"}`,
+    ),
+    updated_by_user_id: cleanText(payload.actor_id ?? item.updated_by_user_id),
+    sync_woocommerce_product: true,
+    production_write_approval: "woocommerce-product-sync",
+  }
+}
+
+function inventoryUpdateResponseData(body) {
+  const data = body?.data && typeof body.data === "object" ? body.data : {}
+
+  return {
+    inventory_id: positiveInt(data.inventory_id),
+    public_id: String(data.public_id ?? ""),
+    sku: String(data.sku ?? ""),
+    barcode: String(data.barcode ?? ""),
+    status: String(data.status ?? ""),
+    row_version: positiveInt(data.row_version),
+    sale_price: String(data.sale_price ?? ""),
+    sale_currency: String(data.sale_currency ?? "USD"),
+    price_change_log_persisted: Boolean(data.price_change_log_persisted),
+  }
+}
+
 function inventorySaleBody(operation = {}, item = {}) {
   const payload = operation.payload && typeof operation.payload === "object" ? operation.payload : {}
 
@@ -439,6 +575,18 @@ function cleanVisibility(value, fallback) {
   }
 
   return ["hidden", "visible", "staff_only"].includes(fallbackVisibility) ? fallbackVisibility : "visible"
+}
+
+function cleanInventoryStatus(value) {
+  const status = String(value ?? "").trim().toLowerCase()
+
+  if (status === "conflict") {
+    return "return_review"
+  }
+
+  return ["available", "reserved", "sold", "pending_intake", "return_review", "damaged", "removed"].includes(status)
+    ? status
+    : "available"
 }
 
 function cleanBarcode(value) {

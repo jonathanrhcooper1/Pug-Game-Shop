@@ -6,9 +6,12 @@ import { fileURLToPath } from "node:url"
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const releaseScript = readFileSync(resolve(root, "scripts/package-production-release.mjs"), "utf8")
+const copyUsbScript = readFileSync(resolve(root, "scripts/copy-production-release-to-usb.mjs"), "utf8")
 const syncScript = readFileSync(resolve(root, "scripts/production-verify-active-syncs.mjs"), "utf8")
+const dymoLocalServiceScript = readFileSync(resolve(root, "scripts/Start-Pug-Dymo-Local-Service.ps1"), "utf8")
 
 assert.equal(packageJson.scripts["package:production-release"], "node scripts/package-production-release.mjs")
+assert.equal(packageJson.scripts["release:copy-usb"], "node scripts/copy-production-release-to-usb.mjs")
 assert.equal(packageJson.scripts["production:verify-active-syncs"], "node scripts/production-verify-active-syncs.mjs")
 
 for (const marker of [
@@ -22,6 +25,11 @@ for (const marker of [
   "command_prompt_window_required",
   "Start-Pug-LAN-Server-Hidden.vbs",
   "Install-Pug-LAN-Server-Startup-Task.ps1",
+  "Deploy-Pug-LAN-Server-Patch.ps1",
+  "Start-Pug-Dymo-Local-Service.ps1",
+  "dymo_local_service_helper",
+  "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
+  "patch_deploy_helper",
   "deliverables.manifest.json",
   "pug-store-app.install.json",
   "lan-server-plus-pug-store-app.install.json",
@@ -43,9 +51,27 @@ for (const marker of [
   "LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true",
   "PUG_WORDPRESS_USERNAME=replace_with_secure_value",
   "PUG_WORDPRESS_APP_PASSWORD=replace_with_secure_value",
+  "LOCAL_SYNC_SERVER_URL=",
+  "Ensure-PugFirewallRule",
+  "Pug LAN Server HTTP 8787",
+  "Pug LAN Server Discovery 8788",
   "deliverable_count: deliverableNames.length",
 ]) {
   assert.ok(releaseScript.includes(marker), `Missing release package marker: ${marker}`)
+}
+
+for (const marker of [
+  "D:\\\\The Pug Installers",
+  "the-pug-store-deliverables-",
+  "pug-lan-server.zip",
+  "READ ME - The Pug Patch Install Steps.txt",
+  "copied_production_release_to_usb",
+  "PUG_USB_INSTALLER_DIR",
+  "Deploy-Pug-LAN-Server-Patch.ps1",
+  "Install order:",
+  "Start-Pug-LAN-Server.ps1",
+]) {
+  assert.ok(copyUsbScript.includes(marker), `Missing USB copy marker: ${marker}`)
 }
 
 for (const forbiddenHost of [
@@ -67,6 +93,18 @@ for (const marker of [
   "allActiveSyncsWorking",
 ]) {
   assert.ok(syncScript.includes(marker), `Missing active sync verification marker: ${marker}`)
+}
+
+for (const marker of [
+  "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
+  "Get-CimInstance Win32_Service",
+  "Get-Process",
+  "Start-Service",
+  "Start-Process",
+  "DYMO Connect was not found on this PC.",
+  "Next steps:",
+]) {
+  assert.ok(dymoLocalServiceScript.includes(marker), `Missing DYMO local helper marker: ${marker}`)
 }
 
 console.log("PASS production release package contract")
