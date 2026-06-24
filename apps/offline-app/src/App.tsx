@@ -129,6 +129,7 @@ import {
   type LocalSyncGradedProviderStatus,
   type LocalSyncGradedValuation,
   type LocalSyncInventoryItem,
+  type LocalSyncInventoryUpdateResult,
   type LocalSyncKioskOrder,
   type LocalSyncKioskOrderStatus,
   type LocalSyncManagerReportResult,
@@ -8315,6 +8316,101 @@ export function App() {
     const updateReason = cleanInventoryAdjustmentReason(
       quantityAdjustmentReason || operationOptions.adjustmentReason || "staff inventory update",
     )
+    const conditionGroupUpdateItems =
+      usesSelectedEditor && selectedInventoryGroup && inventoryMode === "updates"
+        ? selectedInventoryGroup.items.filter(
+            (item) => item.condition === targetItem.condition && item.status === "available",
+          )
+        : []
+
+    if (usesSelectedEditor && conditionGroupUpdateItems.length > 1 && nextQuantityOnHand !== null) {
+      const orderedUpdateItems = [
+        targetItem,
+        ...conditionGroupUpdateItems.filter((item) => item.id !== targetItem.id),
+      ]
+      const updateResults: Array<Extract<LocalSyncInventoryUpdateResult, { status: "ok" }>> = []
+
+      for (const item of orderedUpdateItems) {
+        const isPrimaryConditionRow = item.id === targetItem.id
+        const updateResult = await localSyncClient.updateInventoryItem(localSyncSessionToken, item.publicId, {
+          status: isPrimaryConditionRow ? targetItem.status : "removed",
+          barcode: item.barcode,
+          priceMinorUnits: nextPriceMinorUnits,
+          salePriceMinorUnits: nextPriceMinorUnits,
+          minimumSalePriceMinorUnits: nextFloorMinorUnits,
+          setQuantity: isPrimaryConditionRow ? nextQuantityOnHand : 0,
+          location: nextLocation,
+          onlineVisibility: isPrimaryConditionRow ? inventoryEditOnlineVisibility : "hidden",
+          kioskVisibility: isPrimaryConditionRow ? inventoryEditKioskVisibility : "hidden",
+          posVisibility: isPrimaryConditionRow ? inventoryEditPosVisibility : "hidden",
+          reason: isPrimaryConditionRow
+            ? updateReason
+            : `${updateReason}; consolidated duplicate condition stock into ${targetItem.publicId}`,
+          syncIntent: operationOptions.syncIntent ?? "staff_inventory_update",
+        })
+
+        if (handleBlockedLocalSyncSession(updateResult, "Inventory update locked")) {
+          setActiveSection("Inventory")
+          return
+        }
+
+        if (updateResult.status !== "ok") {
+          setActiveSection("Inventory")
+          setActivityMessage({
+            title: updateResult.status === "unavailable" ? "LAN server unavailable" : "Inventory update blocked",
+            detail:
+              updateResult.status === "unavailable"
+                ? updateResult.message
+                : `${updateResult.message} WordPress remains the final inventory authority.`,
+          })
+          return
+        }
+
+        updateResults.push(updateResult)
+      }
+
+      const updatedItemsById = new Map<number, InventoryItem>()
+
+      orderedUpdateItems.forEach((item, index) => {
+        const result = updateResults[index]
+        updatedItemsById.set(item.id, inventoryItemFromLocalSync(result.item, item.id))
+      })
+
+      setInventoryItems((items) =>
+        items.map((item) =>
+          updatedItemsById.get(item.id) ?? item,
+        ),
+      )
+
+      if (options.clearSelectedCard) {
+        clearInventorySelectionAfterSave()
+      }
+      setActiveSection("Inventory")
+      void refreshLocalSyncStatus()
+
+      const acceptedCount = updateResults.reduce(
+        (total, result) => total + (result.wordpress_accepted_count ?? 0),
+        0,
+      )
+      const retryCount = updateResults.reduce(
+        (total, result) => total + (result.wordpress_retry_count ?? 0),
+        0,
+      )
+      const syncDetail =
+        acceptedCount > 0
+          ? "WordPress accepted the condition stock update and WooCommerce stock sync was requested."
+          : retryCount > 0
+            ? "Saved locally and queued for website/Square sync retry."
+            : "Saved locally; run sync when the website connector is available."
+
+      setActivityMessage({
+        title: actionTitle,
+        detail:
+          detailOverride ??
+          `${targetItem.cardName} ${targetItem.condition} stock is now ${nextQuantityOnHand} for ${activeProfile.companyName}. ${syncDetail}`,
+      })
+      return
+    }
 
     const updateResult = await localSyncClient.updateInventoryItem(localSyncSessionToken, targetItem.publicId, {
       status: targetItem.status,
