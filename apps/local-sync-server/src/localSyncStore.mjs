@@ -987,12 +987,12 @@ export function createLocalSyncStore(options = {}) {
 
     const needle = cleanScryDexQuery(query)
     const normalizedGame = cleanGame(game)
-    const normalizedSetFilter = cleanScryDexSearchText(setFilter)
+    const forceLiveRefresh = forceLive === true
+    const normalizedSetFilter = forceLiveRefresh ? "" : cleanScryDexSearchText(setFilter)
     const resultLimit = boundedScryDexSearchLimit(limit)
     const normalizedRawOrGraded = ["raw", "graded"].includes(String(rawOrGraded ?? "").toLowerCase())
       ? String(rawOrGraded).toLowerCase()
       : ""
-    const forceLiveRefresh = forceLive === true
 
     if (!needle) {
       return blocked("scrydex_query_required", "Enter a card name, set, or number before searching ScryDex.")
@@ -1622,6 +1622,7 @@ export function createLocalSyncStore(options = {}) {
       condition,
       barcode,
       price_minor_units: finalPriceMinorUnits,
+      quantity_on_hand: 1,
       market_price_minor_units: suggestedPriceMinorUnits,
       minimum_sale_price_minor_units: minimumSalePriceMinorUnits,
       auto_price_minor_units: autoPriceMinorUnits,
@@ -1731,17 +1732,39 @@ export function createLocalSyncStore(options = {}) {
     const nextPriceMinorUnits = roundSalePriceMinorUnits(
       Math.max(0, minorUnits(input.price_minor_units ?? input.sale_price_minor_units ?? item.price_minor_units)),
     )
+    const nextMinimumSalePriceMinorUnits = Math.max(
+      0,
+      minorUnits(
+        input.minimum_sale_price_minor_units ??
+          input.minimumSalePriceMinorUnits ??
+          item.minimum_sale_price_minor_units ??
+          nextPriceMinorUnits,
+      ),
+    )
+
+    if (nextPriceMinorUnits < nextMinimumSalePriceMinorUnits) {
+      return blocked("sale_price_below_minimum", "Sale price cannot be lower than the inventory floor price.")
+    }
+
     const nextLocation = cleanInventoryLocation(input.location ?? input.location_label ?? item.location) || item.location
     const nextOnlineVisibility = cleanVisibility(input.online_visibility ?? item.online_visibility, "visible")
     const nextKioskVisibility = cleanVisibility(input.kiosk_visibility ?? item.kiosk_visibility, "visible")
     const nextPosVisibility = cleanVisibility(input.pos_visibility ?? item.pos_visibility, "visible")
+    const quantityUpdate = resolveInventoryQuantityUpdate(input, inventoryQuantityOnHand(item))
+
+    if (quantityUpdate.status !== "ok") {
+      return quantityUpdate
+    }
+
     const syncIntent = cleanExternalId(input.sync_intent ?? input.syncIntent) || "staff_inventory_update"
     const updateReason = cleanReason(input.reason ?? input.update_reason ?? "staff inventory update")
 
     item.status = nextStatus
     item.price_minor_units = nextPriceMinorUnits
+    item.minimum_sale_price_minor_units = nextMinimumSalePriceMinorUnits
     item.location = nextLocation
     item.barcode = nextBarcode || item.barcode
+    item.quantity_on_hand = quantityUpdate.quantity_on_hand
     item.online_visibility = nextOnlineVisibility
     item.kiosk_visibility = nextKioskVisibility
     item.pos_visibility = nextPosVisibility
@@ -1761,6 +1784,12 @@ export function createLocalSyncStore(options = {}) {
       status: item.status,
       location: item.location,
       price_minor_units: item.price_minor_units,
+      sale_price_minor_units: item.price_minor_units,
+      minimum_sale_price_minor_units: item.minimum_sale_price_minor_units,
+      previous_quantity_on_hand: quantityUpdate.previous_quantity_on_hand,
+      quantity_on_hand: quantityUpdate.quantity_on_hand,
+      quantity_delta: quantityUpdate.quantity_delta,
+      quantity_update_mode: quantityUpdate.quantity_update_mode,
       online_visibility: item.online_visibility,
       kiosk_visibility: item.kiosk_visibility,
       pos_visibility: item.pos_visibility,
@@ -1787,6 +1816,10 @@ export function createLocalSyncStore(options = {}) {
         entity_id: operation.entity_id,
         sync_status: operation.sync_status,
       },
+      previous_quantity_on_hand: quantityUpdate.previous_quantity_on_hand,
+      quantity_on_hand: quantityUpdate.quantity_on_hand,
+      quantity_delta: quantityUpdate.quantity_delta,
+      quantity_update_mode: quantityUpdate.quantity_update_mode,
       wordpress_acceptance_required: true,
       wordpress_auto_sync_performed: autoSyncResults.length > 0,
       wordpress_accepted_count: autoSyncResults.filter((result) => result.status === "accepted").length,
@@ -5571,6 +5604,8 @@ function migrateLocalSyncDatabase(database) {
       condition TEXT NOT NULL,
       barcode TEXT NOT NULL,
       price_minor_units INTEGER NOT NULL,
+      quantity_on_hand INTEGER NOT NULL DEFAULT 1,
+      minimum_sale_price_minor_units INTEGER NOT NULL DEFAULT 0,
       currency TEXT NOT NULL,
       location TEXT NOT NULL,
       status TEXT NOT NULL,
@@ -5887,6 +5922,8 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "reference_cards", "catalog_source", "TEXT NOT NULL DEFAULT 'wordpress_catalog_cache'")
   ensureLocalSyncColumn(database, "reference_cards", "variants_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "reference_cards", "price_points_json", "TEXT NOT NULL DEFAULT '[]'")
+  ensureLocalSyncColumn(database, "inventory_items", "quantity_on_hand", "INTEGER NOT NULL DEFAULT 1")
+  ensureLocalSyncColumn(database, "inventory_items", "minimum_sale_price_minor_units", "INTEGER NOT NULL DEFAULT 0")
   ensureLocalSyncColumn(database, "event_snapshots", "slug", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "event_snapshots", "event_type", "TEXT NOT NULL DEFAULT 'tournament'")
   ensureLocalSyncColumn(database, "event_snapshots", "game", "TEXT NOT NULL DEFAULT 'other'")
@@ -6014,7 +6051,7 @@ function loadInventoryItems(database) {
       SELECT public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
         reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
         variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
-        currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
+        quantity_on_hand, minimum_sale_price_minor_units, currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, created_by_user_id, created_by_user_name, updated_by_user_id, updated_by_user_name, source
       FROM inventory_items
@@ -6044,6 +6081,8 @@ function loadInventoryItems(database) {
       condition: row.condition,
       barcode: row.barcode,
       price_minor_units: Number(row.price_minor_units),
+      quantity_on_hand: inventoryQuantityOnHand(row),
+      minimum_sale_price_minor_units: Math.max(0, minorUnits(row.minimum_sale_price_minor_units)),
       currency: row.currency,
       location: row.location,
       status: row.status,
@@ -6508,12 +6547,12 @@ function saveInventoryItem(database, item, now) {
         public_id, wordpress_public_id, row_version, provider_card_id, game, card_name, set_name,
         reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
         variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
-        currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
+        quantity_on_hand, minimum_sale_price_minor_units, currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
         pos_visibility, square_catalog_item_id, square_catalog_variation_id,
         external_sync_state, created_by_user_id, created_by_user_name, updated_by_user_id, updated_by_user_name,
         source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         wordpress_public_id = excluded.wordpress_public_id,
         row_version = excluded.row_version,
@@ -6536,6 +6575,8 @@ function saveInventoryItem(database, item, now) {
         condition = excluded.condition,
         barcode = excluded.barcode,
         price_minor_units = excluded.price_minor_units,
+        quantity_on_hand = excluded.quantity_on_hand,
+        minimum_sale_price_minor_units = excluded.minimum_sale_price_minor_units,
         currency = excluded.currency,
         location = excluded.location,
         status = excluded.status,
@@ -6577,6 +6618,8 @@ function saveInventoryItem(database, item, now) {
       item.condition,
       item.barcode,
       item.price_minor_units,
+      inventoryQuantityOnHand(item),
+      Math.max(0, minorUnits(item.minimum_sale_price_minor_units)),
       item.currency,
       item.location,
       item.status,
@@ -7255,6 +7298,135 @@ function localInventoryStatus(value) {
     : null
 }
 
+function resolveInventoryQuantityUpdate(input = {}, previousQuantityOnHand = 0) {
+  const previousQuantity = inventoryQuantityOnHand({ quantity_on_hand: previousQuantityOnHand })
+  const absoluteQuantityValue = inventoryQuantityInputValue(input, [
+    "quantity_on_hand",
+    "quantityOnHand",
+    "set_quantity",
+    "setQuantity",
+  ])
+  const quantityDeltaValue = inventoryQuantityInputValue(input, [
+    "quantity_delta",
+    "quantityDelta",
+    "delta_quantity",
+    "deltaQuantity",
+  ])
+  const hasAbsoluteQuantity = absoluteQuantityValue !== undefined
+  const hasQuantityDelta = quantityDeltaValue !== undefined
+
+  if (hasAbsoluteQuantity && hasQuantityDelta) {
+    return blocked(
+      "inventory_quantity_update_ambiguous",
+      "Send either an absolute inventory quantity or a quantity delta, not both.",
+      { previous_quantity_on_hand: previousQuantity },
+    )
+  }
+
+  if (hasAbsoluteQuantity) {
+    const parsedQuantity = parseInventoryQuantity(absoluteQuantityValue)
+
+    if (parsedQuantity === null || parsedQuantity < 0) {
+      return blocked(
+        "invalid_inventory_quantity",
+        "Inventory quantity must be a non-negative whole number.",
+        { previous_quantity_on_hand: previousQuantity },
+      )
+    }
+
+    const quantityOnHand = Math.min(999999, parsedQuantity)
+
+    return {
+      status: "ok",
+      previous_quantity_on_hand: previousQuantity,
+      quantity_on_hand: quantityOnHand,
+      quantity_delta: quantityOnHand - previousQuantity,
+      quantity_update_mode: "absolute",
+    }
+  }
+
+  if (hasQuantityDelta) {
+    const parsedDelta = parseInventoryQuantity(quantityDeltaValue)
+
+    if (parsedDelta === null) {
+      return blocked(
+        "invalid_inventory_quantity_delta",
+        "Inventory quantity delta must be a whole number.",
+        { previous_quantity_on_hand: previousQuantity },
+      )
+    }
+
+    const quantityOnHand = previousQuantity + parsedDelta
+
+    if (quantityOnHand < 0) {
+      return blocked(
+        "inventory_quantity_below_zero",
+        "Inventory quantity delta cannot reduce stock below zero.",
+        {
+          previous_quantity_on_hand: previousQuantity,
+          requested_quantity_delta: parsedDelta,
+        },
+      )
+    }
+
+    return {
+      status: "ok",
+      previous_quantity_on_hand: previousQuantity,
+      quantity_on_hand: Math.min(999999, quantityOnHand),
+      quantity_delta: Math.min(999999, quantityOnHand) - previousQuantity,
+      quantity_update_mode: "delta",
+    }
+  }
+
+  return {
+    status: "ok",
+    previous_quantity_on_hand: previousQuantity,
+    quantity_on_hand: previousQuantity,
+    quantity_delta: 0,
+    quantity_update_mode: "unchanged",
+  }
+}
+
+function inventoryQuantityInputValue(input, keys) {
+  for (const key of keys) {
+    if (!Object.prototype.hasOwnProperty.call(input, key)) {
+      continue
+    }
+
+    const value = input[key]
+
+    if (value === null || value === undefined || String(value).trim() === "") {
+      continue
+    }
+
+    return value
+  }
+
+  return undefined
+}
+
+function parseInventoryQuantity(value) {
+  const rawValue = String(value ?? "").trim()
+
+  if (!rawValue) {
+    return null
+  }
+
+  const parsed = Number(rawValue)
+
+  return Number.isFinite(parsed) && Number.isInteger(parsed) ? parsed : null
+}
+
+function inventoryQuantityOnHand(item = {}) {
+  const parsedQuantity = parseInventoryQuantity(item.quantity_on_hand ?? item.quantityOnHand)
+
+  if (parsedQuantity !== null) {
+    return Math.min(999999, Math.max(0, parsedQuantity))
+  }
+
+  return ["sold", "removed"].includes(localInventoryStatus(item.status)) ? 0 : 1
+}
+
 function seedUsers() {
   return [
     buildSeedUser({
@@ -7502,6 +7674,8 @@ function publicInventoryItem(item) {
     condition: item.condition,
     barcode: item.barcode,
     price_minor_units: item.price_minor_units,
+    quantity_on_hand: inventoryQuantityOnHand(item),
+    minimum_sale_price_minor_units: Math.max(0, minorUnits(item.minimum_sale_price_minor_units)),
     currency: item.currency,
     location: item.location,
     status: item.status,
@@ -7559,6 +7733,11 @@ function localInventoryItemFromWordPress(row) {
     condition: cleanCondition(row.condition_code ?? row.condition),
     barcode: cleanBarcode(row.barcode ?? row.sku) || publicId,
     price_minor_units: priceMinorUnits,
+    quantity_on_hand: inventoryQuantityOnHand(row),
+    minimum_sale_price_minor_units:
+      row.minimum_sale_price_minor_units !== undefined && row.minimum_sale_price_minor_units !== null && row.minimum_sale_price_minor_units !== ""
+        ? Math.max(0, minorUnits(row.minimum_sale_price_minor_units))
+        : minorUnitsFromDecimal(row.minimum_sale_price ?? priceMinorUnits / 100),
     currency: cleanCurrency(row.sale_currency ?? row.currency),
     location,
     status,
@@ -9065,11 +9244,11 @@ function squareLocalCatalogMappings(inventoryItems = []) {
     }
 
     if (["available", "reserved", "pending_intake"].includes(item.status)) {
-      current.local_available_quantity += 1
+      current.local_available_quantity += inventoryQuantityOnHand(item)
     }
 
     if (item.status === "sold") {
-      current.local_sold_quantity += 1
+      current.local_sold_quantity += inventoryQuantityOnHand(item)
     }
 
     mappings.set(variationId, current)
@@ -9975,6 +10154,24 @@ function cleanScryDexQuery(value) {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 80)
 }
 
+function cleanScryDexCollectorLookupQuery(value) {
+  const query = cleanScryDexQuery(value)
+    .replace(/\b(extended|full|alternate|alt|borderless|showcase|special|textured)\s+(art|arts?)\b/g, " ")
+    .replace(/\b(extended|full|alternate|alt|borderless|showcase|special|textured)\b/g, " ")
+    .replace(/\b(art|arts?)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  return query === cleanScryDexQuery(value) ? "" : query
+}
+
+function scryDexSearchNeedles(value) {
+  const primary = cleanScryDexQuery(value)
+  const collectorFallback = cleanScryDexCollectorLookupQuery(value)
+
+  return [...new Set([primary, collectorFallback].filter(Boolean))]
+}
+
 function cleanScryDexSearchText(value) {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 4000)
 }
@@ -10247,7 +10444,7 @@ function boundedScryDexSearchLimit(value) {
 }
 
 function referenceSearchScore(card, needle, options = {}) {
-  const normalizedNeedle = cleanScryDexQuery(needle)
+  const needles = scryDexSearchNeedles(needle)
   const cardName = cleanScryDexSearchText(card.card_name)
   const setName = cleanScryDexSearchText(card.set_name)
   const identifiers = cleanScryDexSearchText([
@@ -10270,35 +10467,39 @@ function referenceSearchScore(card, needle, options = {}) {
       .join(" "),
   )
 
-  if (!normalizedNeedle) {
+  if (needles.length === 0) {
     return 0
   }
 
-  if (cardName === normalizedNeedle) {
-    return 1000
-  }
+  return needles.reduce((bestScore, normalizedNeedle, index) => {
+    const fallbackPenalty = index === 0 ? 0 : 120
 
-  if (cardName.startsWith(normalizedNeedle)) {
-    return 900
-  }
+    if (cardName === normalizedNeedle) {
+      return Math.max(bestScore, 1000 - fallbackPenalty)
+    }
 
-  if (cardName.includes(normalizedNeedle)) {
-    return 800
-  }
+    if (cardName.startsWith(normalizedNeedle)) {
+      return Math.max(bestScore, 900 - fallbackPenalty)
+    }
 
-  if (identifiers.includes(normalizedNeedle)) {
-    return 500
-  }
+    if (cardName.includes(normalizedNeedle)) {
+      return Math.max(bestScore, 800 - fallbackPenalty)
+    }
 
-  if (options.includeVariantOnlyMatches === true && variants.includes(normalizedNeedle)) {
-    return 350
-  }
+    if (identifiers.includes(normalizedNeedle)) {
+      return Math.max(bestScore, 500 - fallbackPenalty)
+    }
 
-  if (setName.includes(normalizedNeedle)) {
-    return 100
-  }
+    if (options.includeVariantOnlyMatches === true && variants.includes(normalizedNeedle)) {
+      return Math.max(bestScore, 350 - fallbackPenalty)
+    }
 
-  return 0
+    if (setName.includes(normalizedNeedle)) {
+      return Math.max(bestScore, 100)
+    }
+
+    return bestScore
+  }, 0)
 }
 
 function isVariantFocusedScryDexQuery(value) {
@@ -10309,6 +10510,10 @@ function isVariantFocusedScryDexQuery(value) {
     "foil",
     "holo",
     "reverse",
+    "extended",
+    "full art",
+    "borderless",
+    "showcase",
     "parallel",
     "edition",
     "first edition",
@@ -10654,20 +10859,30 @@ function seedScryDexReferenceCards() {
 function enrichScryDexCard(card, inventoryItems) {
   const matchingItems = inventoryItems.filter((item) => inventoryMatchesScryDexCard(item, card))
   const stockByCondition = new Map()
+  let stockAvailableCount = 0
+  let stockTotalCount = 0
 
   for (const item of matchingItems) {
+    const quantityOnHand = inventoryQuantityOnHand(item)
+
+    stockTotalCount += quantityOnHand
+
+    if (item.status === "available") {
+      stockAvailableCount += quantityOnHand
+    }
+
     if (!["available", "pending_intake", "reserved"].includes(item.status)) {
       continue
     }
 
-    stockByCondition.set(item.condition, (stockByCondition.get(item.condition) ?? 0) + 1)
+    stockByCondition.set(item.condition, (stockByCondition.get(item.condition) ?? 0) + quantityOnHand)
   }
 
   return {
     ...card,
     catalog_source: cleanCatalogSource(card.catalog_source),
-    stock_available_count: matchingItems.filter((item) => item.status === "available").length,
-    stock_total_count: matchingItems.length,
+    stock_available_count: stockAvailableCount,
+    stock_total_count: stockTotalCount,
     stock_by_condition: Array.from(stockByCondition.entries()).map(([condition, quantity]) => ({
       condition,
       quantity,
@@ -10823,14 +11038,41 @@ function inventoryReferencePricePoint(card, draft = {}) {
   const rawOrGraded = cleanRawOrGraded(draft.rawOrGraded)
   const gradingCompany = cleanScryDexSearchText(draft.gradingCompany)
   const grade = cleanScryDexSearchText(draft.grade)
+  const requestedGradeNumber = gradeNumber(grade)
+  const typedPoints = points.filter((point) => cleanRawOrGraded(point.raw_or_graded) === rawOrGraded)
+  const exactConditionPoints = condition
+    ? typedPoints.filter((point) => cleanCondition(point.condition_code) === condition)
+    : typedPoints
+  const candidates = exactConditionPoints.length > 0 ? exactConditionPoints : typedPoints
 
-  return points.find((point) =>
-    cleanRawOrGraded(point.raw_or_graded) === rawOrGraded &&
-    (!condition || cleanCondition(point.condition_code) === condition) &&
-    (rawOrGraded !== "graded" ||
-      (!gradingCompany || cleanScryDexSearchText(point.grading_company) === gradingCompany) &&
-        (!grade || cleanScryDexSearchText(point.grade) === grade)),
-  ) ?? points.find((point) => cleanRawOrGraded(point.raw_or_graded) === rawOrGraded) ?? points[0]
+  if (rawOrGraded !== "graded") {
+    return candidates[0] ?? typedPoints[0] ?? points[0]
+  }
+
+  const sameCompany = candidates.filter((point) => {
+    const pointCompany = cleanScryDexSearchText(point.grading_company)
+
+    return !gradingCompany || !pointCompany || pointCompany === gradingCompany
+  })
+  const exactGrade = sameCompany.find((point) => {
+    const pointGrade = cleanScryDexSearchText(point.grade)
+
+    return grade && pointGrade === grade
+  })
+
+  if (exactGrade) {
+    return exactGrade
+  }
+
+  const higherGrade = sameCompany
+    .map((point) => ({
+      point,
+      grade: gradeNumber(point.grade),
+    }))
+    .filter((entry) => requestedGradeNumber !== null && entry.grade !== null && entry.grade >= requestedGradeNumber)
+    .sort((left, right) => left.grade - right.grade)[0]?.point
+
+  return higherGrade ?? sameCompany.find((point) => cleanScryDexSearchText(point.grade) === "") ?? sameCompany[0] ?? typedPoints[0] ?? points[0]
 }
 
 function genericInventorySetName(value) {
@@ -10850,6 +11092,13 @@ function minorUnits(value) {
   const parsed = Number(value)
 
   return Number.isFinite(parsed) ? Math.trunc(parsed) : 0
+}
+
+function gradeNumber(value) {
+  const match = cleanScryDexSearchText(value).match(/\b(?:10(?:\.0)?|[1-9](?:\.\d)?)\b/)
+  const parsed = Number.parseFloat(match?.[0] ?? "")
+
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function roundSalePriceMinorUnits(value) {

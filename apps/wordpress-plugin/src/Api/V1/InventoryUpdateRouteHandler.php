@@ -154,6 +154,12 @@ final class InventoryUpdateRouteHandler {
 			$updates['minimum_sale_price'] = $minimum_sale_price;
 		}
 
+		if ( array_key_exists( 'quantity_on_hand', $body ) || array_key_exists( 'set_quantity', $body ) ) {
+			$updates['quantity_on_hand'] = $this->non_negative_int(
+				$body['quantity_on_hand'] ?? $body['set_quantity'] ?? 0
+			);
+		}
+
 		if ( array_key_exists( 'sale_currency', $body ) ) {
 			$updates['sale_currency'] = $this->currency( $body['sale_currency'] );
 		}
@@ -361,6 +367,8 @@ final class InventoryUpdateRouteHandler {
 			'previous_sale_price'        => $this->money( $previous_row['sale_price'] ?? '0.00' ),
 			'sale_price'                 => $this->money( $row['sale_price'] ?? '0.00' ),
 			'minimum_sale_price'         => $this->money( $row['minimum_sale_price'] ?? '0.00' ),
+			'previous_quantity_on_hand'  => $this->non_negative_int( $previous_row['quantity_on_hand'] ?? 1 ),
+			'quantity_on_hand'           => $this->non_negative_int( $row['quantity_on_hand'] ?? 1 ),
 			'sale_currency'              => $this->currency( $row['sale_currency'] ?? 'USD' ),
 			'row_version'                => $this->positive_int( $row['row_version'] ?? null ),
 			'woocommerce_product_id'     => $this->positive_int( $row['woocommerce_product_id'] ?? null ),
@@ -504,6 +512,18 @@ final class InventoryUpdateRouteHandler {
 		return null;
 	}
 
+	private function non_negative_int( mixed $value ): int {
+		if ( is_array( $value ) || is_object( $value ) ) {
+			return 0;
+		}
+
+		if ( is_numeric( $value ) ) {
+			return max( 0, (int) $value );
+		}
+
+		return 0;
+	}
+
 	/**
 	 * @return list<string>
 	 */
@@ -511,7 +531,7 @@ final class InventoryUpdateRouteHandler {
 		$formats = array();
 
 		foreach ( $updates as $field => $value ) {
-			$formats[] = in_array( $field, array( 'row_version', 'updated_by' ), true ) ? '%d' : '%s';
+			$formats[] = in_array( $field, array( 'row_version', 'updated_by', 'quantity_on_hand' ), true ) ? '%d' : '%s';
 		}
 
 		return $formats;

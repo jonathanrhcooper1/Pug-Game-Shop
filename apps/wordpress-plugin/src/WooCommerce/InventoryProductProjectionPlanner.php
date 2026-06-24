@@ -391,6 +391,7 @@ final class InventoryProductProjectionPlanner {
 		string $price,
 		string $currency
 	): array {
+		$stock_quantity = $this->row_quantity_on_hand( $row );
 		$payload = array(
 			'type'               => 'simple',
 			'status'             => 'publish',
@@ -400,10 +401,10 @@ final class InventoryProductProjectionPlanner {
 			'sku'                => $sku,
 			'regular_price'      => $price,
 			'manage_stock'       => true,
-			'stock_quantity'     => 1,
-			'stock_status'       => 'instock',
+			'stock_quantity'     => $stock_quantity,
+			'stock_status'       => $stock_quantity > 0 ? 'instock' : 'outofstock',
 			'sold_individually'  => true,
-			'catalog_visibility' => 'visible',
+			'catalog_visibility' => $stock_quantity > 0 ? 'visible' : 'hidden',
 			'virtual'            => false,
 			'downloadable'       => false,
 			'category_slugs'     => $this->product_category_slugs( $row ),
@@ -536,7 +537,7 @@ final class InventoryProductProjectionPlanner {
 				);
 			}
 
-			++$options[ $option_key ]['stock_quantity'];
+			$options[ $option_key ]['stock_quantity'] += $this->row_quantity_on_hand( $row );
 			$options[ $option_key ]['inventory_ids'][] = (int) ( $row['inventory_id'] ?? 0 );
 		}
 
@@ -1073,6 +1074,19 @@ final class InventoryProductProjectionPlanner {
 		}
 
 		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Inventory row.
+	 */
+	private function row_quantity_on_hand( array $row ): int {
+		$quantity = $this->non_negative_int( $row['quantity_on_hand'] ?? null );
+
+		if ( null !== $quantity ) {
+			return $quantity;
+		}
+
+		return 'available' === strtolower( (string) ( $row['status'] ?? 'available' ) ) ? 1 : 0;
 	}
 
 	private function bounded_text( string $value, int $limit ): string {

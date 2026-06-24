@@ -131,6 +131,21 @@ namespace {
 	}
 }
 
+namespace WooCommerce\Square\Handlers {
+	if ( ! class_exists( Product::class ) ) {
+		class Product {
+			public static function set_synced_with_square( $product, string $synced = 'yes' ): bool {
+				$GLOBALS['tcg_test_square_plugin_api_sync'][] = array(
+					'product' => $product,
+					'synced'  => $synced,
+				);
+
+				return true;
+			}
+		}
+	}
+}
+
 namespace TCGStorePlatform\Tests\Unit {
 	use TCGStorePlatform\Tests\TestCase;
 	use TCGStorePlatform\WooCommerce\InventoryProductProjectionPlan;
@@ -138,9 +153,10 @@ namespace TCGStorePlatform\Tests\Unit {
 
 	final class WooCommerceInventoryProductWriterTest extends TestCase {
 		public function test_writer_creates_serialized_product_payload_through_woocommerce_crud(): void {
-			$GLOBALS['tcg_test_set_post_terms'] = array();
-			$writer                            = new WooCommerceInventoryProductWriter();
-			$result                            = $writer(
+			$GLOBALS['tcg_test_set_post_terms']        = array();
+			$GLOBALS['tcg_test_square_plugin_api_sync'] = array();
+			$writer                                     = new WooCommerceInventoryProductWriter();
+			$result                                     = $writer(
 				array(
 					'operation'   => 'create_product',
 					'square_sync' => array(
@@ -175,13 +191,13 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_same( 'synced', $result['square_sync']['status'] );
 			$this->assert_same(
 				array(
-					'post_id'  => 2468,
-					'terms'    => array( 'yes' ),
-					'taxonomy' => 'wc_square_synced',
-					'append'   => false,
+					'product' => 2468,
+					'synced'  => 'yes',
 				),
-				$GLOBALS['tcg_test_set_post_terms'][0]
+				$GLOBALS['tcg_test_square_plugin_api_sync'][0]
 			);
+			$this->assert_same( array(), $GLOBALS['tcg_test_set_post_terms'] );
+			$this->assert_same( 'square_sync_plugin_api_set', $result['square_sync']['code'] );
 			$this->assert_same( 'Pokemon - Charizard', $product->values['name'] );
 			$this->assert_same( 'PKM-BASE-004', $product->values['sku'] );
 			$this->assert_same( 1, $product->values['stock_quantity'] );

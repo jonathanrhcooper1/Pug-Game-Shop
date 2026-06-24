@@ -3798,11 +3798,13 @@ h2 {
 }
 
 .kiosk-card-art {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   width: 54px;
-  aspect-ratio: 0.72;
+  aspect-ratio: 5 / 7;
   overflow: hidden;
+  padding: 3px;
   color: var(--pug-blue);
   background:
     linear-gradient(150deg, rgba(73, 220, 244, 0.14), rgba(255, 208, 68, 0.08)),
@@ -3813,9 +3815,12 @@ h2 {
 }
 
 .kiosk-card-art img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .kiosk-card-art .icon {
@@ -5020,13 +5025,19 @@ h2 {
 
 .inventory-mode-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
   padding: 6px;
   background: rgba(20, 23, 19, 0.055);
   border: 1px solid rgba(20, 23, 19, 0.1);
   border-radius: 8px;
+}
+
+@media (max-width: 720px) {
+  .inventory-mode-tabs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .inventory-mode-tabs button {
@@ -5164,6 +5175,113 @@ h2 {
   place-items: center;
   min-width: 0;
   padding: 0;
+}
+
+.inventory-location-manager {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px;
+  color: #162018;
+  background:
+    linear-gradient(135deg, rgba(73, 220, 244, 0.1), rgba(245, 194, 66, 0.1)),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(35, 100, 70, 0.16);
+  border-radius: 8px;
+}
+
+.inventory-location-manager header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.inventory-location-manager h2 {
+  margin: 2px 0 4px;
+  color: #101513;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.inventory-location-manager p,
+.inventory-location-note {
+  margin: 0;
+  color: #52605a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.inventory-location-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.inventory-location-create label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inventory-location-create input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: #172016;
+  font-size: 13px;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(35, 100, 70, 0.22);
+  border-radius: 8px;
+}
+
+.inventory-location-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 8px;
+}
+
+.inventory-location-grid button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px;
+  color: #18201e;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid rgba(35, 100, 70, 0.18);
+  border-radius: 8px;
+}
+
+.inventory-location-grid button svg {
+  grid-row: span 2;
+}
+
+.inventory-location-grid button strong,
+.inventory-location-grid button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-location-grid button strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.inventory-location-grid button small {
+  color: #64716a;
+  font-weight: 850;
+}
+
+.inventory-location-grid button.is-active {
+  background: #fff7d7;
+  border-color: rgba(245, 194, 66, 0.7);
 }
 
 .inventory-intake-control > .intake-pricing-summary {
@@ -6022,6 +6140,10 @@ dd {
   gap: 8px;
 }
 
+.inventory-edit-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .square-sale-finalize-controls {
   display: grid;
   grid-column: 1 / -1;
@@ -6082,7 +6204,8 @@ dd {
   line-height: 1.35;
 }
 
-.inventory-adjustment-controls input {
+.inventory-adjustment-controls input,
+.inventory-adjustment-controls select {
   width: 100%;
   min-width: 0;
   padding: 10px 11px;
@@ -6091,6 +6214,25 @@ dd {
   font-weight: 850;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(35, 100, 70, 0.24);
+  border-radius: 8px;
+}
+
+.quantity-stepper {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 6px;
+  align-items: center;
+}
+
+.detail-actions .quantity-stepper button {
+  min-height: 40px;
+  padding: 0;
+  color: #10211c;
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff4a0, #ffd144);
+  border: 1px solid rgba(119, 82, 7, 0.22);
   border-radius: 8px;
 }
 
@@ -6106,7 +6248,8 @@ dd {
   border-radius: 8px;
 }
 
-.inventory-adjustment-controls input:focus {
+.inventory-adjustment-controls input:focus,
+.inventory-adjustment-controls select:focus {
   outline: 2px solid rgba(92, 171, 119, 0.45);
   outline-offset: 2px;
 }
@@ -6149,6 +6292,12 @@ dd {
   color: #7b332b;
   background: rgba(240, 126, 103, 0.12);
   border-color: rgba(240, 126, 103, 0.36);
+}
+
+.detail-actions .quantity-stepper button:not(.wide-action) {
+  color: #10211c;
+  background: linear-gradient(180deg, #fff4a0, #ffd144);
+  border-color: rgba(119, 82, 7, 0.22);
 }
 
 .wide-action {

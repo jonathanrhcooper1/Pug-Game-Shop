@@ -366,7 +366,7 @@ final class ReferenceCardSearchRouteHandler {
 				inventory.provider_card_id,
 				inventory.condition_code,
 				inventory.status,
-				COUNT(1) AS item_count
+				SUM(GREATEST(0, COALESCE(inventory.quantity_on_hand, 1))) AS item_count
 			FROM {$query['inventory_table']} inventory
 			WHERE (" . implode( ' OR ', $where_parts ) . ')
 				AND inventory.status IN (' . implode( ', ', array_fill( 0, count( $status_filters ), '%s' ) ) . ')

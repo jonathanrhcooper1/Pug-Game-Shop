@@ -190,7 +190,7 @@ type AppIconName =
 type ViewMode = "list" | "grid"
 type AppSessionRole = "locked" | "staff" | "manager" | "owner"
 type InventoryVisibility = LocalSyncInventoryItem["online_visibility"]
-type InventoryPageMode = "updates" | "intake"
+type InventoryPageMode = "updates" | "intake" | "locations"
 const INVENTORY_STATUS_FILTERS = [
   "all",
   "available",
@@ -212,6 +212,29 @@ const INVENTORY_VISIBILITY_OPTIONS: Array<{ value: InventoryVisibility; label: s
   { value: "staff_only", label: "Staff only" },
   { value: "hidden", label: "Hidden" },
 ]
+const DEFAULT_INVENTORY_LOCATIONS = [
+  "In-store - Intake Queue",
+  "In-store - Showcase A",
+  "In-store - Case 1",
+  "In-store - Case 2",
+  "In-store - Back Stock",
+] as string[]
+const GRADING_COMPANY_OPTIONS = [
+  { value: "PSA", label: "PSA" },
+  { value: "CGC", label: "CGC" },
+  { value: "BGS", label: "Beckett/BGS" },
+  { value: "SGC", label: "SGC" },
+  { value: "TAG", label: "TAG" },
+  { value: "Other", label: "Other" },
+] as const
+const GRADED_CARD_PRESET_OPTIONS = [
+  { value: "", label: "Manual grade", gradingCompany: "", grade: "" },
+  { value: "psa-10", label: "PSA 10", gradingCompany: "PSA", grade: "10" },
+  { value: "cgc-pristine-10", label: "CGC Pristine 10", gradingCompany: "CGC", grade: "10" },
+  { value: "beckett-perfect-10", label: "Beckett Perfect 10", gradingCompany: "BGS", grade: "10" },
+  { value: "sgc-10", label: "SGC 10", gradingCompany: "SGC", grade: "10" },
+  { value: "tag-10", label: "TAG 10", gradingCompany: "TAG", grade: "10" },
+] as const
 const TRADE_IN_PERCENTAGE_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 500)
 const REPORT_OPTIONS: Array<{ key: LocalSyncReportKey; label: string; focus: string }> = [
   { key: "sales", label: "Sales", focus: "Online vs in-store, gross/net, channel mix" },
@@ -260,7 +283,7 @@ const ACCESS_SECTIONS = [
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
 const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
-const OFFLINE_APP_VERSION = "0.202.2"
+const OFFLINE_APP_VERSION = "0.202.3"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
@@ -1667,6 +1690,8 @@ function inventoryItemFromLocalSync(
     barcode: item.barcode,
     price: formatMoney(item.price_minor_units, item.currency),
     priceMinorUnits: item.price_minor_units,
+    quantityOnHand: item.quantity_on_hand,
+    minimumSalePriceMinorUnits: item.minimum_sale_price_minor_units ?? item.price_minor_units,
     currency: item.currency,
     location: item.location,
     status: item.status,
@@ -1797,6 +1822,13 @@ function normalizedScryDexGradeText(value?: string) {
   return text
 }
 
+function scryDexGradeNumber(value?: string) {
+  const normalized = normalizedScryDexGradeText(value)
+  const numeric = Number.parseFloat(normalized)
+
+  return Number.isFinite(numeric) ? numeric : null
+}
+
 function normalizedScryDexCompanyText(value?: string) {
   const text = normalizedScryDexPriceText(value)
 
@@ -1821,6 +1853,18 @@ function normalizedScryDexCompanyText(value?: string) {
   }
 
   return text
+}
+
+function gradedPresetValueFor(gradingCompany: string, grade: string) {
+  const company = normalizedScryDexCompanyText(gradingCompany)
+  const normalizedGrade = normalizedScryDexGradeText(grade)
+  const preset = GRADED_CARD_PRESET_OPTIONS.find((option) =>
+    option.value !== "" &&
+    normalizedScryDexCompanyText(option.gradingCompany) === company &&
+    normalizedScryDexGradeText(option.grade) === normalizedGrade,
+  )
+
+  return preset?.value ?? ""
 }
 
 function scryDexGradeMatches(left?: string, right?: string) {
@@ -1904,6 +1948,7 @@ function bestScryDexPricePoint(
   const normalizedCondition = condition.trim().toUpperCase()
   const normalizedCompany = normalizedScryDexCompanyText(gradingCompany)
   const normalizedGrade = normalizedScryDexGradeText(grade)
+  const requestedGradeNumber = scryDexGradeNumber(grade)
   const variantProviderId = variant?.provider_variant_id ?? ""
   const variantReferenceId = variant?.reference_variant_id ?? null
 
@@ -1923,7 +1968,9 @@ function bestScryDexPricePoint(
       const pointCondition = String(point.condition_code ?? "").toUpperCase()
       const pointCompany = normalizedScryDexCompanyText(point.grading_company)
       const pointGrade = normalizedScryDexGradeText(point.grade)
+      const pointGradeNumber = scryDexGradeNumber(point.grade)
       let score = 100
+      let gradeGap = 99
 
       if (variantProviderId !== "" && pointVariant === variantProviderId) {
         score += 40
@@ -1943,24 +1990,32 @@ function bestScryDexPricePoint(
         if (normalizedCompany !== "" && pointCompany === normalizedCompany) {
           score += 26
         } else if (normalizedCompany !== "" && pointCompany !== "") {
-          score -= 12
+          return { point, score: -1, gradeGap }
         } else if (pointCompany !== "") {
           score += 4
         }
 
         if (normalizedGrade !== "" && pointGrade === normalizedGrade) {
           score += 44
+          gradeGap = 0
+        } else if (requestedGradeNumber !== null && pointGradeNumber !== null) {
+          if (pointGradeNumber < requestedGradeNumber) {
+            return { point, score: -1, gradeGap }
+          }
+
+          gradeGap = pointGradeNumber - requestedGradeNumber
+          score += Math.max(4, 34 - Math.round(gradeGap * 20))
         } else if (normalizedGrade !== "" && pointGrade !== "") {
-          score -= 36
+          return { point, score: -1, gradeGap }
         } else if (pointGrade !== "") {
           score += 4
         }
       }
 
-      return { point, score }
+      return { point, score, gradeGap }
     })
     .filter((entry) => entry.score >= 0)
-    .sort((left, right) => right.score - left.score)
+    .sort((left, right) => (left.gradeGap ?? 999) - (right.gradeGap ?? 999) || right.score - left.score)
 
   return scored[0]?.point ?? null
 }
@@ -2417,6 +2472,28 @@ function finalRetailPriceMinorUnits(autoMinorUnits: number, minimumMinorUnits: n
   return Math.max(safeAutoMinorUnits, safeMinimumMinorUnits)
 }
 
+function inventoryItemQuantityOnHand(item: InventoryItem) {
+  const quantity = item.quantityOnHand
+
+  if (typeof quantity === "number" && Number.isFinite(quantity)) {
+    return Math.max(0, Math.trunc(quantity))
+  }
+
+  return ["sold", "removed"].includes(item.status) ? 0 : 1
+}
+
+function inventoryEditQuantityFromInput(value: string) {
+  const normalized = value.trim()
+
+  if (!/^\d+$/.test(normalized)) {
+    return null
+  }
+
+  const parsed = Number.parseInt(normalized, 10)
+
+  return Number.isFinite(parsed) ? Math.min(999999, Math.max(0, parsed)) : null
+}
+
 function inventoryVersionLabel(item: InventoryItem) {
   return [
     item.variant,
@@ -2516,11 +2593,11 @@ function groupInventoryItems(items: InventoryItem[], selectedId?: number): Inven
         return {
           condition,
           items: conditionItems,
-          stockCount: conditionItems.filter((item) => item.status !== "sold").length,
+          stockCount: conditionItems.reduce((total, item) => total + inventoryItemQuantityOnHand(item), 0),
           priceLabel: inventoryPriceRange(conditionItems),
         }
       })
-    const activeItems = groupedItems.filter((item) => item.status !== "sold")
+    const activeItems = groupedItems.filter((item) => inventoryItemQuantityOnHand(item) > 0)
     const locations = [...new Set(activeItems.map((item) => item.location).filter(Boolean))]
 
     return {
@@ -2528,7 +2605,7 @@ function groupInventoryItems(items: InventoryItem[], selectedId?: number): Inven
       representative,
       items: groupedItems,
       conditions,
-      activeStockCount: activeItems.length,
+      activeStockCount: activeItems.reduce((total, item) => total + inventoryItemQuantityOnHand(item), 0),
       priceLabel: inventoryPriceRange(activeItems.length > 0 ? activeItems : groupedItems),
       locationLabel:
         locations.length === 0
@@ -3538,21 +3615,39 @@ export function App() {
   const [intakeBarcode, setIntakeBarcode] = useState("")
   const [intakePriceInput, setIntakePriceInput] = useState("0.00")
   const [intakeMinimumPriceInput, setIntakeMinimumPriceInput] = useState("0.00")
-  const [intakeLocation, setIntakeLocation] = useState("Intake Queue")
+  const [intakeLocation, setIntakeLocation] = useState(DEFAULT_INVENTORY_LOCATIONS[0])
   const [inventoryLocations, setInventoryLocations] = useState(() =>
     Array.from(
       new Set(
-        ["Intake Queue", "Showcase A", "Case 1", "Case 2", "Back Stock"]
+        [...DEFAULT_INVENTORY_LOCATIONS]
           .concat(workspace.inventoryItems.map((item) => item.location))
           .map((location) => location.trim())
           .filter(Boolean),
       ),
     ).sort((left, right) => left.localeCompare(right)),
   )
+  const inStoreInventoryLocations = useMemo(
+    () =>
+      inventoryLocations.filter((location) => {
+        const normalized = location.trim().toLowerCase()
+        return normalized !== "" && !normalized.startsWith("website")
+      }),
+    [inventoryLocations],
+  )
   const [newInventoryLocation, setNewInventoryLocation] = useState("")
   const [intakeOnlineVisibility, setIntakeOnlineVisibility] = useState<InventoryVisibility>("visible")
   const [intakeKioskVisibility, setIntakeKioskVisibility] = useState<InventoryVisibility>("visible")
   const [intakePosVisibility, setIntakePosVisibility] = useState<InventoryVisibility>("visible")
+  const [inventoryEditPriceInput, setInventoryEditPriceInput] = useState("0.00")
+  const [inventoryEditFloorInput, setInventoryEditFloorInput] = useState("0.00")
+  const [inventoryEditLocation, setInventoryEditLocation] = useState("")
+  const [inventoryEditQuantityInput, setInventoryEditQuantityInput] = useState("0")
+  const [inventoryEditOnlineVisibility, setInventoryEditOnlineVisibility] =
+    useState<InventoryVisibility>("visible")
+  const [inventoryEditKioskVisibility, setInventoryEditKioskVisibility] =
+    useState<InventoryVisibility>("visible")
+  const [inventoryEditPosVisibility, setInventoryEditPosVisibility] =
+    useState<InventoryVisibility>("visible")
   const [intakeProductType, setIntakeProductType] = useState<"raw" | "graded">("raw")
   const [intakeGradingCompany, setIntakeGradingCompany] = useState("PSA")
   const [intakeGrade, setIntakeGrade] = useState("")
@@ -4230,6 +4325,47 @@ export function App() {
     () => (selectedInventoryGroup?.items ?? []).filter((item) => item.status === "available"),
     [selectedInventoryGroup],
   )
+  const selectedInventoryConditionQuantity = useMemo(() => {
+    if (!selectedInventoryGroup) {
+      return inventoryItemQuantityOnHand(selectedItem)
+    }
+
+    return selectedInventoryGroup.items
+      .filter((item) => item.condition === selectedItem.condition && item.status === "available")
+      .reduce((total, item) => total + inventoryItemQuantityOnHand(item), 0)
+  }, [selectedInventoryGroup, selectedItem])
+  useEffect(() => {
+    if (!hasSelectedInventoryItem) {
+      setInventoryEditPriceInput("0.00")
+      setInventoryEditFloorInput("0.00")
+      setInventoryEditLocation("")
+      setInventoryEditQuantityInput("0")
+      setInventoryEditOnlineVisibility("visible")
+      setInventoryEditKioskVisibility("visible")
+      setInventoryEditPosVisibility("visible")
+      return
+    }
+
+    const floorMinorUnits = selectedItem.minimumSalePriceMinorUnits ?? selectedItem.priceMinorUnits
+
+    setInventoryEditPriceInput(creditRedemptionInputFromMinorUnits(selectedItem.priceMinorUnits))
+    setInventoryEditFloorInput(creditRedemptionInputFromMinorUnits(floorMinorUnits))
+    setInventoryEditLocation(selectedItem.location)
+    setInventoryEditQuantityInput(String(selectedInventoryConditionQuantity))
+    setInventoryEditOnlineVisibility(selectedItem.onlineVisibility ?? "visible")
+    setInventoryEditKioskVisibility(selectedItem.kioskVisibility ?? "visible")
+    setInventoryEditPosVisibility(selectedItem.posVisibility ?? "visible")
+  }, [
+    hasSelectedInventoryItem,
+    selectedItem.id,
+    selectedItem.location,
+    selectedItem.minimumSalePriceMinorUnits,
+    selectedItem.onlineVisibility,
+    selectedItem.kioskVisibility,
+    selectedItem.posVisibility,
+    selectedItem.priceMinorUnits,
+    selectedInventoryConditionQuantity,
+  ])
   const kioskFilteredItems = useMemo(() => {
     return filterInventoryItems(inventoryItems, kioskSearchQuery, "available")
   }, [inventoryItems, kioskSearchQuery])
@@ -4917,6 +5053,22 @@ export function App() {
     quantityDelta === null
       ? "Enter a whole-number quantity change from -99 to 99, excluding 0."
       : ""
+  const inventoryEditPriceMinorUnits = creditRedemptionInputToMinorUnits(inventoryEditPriceInput)
+  const inventoryEditFloorMinorUnits = creditRedemptionInputToMinorUnits(inventoryEditFloorInput)
+  const inventoryEditQuantity = inventoryEditQuantityFromInput(inventoryEditQuantityInput)
+  const inventoryEditLocationClean = inventoryEditLocation.trim()
+  const inventoryEditIssue =
+    inventoryEditPriceInput.trim() === "" || inventoryEditPriceMinorUnits === null
+      ? "Enter a valid sale price with up to two decimals."
+      : inventoryEditFloorInput.trim() === "" || inventoryEditFloorMinorUnits === null
+        ? "Enter a valid floor price with up to two decimals."
+        : inventoryEditPriceMinorUnits < inventoryEditFloorMinorUnits
+          ? "Sale price cannot be below the floor price."
+          : inventoryEditQuantity === null
+            ? "Enter the actual quantity on hand as a whole number."
+            : inventoryEditLocationClean === ""
+              ? "Choose or enter an in-store location."
+              : ""
   const intakePriceMinorUnits = creditRedemptionInputToMinorUnits(intakePriceInput)
   const intakeMinimumPriceMinorUnits = creditRedemptionInputToMinorUnits(intakeMinimumPriceInput)
   const intakeMarketPriceMinorUnits = selectedScryDexIntakePriceMinorUnits || intakePriceMinorUnits || 0
@@ -7385,7 +7537,7 @@ export function App() {
     setIntakeBarcode("")
     setIntakePriceInput("0.00")
     setIntakeMinimumPriceInput("0.00")
-    setIntakeLocation("Intake Queue")
+    setIntakeLocation(DEFAULT_INVENTORY_LOCATIONS[0])
     setNewInventoryLocation("")
     setIntakeQuantityInput("1")
     setIntakeProductType("raw")
@@ -7667,8 +7819,6 @@ export function App() {
       return
     }
 
-    void operationOptions
-
     if (!localSyncSessionToken) {
       setActiveSection("Inventory")
       setActivityMessage({
@@ -7678,18 +7828,50 @@ export function App() {
       return
     }
 
+    const usesSelectedEditor = targetItem.id === selectedItem.id
+    const nextPriceMinorUnits = usesSelectedEditor
+      ? inventoryEditPriceMinorUnits
+      : targetItem.priceMinorUnits
+    const nextFloorMinorUnits = usesSelectedEditor
+      ? inventoryEditFloorMinorUnits
+      : targetItem.minimumSalePriceMinorUnits ?? targetItem.priceMinorUnits
+    const nextQuantityOnHand = usesSelectedEditor
+      ? inventoryEditQuantity
+      : targetItem.quantityOnHand
+    const nextLocation = usesSelectedEditor
+      ? inventoryEditLocationClean
+      : targetItem.location
+
+    if (
+      nextPriceMinorUnits === null ||
+      nextFloorMinorUnits === null ||
+      (usesSelectedEditor && inventoryEditIssue)
+    ) {
+      setActiveSection("Inventory")
+      setActivityMessage({
+        title: "Inventory update needs review",
+        detail: inventoryEditIssue || "Check price, floor, quantity, and location before saving.",
+      })
+      return
+    }
+
+    const updateReason = cleanInventoryAdjustmentReason(
+      quantityAdjustmentReason || operationOptions.adjustmentReason || "staff inventory update",
+    )
+
     const updateResult = await localSyncClient.updateInventoryItem(localSyncSessionToken, targetItem.publicId, {
       status: targetItem.status,
       barcode: targetItem.barcode,
-      priceMinorUnits: targetItem.priceMinorUnits,
-      salePriceMinorUnits: targetItem.priceMinorUnits,
-      minimumSalePriceMinorUnits: targetItem.priceMinorUnits,
-      location: targetItem.location,
-      onlineVisibility: targetItem.onlineVisibility,
-      kioskVisibility: targetItem.kioskVisibility,
-      posVisibility: targetItem.posVisibility,
-      reason: cleanInventoryAdjustmentReason(quantityAdjustmentReason || "staff inventory update"),
-      syncIntent: "staff_inventory_update",
+      priceMinorUnits: nextPriceMinorUnits,
+      salePriceMinorUnits: nextPriceMinorUnits,
+      minimumSalePriceMinorUnits: nextFloorMinorUnits,
+      setQuantity: nextQuantityOnHand ?? undefined,
+      location: nextLocation,
+      onlineVisibility: usesSelectedEditor ? inventoryEditOnlineVisibility : targetItem.onlineVisibility,
+      kioskVisibility: usesSelectedEditor ? inventoryEditKioskVisibility : targetItem.kioskVisibility,
+      posVisibility: usesSelectedEditor ? inventoryEditPosVisibility : targetItem.posVisibility,
+      reason: updateReason,
+      syncIntent: operationOptions.syncIntent ?? "staff_inventory_update",
     })
 
     if (handleBlockedLocalSyncSession(updateResult, "Inventory update locked")) {
@@ -8058,7 +8240,7 @@ export function App() {
       condition: intakeCondition.trim() || "RAW",
       barcode: intakeBarcode.trim(),
       priceMinorUnits: intakeFinalPriceMinorUnits,
-      location: intakeLocation.trim() || "Intake Queue",
+      location: intakeLocation.trim() || DEFAULT_INVENTORY_LOCATIONS[0],
       quantity: intakeQuantity,
       providerCardId: selectedScryDexCard?.provider_card_id,
       referenceVariantId: selectedScryDexVariant?.reference_variant_id,
@@ -8453,7 +8635,7 @@ export function App() {
       localSyncSessionToken,
       normalizedQuery,
       scryDexGame,
-      { limit: "all", rawOrGraded: intakeProductType === "graded" ? "graded" : "raw" },
+      { limit: "all" },
     )
 
     if (result.status !== "ok") {
@@ -8624,7 +8806,6 @@ export function App() {
     const result = await localSyncClient.indexScryDexCatalog(localSyncSessionToken, {
       mode: "card",
       query,
-      rawOrGraded: intakeProductType === "graded" ? "graded" : "raw",
     })
 
     if (result.status !== "ok") {
@@ -8794,7 +8975,7 @@ export function App() {
       localSyncSessionToken,
       normalizedQuery,
       tradeInCardGame,
-      { limit: "all", rawOrGraded: tradeInProductType === "graded" ? "graded" : "raw" },
+      { limit: "all" },
     )
 
     if (result.status !== "ok") {
@@ -8847,7 +9028,6 @@ export function App() {
       return
     }
 
-    const setFilter = scryDexSetFilterValue(card)
     setScryDexRefreshStatus("refreshing")
     setScryDexRefreshDetail(`Asking ScryDex for fresh ${productType === "graded" ? "graded" : "single"} pricing on ${card.card_name}.`)
 
@@ -8861,7 +9041,6 @@ export function App() {
 
     const result = await localSyncClient.searchScryDexCards(localSyncSessionToken, query, card.game, {
       limit: "all",
-      setFilter,
       rawOrGraded: productType === "graded" ? "graded" : "raw",
       forceLive: true,
     })
@@ -9035,6 +9214,19 @@ export function App() {
       setTradeInGradingCompany(gradedPoint?.grading_company || tradeInGradingCompany || "PSA")
       setTradeInGrade(gradedPoint?.grade || tradeInGrade)
     }
+  }
+
+  function handleTradeInGradePresetChange(presetValue: string) {
+    const preset = GRADED_CARD_PRESET_OPTIONS.find((option) => option.value === presetValue)
+
+    if (!preset || preset.value === "") {
+      return
+    }
+
+    setTradeInProductType("graded")
+    setTradeInGradingCompany(preset.gradingCompany)
+    setTradeInGrade(preset.grade)
+    setTradeInManualFinalValueInput("")
   }
 
   function handleUseScryDexCard(card: LocalSyncScryDexCard, productType: "raw" | "graded" = intakeProductType) {
@@ -9480,7 +9672,7 @@ export function App() {
         condition: item.condition || (item.productType === "graded" ? "RAW" : "LP"),
         barcode: "",
         priceMinorUnits: finalPriceMinorUnits,
-        location: "Intake Queue",
+        location: DEFAULT_INVENTORY_LOCATIONS[0],
         quantity: 1,
         providerCardId: item.providerCardId,
         referenceVariantId: item.referenceVariantId,
@@ -9900,6 +10092,35 @@ export function App() {
           nextProductType,
           nextGradingCompany,
           nextGrade,
+        ),
+      ),
+    )
+  }
+
+  function handleIntakeGradePresetChange(presetValue: string) {
+    const preset = GRADED_CARD_PRESET_OPTIONS.find((option) => option.value === presetValue)
+
+    if (!preset || preset.value === "") {
+      return
+    }
+
+    setIntakeProductType("graded")
+    setIntakeGradingCompany(preset.gradingCompany)
+    setIntakeGrade(preset.grade)
+
+    if (!selectedScryDexCard) {
+      return
+    }
+
+    setIntakePriceInput(
+      creditRedemptionInputFromMinorUnits(
+        scryDexIntakePriceMinorUnits(
+          selectedScryDexCard,
+          selectedScryDexVariant,
+          intakeCondition,
+          "graded",
+          preset.gradingCompany,
+          preset.grade,
         ),
       ),
     )
@@ -10368,7 +10589,7 @@ export function App() {
       condition: selectedItem.condition || "LP",
       barcode: "",
       priceMinorUnits: selectedItem.priceMinorUnits,
-      location: selectedItem.location || "Intake Queue",
+      location: selectedItem.location || DEFAULT_INVENTORY_LOCATIONS[0],
       quantity: quantityDelta,
       providerCardId: selectedItem.providerCardId,
       referenceVariantId: selectedItem.referenceVariantId,
@@ -14270,6 +14491,13 @@ export function App() {
                 >
                   Inventory Intake
                 </button>
+                <button
+                  type="button"
+                  className={inventoryMode === "locations" ? "is-active" : ""}
+                  onClick={() => setInventoryMode("locations")}
+                >
+                  In-store Locations
+                </button>
               </div>
 
               {inventoryMode === "updates" ? (
@@ -14352,6 +14580,63 @@ export function App() {
                     </button>
                   ))}
                 </div>
+              ) : null}
+
+              {inventoryMode === "locations" ? (
+                <section className="inventory-location-manager" aria-label="In-store inventory locations">
+                  <header>
+                    <div>
+                      <span className="micro-label">In-store pull locations</span>
+                      <h2>Cases, shelves, bins, and back stock</h2>
+                      <p>
+                        These names are used by inventory intake and order fulfillment so staff know where to pull each card.
+                      </p>
+                    </div>
+                    <button type="button" className="secondary-command" onClick={() => void refreshInventoryLocations()}>
+                      <Icon name="refresh" />
+                      <span>Refresh</span>
+                    </button>
+                  </header>
+                  <div className="inventory-location-create">
+                    <label htmlFor="inventory-location-create-input">
+                      <span className="micro-label">New in-store location</span>
+                      <input
+                        id="inventory-location-create-input"
+                        value={newInventoryLocation}
+                        onChange={(event) => setNewInventoryLocation(event.target.value)}
+                        placeholder="In-store - Showcase B"
+                      />
+                    </label>
+                    <button type="button" onClick={() => void handleAddInventoryLocation()}>
+                      <Icon name="plus" />
+                      <span>Add Location</span>
+                    </button>
+                  </div>
+                  <div className="inventory-location-grid" aria-label="Saved in-store locations">
+                    {inStoreInventoryLocations.map((location) => (
+                      <button
+                        type="button"
+                        key={location}
+                        className={intakeLocation === location ? "is-active" : ""}
+                        onClick={() => {
+                          setIntakeLocation(location)
+                          setInventoryMode("intake")
+                        }}
+                      >
+                        <Icon name="tag" />
+                        <strong>{location}</strong>
+                        <small>Use for intake</small>
+                      </button>
+                    ))}
+                    {inStoreInventoryLocations.length === 0 ? (
+                      <p className="empty-table">No in-store locations have been saved yet.</p>
+                    ) : null}
+                  </div>
+                  <small className="inventory-location-note">
+                    Website availability is controlled by the Online shop field. This list is only for physical store
+                    places like cases, shelves, boxes, and back stock.
+                  </small>
+                </section>
               ) : null}
 
               {inventoryMode === "intake" ? (
@@ -14655,6 +14940,20 @@ export function App() {
                 </label>
                 {intakeProductType === "graded" ? (
                   <>
+                    <label htmlFor="intake-grade-preset">
+                      <span className="micro-label">Grade preset</span>
+                      <select
+                        id="intake-grade-preset"
+                        value={gradedPresetValueFor(intakeGradingCompany, intakeGrade)}
+                        onChange={(event) => handleIntakeGradePresetChange(event.target.value)}
+                      >
+                        {GRADED_CARD_PRESET_OPTIONS.map((option) => (
+                          <option value={option.value} key={option.value || "manual"}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <label htmlFor="intake-grading-company">
                       <span className="micro-label">Grading company</span>
                       <select
@@ -14662,12 +14961,11 @@ export function App() {
                         value={intakeGradingCompany}
                         onChange={(event) => setIntakeGradingCompany(event.target.value)}
                       >
-                        <option value="PSA">PSA</option>
-                        <option value="CGC">CGC</option>
-                        <option value="BGS">Beckett/BGS</option>
-                        <option value="SGC">SGC</option>
-                        <option value="TAG">TAG</option>
-                        <option value="Other">Other</option>
+                        {GRADING_COMPANY_OPTIONS.map((option) => (
+                          <option value={option.value} key={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label htmlFor="intake-grade">
@@ -14765,17 +15063,17 @@ export function App() {
                 </div>
                 <div className="intake-location-control">
                   <label htmlFor="intake-location">
-                    <span className="micro-label">Location</span>
+                    <span className="micro-label">In-store location</span>
                     <input
                       id="intake-location"
                       list="inventory-location-options"
                       value={intakeLocation}
                       onChange={(event) => setIntakeLocation(event.target.value)}
-                      placeholder="Intake Queue"
+                      placeholder="In-store - Case 1"
                     />
                   </label>
                   <datalist id="inventory-location-options">
-                    {inventoryLocations.map((location) => (
+                    {inStoreInventoryLocations.map((location) => (
                       <option key={location} value={location} />
                     ))}
                   </datalist>
@@ -14784,7 +15082,7 @@ export function App() {
                       aria-label="New inventory location"
                       value={newInventoryLocation}
                       onChange={(event) => setNewInventoryLocation(event.target.value)}
-                      placeholder="Add shelf/case"
+                      placeholder="Add case/shelf/bin"
                     />
                     <button type="button" onClick={() => void handleAddInventoryLocation()}>
                       <Icon name="plus" />
@@ -14853,6 +15151,10 @@ export function App() {
                 <strong>
                   {inventoryMode === "updates"
                     ? "Available stock only; updates never create new inventory"
+                    : inventoryMode === "locations"
+                      ? `${inStoreInventoryLocations.length} in-store pull location${
+                          inStoreInventoryLocations.length === 1 ? "" : "s"
+                        } saved on the LAN server`
                     : `${activeProfile.companyName} website authority after sync acceptance`}
                 </strong>
               </div>
@@ -15376,6 +15678,21 @@ export function App() {
                     </label>
                     {tradeInProductType === "graded" ? (
                       <>
+                        <label htmlFor="trade-in-grade-preset">
+                          <span className="micro-label">Grade preset</span>
+                          <select
+                            id="trade-in-grade-preset"
+                            disabled={!tradeInCustomerSelected}
+                            value={gradedPresetValueFor(tradeInGradingCompany, tradeInGrade)}
+                            onChange={(event) => handleTradeInGradePresetChange(event.target.value)}
+                          >
+                            {GRADED_CARD_PRESET_OPTIONS.map((option) => (
+                              <option value={option.value} key={option.value || "manual"}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                         <label htmlFor="trade-in-grading-company">
                           <span className="micro-label">Grading company</span>
                           <select
@@ -15384,12 +15701,11 @@ export function App() {
                             value={tradeInGradingCompany}
                             onChange={(event) => setTradeInGradingCompany(event.target.value)}
                           >
-                            <option value="PSA">PSA</option>
-                            <option value="CGC">CGC</option>
-                            <option value="BGS">Beckett/BGS</option>
-                            <option value="SGC">SGC</option>
-                            <option value="TAG">TAG</option>
-                            <option value="Other">Other</option>
+                            {GRADING_COMPANY_OPTIONS.map((option) => (
+                              <option value={option.value} key={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
                         </label>
                         <label htmlFor="trade-in-grade">
@@ -15942,6 +16258,10 @@ export function App() {
                   <dd>{selectedItem.location}</dd>
                 </div>
                 <div>
+                  <dt>Qty on hand</dt>
+                  <dd>{selectedInventoryConditionQuantity}</dd>
+                </div>
+                <div>
                   <dt>Version</dt>
                   <dd>{selectedInventoryVersionLabel}</dd>
                 </div>
@@ -15952,6 +16272,10 @@ export function App() {
                 <div>
                   <dt>Price</dt>
                   <dd>{selectedItem.price}</dd>
+                </div>
+                <div>
+                  <dt>Floor</dt>
+                  <dd>{formatMoney(selectedItem.minimumSalePriceMinorUnits ?? selectedItem.priceMinorUnits, "USD")}</dd>
                 </div>
               </dl>
               {inventoryTechnicalDetailsUnlocked ? (
@@ -15982,16 +16306,119 @@ export function App() {
               {inventoryMode === "updates" ? (
               <>
               <div className="detail-actions">
-                <div className="inventory-adjustment-controls" aria-label="Inventory adjustment details">
-                  <label htmlFor="quantity-delta">
-                    <span className="micro-label">Qty delta</span>
+                <div className="inventory-adjustment-controls inventory-edit-controls" aria-label="Inventory edit fields">
+                  <label htmlFor="inventory-edit-quantity">
+                    <span className="micro-label">Qty on hand</span>
+                    <div className="quantity-stepper">
+                      <button
+                        type="button"
+                        aria-label="Decrease quantity"
+                        onClick={() =>
+                          setInventoryEditQuantityInput((value) =>
+                            String(Math.max(0, (inventoryEditQuantityFromInput(value) ?? 0) - 1)),
+                          )
+                        }
+                      >
+                        -
+                      </button>
+                      <input
+                        id="inventory-edit-quantity"
+                        inputMode="numeric"
+                        value={inventoryEditQuantityInput}
+                        onChange={(event) => setInventoryEditQuantityInput(event.target.value.replace(/[^\d]/g, ""))}
+                        placeholder="0"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Increase quantity"
+                        onClick={() =>
+                          setInventoryEditQuantityInput((value) =>
+                            String(Math.min(999999, (inventoryEditQuantityFromInput(value) ?? 0) + 1)),
+                          )
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                  </label>
+                  <label htmlFor="inventory-edit-price">
+                    <span className="micro-label">Sale price</span>
                     <input
-                      id="quantity-delta"
-                      inputMode="numeric"
-                      value={quantityDeltaInput}
-                      onChange={(event) => setQuantityDeltaInput(event.target.value)}
-                      placeholder="+1"
+                      id="inventory-edit-price"
+                      inputMode="decimal"
+                      value={inventoryEditPriceInput}
+                      onBlur={() => setInventoryEditPriceInput(creditRedemptionInputFromMinorUnits(inventoryEditPriceMinorUnits ?? 0))}
+                      onChange={(event) => setInventoryEditPriceInput(moneyInputDraftWithTwoDecimals(event.target.value))}
+                      placeholder="0.00"
                     />
+                  </label>
+                  <label htmlFor="inventory-edit-floor">
+                    <span className="micro-label">Floor price</span>
+                    <input
+                      id="inventory-edit-floor"
+                      inputMode="decimal"
+                      value={inventoryEditFloorInput}
+                      onBlur={() => setInventoryEditFloorInput(creditRedemptionInputFromMinorUnits(inventoryEditFloorMinorUnits ?? 0))}
+                      onChange={(event) => setInventoryEditFloorInput(moneyInputDraftWithTwoDecimals(event.target.value))}
+                      placeholder="0.00"
+                    />
+                  </label>
+                  <label htmlFor="inventory-edit-location">
+                    <span className="micro-label">In-store location</span>
+                    <input
+                      id="inventory-edit-location"
+                      list="inventory-edit-location-options"
+                      value={inventoryEditLocation}
+                      onChange={(event) => setInventoryEditLocation(event.target.value)}
+                      placeholder="Case, shelf, box, or binder"
+                    />
+                    <datalist id="inventory-edit-location-options">
+                      {inStoreInventoryLocations.map((location) => (
+                        <option key={location} value={location} />
+                      ))}
+                    </datalist>
+                  </label>
+                  <label htmlFor="inventory-edit-online-visibility">
+                    <span className="micro-label">Website</span>
+                    <select
+                      id="inventory-edit-online-visibility"
+                      value={inventoryEditOnlineVisibility}
+                      onChange={(event) => setInventoryEditOnlineVisibility(event.target.value as InventoryVisibility)}
+                    >
+                      {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label htmlFor="inventory-edit-kiosk-visibility">
+                    <span className="micro-label">Kiosk</span>
+                    <select
+                      id="inventory-edit-kiosk-visibility"
+                      value={inventoryEditKioskVisibility}
+                      onChange={(event) => setInventoryEditKioskVisibility(event.target.value as InventoryVisibility)}
+                    >
+                      {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label htmlFor="inventory-edit-pos-visibility">
+                    <span className="micro-label">Square/POS</span>
+                    <select
+                      id="inventory-edit-pos-visibility"
+                      value={inventoryEditPosVisibility}
+                      onChange={(event) => setInventoryEditPosVisibility(event.target.value as InventoryVisibility)}
+                    >
+                      {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label htmlFor="quantity-adjustment-reason">
                     <span className="micro-label">Reason</span>
@@ -16007,12 +16434,12 @@ export function App() {
                       placeholder="Reason"
                     />
                   </label>
-                  {quantityAdjustmentIssue ? <small>{quantityAdjustmentIssue}</small> : null}
+                  {inventoryEditIssue ? <small>{inventoryEditIssue}</small> : null}
                 </div>
                 <button
                   className="wide-action"
                   type="button"
-                  disabled={selectedItem.status !== "available"}
+                  disabled={!hasSelectedInventoryItem || Boolean(inventoryEditIssue)}
                   onClick={() =>
                     void handleStageInventoryUpdate(
                       "Inventory update saved",
@@ -16032,13 +16459,6 @@ export function App() {
                   onClick={() => void handleInventoryReservation()}
                 >
                   Hold Item
-                </button>
-                <button
-                  type="button"
-                  disabled={selectedItem.status !== "available"}
-                  onClick={() => void handleQuantityAdjustment()}
-                >
-                  Adjust Qty
                 </button>
                 <button
                   type="button"
@@ -16766,6 +17186,7 @@ export function App() {
                           (item.pickIds ?? []).includes(candidate.publicId ?? "") ||
                           candidate.barcode === item.barcode,
                       )
+                      const pullLocation = inventoryItem?.location || item.location || "Inventory"
 
                       return (
                         <label className={checked ? "is-picked" : ""} key={item.publicId}>
@@ -16803,7 +17224,7 @@ export function App() {
                           </span>
                           <span className="fulfillment-pick-location">
                             <small>Pull from</small>
-                            <strong>{item.location}</strong>
+                            <strong>{pullLocation}</strong>
                             <span>{item.price}</span>
                           </span>
                         </label>

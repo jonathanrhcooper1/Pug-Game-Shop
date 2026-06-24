@@ -216,6 +216,8 @@ export type LocalSyncInventoryItem = {
   condition: string
   barcode: string
   price_minor_units: number
+  quantity_on_hand: number
+  minimum_sale_price_minor_units?: number
   currency: "USD"
   location: string
   status: "available" | "reserved" | "sold" | "conflict" | "pending_intake" | "return_review" | "damaged" | "removed"
@@ -325,6 +327,10 @@ export type LocalSyncInventoryUpdateResult = LocalSyncResult<{
     entity_id: string
     sync_status: string
   }
+  previous_quantity_on_hand: number
+  quantity_on_hand: number
+  quantity_delta: number
+  quantity_update_mode: "absolute" | "delta" | "unchanged"
   wordpress_acceptance_required: true
   wordpress_auto_sync_performed: boolean
   wordpress_accepted_count: number
@@ -1639,6 +1645,9 @@ export type LocalSyncServerClient = {
       priceMinorUnits?: number
       salePriceMinorUnits?: number
       minimumSalePriceMinorUnits?: number
+      setQuantity?: number
+      quantityOnHand?: number
+      quantityDelta?: number
       location?: string
       onlineVisibility?: LocalSyncInventoryItem["online_visibility"]
       kioskVisibility?: LocalSyncInventoryItem["kiosk_visibility"]
@@ -1990,6 +1999,159 @@ export function createLocalSyncServerClient(
   fetcher: LocalSyncFetch = fetch,
 ): LocalSyncServerClient {
   const baseUrl = normalizeLocalSyncServerUrl(serverUrl)
+  const searchScryDexCards: LocalSyncServerClient["searchScryDexCards"] = (sessionToken, query, game = "pokemon", options = {}) => {
+    const params = new URLSearchParams({
+      q: query,
+      game,
+      limit: String(options.limit ?? "all"),
+    })
+
+    if (options.setFilter) {
+      params.set("set", options.setFilter)
+    }
+
+    if (options.rawOrGraded) {
+      params.set("raw_or_graded", options.rawOrGraded)
+    }
+
+    if (options.forceLive === true) {
+      params.set("force_live", "1")
+    }
+
+    return requestLocalSync(fetcher, baseUrl, `/scrydex/cards/search?${params.toString()}`, {
+      sessionToken,
+    }) as Promise<LocalSyncScryDexSearchResult>
+  }
+
+  const fallbackIndexScryDexCatalog = async (
+    sessionToken: string,
+    input: Parameters<LocalSyncServerClient["indexScryDexCatalog"]>[1],
+    routeResult: LocalSyncScryDexCatalogIndexResult,
+  ): Promise<LocalSyncScryDexCatalogIndexResult> => {
+    const rawOrGraded = input.rawOrGraded || undefined
+
+    if (input.mode === "card") {
+      const query = String(input.query ?? "").trim()
+
+      if (!query) {
+        return {
+          status: "blocked",
+          code: "scrydex_card_query_required",
+          message: "Enter the missing card name before searching every game.",
+        }
+      }
+
+      const requestedGames = input.games && input.games.length > 0
+        ? input.games
+        : (["pokemon", "magicthegathering", "lorcana", "onepiece"] as LocalSyncScryDexCard["game"][])
+      const results = await Promise.all(
+        requestedGames.map((game) =>
+          searchScryDexCards(sessionToken, query, game, {
+            limit: "all",
+            rawOrGraded,
+            forceLive: true,
+          }),
+        ),
+      )
+      const cards = uniqueScryDexCards(
+        results.flatMap((result) => result.status === "ok" ? result.cards : []),
+      )
+      const blockedGames = requestedGames.flatMap((game, index) => {
+        const result = results[index]
+
+        if (result.status === "ok") {
+          return []
+        }
+
+        return [{
+          game,
+          code: result.code ?? "scrydex_card_search_blocked",
+          message: result.message ?? "ScryDex card search was blocked.",
+        }]
+      })
+
+      return {
+        status: "ok",
+        action: "scrydex_missing_card_live_search_completed",
+        code: "scrydex_missing_card_live_search_fallback_completed",
+        message:
+          "This LAN server is missing the full ScryDex index route, so the app used live card search fallback. Install the LAN server patch for full set indexing.",
+        query,
+        games: requestedGames,
+        cards,
+        imported_count: cards.length,
+        blocked_games: blockedGames,
+        lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const setQuery = String(input.setQuery ?? input.query ?? "").trim()
+
+    if (!setQuery) {
+      return {
+        status: "blocked",
+        code: "scrydex_set_query_required",
+        message: "Enter a set name or code before indexing a missing set.",
+      }
+    }
+
+    const game = input.game ?? "pokemon"
+    const searchResult = await searchScryDexCards(sessionToken, setQuery, game, {
+      limit: "all",
+      rawOrGraded,
+      forceLive: true,
+    })
+
+    if (searchResult.status !== "ok") {
+      return {
+        ...routeResult,
+        status: "blocked",
+        code: (searchResult as LocalSyncBlocked | LocalSyncUnavailable).code ?? "scrydex_set_live_search_blocked",
+        message: (searchResult as LocalSyncBlocked | LocalSyncUnavailable).message ?? "ScryDex set lookup was blocked.",
+      }
+    }
+
+    return {
+      status: "ok",
+      action: "scrydex_missing_set_live_search_completed",
+      code: "scrydex_missing_set_live_search_fallback_completed",
+      message:
+        "This LAN server is missing the full ScryDex index route, so the app used live set search fallback. Install the LAN server patch for full set indexing.",
+      game,
+      set_query: setQuery,
+      cards: searchResult.cards,
+      imported_count: searchResult.cards.length,
+      catalog_index_status: "unavailable",
+      lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  const indexScryDexCatalog: LocalSyncServerClient["indexScryDexCatalog"] = async (sessionToken, input) => {
+    const result = await requestLocalSync(fetcher, baseUrl, "/scrydex/catalog/index", {
+      method: "POST",
+      sessionToken,
+      body: {
+        mode: input.mode,
+        query: input.query ?? "",
+        set_query: input.setQuery ?? "",
+        game: input.game ?? "pokemon",
+        games: input.games ?? [],
+        raw_or_graded: input.rawOrGraded ?? "",
+        max_pages: input.maxPages ?? 10000,
+        page_size: input.pageSize ?? 100,
+      },
+    }) as LocalSyncScryDexCatalogIndexResult
+
+    if (result.status === "blocked" && result.code === "route_not_found") {
+      return fallbackIndexScryDexCatalog(sessionToken, input, result)
+    }
+
+    return result
+  }
 
   return {
     serverUrl: baseUrl,
@@ -2148,6 +2310,9 @@ export function createLocalSyncServerClient(
           price_minor_units: input.priceMinorUnits ?? input.salePriceMinorUnits ?? undefined,
           sale_price_minor_units: input.salePriceMinorUnits ?? input.priceMinorUnits ?? undefined,
           minimum_sale_price_minor_units: input.minimumSalePriceMinorUnits ?? input.priceMinorUnits ?? undefined,
+          set_quantity: input.setQuantity ?? undefined,
+          quantity_on_hand: input.quantityOnHand ?? undefined,
+          quantity_delta: input.quantityDelta ?? undefined,
           location: input.location ?? undefined,
           online_visibility: input.onlineVisibility ?? undefined,
           kiosk_visibility: input.kioskVisibility ?? undefined,
@@ -2156,44 +2321,8 @@ export function createLocalSyncServerClient(
           sync_intent: input.syncIntent ?? "",
         },
       }) as Promise<LocalSyncInventoryUpdateResult>,
-    searchScryDexCards: (sessionToken, query, game = "pokemon", options = {}) => {
-      const params = new URLSearchParams({
-        q: query,
-        game,
-        limit: String(options.limit ?? "all"),
-      })
-
-      if (options.setFilter) {
-        params.set("set", options.setFilter)
-      }
-
-      if (options.rawOrGraded) {
-        params.set("raw_or_graded", options.rawOrGraded)
-      }
-
-      if (options.forceLive === true) {
-        params.set("force_live", "1")
-      }
-
-      return requestLocalSync(fetcher, baseUrl, `/scrydex/cards/search?${params.toString()}`, {
-        sessionToken,
-      }) as Promise<LocalSyncScryDexSearchResult>
-    },
-    indexScryDexCatalog: (sessionToken, input) =>
-      requestLocalSync(fetcher, baseUrl, "/scrydex/catalog/index", {
-        method: "POST",
-        sessionToken,
-        body: {
-          mode: input.mode,
-          query: input.query ?? "",
-          set_query: input.setQuery ?? "",
-          game: input.game ?? "pokemon",
-          games: input.games ?? [],
-          raw_or_graded: input.rawOrGraded ?? "",
-          max_pages: input.maxPages ?? 10000,
-          page_size: input.pageSize ?? 100,
-        },
-      }) as Promise<LocalSyncScryDexCatalogIndexResult>,
+    searchScryDexCards,
+    indexScryDexCatalog,
     identifyScryDexCardImage: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/scrydex/cards/identify-image", {
         method: "POST",
@@ -2670,6 +2799,30 @@ export function normalizeLocalSyncServerUrl(value: string) {
   } catch {
     return "http://127.0.0.1:8787"
   }
+}
+
+function uniqueScryDexCards(cards: LocalSyncScryDexCard[]) {
+  const seen = new Set<string>()
+  const uniqueCards: LocalSyncScryDexCard[] = []
+
+  for (const card of cards) {
+    const key = [
+      card.provider_card_id,
+      card.game,
+      card.card_name,
+      card.set_name,
+      card.printed_number || card.card_number,
+    ].join("|")
+
+    if (seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    uniqueCards.push(card)
+  }
+
+  return uniqueCards
 }
 
 async function requestLocalSync(

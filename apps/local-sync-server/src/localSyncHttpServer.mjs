@@ -6,6 +6,14 @@ import { buildLocalSyncSetupStatus } from "./localSyncServerContract.mjs"
 
 export function createLocalSyncHttpServer(options = {}) {
   const storeOptions = options.storeOptions ?? {}
+  const connectorConfigured = (connector, methodName) => {
+    const status = connector?.status?.()
+    if (status && Object.prototype.hasOwnProperty.call(status, "configured")) {
+      return status.configured === true
+    }
+
+    return typeof connector?.[methodName] === "function"
+  }
   const setupStoreOptions = {
     ...storeOptions,
     localDatabase: storeOptions.localDatabase ?? options.localDatabase,
@@ -39,12 +47,8 @@ export function createLocalSyncHttpServer(options = {}) {
     scrydexVisionConfigured:
       typeof storeOptions.scryDexVisionIdentifier?.identifyCardImage === "function" &&
       storeOptions.scryDexVisionIdentifier?.configured === true,
-    squareInventoryCountPullConnected:
-      typeof storeOptions.squareInventoryCountsPuller?.pullCounts === "function" ||
-      Boolean(storeOptions.squareInventoryCountsPuller?.status?.().configured),
-    squareSalesReportPullConnected:
-      typeof storeOptions.squareSalesReportsPuller?.pullSalesReport === "function" ||
-      Boolean(storeOptions.squareSalesReportsPuller?.status?.().configured),
+    squareInventoryCountPullConnected: connectorConfigured(storeOptions.squareInventoryCountsPuller, "pullCounts"),
+    squareSalesReportPullConnected: connectorConfigured(storeOptions.squareSalesReportsPuller, "pullSalesReport"),
     gradedPricingProviderConfigured:
       Boolean(storeOptions.gradedPricingProviderConfigured) ||
       (typeof storeOptions.gradedPricingLookup === "function" && storeOptions.gradedPricingLookup.configured === true),

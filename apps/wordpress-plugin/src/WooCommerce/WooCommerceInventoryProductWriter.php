@@ -147,6 +147,22 @@ final class WooCommerceInventoryProductWriter {
 			);
 		}
 
+		if (
+			class_exists( '\WooCommerce\Square\Handlers\Product' )
+			&& method_exists( '\WooCommerce\Square\Handlers\Product', 'set_synced_with_square' )
+		) {
+			$result = \WooCommerce\Square\Handlers\Product::set_synced_with_square( $product_id, 'yes' );
+
+			if ( true === $result ) {
+				return array(
+					'status'   => 'synced',
+					'code'     => 'square_sync_plugin_api_set',
+					'taxonomy' => $taxonomy,
+					'term'     => $term,
+				);
+			}
+		}
+
 		if ( ! function_exists( 'taxonomy_exists' ) || ! taxonomy_exists( $taxonomy ) || ! function_exists( 'wp_set_post_terms' ) ) {
 			return array(
 				'status'   => 'deferred',

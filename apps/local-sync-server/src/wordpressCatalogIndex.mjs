@@ -191,3 +191,9 @@ function boundedNonNegativeInt(value, fallback) {
 
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
 }
+
+function boundedTimeout(value) {
+  const timeout = Number.parseInt(String(value ?? "30000"), 10)
+
+  return Number.isFinite(timeout) ? Math.min(60000, Math.max(1000, timeout)) : 30000
+}

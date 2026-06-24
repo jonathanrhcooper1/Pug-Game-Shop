@@ -91,6 +91,43 @@ assert.equal(providerResult.valuation.credentials_synced_to_client, false)
 assert.equal(providerResult.provider.credentials_synced_to_client, false)
 assert.equal(JSON.stringify(providerResult).includes("pc-test-token"), false)
 
+let higherFallbackRequestCount = 0
+const higherFallbackProvider = createPriceChartingProvider({
+  token: "pc-test-token",
+  minRequestIntervalMs: 0,
+  fetcher: async () => {
+    higherFallbackRequestCount += 1
+
+    return {
+      ok: true,
+      json: async () => ({
+        status: "success",
+        id: "pokemon-base-charizard-4",
+        "product-name": "Pokemon Base Charizard #4",
+        "graded-price": 0,
+        "box-only-price": 0,
+        "manual-only-price": 500000,
+      }),
+    }
+  },
+})
+
+const higherFallbackResult = await higherFallbackProvider.lookup({
+  card_name: "Charizard",
+  set_name: "Base",
+  card_number: "4/102",
+  game: "pokemon",
+  grading_company: "PSA",
+  grade: "9",
+})
+
+assert.equal(higherFallbackRequestCount, 1)
+assert.equal(higherFallbackResult.provider_request_performed, true)
+assert.equal(higherFallbackResult.provider.status, "fallback_higher_grade")
+assert.equal(higherFallbackResult.valuation.market_price_minor_units, 500000)
+assert.equal(higherFallbackResult.valuation.source_detail.includes("next higher available grade"), true)
+assert.equal(higherFallbackResult.valuation.confidence_score < 96, true)
+
 let noTokenRequestCount = 0
 const noTokenProvider = createPriceChartingProvider({
   token: "",

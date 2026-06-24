@@ -75,9 +75,10 @@ export function createPriceChartingProvider(options = {}) {
         }
       }
 
-      const selectedKey = priceChartingCardGradePriceKey(input.grading_company, input.grade)
+      const selectedKeys = priceChartingCardGradePriceKeys(input.grading_company, input.grade)
+      const requestedKey = selectedKeys[0] ?? null
 
-      if (!selectedKey) {
+      if (!requestedKey) {
         return {
           valuation: null,
           provider: {
@@ -141,7 +142,8 @@ export function createPriceChartingProvider(options = {}) {
           }
         }
 
-        const marketPriceMinorUnits = priceChartingMinorUnits(payload[selectedKey.key])
+        const selectedKey = selectedKeys.find((candidate) => priceChartingMinorUnits(payload[candidate.key]) > 0) ?? null
+        const marketPriceMinorUnits = selectedKey ? priceChartingMinorUnits(payload[selectedKey.key]) : 0
 
         if (marketPriceMinorUnits <= 0) {
           return {
@@ -150,7 +152,7 @@ export function createPriceChartingProvider(options = {}) {
               provider: "pricecharting",
               configured: true,
               status: "no_price",
-              detail: `PriceCharting matched ${cleanName(payload["product-name"])} but did not return ${selectedKey.label}.`,
+              detail: `PriceCharting matched ${cleanName(payload["product-name"])} but did not return ${requestedKey.label} or any known higher grade price.`,
               credentials_synced_to_client: false,
               raw_credentials_returned: false,
             },
@@ -173,8 +175,12 @@ export function createPriceChartingProvider(options = {}) {
             market_price_minor_units: marketPriceMinorUnits,
             currency: "USD",
             source_label: "PriceCharting graded market",
-            source_detail: `${selectedKey.label} from PriceCharting current values.`,
-            confidence_score: selectedKey.confidence,
+            source_detail: selectedKey.is_higher_grade_fallback
+              ? `${selectedKey.label} from PriceCharting current values. Warning: requested ${requestedKey.label}, but that exact grade had no current value, so the next higher available grade was used.`
+              : `${selectedKey.label} from PriceCharting current values.`,
+            confidence_score: selectedKey.is_higher_grade_fallback
+              ? Math.max(70, selectedKey.confidence - 12)
+              : selectedKey.confidence,
             observed_at_utc: observedAtUtc,
             fetched_at_utc: observedAtUtc,
             credentials_synced_to_client: false,
@@ -183,8 +189,10 @@ export function createPriceChartingProvider(options = {}) {
           provider: {
             provider: "pricecharting",
             configured: true,
-            status: "ready",
-            detail: `Matched ${cleanName(payload["product-name"])} using ${selectedKey.label}.`,
+            status: selectedKey.is_higher_grade_fallback ? "fallback_higher_grade" : "ready",
+            detail: selectedKey.is_higher_grade_fallback
+              ? `Matched ${cleanName(payload["product-name"])}. ${requestedKey.label} was missing, so ${selectedKey.label} was used as the next higher grade.`
+              : `Matched ${cleanName(payload["product-name"])} using ${selectedKey.label}.`,
             credentials_synced_to_client: false,
             raw_credentials_returned: false,
           },
@@ -270,6 +278,36 @@ export function priceChartingCardGradePriceKey(gradingCompany, grade) {
   }
 
   return null
+}
+
+function priceChartingCardGradePriceKeys(gradingCompany, grade) {
+  const normalizedGrade = Number.parseFloat(String(grade ?? "").replace(/[^0-9.]+/g, ""))
+
+  if (!Number.isFinite(normalizedGrade)) {
+    return []
+  }
+
+  const gradeCandidates = [normalizedGrade, 7, 8, 9, 9.5, 10]
+    .filter((candidate) => candidate >= normalizedGrade)
+    .sort((left, right) => left - right)
+  const keyed = new Map()
+
+  for (const gradeCandidate of gradeCandidates) {
+    const key = priceChartingCardGradePriceKey(gradingCompany, String(gradeCandidate))
+
+    if (!key || keyed.has(key.key)) {
+      continue
+    }
+
+    keyed.set(key.key, {
+      ...key,
+      requested_grade: normalizedGrade,
+      fallback_grade: gradeCandidate,
+      is_higher_grade_fallback: gradeCandidate > normalizedGrade,
+    })
+  }
+
+  return Array.from(keyed.values())
 }
 
 function priceChartingQuery(input = {}) {

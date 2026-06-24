@@ -566,7 +566,7 @@ final class GroupedInventoryProductHooks {
 				);
 			}
 
-			++$options[ $option_key ]['stock_quantity'];
+			$options[ $option_key ]['stock_quantity'] += $this->row_quantity_on_hand( $row );
 		}
 
 		return array_values( $options );
@@ -598,7 +598,7 @@ final class GroupedInventoryProductHooks {
 
 		$table = $this->inventory_table( $wpdb );
 		$sql   = $wpdb->prepare(
-			"SELECT * FROM `{$table}` WHERE `woocommerce_product_id` = %d AND `status` = %s AND `online_visibility` = %s ORDER BY `sale_price` ASC, `condition_code` ASC, `inventory_id` ASC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT * FROM `{$table}` WHERE `woocommerce_product_id` = %d AND `status` = %s AND `online_visibility` = %s AND `quantity_on_hand` > 0 ORDER BY `sale_price` ASC, `condition_code` ASC, `inventory_id` ASC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$product_id,
 			InventoryStatus::AVAILABLE,
 			'visible'
@@ -641,6 +641,14 @@ final class GroupedInventoryProductHooks {
 		);
 
 		return trim( implode( ' / ', $details ) ) . ' - ' . $option['price'] . ' ' . $option['currency'] . ' - ' . (int) $option['stock_quantity'] . ' in stock';
+	}
+
+	private function row_quantity_on_hand( array $row ): int {
+		if ( isset( $row['quantity_on_hand'] ) && is_numeric( $row['quantity_on_hand'] ) ) {
+			return max( 0, (int) $row['quantity_on_hand'] );
+		}
+
+		return InventoryStatus::AVAILABLE === (string) ( $row['status'] ?? InventoryStatus::AVAILABLE ) ? 1 : 0;
 	}
 
 	private function is_grouped_inventory_product( \WC_Product $product ): bool {

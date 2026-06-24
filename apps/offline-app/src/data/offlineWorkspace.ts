@@ -57,6 +57,8 @@ export type InventoryItem = {
   barcode: string
   price: string
   priceMinorUnits: number
+  quantityOnHand?: number
+  minimumSalePriceMinorUnits?: number
   currency: "USD"
   location: string
   status: InventoryStatus

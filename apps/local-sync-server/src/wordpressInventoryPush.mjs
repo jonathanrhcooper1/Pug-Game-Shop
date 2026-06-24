@@ -417,6 +417,12 @@ function inventoryUpdateIdentity(item = {}, operation = {}) {
 function inventoryUpdateBody(operation = {}, item = {}) {
   const payload = operation.payload && typeof operation.payload === "object" ? operation.payload : {}
   const priceMinorUnits = roundSalePriceMinorUnits(payload.price_minor_units ?? item.price_minor_units)
+  const minimumSalePriceMinorUnits = roundSalePriceMinorUnits(
+    payload.minimum_sale_price_minor_units ?? item.minimum_sale_price_minor_units ?? priceMinorUnits,
+  )
+  const quantityOnHand = nonNegativeInteger(
+    payload.quantity_on_hand ?? item.quantity_on_hand ?? (cleanInventoryStatus(payload.status ?? item.status) === "available" ? 1 : 0),
+  )
 
   return {
     source: "offline",
@@ -424,8 +430,10 @@ function inventoryUpdateBody(operation = {}, item = {}) {
     barcode: cleanBarcode(payload.barcode ?? item.barcode),
     sku: cleanBarcode(payload.barcode ?? item.barcode),
     sale_currency: "USD",
-    minimum_sale_price_minor_units: priceMinorUnits,
+    minimum_sale_price_minor_units: minimumSalePriceMinorUnits,
     sale_price_minor_units: priceMinorUnits,
+    quantity_on_hand: quantityOnHand,
+    set_quantity: quantityOnHand,
     online_visibility: cleanVisibility(payload.online_visibility ?? item.online_visibility, "visible"),
     kiosk_visibility: cleanVisibility(payload.kiosk_visibility ?? item.kiosk_visibility, "visible"),
     pos_visibility: cleanVisibility(payload.pos_visibility ?? item.pos_visibility, "visible"),
@@ -514,6 +522,12 @@ function boundedMinorUnits(value) {
   const parsed = Number.parseInt(String(value ?? "0"), 10)
 
   return Number.isFinite(parsed) ? Math.max(0, Math.min(99_999_999, parsed)) : 0
+}
+
+function nonNegativeInteger(value) {
+  const parsed = Number.parseInt(String(value ?? "0"), 10)
+
+  return Number.isFinite(parsed) ? Math.max(0, Math.min(999999, parsed)) : 0
 }
 
 function roundSalePriceMinorUnits(value) {
