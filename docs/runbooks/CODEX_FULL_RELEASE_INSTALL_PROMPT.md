@@ -2,7 +2,7 @@
 
 Copy/paste this entire file into Codex on the middleman/LAN server PC.
 
-You are installing The Pug Game Shop production release `0.202.12` from the USB.
+You are installing The Pug Game Shop production release `0.202.13` from the USB.
 
 USB folder:
 
@@ -15,9 +15,12 @@ Primary goals:
 - Install/update the Pug LAN middleman server.
 - Apply the USB credential handoff without printing secrets.
 - Start/restart the LAN server.
-- Install/update Pug Store App and Pug Kiosk App `0.202.12`.
+- Install/update Pug Store App and Pug Kiosk App `0.202.13`.
 - Verify WordPress, ScryDex, Square, Square location, Square inventory sync, Square sales sync, device heartbeats, and Square POS category layout.
 - Confirm Square POS has `Singles > MTG / Lorcana / Riftbound / Pokemon`.
+- Confirm the LAN server starts the first-run WordPress inventory bootstrap so
+  all existing website inventory rows, including the current 830-card catalog,
+  seed into the middleman cache and Square before changed-only polling begins.
 - Keep the hidden USB credential handoff file off GitHub and out of chat.
 
 Important:
@@ -46,9 +49,9 @@ $required = @(
   "Apply-Pug-Middleman-Credentials.ps1",
   "Diagnose-Pug-Dymo-Printing.ps1",
   "pug-lan-server.zip",
-  "Pug Store App-0.202.12.exe",
-  "Pug Kiosk App-0.202.12.exe",
-  "the-pug-store-deliverables-0.202.12.zip",
+  "Pug Store App-0.202.13.exe",
+  "Pug Kiosk App-0.202.13.exe",
+  "the-pug-store-deliverables-0.202.13.zip",
   "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env"
 )
 
@@ -159,7 +162,8 @@ Expected:
 - Square inventory count pull is configured.
 - Square sales report pull is configured.
 - WordPress inventory pull is configured.
-- WordPress inventory polling is enabled and uses changed-since inventory pulls.
+- WordPress inventory polling is enabled. First startup bootstraps all existing
+  website inventory pages, then switches to changed-since inventory pulls.
 - Raw credentials are not returned.
 
 Check the latest server log if available:
@@ -176,10 +180,19 @@ Look for:
 ```text
 Square POS Singles layout ready: Singles > MTG > Lorcana > Riftbound > Pokemon
 WordPress inventory polling enabled every
+First run will bootstrap all existing inventory
+WordPress inventory bootstrap complete; changed-since polling enabled.
 Square inventory polling enabled every
 ```
 
-If this message is not visible, restart the server once and recheck health/sync status.
+For the current 830-card inventory and the default 100-row page size with
+`PUG_WORDPRESS_INVENTORY_POLL_MAX_PAGES=5`, the first cycle should seed up to
+500 rows and then log that bootstrap is continuing at a later page. The next
+cycle should finish the remaining rows. If the server is set to poll every
+60 seconds, expect roughly 1-2 minutes before the bootstrap completion message.
+
+If these messages are not visible, restart the server once and recheck
+health/sync status.
 
 Also verify `/sync/status` includes:
 
@@ -188,6 +201,12 @@ Also verify `/sync/status` includes:
 - `square_inventory_count_poller_connected: true`
 - `last_website_inventory_pull` after the first polling cycle
 
+If you want the 830 rows to seed faster after the one-card test passes, set
+`PUG_WORDPRESS_INVENTORY_POLL_SECONDS=15` and
+`PUG_WORDPRESS_INVENTORY_POLL_MAX_PAGES=10` in `local-sync.env`, restart the
+LAN server, wait for the bootstrap completion message, then return the interval
+to a calmer production value if desired.
+
 ## 5. Install Store App And Kiosk App
 
 Run:
@@ -195,8 +214,8 @@ Run:
 ```powershell
 $releaseRoot = "D:\The Pug Installers"
 
-Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.12.exe" -Wait
-Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.12.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.13.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.13.exe" -Wait
 ```
 
 Open both apps.
@@ -255,6 +274,12 @@ Expected:
 - If the card quantity is changed by a Square sale, the LAN server pulls Square counts on the next Square inventory poll and pushes the absolute quantity back to WordPress/app.
 
 Do not bulk import until one-card sync succeeds.
+
+After the one-card path succeeds, leave the LAN server running. The first-run
+bootstrap will pull every existing WordPress inventory row and push each changed
+or newly seen row to Square. After bootstrap completes, only changed WordPress
+rows are pulled by `updated_after`, so the server is not repeatedly scanning
+the whole inventory.
 
 ## 8. DYMO Printer Check
 

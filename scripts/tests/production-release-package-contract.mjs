@@ -139,10 +139,11 @@ assert.ok(
 for (const marker of [
   "LAN Server Codex Install Prompt",
   "Deploy-Pug-LAN-Server-Patch.ps1",
-  "Pug Store App-0.202.12.exe",
-  "Pug Kiosk App-0.202.12.exe",
+  "Pug Store App-0.202.13.exe",
+  "Pug Kiosk App-0.202.13.exe",
   "This workstation name",
   "/devices/status",
+  "WordPress inventory bootstrap complete",
   "stable generated device ID",
 ]) {
   assert.ok(lanServerInstallPrompt.includes(marker), `Missing LAN server install prompt marker: ${marker}`)
@@ -150,12 +151,14 @@ for (const marker of [
 
 for (const marker of [
   "Codex Full Release Install Prompt",
-  "0.202.12",
+  "0.202.13",
   "D:\\The Pug Installers",
   "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env",
   "LB1B9Z4GVG1BH",
   "Square POS Singles layout ready",
   "WordPress inventory polling enabled every",
+  "First run will bootstrap all existing inventory",
+  "current 830-card inventory",
   "last_website_inventory_pull",
   "PUG-CODEX-POS-SINGLES-MTG-20260625T185622Z",
   "Do not print API keys",

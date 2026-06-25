@@ -16,8 +16,12 @@ Do not print or expose any secrets. The release package already includes the
 local server configuration needed for this install. If a server config already
 exists, preserve it unless I explicitly ask you to replace it.
 
-This specific `0.202.12` update is required for:
+This specific `0.202.13` update is required for:
 
+- Full existing-inventory bootstrap sync: on first LAN server startup, pull all
+  current WordPress inventory pages into the middleman cache and Square before
+  switching to changed-since polling. The current 830-card inventory should seed
+  across about two default polling cycles.
 - LAN server graded-card pricing logic: PriceCharting is the primary graded
   price source, and ScryDex/reference cache is the fallback.
 - Store App graded-card trade-in UI: show staff which pricing source was used.
@@ -50,8 +54,8 @@ $releaseRoot = "D:\The Pug Installers"
 Get-ChildItem -LiteralPath $releaseRoot -Force | Select-Object Name,Length,LastWriteTime
 Test-Path "$releaseRoot\Deploy-Pug-LAN-Server-Patch.ps1"
 Test-Path "$releaseRoot\pug-lan-server.zip"
-Test-Path "$releaseRoot\Pug Store App-0.202.12.exe"
-Test-Path "$releaseRoot\Pug Kiosk App-0.202.12.exe"
+Test-Path "$releaseRoot\Pug Store App-0.202.13.exe"
+Test-Path "$releaseRoot\Pug Kiosk App-0.202.13.exe"
 Test-Path "$releaseRoot\Apply-Pug-Middleman-Credentials.ps1"
 Test-Path "$releaseRoot\LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env"
 Test-Path "$releaseRoot\Diagnose-Pug-Dymo-Printing.ps1"
@@ -142,6 +146,14 @@ When the LAN server starts with Square credentials configured, watch the startup
 log for:
 
 - `Square POS Singles layout ready: Singles > MTG > Lorcana > Riftbound > Pokemon`
+- `WordPress inventory polling enabled every`
+- `First run will bootstrap all existing inventory`
+- `WordPress inventory bootstrap complete; changed-since polling enabled.`
+
+With default settings, the first WordPress inventory bootstrap pulls up to five
+100-row pages per cycle. For the current 830-card inventory, it should seed the
+first 500 rows, log that it will continue at the next page, then finish the
+remaining rows on the next cycle.
 
 Confirm the sync/status response includes:
 
@@ -171,15 +183,15 @@ install if silent install does not work.
 
 ```powershell
 $releaseRoot = "D:\The Pug Installers"
-Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.12.exe" -Wait
-Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.12.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.13.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.13.exe" -Wait
 ```
 
 If the apps were already open, close and reopen them after install.
 
 Important: every workstation that runs the Store App must also be updated to
-this same `0.202.12` Store App build. If one PC still logs in and immediately
-returns to the PIN screen, reinstall `Pug Store App-0.202.12.exe` on that PC,
+this same `0.202.13` Store App build. If one PC still logs in and immediately
+returns to the PIN screen, reinstall `Pug Store App-0.202.13.exe` on that PC,
 then point it to the middleman URL `http://SERVER_IP_HERE:8787` before login.
 
 On each app connection screen, set `This workstation name` to a unique friendly
@@ -204,8 +216,8 @@ Run the DYMO service helper:
 
 ```powershell
 $dyMoScripts = @(
-  "D:\The Pug Installers\the-pug-store-deliverables-0.202.12\Pug Store App\Start-Pug-Dymo-Local-Service.ps1",
-  "D:\The Pug Installers\the-pug-store-deliverables-0.202.12\LAN Server + Pug Store App\Start-Pug-Dymo-Local-Service.ps1"
+  "D:\The Pug Installers\the-pug-store-deliverables-0.202.13\Pug Store App\Start-Pug-Dymo-Local-Service.ps1",
+  "D:\The Pug Installers\the-pug-store-deliverables-0.202.13\LAN Server + Pug Store App\Start-Pug-Dymo-Local-Service.ps1"
 )
 
 foreach ($script in $dyMoScripts) {
@@ -265,7 +277,7 @@ If it does not print:
 
 - Re-run the DYMO service helper above.
 - Confirm DYMO Connect sees the printer.
-- Confirm the app is the freshly installed `0.202.12` build.
+- Confirm the app is the freshly installed `0.202.13` build.
 - Check whether the app reports a local print failure before LAN fallback.
 - Run the standalone diagnostic collector and send the generated ZIP report
   back to Codex:

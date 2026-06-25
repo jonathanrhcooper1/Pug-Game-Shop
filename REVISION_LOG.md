@@ -1,5 +1,72 @@
 # Revision Log
 
+## 2026-06-25 - 0.202.13 Full Inventory Bootstrap Sync
+
+### What Changed
+
+- Bumped release metadata from `0.202.12` to `0.202.13`.
+- Changed LAN server WordPress inventory polling so first startup runs in
+  bootstrap mode and pages through all existing website inventory rows before
+  switching to changed-since polling.
+- Preserved the bootstrap start timestamp as the first changed-since cursor so
+  inventory edits made during the bootstrap are pulled again after seeding
+  completes.
+- Added progress logging for paused bootstrap cycles and bootstrap completion.
+- Updated the full release and LAN server install prompts to explain how the
+  existing 830-card inventory will seed into the middleman and Square.
+
+### Why
+
+The changed-since poller was safe for ongoing edits, but an initial store with
+more inventory rows than the per-cycle page cap could seed only the first pages
+and then advance the cursor. The release needs to seed all current cards once,
+then switch to lower-load live changed-row polling.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `package.json`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md`
+- `docs/runbooks/LAN_SERVER_CODEX_INSTALL.md`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `scripts/tests/square-pos-singles-layout-contract.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `node scripts/tests/square-pos-singles-layout-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-square-sync`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd run package:production-release`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd run release:copy-usb`
+
+### Rollback Notes
+
+- Set `PUG_WORDPRESS_INVENTORY_POLL_DISABLED=true` or
+  `LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_DISABLED=true` to pause automatic
+  WordPress inventory bootstrap/polling without rolling back the release.
+- If the bootstrap is putting too much load on WordPress or Square, increase
+  `PUG_WORDPRESS_INVENTORY_POLL_SECONDS` or lower
+  `PUG_WORDPRESS_INVENTORY_POLL_MAX_PAGES`.
+- No database rollback is required.
+
 ## 2026-06-25 - 0.202.12 WordPress/Square Live Sync Hardening
 
 ### What Changed

@@ -540,6 +540,9 @@ function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
 
   let running = false
   let updatedAfter = ""
+  let bootstrapComplete = false
+  let bootstrapStartedAt = ""
+  let bootstrapPage = 1
 
   const run = async () => {
     if (running) {
@@ -549,8 +552,14 @@ function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
     running = true
     const pollStartedAt = new Date(Date.now() - 1000).toISOString()
 
+    if (!bootstrapComplete && !bootstrapStartedAt) {
+      bootstrapStartedAt = pollStartedAt
+    }
+
     try {
-      let page = 1
+      const mode = bootstrapComplete ? "changed" : "bootstrap"
+      let page = bootstrapComplete ? 1 : bootstrapPage
+      let pagesProcessed = 0
       let pulledCount = 0
       let appliedCount = 0
       let squareAcceptedCount = 0
@@ -562,7 +571,7 @@ function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
           domains: ["inventory"],
           page,
           page_size: 100,
-          updated_after: updatedAfter,
+          updated_after: bootstrapComplete ? updatedAfter : "",
           sync_square: true,
         })
 
@@ -576,15 +585,30 @@ function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
         squareAcceptedCount += result.square_catalog_inventory_sync_accepted_count ?? 0
         squareRetryCount += result.square_catalog_inventory_sync_retry_count ?? 0
         hasMore = Boolean(result.meta?.has_more)
+        pagesProcessed += 1
         page += 1
-      } while (hasMore && page <= maxPages)
+      } while (hasMore && pagesProcessed < maxPages)
 
-      updatedAfter = pollStartedAt
+      if (bootstrapComplete) {
+        updatedAfter = pollStartedAt
+      } else if (hasMore) {
+        bootstrapPage = page
+      } else {
+        bootstrapComplete = true
+        updatedAfter = bootstrapStartedAt || pollStartedAt
+        bootstrapPage = 1
+      }
 
       if (pulledCount > 0 || appliedCount > 0 || squareAcceptedCount > 0 || squareRetryCount > 0) {
         console.log(
-          `WordPress inventory poll pulled ${pulledCount} row(s), applied ${appliedCount}, Square accepted ${squareAcceptedCount}, retry ${squareRetryCount}.`,
+          `WordPress inventory ${mode} poll pulled ${pulledCount} row(s), applied ${appliedCount}, Square accepted ${squareAcceptedCount}, retry ${squareRetryCount}.`,
         )
+      }
+
+      if (!bootstrapComplete) {
+        console.log(`WordPress inventory bootstrap paused after ${pagesProcessed} page(s); continuing at page ${bootstrapPage}.`)
+      } else if (mode === "bootstrap") {
+        console.log("WordPress inventory bootstrap complete; changed-since polling enabled.")
       }
     } catch (error) {
       console.warn(`WordPress inventory poll failed: ${error instanceof Error ? error.message : "Unknown error."}`)
@@ -596,6 +620,8 @@ function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
   const interval = setInterval(run, pollSeconds * 1000)
   interval.unref?.()
   server.once("close", () => clearInterval(interval))
-  console.log(`WordPress inventory polling enabled every ${pollSeconds}s, up to ${maxPages} page(s) per cycle.`)
+  console.log(
+    `WordPress inventory polling enabled every ${pollSeconds}s, up to ${maxPages} page(s) per cycle. First run will bootstrap all existing inventory before changed-since polling.`,
+  )
   void run()
 }

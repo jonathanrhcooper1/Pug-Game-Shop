@@ -18,6 +18,9 @@ All notable changes follow Semantic Versioning.
 
 ### Added
 
+- Added LAN middleman first-run WordPress inventory bootstrap sync for release
+  `0.202.13`, so all existing website inventory rows seed into the local cache
+  and Square before changed-since polling takes over.
 - Added a live ScryDex Vision card scanner for the employee app Inventory and
   Trade-In card lookup panels. Camera frames are cropped in the app, identified
   by the LAN server, and converted back into normal ScryDex/reference catalog

@@ -27,8 +27,8 @@ Get-ChildItem -LiteralPath $releaseRoot -Force |
 
 Test-Path "$releaseRoot\Deploy-Pug-LAN-Server-Patch.ps1"
 Test-Path "$releaseRoot\pug-lan-server.zip"
-Test-Path "$releaseRoot\Pug Store App-0.202.12.exe"
-Test-Path "$releaseRoot\Pug Kiosk App-0.202.12.exe"
+Test-Path "$releaseRoot\Pug Store App-0.202.13.exe"
+Test-Path "$releaseRoot\Pug Kiosk App-0.202.13.exe"
 
 & "$releaseRoot\Deploy-Pug-LAN-Server-Patch.ps1" `
   -SourceRoot $releaseRoot
@@ -76,6 +76,18 @@ Expected:
 - `setup/status` reports the production website URL.
 - `sync/status` returns queue counts.
 - `devices/status` works, even if no apps are connected yet.
+- On first startup, WordPress inventory polling bootstraps all existing website
+  inventory rows before changing to live changed-row polling. With the default
+  100-row page size and 5 pages per cycle, the current 830-card inventory should
+  seed across about two polling cycles.
+
+Check the latest LAN server log for:
+
+```text
+WordPress inventory polling enabled every
+First run will bootstrap all existing inventory
+WordPress inventory bootstrap complete; changed-since polling enabled.
+```
 
 ## Install Apps On This Server PC
 
@@ -84,8 +96,8 @@ Run these if the server PC also needs the Store App and Kiosk App:
 ```powershell
 $releaseRoot = "D:\The Pug Installers"
 
-Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.12.exe" -Wait
-Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.12.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.13.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.13.exe" -Wait
 ```
 
 ## App Connection And Heartbeat Naming

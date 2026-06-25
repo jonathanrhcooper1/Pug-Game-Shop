@@ -4,6 +4,14 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Bumped the production package to `0.202.13` for the full existing-inventory
+  bootstrap sync.
+- Updated LAN middleman WordPress inventory polling so the first startup walks
+  every existing inventory page across polling cycles before switching to the
+  `updated_after` changed-row cursor. This lets an existing 830-card inventory
+  seed local cache and Square without skipping older pages.
+- Added bootstrap progress logging so the middleman install check can see
+  whether the seed is still continuing on later pages or has completed.
 - Added WordPress changed-since inventory polling on the LAN middleman so
   website-originated stock edits are pulled automatically and can be pushed to
   Square without manually running a website pull.
