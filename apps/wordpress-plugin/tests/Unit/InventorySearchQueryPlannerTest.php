@@ -24,7 +24,8 @@ final class InventorySearchQueryPlannerTest extends TestCase {
 			2,
 			24,
 			'Base',
-			'graded'
+			'graded',
+			'2026-06-25 12:30:00'
 		);
 
 		$plan     = ( new InventorySearchQueryPlanner() )->plan( $request, 'wp_' );
@@ -42,6 +43,8 @@ final class InventorySearchQueryPlannerTest extends TestCase {
 		$this->assert_same( 'graded', $plan->filters()['raw_or_graded'] );
 		$this->assert_same( array( 'set_name', 'set_code' ), $where['set_filter']['columns'] );
 		$this->assert_same( 'graded', $where['raw_or_graded'] );
+		$this->assert_same( '2026-06-25 12:30:00', $where['updated_after'] );
+		$this->assert_same( '2026-06-25 12:30:00', $plan->filters()['updated_after'] );
 		$this->assert_same( 'DESC', $plan->order_by()['sale_price'] );
 		$this->assert_same( 24, $plan->limit() );
 		$this->assert_same( 24, $plan->offset() );

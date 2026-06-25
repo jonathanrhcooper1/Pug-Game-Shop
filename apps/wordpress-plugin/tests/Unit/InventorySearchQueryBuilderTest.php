@@ -28,7 +28,8 @@ final class InventorySearchQueryBuilderTest extends TestCase {
 					2,
 					24,
 					'Base',
-					'graded'
+					'graded',
+					'2026-06-25 12:30:00'
 				),
 				'wp_'
 			)
@@ -44,20 +45,21 @@ final class InventorySearchQueryBuilderTest extends TestCase {
 		$this->assert_contains( '`game` = %s', $query['select_sql_template'] );
 		$this->assert_contains( '(`set_name` LIKE %s OR `set_code` LIKE %s)', $query['select_sql_template'] );
 		$this->assert_contains( '`raw_or_graded` = %s', $query['select_sql_template'] );
+		$this->assert_contains( '`updated_at` > %s', $query['select_sql_template'] );
 		$this->assert_contains( '`status` IN (%s)', $query['select_sql_template'] );
 		$this->assert_contains( '`online_visibility` = %s', $query['select_sql_template'] );
 		$this->assert_contains( 'ORDER BY `sale_price` DESC, `inventory_id` ASC LIMIT %d OFFSET %d', $query['select_sql_template'] );
 		$this->assert_contains( 'SELECT COUNT(*) FROM `wp_tcg_inventory_items`', $query['count_sql_template'] );
 		$this->assert_same(
-			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', '%Base%', '%Base%', 'graded', InventoryStatus::AVAILABLE, 'visible', 24, 24 ),
+			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', '%Base%', '%Base%', 'graded', '2026-06-25 12:30:00', InventoryStatus::AVAILABLE, 'visible', 24, 24 ),
 			$query['select_prepare_args']
 		);
 		$this->assert_same(
-			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', '%Base%', '%Base%', 'graded', InventoryStatus::AVAILABLE, 'visible' ),
+			array( '%Charizard%', '%Charizard%', '%Charizard%', '%Charizard%', 'pokemon', '%Base%', '%Base%', 'graded', '2026-06-25 12:30:00', InventoryStatus::AVAILABLE, 'visible' ),
 			$query['count_prepare_args']
 		);
-		$this->assert_same( 12, $build->select_prepare_arg_count() );
-		$this->assert_same( 10, $build->count_prepare_arg_count() );
+		$this->assert_same( 13, $build->select_prepare_arg_count() );
+		$this->assert_same( 11, $build->count_prepare_arg_count() );
 		$this->assert_true( $query['read_execution_deferred'] );
 		$this->assert_true( $query['inventory_repository_deferred'] );
 		$this->assert_true( $query['square_inventory_projection_deferred'] );

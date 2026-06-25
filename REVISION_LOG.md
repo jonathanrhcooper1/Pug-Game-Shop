@@ -1,5 +1,78 @@
 # Revision Log
 
+## 2026-06-25 - 0.202.12 WordPress/Square Live Sync Hardening
+
+### What Changed
+
+- Added LAN server WordPress inventory polling with an `updated_after` cursor,
+  a configurable poll interval, and a configurable max-page cap per cycle.
+- Added `updated_after` support to the WordPress staff inventory search API so
+  the middleman can pull only changed inventory rows.
+- Added a system-level website inventory pull path for the LAN service so
+  automatic polling does not require an app PIN session.
+- Propagated changed WordPress inventory rows to Square catalog/inventory sync
+  using the same barcode/SKU, price, image, visibility, and absolute quantity
+  path used by Store App inventory updates.
+- Added no-op detection so unchanged WordPress rows do not rewrite local cache
+  state or make repeated Square calls.
+- Added `last_website_inventory_pull` to `/sync/status`.
+- Updated the full release Codex USB prompt to verify WordPress polling,
+  Square polling, and one-card bidirectional sync after install.
+
+### Why
+
+The store needs all three inventory authorities to stay aligned: Store App,
+WordPress/WooCommerce, and Square POS. App-originated and Square-originated
+changes already had automatic paths; WordPress-originated changes needed the
+same production-safe changed-row polling path.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPull.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/local-sync-server-wordpress-inventory-square-sync.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryBuilderTest.php`
+- `docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md`
+- Release/package contract scripts.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-square-sync`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-pull`
+- `npm.cmd --prefix apps/local-sync-server run test:square-inventory-reconciliation`
+- `npm.cmd --prefix apps/local-sync-server run test:square-catalog-inventory-syncer`
+- `cd apps/wordpress-plugin; php tests/run.php --filter InventorySearch`
+- `node scripts/tests/square-pos-singles-layout-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd run package:production-release`
+- `npm.cmd run release:copy-usb`
+
+### Rollback Notes
+
+- Set `PUG_WORDPRESS_INVENTORY_POLL_DISABLED=true` or
+  `LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_DISABLED=true` to pause automatic
+  WordPress inventory polling without rolling back the release.
+- Existing Square polling can still be paused separately with
+  `PUG_SQUARE_INVENTORY_POLL_DISABLED=true`.
+- Roll back to the earlier `0.202.12` package if the changed-since WordPress
+  poll causes unexpected load. No database rollback is required.
+
 ## 2026-06-25 - 0.202.12 Square POS Singles Layout Seed
 
 ### What Changed

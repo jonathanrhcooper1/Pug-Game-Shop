@@ -14,12 +14,17 @@ export function createWordPressInventoryPull(options = {}) {
     return null
   }
 
-  return async function wordpressInventoryPull({ query = "", page = 1, pageSize = defaultPageSize } = {}) {
+  return async function wordpressInventoryPull({ query = "", page = 1, pageSize = defaultPageSize, updatedAfter = "" } = {}) {
     const endpoint = new URL(`${endpointBase}/inventory/search`)
     const normalizedQuery = String(query ?? "").trim()
+    const normalizedUpdatedAfter = cleanTimestamp(updatedAfter)
 
     if (normalizedQuery) {
       endpoint.searchParams.set("q", normalizedQuery)
+    }
+
+    if (normalizedUpdatedAfter) {
+      endpoint.searchParams.set("updated_after", normalizedUpdatedAfter)
     }
 
     endpoint.searchParams.set("visibility", "staff")
@@ -142,4 +147,20 @@ function boundedTimeout(value) {
   const timeout = Number.parseInt(String(value ?? "10000"), 10)
 
   return Number.isFinite(timeout) ? Math.min(30000, Math.max(1000, timeout)) : 10000
+}
+
+function cleanTimestamp(value) {
+  const raw = String(value ?? "").trim()
+
+  if (!raw) {
+    return ""
+  }
+
+  const timestamp = Date.parse(raw.replace(" ", "T") + (raw.endsWith("Z") || raw.includes("+") ? "" : "Z"))
+
+  if (!Number.isFinite(timestamp)) {
+    return ""
+  }
+
+  return new Date(timestamp).toISOString()
 }

@@ -11,6 +11,7 @@ const syncScript = readFileSync(resolve(root, "scripts/production-verify-active-
 const dymoLocalServiceScript = readFileSync(resolve(root, "scripts/Start-Pug-Dymo-Local-Service.ps1"), "utf8")
 const dymoDiagnosticScript = readFileSync(resolve(root, "scripts/Diagnose-Pug-Dymo-Printing.ps1"), "utf8")
 const lanServerInstallPrompt = readFileSync(resolve(root, "docs/runbooks/LAN_SERVER_CODEX_INSTALL.md"), "utf8")
+const fullReleaseInstallPrompt = readFileSync(resolve(root, "docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md"), "utf8")
 
 assert.equal(packageJson.scripts["package:production-release"], "node scripts/package-production-release.mjs")
 assert.equal(packageJson.scripts["release:copy-usb"], "node scripts/copy-production-release-to-usb.mjs")
@@ -31,6 +32,7 @@ for (const marker of [
   "Start-Pug-Dymo-Local-Service.ps1",
   "Diagnose-Pug-Dymo-Printing.ps1",
   "LAN_SERVER_CODEX_INSTALL.md",
+  "CODEX_FULL_RELEASE_INSTALL_PROMPT.md",
   "dymo_local_service_helper",
   "dymo_diagnostic_helper",
   "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
@@ -75,6 +77,7 @@ for (const marker of [
   "Deploy-Pug-LAN-Server-Patch.ps1",
   "Diagnose-Pug-Dymo-Printing.ps1",
   "LAN_SERVER_CODEX_INSTALL.md",
+  "CODEX_FULL_RELEASE_INSTALL_PROMPT.md",
   "Install order:",
   "Start-Pug-LAN-Server.ps1",
 ]) {
@@ -143,6 +146,21 @@ for (const marker of [
   "stable generated device ID",
 ]) {
   assert.ok(lanServerInstallPrompt.includes(marker), `Missing LAN server install prompt marker: ${marker}`)
+}
+
+for (const marker of [
+  "Codex Full Release Install Prompt",
+  "0.202.12",
+  "D:\\The Pug Installers",
+  "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env",
+  "LB1B9Z4GVG1BH",
+  "Square POS Singles layout ready",
+  "WordPress inventory polling enabled every",
+  "last_website_inventory_pull",
+  "PUG-CODEX-POS-SINGLES-MTG-20260625T185622Z",
+  "Do not print API keys",
+]) {
+  assert.ok(fullReleaseInstallPrompt.includes(marker), `Missing full release prompt marker: ${marker}`)
 }
 
 console.log("PASS production release package contract")

@@ -39,6 +39,9 @@ for (const marker of [
 }
 
 assert.match(cli, /ensureDefaultSquarePosCategories/, "LAN server CLI should preflight the Square POS Singles layout.")
+assert.match(cli, /startWordPressInventoryPolling/, "LAN server CLI should auto-poll WordPress inventory changes.")
+assert.match(cli, /PUG_WORDPRESS_INVENTORY_POLL_SECONDS/, "LAN server CLI should expose WordPress inventory poll interval config.")
+assert.match(cli, /updated_after/, "LAN server CLI should poll WordPress inventory by changed-since cursor.")
 assert.equal(
   packageJson.scripts["square:seed-pos-singles-layout"],
   "node scripts/square-seed-pos-singles-layout.mjs",

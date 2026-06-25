@@ -13,6 +13,7 @@ const deployScript = resolve(root, "scripts/Deploy-Pug-LAN-Server-Patch.ps1")
 const credentialApplyScript = resolve(root, "scripts/Apply-Pug-Middleman-Credentials.ps1")
 const middlemanPrompt = resolve(root, "docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md")
 const lanServerCodexInstallPrompt = resolve(root, "docs/runbooks/LAN_SERVER_CODEX_INSTALL.md")
+const fullReleaseInstallPrompt = resolve(root, "docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md")
 const dymoDiagnosticScript = resolve(root, "scripts/Diagnose-Pug-Dymo-Printing.ps1")
 const targetRoot = resolveUsbTarget()
 const usbReleaseDir = resolve(targetRoot, `the-pug-store-deliverables-${version}`)
@@ -70,6 +71,18 @@ if (existsSync(lanServerCodexInstallPrompt)) {
   const usbLanPackageDir = resolve(usbReleaseDir, "LAN Server + Pug Store App")
   if (existsSync(usbLanPackageDir)) {
     copyFileSync(lanServerCodexInstallPrompt, resolve(usbLanPackageDir, basename(lanServerCodexInstallPrompt)))
+  }
+}
+
+if (existsSync(fullReleaseInstallPrompt)) {
+  copyFileSync(fullReleaseInstallPrompt, resolve(targetRoot, basename(fullReleaseInstallPrompt)))
+  const usbLanPackageDir = resolve(usbReleaseDir, "LAN Server + Pug Store App")
+  const usbLanDocsDir = resolve(usbLanPackageDir, "documentation")
+  if (existsSync(usbLanPackageDir)) {
+    copyFileSync(fullReleaseInstallPrompt, resolve(usbLanPackageDir, basename(fullReleaseInstallPrompt)))
+  }
+  if (existsSync(usbLanDocsDir)) {
+    copyFileSync(fullReleaseInstallPrompt, resolve(usbLanDocsDir, basename(fullReleaseInstallPrompt)))
   }
 }
 
@@ -131,6 +144,7 @@ writeFileSync(
     existsSync(credentialApplyScript) ? `- ${basename(credentialApplyScript)}` : "- Apply-Pug-Middleman-Credentials.ps1 was not found at copy time",
     existsSync(middlemanPrompt) ? `- ${basename(middlemanPrompt)}` : "- MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md was not found at copy time",
     existsSync(lanServerCodexInstallPrompt) ? `- ${basename(lanServerCodexInstallPrompt)}` : "- LAN_SERVER_CODEX_INSTALL.md was not found at copy time",
+    existsSync(fullReleaseInstallPrompt) ? `- ${basename(fullReleaseInstallPrompt)}` : "- CODEX_FULL_RELEASE_INSTALL_PROMPT.md was not found at copy time",
     existsSync(dymoDiagnosticScript) ? `- ${basename(dymoDiagnosticScript)}` : "- Diagnose-Pug-Dymo-Printing.ps1 was not found at copy time",
     existsSync(resolve(targetRoot, "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env"))
       ? "- LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env is present as a USB-only secret handoff file"
@@ -155,6 +169,9 @@ console.log(
       middlemanPrompt: existsSync(middlemanPrompt) ? resolve(targetRoot, basename(middlemanPrompt)) : null,
       lanServerCodexInstallPrompt: existsSync(lanServerCodexInstallPrompt)
         ? resolve(targetRoot, basename(lanServerCodexInstallPrompt))
+        : null,
+      fullReleaseInstallPrompt: existsSync(fullReleaseInstallPrompt)
+        ? resolve(targetRoot, basename(fullReleaseInstallPrompt))
         : null,
       dymoDiagnosticScript: existsSync(dymoDiagnosticScript) ? resolve(targetRoot, basename(dymoDiagnosticScript)) : null,
       usbSecretHandoffPresent: existsSync(resolve(targetRoot, "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env")),

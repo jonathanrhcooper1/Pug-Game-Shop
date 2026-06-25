@@ -150,6 +150,7 @@ export function createLocalSyncStore(options = {}) {
   const clientDevices = loadClientDevices(database)
   let squareSalesReportSnapshots = loadSquareSalesReportSnapshots(database)
   let lastSquareInventoryReconciliationResult = null
+  let lastWebsiteInventoryPullResult = null
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -3654,6 +3655,7 @@ export function createLocalSyncStore(options = {}) {
         credentials_synced_to_client: false,
         raw_credentials_returned: false,
       },
+      last_website_inventory_pull: lastWebsiteInventoryPullResult,
       last_square_inventory_reconciliation: lastSquareInventoryReconciliationResult,
       last_square_sales_report_pull: publicSquareSalesReportSnapshot(latestSquareSalesReportSnapshot(), {
         includeRows: false,
@@ -4692,6 +4694,10 @@ export function createLocalSyncStore(options = {}) {
       return session
     }
 
+    return pullWebsiteInventoryForSystem(input)
+  }
+
+  async function pullWebsiteInventoryForSystem(input = {}) {
     if (!wordpressInventoryPull && !wordpressEventsPull && !wordpressFulfillmentPull && !wordpressCatalogExportPull) {
       return blocked("wordpress_pull_unavailable", "WordPress pull is not configured on this LAN server.")
     }
@@ -4710,13 +4716,20 @@ export function createLocalSyncStore(options = {}) {
     let insertedCount = 0
     let updatedCount = 0
     let ignoredCount = 0
+    let unchangedCount = 0
     let reconciledPendingCount = 0
+    const squareSyncResults = []
+    const shouldSyncWebsitePulledToSquare =
+      input.square_sync !== false &&
+      input.sync_square !== false &&
+      Boolean(squareCatalogInventorySyncer?.status?.().configured)
 
     if (shouldPullInventory) {
       inventoryPullResult = await wordpressInventoryPull({
         query: input.query,
         page: input.page,
         pageSize: input.page_size ?? input.pageSize,
+        updatedAfter: input.updated_after ?? input.updatedAfter,
       })
 
       if (inventoryPullResult.status !== "ok") {
@@ -4797,6 +4810,12 @@ export function createLocalSyncStore(options = {}) {
         if (existing) {
           const pulledPublicId = cleanPublicId(pulledItem.public_id)
           const pulledWordPressPublicId = cleanPublicId(pulledItem.wordpress_public_id) || pulledPublicId
+
+          if (websitePulledInventoryMatchesExisting(existing, pulledItem, pulledHasQuantity)) {
+            unchangedCount += 1
+            continue
+          }
+
           const mergedItem = {
             ...existing,
             ...pulledItem,
@@ -4817,11 +4836,19 @@ export function createLocalSyncStore(options = {}) {
           removeInventoryDuplicateShadows(database, inventoryItems, mergedItem)
           appliedItems.push(publicInventoryItem(mergedItem))
           updatedCount += 1
+
+          if (shouldSyncWebsitePulledToSquare && websitePulledInventoryShouldSyncSquare(existing, mergedItem, pulledHasQuantity)) {
+            squareSyncResults.push(await syncSquareCatalogInventoryForWebsitePull(mergedItem))
+          }
         } else {
           inventoryItems.push(pulledItem)
           saveInventoryItem(database, pulledItem, now)
           appliedItems.push(publicInventoryItem(pulledItem))
           insertedCount += 1
+
+          if (shouldSyncWebsitePulledToSquare && pulledHasQuantity) {
+            squareSyncResults.push(await syncSquareCatalogInventoryForWebsitePull(pulledItem))
+          }
         }
       }
     }
@@ -4984,15 +5011,21 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
-    return {
+    const result = {
       status: "ok",
       pulled_count: (inventoryPullResult?.items ?? []).length,
       applied_count: appliedItems.length,
       inserted_count: insertedCount,
       updated_count: updatedCount,
+      unchanged_count: unchangedCount,
       reconciled_pending_count: reconciledPendingCount,
       ignored_count: ignoredCount,
       items: appliedItems,
+      square_catalog_inventory_sync_performed: squareSyncResults.length > 0,
+      square_catalog_inventory_sync_accepted_count: squareSyncResults.filter((item) => item.status === "accepted").length,
+      square_catalog_inventory_sync_retry_count: squareSyncResults.filter((item) => item.status === "retry").length,
+      square_catalog_inventory_sync_skipped_count: squareSyncResults.filter((item) => item.status === "skipped").length,
+      square_catalog_inventory_sync_results: squareSyncResults,
       events_pulled_count: (eventPullResult?.events ?? []).length,
       events_applied_count: appliedEvents.length,
       events_inserted_count: eventsInsertedCount,
@@ -5030,6 +5063,26 @@ export function createLocalSyncStore(options = {}) {
       local_fulfillment_order_count: fulfillmentOrders.length,
       local_queue_depth: pendingQueueOperations(queue).length,
     }
+
+    if (shouldPullInventory) {
+      lastWebsiteInventoryPullResult = {
+        status: result.status,
+        generated_at_utc: now().toISOString(),
+        pulled_count: result.pulled_count,
+        applied_count: result.applied_count,
+        inserted_count: result.inserted_count,
+        updated_count: result.updated_count,
+        unchanged_count: result.unchanged_count,
+        ignored_count: result.ignored_count,
+        square_catalog_inventory_sync_accepted_count: result.square_catalog_inventory_sync_accepted_count,
+        square_catalog_inventory_sync_retry_count: result.square_catalog_inventory_sync_retry_count,
+        square_catalog_inventory_sync_skipped_count: result.square_catalog_inventory_sync_skipped_count,
+        local_queue_depth: result.local_queue_depth,
+        updated_after: cleanIsoTimestamp(input.updated_after ?? input.updatedAfter),
+      }
+    }
+
+    return result
   }
 
   async function pushInventoryIntakeOperation(operation) {
@@ -5178,6 +5231,31 @@ export function createLocalSyncStore(options = {}) {
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
     }
+  }
+
+  async function syncSquareCatalogInventoryForWebsitePull(item) {
+    const wordpressPublicId = cleanPublicId(item.wordpress_public_id) || cleanPublicId(item.public_id)
+    const rowVersion = boundedInt(item.row_version, 1, 999999999, 1)
+
+    return syncSquareCatalogInventoryForOperation(
+      {
+        operation_id: `wordpress-pull-${wordpressPublicId || item.public_id}-v${rowVersion}`,
+        operation_type: "inventory_update",
+        entity_id: item.public_id,
+        payload: {
+          inventory_public_id: wordpressPublicId || item.public_id,
+          local_inventory_public_id: item.public_id,
+          barcode: item.barcode,
+          status: item.status,
+          quantity_on_hand: inventoryQuantityOnHand(item),
+          quantity_update_mode: "absolute",
+          sync_intent: "wordpress_inventory_pull_square_catalog_inventory_update",
+          source: "wordpress_inventory_pull",
+          wordpress_public_id: wordpressPublicId,
+        },
+      },
+      item,
+    )
   }
 
   async function pushInventoryUpdateOperation(operation) {
@@ -6076,6 +6154,7 @@ export function createLocalSyncStore(options = {}) {
     restartServer,
     pullWebsiteForMaintenance,
     pullWebsiteInventory,
+    pullWebsiteInventoryForSystem,
     searchCustomers,
     searchInventory,
     identifyScryDexCardImage,
@@ -8326,6 +8405,104 @@ function wordpressInventoryRowHasQuantity(row = {}) {
     (key) =>
       Object.prototype.hasOwnProperty.call(row, key) &&
       String(row[key] ?? "").trim() !== "",
+  )
+}
+
+function websitePulledInventoryMatchesExisting(existing, pulledItem, pulledHasQuantity) {
+  if (!existing || !pulledItem) {
+    return false
+  }
+
+  const textFields = [
+    "wordpress_public_id",
+    "provider_card_id",
+    "provider_variant_id",
+    "game",
+    "card_name",
+    "set_name",
+    "set_code",
+    "card_number",
+    "printed_number",
+    "variant",
+    "finish",
+    "language",
+    "raw_or_graded",
+    "grading_company",
+    "grade",
+    "cert_number",
+    "condition",
+    "barcode",
+    "currency",
+    "location",
+    "status",
+    "image_url",
+    "back_image_url",
+    "online_visibility",
+    "kiosk_visibility",
+    "pos_visibility",
+    "square_catalog_item_id",
+    "square_catalog_variation_id",
+    "square_location_id",
+    "external_sync_state",
+  ]
+
+  for (const field of textFields) {
+    if (String(existing[field] ?? "") !== String(pulledItem[field] ?? "")) {
+      return false
+    }
+  }
+
+  const numericFields = ["reference_variant_id", "price_minor_units", "minimum_sale_price_minor_units"]
+
+  for (const field of numericFields) {
+    if (Number(existing[field] ?? 0) !== Number(pulledItem[field] ?? 0)) {
+      return false
+    }
+  }
+
+  if (pulledHasQuantity && inventoryQuantityOnHand(existing) !== inventoryQuantityOnHand(pulledItem)) {
+    return false
+  }
+
+  return true
+}
+
+function websitePulledInventoryShouldSyncSquare(existing, mergedItem, pulledHasQuantity) {
+  if (!mergedItem || !pulledHasQuantity) {
+    return false
+  }
+
+  if (!cleanExternalId(mergedItem.square_catalog_variation_id)) {
+    return true
+  }
+
+  const fields = [
+    "barcode",
+    "card_name",
+    "set_name",
+    "set_code",
+    "card_number",
+    "printed_number",
+    "variant",
+    "finish",
+    "raw_or_graded",
+    "grading_company",
+    "grade",
+    "condition",
+    "status",
+    "pos_visibility",
+    "currency",
+  ]
+
+  for (const field of fields) {
+    if (String(existing?.[field] ?? "") !== String(mergedItem[field] ?? "")) {
+      return true
+    }
+  }
+
+  return (
+    Number(existing?.price_minor_units ?? 0) !== Number(mergedItem.price_minor_units ?? 0) ||
+    inventoryQuantityOnHand(existing) !== inventoryQuantityOnHand(mergedItem)
   )
 }
 

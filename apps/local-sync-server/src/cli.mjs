@@ -89,6 +89,16 @@ const squareInventoryPollDisabled = envFlag(
 const squareInventoryPollSeconds = boundedPollSeconds(
   firstEnv("PUG_SQUARE_INVENTORY_POLL_SECONDS", "LOCAL_SYNC_SQUARE_INVENTORY_POLL_SECONDS"),
 )
+const wordpressInventoryPollDisabled = envFlag(
+  "PUG_WORDPRESS_INVENTORY_POLL_DISABLED",
+  "LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_DISABLED",
+)
+const wordpressInventoryPollSeconds = boundedPollSeconds(
+  firstEnv("PUG_WORDPRESS_INVENTORY_POLL_SECONDS", "LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_SECONDS") ?? "60",
+)
+const wordpressInventoryPollMaxPages = boundedPollPages(
+  firstEnv("PUG_WORDPRESS_INVENTORY_POLL_MAX_PAGES", "LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_MAX_PAGES") ?? "5",
+)
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const eventsAuthHeader = firstEnv("PUG_WORDPRESS_EVENTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
@@ -385,6 +395,14 @@ if (!squareInventoryPollDisabled && squareInventoryCountsPuller.status().configu
   console.log("Square inventory polling not started; configure Square token and location for live POS sale detection.")
 }
 
+if (!wordpressInventoryPollDisabled && wordpressInventoryPull) {
+  startWordPressInventoryPolling(server, wordpressInventoryPollSeconds, wordpressInventoryPollMaxPages)
+} else if (wordpressInventoryPollDisabled) {
+  console.log("WordPress inventory polling disabled by environment.")
+} else {
+  console.log("WordPress inventory polling not started; configure WordPress inventory pull credentials.")
+}
+
 if (discoveryEnabled) {
   try {
     const discoveryResponder = await listenLocalSyncDiscoveryResponder({
@@ -461,6 +479,16 @@ function boundedPollSeconds(value) {
   return Math.min(300, Math.max(10, parsed))
 }
 
+function boundedPollPages(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  if (!Number.isFinite(parsed)) {
+    return 5
+  }
+
+  return Math.min(25, Math.max(1, parsed))
+}
+
 function startSquareInventoryPolling(server, pollSeconds) {
   const store = server.localSyncStore
 
@@ -499,5 +527,75 @@ function startSquareInventoryPolling(server, pollSeconds) {
   interval.unref?.()
   server.once("close", () => clearInterval(interval))
   console.log(`Square inventory polling enabled every ${pollSeconds}s.`)
+  void run()
+}
+
+function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
+  const store = server.localSyncStore
+
+  if (!store || typeof store.pullWebsiteInventoryForSystem !== "function") {
+    console.warn("WordPress inventory polling unavailable; local sync store was not attached to the HTTP server.")
+    return
+  }
+
+  let running = false
+  let updatedAfter = ""
+
+  const run = async () => {
+    if (running) {
+      return
+    }
+
+    running = true
+    const pollStartedAt = new Date(Date.now() - 1000).toISOString()
+
+    try {
+      let page = 1
+      let pulledCount = 0
+      let appliedCount = 0
+      let squareAcceptedCount = 0
+      let squareRetryCount = 0
+      let hasMore = false
+
+      do {
+        const result = await store.pullWebsiteInventoryForSystem({
+          domains: ["inventory"],
+          page,
+          page_size: 100,
+          updated_after: updatedAfter,
+          sync_square: true,
+        })
+
+        if (result.status !== "ok") {
+          console.warn(`WordPress inventory poll blocked: ${result.code || "unknown"}`)
+          return
+        }
+
+        pulledCount += result.pulled_count ?? 0
+        appliedCount += result.applied_count ?? 0
+        squareAcceptedCount += result.square_catalog_inventory_sync_accepted_count ?? 0
+        squareRetryCount += result.square_catalog_inventory_sync_retry_count ?? 0
+        hasMore = Boolean(result.meta?.has_more)
+        page += 1
+      } while (hasMore && page <= maxPages)
+
+      updatedAfter = pollStartedAt
+
+      if (pulledCount > 0 || appliedCount > 0 || squareAcceptedCount > 0 || squareRetryCount > 0) {
+        console.log(
+          `WordPress inventory poll pulled ${pulledCount} row(s), applied ${appliedCount}, Square accepted ${squareAcceptedCount}, retry ${squareRetryCount}.`,
+        )
+      }
+    } catch (error) {
+      console.warn(`WordPress inventory poll failed: ${error instanceof Error ? error.message : "Unknown error."}`)
+    } finally {
+      running = false
+    }
+  }
+
+  const interval = setInterval(run, pollSeconds * 1000)
+  interval.unref?.()
+  server.once("close", () => clearInterval(interval))
+  console.log(`WordPress inventory polling enabled every ${pollSeconds}s, up to ${maxPages} page(s) per cycle.`)
   void run()
 }

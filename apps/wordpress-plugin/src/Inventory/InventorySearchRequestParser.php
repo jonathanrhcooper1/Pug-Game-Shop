@@ -21,6 +21,7 @@ final class InventorySearchRequestParser {
 		$game       = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
 		$set_filter = trim( (string) ( $query['set'] ?? ( $query['set_name'] ?? ( $query['set_filter'] ?? '' ) ) ) );
 		$raw_or_graded = strtolower( trim( (string) ( $query['raw_or_graded'] ?? ( $query['product_type'] ?? '' ) ) ) );
+		$updated_after = $this->mysql_datetime( $query['updated_after'] ?? ( $query['updatedAfter'] ?? '' ), 'updated_after', $errors );
 		$visibility = strtolower( trim( (string) ( $query['visibility'] ?? 'public' ) ) );
 		$sort       = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
 		$page       = $this->positive_int( $query['page'] ?? 1, 'page', $errors, 1 );
@@ -77,7 +78,8 @@ final class InventorySearchRequestParser {
 				$page,
 				$page_size,
 				$set_filter,
-				$raw_or_graded
+				$raw_or_graded,
+				$updated_after
 			)
 		);
 	}
@@ -108,6 +110,27 @@ final class InventorySearchRequestParser {
 		$errors[] = $field . '_invalid';
 
 		return $fallback;
+	}
+
+	/**
+	 * @param list<string> $errors Validation errors.
+	 */
+	private function mysql_datetime( mixed $value, string $field, array &$errors ): string {
+		$value = trim( (string) $value );
+
+		if ( '' === $value ) {
+			return '';
+		}
+
+		$timestamp = strtotime( $value );
+
+		if ( false === $timestamp ) {
+			$errors[] = $field . '_invalid';
+
+			return '';
+		}
+
+		return gmdate( 'Y-m-d H:i:s', $timestamp );
 	}
 
 	/**

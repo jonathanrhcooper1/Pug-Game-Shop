@@ -161,6 +161,7 @@ final class InventorySearchQueryBuilder {
 			'game',
 			'set_filter',
 			'raw_or_graded',
+			'updated_after',
 			'status_in',
 			'location_id',
 			'online_visibility',
@@ -193,6 +194,11 @@ final class InventorySearchQueryBuilder {
 		$raw_or_graded = (string) ( $where['raw_or_graded'] ?? '' );
 		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
 			$errors[] = 'raw_or_graded_invalid';
+		}
+
+		$updated_after = (string) ( $where['updated_after'] ?? '' );
+		if ( '' !== $updated_after && 1 !== preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $updated_after ) ) {
+			$errors[] = 'updated_after_invalid';
 		}
 
 		if ( array_key_exists( 'status_in', $where ) ) {
@@ -345,6 +351,11 @@ final class InventorySearchQueryBuilder {
 		if ( isset( $where['raw_or_graded'] ) ) {
 			$where_clauses[] = '`raw_or_graded` = %s';
 			$prepare_args[]  = (string) $where['raw_or_graded'];
+		}
+
+		if ( isset( $where['updated_after'] ) ) {
+			$where_clauses[] = '`updated_at` > %s';
+			$prepare_args[]  = (string) $where['updated_after'];
 		}
 
 		if ( isset( $where['status_in'] ) && is_array( $where['status_in'] ) ) {

@@ -22,6 +22,10 @@ assert.equal(packageJson.scripts["local-sync:daily-price-sync"], "npm --prefix a
 assert.equal(localSyncPackageJson.scripts["ops:dump-inventory"], "node tools/dump-inventory-snapshots.mjs")
 assert.equal(localSyncPackageJson.scripts["ops:force-pull-website"], "node tools/force-pull-website.mjs")
 assert.equal(localSyncPackageJson.scripts["ops:daily-price-sync"], "node tools/daily-price-sync.mjs")
+assert.equal(
+  localSyncPackageJson.scripts["test:wordpress-inventory-square-sync"],
+  "node tests/local-sync-server-wordpress-inventory-square-sync.mjs",
+)
 assert.equal(manifest.host_role, "lan_middleman_server")
 assert.equal(manifest.default_http_port, 8787)
 assert.equal(manifest.default_discovery.protocol, "pug-local-sync-discovery-v1")
@@ -63,6 +67,7 @@ assert.ok(statSync(zipPath).size > 10_000)
 assert.ok(entries.includes("./apps/local-sync-server/src/cli.mjs"))
 assert.ok(entries.includes("./apps/local-sync-server/src/localSyncHttpServer.mjs"))
 assert.ok(entries.includes("./apps/local-sync-server/src/localSyncDiscovery.mjs"))
+assert.ok(entries.includes("./apps/local-sync-server/src/wordpressInventoryPull.mjs"))
 assert.ok(entries.includes("./apps/local-sync-server/config/windows-service.manifest.json"))
 assert.ok(entries.includes("./apps/local-sync-server/tools/dump-inventory-snapshots.mjs"))
 assert.ok(entries.includes("./apps/local-sync-server/tools/force-pull-website.mjs"))

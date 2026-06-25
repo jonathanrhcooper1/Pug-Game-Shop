@@ -4,6 +4,18 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Added WordPress changed-since inventory polling on the LAN middleman so
+  website-originated stock edits are pulled automatically and can be pushed to
+  Square without manually running a website pull.
+- Added an `updated_after` filter to the WordPress staff inventory search API
+  so the middleman can poll changed inventory rows instead of scanning the
+  full 17k+ card catalog every cycle.
+- Hardened website-to-Square inventory propagation so changed WordPress rows
+  update Square catalog/quantity while unchanged rows do not repeatedly burn
+  Square API calls.
+- Updated the full release Codex install prompt on the USB to verify both
+  WordPress inventory polling and Square inventory polling after middleman
+  installation.
 - Bumped the production package to `0.202.12` for the Square POS `Singles`
   category layout seed and Square item category payload repair.
 - Added a Square POS layout seed that creates/reuses `Singles` with child

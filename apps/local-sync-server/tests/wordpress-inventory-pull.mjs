@@ -53,7 +53,7 @@ const pull = createWordPressInventoryPull({
 
 assert.equal(typeof pull, "function")
 
-const result = await pull({ query: "charizard", page: 2 })
+const result = await pull({ query: "charizard", page: 2, updatedAfter: "2026-06-25T12:30:00Z" })
 
 assert.equal(result.status, "ok")
 assert.equal(result.items.length, 1)
@@ -70,6 +70,7 @@ assert.ok(capturedUrl.includes("visibility=staff"))
 assert.ok(capturedUrl.includes("status=available%2Creserved%2Csold"))
 assert.ok(capturedUrl.includes("page=2"))
 assert.ok(capturedUrl.includes("page_size=25"))
+assert.ok(capturedUrl.includes("updated_after=2026-06-25T12%3A30%3A00.000Z"))
 
 const unavailablePull = createWordPressInventoryPull({
   websiteUrl: "https://example.test",

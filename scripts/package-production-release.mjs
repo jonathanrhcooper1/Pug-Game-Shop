@@ -29,6 +29,7 @@ const lanServerDeployScript = resolve(root, "scripts/Deploy-Pug-LAN-Server-Patch
 const middlemanCredentialApplyScript = resolve(root, "scripts/Apply-Pug-Middleman-Credentials.ps1")
 const middlemanDeploymentPrompt = resolve(root, "docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md")
 const lanServerCodexInstallPrompt = resolve(root, "docs/runbooks/LAN_SERVER_CODEX_INSTALL.md")
+const fullReleaseInstallPrompt = resolve(root, "docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md")
 const dymoLocalServiceScript = resolve(root, "scripts/Start-Pug-Dymo-Local-Service.ps1")
 const dymoDiagnosticScript = resolve(root, "scripts/Diagnose-Pug-Dymo-Printing.ps1")
 const bundledLocalSyncEnv = findBundledLocalSyncEnv()
@@ -42,6 +43,7 @@ mkdirSync(pugStoreAppDir, { recursive: true })
 mkdirSync(lanServerPlusAppDir, { recursive: true })
 mkdirSync(kioskPageDir, { recursive: true })
 mkdirSync(lanWebsiteDir, { recursive: true })
+mkdirSync(lanDocumentationDir, { recursive: true })
 
 copyRequired(pluginZip, resolve(lanWebsiteDir, basename(pluginZip)))
 copyRequired(themeZip, resolve(lanWebsiteDir, basename(themeZip)))
@@ -54,6 +56,9 @@ copyRequired(middlemanDeploymentPrompt, resolve(releaseDir, "MIDDLEMAN_CODEX_DEP
 copyRequired(middlemanDeploymentPrompt, resolve(lanServerPlusAppDir, "MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md"))
 copyRequired(lanServerCodexInstallPrompt, resolve(releaseDir, "LAN_SERVER_CODEX_INSTALL.md"))
 copyRequired(lanServerCodexInstallPrompt, resolve(lanServerPlusAppDir, "LAN_SERVER_CODEX_INSTALL.md"))
+copyRequired(fullReleaseInstallPrompt, resolve(releaseDir, "CODEX_FULL_RELEASE_INSTALL_PROMPT.md"))
+copyRequired(fullReleaseInstallPrompt, resolve(lanServerPlusAppDir, "CODEX_FULL_RELEASE_INSTALL_PROMPT.md"))
+copyRequired(fullReleaseInstallPrompt, resolve(lanDocumentationDir, "CODEX_FULL_RELEASE_INSTALL_PROMPT.md"))
 copyRequired(dymoLocalServiceScript, resolve(pugStoreAppDir, "Start-Pug-Dymo-Local-Service.ps1"))
 copyRequired(dymoLocalServiceScript, resolve(lanServerPlusAppDir, "Start-Pug-Dymo-Local-Service.ps1"))
 copyRequired(dymoDiagnosticScript, resolve(releaseDir, "Diagnose-Pug-Dymo-Printing.ps1"))
@@ -144,7 +149,8 @@ writeFileSync(
     "- Use Start-Pug-LAN-Server-Hidden.vbs or Install-Pug-LAN-Server-Startup-Task.ps1 when you do not want a command prompt window visible.",
     "- Use Deploy-Pug-LAN-Server-Patch.ps1 when updating the LAN server package on a different computer from this USB.",
     "- Use Apply-Pug-Middleman-Credentials.ps1 only with the USB-only LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env file when connector credentials need to be merged into the middleman server.",
-    "- Use MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md as the Codex handoff on the middleman machine.",
+    "- Use CODEX_FULL_RELEASE_INSTALL_PROMPT.md as the highest-level Codex handoff on the middleman machine.",
+    "- Use MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md for the detailed middleman patch checklist.",
     bundledLocalSyncEnv
       ? "- local-sync.env is bundled in this local deliverable and will be installed automatically by the patch script."
       : "- local-sync.env is not bundled. Add it beside Deploy-Pug-LAN-Server-Patch.ps1 only when you intentionally want hands-off credential setup.",
@@ -202,7 +208,7 @@ writeFileSync(
     "",
     "Documentation:",
     "- See LAN Server + Pug Store App/documentation/release-package/README.md for owner, admin, staff, support, credential, and source-code handover guides.",
-    "- See MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md for the exact Codex instructions to patch the middleman server, Store App, Kiosk App, Square connector, and DYMO printing.",
+    "- See CODEX_FULL_RELEASE_INSTALL_PROMPT.md for the exact Codex instructions to patch the full release from USB.",
     "",
     appInstaller
       ? `Bundled app installer: ${appInstallerFileName}`

@@ -25,6 +25,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 				'sort'        => 'price_asc',
 				'page'        => '2',
 				'page_size'   => '40',
+				'updated_after' => '2026-06-25T12:30:00Z',
 			)
 		);
 
@@ -43,6 +44,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 		$this->assert_same( 'price_asc', $request->sort() );
 		$this->assert_same( 2, $request->page() );
 		$this->assert_same( 40, $request->page_size() );
+		$this->assert_same( '2026-06-25 12:30:00', $request->updated_after() );
 	}
 
 	public function test_parser_defaults_empty_search_to_public_first_page(): void {
@@ -76,6 +78,7 @@ final class InventorySearchRequestParserTest extends TestCase {
 				'sort'        => 'random',
 				'page'        => 0,
 				'page_size'   => 500,
+				'updated_after' => 'not a date',
 			)
 		);
 
@@ -90,5 +93,6 @@ final class InventorySearchRequestParserTest extends TestCase {
 		$this->assert_true( in_array( 'sort_invalid', $result->errors(), true ) );
 		$this->assert_true( in_array( 'page_invalid', $result->errors(), true ) );
 		$this->assert_true( in_array( 'page_size_too_large', $result->errors(), true ) );
+		$this->assert_true( in_array( 'updated_after_invalid', $result->errors(), true ) );
 	}
 }
