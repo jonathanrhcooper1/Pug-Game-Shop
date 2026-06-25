@@ -521,6 +521,9 @@ final class ScryDexCatalogController {
 					'provider_request_count'    => $request_count,
 					'http_status'               => $result->http_status(),
 					'error_code'                => $result->error_code(),
+					'message'                   => $result->message(),
+					'provider_result'           => $this->provider_result_summary( $result ),
+					'failed_page'               => $current_page,
 					'provider_body_logged'      => false,
 				);
 			}
@@ -563,15 +566,65 @@ final class ScryDexCatalogController {
 			'write_count'               => $write_rows,
 			'provider_set_ids'          => array_values( array_unique( $provider_set_ids ) ),
 			'database_writes_deferred'  => ! $execute_database_writes,
+			'provider_result'           => isset( $result ) ? $this->provider_result_summary( $result ) : array(),
 			'provider_body_logged'      => false,
 		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function provider_result_summary( \TCGStorePlatform\ScryDex\ScryDexResult $result ): array {
+		$meta    = $result->meta();
+		$request = is_array( $meta['request'] ?? null ) ? $meta['request'] : array();
+
+		return array(
+			'status'           => $result->status(),
+			'http_status'      => $result->http_status(),
+			'error_code'       => $result->error_code(),
+			'message'          => $this->safe_diagnostic_text( $result->message() ),
+			'request'          => array(
+				'method'   => $this->safe_diagnostic_text( $request['method'] ?? '' ),
+				'path'     => $this->safe_diagnostic_text( $request['path'] ?? '' ),
+				'game'     => $this->safe_diagnostic_text( $request['game'] ?? '' ),
+				'resource' => $this->safe_diagnostic_text( $request['resource'] ?? '' ),
+			),
+			'response_message' => $this->safe_diagnostic_text( $meta['response_message'] ?? '' ),
+			'body_excerpt'     => $this->safe_diagnostic_text( $meta['body_excerpt'] ?? '' ),
+			'body_logged'      => false,
+			'credentials_redacted' => true,
+		);
+	}
+
+	private function safe_diagnostic_text( mixed $value ): string {
+		if ( ! is_scalar( $value ) ) {
+			return '';
+		}
+
+		$value = preg_replace( '/\s+/', ' ', trim( (string) $value ) ) ?? '';
+
+		return substr( $value, 0, 320 );
 	}
 
 	/**
 	 * @return list<array<string, mixed>>
 	 */
 	private function expansion_rows( array $body, string $game ): array {
-		$data = $body['data'] ?? $body['expansions'] ?? array();
+		$data = $this->provider_list(
+			$body,
+			array(
+				array( 'data' ),
+				array( 'data', 'expansions' ),
+				array( 'data', 'sets' ),
+				array( 'data', 'results' ),
+				array( 'data', 'items' ),
+				array( 'data', 'data' ),
+				array( 'expansions' ),
+				array( 'sets' ),
+				array( 'results' ),
+				array( 'items' ),
+			)
+		);
 
 		if ( ! is_array( $data ) ) {
 			return array();
@@ -615,6 +668,48 @@ final class ScryDexCatalogController {
 		}
 
 		return $rows;
+	}
+
+	/**
+	 * @param array<string, mixed>       $body  Provider response body.
+	 * @param list<list<string>> $paths Candidate list paths.
+	 * @return list<array<string, mixed>>
+	 */
+	private function provider_list( array $body, array $paths ): array {
+		foreach ( $paths as $path ) {
+			$value = $body;
+
+			foreach ( $path as $segment ) {
+				if ( ! is_array( $value ) || ! array_key_exists( $segment, $value ) ) {
+					$value = null;
+					break;
+				}
+
+				$value = $value[ $segment ];
+			}
+
+			if ( is_array( $value ) && $this->is_list_array( $value ) ) {
+				return array_values(
+					array_filter(
+						$value,
+						static fn ( mixed $row ): bool => is_array( $row )
+					)
+				);
+			}
+		}
+
+		return array();
+	}
+
+	/**
+	 * @param array<mixed> $value Candidate list.
+	 */
+	private function is_list_array( array $value ): bool {
+		if ( array() === $value ) {
+			return true;
+		}
+
+		return array_keys( $value ) === range( 0, count( $value ) - 1 );
 	}
 
 	/**

@@ -30,8 +30,15 @@ const server = createLocalSyncHttpServer({
       websiteCatalogFallbackCalls += 1
 
       assert.equal(query, "moonbreon")
-      assert.equal(game, "pokemon")
       assert.equal(limit, "all")
+
+      if (game !== "pokemon") {
+        return {
+          status: "ok",
+          live_provider_request_performed: true,
+          cards: [],
+        }
+      }
 
       return {
         status: "ok",
@@ -697,7 +704,10 @@ try {
 
   assert.equal(gradedValuation.status, "ok")
   assert.equal(gradedValuation.action, "local_sync_graded_trade_in_valuation")
-  assert.equal(gradedValuation.primary_source, "scrydex_reference_cache")
+  assert.equal(gradedValuation.primary_source, "pricecharting")
+  assert.equal(gradedValuation.fallback_source, "scrydex_reference_cache")
+  assert.equal(gradedValuation.pricecharting_source_used, true)
+  assert.equal(gradedValuation.scrydex_fallback_used, false)
   assert.equal(gradedValuation.secondary_source_used, true)
   assert.equal(gradedValuation.provider_request_performed, true)
   assert.equal(gradedValuation.cache_hit, false)
@@ -723,7 +733,7 @@ try {
   assert.equal(gradedPricingLookupCalls, 1)
   assertNoSecrets(cachedGradedValuation)
 
-  const fallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon`, {
+  const fallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon&game=pokemon`, {
     token: cashierAuth.session.token,
   })
 
@@ -747,7 +757,7 @@ try {
   assert.equal(websiteCatalogFallbackCalls, 1)
   assertNoSecrets(fallbackScryDexSearch)
 
-  const cachedFallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon`, {
+  const cachedFallbackScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon&game=pokemon`, {
     token: cashierAuth.session.token,
   })
 
@@ -760,6 +770,17 @@ try {
   assert.equal(cachedFallbackScryDexSearch.cards[0].price_points[0].market_price_minor_units, 119999)
   assert.equal(websiteCatalogFallbackCalls, 1)
   assertNoSecrets(cachedFallbackScryDexSearch)
+
+  const allGameCachedScryDexSearch = await fetchJson(`${baseUrl}/scrydex/cards/search?q=moonbreon`, {
+    token: cashierAuth.session.token,
+  })
+
+  assert.equal(allGameCachedScryDexSearch.status, "ok")
+  assert.equal(allGameCachedScryDexSearch.cards.length, 1)
+  assert.equal(allGameCachedScryDexSearch.cards[0].provider_card_id, "scrydex-pokemon-evs-215")
+  assert.equal(allGameCachedScryDexSearch.game, "")
+  assert.equal(allGameCachedScryDexSearch.local_reference_cache_hit, true)
+  assertNoSecrets(allGameCachedScryDexSearch)
 
   const missingScryDexSession = await fetchJson(`${baseUrl}/scrydex/cards/search?q=charizard`, {
     expectedStatus: 409,
@@ -1641,7 +1662,8 @@ try {
   assert.deepEqual(syncStatus.scrydex_lookup_order, ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"])
   assert.equal(syncStatus.scrydex_fallback_connected, true)
   assert.equal(syncStatus.graded_pricing_provider_connected, true)
-  assert.equal(syncStatus.graded_pricing_primary_source, "scrydex_reference_cache")
+  assert.equal(syncStatus.graded_pricing_primary_source, "pricecharting")
+  assert.equal(syncStatus.graded_pricing_fallback_source, "scrydex_reference_cache")
   assert.equal(syncStatus.wordpress_pull_connected, true)
   assert.equal(syncStatus.wordpress_inventory_pull_connected, true)
   assert.equal(syncStatus.wordpress_events_pull_connected, true)

@@ -25,6 +25,11 @@ const env = {
   ...process.env,
   PATH: cargoBinDir ? `${cargoBinDir}${separator}${pathValue}` : pathValue,
   VITE_PUG_APP_MODE: profile === "kiosk" ? "kiosk" : "store",
+  VITE_PUG_DEFAULT_LOCAL_SYNC_SERVER_URL:
+    process.env.VITE_PUG_DEFAULT_LOCAL_SYNC_SERVER_URL ||
+    process.env.PUG_LOCAL_SYNC_PUBLIC_URL ||
+    process.env.LOCAL_SYNC_SERVER_URL ||
+    "",
 }
 mkdirSync(tmpDir, { recursive: true })
 writeFileSync(profileConfigPath, JSON.stringify(buildProfileConfig(profile), null, 2) + "\n")

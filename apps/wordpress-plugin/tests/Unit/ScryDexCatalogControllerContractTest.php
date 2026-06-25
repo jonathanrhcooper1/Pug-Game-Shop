@@ -7,6 +7,7 @@
 
 namespace TCGStorePlatform\Tests\Unit;
 
+use TCGStorePlatform\Api\V1\ScryDexCatalogController;
 use TCGStorePlatform\Tests\TestCase;
 
 final class ScryDexCatalogControllerContractTest extends TestCase {
@@ -33,6 +34,37 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 		) {
 			$this->assert_contains( $marker, $source );
 		}
+	}
+
+	public function test_catalog_index_reads_nested_expansion_lists_from_provider_payload(): void {
+		$controller = new ScryDexCatalogController();
+		$method     = new \ReflectionMethod( $controller, 'expansion_rows' );
+		$method->setAccessible( true );
+
+		$rows = $method->invoke(
+			$controller,
+			array(
+				'data'       => array(
+					'expansions' => array(
+						array(
+							'id'            => 'sv1',
+							'name'          => 'Scarlet & Violet',
+							'code'          => 'SVI',
+							'printed_total' => 198,
+						),
+					),
+				),
+				'pagination' => array(
+					'total_count' => 1,
+				),
+			),
+			'pokemon'
+		);
+
+		$this->assert_same( 1, count( $rows ) );
+		$this->assert_same( 'sv1', $rows[0]['provider_set_id'] );
+		$this->assert_same( 'Scarlet & Violet', $rows[0]['name'] );
+		$this->assert_same( 'SVI', $rows[0]['set_code'] );
 	}
 
 	public function test_catalog_index_uses_enterprise_usage_policy_without_daily_plugin_cap(): void {
@@ -154,6 +186,24 @@ final class ScryDexCatalogControllerContractTest extends TestCase {
 
 		$this->assert_not_contains( 'primary_api_key', $source );
 		$this->assert_not_contains( 'secondary_api_key', $source );
+	}
+
+	public function test_catalog_index_returns_sanitized_provider_failure_diagnostics(): void {
+		$source = $this->source();
+
+		foreach (
+			array(
+				'provider_result_summary',
+				'provider_result',
+				'failed_page',
+				'response_message',
+				'body_excerpt',
+				'credentials_redacted',
+				'safe_diagnostic_text',
+			) as $marker
+		) {
+			$this->assert_contains( $marker, $source );
+		}
 	}
 
 	public function test_catalog_export_uses_deterministic_order_and_manifest(): void {

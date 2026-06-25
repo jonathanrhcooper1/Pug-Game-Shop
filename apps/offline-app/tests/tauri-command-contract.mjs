@@ -25,6 +25,10 @@ const localSyncDiscoveryAdapterSource = await readFile(
   path.join(appRoot, "src/data/tauriLocalSyncDiscoveryAdapter.ts"),
   "utf8",
 )
+const dymoPrinterAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriDymoPrinterAdapter.ts"),
+  "utf8",
+)
 
 for (const dependency of [
   "keyring = { version = \"3\", features = [\"windows-native\"] }",
@@ -82,6 +86,13 @@ for (const marker of [
   "get_device_token_status",
   "delete_device_token",
   "discover_local_sync_servers",
+  "print_dymo_label",
+  "local_dymo_label_printed",
+  "local_dymo_service_unavailable",
+  "local_dymo_printer_not_found",
+  "DYMO_30336_LABEL_NAME",
+  "LOCAL_DYMO_PRINTING_URL",
+  "danger_accept_invalid_certs(true)",
   "local_sync_discovery_completed",
   "pug-local-sync-discovery-v1",
   "LOCAL_SYNC_DISCOVERY_PORT",
@@ -208,12 +219,32 @@ for (const marker of [
   assert.ok(localSyncDiscoveryAdapterSource.includes(marker), `Missing discovery adapter marker: ${marker}`)
 }
 
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriDymoPrinterAdapter",
+  "print_dymo_label",
+  "local_dymo_label_printed",
+  "30336 Small Multipurpose Labels",
+  "1 in x 2 1/8 in",
+  "Code128Auto",
+  "raw_credentials_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(dymoPrinterAdapterSource.includes(marker), `Missing DYMO adapter marker: ${marker}`)
+}
+
+const nativeDymoBorderColorIndex = libSource.indexOf("<BorderColor>")
+const nativeDymoBorderThicknessIndex = libSource.indexOf("<BorderThickness>0</BorderThickness>")
+assert.ok(nativeDymoBorderColorIndex > 0, "Native DYMO XML must include BorderColor.")
+assert.ok(nativeDymoBorderThicknessIndex > nativeDymoBorderColorIndex, "Native DYMO BorderColor must precede BorderThickness.")
+
 for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
   assert.equal(adapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(secureStoreAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(devicePairingAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(offlineSyncAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(localSyncDiscoveryAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(dymoPrinterAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
   assert.equal(libSource.includes(forbidden), false, `Forbidden command marker: ${forbidden}`)
 }
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 
 import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
-let wordpressSalePushCalls = 0
+let wordpressUpdatePushCalls = 0
 let squarePullCalls = 0
 const pushedBarcodes = []
 
@@ -71,27 +71,28 @@ const server = createLocalSyncHttpServer({
         }
       },
     },
-    wordpressInventorySalePush: async ({ operation, item }) => {
-      wordpressSalePushCalls += 1
-      assert.equal(operation.operation_type, "square_pos_sale")
-      assert.equal(operation.payload.sync_intent, "square_inventory_count_reconciliation")
+    wordpressInventoryUpdatePush: async ({ operation, item }) => {
+      wordpressUpdatePushCalls += 1
+      assert.equal(operation.operation_type, "inventory_update")
+      assert.equal(operation.payload.sync_intent, "square_inventory_count_reconciliation_quantity_update")
       assert.match(operation.payload.inventory_public_id, /^wp-square-reconcile/)
       assert.match(operation.payload.square_catalog_variation_id, /^SQ-VAR-[12]$/)
-      assert.match(operation.payload.square_receipt_reference, /^SQ-COUNT-/)
-      assert.equal(item.status, "sold")
+      assert.equal(operation.payload.quantity_update_mode, "absolute")
+      assert.equal(item.status === "sold" || item.status === "available", true)
       assert.match(item.barcode, /^PUG-SQ-RECON/)
       pushedBarcodes.push(item.barcode)
 
       return {
         status: "ok",
-        code: "wordpress_inventory_item_marked_sold",
+        code: "wordpress_inventory_item_updated",
         http_status: 200,
-        wordpress_code: "inventory_item_marked_sold",
+        wordpress_code: "inventory_item_updated",
         inventory: {
           public_id: item.wordpress_public_id || item.public_id,
           sku: item.barcode,
           barcode: item.barcode,
-          status: "sold",
+          status: item.status,
+          quantity_on_hand: item.quantity_on_hand,
           row_version: 4,
         },
         woocommerce_product_sync: {
@@ -149,7 +150,7 @@ try {
   assert.equal(reconciliation.wordpress_accepted_count, 3)
   assert.equal(reconciliation.local_queue_depth, 0)
   assert.equal(squarePullCalls, 1)
-  assert.equal(wordpressSalePushCalls, 3)
+  assert.equal(wordpressUpdatePushCalls, 3)
   assert.deepEqual(pushedBarcodes.sort(), ["PUG-SQ-RECON-01", "PUG-SQ-RECON-DELTA-01", "PUG-SQ-RECON-DELTA-02"])
 
   const after = await fetchJson(`${baseUrl}/inventory/search?q=Square%20Reconcile`)

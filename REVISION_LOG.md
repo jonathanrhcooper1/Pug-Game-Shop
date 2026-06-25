@@ -1,5 +1,721 @@
 # Revision Log
 
+## 2026-06-25 - 0.202.12 Square POS Singles Layout Seed
+
+### What Changed
+
+- Bumped release metadata from `0.202.11` to `0.202.12`.
+- Added a dedicated Square POS `Singles` layout seed script and package command.
+- Wired LAN middleman startup to ensure the Square category tree exists when
+  Square catalog sync is configured.
+- Fixed Square item category payloads to send category IDs only, without ordinal
+  metadata, after the live Square API rejected the ordinal shape during item
+  upsert.
+- Seeded/reused this production Square category tree:
+  `Singles`, `Singles / MTG`, `Singles / Lorcana`, `Singles / Riftbound`, and
+  `Singles / Pokemon`.
+- Created one live production Square test card in `Singles / MTG` with SKU
+  `PUG-CODEX-POS-SINGLES-MTG-20260625T185622Z`, item ID
+  `QUVGPLOWKRSVGIRTMFGBQRJT`, variation ID `BMKUDW452WICEEBNKYEDV342`, and
+  quantity `1`.
+- Updated the USB copy script to remove older versioned Pug Store/Kiosk
+  installers and old deliverable zips/folders so the deployment USB does not
+  show stale builds beside the current release.
+
+### Why
+
+The store wants the Square POS flow itself to expose a permanent `Singles`
+category that drills into game categories before showing synced cards. This
+belongs in Square POS/catalog, not as another Store App page.
+
+### Files Affected
+
+- `apps/local-sync-server/src/squareCatalogInventorySyncer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `scripts/square-seed-pos-singles-layout.mjs`
+- `scripts/tests/square-pos-singles-layout-contract.mjs`
+- `scripts/square-one-card-standalone-probe.mjs`
+- `scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- Release/version metadata files.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `node scripts/tests/square-pos-singles-layout-contract.mjs`
+- `node scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `npm.cmd run square:seed-pos-singles-layout -- --dry-run --location LB1B9Z4GVG1BH`
+- `npm.cmd run square:seed-pos-singles-layout -- --execute --location LB1B9Z4GVG1BH`
+
+### Rollback Notes
+
+- Roll back to `0.202.11` if Square POS category seeding needs to be paused.
+- The live Square test item can be deleted from Square after validation:
+  `PUG-CODEX-POS-SINGLES-MTG-20260625T185622Z`.
+- No database rollback is required for this revision.
+
+## 2026-06-25 - 0.202.11 Square Category/Image Sync And Manual Intake Hardening
+
+### What Changed
+
+- Bumped release metadata from `0.202.10` to `0.202.11`.
+- Updated the standalone Square one-card probe to find or create the `Singles`
+  category, assign the direct test item to it, set quantity `1`, and record the
+  Square category ID in the sanitized report.
+- Updated the LAN server Square catalog/inventory syncer to create/reuse Square
+  categories and place new Square items under `Singles` or `Graded` plus a game
+  category such as `MTG`, `Pokemon`, `Lorcana`, `One Piece`, or `Riftbound`.
+- Added Square catalog image upload for new Square items when the inventory row
+  includes a supported card image URL.
+- Added manual product image URL support to Store App inventory intake for
+  card-not-found/manual entries.
+- Required manual intake to choose a concrete game instead of silently falling
+  back to Pokemon when the game selector is left on `All games`.
+- Added barcode editing to the Store App inventory update panel so the selected
+  LP/NM/graded row can have the exact barcode corrected before sync or label
+  print.
+- Updated Square inventory poll logging to say quantity adjustments instead of
+  implying every Square count decrease removes a whole item row.
+
+### Why
+
+Square POS needs the same category path, product image, barcode/SKU, and
+quantity that staff see in the Store App and customers see on the website.
+Manual intake also needs a clean fallback for cards missing from ScryDex.
+
+### Files Affected
+
+- `scripts/square-one-card-standalone-probe.mjs`
+- `scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `apps/local-sync-server/src/squareCatalogInventorySyncer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `apps/offline-app/src/App.tsx`
+- Release/version metadata files.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Live standalone Square one-card probe into category `Singles` at location
+  `LB1B9Z4GVG1BH`.
+- `node scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `node apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+
+### Rollback Notes
+
+- Roll back to `0.202.10` if Square category/image writes need to be paused.
+- The live direct Square probe created a real test item in `Singles` with SKU
+  `PUG-CODEX-SQ-20260625T180117Z`; it can be deleted from Square after
+  validation.
+- No database rollback is required for this revision.
+
+## 2026-06-25 - 0.202.10 Middleman-Owned Square Catalog Inventory Sync
+
+### What Changed
+
+- Bumped release metadata from `0.202.9` to `0.202.10`.
+- Added a standalone Square one-card probe script for safe direct API response
+  testing before LAN server package deployment.
+- Added a LAN server Square catalog/inventory syncer that creates or updates
+  Square item variations with the local barcode/SKU, sale price, location, and
+  absolute physical inventory count.
+- Wired inventory intake and inventory update queue pushes to sync Square first
+  when configured, then push the same Square mapping fields to WordPress.
+- Added `square_location_id` to the LAN SQLite inventory cache and WordPress
+  inventory schema.
+- Updated WordPress inventory create/update/search responses to accept and
+  return Square catalog item, variation, and location mappings.
+- Fixed Square count reconciliation to compare summed local quantities against
+  Square location counts and update quantities instead of assuming one row is
+  always one copy.
+
+### Why
+
+The store architecture now has the LAN middleman server owning Square sync.
+The website and Square report back to the server, while the server keeps the
+barcode, Square variation ID, website product, and local app inventory aligned.
+
+### Files Affected
+
+- `apps/local-sync-server/src/squareCatalogInventorySyncer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `apps/wordpress-plugin/src/Api/V1/InventoryUpdateRouteHandler.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakePersistencePlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepositoryResult.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchResponsePresenter.php`
+- `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0017SquareLocationMapping.php`
+- Release/version metadata files.
+
+### Migrations Added
+
+- WordPress database migration `17`: adds `square_location_id` to
+  `tcg_inventory_items` with a `square_location` index.
+- LAN SQLite auto-migration: adds `inventory_items.square_location_id`.
+
+### Tests Added Or Run
+
+- Live standalone Square one-card probe against location `LB1B9Z4GVG1BH`.
+- `node apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `php apps/wordpress-plugin/tests/run.php`
+- `node scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `npm.cmd run verify:no-production-secrets`
+- `node scripts/tests/production-release-package-contract.mjs`
+
+### Rollback Notes
+
+- Roll back to `0.202.9` if Square catalog/inventory writes need to be paused.
+- The WordPress migration adds only a nullable mapping column and index. If
+  rolling back database schema manually, drop the `square_location` index and
+  `square_location_id` column after confirming no release newer than `0.202.10`
+  is using it.
+- The standalone Square probe created one real Square test item; it can be
+  removed from Square Dashboard after validation.
+
+## 2026-06-25 - 0.202.9 ScryDex Catalog Index Diagnostics
+
+### What Changed
+
+- Bumped release metadata from `0.202.8` to `0.202.9`.
+- Added sanitized ScryDex provider diagnostics to failed catalog index requests.
+- The WordPress ScryDex Catalog admin table now surfaces HTTP status, error
+  code, provider message, request path, response message, and short non-JSON
+  response excerpts for expansion/card page failures.
+- Hardened the admin JavaScript so non-JSON responses from WordPress, ScryDex,
+  or the host are displayed as readable errors instead of being swallowed by
+  `response.json()`.
+- Kept credentials and full provider bodies redacted.
+
+### Why
+
+Pokemon indexing was stopping partway through, but the admin screen only showed
+a generic failure. Staff need the exact failed page, expansion, HTTP status, and
+provider message so we can tell whether the cause is a ScryDex rate/timeout,
+host/proxy failure, bad payload, or database write issue.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- Release/version metadata files.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `php -l` on changed WordPress plugin PHP files.
+- `php apps/wordpress-plugin/tests/run.php --filter ScryDex`
+- `php apps/wordpress-plugin/tests/run.php --filter ScryDexCatalog`
+
+### Rollback Notes
+
+- Roll back to the prior `0.202.8` WordPress plugin package if the admin
+  catalog page has unexpected display issues.
+- No database migration was added, so rollback is a plugin-code rollback only.
+
+## 2026-06-25 - 0.202.8 LAN Install Prompt And Workstation Heartbeat Labels
+
+### What Changed
+
+- Bumped release metadata from `0.202.7` to `0.202.8`.
+- Added a `This workstation name` field to the Store/Kiosk app pre-launch
+  connection screen.
+- Added the same workstation name field to Settings -> Website connector.
+- The app continues to keep a stable generated local device ID, while the
+  friendly workstation name is sent as the `/devices/heartbeat` label.
+- Added `LAN_SERVER_CODEX_INSTALL.md`, a shorter Codex copy/paste guide with
+  direct PowerShell install, credential apply, server health, device heartbeat,
+  app install, and DYMO diagnostic commands.
+- Updated release packaging and USB copy scripts so the new install guide is
+  included at the release root, USB root, and inside `LAN Server + Pug Store
+  App`.
+- Updated the longer middleman prompt to reference the workstation name and
+  device heartbeat verification.
+
+### Why
+
+Each installed app needs to be individually visible on the LAN server, but the
+server device list also needs a human-readable label. The generated device ID
+solves uniqueness; the workstation name solves day-to-day support and store
+operations.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/runbooks/LAN_SERVER_CODEX_INSTALL.md`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `scripts/package-production-release.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `node scripts/tests/production-release-package-contract.mjs`
+
+### Rollback Notes
+
+- If a workstation label is set incorrectly, edit `This workstation name` on
+  the pre-login connection screen or in Settings. The generated device ID does
+  not need to be reset.
+- If an app does not appear separately in `/devices/status`, confirm the
+  workstation is running `0.202.8` or newer and has opened the app long enough
+  to send a heartbeat.
+
+## 2026-06-24 - 0.202.7 DYMO XML And Inventory Quantity Sync Repair
+
+### What Changed
+
+- Bumped release metadata from `0.202.6` to `0.202.7`.
+- Folded the newest remote DYMO findings into source: browser and native Tauri
+  DYMO label XML now include `BorderColor` before `BorderThickness`.
+- Updated `Diagnose-Pug-Dymo-Printing.ps1` so its direct test print uses the
+  accepted 30336 label XML shape.
+- Preserved LAN inventory quantities during WordPress pull refreshes when the
+  website row does not explicitly include quantity data.
+- Added a stable per-workstation fallback device ID for app heartbeats when a
+  machine is not paired yet, preventing several PCs from sharing
+  `front-counter-install`.
+- Added an immediate LAN inventory re-read after Store App inventory saves so
+  the selected row reflects the server's final stock count.
+- Added contract coverage for DYMO XML ordering, quantity-preserving WordPress
+  pulls, stable device heartbeat fallback, and post-save inventory refresh.
+
+### Why
+
+The newest remote diagnostics showed the local DYMO service and LabelWriter were
+healthy, but the app's embedded XML was rejected because `BorderColor` was
+missing. The inventory findings also showed the LAN server database/API had the
+correct count while one workstation displayed stale or overwritten stock. The
+release now addresses both the root XML rejection and the quantity-refresh path
+that could reset or display outdated counts.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `scripts/Diagnose-Pug-Dymo-Printing.ps1`
+- `scripts/tests/production-release-package-contract.mjs`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `cargo test`
+- `node scripts/tests/wordpress-package-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+
+### Rollback Notes
+
+- If local label printing still fails on a workstation, run the bundled
+  diagnostic with `-TestPrint` and use the generated report. The app target
+  setting should remain `Auto` or `This PC only` for local DYMO-first printing.
+- If inventory counts still differ by workstation, open
+  `http://10.1.10.116:8787/inventory/search?q=<barcode>` on that workstation.
+  If the browser shows the correct count, reinstall the `0.202.7` Store App so
+  the client refresh and unique heartbeat changes are active.
+
+## 2026-06-24 - 0.202.6 DYMO Diagnostic Collector
+
+### What Changed
+
+- Added `Diagnose-Pug-Dymo-Printing.ps1`, a standalone workstation diagnostic
+  tool for local DYMO print failures.
+- The diagnostic checks Windows printers, Print Spooler, DYMO services,
+  DYMO processes, DYMO install records, app printer-target storage hints,
+  local DYMO endpoints, optional LAN server reachability, and optional direct
+  DYMO test print behavior.
+- The tool writes a text summary, JSON report, and ZIP report that can be sent
+  back to Codex without connector credentials.
+- Bundled the tool into the production release root, Pug Store App package,
+  LAN Server + Pug Store App package, and USB root.
+- Bumped release metadata from `0.202.5` to `0.202.6`.
+
+### Why
+
+The `0.202.5` routing fix still did not resolve local DYMO printing on the
+store workstation. The next useful step is a repeatable report that shows
+exactly where the chain breaks: Windows printer registration, DYMO Connect
+local API, app target setting, LAN fallback, or the actual direct `PrintLabel`
+request.
+
+### Files Affected
+
+- `scripts/Diagnose-Pug-Dymo-Printing.ps1`
+- `scripts/package-production-release.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Pending diagnostic dry run, package contract, production package rebuild, and
+  USB copy verification for `0.202.6`.
+
+### Rollback Notes
+
+- If the diagnostic package causes confusion, keep using the `0.202.5` app
+  installers and copy only `Diagnose-Pug-Dymo-Printing.ps1` to the affected
+  workstation as a support utility.
+
+## 2026-06-24 - 0.202.5 DYMO Local Printer Routing Repair
+
+### What Changed
+
+- Bumped release metadata from `0.202.4` to `0.202.5` across the root package,
+  Store App, Tauri shell, LAN sync server, WordPress plugin headers, and the
+  middleman deployment prompt.
+- Confirmed the Store App local DYMO route uses
+  `https://127.0.0.1:41951/DYMO/DLS/Printing` and
+  `https://localhost:41951/DYMO/DLS/Printing`, not the configured LAN server
+  URL. The LAN server route is only fallback or explicit LAN-only mode.
+- Updated browser and native DYMO printer selection to attempt a listed local
+  LabelWriter, including the 550 Turbo, even when DYMO Connect reports a stale
+  `IsConnected=False` flag. If DYMO rejects the print request, the app can still
+  fall back to the LAN server printer in Auto mode.
+- Updated app status copy and the middleman deployment prompt to make the
+  local-first route and fallback behavior explicit.
+
+### Why
+
+The live DYMO probe on this PC returned `GetPrinters` successfully on
+`127.0.0.1`, but DYMO reported the LabelWriter 550 Turbo as `IsConnected=False`.
+The old app logic treated that as no usable local printer and moved directly to
+LAN fallback. That made it look like the launch-time LAN server IP was
+intercepting local printing, even though the local route itself was correctly
+loopback-only.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Pending focused Store App, Tauri command, Rust, and packaging verification.
+
+### Rollback Notes
+
+- If local DYMO printing regresses, reinstall the previous `0.202.4` Store/Kiosk
+  apps and set Label print target to `LAN server only` as a temporary fallback.
+
+## 2026-06-24 - 0.202.4 Middleman Square Credential Handoff
+
+### What Changed
+
+- Bumped the production release metadata from `0.202.3` to `0.202.4` across the
+  root package, Store App, Tauri app shell, LAN sync server, and WordPress
+  plugin headers.
+- Added `Apply-Pug-Middleman-Credentials.ps1`, a middleman-only helper that
+  merges a USB-only connector secret file into
+  `C:\PugGameShop\LANServer\local-sync.env`, backs up the previous env file,
+  restarts the LAN server, and reports only safe Square configured flags.
+- Updated the release package builder and USB copy script so the middleman
+  Codex prompt and credential applier are included automatically in the
+  `0.202.4` package.
+- Updated `MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md` so Codex on the server PC
+  applies connector credentials, installs the fresh `0.202.4` Store/Kiosk apps,
+  and verifies Square inventory polling and sales reports.
+
+### Why
+
+The middleman PC saw the prior installer as already applied because the release
+artifact name and app version still said `0.202.3`. A new revision number makes
+the update obvious and forces a clean install/patch path for the Square
+credential handoff.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `scripts/Apply-Pug-Middleman-Credentials.ps1`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/package-production-release.mjs`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Pending packaging rebuild and release-copy verification for `0.202.4`.
+
+### Rollback Notes
+
+- If the `0.202.4` middleman patch fails, reinstall the previous `0.202.3`
+  Store/Kiosk apps and restore the backed-up
+  `C:\PugGameShop\LANServer\local-sync.env.before-credentials-*` file.
+
+## 2026-06-24 - PriceCharting Graded Primary And DYMO Endpoint Repair
+
+### What Changed
+
+- Switched graded-card trade-in valuation priority to PriceCharting first, with
+  ScryDex/reference card pricing as the fallback.
+- Updated Store App trade-in copy so staff can see whether the value came from
+  PriceCharting or the ScryDex fallback.
+- Updated the LAN server setup/status contract to report
+  `graded_pricing_primary_source: pricecharting` and
+  `graded_pricing_fallback_source: scrydex_reference_cache`.
+- Fixed the Inventory edit form so draft quantity, price, floor, visibility,
+  and location edits are not reset to the selected card's previous value while
+  staff is typing.
+- Updated native and browser DYMO local printing to use newer DYMO Connect
+  behavior: probe `StatusConnected`, read printers through `GetPrinters`, try
+  both `127.0.0.1` and `localhost`, and fall back from `PrintLabel` to
+  `PrintLabel2`.
+- Updated the middleman Codex deployment prompt so it does not treat `/Check`
+  returning 404 as a failure when `GetPrinters` works.
+
+### Why
+
+The business rule changed: graded-card pricing should trust PriceCharting first.
+ScryDex is still valuable as a fallback and for card/set reference data, but
+staff needs to see the active value source clearly before approving trade-ins.
+
+The remote DYMO report showed DYMO Connect was installed, running on
+`127.0.0.1:41951`, and able to host the web API, but the legacy `/Check`
+endpoint returned 404. That points to endpoint compatibility, not a dead printer
+service, so the app now uses the endpoints that newer DYMO Connect exposes.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:graded-pricing`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/tauri-command-contract.mjs`
+- `node apps/offline-app/tests/windows-package-contract.mjs`
+- `cargo test` in `apps/offline-app/src-tauri`
+
+### Rollback Notes
+
+- If PriceCharting is unavailable, the Store App will continue to use the
+  ScryDex/reference fallback or require a manual offer value.
+- If local DYMO printing still fails on a workstation, the app still falls back
+  to LAN server printing and then browser print preview.
+- Reinstall the prior Store/Kiosk app installer if a workstation-specific DYMO
+  regression appears.
+
+## 2026-06-24 - DYMO Local Printing And Hands-Off LAN Package
+
+### What Changed
+
+- Added a native Tauri `print_dymo_label` command that talks to the DYMO
+  Connect local web service from the Windows app shell.
+- Updated label printing to try the local PC's attached DYMO printer first,
+  then browser local printing, then LAN server fallback, then browser print
+  preview as the last resort.
+- Packaged `Start-Pug-Dymo-Local-Service.ps1` beside the Store App and LAN
+  server deliverables so each workstation can start/check its local DYMO
+  service.
+- Added release packaging support for a bundled `local-sync.env` production
+  connector config from `.local/local-sync.env.production`, with BOM stripping
+  and without committing the secret file.
+- Updated `Deploy-Pug-LAN-Server-Patch.ps1` so first install can be hands-off:
+  it installs bundled connector config automatically, preserves an existing
+  server config by default, and supports `-ReplaceLocalEnv` when an intentional
+  credential refresh is needed.
+- Expanded graded-card selection and secondary-provider pricing handling for
+  CGC Gem Mint/Pristine 10 and Beckett/BGS 10, Perfect 10, and Black Label 10.
+  When a secondary source only has a generic grade-10 bucket, the app keeps the
+  value but lowers confidence and shows a verify-premium warning.
+- Rebuilt the production deliverables and copied the cleaned package to
+  `D:\The Pug Installers`.
+
+### Why
+
+Printing had regressed into server-only behavior on some workstations. DYMO
+Connect exposes a local HTTPS print service, but browser/webview certificate and
+CORS behavior can make pure frontend printing unreliable. Moving the first print
+attempt into the native app shell lets each employee PC use its own attached
+DYMO first, while preserving the LAN server printer as a fallback.
+
+The LAN server installer also needed a no-touch install path for the current
+production credentials. The bundled env support solves that for this local
+release package without placing secrets in source control.
+
+Graded pricing needed clearer handling for premium grade-10 labels. Secondary
+sources often expose generic grade buckets rather than distinct Perfect/Black
+Label/Pristine buckets, so the system now keeps those grades separate in the UI
+and warns when the fallback price is not an exact premium-grade match.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/tauriDymoPrinterAdapter.ts`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/tests/graded-pricing-providers.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/Deploy-Pug-LAN-Server-Patch.ps1`
+- `scripts/copy-production-release-to-usb.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- `TEST_RESULTS.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node apps/offline-app/tests/windows-package-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `node apps/offline-app/tests/tauri-command-contract.mjs`
+- `cargo test` in `apps/offline-app/src-tauri`
+- `npm.cmd run verify:no-production-secrets`
+- `php tests/run.php; php tests/lint.php` in `apps/wordpress-plugin`
+- `npm.cmd run package:production-release`
+- `npm.cmd run release:copy-usb`
+
+### Rollback Notes
+
+- If native DYMO printing fails on a workstation, the app still falls through to
+  browser local DYMO, LAN server print, then browser print preview.
+- Reinstall the previous `0.202.3` Store/Kiosk installer if the native command
+  causes a workstation-specific issue.
+- The LAN patch script preserves existing `C:\PugGameShop\LANServer\local-sync.env`
+  by default. Use the automatic backup created by `-ReplaceLocalEnv` if a config
+  refresh needs to be undone.
+
 ## 2026-06-24 - Production Inventory Quantity Route Repair
 
 ### What Changed

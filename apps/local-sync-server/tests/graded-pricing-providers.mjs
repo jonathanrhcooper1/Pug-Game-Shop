@@ -16,10 +16,25 @@ assert.deepEqual(priceChartingCardGradePriceKey("Beckett/BGS", "10"), {
   label: "BGS 10",
   confidence: 96,
 })
+assert.deepEqual(priceChartingCardGradePriceKey("Beckett/BGS", "Perfect 10"), {
+  key: "bgs-10-price",
+  label: "BGS 10 generic bucket; verify Perfect/Black Label premium",
+  confidence: 82,
+})
+assert.deepEqual(priceChartingCardGradePriceKey("Beckett/BGS", "Black Label 10"), {
+  key: "bgs-10-price",
+  label: "BGS 10 generic bucket; verify Perfect/Black Label premium",
+  confidence: 82,
+})
 assert.deepEqual(priceChartingCardGradePriceKey("CGC", "10"), {
   key: "condition-17-price",
   label: "CGC 10",
   confidence: 96,
+})
+assert.deepEqual(priceChartingCardGradePriceKey("CGC", "Pristine 10"), {
+  key: "condition-17-price",
+  label: "CGC 10 generic bucket; verify Pristine premium",
+  confidence: 84,
 })
 assert.deepEqual(priceChartingCardGradePriceKey("SGC", "10"), {
   key: "condition-18-price",

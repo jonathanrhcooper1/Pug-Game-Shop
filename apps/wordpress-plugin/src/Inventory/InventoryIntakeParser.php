@@ -112,6 +112,9 @@ final class InventoryIntakeParser {
 			'reference_card_id'              => $this->optional_positive_int( $payload['reference_card_id'] ?? null, 'reference_card_id', $errors ),
 			'reference_variant_id'           => $this->optional_positive_int( $payload['reference_variant_id'] ?? null, 'reference_variant_id', $errors ),
 			'woocommerce_product_id'         => $this->optional_positive_int( $payload['woocommerce_product_id'] ?? null, 'woocommerce_product_id', $errors ),
+			'square_catalog_item_id'         => $this->external_id( $payload['square_catalog_item_id'] ?? null ),
+			'square_catalog_variation_id'    => $this->external_id( $payload['square_catalog_variation_id'] ?? null ),
+			'square_location_id'             => $this->external_id( $payload['square_location_id'] ?? null ),
 			'online_visibility'              => $this->visibility( $payload['online_visibility'] ?? 'hidden', 'online_visibility', $errors ),
 			'kiosk_visibility'               => $this->visibility( $payload['kiosk_visibility'] ?? 'hidden', 'kiosk_visibility', $errors ),
 			'pos_visibility'                 => $this->visibility( $payload['pos_visibility'] ?? 'visible', 'pos_visibility', $errors ),
@@ -219,6 +222,16 @@ final class InventoryIntakeParser {
 		}
 
 		return in_array( strtolower( trim( (string) $value ) ), array( '1', 'true', 'yes', 'on' ), true );
+	}
+
+	private function external_id( mixed $value ): ?string {
+		$text = trim( (string) ( $value ?? '' ) );
+
+		if ( '' === $text ) {
+			return null;
+		}
+
+		return substr( preg_replace( '/[^\w:.\/#-]+/', '', $text ) ?? '', 0, 191 );
 	}
 
 	/**

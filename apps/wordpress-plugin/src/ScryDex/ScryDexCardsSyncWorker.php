@@ -241,10 +241,41 @@ final class ScryDexCardsSyncWorker {
 			'provider_result_status'        => $provider_result->status(),
 			'provider_result_http_status'   => $provider_result->http_status(),
 			'provider_result_error_code'    => $provider_result->error_code(),
+			'provider_result_message'       => $provider_result->message(),
+			'provider_result_retryable'     => $this->provider_result_retryable( $provider_result ),
+			'provider_result_meta'          => $this->provider_result_public_meta( $provider_result ),
 			'provider_result_body_received' => array() !== $provider_result->body(),
 			'provider_row_count'            => $this->row_count_from_body( $provider_result->body() ),
 			'provider_result_body_logged'   => false,
 			'orchestration_plan'            => $page_plan,
+		);
+	}
+
+	private function provider_result_retryable( ScryDexResult $provider_result ): bool {
+		if ( ScryDexResult::RATE_LIMITED === $provider_result->status() ) {
+			return true;
+		}
+
+		return ScryDexResult::FAILED === $provider_result->status()
+			&& ( 0 === $provider_result->http_status() || $provider_result->http_status() >= 500 );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function provider_result_public_meta( ScryDexResult $provider_result ): array {
+		$meta    = $provider_result->meta();
+		$request = is_array( $meta['request'] ?? null ) ? $meta['request'] : array();
+
+		return array(
+			'request'          => array(
+				'method'   => $this->safe_text( $request['method'] ?? '' ),
+				'path'     => $this->safe_text( $request['path'] ?? '' ),
+				'game'     => $this->safe_text( $request['game'] ?? '' ),
+				'resource' => $this->safe_text( $request['resource'] ?? '' ),
+			),
+			'response_message' => $this->safe_text( $meta['response_message'] ?? '' ),
+			'body_excerpt'     => $this->safe_text( $meta['body_excerpt'] ?? '' ),
 		);
 	}
 
@@ -384,6 +415,16 @@ final class ScryDexCardsSyncWorker {
 		}
 
 		return null;
+	}
+
+	private function safe_text( mixed $value ): string {
+		if ( ! is_scalar( $value ) ) {
+			return '';
+		}
+
+		$value = preg_replace( '/\s+/', ' ', trim( (string) $value ) ) ?? '';
+
+		return substr( $value, 0, 320 );
 	}
 
 	/**

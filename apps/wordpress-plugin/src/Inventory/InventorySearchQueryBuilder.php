@@ -49,6 +49,7 @@ final class InventorySearchQueryBuilder {
 		'woocommerce_product_id',
 		'square_catalog_item_id',
 		'square_catalog_variation_id',
+		'square_location_id',
 		'external_sync_state',
 		'last_external_sync_at',
 		'front_image_remote_url',

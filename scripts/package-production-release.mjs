@@ -26,7 +26,12 @@ const themeZip = resolve(distDir, `pug-arcade-commerce-v2-${packageJson.version}
 const localServerZip = resolve(distDir, "pug-lan-server.zip")
 const documentationDir = resolve(root, "release-package")
 const lanServerDeployScript = resolve(root, "scripts/Deploy-Pug-LAN-Server-Patch.ps1")
+const middlemanCredentialApplyScript = resolve(root, "scripts/Apply-Pug-Middleman-Credentials.ps1")
+const middlemanDeploymentPrompt = resolve(root, "docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md")
+const lanServerCodexInstallPrompt = resolve(root, "docs/runbooks/LAN_SERVER_CODEX_INSTALL.md")
 const dymoLocalServiceScript = resolve(root, "scripts/Start-Pug-Dymo-Local-Service.ps1")
+const dymoDiagnosticScript = resolve(root, "scripts/Diagnose-Pug-Dymo-Printing.ps1")
+const bundledLocalSyncEnv = findBundledLocalSyncEnv()
 const pugStoreAppDir = resolve(releaseDir, "Pug Store App")
 const lanServerPlusAppDir = resolve(releaseDir, "LAN Server + Pug Store App")
 const kioskPageDir = resolve(releaseDir, "Kiosk Page")
@@ -43,8 +48,20 @@ copyRequired(themeZip, resolve(lanWebsiteDir, basename(themeZip)))
 copyRequired(localServerZip, resolve(lanServerPlusAppDir, basename(localServerZip)))
 writeLanServerStartupFiles(lanServerPlusAppDir, basename(localServerZip))
 copyRequired(lanServerDeployScript, resolve(lanServerPlusAppDir, "Deploy-Pug-LAN-Server-Patch.ps1"))
+copyRequired(middlemanCredentialApplyScript, resolve(releaseDir, "Apply-Pug-Middleman-Credentials.ps1"))
+copyRequired(middlemanCredentialApplyScript, resolve(lanServerPlusAppDir, "Apply-Pug-Middleman-Credentials.ps1"))
+copyRequired(middlemanDeploymentPrompt, resolve(releaseDir, "MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md"))
+copyRequired(middlemanDeploymentPrompt, resolve(lanServerPlusAppDir, "MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md"))
+copyRequired(lanServerCodexInstallPrompt, resolve(releaseDir, "LAN_SERVER_CODEX_INSTALL.md"))
+copyRequired(lanServerCodexInstallPrompt, resolve(lanServerPlusAppDir, "LAN_SERVER_CODEX_INSTALL.md"))
 copyRequired(dymoLocalServiceScript, resolve(pugStoreAppDir, "Start-Pug-Dymo-Local-Service.ps1"))
 copyRequired(dymoLocalServiceScript, resolve(lanServerPlusAppDir, "Start-Pug-Dymo-Local-Service.ps1"))
+copyRequired(dymoDiagnosticScript, resolve(releaseDir, "Diagnose-Pug-Dymo-Printing.ps1"))
+copyRequired(dymoDiagnosticScript, resolve(pugStoreAppDir, "Diagnose-Pug-Dymo-Printing.ps1"))
+copyRequired(dymoDiagnosticScript, resolve(lanServerPlusAppDir, "Diagnose-Pug-Dymo-Printing.ps1"))
+if (bundledLocalSyncEnv) {
+  copyEnvFileWithoutBom(bundledLocalSyncEnv, resolve(lanServerPlusAppDir, "local-sync.env"))
+}
 
 // Bundle client handover docs with the installable package so the ZIP is a
 // complete owner/admin/support handoff, not only an installer collection.
@@ -101,6 +118,7 @@ writeFileSync(
     "Install the app, then let it auto-discover the LAN server over UDP port 8788.",
     "If discovery is blocked, enter the LAN server URL manually, for example http://SERVER-IP:8787.",
     "For local DYMO label printing, run Start-Pug-Dymo-Local-Service.ps1 on any staff PC with the LabelWriter attached.",
+    "If local DYMO printing still fails, run Diagnose-Pug-Dymo-Printing.ps1 and send the generated ZIP report to Codex.",
     appInstaller
       ? `Installer: ${appInstallerFileName}`
       : "Installer missing: run npm.cmd run build:offline-app:windows, then rerun npm.cmd run package:production-release.",
@@ -125,7 +143,13 @@ writeFileSync(
     "- On startup it creates or reuses store-sync.sqlite unless LOCAL_SYNC_SQLITE_PATH or PUG_LOCAL_SYNC_DB points elsewhere.",
     "- Use Start-Pug-LAN-Server-Hidden.vbs or Install-Pug-LAN-Server-Startup-Task.ps1 when you do not want a command prompt window visible.",
     "- Use Deploy-Pug-LAN-Server-Patch.ps1 when updating the LAN server package on a different computer from this USB.",
+    "- Use Apply-Pug-Middleman-Credentials.ps1 only with the USB-only LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env file when connector credentials need to be merged into the middleman server.",
+    "- Use MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md as the Codex handoff on the middleman machine.",
+    bundledLocalSyncEnv
+      ? "- local-sync.env is bundled in this local deliverable and will be installed automatically by the patch script."
+      : "- local-sync.env is not bundled. Add it beside Deploy-Pug-LAN-Server-Patch.ps1 only when you intentionally want hands-off credential setup.",
     "- Use Start-Pug-Dymo-Local-Service.ps1 on any PC that prints DYMO labels locally.",
+    "- Use Diagnose-Pug-Dymo-Printing.ps1 on any PC where local DYMO labels do not print; the generated ZIP is safe to send back to Codex.",
     "",
     "Connectivity:",
     "- Allow inbound TCP 8787 and UDP 8788 through Windows Firewall.",
@@ -162,6 +186,7 @@ writeFileSync(
     "2. Install Pug Store App on staff stations.",
     "3. Install Kiosk Page on customer-facing kiosk stations.",
     "4. On any staff PC with a DYMO LabelWriter attached, run Start-Pug-Dymo-Local-Service.ps1 and confirm the local service answers.",
+    "5. If a workstation still will not print locally, run Diagnose-Pug-Dymo-Printing.ps1 on that workstation and send Codex the generated ZIP report.",
     "",
     "Connectivity:",
     "- Pug Store App auto-discovers the LAN server over UDP pug-local-sync-discovery-v1 on port 8788.",
@@ -177,6 +202,7 @@ writeFileSync(
     "",
     "Documentation:",
     "- See LAN Server + Pug Store App/documentation/release-package/README.md for owner, admin, staff, support, credential, and source-code handover guides.",
+    "- See MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md for the exact Codex instructions to patch the middleman server, Store App, Kiosk App, Square connector, and DYMO printing.",
     "",
     appInstaller
       ? `Bundled app installer: ${appInstallerFileName}`
@@ -228,6 +254,7 @@ function buildPugStoreAppManifest(installerPath) {
     decorations: false,
     command_prompt_window_required: false,
     dymo_local_service_helper: "Start-Pug-Dymo-Local-Service.ps1",
+    dymo_diagnostic_helper: "Diagnose-Pug-Dymo-Printing.ps1",
     dymo_local_printing_url: "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
     launch_url_hint: "/",
     sync_topology: "wordpress_woocommerce_plugin <-https-> local_middleman <-lan/offline-> app",
@@ -261,10 +288,12 @@ function buildLanServerPlusAppManifest(installerPath) {
     patch_deploy_helper: "Deploy-Pug-LAN-Server-Patch.ps1",
     startup_task_helper: "Install-Pug-LAN-Server-Startup-Task.ps1",
     dymo_local_service_helper: "Start-Pug-Dymo-Local-Service.ps1",
+    dymo_diagnostic_helper: "Diagnose-Pug-Dymo-Printing.ps1",
     dymo_local_printing_url: "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
     website_dependencies: [basename(pluginZip), basename(themeZip)],
-    local_database: "store-sync.sqlite",
-    sqlite_runtime: "Node built-in node:sqlite",
+      local_database: "store-sync.sqlite",
+      bundled_local_sync_env: Boolean(bundledLocalSyncEnv),
+      sqlite_runtime: "Node built-in node:sqlite",
     sqlite_database_auto_created: true,
     sqlite_database_shipped: false,
     sqlite_separate_install_required: false,
@@ -437,12 +466,31 @@ function findNewestInstallerMatching(directories, productName) {
   return installers[0] ?? null
 }
 
+function findBundledLocalSyncEnv() {
+  const explicit = process.env.PUG_RELEASE_LOCAL_SYNC_ENV_FILE
+  const candidates = [
+    explicit ? resolve(root, explicit) : "",
+    resolve(root, ".local", "local-sync.env.production"),
+    resolve(root, "dist", "local-sync.env"),
+  ].filter(Boolean)
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? null
+}
+
 function copyRequired(source, destination) {
   if (!existsSync(source)) {
     throw new Error(`Required release artifact missing: ${source}`)
   }
 
   copyFileSync(source, destination)
+}
+
+function copyEnvFileWithoutBom(source, destination) {
+  if (!existsSync(source)) {
+    throw new Error(`Required release artifact missing: ${source}`)
+  }
+
+  writeFileSync(destination, readFileSyncText(source).replace(/^\uFEFF/, ""), "utf8")
 }
 
 function run(command, args, extraEnv = {}) {

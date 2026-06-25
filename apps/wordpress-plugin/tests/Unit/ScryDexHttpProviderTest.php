@@ -146,10 +146,42 @@ final class ScryDexHttpProviderTest extends TestCase {
 
 		$this->assert_contains( '/pokemon/v1/expansions?', $urls[0] );
 		$this->assert_contains( 'page_size=100', $urls[0] );
-		$this->assert_contains( 'pop_reports', $urls[0] );
+		$this->assert_false( str_contains( $urls[0], 'include=' ) );
 		$this->assert_contains( '/pokemon/v1/expansions/sv1/cards?', $urls[1] );
 		$this->assert_contains( 'include=prices', $urls[1] );
 		$this->assert_contains( 'pop_reports', $urls[1] );
+	}
+
+	public function test_search_expansions_preserves_nested_provider_payload_shape(): void {
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static fn (): array => array(
+				'status' => 200,
+				'body'   => array(
+					'data'       => array(
+						'expansions' => array(
+							array(
+								'id'   => 'sv1',
+								'name' => 'Scarlet & Violet',
+							),
+						),
+					),
+					'pagination' => array(
+						'total_count' => 1,
+					),
+				),
+			)
+		);
+
+		$result = $provider->search_expansions( '', array( 'game' => 'pokemon', 'page_size' => '100' ), 1 );
+		$body   = $result->body();
+
+		$this->assert_true( $result->is_success() );
+		$this->assert_same( 'sv1', $body['data']['expansions'][0]['id'] );
+		$this->assert_false( isset( $body['data']['game'] ) );
+		$this->assert_same( 1, $body['pagination']['total_count'] );
 	}
 
 	public function test_get_card_price_history_uses_documented_route_and_grade_filters(): void {
@@ -236,6 +268,35 @@ final class ScryDexHttpProviderTest extends TestCase {
 		$this->assert_false( $result->is_success() );
 		$this->assert_same( ScryDexResult::RATE_LIMITED, $result->status() );
 		$this->assert_same( 'scrydex_rate_limited', $result->error_code() );
+	}
+
+	public function test_failed_response_includes_sanitized_request_diagnostics(): void {
+		$provider = new ScryDexHttpProvider(
+			'sandbox-scrydex-key',
+			'sandbox-team-id',
+			'https://sandbox.scrydex.test',
+			static fn (): array => array(
+				'status'           => 502,
+				'body'             => array(),
+				'response_message' => 'Bad Gateway',
+				'body_excerpt'     => 'Proxy timed out while reading the ScryDex upstream response.',
+			)
+		);
+
+		$result = $provider->search_expansion_cards( 'sv1', '', array( 'game' => 'pokemon' ), 4 );
+		$meta   = $result->meta();
+
+		$this->assert_same( ScryDexResult::FAILED, $result->status() );
+		$this->assert_same( 502, $result->http_status() );
+		$this->assert_same( 'scrydex_failed', $result->error_code() );
+		$this->assert_same( 'Bad Gateway', $result->message() );
+		$this->assert_same( 'GET', $meta['request']['method'] );
+		$this->assert_contains( '/pokemon/v1/expansions/sv1/cards?', $meta['request']['path'] );
+		$this->assert_contains( 'page=4', $meta['request']['path'] );
+		$this->assert_same( 'cards', $meta['request']['resource'] );
+		$this->assert_same( 'Bad Gateway', $meta['response_message'] );
+		$this->assert_same( 'Proxy timed out while reading the ScryDex upstream response.', $meta['body_excerpt'] );
+		$this->assert_not_contains( 'sandbox-scrydex-key', json_encode( $meta ) ?: '' );
 	}
 
 	public function test_auth_context_redacts_credentials(): void {

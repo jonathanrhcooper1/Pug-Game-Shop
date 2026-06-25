@@ -237,7 +237,7 @@ final class InventorySearchShortcode {
 			self::STYLE_HANDLE,
 			$this->asset_url( 'assets/css/public-inventory.css' ),
 			array(),
-			Version::PLUGIN . '-dark-storefront-card-media'
+			Version::PLUGIN . '-dark-storefront-card-media-contained-images'
 		);
 
 		if ( function_exists( 'wp_add_inline_style' ) ) {

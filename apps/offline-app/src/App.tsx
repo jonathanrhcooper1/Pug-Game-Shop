@@ -148,6 +148,7 @@ import {
   type LocalSyncSquareTerminalStatusResult,
   type LocalSyncScryDexCard,
   type LocalSyncScryDexPricePoint,
+  type LocalSyncScryDexSearchGame,
   type LocalSyncScryDexVariant,
   type LocalSyncStatusResult,
   type LocalSyncTradeInItem,
@@ -163,6 +164,7 @@ import {
   type OfflineQueueSubmissionResult,
 } from "./data/offlineQueueBridge"
 import { createTauriDevicePairingAdapter } from "./data/tauriDevicePairingAdapter"
+import { createTauriDymoPrinterAdapter } from "./data/tauriDymoPrinterAdapter"
 import {
   createTauriOfflineSyncAdapter,
   type OfflineSyncCommandResponse,
@@ -236,10 +238,16 @@ const GRADING_COMPANY_OPTIONS = [
 const GRADED_CARD_PRESET_OPTIONS = [
   { value: "", label: "Manual grade", gradingCompany: "", grade: "" },
   { value: "psa-10", label: "PSA 10", gradingCompany: "PSA", grade: "10" },
-  { value: "cgc-pristine-10", label: "CGC Pristine 10", gradingCompany: "CGC", grade: "10" },
-  { value: "beckett-perfect-10", label: "Beckett Perfect 10", gradingCompany: "BGS", grade: "10" },
+  { value: "cgc-gem-mint-10", label: "CGC Gem Mint 10", gradingCompany: "CGC", grade: "Gem Mint 10" },
+  { value: "cgc-pristine-10", label: "CGC Pristine 10", gradingCompany: "CGC", grade: "Pristine 10" },
+  { value: "beckett-bgs-10", label: "Beckett/BGS 10", gradingCompany: "BGS", grade: "10" },
+  { value: "beckett-perfect-10", label: "Beckett Perfect 10", gradingCompany: "BGS", grade: "Perfect 10" },
+  { value: "beckett-black-label-10", label: "Beckett Black Label 10", gradingCompany: "BGS", grade: "Black Label 10" },
   { value: "sgc-10", label: "SGC 10", gradingCompany: "SGC", grade: "10" },
   { value: "tag-10", label: "TAG 10", gradingCompany: "TAG", grade: "10" },
+  { value: "psa-9", label: "PSA 9", gradingCompany: "PSA", grade: "9" },
+  { value: "bgs-9-5", label: "Beckett/BGS 9.5", gradingCompany: "BGS", grade: "9.5" },
+  { value: "cgc-9-5", label: "CGC 9.5", gradingCompany: "CGC", grade: "9.5" },
 ] as const
 const TRADE_IN_PERCENTAGE_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 500)
 const REPORT_OPTIONS: Array<{ key: LocalSyncReportKey; label: string; focus: string }> = [
@@ -289,7 +297,7 @@ const ACCESS_SECTIONS = [
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
 const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
-const OFFLINE_APP_VERSION = "0.202.3"
+const OFFLINE_APP_VERSION = "0.202.11"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
@@ -605,6 +613,8 @@ type ConflictReviewStorageRestoreResult = {
 const CONFLICT_REVIEW_STORAGE_KEY_PREFIX = "pug-offline-conflict-review:"
 const EMPLOYEE_ORDER_SOUND_STORAGE_KEY = "pug-employee-order-notification-sound:v1"
 const LABEL_PRINTER_TARGET_STORAGE_KEY = "pug-label-printer-target:v1"
+const LOCAL_DEVICE_PUBLIC_ID_STORAGE_KEY = "pug-local-device-public-id:v1"
+const LOCAL_DEVICE_LABEL_STORAGE_KEY = "pug-local-device-label:v1"
 const MAX_EMPLOYEE_ORDER_SOUND_BYTES = 1.5 * 1024 * 1024
 
 const LABEL_PRINTER_TARGET_OPTIONS: Array<{
@@ -712,6 +722,60 @@ function persistLabelPrinterTarget(target: LabelPrinterTarget) {
   }
 
   window.localStorage.setItem(LABEL_PRINTER_TARGET_STORAGE_KEY, target)
+}
+
+function loadStableLocalDevicePublicId(fallbackInstallationId: string): string {
+  const fallback = fallbackInstallationId.trim() || "front-counter-install"
+
+  if (typeof window === "undefined") {
+    return fallback
+  }
+
+  const storedDeviceId = (window.localStorage.getItem(LOCAL_DEVICE_PUBLIC_ID_STORAGE_KEY) ?? "").trim()
+  if (storedDeviceId.length > 0) {
+    return storedDeviceId
+  }
+
+  const generatedSuffix =
+    typeof window.crypto?.randomUUID === "function"
+      ? window.crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  const generatedDeviceId = `${fallback}-${generatedSuffix}`.toLowerCase()
+
+  window.localStorage.setItem(LOCAL_DEVICE_PUBLIC_ID_STORAGE_KEY, generatedDeviceId)
+
+  return generatedDeviceId
+}
+
+function cleanLocalDeviceLabel(value: string, fallbackLabel: string): string {
+  const cleaned = value
+    .replace(/[^\x20-\x7e]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48)
+
+  return cleaned || fallbackLabel.trim() || "Pug Workstation"
+}
+
+function loadLocalDeviceLabel(fallbackLabel: string): string {
+  if (typeof window === "undefined") {
+    return cleanLocalDeviceLabel("", fallbackLabel)
+  }
+
+  return cleanLocalDeviceLabel(
+    window.localStorage.getItem(LOCAL_DEVICE_LABEL_STORAGE_KEY) ?? "",
+    fallbackLabel,
+  )
+}
+
+function persistLocalDeviceLabel(value: string, fallbackLabel: string): string {
+  const cleaned = cleanLocalDeviceLabel(value, fallbackLabel)
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(LOCAL_DEVICE_LABEL_STORAGE_KEY, cleaned)
+  }
+
+  return cleaned
 }
 
 function labelPrinterTargetOption(target: LabelPrinterTarget) {
@@ -1169,6 +1233,26 @@ function localSyncGameFromInventory(value?: string): LocalSyncScryDexCard["game"
   }
 
   return "pokemon"
+}
+
+function concreteScryDexGame(
+  value?: LocalSyncScryDexSearchGame,
+  fallback: LocalSyncScryDexCard["game"] = "pokemon",
+): LocalSyncScryDexCard["game"] {
+  return value && value !== "all" ? value : fallback
+}
+
+function validSyncImageUrl(value: string) {
+  if (value.trim() === "") {
+    return true
+  }
+
+  try {
+    const url = new URL(value.trim())
+    return ["http:", "https:"].includes(url.protocol)
+  } catch {
+    return false
+  }
 }
 
 function statusToneFromRemoteState(status: string): StatusTone {
@@ -1909,6 +1993,17 @@ function normalizedScryDexCompanyText(value?: string) {
 
 function gradedPresetValueFor(gradingCompany: string, grade: string) {
   const company = normalizedScryDexCompanyText(gradingCompany)
+  const exactGrade = normalizedScryDexPriceText(grade)
+  const exactPreset = GRADED_CARD_PRESET_OPTIONS.find((option) =>
+    option.value !== "" &&
+    normalizedScryDexCompanyText(option.gradingCompany) === company &&
+    normalizedScryDexPriceText(option.grade) === exactGrade,
+  )
+
+  if (exactPreset) {
+    return exactPreset.value
+  }
+
   const normalizedGrade = normalizedScryDexGradeText(grade)
   const preset = GRADED_CARD_PRESET_OPTIONS.find((option) =>
     option.value !== "" &&
@@ -1969,6 +2064,10 @@ function scryDexPriceBreakdownRows(point: LocalSyncScryDexPricePoint | null) {
   }
 
   return [
+    {
+      label: "Market",
+      value: point.market_price_minor_units > 0 ? formatMoney(point.market_price_minor_units, point.currency) : "",
+    },
     { label: "Low", value: point.low_price_minor_units > 0 ? formatMoney(point.low_price_minor_units, point.currency) : "" },
     { label: "Mid", value: point.mid_price_minor_units > 0 ? formatMoney(point.mid_price_minor_units, point.currency) : "" },
     { label: "High", value: point.high_price_minor_units > 0 ? formatMoney(point.high_price_minor_units, point.currency) : "" },
@@ -2216,31 +2315,31 @@ function preferredScryDexVariantId(
 
 function staffSafeSecondaryProviderMessage(providerStatus?: LocalSyncGradedProviderStatus | null) {
   if (!providerStatus) {
-    return "No secondary graded comp provider returned a price."
+    return "PriceCharting did not return a graded price. The app will use ScryDex/reference fallback if available."
   }
 
   if (providerStatus.status === "not_configured" || providerStatus.configured === false) {
-    return "Secondary graded comp lookup is not configured on this local server. Use Check comps or enter a manual offer."
+    return "PriceCharting is not configured on this local server. The app will use ScryDex/reference fallback if available."
   }
 
   if (providerStatus.status === "unsupported_grade") {
-    return "Secondary graded comp lookup does not support this grade. Use Check comps or enter a manual offer."
+    return "PriceCharting does not expose a supported price key for this grade. The app will use ScryDex/reference fallback if available."
   }
 
   if (providerStatus.status === "no_match") {
-    return "Secondary graded comp lookup did not find a matching slab. Use Check comps or enter a manual offer."
+    return "PriceCharting did not find a matching graded card. The app will use ScryDex/reference fallback if available."
   }
 
   if (providerStatus.status === "no_price") {
-    return "Secondary graded comp lookup matched the card but did not return a price. Use Check comps or enter a manual offer."
+    return "PriceCharting matched the card but did not return a graded price. The app will use ScryDex/reference fallback if available."
   }
 
   const detail = String(providerStatus.detail || "").trim()
   if (/API token/i.test(detail)) {
-    return "Secondary graded comp lookup is not configured on this local server. Use Check comps or enter a manual offer."
+    return "PriceCharting is not configured on this local server. The app will use ScryDex/reference fallback if available."
   }
 
-  return detail || "No secondary graded comp provider returned a price."
+  return detail || "PriceCharting did not return a graded price. The app will use ScryDex/reference fallback if available."
 }
 
 function resolveTradeInMarketValuation(
@@ -2290,7 +2389,6 @@ function resolveTradeInMarketValuation(
     : []
   const hasSecondaryValuation =
     productType === "graded" &&
-    usingFallback &&
     Boolean(secondaryValuation?.market_price_minor_units && secondaryValuation.market_price_minor_units > 0)
 
   if (hasSecondaryValuation && secondaryValuation) {
@@ -2300,7 +2398,11 @@ function resolveTradeInMarketValuation(
       pricePoint,
       secondaryValuation,
       sourceLabel: secondaryValuation.source_label,
-      detail: `${secondaryValuation.source_detail} ScryDex did not have an exact ${[selectedCompany, selectedGrade].filter(Boolean).join(" ") || "graded"} price, so this secondary comp is being used for the offer.`,
+      detail: `${secondaryValuation.source_detail} PriceCharting is the primary graded-card source for this offer.${
+        pricePoint
+          ? ` ScryDex/reference has ${scryDexPricePointSummary(pricePoint, true)} stored as a fallback.`
+          : " ScryDex/reference will remain a fallback if PriceCharting is unavailable."
+      }`,
       tone: "ready",
       links,
       exactGradeMatch,
@@ -2356,8 +2458,8 @@ function resolveTradeInMarketValuation(
       currency: pricePoint.currency,
       pricePoint,
       secondaryValuation: null,
-      sourceLabel: hasGenericGradedReference ? "ScryDex graded reference" : "Nearest ScryDex graded comp",
-      detail: `No exact ${[selectedCompany, selectedGrade].filter(Boolean).join(" ") || "graded"} price matched in ScryDex. Using ${scryDexPricePointSummary(pricePoint, true)} until staff verifies comps or enters a manual offer.`,
+      sourceLabel: hasGenericGradedReference ? "ScryDex fallback graded reference" : "ScryDex fallback graded comp",
+      detail: `${secondaryProviderStatus ? `${secondaryProviderStatus} ` : ""}Using ${scryDexPricePointSummary(pricePoint, true)} as the fallback until PriceCharting returns a primary graded value or staff enters a manual offer.`,
       tone: "warning",
       links,
       exactGradeMatch,
@@ -2373,12 +2475,15 @@ function resolveTradeInMarketValuation(
       currency: pricePoint.currency,
       pricePoint,
       secondaryValuation: null,
-      sourceLabel: productType === "graded" ? "Exact ScryDex graded market" : "Single market",
-      detail: `${scryDexPricePointSummary(pricePoint, true)} from ${card.catalog_source.replace(/_/g, " ")}.`,
+      sourceLabel: productType === "graded" ? "ScryDex fallback graded market" : "Single market",
+      detail:
+        productType === "graded"
+          ? `${secondaryProviderStatus ? `${secondaryProviderStatus} ` : ""}Using ${scryDexPricePointSummary(pricePoint, true)} from ${card.catalog_source.replace(/_/g, " ")} as the fallback because PriceCharting did not return a primary graded value.`
+          : `${scryDexPricePointSummary(pricePoint, true)} from ${card.catalog_source.replace(/_/g, " ")}.`,
       tone: "ready",
       links,
       exactGradeMatch,
-      usingFallback: false,
+      usingFallback: productType === "graded",
       secondaryProviderStatus,
       baseReferenceMinorUnits: card.market_price_minor_units,
     }
@@ -2957,7 +3062,10 @@ function escapePrintableLabelHtml(value: string) {
     .replace(/'/g, "&#039;")
 }
 
-const LOCAL_DYMO_PRINTING_URL = "https://127.0.0.1:41951/DYMO/DLS/Printing"
+const LOCAL_DYMO_PRINTING_URLS = [
+  "https://127.0.0.1:41951/DYMO/DLS/Printing",
+  "https://localhost:41951/DYMO/DLS/Printing",
+] as const
 const DYMO_30336_LABEL_NAME = "30336 Small Multipurpose Labels"
 
 type BrowserDymoPrinter = {
@@ -2982,7 +3090,7 @@ type BrowserDymoPrintResult =
     }
 
 async function printLabelOnThisPcDymo(job: OfflineLabelPrintJob): Promise<BrowserDymoPrintResult> {
-  const printersResult = await requestBrowserDymoService("GetPrinters")
+  const printersResult = await requestBrowserDymoPrinters()
 
   if (printersResult.status !== "ok") {
     return printersResult
@@ -2991,11 +3099,16 @@ async function printLabelOnThisPcDymo(job: OfflineLabelPrintJob): Promise<Browse
   const printers = parseBrowserDymoPrinters(printersResult.body)
   const connectedLocalPrinters = printers.filter((printer) => printer.isConnected && printer.isLocal)
   const connectedPrinters = printers.filter((printer) => printer.isConnected)
+  const localPrinters = printers.filter((printer) => printer.isLocal)
   const printer =
     connectedLocalPrinters.find((candidate) => candidate.name.toLowerCase().includes("550 turbo")) ??
     connectedLocalPrinters[0] ??
     connectedPrinters.find((candidate) => candidate.name.toLowerCase().includes("550 turbo")) ??
     connectedPrinters[0] ??
+    localPrinters.find((candidate) => candidate.name.toLowerCase().includes("550 turbo")) ??
+    localPrinters[0] ??
+    printers.find((candidate) => candidate.name.toLowerCase().includes("550 turbo")) ??
+    printers[0] ??
     null
 
   if (!printer) {
@@ -3003,22 +3116,28 @@ async function printLabelOnThisPcDymo(job: OfflineLabelPrintJob): Promise<Browse
       status: "blocked",
       code: "local_dymo_printer_not_found",
       message:
-        "No connected DYMO LabelWriter was found on this PC. The app will try the LAN server printer next.",
+        "No DYMO LabelWriter was found on this PC. The app will try the LAN server printer next.",
     }
   }
 
   const labelXml = buildBrowserDymo30336LabelXml(job)
-  const printResult = await requestBrowserDymoService("PrintLabel", {
+  const printFields = {
     printerName: printer.name,
     printParamsXml: `<LabelWriterPrintParams><Copies>1</Copies><JobTitle>${escapeDymoXml(
       `${job.cardName} ${job.barcode}`.slice(0, 80),
     )}</JobTitle><FlowDirection>LeftToRight</FlowDirection><PrintQuality>Text</PrintQuality></LabelWriterPrintParams>`,
     labelXml,
     labelSetXml: "",
-  })
+  }
+  const printResult =
+    await requestBrowserDymoService("PrintLabel", printFields)
+  const finalPrintResult =
+    printResult.status === "ok"
+      ? printResult
+      : await requestBrowserDymoService("PrintLabel2", printFields)
 
-  if (printResult.status !== "ok") {
-    return printResult
+  if (finalPrintResult.status !== "ok") {
+    return finalPrintResult
   }
 
   return {
@@ -3031,52 +3150,73 @@ async function printLabelOnThisPcDymo(job: OfflineLabelPrintJob): Promise<Browse
 }
 
 async function requestBrowserDymoService(
-  action: "GetPrinters" | "PrintLabel",
+  action: "GetPrinters" | "PrintLabel" | "PrintLabel2" | "StatusConnected",
   fields: Record<string, string> | null = null,
 ): Promise<{ status: "ok"; body: string } | Extract<BrowserDymoPrintResult, { status: "blocked" }>> {
-  const controller = new AbortController()
-  const timeoutId = window.setTimeout(() => controller.abort(), 3200)
+  let lastBlocked: Extract<BrowserDymoPrintResult, { status: "blocked" }> | null = null
 
-  try {
-    const response = await fetch(`${LOCAL_DYMO_PRINTING_URL}/${action}`, {
-      method: fields ? "POST" : "GET",
-      headers: fields
-        ? {
-            "content-type": "application/x-www-form-urlencoded; charset=utf-8",
-          }
-        : undefined,
-      body: fields ? new URLSearchParams(fields).toString() : undefined,
-      signal: controller.signal,
-    })
-    const body = await response.text()
+  for (const serviceUrl of LOCAL_DYMO_PRINTING_URLS) {
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 3200)
 
-    if (!response.ok) {
-      return {
-        status: "blocked",
-        code: "local_dymo_service_rejected_request",
-        message:
-          action === "GetPrinters"
-            ? "DYMO Connect is running on this PC but did not return the printer list."
-            : "DYMO Connect rejected the local print request.",
+    try {
+      const response = await fetch(`${serviceUrl}/${action}`, {
+        method: fields ? "POST" : "GET",
+        headers: fields
+          ? {
+              "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+            }
+          : undefined,
+        body: fields ? new URLSearchParams(fields).toString() : undefined,
+        signal: controller.signal,
+      })
+      const body = await response.text()
+
+      if (!response.ok) {
+        lastBlocked = {
+          status: "blocked",
+          code: "local_dymo_service_rejected_request",
+          message:
+            action === "GetPrinters"
+              ? "DYMO Connect is running on this PC but did not return the printer list."
+              : "DYMO Connect rejected the local print request.",
+        }
+        continue
       }
-    }
 
-    return {
-      status: "ok",
-      body,
+      return {
+        status: "ok",
+        body,
+      }
+    } catch (error) {
+      lastBlocked = {
+        status: "blocked",
+        code: "local_dymo_service_unavailable",
+        message:
+          error instanceof DOMException && error.name === "AbortError"
+            ? "DYMO Connect did not respond on this PC before the timeout."
+            : "DYMO Connect local printing service is unavailable on this PC.",
+      }
+    } finally {
+      window.clearTimeout(timeoutId)
     }
-  } catch (error) {
-    return {
-      status: "blocked",
-      code: "local_dymo_service_unavailable",
-      message:
-        error instanceof DOMException && error.name === "AbortError"
-          ? "DYMO Connect did not respond on this PC before the timeout."
-          : "DYMO Connect local printing service is unavailable on this PC.",
-    }
-  } finally {
-    window.clearTimeout(timeoutId)
   }
+
+  return lastBlocked ?? {
+    status: "blocked",
+    code: "local_dymo_service_unavailable",
+    message: "DYMO Connect local printing service is unavailable on this PC.",
+  }
+}
+
+async function requestBrowserDymoPrinters() {
+  const statusResult = await requestBrowserDymoService("StatusConnected")
+
+  if (statusResult.status !== "ok") {
+    return await requestBrowserDymoService("GetPrinters")
+  }
+
+  return await requestBrowserDymoService("GetPrinters")
 }
 
 function parseBrowserDymoPrinters(xml: string): BrowserDymoPrinter[] {
@@ -3115,6 +3255,11 @@ function buildBrowserDymo30336LabelXml(job: OfflineLabelPrintJob): string {
       <DYMOPoint><X>0.045</X><Y>0.035</Y></DYMOPoint>
       <Size><Width>2.035</Width><Height>0.93</Height></Size>
     </DYMORect>
+    <BorderColor>
+      <SolidColorBrush>
+        <Color A="1" R="0" G="0" B="0"></Color>
+      </SolidColorBrush>
+    </BorderColor>
     <BorderThickness>0</BorderThickness>
     <Show_Border>False</Show_Border>
     <HasFixedLength>False</HasFixedLength>
@@ -3527,8 +3672,17 @@ function mergeLocalSyncEventSnapshots(
 export function App() {
   const workspace = offlineWorkspaceSeed
   const [customerKioskMode] = useState(() => initialCustomerKioskMode())
+  const localDevicePublicId = useMemo(
+    () => loadStableLocalDevicePublicId(workspace.device.installationId),
+    [workspace.device.installationId],
+  )
+  const [localDeviceLabelInput, setLocalDeviceLabelInput] = useState(() =>
+    loadLocalDeviceLabel(workspace.device.storeLabel),
+  )
+  const localDeviceLabel = cleanLocalDeviceLabel(localDeviceLabelInput, workspace.device.storeLabel)
   const queueAdapter = useMemo(() => createTauriQueueAdapter(), [])
   const devicePairingAdapter = useMemo(() => createTauriDevicePairingAdapter(), [])
+  const dymoPrinterAdapter = useMemo(() => createTauriDymoPrinterAdapter(), [])
   const offlineSyncAdapter = useMemo(() => createTauriOfflineSyncAdapter(), [])
   const localSyncDiscoveryAdapter = useMemo(() => createTauriLocalSyncDiscoveryAdapter(), [])
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
@@ -3668,6 +3822,7 @@ export function App() {
   const [intakePriceInput, setIntakePriceInput] = useState("0.00")
   const [intakeMinimumPriceInput, setIntakeMinimumPriceInput] = useState("0.00")
   const [intakeLocation, setIntakeLocation] = useState(DEFAULT_INVENTORY_LOCATIONS[0])
+  const [intakeImageUrl, setIntakeImageUrl] = useState("")
   const [inventoryLocations, setInventoryLocations] = useState(() =>
     Array.from(
       new Set(
@@ -3692,6 +3847,7 @@ export function App() {
   const [intakePosVisibility, setIntakePosVisibility] = useState<InventoryVisibility>("visible")
   const [inventoryEditPriceInput, setInventoryEditPriceInput] = useState("0.00")
   const [inventoryEditFloorInput, setInventoryEditFloorInput] = useState("0.00")
+  const [inventoryEditBarcode, setInventoryEditBarcode] = useState("")
   const [inventoryEditLocation, setInventoryEditLocation] = useState("")
   const [inventoryEditQuantityInput, setInventoryEditQuantityInput] = useState("0")
   const [inventoryEditOnlineVisibility, setInventoryEditOnlineVisibility] =
@@ -3700,6 +3856,8 @@ export function App() {
     useState<InventoryVisibility>("visible")
   const [inventoryEditPosVisibility, setInventoryEditPosVisibility] =
     useState<InventoryVisibility>("visible")
+  const inventoryEditorDirtyRef = useRef(false)
+  const inventoryEditorHydrationKeyRef = useRef("")
   const [intakeProductType, setIntakeProductType] = useState<"raw" | "graded">("raw")
   const [intakeGradingCompany, setIntakeGradingCompany] = useState("PSA")
   const [intakeGrade, setIntakeGrade] = useState("")
@@ -3716,7 +3874,7 @@ export function App() {
     "idle" | "searching" | "matched" | "empty" | "blocked"
   >("idle")
   const [tradeInCardQuery, setTradeInCardQuery] = useState("")
-  const [tradeInCardGame, setTradeInCardGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
+  const [tradeInCardGame, setTradeInCardGame] = useState<LocalSyncScryDexSearchGame>("all")
   const [tradeInProductType, setTradeInProductType] = useState<"raw" | "graded">("raw")
   const [tradeInCardResults, setTradeInCardResults] = useState<LocalSyncScryDexCard[]>([])
   const [tradeInCardSetFilter, setTradeInCardSetFilter] = useState("")
@@ -3735,7 +3893,7 @@ export function App() {
   const [tradeInSecondaryValuation, setTradeInSecondaryValuation] =
     useState<LocalSyncGradedValuation | null>(null)
   const [tradeInSecondaryValuationStatus, setTradeInSecondaryValuationStatus] =
-    useState("ScryDex/reference cache is the primary pricing source.")
+    useState("PriceCharting is primary for graded cards; ScryDex/reference is the fallback.")
   const [tradeInPayoutType, setTradeInPayoutType] = useState<TradeInPayoutType>("credit")
   const [tradeInPercentageBasisPoints, setTradeInPercentageBasisPoints] = useState(6000)
   const [tradeInManualFinalValueInput, setTradeInManualFinalValueInput] = useState("")
@@ -3746,7 +3904,7 @@ export function App() {
   const [serverTradeInOrders, setServerTradeInOrders] = useState<LocalSyncTradeInOrder[]>([])
   const [tradeInSyncStatus, setTradeInSyncStatus] = useState<"idle" | "saving" | "ready" | "blocked">("idle")
   const [scryDexQuery, setScryDexQuery] = useState("")
-  const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
+  const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexSearchGame>("all")
   const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
   const [scryDexSetFilter, setScryDexSetFilter] = useState("")
   const [selectedScryDexCardId, setSelectedScryDexCardId] = useState("")
@@ -3892,7 +4050,7 @@ export function App() {
     },
     {
       id: "preview-manager",
-      name: "Preview Owner",
+      name: "Store Owner",
       pin: "1420",
       role: "owner",
       access: [...ACCESS_SECTIONS],
@@ -4397,10 +4555,28 @@ export function App() {
       .filter((item) => item.condition === selectedItem.condition && item.status === "available")
       .reduce((total, item) => total + inventoryItemQuantityOnHand(item), 0)
   }, [selectedInventoryGroup, selectedItem])
+
+  function markInventoryEditorDirty() {
+    inventoryEditorDirtyRef.current = true
+  }
+
   useEffect(() => {
+    const hydrationKey = hasSelectedInventoryItem
+      ? `${selectedItem.id}:${selectedItem.publicId}:${selectedItem.condition}`
+      : "empty"
+    const selectedCardChanged = inventoryEditorHydrationKeyRef.current !== hydrationKey
+
+    if (!selectedCardChanged && inventoryEditorDirtyRef.current) {
+      return
+    }
+
+    inventoryEditorHydrationKeyRef.current = hydrationKey
+    inventoryEditorDirtyRef.current = false
+
     if (!hasSelectedInventoryItem) {
       setInventoryEditPriceInput("0.00")
       setInventoryEditFloorInput("0.00")
+      setInventoryEditBarcode("")
       setInventoryEditLocation("")
       setInventoryEditQuantityInput("0")
       setInventoryEditOnlineVisibility("visible")
@@ -4413,6 +4589,7 @@ export function App() {
 
     setInventoryEditPriceInput(creditRedemptionInputFromMinorUnits(selectedItem.priceMinorUnits))
     setInventoryEditFloorInput(creditRedemptionInputFromMinorUnits(floorMinorUnits))
+    setInventoryEditBarcode(selectedItem.barcode)
     setInventoryEditLocation(selectedItem.location)
     setInventoryEditQuantityInput(String(selectedInventoryConditionQuantity))
     setInventoryEditOnlineVisibility(selectedItem.onlineVisibility ?? "visible")
@@ -4421,6 +4598,7 @@ export function App() {
   }, [
     hasSelectedInventoryItem,
     selectedItem.id,
+    selectedItem.barcode,
     selectedItem.location,
     selectedItem.minimumSalePriceMinorUnits,
     selectedItem.onlineVisibility,
@@ -5119,6 +5297,7 @@ export function App() {
   const inventoryEditPriceMinorUnits = creditRedemptionInputToMinorUnits(inventoryEditPriceInput)
   const inventoryEditFloorMinorUnits = creditRedemptionInputToMinorUnits(inventoryEditFloorInput)
   const inventoryEditQuantity = inventoryEditQuantityFromInput(inventoryEditQuantityInput)
+  const inventoryEditBarcodeClean = inventoryEditBarcode.trim()
   const inventoryEditLocationClean = inventoryEditLocation.trim()
   const inventoryEditIssue =
     inventoryEditPriceInput.trim() === "" || inventoryEditPriceMinorUnits === null
@@ -5127,6 +5306,8 @@ export function App() {
         ? "Enter a valid floor price with up to two decimals."
         : inventoryEditPriceMinorUnits < inventoryEditFloorMinorUnits
           ? "Sale price cannot be below the floor price."
+          : inventoryEditBarcodeClean === ""
+            ? "Enter a barcode before saving or printing this condition."
           : inventoryEditQuantity === null
             ? "Enter the actual quantity on hand as a whole number."
             : inventoryEditLocationClean === ""
@@ -5147,6 +5328,10 @@ export function App() {
   const intakeIssue =
     intakeCardName.trim() === ""
       ? "Enter a card name before adding local inventory."
+      : !selectedScryDexCard && (scryDexGame === "all" || !scryDexGame)
+        ? "Choose a game before adding manual inventory."
+      : !validSyncImageUrl(intakeImageUrl)
+        ? "Use a valid http(s) image URL or leave the image field blank."
       : intakePriceMinorUnits === null
         ? "Use a valid current market price with up to two decimals."
         : intakePriceMinorUnits <= 0
@@ -5354,37 +5539,31 @@ export function App() {
   useEffect(() => {
     if (tradeInProductType !== "graded") {
       setTradeInSecondaryValuation(null)
-      setTradeInSecondaryValuationStatus("ScryDex/reference cache is the primary pricing source.")
+      setTradeInSecondaryValuationStatus("ScryDex/reference cache is used for raw card pricing.")
       return
     }
 
     if (!selectedTradeInCard) {
       setTradeInSecondaryValuation(null)
-      setTradeInSecondaryValuationStatus("Select a graded card to pull secondary comps.")
+      setTradeInSecondaryValuationStatus("Select a graded card to pull PriceCharting pricing.")
       return
     }
 
     if (!tradeInGrade.trim()) {
       setTradeInSecondaryValuation(null)
-      setTradeInSecondaryValuationStatus("Enter the grade to pull secondary graded comps.")
-      return
-    }
-
-    if (!selectedTradeInPrimaryValuation.usingFallback) {
-      setTradeInSecondaryValuation(null)
-      setTradeInSecondaryValuationStatus("Exact ScryDex/reference graded price is being used.")
+      setTradeInSecondaryValuationStatus("Enter the grade to pull PriceCharting graded pricing.")
       return
     }
 
     if (!localSyncSessionToken) {
       setTradeInSecondaryValuation(null)
-      setTradeInSecondaryValuationStatus("Unlock with staff PIN to pull secondary graded comps.")
+      setTradeInSecondaryValuationStatus("Unlock with staff PIN to pull PriceCharting graded pricing.")
       return
     }
 
     let cancelled = false
     const timeoutId = window.setTimeout(() => {
-      setTradeInSecondaryValuationStatus("Checking secondary graded comp providers.")
+      setTradeInSecondaryValuationStatus("Checking PriceCharting graded pricing.")
 
       void localSyncClient
         .lookupGradedTradeInValuation(localSyncSessionToken, {
@@ -5411,7 +5590,7 @@ export function App() {
             setTradeInSecondaryValuation(null)
             setTradeInSecondaryValuationStatus(
               /API token/i.test(result.message)
-                ? "Secondary graded comp lookup is not configured on this local server. Use Check comps or enter a manual offer."
+                ? "PriceCharting is not configured on this local server. ScryDex/reference fallback will be used if available."
                 : result.message,
             )
             return
@@ -5420,7 +5599,7 @@ export function App() {
           setTradeInSecondaryValuation(result.valuation)
           if (result.valuation) {
             setTradeInSecondaryValuationStatus(
-              `${result.valuation.source_label} loaded${result.cache_hit ? " from cache" : ""}; ScryDex remains primary when exact pricing exists.`,
+              `${result.valuation.source_label} loaded${result.cache_hit ? " from cache" : ""}; PriceCharting is primary for graded cards.`,
             )
             return
           }
@@ -5435,7 +5614,7 @@ export function App() {
 
           setTradeInSecondaryValuation(null)
           setTradeInSecondaryValuationStatus(
-            error instanceof Error ? error.message : "Secondary graded comp lookup failed.",
+            error instanceof Error ? error.message : "PriceCharting graded pricing lookup failed.",
           )
         })
     }, 350)
@@ -5448,7 +5627,6 @@ export function App() {
     localSyncClient,
     localSyncSessionToken,
     selectedTradeInCard,
-    selectedTradeInPrimaryValuation.usingFallback,
     selectedTradeInVariant,
     tradeInGrade,
     tradeInGradingCompany,
@@ -5644,6 +5822,8 @@ export function App() {
     activeSection,
     activeProfile.id,
     activePairedDevice?.devicePublicId,
+    localDevicePublicId,
+    localDeviceLabel,
     localSyncClient,
   ])
 
@@ -6930,8 +7110,8 @@ export function App() {
   async function recordLocalDeviceHeartbeat(networkStatus: "online" | "offline" | "degraded" = "online") {
     const [heartbeatResult, syncStatusResult] = await Promise.all([
       localSyncClient.recordDeviceHeartbeat({
-        deviceId: activePairedDevice?.devicePublicId ?? workspace.device.installationId,
-        deviceLabel: `${workspace.device.storeLabel} ${workspace.device.modeLabel}`.trim(),
+        deviceId: activePairedDevice?.devicePublicId ?? localDevicePublicId,
+        deviceLabel: localDeviceLabel,
         mode: currentClientDeviceMode(),
         appVersion: OFFLINE_APP_VERSION,
         platform: "windows",
@@ -7996,6 +8176,7 @@ export function App() {
     setIntakePriceInput("0.00")
     setIntakeMinimumPriceInput("0.00")
     setIntakeLocation(DEFAULT_INVENTORY_LOCATIONS[0])
+    setIntakeImageUrl("")
     setNewInventoryLocation("")
     setIntakeQuantityInput("1")
     setIntakeProductType("raw")
@@ -8261,6 +8442,16 @@ export function App() {
     ].slice(0, 5))
   }
 
+  async function refreshInventoryRowsFromLan(searchNeedle: string) {
+    const result = await localSyncClient.searchInventory(searchNeedle.trim())
+
+    if (result.status === "ok") {
+      setInventoryItems((items) => mergeLocalSyncInventoryItems(items, result.items))
+    }
+
+    return result
+  }
+
   async function handleStageInventoryUpdate(
     actionTitle = "Inventory update saved",
     operationOptions: InventoryUpdateOptions = {},
@@ -8299,6 +8490,9 @@ export function App() {
     const nextLocation = usesSelectedEditor
       ? inventoryEditLocationClean
       : targetItem.location
+    const nextBarcode = usesSelectedEditor
+      ? inventoryEditBarcodeClean
+      : targetItem.barcode
 
     if (
       nextPriceMinorUnits === null ||
@@ -8334,7 +8528,7 @@ export function App() {
         const isPrimaryConditionRow = item.id === targetItem.id
         const updateResult = await localSyncClient.updateInventoryItem(localSyncSessionToken, item.publicId, {
           status: isPrimaryConditionRow ? targetItem.status : "removed",
-          barcode: item.barcode,
+          barcode: isPrimaryConditionRow ? nextBarcode : item.barcode,
           priceMinorUnits: nextPriceMinorUnits,
           salePriceMinorUnits: nextPriceMinorUnits,
           minimumSalePriceMinorUnits: nextFloorMinorUnits,
@@ -8381,6 +8575,8 @@ export function App() {
           updatedItemsById.get(item.id) ?? item,
         ),
       )
+      void refreshInventoryRowsFromLan(nextBarcode || targetItem.publicId || targetItem.cardName)
+      inventoryEditorDirtyRef.current = false
 
       if (options.clearSelectedCard) {
         clearInventorySelectionAfterSave()
@@ -8396,8 +8592,11 @@ export function App() {
         (total, result) => total + (result.wordpress_retry_count ?? 0),
         0,
       )
+      const unchangedCount = updateResults.filter((result) => result.action === "inventory_item_unchanged").length
       const syncDetail =
-        acceptedCount > 0
+        unchangedCount === updateResults.length
+          ? "No inventory changes were detected, so nothing was queued."
+          : acceptedCount > 0
           ? "WordPress accepted the condition stock update and WooCommerce stock sync was requested."
           : retryCount > 0
             ? "Saved locally and queued for website/Square sync retry."
@@ -8414,7 +8613,7 @@ export function App() {
 
     const updateResult = await localSyncClient.updateInventoryItem(localSyncSessionToken, targetItem.publicId, {
       status: targetItem.status,
-      barcode: targetItem.barcode,
+      barcode: nextBarcode,
       priceMinorUnits: nextPriceMinorUnits,
       salePriceMinorUnits: nextPriceMinorUnits,
       minimumSalePriceMinorUnits: nextFloorMinorUnits,
@@ -8452,6 +8651,8 @@ export function App() {
           : item,
       ),
     )
+    void refreshInventoryRowsFromLan(nextBarcode || targetItem.publicId || targetItem.cardName)
+    inventoryEditorDirtyRef.current = false
 
     if (options.clearSelectedCard) {
       clearInventorySelectionAfterSave()
@@ -8459,7 +8660,9 @@ export function App() {
     setActiveSection("Inventory")
     void refreshLocalSyncStatus()
     const syncDetail =
-      updateResult.wordpress_auto_sync_performed && updateResult.wordpress_accepted_count > 0
+      updateResult.action === "inventory_item_unchanged"
+        ? "No inventory changes were detected, so nothing was queued."
+        : updateResult.wordpress_auto_sync_performed && updateResult.wordpress_accepted_count > 0
         ? "WordPress accepted the update and WooCommerce stock sync was requested."
         : updateResult.wordpress_retry_count > 0
           ? "Saved locally and queued for website/Square sync retry."
@@ -8798,7 +9001,7 @@ export function App() {
       providerCardId: selectedScryDexCard?.provider_card_id,
       referenceVariantId: selectedScryDexVariant?.reference_variant_id,
       providerVariantId: selectedScryDexVariant?.provider_variant_id,
-      game: selectedScryDexCard?.game ?? scryDexGame,
+      game: selectedScryDexCard?.game ?? concreteScryDexGame(scryDexGame),
       setCode: selectedScryDexCard?.set_code,
       cardNumber: selectedScryDexCard?.card_number,
       printedNumber: selectedScryDexCard?.printed_number,
@@ -8812,7 +9015,7 @@ export function App() {
       gradingCompany: intakeProductType === "graded" ? intakeGradingCompany.trim() : "",
       grade: intakeProductType === "graded" ? intakeGrade.trim() : "",
       certNumber: intakeProductType === "graded" ? intakeCertNumber.trim() : "",
-      imageUrl: selectedScryDexImageUrl,
+      imageUrl: selectedScryDexImageUrl || intakeImageUrl.trim(),
       backImageUrl: selectedScryDexVariant?.back_image_url,
       priceSource: selectedScryDexCard
         ? `${selectedScryDexCard.catalog_source}:scrydex_catalog`
@@ -9090,7 +9293,7 @@ export function App() {
 
       const result = await localSyncClient.identifyScryDexCardImage(localSyncSessionToken, {
         imageDataUrl,
-        game,
+        game: game === "all" || !game ? undefined : game,
         rawOrGraded,
       })
 
@@ -9271,6 +9474,12 @@ export function App() {
     if (!localSyncSessionToken) {
       setScryDexRecoveryStatus("blocked")
       setScryDexRecoveryDetail("Staff PIN session required before indexing a ScryDex set.")
+      return
+    }
+
+    if (scryDexGame === "all" || !scryDexGame) {
+      setScryDexRecoveryStatus("blocked")
+      setScryDexRecoveryDetail("Choose the game first, then use Set Not Found so the full expansion is indexed correctly.")
       return
     }
 
@@ -9667,7 +9876,7 @@ export function App() {
       setTradeInSelectedCardId(refreshedCard.provider_card_id)
       setTradeInSelectedVariantId(nextVariantId)
       setTradeInSecondaryValuation(null)
-      setTradeInSecondaryValuationStatus("ScryDex/reference cache is the primary pricing source after forced refresh.")
+      setTradeInSecondaryValuationStatus("ScryDex/reference fallback refreshed. PriceCharting remains primary for graded cards.")
       setTradeInCardLookupStatus("ready")
       setTradeInCardLookupDetail(
         `${result.cards.length} refreshed result${result.cards.length === 1 ? "" : "s"} loaded for this trade-in card.`,
@@ -10028,7 +10237,7 @@ export function App() {
       providerCardId: selectedTradeInCard?.provider_card_id,
       referenceVariantId: selectedTradeInVariant?.reference_variant_id,
       providerVariantId: selectedTradeInVariant?.provider_variant_id,
-      game: selectedTradeInCard?.game ?? tradeInCardGame,
+      game: selectedTradeInCard?.game ?? concreteScryDexGame(tradeInCardGame),
       setCode: selectedTradeInCard?.set_code,
       cardNumber: selectedTradeInCard?.card_number,
       printedNumber: selectedTradeInCard?.printed_number,
@@ -10230,7 +10439,7 @@ export function App() {
         providerCardId: item.providerCardId,
         referenceVariantId: item.referenceVariantId,
         providerVariantId: item.providerVariantId,
-        game: item.game ?? tradeInCardGame,
+        game: item.game ?? concreteScryDexGame(tradeInCardGame),
         setCode: item.setCode,
         cardNumber: item.cardNumber,
         printedNumber: item.printedNumber,
@@ -13947,10 +14156,26 @@ export function App() {
 
     setActivityMessage({
       title: allowThisPcPrinter ? "Checking this PC for DYMO" : "Sending to LAN server printer",
-      detail: `${job.cardName} label ${job.barcode} is using ${targetOption.label}. ${targetOption.detail}`,
+      detail: allowThisPcPrinter
+        ? `${job.cardName} label ${job.barcode} is using ${targetOption.label}. Local printing checks ${LOCAL_DYMO_PRINTING_URLS.join(" and ")} before any LAN fallback.`
+        : `${job.cardName} label ${job.barcode} is using ${targetOption.label}. ${targetOption.detail}`,
     })
 
     if (allowThisPcPrinter) {
+      if (dymoPrinterAdapter) {
+        const nativePrinterResult = await dymoPrinterAdapter.printLabel(job)
+        localPrinterMessage = nativePrinterResult.status === "blocked" ? nativePrinterResult.message : ""
+
+        if (nativePrinterResult.status === "ok") {
+          setActivityMessage({
+            title: "Local DYMO label sent",
+            detail:
+              `${job.cardName} printed on this PC using ${nativePrinterResult.printer_name}; scanner code ${nativePrinterResult.scan_code}.`,
+          })
+          return
+        }
+      }
+
       const localPrinterResult = await printLabelOnThisPcDymo(job)
       localPrinterMessage = localPrinterResult.status === "blocked" ? localPrinterResult.message : ""
 
@@ -14204,6 +14429,22 @@ export function App() {
               <strong>{prelaunchConnection.serverUrl || localSyncClient.serverUrl}</strong>
               <small>{prelaunchConnection.detail}</small>
             </div>
+            <label className="prelaunch-server-field" htmlFor="pug-prelaunch-device-label">
+              <span className="micro-label">This workstation name</span>
+              <input
+                id="pug-prelaunch-device-label"
+                value={localDeviceLabelInput}
+                onChange={(event) => setLocalDeviceLabelInput(event.target.value)}
+                onBlur={() =>
+                  setLocalDeviceLabelInput(
+                    persistLocalDeviceLabel(localDeviceLabelInput, workspace.device.storeLabel),
+                  )
+                }
+                placeholder="Front Counter 1"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
             <label className="prelaunch-server-field" htmlFor="pug-prelaunch-server">
               <span className="micro-label">LAN server IP or URL</span>
               <input
@@ -15214,20 +15455,22 @@ export function App() {
                     />
                   </label>
                   <label htmlFor="scrydex-game">
-                    <span className="micro-label">Game</span>
+                    <span className="micro-label">Game / manual game</span>
                     <select
                       id="scrydex-game"
                       value={scryDexGame}
                       onChange={(event) => {
-                        setScryDexGame(event.target.value as LocalSyncScryDexCard["game"])
+                        setScryDexGame(event.target.value as LocalSyncScryDexSearchGame)
                         setScryDexSetFilter("")
                       }}
                     >
+                      <option value="all">All games</option>
                       <option value="pokemon">Pokemon</option>
                         <option value="magicthegathering">MTG</option>
                         <option value="lorcana">Lorcana</option>
                         <option value="onepiece">One Piece</option>
                     </select>
+                    <small>For manual card-not-found intake, choose the exact game here.</small>
                   </label>
                   <label htmlFor="scrydex-set-filter">
                     <span className="micro-label">Set / Expansion</span>
@@ -15462,6 +15705,16 @@ export function App() {
                     onChange={(event) => setIntakeSetName(event.target.value)}
                     placeholder="Set name"
                   />
+                </label>
+                <label htmlFor="intake-image-url">
+                  <span className="micro-label">Card image URL</span>
+                  <input
+                    id="intake-image-url"
+                    value={intakeImageUrl}
+                    onChange={(event) => setIntakeImageUrl(event.target.value)}
+                    placeholder="https://..."
+                  />
+                  <small>Used for manual entries when ScryDex has no match. Website and Square image sync use this URL.</small>
                 </label>
                 <label htmlFor="intake-product-type">
                   <span className="micro-label">Product type</span>
@@ -15960,10 +16213,11 @@ export function App() {
                       disabled={!tradeInCustomerSelected}
                       value={tradeInCardGame}
                       onChange={(event) => {
-                        setTradeInCardGame(event.target.value as LocalSyncScryDexCard["game"])
+                        setTradeInCardGame(event.target.value as LocalSyncScryDexSearchGame)
                         setTradeInCardSetFilter("")
                       }}
                     >
+                      <option value="all">All games</option>
                       <option value="pokemon">Pokemon</option>
                       <option value="magicthegathering">MTG</option>
                       <option value="lorcana">Lorcana</option>
@@ -16131,7 +16385,7 @@ export function App() {
                         </small>
                         {selectedTradeInValuation.secondaryValuation ? (
                           <small>
-                            Secondary comp: {selectedTradeInValuation.secondaryValuation.provider_product_name || selectedTradeInValuation.secondaryValuation.provider} / confidence{" "}
+                            Pricing source: {selectedTradeInValuation.secondaryValuation.provider_product_name || selectedTradeInValuation.secondaryValuation.provider} / confidence{" "}
                             {selectedTradeInValuation.secondaryValuation.confidence_score}% / fetched{" "}
                             {formatUtcLabel(selectedTradeInValuation.secondaryValuation.fetched_at_utc)}
                           </small>
@@ -16141,37 +16395,12 @@ export function App() {
                       </div>
                       {selectedTradeInValuation.pricePoint ? (
                         <dl>
-                          <div>
-                            <dt>Low</dt>
-                            <dd>
-                              {formatMoney(
-                                selectedTradeInValuation.pricePoint.low_price_minor_units,
-                                selectedTradeInValuation.pricePoint.currency,
-                              )}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>Mid</dt>
-                            <dd>
-                              {formatMoney(
-                                selectedTradeInValuation.pricePoint.mid_price_minor_units,
-                                selectedTradeInValuation.pricePoint.currency,
-                              )}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>High</dt>
-                            <dd>
-                              {formatMoney(
-                                selectedTradeInValuation.pricePoint.high_price_minor_units,
-                                selectedTradeInValuation.pricePoint.currency,
-                              )}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>Observed</dt>
-                            <dd>{formatUtcLabel(selectedTradeInValuation.pricePoint.observed_at_utc)}</dd>
-                          </div>
+                          {scryDexPriceBreakdownRows(selectedTradeInValuation.pricePoint).map((row) => (
+                            <div key={row.label}>
+                              <dt>{row.label}</dt>
+                              <dd>{row.value}</dd>
+                            </div>
+                          ))}
                         </dl>
                       ) : null}
                       {selectedTradeInReferenceLinks.length > 0 ? (
@@ -16763,6 +16992,15 @@ export function App() {
                     </div>
                   </div>
                 ) : null}
+                {hasSelectedInventoryItem ? (
+                  <div className="detail-catalog-context" aria-label="Selected barcode label target">
+                    <span>Barcode label target</span>
+                    <strong>{selectedItem.condition} / {selectedItem.barcode || "No barcode"}</strong>
+                    <small>
+                      Choose NM, LP, or another condition above before printing so the label uses that copy's barcode.
+                    </small>
+                  </div>
+                ) : null}
                 {inventoryMode === "intake" && selectedScryDexCard ? (
                   <div className="detail-catalog-context" aria-label="Separate selected catalog intake draft">
                     <span>Catalog intake draft</span>
@@ -16866,11 +17104,12 @@ export function App() {
                       <button
                         type="button"
                         aria-label="Decrease quantity"
-                        onClick={() =>
+                        onClick={() => {
+                          markInventoryEditorDirty()
                           setInventoryEditQuantityInput((value) =>
                             String(Math.max(0, (inventoryEditQuantityFromInput(value) ?? 0) - 1)),
                           )
-                        }
+                        }}
                       >
                         -
                       </button>
@@ -16878,17 +17117,21 @@ export function App() {
                         id="inventory-edit-quantity"
                         inputMode="numeric"
                         value={inventoryEditQuantityInput}
-                        onChange={(event) => setInventoryEditQuantityInput(event.target.value.replace(/[^\d]/g, ""))}
+                        onChange={(event) => {
+                          markInventoryEditorDirty()
+                          setInventoryEditQuantityInput(event.target.value.replace(/[^\d]/g, ""))
+                        }}
                         placeholder="0"
                       />
                       <button
                         type="button"
                         aria-label="Increase quantity"
-                        onClick={() =>
+                        onClick={() => {
+                          markInventoryEditorDirty()
                           setInventoryEditQuantityInput((value) =>
                             String(Math.min(999999, (inventoryEditQuantityFromInput(value) ?? 0) + 1)),
                           )
-                        }
+                        }}
                       >
                         +
                       </button>
@@ -16901,7 +17144,10 @@ export function App() {
                       inputMode="decimal"
                       value={inventoryEditPriceInput}
                       onBlur={() => setInventoryEditPriceInput(creditRedemptionInputFromMinorUnits(inventoryEditPriceMinorUnits ?? 0))}
-                      onChange={(event) => setInventoryEditPriceInput(moneyInputDraftWithTwoDecimals(event.target.value))}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditPriceInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                      }}
                       placeholder="0.00"
                     />
                   </label>
@@ -16912,8 +17158,23 @@ export function App() {
                       inputMode="decimal"
                       value={inventoryEditFloorInput}
                       onBlur={() => setInventoryEditFloorInput(creditRedemptionInputFromMinorUnits(inventoryEditFloorMinorUnits ?? 0))}
-                      onChange={(event) => setInventoryEditFloorInput(moneyInputDraftWithTwoDecimals(event.target.value))}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditFloorInput(moneyInputDraftWithTwoDecimals(event.target.value))
+                      }}
                       placeholder="0.00"
+                    />
+                  </label>
+                  <label htmlFor="inventory-edit-barcode">
+                    <span className="micro-label">Barcode</span>
+                    <input
+                      id="inventory-edit-barcode"
+                      value={inventoryEditBarcode}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditBarcode(event.target.value)
+                      }}
+                      placeholder="PUG-MTG-SET-001-NM"
                     />
                   </label>
                   <label htmlFor="inventory-edit-location">
@@ -16922,7 +17183,10 @@ export function App() {
                       id="inventory-edit-location"
                       list="inventory-edit-location-options"
                       value={inventoryEditLocation}
-                      onChange={(event) => setInventoryEditLocation(event.target.value)}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditLocation(event.target.value)
+                      }}
                       placeholder="Case, shelf, box, or binder"
                     />
                     <datalist id="inventory-edit-location-options">
@@ -16936,7 +17200,10 @@ export function App() {
                     <select
                       id="inventory-edit-online-visibility"
                       value={inventoryEditOnlineVisibility}
-                      onChange={(event) => setInventoryEditOnlineVisibility(event.target.value as InventoryVisibility)}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditOnlineVisibility(event.target.value as InventoryVisibility)
+                      }}
                     >
                       {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -16950,7 +17217,10 @@ export function App() {
                     <select
                       id="inventory-edit-kiosk-visibility"
                       value={inventoryEditKioskVisibility}
-                      onChange={(event) => setInventoryEditKioskVisibility(event.target.value as InventoryVisibility)}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditKioskVisibility(event.target.value as InventoryVisibility)
+                      }}
                     >
                       {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -16964,7 +17234,10 @@ export function App() {
                     <select
                       id="inventory-edit-pos-visibility"
                       value={inventoryEditPosVisibility}
-                      onChange={(event) => setInventoryEditPosVisibility(event.target.value as InventoryVisibility)}
+                      onChange={(event) => {
+                        markInventoryEditorDirty()
+                        setInventoryEditPosVisibility(event.target.value as InventoryVisibility)
+                      }}
                     >
                       {INVENTORY_VISIBILITY_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -19268,7 +19541,8 @@ export function App() {
                   <small>{labelPrinterTargetOption(labelPrinterTarget).detail}</small>
                   <small>
                     LAN fallback prints through {localSyncClient.serverUrl}; local DYMO uses DYMO Connect on
-                    this PC first.
+                    this PC first at {LOCAL_DYMO_PRINTING_URLS.join(" or ")}. If the app reaches the LAN
+                    server, this PC's DYMO service or printer was not usable for that label.
                   </small>
                 </div>
                 <div>
@@ -19985,6 +20259,22 @@ export function App() {
                   />
                 </label>
                 <label>
+                  <span className="micro-label">This workstation name</span>
+                  <input
+                    disabled={!managerControlsUnlocked}
+                    value={localDeviceLabelInput}
+                    onChange={(event) => setLocalDeviceLabelInput(event.target.value)}
+                    onBlur={() =>
+                      setLocalDeviceLabelInput(
+                        persistLocalDeviceLabel(localDeviceLabelInput, workspace.device.storeLabel),
+                      )
+                    }
+                    placeholder="Front Counter 1"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </label>
+                <label>
                   <span className="micro-label">Environment</span>
                   <select
                     disabled={!managerControlsUnlocked}
@@ -20088,6 +20378,8 @@ export function App() {
                 </small>
                 <small>
                   Paired device: {activePairedDevice ? activePairedDevice.devicePublicId : "none"};
+                  local fallback ID {localDevicePublicId};
+                  workstation name {localDeviceLabel};
                   token status {activePairedDevice?.tokenStatus ?? "missing"};
                   raw token stored in browser: no.
                 </small>

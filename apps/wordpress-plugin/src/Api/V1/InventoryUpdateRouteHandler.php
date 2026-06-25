@@ -170,6 +170,17 @@ final class InventoryUpdateRouteHandler {
 			}
 		}
 
+		foreach ( array( 'square_catalog_item_id', 'square_catalog_variation_id', 'square_location_id' ) as $field ) {
+			if ( array_key_exists( $field, $body ) ) {
+				$updates[ $field ] = $this->external_id( $body[ $field ] );
+			}
+		}
+
+		if ( ! empty( $updates['square_catalog_variation_id'] ) ) {
+			$updates['external_sync_state'] = 'square_synced';
+			$updates['last_external_sync_at'] = $this->now_mysql();
+		}
+
 		if ( array_key_exists( 'staff_notes', $body ) ) {
 			$updates['staff_notes'] = $this->long_text( $body['staff_notes'] );
 		}
@@ -230,6 +241,16 @@ final class InventoryUpdateRouteHandler {
 		);
 
 		return (int) $count > 0;
+	}
+
+	private function external_id( mixed $value ): ?string {
+		$text = trim( (string) ( $value ?? '' ) );
+
+		if ( '' === $text ) {
+			return null;
+		}
+
+		return substr( preg_replace( '/[^\w:.\/#-]+/', '', $text ) ?? '', 0, 191 );
 	}
 
 	/**
@@ -372,6 +393,9 @@ final class InventoryUpdateRouteHandler {
 			'sale_currency'              => $this->currency( $row['sale_currency'] ?? 'USD' ),
 			'row_version'                => $this->positive_int( $row['row_version'] ?? null ),
 			'woocommerce_product_id'     => $this->positive_int( $row['woocommerce_product_id'] ?? null ),
+			'square_catalog_item_id'     => $this->text( $row['square_catalog_item_id'] ?? '' ),
+			'square_catalog_variation_id' => $this->text( $row['square_catalog_variation_id'] ?? '' ),
+			'square_location_id'         => $this->text( $row['square_location_id'] ?? '' ),
 			'price_change_log_persisted' => false,
 		);
 	}

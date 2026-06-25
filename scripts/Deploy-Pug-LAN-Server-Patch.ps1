@@ -1,6 +1,7 @@
 param(
   [string]$SourceRoot = "",
   [string]$InstallRoot = "C:\PugGameShop\LANServer",
+  [switch]$ReplaceLocalEnv = $false,
   [switch]$InstallStartupTask = $true,
   [switch]$StartNow = $true,
   [switch]$StopRunningServer = $true
@@ -102,9 +103,24 @@ function Copy-PugPatchFiles {
 
   $EnvPath = Join-Path $InstallRoot "local-sync.env"
   $EnvExamplePath = Join-Path $InstallRoot "local-sync.env.example"
-  if (!(Test-Path -LiteralPath $EnvPath) -and (Test-Path -LiteralPath $EnvExamplePath)) {
+  $BundledEnvPath = Join-Path $PackageRoot "local-sync.env"
+
+  if (Test-Path -LiteralPath $BundledEnvPath) {
+    if ((Test-Path -LiteralPath $EnvPath) -and !$ReplaceLocalEnv) {
+      Write-Host "Preserved existing local-sync.env. Pass -ReplaceLocalEnv to install the bundled production connector config."
+    } else {
+      if (Test-Path -LiteralPath $EnvPath) {
+        $BackupPath = Join-Path $InstallRoot ("local-sync.env.backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+        Copy-Item -LiteralPath $EnvPath -Destination $BackupPath -Force
+        Write-Host "Backed up existing local-sync.env to $BackupPath"
+      }
+
+      Copy-Item -LiteralPath $BundledEnvPath -Destination $EnvPath -Force
+      Write-Host "Installed bundled local-sync.env production connector config."
+    }
+  } elseif (!(Test-Path -LiteralPath $EnvPath) -and (Test-Path -LiteralPath $EnvExamplePath)) {
     Copy-Item -LiteralPath $EnvExamplePath -Destination $EnvPath -Force
-    Write-Warning "Created local-sync.env from the example. Fill the WordPress/Square/ScryDex secrets before expecting live sync."
+    Write-Warning "Created local-sync.env from the example. Add WordPress/Square/ScryDex values or include a bundled local-sync.env before expecting live sync."
   }
 }
 

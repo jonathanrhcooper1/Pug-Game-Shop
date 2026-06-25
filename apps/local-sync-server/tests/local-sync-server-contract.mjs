@@ -1,4 +1,7 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 import {
   buildLocalSyncSetupStatus,
@@ -6,6 +9,9 @@ import {
   LOCAL_SYNC_SERVER_ENDPOINTS,
   planLocalClientConnection,
 } from "../src/localSyncServerContract.mjs"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const localSyncStoreSource = await readFile(path.join(__dirname, "../src/localSyncStore.mjs"), "utf8")
 
 const contract = buildLocalSyncServerContract({
   storeId: "Pug Game Shop",
@@ -59,18 +65,23 @@ assert.equal(contract.safety.scrydex_lookup_uses_server_side_credentials_only, t
 assert.equal(contract.safety.scrydex_vision_credentials_synced_to_clients, false)
 assert.equal(contract.safety.scrydex_vision_uses_lan_server_credentials_only, true)
 assert.equal(contract.safety.graded_pricing_credentials_synced_to_clients, false)
-assert.equal(contract.safety.graded_pricing_secondary_to_scrydex, true)
+assert.equal(contract.safety.graded_pricing_pricecharting_primary, true)
+assert.equal(contract.safety.graded_pricing_scrydex_fallback, true)
 assert.equal(contract.setup_status.action, "local_sync_server_setup_status")
 assert.equal(contract.setup_status.website_url, "https://thepuggaming.com/")
 assert.equal(contract.setup_status.wordpress_rest_base, "https://thepuggaming.com/wp-json/tcg-store/v1")
 assert.equal(contract.setup_status.credentials_synced_to_client, false)
 assert.equal(contract.setup_status.scrydex_vision_configured, false)
 assert.equal(contract.setup_status.graded_pricing_provider_configured, false)
-assert.equal(contract.setup_status.graded_pricing_primary_source, "scrydex_reference_cache")
+assert.equal(contract.setup_status.graded_pricing_primary_source, "pricecharting")
+assert.equal(contract.setup_status.graded_pricing_fallback_source, "scrydex_reference_cache")
 assert.equal(contract.setup_status.graded_pricing_credentials_synced_to_client, false)
 assert.equal(contract.setup_status.client_presence_enabled, true)
 assert.equal(contract.setup_status.device_heartbeat_path, "/devices/heartbeat")
 assert.equal(contract.setup_status.device_status_path, "/devices/status")
+assert.ok(localSyncStoreSource.includes("wordpressInventoryRowHasQuantity(row)"))
+assert.ok(localSyncStoreSource.includes("quantity_on_hand: pulledHasQuantity ? pulledItem.quantity_on_hand : existing.quantity_on_hand"))
+assert.ok(localSyncStoreSource.includes("\"stock_quantity\""))
 assert.ok(contract.responsibilities.includes("prevent_local_double_sell_between_employee_and_kiosk_clients"))
 assert.ok(contract.responsibilities.includes("queue_kiosk_pickup_orders_with_first_and_last_name"))
 assert.ok(contract.responsibilities.includes("share_kiosk_pickup_orders_across_employee_and_kiosk_clients"))
@@ -87,7 +98,7 @@ assert.ok(contract.responsibilities.includes("keep_scry_dex_credentials_on_wordp
 assert.ok(contract.responsibilities.includes("serve_scrydex_reference_lookup_without_client_credentials"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_lookup_from_local_cache_before_wordpress_proxy"))
 assert.ok(contract.responsibilities.includes("serve_scrydex_vision_live_card_scan_without_client_credentials"))
-assert.ok(contract.responsibilities.includes("serve_secondary_graded_price_comps_only_after_scrydex_reference_lookup"))
+assert.ok(contract.responsibilities.includes("serve_pricecharting_primary_graded_prices_with_scrydex_reference_fallback"))
 assert.ok(contract.responsibilities.includes("serve_square_pos_barcode_inventory_plan_without_square_payment_capture"))
 assert.ok(contract.responsibilities.includes("compare_square_pos_inventory_counts_without_square_payment_capture"))
 assert.ok(contract.responsibilities.includes("pull_square_pos_sales_reports_without_creating_woocommerce_orders"))

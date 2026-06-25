@@ -47,6 +47,7 @@ export function createLocalSyncHttpServer(options = {}) {
     scrydexVisionConfigured:
       typeof storeOptions.scryDexVisionIdentifier?.identifyCardImage === "function" &&
       storeOptions.scryDexVisionIdentifier?.configured === true,
+    squareCatalogInventorySyncConnected: connectorConfigured(storeOptions.squareCatalogInventorySyncer, "syncInventoryItem"),
     squareInventoryCountPullConnected: connectorConfigured(storeOptions.squareInventoryCountsPuller, "pullCounts"),
     squareSalesReportPullConnected: connectorConfigured(storeOptions.squareSalesReportsPuller, "pullSalesReport"),
     gradedPricingProviderConfigured:
@@ -164,7 +165,7 @@ export function createLocalSyncHttpServer(options = {}) {
           response,
           await store.searchScryDexCards(token, {
             query: url.searchParams.get("q") ?? "",
-            game: url.searchParams.get("game") ?? "pokemon",
+            game: url.searchParams.get("game") ?? "",
             setFilter: url.searchParams.get("set") ?? url.searchParams.get("set_filter") ?? "",
             limit: url.searchParams.get("limit") ?? "all",
             rawOrGraded: url.searchParams.get("raw_or_graded") ?? url.searchParams.get("product_type") ?? "",

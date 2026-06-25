@@ -100,6 +100,7 @@ export function createLocalSyncStore(options = {}) {
   const squareLocationId = cleanExternalId(options.squareLocationId) || "LOCAL-SQUARE-POS"
   const squareEnvironment = cleanSquareEnvironment(options.squareEnvironment)
   const squareTerminalConnector = options.squareTerminalConnector ?? null
+  const squareCatalogInventorySyncer = options.squareCatalogInventorySyncer ?? null
   const squareInventoryCountsPuller = options.squareInventoryCountsPuller ?? null
   const squareSalesReportsPuller = options.squareSalesReportsPuller ?? null
   const databasePath = options.databasePath ?? DEFAULT_LOCAL_SYNC_DATABASE_PATH
@@ -795,9 +796,9 @@ export function createLocalSyncStore(options = {}) {
 
     for (const [variationId, items] of activeGroups.entries()) {
       const actualQuantity = countsByVariation.has(variationId) ? countsByVariation.get(variationId) : 0
-      const expectedQuantity = items.length
+      const expectedQuantity = items.reduce((total, item) => total + inventoryQuantityOnHand(item), 0)
       const delta = actualQuantity - expectedQuantity
-      const soldQuantity = delta < 0 ? Math.min(items.length, Math.abs(delta)) : 0
+      const soldQuantity = delta < 0 ? Math.min(expectedQuantity, Math.abs(delta)) : 0
       const candidates = [...items].sort(squareInventorySaleCandidateSort)
 
       if (soldQuantity > 0) {
@@ -808,8 +809,22 @@ export function createLocalSyncStore(options = {}) {
         overageCount += delta
       }
 
-      for (const item of candidates.slice(0, soldQuantity)) {
-        item.status = "sold"
+      let remainingSoldQuantity = soldQuantity
+
+      for (const item of candidates) {
+        if (remainingSoldQuantity <= 0) {
+          break
+        }
+
+        const previousQuantityOnHand = inventoryQuantityOnHand(item)
+        const appliedSoldQuantity = Math.min(previousQuantityOnHand, remainingSoldQuantity)
+
+        if (appliedSoldQuantity <= 0) {
+          continue
+        }
+
+        item.quantity_on_hand = previousQuantityOnHand - appliedSoldQuantity
+        item.status = item.quantity_on_hand > 0 ? "available" : "sold"
         item.source = "queued"
         item.external_sync_state = "pending"
         item.updated_by_user_id = actorId
@@ -817,24 +832,34 @@ export function createLocalSyncStore(options = {}) {
         item.row_version += 1
         saveInventoryItem(database, item, now)
         soldItems.push(item)
+        remainingSoldQuantity -= appliedSoldQuantity
 
-        const operation = appendQueueOperation(database, queue, "square_pos_sale", item.public_id, {
+        const operation = appendQueueOperation(database, queue, "inventory_update", item.public_id, {
           inventory_public_id: cleanPublicId(item.wordpress_public_id) || item.public_id,
           local_inventory_public_id: item.public_id,
           barcode: item.barcode,
-          square_receipt_reference: squareCountReconciliationReference(variationId, generatedAtUtc),
-          square_order_id: "",
+          status: item.status,
+          location: item.location,
+          price_minor_units: item.price_minor_units,
+          sale_price_minor_units: item.price_minor_units,
+          minimum_sale_price_minor_units: item.minimum_sale_price_minor_units,
+          previous_quantity_on_hand: previousQuantityOnHand,
+          quantity_on_hand: item.quantity_on_hand,
+          quantity_delta: item.quantity_on_hand - previousQuantityOnHand,
+          quantity_update_mode: "absolute",
           sale_total_minor_units: 0,
-          sale_price_minor_units: Math.max(0, minorUnits(item.price_minor_units)),
           actor_id: actorId,
           actor_name: actorName,
           sold_at_utc: generatedAtUtc,
-          sync_intent: "square_inventory_count_reconciliation",
+          sync_intent: "square_inventory_count_reconciliation_quantity_update",
           source,
           square_catalog_variation_id: variationId,
           square_location_id: locationId,
           square_actual_quantity: actualQuantity,
           local_expected_quantity_before: expectedQuantity,
+          square_quantity_sold: appliedSoldQuantity,
+          reason: "Square POS inventory count changed",
+          wordpress_acceptance_required: true,
         }, now)
         operations.push(operation)
       }
@@ -858,9 +883,9 @@ export function createLocalSyncStore(options = {}) {
 
     const autoSyncResults = []
 
-    if (wordpressInventorySalePush) {
+    if (wordpressInventoryUpdatePush) {
       for (const operation of operations) {
-        autoSyncResults.push(await pushSquareSaleOperation(operation))
+        autoSyncResults.push(await pushInventoryUpdateOperation(operation))
       }
     }
 
@@ -986,9 +1011,59 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  async function fetchScryDexFallbackCards({
+    needle,
+    game = "",
+    rawOrGraded = "",
+    forceLive = false,
+    limit = null,
+    normalizedSetFilter = "",
+  } = {}) {
+    if (!websiteCatalogFallback) {
+      return {
+        cards: [],
+        liveProviderRequestPerformed: false,
+      }
+    }
+
+    const games = game ? [game] : supportedScryDexGames()
+    const cards = []
+    let liveProviderRequestPerformed = false
+
+    for (const currentGame of games) {
+      const fallbackResult = await websiteCatalogFallback({
+        query: needle,
+        game: currentGame,
+        limit: limit ?? "all",
+        rawOrGraded,
+        forceLive,
+      })
+      liveProviderRequestPerformed =
+        liveProviderRequestPerformed || fallbackResult?.live_provider_request_performed === true
+
+      cards.push(
+        ...normalizeReferenceCardsFromFallback(
+          fallbackResult,
+          currentGame,
+          now,
+          needle,
+          normalizedSetFilter,
+          limit,
+        ),
+      )
+    }
+
+    const mergedCards = mergeReferenceSearchResults([], cards, needle)
+
+    return {
+      cards: limit ? mergedCards.slice(0, limit) : mergedCards,
+      liveProviderRequestPerformed,
+    }
+  }
+
   async function searchScryDexCards(
     token,
-    { query = "", game = "pokemon", setFilter = "", limit = "all", rawOrGraded = "", forceLive = false } = {},
+    { query = "", game = "", setFilter = "", limit = "all", rawOrGraded = "", forceLive = false } = {},
   ) {
     const session = requireWorkspaceAccess(token, "Inventory")
 
@@ -997,7 +1072,7 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const needle = cleanScryDexQuery(query)
-    const normalizedGame = cleanGame(game)
+    const normalizedGame = cleanScryDexSearchGame(game)
     const forceLiveRefresh = forceLive === true
     const normalizedSetFilter = forceLiveRefresh ? "" : cleanScryDexSearchText(setFilter)
     const resultLimit = boundedScryDexSearchLimit(limit)
@@ -1018,21 +1093,15 @@ export function createLocalSyncStore(options = {}) {
         websiteCatalogFallback &&
         (cachedCards.length >= 8 || normalizedRawOrGraded === "graded")
       ) {
-        const fallbackResult = await websiteCatalogFallback({
-          query: needle,
+        const fallback = await fetchScryDexFallbackCards({
+          needle,
           game: normalizedGame,
-          limit: "all",
           rawOrGraded: normalizedRawOrGraded,
           forceLive: false,
-        })
-        const fallbackCards = normalizeReferenceCardsFromFallback(
-          fallbackResult,
-          normalizedGame,
-          now,
-          needle,
+          limit: null,
           normalizedSetFilter,
-          null,
-        )
+        })
+        const fallbackCards = fallback.cards
 
         for (const card of fallbackCards) {
           upsertReferenceCard(referenceCards, card)
@@ -1057,7 +1126,7 @@ export function createLocalSyncStore(options = {}) {
           wordpress_proxy_required: false,
           credential_storage: "wordpress_server_settings",
           credentials_synced_to_client: false,
-          live_provider_request_performed: Boolean(fallbackResult?.live_provider_request_performed),
+          live_provider_request_performed: fallback.liveProviderRequestPerformed,
         }
       }
 
@@ -1079,23 +1148,15 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
-    const fallbackResult = websiteCatalogFallback
-      ? await websiteCatalogFallback({
-          query: needle,
-          game: normalizedGame,
-          limit: resultLimit ?? "all",
-          rawOrGraded: normalizedRawOrGraded,
-          forceLive: forceLiveRefresh,
-        })
-      : null
-    const fallbackCards = normalizeReferenceCardsFromFallback(
-      fallbackResult,
-      normalizedGame,
-      now,
+    const fallback = await fetchScryDexFallbackCards({
       needle,
+      game: normalizedGame,
+      rawOrGraded: normalizedRawOrGraded,
+      forceLive: forceLiveRefresh,
+      limit: resultLimit,
       normalizedSetFilter,
-      resultLimit,
-    )
+    })
+    const fallbackCards = fallback.cards
 
     for (const card of fallbackCards) {
       upsertReferenceCard(referenceCards, card)
@@ -1127,7 +1188,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_proxy_required: fallbackCards.length === 0,
       credential_storage: "wordpress_server_settings",
       credentials_synced_to_client: false,
-      live_provider_request_performed: Boolean(fallbackResult?.live_provider_request_performed),
+      live_provider_request_performed: fallback.liveProviderRequestPerformed,
       force_live_refresh: forceLiveRefresh,
     }
   }
@@ -1384,11 +1445,11 @@ export function createLocalSyncStore(options = {}) {
     const query = cleanGradedValuationQuery(input)
 
     if (!query.card_name) {
-      return blocked("graded_valuation_card_required", "Select a card before pulling secondary graded comps.")
+      return blocked("graded_valuation_card_required", "Select a card before pulling PriceCharting graded pricing.")
     }
 
     if (!query.grade) {
-      return blocked("graded_valuation_grade_required", "Enter the graded card grade before pulling secondary comps.")
+      return blocked("graded_valuation_grade_required", "Enter the graded card grade before pulling PriceCharting pricing.")
     }
 
     const cacheKey = gradedValuationCacheKey(query)
@@ -1404,7 +1465,10 @@ export function createLocalSyncStore(options = {}) {
         provider_request_performed: false,
         cache_hit: true,
         cache_expires_at_utc: cached.cache_expires_at_utc,
-        primary_source: "scrydex_reference_cache",
+        primary_source: "pricecharting",
+        fallback_source: "scrydex_reference_cache",
+        pricecharting_source_used: Boolean(cached.valuation),
+        scrydex_fallback_used: !cached.valuation,
         secondary_source_used: Boolean(cached.valuation),
         credentials_synced_to_client: false,
         raw_credentials_returned: false,
@@ -1422,7 +1486,7 @@ export function createLocalSyncStore(options = {}) {
             provider: "pricecharting",
             configured: false,
             status: "not_configured",
-            detail: "Secondary graded comp lookup is not configured on this local server.",
+            detail: "PriceCharting graded lookup is not configured on this local server.",
             credentials_synced_to_client: false,
             raw_credentials_returned: false,
           },
@@ -1430,7 +1494,10 @@ export function createLocalSyncStore(options = {}) {
         provider_request_performed: false,
         cache_hit: false,
         cache_expires_at_utc: "",
-        primary_source: "scrydex_reference_cache",
+        primary_source: "pricecharting",
+        fallback_source: "scrydex_reference_cache",
+        pricecharting_source_used: false,
+        scrydex_fallback_used: true,
         secondary_source_used: false,
         credentials_synced_to_client: false,
         raw_credentials_returned: false,
@@ -1465,7 +1532,10 @@ export function createLocalSyncStore(options = {}) {
       provider_request_performed: providerRequestPerformed,
       cache_hit: false,
       cache_expires_at_utc: cacheExpiresAtUtc,
-      primary_source: "scrydex_reference_cache",
+      primary_source: "pricecharting",
+      fallback_source: "scrydex_reference_cache",
+      pricecharting_source_used: Boolean(normalized.valuation),
+      scrydex_fallback_used: !normalized.valuation,
       secondary_source_used: Boolean(normalized.valuation),
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
@@ -1649,6 +1719,7 @@ export function createLocalSyncStore(options = {}) {
       pos_visibility: posVisibility,
       square_catalog_item_id: squareCatalogItemId,
       square_catalog_variation_id: squareCatalogVariationId,
+      square_location_id: cleanExternalId(input.square_location_id ?? squareLocationId),
       external_sync_state: "pending",
       created_by_user_id: session.user.id,
       created_by_user_name: session.user.name,
@@ -1769,6 +1840,37 @@ export function createLocalSyncStore(options = {}) {
 
     const syncIntent = cleanExternalId(input.sync_intent ?? input.syncIntent) || "staff_inventory_update"
     const updateReason = cleanReason(input.reason ?? input.update_reason ?? "staff inventory update")
+    const previousQuantityOnHand = inventoryQuantityOnHand(item)
+    const unchanged =
+      nextStatus === item.status &&
+      nextPriceMinorUnits === item.price_minor_units &&
+      nextMinimumSalePriceMinorUnits === (item.minimum_sale_price_minor_units ?? item.price_minor_units) &&
+      nextLocation === item.location &&
+      (nextBarcode || item.barcode) === item.barcode &&
+      quantityUpdate.quantity_on_hand === previousQuantityOnHand &&
+      nextOnlineVisibility === item.online_visibility &&
+      nextKioskVisibility === item.kiosk_visibility &&
+      nextPosVisibility === item.pos_visibility
+
+    if (unchanged) {
+      return {
+        status: "ok",
+        action: "inventory_item_unchanged",
+        item: publicInventoryItem(item),
+        operation: null,
+        previous_quantity_on_hand: previousQuantityOnHand,
+        quantity_on_hand: previousQuantityOnHand,
+        quantity_delta: 0,
+        quantity_update_mode: "unchanged",
+        wordpress_acceptance_required: false,
+        wordpress_auto_sync_performed: false,
+        wordpress_accepted_count: 0,
+        wordpress_retry_count: 0,
+        auto_sync_results: [],
+        local_queue_depth: pendingQueueOperations(queue).length,
+        no_changes_detected: true,
+      }
+    }
 
     item.status = nextStatus
     item.price_minor_units = nextPriceMinorUnits
@@ -3532,7 +3634,14 @@ export function createLocalSyncStore(options = {}) {
       scrydex_fallback_connected: Boolean(websiteCatalogFallback),
       scrydex_catalog_index_connected: Boolean(wordpressCatalogIndexer),
       graded_pricing_provider_connected: gradedPricingProviderConfigured,
-      graded_pricing_primary_source: "scrydex_reference_cache",
+      graded_pricing_primary_source: "pricecharting",
+      graded_pricing_fallback_source: "scrydex_reference_cache",
+      square_catalog_inventory_sync_connected: Boolean(squareCatalogInventorySyncer?.status?.().configured),
+      square_catalog_inventory_sync_status: squareCatalogInventorySyncer?.status?.() ?? {
+        configured: false,
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      },
       square_inventory_count_poller_connected: Boolean(squareInventoryCountsPuller?.status?.().configured),
       square_inventory_count_poller_status: squareInventoryCountsPuller?.status?.() ?? {
         configured: false,
@@ -4622,6 +4731,7 @@ export function createLocalSyncStore(options = {}) {
 
       for (const row of inventoryPullResult.items ?? []) {
         const pulledItem = localInventoryItemFromWordPress(row)
+        const pulledHasQuantity = wordpressInventoryRowHasQuantity(row)
 
         if (!pulledItem) {
           ignoredCount += 1
@@ -4656,6 +4766,7 @@ export function createLocalSyncStore(options = {}) {
               public_id: existing.public_id,
               wordpress_public_id: cleanPublicId(pulledItem.wordpress_public_id) || cleanPublicId(pulledItem.public_id),
               row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
+              quantity_on_hand: pulledHasQuantity ? pulledItem.quantity_on_hand : existing.quantity_on_hand,
               source: "accepted",
               external_sync_state: "synced",
               created_by_user_id: existing.created_by_user_id || pulledItem.created_by_user_id,
@@ -4692,6 +4803,7 @@ export function createLocalSyncStore(options = {}) {
             public_id: existing.public_id,
             wordpress_public_id: pulledWordPressPublicId || cleanPublicId(existing.wordpress_public_id),
             row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
+            quantity_on_hand: pulledHasQuantity ? pulledItem.quantity_on_hand : existing.quantity_on_hand,
             source: cleanPublicId(existing.wordpress_public_id) || existing.source === "accepted" ? "accepted" : "cached",
             created_by_user_id: existing.created_by_user_id || pulledItem.created_by_user_id,
             created_by_user_name: existing.created_by_user_name || pulledItem.created_by_user_name,
@@ -4944,6 +5056,12 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
+    const squareSync = await syncSquareCatalogInventoryForOperation(operation, item)
+
+    if (squareSync.status === "retry") {
+      return squareSync
+    }
+
     const pushResult = await wordpressInventoryPush({ operation, item })
 
     if (pushResult.status !== "ok") {
@@ -4965,6 +5083,11 @@ export function createLocalSyncStore(options = {}) {
     if (localItem) {
       localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? "pending_intake"
       localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id)
+      localItem.square_catalog_item_id =
+        cleanExternalId(pushResult.inventory?.square_catalog_item_id) || localItem.square_catalog_item_id
+      localItem.square_catalog_variation_id =
+        cleanExternalId(pushResult.inventory?.square_catalog_variation_id) || localItem.square_catalog_variation_id
+      localItem.square_location_id = cleanExternalId(pushResult.inventory?.square_location_id) || localItem.square_location_id
       localItem.source = "accepted"
       localItem.external_sync_state = "synced"
       localItem.row_version += 1
@@ -4982,6 +5105,78 @@ export function createLocalSyncStore(options = {}) {
       wordpress_code: pushResult.wordpress_code,
       wordpress_inventory: pushResult.inventory,
       woocommerce_product_sync: pushResult.woocommerce_product_sync,
+      square_catalog_inventory_sync: squareSync,
+    }
+  }
+
+  async function syncSquareCatalogInventoryForOperation(operation, item) {
+    if (!squareCatalogInventorySyncer || typeof squareCatalogInventorySyncer.syncInventoryItem !== "function") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "skipped",
+        code: "square_catalog_inventory_syncer_unavailable",
+        message: "Square catalog inventory sync is not configured on this LAN server.",
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const result = await squareCatalogInventorySyncer.syncInventoryItem({ operation, item })
+
+    if (result.status === "skipped") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        ...result,
+      }
+    }
+
+    if (result.status !== "ok") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        status: "retry",
+        code: result.code || "square_catalog_inventory_sync_failed",
+        message: result.message || "Square catalog/inventory sync did not complete.",
+        http_status: result.http_status ?? 0,
+        errors: Array.isArray(result.errors) ? result.errors : [],
+        credentials_synced_to_client: false,
+        raw_credentials_returned: false,
+      }
+    }
+
+    const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
+    const target = localItem ?? item
+
+    target.square_catalog_item_id = cleanExternalId(result.square_catalog_item_id)
+    target.square_catalog_variation_id = cleanExternalId(result.square_catalog_variation_id)
+    target.square_location_id = cleanExternalId(result.square_location_id)
+    target.external_sync_state = "square_synced"
+
+    if (localItem) {
+      saveInventoryItem(database, localItem, now)
+    }
+
+    return {
+      operation_id: operation.operation_id,
+      operation_type: operation.operation_type,
+      entity_id: operation.entity_id,
+      status: "accepted",
+      code: result.code,
+      square_catalog_item_id: target.square_catalog_item_id,
+      square_catalog_variation_id: target.square_catalog_variation_id,
+      square_location_id: target.square_location_id,
+      square_quantity_on_hand: result.quantity_on_hand,
+      item_created: result.item_created === true,
+      variation_reused: result.variation_reused === true,
+      payment_capture_supported: false,
+      payment_capture_authority: result.payment_capture_authority ?? "square_pos_or_square_terminal",
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
     }
   }
 
@@ -5009,6 +5204,12 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
+    const squareSync = await syncSquareCatalogInventoryForOperation(operation, item)
+
+    if (squareSync.status === "retry") {
+      return squareSync
+    }
+
     const pushResult = await wordpressInventoryUpdatePush({ operation, item })
 
     if (pushResult.status !== "ok") {
@@ -5030,6 +5231,11 @@ export function createLocalSyncStore(options = {}) {
     if (localItem) {
       localItem.status = localInventoryStatus(pushResult.inventory?.status) ?? localItem.status
       localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id) || localItem.wordpress_public_id
+      localItem.square_catalog_item_id =
+        cleanExternalId(pushResult.inventory?.square_catalog_item_id) || localItem.square_catalog_item_id
+      localItem.square_catalog_variation_id =
+        cleanExternalId(pushResult.inventory?.square_catalog_variation_id) || localItem.square_catalog_variation_id
+      localItem.square_location_id = cleanExternalId(pushResult.inventory?.square_location_id) || localItem.square_location_id
       localItem.source = "accepted"
       localItem.external_sync_state = "synced"
       localItem.row_version = positiveInt(pushResult.inventory?.row_version) ?? localItem.row_version + 1
@@ -5047,6 +5253,7 @@ export function createLocalSyncStore(options = {}) {
       wordpress_code: pushResult.wordpress_code,
       wordpress_inventory: pushResult.inventory,
       woocommerce_product_sync: pushResult.woocommerce_product_sync,
+      square_catalog_inventory_sync: squareSync,
       square_payment_capture_supported: false,
       payment_capture_authority: "official_woocommerce_square_extension",
     }
@@ -6204,6 +6411,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "inventory_items", "pos_visibility", "TEXT NOT NULL DEFAULT 'visible'")
   ensureLocalSyncColumn(database, "inventory_items", "square_catalog_item_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "square_catalog_variation_id", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "inventory_items", "square_location_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "external_sync_state", "TEXT NOT NULL DEFAULT 'pending'")
   ensureLocalSyncColumn(database, "inventory_items", "created_by_user_id", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "inventory_items", "created_by_user_name", "TEXT NOT NULL DEFAULT ''")
@@ -6390,7 +6598,7 @@ function loadInventoryItems(database) {
         reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
         variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
         quantity_on_hand, minimum_sale_price_minor_units, currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
-        pos_visibility, square_catalog_item_id, square_catalog_variation_id,
+        pos_visibility, square_catalog_item_id, square_catalog_variation_id, square_location_id,
         external_sync_state, created_by_user_id, created_by_user_name, updated_by_user_id, updated_by_user_name, source
       FROM inventory_items
       ORDER BY public_id
@@ -6431,6 +6639,7 @@ function loadInventoryItems(database) {
       pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
       square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
       square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
+      square_location_id: cleanExternalId(row.square_location_id),
       external_sync_state: cleanExternalSyncState(row.external_sync_state),
       created_by_user_id: cleanPublicId(row.created_by_user_id),
       created_by_user_name: cleanName(row.created_by_user_name),
@@ -6886,11 +7095,11 @@ function saveInventoryItem(database, item, now) {
         reference_variant_id, provider_variant_id, set_code, card_number, printed_number,
         variant, finish, language, raw_or_graded, grading_company, grade, cert_number, condition, barcode, price_minor_units,
         quantity_on_hand, minimum_sale_price_minor_units, currency, location, status, image_url, back_image_url, online_visibility, kiosk_visibility,
-        pos_visibility, square_catalog_item_id, square_catalog_variation_id,
+        pos_visibility, square_catalog_item_id, square_catalog_variation_id, square_location_id,
         external_sync_state, created_by_user_id, created_by_user_name, updated_by_user_id, updated_by_user_name,
         source, updated_at_utc
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(public_id) DO UPDATE SET
         wordpress_public_id = excluded.wordpress_public_id,
         row_version = excluded.row_version,
@@ -6925,6 +7134,7 @@ function saveInventoryItem(database, item, now) {
         pos_visibility = excluded.pos_visibility,
         square_catalog_item_id = excluded.square_catalog_item_id,
         square_catalog_variation_id = excluded.square_catalog_variation_id,
+        square_location_id = excluded.square_location_id,
         external_sync_state = excluded.external_sync_state,
         created_by_user_id = excluded.created_by_user_id,
         created_by_user_name = excluded.created_by_user_name,
@@ -6968,6 +7178,7 @@ function saveInventoryItem(database, item, now) {
       cleanVisibility(item.pos_visibility, "visible"),
       cleanExternalId(item.square_catalog_item_id),
       cleanExternalId(item.square_catalog_variation_id),
+      cleanExternalId(item.square_location_id),
       cleanExternalSyncState(item.external_sync_state),
       cleanPublicId(item.created_by_user_id),
       cleanName(item.created_by_user_name),
@@ -7777,7 +7988,7 @@ function seedUsers() {
     }),
     buildSeedUser({
       id: "preview-manager",
-      name: "Preview Manager",
+      name: "Store Owner",
       pin: "1420",
       role: "owner",
       access: [...ACCESS_SECTIONS],
@@ -8024,6 +8235,7 @@ function publicInventoryItem(item) {
     pos_visibility: cleanVisibility(item.pos_visibility, "visible"),
     square_catalog_item_id: cleanExternalId(item.square_catalog_item_id),
     square_catalog_variation_id: cleanExternalId(item.square_catalog_variation_id),
+    square_location_id: cleanExternalId(item.square_location_id),
     external_sync_state: cleanExternalSyncState(item.external_sync_state),
     created_by_user_id: cleanPublicId(item.created_by_user_id),
     created_by_user_name: cleanName(item.created_by_user_name),
@@ -8086,6 +8298,7 @@ function localInventoryItemFromWordPress(row) {
     pos_visibility: cleanVisibility(row.pos_visibility, "visible"),
     square_catalog_item_id: cleanExternalId(row.square_catalog_item_id),
     square_catalog_variation_id: cleanExternalId(row.square_catalog_variation_id),
+    square_location_id: cleanExternalId(row.square_location_id),
     external_sync_state: cleanExternalSyncState(row.external_sync_state),
     created_by_user_id: cleanPublicId(row.created_by_user_id ?? row.created_by),
     created_by_user_name: cleanName(row.created_by_user_name) || "WordPress",
@@ -8093,6 +8306,27 @@ function localInventoryItemFromWordPress(row) {
     updated_by_user_name: cleanName(row.updated_by_user_name) || "WordPress",
     source: "cached",
   }
+}
+
+function wordpressInventoryRowHasQuantity(row = {}) {
+  if (!row || typeof row !== "object") {
+    return false
+  }
+
+  return [
+    "quantity_on_hand",
+    "quantityOnHand",
+    "set_quantity",
+    "setQuantity",
+    "stock_quantity",
+    "stockQuantity",
+    "available_quantity",
+    "availableQuantity",
+  ].some(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(row, key) &&
+      String(row[key] ?? "").trim() !== "",
+  )
 }
 
 function localEventSnapshotFromWordPress(row) {
@@ -8405,7 +8639,7 @@ function squareInventoryReconciliationGroups(inventoryItems) {
       continue
     }
 
-    if (!["available", "reserved"].includes(status)) {
+    if (status !== "available") {
       continue
     }
 
@@ -10276,7 +10510,11 @@ function cleanExternalSyncState(value) {
 function cleanSquareEnvironment(value) {
   const environment = String(value ?? "").trim().toLowerCase()
 
-  return ["sandbox", "test", "local", "staging"].includes(environment) ? environment : "sandbox"
+  if (["production", "prod", "live"].includes(environment)) {
+    return "production"
+  }
+
+  return ["sandbox", "test", "local", "staging"].includes(environment) ? "sandbox" : "sandbox"
 }
 
 function cleanPublicId(value) {
@@ -10532,6 +10770,16 @@ function cleanGame(value) {
     : "pokemon"
 }
 
+function cleanScryDexSearchGame(value) {
+  const game = String(value ?? "").trim().toLowerCase()
+
+  if (!game || ["all", "any", "allgames", "all_games", "all-games"].includes(game)) {
+    return ""
+  }
+
+  return cleanGame(value)
+}
+
 function cleanScryDexCatalogIndexMode(value) {
   const mode = String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_")
 
@@ -10581,7 +10829,7 @@ function bestExpansionIdFromCards(cards, setQuery) {
 function searchReferenceCards(referenceCards, needle, game, setFilter = "", limit = null) {
   const includeVariantOnlyMatches = isVariantFocusedScryDexQuery(needle)
   const matches = referenceCards
-    .filter((card) => card.game === game)
+    .filter((card) => !game || card.game === game)
     .filter((card) => referenceCardMatchesSetFilter(card, setFilter))
     .map((card) => ({
       card,
@@ -11491,7 +11739,7 @@ function cleanGradedValuationQuery(input = {}) {
     finish: cleanName(input.finish),
     grading_company: cleanName(input.grading_company ?? input.gradingCompany),
     grade: cleanName(input.grade).replace(/^grade\s+/i, ""),
-    source_priority: "scrydex_primary_secondary_comps",
+    source_priority: "pricecharting_primary_scrydex_fallback",
   }
 }
 
@@ -11544,7 +11792,7 @@ function normalizeGradedValuation(value, now) {
     grade: cleanName(value.grade).replace(/^grade\s+/i, ""),
     market_price_minor_units: marketPriceMinorUnits,
     currency: cleanCurrency(value.currency),
-    source_label: cleanName(value.source_label ?? value.sourceLabel) || "Secondary graded market",
+    source_label: cleanName(value.source_label ?? value.sourceLabel) || "PriceCharting graded market",
     source_detail: cleanName(value.source_detail ?? value.sourceDetail),
     confidence_score: boundedInt(value.confidence_score ?? value.confidenceScore, 0, 100, 70),
     observed_at_utc: cleanIsoTimestamp(value.observed_at_utc ?? value.observedAtUtc) || now().toISOString(),

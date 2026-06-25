@@ -242,6 +242,7 @@ final class InventorySearchRepository {
 			'woocommerce_product_id' => $this->nullable_positive_int( $row['woocommerce_product_id'] ?? null ),
 			'square_catalog_item_id' => $this->nullable_string( $row['square_catalog_item_id'] ?? null ),
 			'square_catalog_variation_id' => $this->nullable_string( $row['square_catalog_variation_id'] ?? null ),
+			'square_location_id' => $this->nullable_string( $row['square_location_id'] ?? null ),
 			'external_sync_state'    => $this->nullable_string( $row['external_sync_state'] ?? null ),
 			'last_external_sync_at'  => $this->utc_timestamp( $row['last_external_sync_at'] ?? null ),
 			'front_image_remote_url' => $this->nullable_string( $row['front_image_remote_url'] ?? null ),

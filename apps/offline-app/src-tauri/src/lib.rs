@@ -12,6 +12,11 @@ const OFFLINE_DATABASE_FILE: &str = "offline.sqlite";
 const DEVICE_TOKEN_KEYRING_SERVICE: &str = "Pug Game Shop Offline Device Tokens";
 const LOCAL_SYNC_DISCOVERY_PROTOCOL: &str = "pug-local-sync-discovery-v1";
 const LOCAL_SYNC_DISCOVERY_PORT: u16 = 8788;
+const LOCAL_DYMO_PRINTING_URLS: [&str; 2] = [
+    "https://127.0.0.1:41951/DYMO/DLS/Printing",
+    "https://localhost:41951/DYMO/DLS/Printing",
+];
+const DYMO_30336_LABEL_NAME: &str = "30336 Small Multipurpose Labels";
 const SQLITE_QUEUE_TABLE: &str = "operation_queue";
 const SQLITE_QUEUE_CREATE_TABLE_SQL: &str = concat!(
     "CREATE TABLE IF NOT EXISTS operation_queue (",
@@ -406,6 +411,41 @@ struct DiscoverLocalSyncServersResponse {
     credentials_synced_to_app: bool,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+struct PrintDymoLabelRequest {
+    card_name: String,
+    set_code: String,
+    condition: String,
+    barcode: String,
+    printer_name: Option<String>,
+    copies: Option<u8>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct PrintDymoLabelResponse {
+    status: &'static str,
+    action: &'static str,
+    code: String,
+    message: String,
+    label_stock: String,
+    label_size: String,
+    printer_name: String,
+    barcode_format: String,
+    scan_code: String,
+    local_native_print_performed: bool,
+    browser_print_dialog_required: bool,
+    raw_credentials_returned: bool,
+    credentials_synced_to_app: bool,
+}
+
+#[derive(Debug, Clone)]
+struct DymoPrinter {
+    name: String,
+    model_name: String,
+    is_connected: bool,
+    is_local: bool,
+}
+
 #[tauri::command]
 fn discover_local_sync_servers(
     request: Option<DiscoverLocalSyncServersRequest>,
@@ -461,7 +501,8 @@ fn discover_local_sync_servers(
                 }
             }
             Err(error)
-                if error.kind() == ErrorKind::WouldBlock || error.kind() == ErrorKind::TimedOut => {}
+                if error.kind() == ErrorKind::WouldBlock || error.kind() == ErrorKind::TimedOut => {
+            }
             Err(_) => break,
         }
     }
@@ -477,6 +518,13 @@ fn discover_local_sync_servers(
         raw_credentials_returned: false,
         credentials_synced_to_app: false,
     })
+}
+
+#[tauri::command]
+async fn print_dymo_label(
+    request: PrintDymoLabelRequest,
+) -> Result<PrintDymoLabelResponse, String> {
+    Ok(print_dymo_label_native(request).await)
 }
 
 #[tauri::command]
@@ -601,7 +649,8 @@ async fn run_offline_sync_request(
         .json(&request.body);
 
     if matches!(request.route.trim(), "push" | "conflict_resolution") {
-        if let Some(idempotency_key) = normalized_optional_text(request.idempotency_key.as_deref()) {
+        if let Some(idempotency_key) = normalized_optional_text(request.idempotency_key.as_deref())
+        {
             builder = builder
                 .header("idempotency-key", idempotency_key)
                 .header("x-tcg-device-id", request.device_public_id.trim());
@@ -623,6 +672,153 @@ async fn run_offline_sync_request(
         http_status,
         &body,
     ))
+}
+
+async fn print_dymo_label_native(request: PrintDymoLabelRequest) -> PrintDymoLabelResponse {
+    let card_name = clean_label_text(&request.card_name, "Unknown card", 64);
+    let set_code = clean_label_text(&request.set_code, "SET", 24).to_uppercase();
+    let condition = clean_label_text(&request.condition, "Condition", 32);
+    let scan_code = clean_scan_code(&request.barcode);
+    let requested_printer = normalized_optional_text(request.printer_name.as_deref())
+        .unwrap_or_default()
+        .to_lowercase();
+    let copies = request.copies.unwrap_or(1).clamp(1, 25);
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(7))
+        .danger_accept_invalid_certs(true)
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => {
+            return blocked_dymo_response(
+                "local_dymo_client_failed",
+                "The desktop app could not prepare the local DYMO printer client.",
+                &scan_code,
+            )
+        }
+    };
+
+    let Some((service_url, printers_body)) = fetch_local_dymo_printers(&client).await else {
+        return blocked_dymo_response(
+            "local_dymo_service_unavailable",
+            "DYMO Connect is running only on this PC. The app could not read GetPrinters from 127.0.0.1 or localhost. Open DYMO Connect once, then try again.",
+            &scan_code,
+        );
+    };
+
+    let printers = parse_dymo_printers(&printers_body);
+    let printer = choose_dymo_printer(&printers, &requested_printer);
+
+    let Some(printer) = printer else {
+        return blocked_dymo_response(
+            "local_dymo_printer_not_found",
+            "No connected DYMO LabelWriter was found on this PC. The app will try the LAN server printer next.",
+            &scan_code,
+        );
+    };
+
+    let label_xml = build_dymo_30336_label_xml(&card_name, &set_code, &condition, &scan_code);
+    let print_params_xml = format!(
+        "<LabelWriterPrintParams><Copies>{copies}</Copies><JobTitle>{}</JobTitle><FlowDirection>LeftToRight</FlowDirection><PrintQuality>Text</PrintQuality></LabelWriterPrintParams>",
+        escape_xml(&format!("{card_name} {scan_code}").chars().take(80).collect::<String>())
+    );
+    let form_body = [
+        ("printerName", printer.name.as_str()),
+        ("printParamsXml", print_params_xml.as_str()),
+        ("labelXml", label_xml.as_str()),
+        ("labelSetXml", ""),
+    ];
+    let print_response = match client
+        .post(format!("{service_url}/PrintLabel"))
+        .header(
+            reqwest::header::CONTENT_TYPE,
+            "application/x-www-form-urlencoded; charset=utf-8",
+        )
+        .form(&form_body)
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(_) => {
+            return blocked_dymo_response(
+                "local_dymo_print_request_failed",
+                "DYMO Connect did not accept the local print request.",
+                &scan_code,
+            )
+        }
+    };
+
+    if !print_response.status().is_success() {
+        let fallback_print_response = client
+            .post(format!("{service_url}/PrintLabel2"))
+            .header(
+                reqwest::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded; charset=utf-8",
+            )
+            .form(&form_body)
+            .send()
+            .await;
+
+        match fallback_print_response {
+            Ok(response) if response.status().is_success() => {}
+            _ => {
+                return blocked_dymo_response(
+                    "local_dymo_print_rejected",
+                    "DYMO Connect listed the local printer, but rejected the label print request. Print a test label in DYMO Connect, then try again.",
+                    &scan_code,
+                )
+            }
+        }
+    }
+
+    PrintDymoLabelResponse {
+        status: "ok",
+        action: "dymo_label_printed",
+        code: "local_dymo_label_printed".to_string(),
+        message: "Printed on the DYMO LabelWriter attached to this PC.".to_string(),
+        label_stock: DYMO_30336_LABEL_NAME.to_string(),
+        label_size: "1 in x 2 1/8 in".to_string(),
+        printer_name: printer.name.clone(),
+        barcode_format: "Code128Auto".to_string(),
+        scan_code,
+        local_native_print_performed: true,
+        browser_print_dialog_required: false,
+        raw_credentials_returned: false,
+        credentials_synced_to_app: false,
+    }
+}
+
+async fn fetch_local_dymo_printers(client: &reqwest::Client) -> Option<(&'static str, String)> {
+    for service_url in LOCAL_DYMO_PRINTING_URLS {
+        let _ = client
+            .get(format!("{service_url}/StatusConnected"))
+            .header("Accept", "text/plain,application/xml,text/xml,*/*")
+            .send()
+            .await;
+
+        let Ok(response) = client
+            .get(format!("{service_url}/GetPrinters"))
+            .header("Accept", "application/xml,text/xml,*/*")
+            .send()
+            .await
+        else {
+            continue;
+        };
+
+        if !response.status().is_success() {
+            continue;
+        }
+
+        let Ok(body) = response.text().await else {
+            continue;
+        };
+
+        if body.to_lowercase().contains("<labelwriterprinter>") {
+            return Some((service_url, body));
+        }
+    }
+
+    None
 }
 
 trait DeviceTokenStore {
@@ -1164,7 +1360,8 @@ fn summarize_offline_sync_response(
     http_status: u16,
     body: &serde_json::Value,
 ) -> OfflineSyncRequestResponse {
-    let wordpress_status = json_path_string(body, &["status"]).unwrap_or_else(|| "unknown".to_string());
+    let wordpress_status =
+        json_path_string(body, &["status"]).unwrap_or_else(|| "unknown".to_string());
     let wordpress_code = json_path_string(body, &["code"]).unwrap_or_else(|| "unknown".to_string());
     let data = body.get("data").unwrap_or(&serde_json::Value::Null);
     let status = if (200..300).contains(&http_status) {
@@ -1340,7 +1537,9 @@ fn sanitized_pull_inventory_records(data: &serde_json::Value) -> Vec<OfflineSync
         .collect()
 }
 
-fn sanitized_pull_inventory_record(record: &serde_json::Value) -> Option<OfflineSyncInventoryRecord> {
+fn sanitized_pull_inventory_record(
+    record: &serde_json::Value,
+) -> Option<OfflineSyncInventoryRecord> {
     if json_path_string(record, &["entity_type"]).as_deref() != Some("inventory_item") {
         return None;
     }
@@ -1348,7 +1547,11 @@ fn sanitized_pull_inventory_record(record: &serde_json::Value) -> Option<Offline
     let payload = record.get("payload")?.as_object()?;
     let entity_id = json_path_string(record, &["entity_id"])?;
     let public_id = json_object_string(payload, "public_id");
-    let safe_public_id = if public_id.is_empty() { entity_id } else { public_id };
+    let safe_public_id = if public_id.is_empty() {
+        entity_id
+    } else {
+        public_id
+    };
     let row_version = record.get("row_version")?.as_u64()?;
     let updated_at_utc = json_path_string(record, &["updated_at_utc"])?;
     let status = normalized_inventory_status(&json_object_string(payload, "status"));
@@ -1439,9 +1642,7 @@ fn sanitized_pull_customer_credit_record(
             .unwrap_or_else(|| "USD".to_string())
             .to_ascii_uppercase(),
         note: first_non_empty_json_string(payload, &["note", "summary"])
-            .unwrap_or_else(|| {
-                "Website credit balance refreshed from offline pull.".to_string()
-            }),
+            .unwrap_or_else(|| "Website credit balance refreshed from offline pull.".to_string()),
         updated_at_utc,
     })
 }
@@ -1473,7 +1674,12 @@ fn sanitized_pull_event_record(record: &serde_json::Value) -> Option<OfflineSync
     let updated_at_utc = json_path_string(record, &["updated_at_utc"])?;
     let starts_at_utc = first_non_empty_json_string(
         payload,
-        &["starts_at_utc", "start_at_utc", "start_time_utc", "event_start_utc"],
+        &[
+            "starts_at_utc",
+            "start_at_utc",
+            "start_time_utc",
+            "event_start_utc",
+        ],
     )
     .unwrap_or_else(|| updated_at_utc.clone());
     let starts_at_label = first_non_empty_json_string(
@@ -1555,7 +1761,9 @@ fn sanitized_pull_conflict_record(record: &serde_json::Value) -> Option<OfflineS
         title: first_non_empty_json_string(payload, &["title", "conflict_title", "summary"])
             .unwrap_or_else(|| "Offline conflict".to_string()),
         detail: first_non_empty_json_string(payload, &["detail", "conflict_detail", "message"])
-            .unwrap_or_else(|| "Website conflict snapshot refreshed from offline pull.".to_string()),
+            .unwrap_or_else(|| {
+                "Website conflict snapshot refreshed from offline pull.".to_string()
+            }),
         action: first_non_empty_json_string(payload, &["action", "requested_action"])
             .unwrap_or_else(|| "Review".to_string()),
         entity_type,
@@ -1616,7 +1824,10 @@ fn normalized_location_label(object: &serde_json::Map<String, serde_json::Value>
         return label;
     }
 
-    if let Some(location_id) = object.get("location_id").and_then(serde_json::Value::as_u64) {
+    if let Some(location_id) = object
+        .get("location_id")
+        .and_then(serde_json::Value::as_u64)
+    {
         return format!("Location {}", location_id);
     }
 
@@ -1674,7 +1885,11 @@ fn money_value_to_minor_units(value: &serde_json::Value) -> Option<u64> {
         return u64::try_from((number * 100.0).round() as i128).ok();
     }
 
-    let text = value.as_str()?.trim().trim_start_matches('$').replace(',', "");
+    let text = value
+        .as_str()?
+        .trim()
+        .trim_start_matches('$')
+        .replace(',', "");
     let parsed = text.parse::<f64>().ok()?;
 
     u64::try_from((parsed * 100.0).round() as i128).ok()
@@ -1705,7 +1920,20 @@ fn summarize_pull_sync_data(
     usize,
 ) {
     let Some(domains) = data.get("domains").and_then(serde_json::Value::as_object) else {
-        return (None, 0, 0, 0, 0, Vec::new(), Vec::new(), Vec::new(), 0, 0, 0, 0);
+        return (
+            None,
+            0,
+            0,
+            0,
+            0,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            0,
+            0,
+            0,
+            0,
+        );
     };
 
     let mut record_count = 0;
@@ -1787,7 +2015,9 @@ fn json_path_usize(value: &serde_json::Value, path: &[&str]) -> Option<usize> {
         current = current.get(key)?;
     }
 
-    current.as_u64().and_then(|value| usize::try_from(value).ok())
+    current
+        .as_u64()
+        .and_then(|value| usize::try_from(value).ok())
 }
 
 fn json_object_string(object: &serde_json::Map<String, serde_json::Value>, key: &str) -> String {
@@ -1971,7 +2201,10 @@ fn sanitized_operation_id_list(values: &[String]) -> Result<Vec<String>, String>
             return Err("offline_queue_operation_id_invalid".to_string());
         }
 
-        if operation_ids.iter().any(|existing| existing == operation_id) {
+        if operation_ids
+            .iter()
+            .any(|existing| existing == operation_id)
+        {
             continue;
         }
 
@@ -2214,10 +2447,7 @@ fn local_sync_server_url_port(value: &str) -> Option<u16> {
 }
 
 fn is_placeholder_or_wildcard_local_sync_host(host: &str) -> bool {
-    let normalized = host
-        .trim()
-        .trim_matches(['[', ']'])
-        .to_ascii_lowercase();
+    let normalized = host.trim().trim_matches(['[', ']']).to_ascii_lowercase();
 
     normalized.is_empty()
         || normalized == "0.0.0.0"
@@ -2230,10 +2460,7 @@ fn is_placeholder_or_wildcard_local_sync_host(host: &str) -> bool {
 }
 
 fn is_loopback_local_sync_host(host: &str) -> bool {
-    let normalized = host
-        .trim()
-        .trim_matches(['[', ']'])
-        .to_ascii_lowercase();
+    let normalized = host.trim().trim_matches(['[', ']']).to_ascii_lowercase();
 
     normalized == "localhost"
         || normalized == "::1"
@@ -2250,7 +2477,11 @@ fn local_sync_source_host_for_url(ip: IpAddr) -> String {
 }
 
 fn clean_discovery_url(value: Option<String>) -> Option<String> {
-    let trimmed = value.unwrap_or_default().trim().trim_end_matches('/').to_string();
+    let trimmed = value
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches('/')
+        .to_string();
 
     if valid_local_sync_server_url(&trimmed) {
         Some(trimmed)
@@ -2288,11 +2519,341 @@ fn clean_discovery_text(value: Option<String>, fallback: &'static str) -> String
     }
 }
 
+fn parse_dymo_printers(xml: &str) -> Vec<DymoPrinter> {
+    let mut printers = Vec::new();
+    let mut remaining = xml;
+
+    while let Some(start_index) = remaining.to_lowercase().find("<labelwriterprinter>") {
+        let after_start = &remaining[start_index + "<LabelWriterPrinter>".len()..];
+        let Some(end_index) = after_start.to_lowercase().find("</labelwriterprinter>") else {
+            break;
+        };
+        let printer_xml = &after_start[..end_index];
+        let name = xml_tag_value(printer_xml, "Name");
+
+        if !name.is_empty() {
+            printers.push(DymoPrinter {
+                name,
+                model_name: xml_tag_value(printer_xml, "ModelName"),
+                is_connected: xml_tag_value(printer_xml, "IsConnected")
+                    .eq_ignore_ascii_case("true"),
+                is_local: xml_tag_value(printer_xml, "IsLocal").eq_ignore_ascii_case("true"),
+            });
+        }
+
+        remaining = &after_start[end_index + "</LabelWriterPrinter>".len()..];
+    }
+
+    printers
+}
+
+fn choose_dymo_printer(printers: &[DymoPrinter], requested_printer: &str) -> Option<DymoPrinter> {
+    if !requested_printer.is_empty() {
+        if let Some(printer) = printers.iter().find(|printer| {
+            printer.is_connected && printer.name.to_lowercase() == requested_printer
+        }) {
+            return Some(printer.clone());
+        }
+
+        if let Some(printer) = printers
+            .iter()
+            .find(|printer| printer.name.to_lowercase() == requested_printer)
+        {
+            return Some(printer.clone());
+        }
+    }
+
+    printers
+        .iter()
+        .filter(|printer| printer.is_connected && printer.is_local)
+        .find(|printer| {
+            let haystack = format!("{} {}", printer.name, printer.model_name).to_lowercase();
+            haystack.contains("550 turbo")
+        })
+        .cloned()
+        .or_else(|| {
+            printers
+                .iter()
+                .find(|printer| printer.is_connected && printer.is_local)
+                .cloned()
+        })
+        .or_else(|| {
+            printers
+                .iter()
+                .filter(|printer| printer.is_connected)
+                .find(|printer| {
+                    let haystack =
+                        format!("{} {}", printer.name, printer.model_name).to_lowercase();
+                    haystack.contains("550 turbo")
+                })
+                .cloned()
+        })
+        .or_else(|| {
+            printers
+                .iter()
+                .find(|printer| printer.is_connected)
+                .cloned()
+        })
+        .or_else(|| {
+            printers
+                .iter()
+                .filter(|printer| printer.is_local)
+                .find(|printer| {
+                    let haystack =
+                        format!("{} {}", printer.name, printer.model_name).to_lowercase();
+                    haystack.contains("550 turbo")
+                })
+                .cloned()
+        })
+        .or_else(|| printers.iter().find(|printer| printer.is_local).cloned())
+        .or_else(|| {
+            printers
+                .iter()
+                .find(|printer| {
+                    let haystack =
+                        format!("{} {}", printer.name, printer.model_name).to_lowercase();
+                    haystack.contains("550 turbo")
+                })
+                .cloned()
+        })
+        .or_else(|| printers.first().cloned())
+}
+
+fn xml_tag_value(xml: &str, tag_name: &str) -> String {
+    let lower_xml = xml.to_lowercase();
+    let open_tag = format!("<{}>", tag_name.to_lowercase());
+    let close_tag = format!("</{}>", tag_name.to_lowercase());
+    let Some(start_index) = lower_xml.find(&open_tag) else {
+        return String::new();
+    };
+    let value_start = start_index + open_tag.len();
+    let Some(relative_end_index) = lower_xml[value_start..].find(&close_tag) else {
+        return String::new();
+    };
+
+    decode_xml(&xml[value_start..value_start + relative_end_index])
+        .trim()
+        .to_string()
+}
+
+fn build_dymo_30336_label_xml(
+    card_name: &str,
+    set_code: &str,
+    condition: &str,
+    scan_code: &str,
+) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8"?>
+<DesktopLabel Version="1">
+  <DYMOLabel Version="4">
+    <Description>The Pug inventory label</Description>
+    <Orientation>Landscape</Orientation>
+    <LabelName>Small30336</LabelName>
+    <InitialLength>0</InitialLength>
+    <BorderStyle>SolidLine</BorderStyle>
+    <DYMORect><DYMOPoint><X>0.045</X><Y>0.035</Y></DYMOPoint><Size><Width>2.035</Width><Height>0.93</Height></Size></DYMORect>
+    <BorderColor><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></BorderColor>
+    <BorderThickness>0</BorderThickness>
+    <Show_Border>False</Show_Border>
+    <HasFixedLength>False</HasFixedLength>
+    <FixedLengthValue>0</FixedLengthValue>
+    <DynamicLayoutManager>
+      <RotationBehavior>ClearObjects</RotationBehavior>
+      <LabelObjects>
+        {card_name_object}
+        {set_condition_object}
+        <BarcodeObject>
+          <Name>InventoryBarcode</Name>
+          {barcode_brushes}
+          <Rotation>Rotation0</Rotation>
+          <OutlineThickness>1</OutlineThickness>
+          <IsOutlined>False</IsOutlined>
+          <BorderStyle>SolidLine</BorderStyle>
+          <Margin><DYMOThickness Left="0" Top="0" Right="0" Bottom="0" /></Margin>
+          <BarcodeFormat>Code128Auto</BarcodeFormat>
+          <Data><DataString>{scan_code}</DataString></Data>
+          <HorizontalAlignment>Center</HorizontalAlignment>
+          <VerticalAlignment>Middle</VerticalAlignment>
+          <Size>AutoFit</Size>
+          <TextPosition>Bottom</TextPosition>
+          <FontInfo><FontName>Arial</FontName><FontSize>6.2</FontSize><IsBold>True</IsBold><IsItalic>False</IsItalic><IsUnderline>False</IsUnderline><FontBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></FontBrush></FontInfo>
+          <ObjectLayout><DYMOPoint><X>0.075</X><Y>0.405</Y></DYMOPoint><Size><Width>1.965</Width><Height>0.515</Height></Size></ObjectLayout>
+        </BarcodeObject>
+      </LabelObjects>
+    </DynamicLayoutManager>
+  </DYMOLabel>
+  <LabelApplication>The Pug Local App</LabelApplication>
+  <DataTable><Columns></Columns><Rows></Rows></DataTable>
+</DesktopLabel>"#,
+        card_name_object = dymo_text_object_xml(
+            "CardName", card_name, "0.055", "0.035", "2.005", "0.205", "9.5", true,
+        ),
+        set_condition_object = dymo_text_object_xml(
+            "SetCondition",
+            &format!("{set_code} {condition}"),
+            "0.055",
+            "0.232",
+            "2.005",
+            "0.145",
+            "7.2",
+            true,
+        ),
+        barcode_brushes = dymo_brushes_xml(1, 1),
+        scan_code = escape_xml(scan_code),
+    )
+}
+
+fn dymo_text_object_xml(
+    name: &str,
+    text: &str,
+    x: &str,
+    y: &str,
+    width: &str,
+    height: &str,
+    font_size: &str,
+    is_bold: bool,
+) -> String {
+    format!(
+        r#"<TextObject>
+          <Name>{name}</Name>
+          {brushes}
+          <Rotation>Rotation0</Rotation>
+          <OutlineThickness>1</OutlineThickness>
+          <IsOutlined>False</IsOutlined>
+          <BorderStyle>SolidLine</BorderStyle>
+          <Margin><DYMOThickness Left="0" Top="0" Right="0" Bottom="0" /></Margin>
+          <HorizontalAlignment>Left</HorizontalAlignment>
+          <VerticalAlignment>Middle</VerticalAlignment>
+          <FitMode>AlwaysFit</FitMode>
+          <IsVertical>False</IsVertical>
+          <FormattedText><FitMode>AlwaysFit</FitMode><HorizontalAlignment>Left</HorizontalAlignment><VerticalAlignment>Middle</VerticalAlignment><IsVertical>False</IsVertical><LineTextSpan><TextSpan><Text>{text}</Text><FontInfo><FontName>Arial</FontName><FontSize>{font_size}</FontSize><IsBold>{is_bold}</IsBold><IsItalic>False</IsItalic><IsUnderline>False</IsUnderline><FontBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></FontBrush></FontInfo></TextSpan></LineTextSpan></FormattedText>
+          <ObjectLayout><DYMOPoint><X>{x}</X><Y>{y}</Y></DYMOPoint><Size><Width>{width}</Width><Height>{height}</Height></Size></ObjectLayout>
+        </TextObject>"#,
+        name = escape_xml(name),
+        brushes = dymo_brushes_xml(0, 0),
+        text = escape_xml(text),
+        font_size = escape_xml(font_size),
+        is_bold = if is_bold { "True" } else { "False" },
+        x = escape_xml(x),
+        y = escape_xml(y),
+        width = escape_xml(width),
+        height = escape_xml(height),
+    )
+}
+
+fn dymo_brushes_xml(background_a: u8, fill_a: u8) -> String {
+    format!(
+        r#"<Brushes>
+            <BackgroundBrush><SolidColorBrush><Color A="{background_a}" R="1" G="1" B="1"></Color></SolidColorBrush></BackgroundBrush>
+            <BorderBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></BorderBrush>
+            <StrokeBrush><SolidColorBrush><Color A="1" R="0" G="0" B="0"></Color></SolidColorBrush></StrokeBrush>
+            <FillBrush><SolidColorBrush><Color A="{fill_a}" R="0" G="0" B="0"></Color></SolidColorBrush></FillBrush>
+          </Brushes>"#
+    )
+}
+
+fn clean_label_text(value: &str, fallback: &str, max_length: usize) -> String {
+    let cleaned = value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let text = if cleaned.trim().is_empty() {
+        fallback.to_string()
+    } else {
+        cleaned.trim().to_string()
+    };
+
+    text.chars().take(max_length).collect()
+}
+
+fn clean_scan_code(value: &str) -> String {
+    let cleaned = clean_label_text(value, "PUG-0000", 80)
+        .chars()
+        .map(|character| {
+            if character.is_ascii()
+                && !character.is_ascii_control()
+                && !character.is_ascii_whitespace()
+            {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    let mut compacted = String::new();
+    let mut previous_dash = false;
+
+    for character in cleaned.chars() {
+        if character == '-' {
+            if !previous_dash {
+                compacted.push(character);
+            }
+            previous_dash = true;
+        } else {
+            compacted.push(character);
+            previous_dash = false;
+        }
+    }
+
+    let trimmed = compacted.trim_matches('-').to_string();
+    if trimmed.is_empty() {
+        "PUG-0000".to_string()
+    } else {
+        trimmed
+    }
+}
+
+fn blocked_dymo_response(code: &str, message: &str, scan_code: &str) -> PrintDymoLabelResponse {
+    PrintDymoLabelResponse {
+        status: "blocked",
+        action: "dymo_label_print_blocked",
+        code: code.to_string(),
+        message: message.to_string(),
+        label_stock: DYMO_30336_LABEL_NAME.to_string(),
+        label_size: "1 in x 2 1/8 in".to_string(),
+        printer_name: String::new(),
+        barcode_format: "Code128Auto".to_string(),
+        scan_code: scan_code.to_string(),
+        local_native_print_performed: false,
+        browser_print_dialog_required: false,
+        raw_credentials_returned: false,
+        credentials_synced_to_app: false,
+    }
+}
+
+fn escape_xml(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+fn decode_xml(value: &str) -> String {
+    value
+        .replace("&apos;", "'")
+        .replace("&quot;", "\"")
+        .replace("&gt;", ">")
+        .replace("&lt;", "<")
+        .replace("&amp;", "&")
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             discover_local_sync_servers,
+            print_dymo_label,
             queue_offline_operation,
             list_offline_operations,
             mark_offline_operations_synced,
@@ -2385,9 +2946,8 @@ mod tests {
 
     fn valid_pair_offline_device_request() -> PairOfflineDeviceRequest {
         PairOfflineDeviceRequest {
-            endpoint:
-                "https://thepuggaming.com/wp-json/tcg-store/v1/offline/devices/register"
-                    .to_string(),
+            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/devices/register"
+                .to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
             body: PairOfflineDeviceBody {
                 pairing_code: "PAIR-2026-REGISTER-DEVICE".to_string(),
@@ -2436,8 +2996,7 @@ mod tests {
 
     fn valid_pull_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/pull"
-                .to_string(),
+            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/pull".to_string(),
             route: "pull".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
             device_public_id: "device-public-123".to_string(),
@@ -2455,8 +3014,7 @@ mod tests {
 
     fn valid_push_sync_request() -> OfflineSyncRequest {
         OfflineSyncRequest {
-            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/push"
-                .to_string(),
+            endpoint: "https://thepuggaming.com/wp-json/tcg-store/v1/offline/push".to_string(),
             route: "push".to_string(),
             profile_id: "pug-game-shop-staging".to_string(),
             device_public_id: "device-public-123".to_string(),
@@ -2883,8 +3441,14 @@ mod tests {
         assert_eq!(summary.pull_inventory_records.len(), 1);
         assert_eq!(summary.pull_inventory_records[0].public_id, "inv-1001");
         assert_eq!(summary.pull_inventory_records[0].card_name, "Charizard");
-        assert_eq!(summary.pull_inventory_records[0].sale_price_minor_units, 12500);
-        assert_eq!(summary.pull_inventory_records[0].location_label, "Location 2");
+        assert_eq!(
+            summary.pull_inventory_records[0].sale_price_minor_units,
+            12500
+        );
+        assert_eq!(
+            summary.pull_inventory_records[0].location_label,
+            "Location 2"
+        );
         assert_eq!(summary.pull_inventory_records[0].status, "available");
         assert_eq!(summary.pull_customer_credit_records.len(), 1);
         assert_eq!(summary.pull_customer_credit_records[0].customer_id, 91);
@@ -2897,7 +3461,10 @@ mod tests {
         assert_eq!(summary.pull_event_records.len(), 1);
         assert_eq!(summary.pull_event_records[0].entity_id, "event-100");
         assert_eq!(summary.pull_event_records[0].row_version, 4);
-        assert_eq!(summary.pull_event_records[0].title, "Friday Commander Night");
+        assert_eq!(
+            summary.pull_event_records[0].title,
+            "Friday Commander Night"
+        );
         assert_eq!(summary.pull_event_records[0].registration_status, "open");
         assert_eq!(summary.pull_event_records[0].capacity, 24);
         assert_eq!(summary.pull_event_records[0].registered_count, 11);
@@ -2908,7 +3475,10 @@ mod tests {
         );
         assert_eq!(summary.pull_conflict_records[0].row_version, 3);
         assert_eq!(summary.pull_conflict_records[0].entity_type, "inventory");
-        assert_eq!(summary.pull_conflict_records[0].operation_type, "inventory_update");
+        assert_eq!(
+            summary.pull_conflict_records[0].operation_type,
+            "inventory_update"
+        );
         assert_eq!(summary.cursor_count, 4);
         assert!(summary.authorization_header_attached);
         assert!(!summary.raw_token_returned);
@@ -2951,9 +3521,18 @@ mod tests {
         assert_eq!(summary.accepted_count, 1);
         assert_eq!(summary.conflict_count, 1);
         assert_eq!(summary.rejected_count, 1);
-        assert_eq!(summary.accepted_operation_ids, vec!["op-accepted".to_string()]);
-        assert_eq!(summary.conflict_operation_ids, vec!["op-conflict".to_string()]);
-        assert_eq!(summary.rejected_operation_ids, vec!["op-rejected".to_string()]);
+        assert_eq!(
+            summary.accepted_operation_ids,
+            vec!["op-accepted".to_string()]
+        );
+        assert_eq!(
+            summary.conflict_operation_ids,
+            vec!["op-conflict".to_string()]
+        );
+        assert_eq!(
+            summary.rejected_operation_ids,
+            vec!["op-rejected".to_string()]
+        );
         assert_eq!(summary.pull_record_count, 0);
         assert!(summary.network_request_completed);
         assert!(summary.authorization_header_attached);
@@ -2981,7 +3560,10 @@ mod tests {
 
         assert_eq!(summary.status, "offline_sync_request_completed");
         assert_eq!(summary.route, "conflict_resolution");
-        assert_eq!(summary.wordpress_code, "offline_conflict_resolution_applied");
+        assert_eq!(
+            summary.wordpress_code,
+            "offline_conflict_resolution_applied"
+        );
         assert_eq!(summary.operation_count, 0);
         assert_eq!(summary.pull_record_count, 0);
         assert!(summary.network_request_completed);
@@ -3092,7 +3674,8 @@ mod tests {
         let connection = Connection::open_in_memory().expect("in-memory sqlite should open");
         let first_operation = valid_operation();
         let mut second_operation = valid_operation();
-        second_operation.client_operation_id = "offline-inventory-accepted-20260607120500".to_string();
+        second_operation.client_operation_id =
+            "offline-inventory-accepted-20260607120500".to_string();
         second_operation.entity_id = "87".to_string();
 
         queue_offline_operation_with_connection(first_operation.clone(), &connection)
@@ -3167,7 +3750,8 @@ mod tests {
         let connection = Connection::open_in_memory().expect("in-memory sqlite should open");
         let first_operation = valid_operation();
         let mut second_operation = valid_operation();
-        second_operation.client_operation_id = "offline-inventory-voided-20260607120500".to_string();
+        second_operation.client_operation_id =
+            "offline-inventory-voided-20260607120500".to_string();
         second_operation.entity_id = "87".to_string();
 
         queue_offline_operation_with_connection(first_operation.clone(), &connection)

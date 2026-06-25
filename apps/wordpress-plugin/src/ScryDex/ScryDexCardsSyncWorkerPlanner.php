@@ -59,6 +59,9 @@ final class ScryDexCardsSyncWorkerPlanner {
 			'provider_result_status'                     => $provider_result->status(),
 			'provider_result_http_status'                => $provider_result->http_status(),
 			'provider_result_error_code'                 => $provider_result->error_code(),
+			'provider_result_message'                    => $provider_result->message(),
+			'provider_result_retryable'                  => $page_plan->retryable(),
+			'provider_result_meta'                       => $this->provider_result_public_meta( $provider_result ),
 			'provider_result_body_received'              => array() !== $provider_result_data['body'],
 			'provider_result_body_not_logged'            => true,
 			'page_plan'                                  => $this->page_plan_summary( $page_plan ),
@@ -212,6 +215,35 @@ final class ScryDexCardsSyncWorkerPlanner {
 		}
 
 		return array_values( array_unique( $errors ) );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function provider_result_public_meta( ScryDexResult $provider_result ): array {
+		$meta    = $provider_result->meta();
+		$request = is_array( $meta['request'] ?? null ) ? $meta['request'] : array();
+
+		return array(
+			'request'          => array(
+				'method'   => $this->safe_text( $request['method'] ?? '' ),
+				'path'     => $this->safe_text( $request['path'] ?? '' ),
+				'game'     => $this->safe_text( $request['game'] ?? '' ),
+				'resource' => $this->safe_text( $request['resource'] ?? '' ),
+			),
+			'response_message' => $this->safe_text( $meta['response_message'] ?? '' ),
+			'body_excerpt'     => $this->safe_text( $meta['body_excerpt'] ?? '' ),
+		);
+	}
+
+	private function safe_text( mixed $value ): string {
+		if ( ! is_scalar( $value ) ) {
+			return '';
+		}
+
+		$value = preg_replace( '/\s+/', ' ', trim( (string) $value ) ) ?? '';
+
+		return substr( $value, 0, 320 );
 	}
 
 	/**

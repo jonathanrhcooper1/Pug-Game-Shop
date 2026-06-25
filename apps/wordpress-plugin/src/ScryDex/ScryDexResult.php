@@ -60,6 +60,13 @@ final class ScryDexResult {
 		return $this->message;
 	}
 
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function meta(): array {
+		return $this->meta;
+	}
+
 	public function is_success(): bool {
 		return self::SUCCESS === $this->status;
 	}

@@ -14,7 +14,18 @@ $appLogPath = Join-Path $runtimeDirectory "store-app.log"
 $appErrorLogPath = Join-Path $runtimeDirectory "store-app-error.log"
 $employeeUrl = "http://127.0.0.1:1420/"
 $kioskUrl = "http://127.0.0.1:1420/?mode=kiosk"
-$healthUrl = "http://127.0.0.1:8787/health"
+$serverBaseUrl = if ($env:PUG_LOCAL_SYNC_PUBLIC_URL) {
+    $env:PUG_LOCAL_SYNC_PUBLIC_URL
+} elseif ($env:LOCAL_SYNC_SERVER_URL) {
+    $env:LOCAL_SYNC_SERVER_URL
+} else {
+    "http://127.0.0.1:8787"
+}
+$serverBaseUrl = $serverBaseUrl.TrimEnd("/")
+$healthUrl = "$serverBaseUrl/health"
+$isLocalServerUrl = $serverBaseUrl -match "^https?://(127\.0\.0\.1|localhost|\[::1\])(:|/|$)"
+
+$env:VITE_PUG_DEFAULT_LOCAL_SYNC_SERVER_URL = $serverBaseUrl
 
 New-Item -ItemType Directory -Path $runtimeDirectory -Force | Out-Null
 
@@ -60,7 +71,7 @@ function Wait-HttpEndpoint {
 $serverProcess = $null
 $serverOwned = $false
 
-if (-not (Test-HttpEndpoint -Url $healthUrl)) {
+if ($isLocalServerUrl -and -not (Test-HttpEndpoint -Url $healthUrl)) {
     $serverProcess = Start-Process `
         -FilePath $node.Source `
         -ArgumentList @("apps/local-sync-server/src/cli.mjs") `
@@ -74,6 +85,8 @@ if (-not (Test-HttpEndpoint -Url $healthUrl)) {
     if (-not (Wait-HttpEndpoint -Url $healthUrl)) {
         throw "The LAN sync server did not become healthy. Check $serverErrorLogPath."
     }
+} elseif (-not (Test-HttpEndpoint -Url $healthUrl)) {
+    throw "The configured LAN sync server is not reachable at $healthUrl. Start the LAN Server or set PUG_LOCAL_SYNC_PUBLIC_URL to the correct address."
 }
 
 $appProcess = $null
@@ -123,7 +136,7 @@ Write-Host ""
 Write-Host "The Pug store system is ready." -ForegroundColor Green
 Write-Host "Employee app: $employeeUrl"
 Write-Host "Customer kiosk: $kioskUrl"
-Write-Host "LAN sync server: http://127.0.0.1:8787"
+Write-Host "LAN sync server: $serverBaseUrl"
 Write-Host ""
 
 if (-not $NoBrowser) {

@@ -18,7 +18,7 @@ export function createGradedPricingLookup(options = {}) {
         valuation: null,
         providers,
         provider_request_performed: false,
-        message: "No secondary graded pricing provider is configured.",
+        message: "PriceCharting graded pricing is not configured.",
       }
     }
 
@@ -54,7 +54,7 @@ export function createPriceChartingProvider(options = {}) {
       status: token ? "ready" : "not_configured",
       detail: token
         ? "PriceCharting API token is configured on the local sync server."
-        : "Secondary graded comp lookup is not configured on this local server.",
+        : "PriceCharting graded pricing is not configured on this local server.",
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
     }),
@@ -66,7 +66,7 @@ export function createPriceChartingProvider(options = {}) {
             provider: "pricecharting",
             configured: false,
             status: "not_configured",
-            detail: "Secondary graded comp lookup is not configured on this local server.",
+            detail: "PriceCharting graded pricing is not configured on this local server.",
             credentials_synced_to_client: false,
             raw_credentials_returned: false,
           },
@@ -239,6 +239,7 @@ export function createPriceChartingProvider(options = {}) {
 
 export function priceChartingCardGradePriceKey(gradingCompany, grade) {
   const company = cleanName(gradingCompany).toLowerCase()
+  const gradeText = cleanName(grade).toLowerCase()
   const normalizedGrade = Number.parseFloat(String(grade ?? "").replace(/[^0-9.]+/g, ""))
 
   if (!Number.isFinite(normalizedGrade)) {
@@ -247,10 +248,26 @@ export function priceChartingCardGradePriceKey(gradingCompany, grade) {
 
   if (normalizedGrade >= 9.95) {
     if (company.includes("bgs") || company.includes("beckett")) {
+      if (gradeText.includes("black") || gradeText.includes("perfect") || gradeText.includes("pristine")) {
+        return {
+          key: "bgs-10-price",
+          label: "BGS 10 generic bucket; verify Perfect/Black Label premium",
+          confidence: 82,
+        }
+      }
+
       return { key: "bgs-10-price", label: "BGS 10", confidence: 96 }
     }
 
     if (company.includes("cgc")) {
+      if (gradeText.includes("pristine")) {
+        return {
+          key: "condition-17-price",
+          label: "CGC 10 generic bucket; verify Pristine premium",
+          confidence: 84,
+        }
+      }
+
       return { key: "condition-17-price", label: "CGC 10", confidence: 96 }
     }
 

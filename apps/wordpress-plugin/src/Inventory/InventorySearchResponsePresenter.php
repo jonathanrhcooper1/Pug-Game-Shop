@@ -89,6 +89,7 @@ final class InventorySearchResponsePresenter {
 				'woocommerce_product_id' => self::nullable_int( $row['woocommerce_product_id'] ?? null ),
 				'square_catalog_item_id' => self::nullable_string( $row['square_catalog_item_id'] ?? null ),
 				'square_catalog_variation_id' => self::nullable_string( $row['square_catalog_variation_id'] ?? null ),
+				'square_location_id' => self::nullable_string( $row['square_location_id'] ?? null ),
 				'external_sync_state' => self::nullable_string( $row['external_sync_state'] ?? null ),
 				'last_external_sync_at' => self::nullable_string( $row['last_external_sync_at'] ?? null ),
 				'notes'              => self::nullable_string( $row['notes'] ?? null ),

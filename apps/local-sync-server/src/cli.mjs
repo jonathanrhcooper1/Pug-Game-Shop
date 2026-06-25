@@ -27,6 +27,7 @@ import { createWordPressReportsPull } from "./wordpressReportsPull.mjs"
 import { listenLocalSyncDiscoveryResponder } from "./localSyncDiscovery.mjs"
 import { createGradedPricingLookup } from "./gradedPricingProviders.mjs"
 import { createSquareInventoryCountsPuller } from "./squareInventoryCountsPuller.mjs"
+import { createSquareCatalogInventorySyncer } from "./squareCatalogInventorySyncer.mjs"
 import { createSquareSalesReportsPuller } from "./squareSalesReportsPuller.mjs"
 import { createSquareTerminalConnector } from "./squareTerminalConnector.mjs"
 import { createScryDexVisionIdentifier } from "./scrydexVisionIdentifier.mjs"
@@ -289,6 +290,13 @@ const squareInventoryCountsPuller = createSquareInventoryCountsPuller({
   apiVersion: squareApiVersion,
   baseUrl: squareBaseUrl,
 })
+const squareCatalogInventorySyncer = createSquareCatalogInventorySyncer({
+  accessToken: squareAccessToken,
+  environment: squareEnvironment,
+  locationId: squareLocationId,
+  apiVersion: squareApiVersion,
+  baseUrl: squareBaseUrl,
+})
 const squareSalesReportsPuller = createSquareSalesReportsPuller({
   accessToken: squareAccessToken,
   environment: squareEnvironment,
@@ -338,6 +346,7 @@ const server = await listenLocalSyncHttpServer({
     squareEnvironment,
     squareTerminalConnector,
     squareInventoryCountsPuller,
+    squareCatalogInventorySyncer,
     squareSalesReportsPuller,
   },
 })
@@ -348,11 +357,25 @@ console.log(`Pug local sync server listening on http://${host}:${resolvedPort}`)
 console.log(`Website: ${websiteUrl || "not configured"}`)
 console.log(`WordPress push enabled: ${wordpressPushEnabled ? "true" : "false"}`)
 console.log(`ScryDex Vision configured: ${scryDexVisionIdentifier.status().configured ? "true" : "false"}`)
-console.log(`Secondary graded pricing configured: ${gradedPricingLookup.configured === true ? "true" : "false"}`)
+console.log(`PriceCharting graded pricing configured: ${gradedPricingLookup.configured === true ? "true" : "false"}`)
 console.log(`Square Terminal configured: ${squareTerminalConnector.status().configured ? "true" : "false"}`)
+console.log(`Square catalog inventory sync configured: ${squareCatalogInventorySyncer.status().configured ? "true" : "false"}`)
 console.log(`Square inventory poll configured: ${squareInventoryCountsPuller.status().configured ? "true" : "false"}`)
 console.log(`Square sales report pull configured: ${squareSalesReportsPuller.status().configured ? "true" : "false"}`)
 console.log("Credentials printed: false")
+
+if (squareCatalogInventorySyncer.status().configured) {
+  const squarePosLayout = await squareCatalogInventorySyncer.ensureDefaultSquarePosCategories()
+  if (squarePosLayout.status === "ok") {
+    console.log(
+      `Square POS Singles layout ready: ${squarePosLayout.categories
+        .map((category) => category.name)
+        .join(" > ")}`,
+    )
+  } else {
+    console.warn(`Square POS Singles layout not ready: ${squarePosLayout.code || squarePosLayout.status}`)
+  }
+}
 
 if (!squareInventoryPollDisabled && squareInventoryCountsPuller.status().configured) {
   startSquareInventoryPolling(server, squareInventoryPollSeconds)
@@ -460,7 +483,7 @@ function startSquareInventoryPolling(server, pollSeconds) {
 
       if (result.status === "ok" && result.sold_count > 0) {
         console.log(
-          `Square inventory poll marked ${result.sold_count} item(s) sold; WordPress accepted ${result.wordpress_accepted_count}, retry ${result.wordpress_retry_count}.`,
+          `Square inventory poll applied ${result.sold_count} local quantity adjustment(s); WordPress accepted ${result.wordpress_accepted_count}, retry ${result.wordpress_retry_count}.`,
         )
       } else if (result.status !== "ok") {
         console.warn(`Square inventory poll blocked: ${result.code || "unknown"}`)

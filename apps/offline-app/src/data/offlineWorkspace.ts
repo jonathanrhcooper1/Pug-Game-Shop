@@ -28,6 +28,9 @@ export type ConnectorEnvironment = "development" | "staging" | "production"
 export type ConnectorStatus = "ready" | "needs_pairing" | "sandbox_only"
 export type ConnectorScheme = "http" | "https"
 
+const FALLBACK_LOCAL_SYNC_SERVER_URL = "http://127.0.0.1:8787"
+const DEFAULT_LOCAL_SYNC_SERVER_URL = defaultLocalSyncServerUrl()
+
 export type NavItem = {
   label: string
   icon: IconName
@@ -960,7 +963,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
       },
       localSync: {
         topology: "lan_middleman_server",
-        serverUrl: "http://127.0.0.1:8787",
+        serverUrl: DEFAULT_LOCAL_SYNC_SERVER_URL,
         setupStatusPath: "/setup/status",
         oneWebsiteMode: true,
         localDatabase: "store-sync.sqlite",
@@ -1779,7 +1782,7 @@ export function createEmptyConnectorProfileDraft(): ConnectorProfileDraft {
     companyName: "",
     companyShortName: "",
     siteUrl: "",
-    localSyncServerUrl: "http://127.0.0.1:8787",
+    localSyncServerUrl: DEFAULT_LOCAL_SYNC_SERVER_URL,
     environment: "production",
     scrydexTeamLabel: "Configured in WordPress",
     canonicalInventoryWritesEnabled: false,
@@ -2757,7 +2760,7 @@ function normalizeScanValue(value: string) {
 function connectorProfileFromManifest(
   manifest: OfflineConnectorManifest,
   site: { scheme: ConnectorScheme; host: string } | null,
-  localSyncServerUrl = "http://127.0.0.1:8787",
+  localSyncServerUrl = DEFAULT_LOCAL_SYNC_SERVER_URL,
 ): StoreConnectorProfile {
   const environment = cleanConnectorEnvironment(manifest.environment)
   const safeSite = site ?? { scheme: "https" as const, host: "offline.local" }
@@ -2864,13 +2867,13 @@ function normalizeLocalSyncServerUrl(value: string): string {
     ? trimmed.includes("://")
       ? trimmed
       : `http://${trimmed}`
-    : "http://127.0.0.1:8787"
+    : DEFAULT_LOCAL_SYNC_SERVER_URL
 
   try {
     const parsed = new URL(rawValue)
 
     if (!["http:", "https:"].includes(parsed.protocol) || !parsed.host || parsed.username || parsed.password) {
-      return "http://127.0.0.1:8787"
+      return DEFAULT_LOCAL_SYNC_SERVER_URL
     }
 
     parsed.pathname = parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "")
@@ -2879,7 +2882,47 @@ function normalizeLocalSyncServerUrl(value: string): string {
 
     return parsed.toString().replace(/\/$/, "")
   } catch {
-    return "http://127.0.0.1:8787"
+    return DEFAULT_LOCAL_SYNC_SERVER_URL
+  }
+}
+
+function defaultLocalSyncServerUrl(): string {
+  const viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {}
+  const candidate =
+    viteEnv.VITE_PUG_DEFAULT_LOCAL_SYNC_SERVER_URL ??
+    viteEnv.VITE_PUG_LOCAL_SYNC_SERVER_URL ??
+    viteEnv.VITE_LOCAL_SYNC_SERVER_URL ??
+    ""
+
+  return cleanConfiguredLocalSyncServerUrl(candidate) || FALLBACK_LOCAL_SYNC_SERVER_URL
+}
+
+function cleanConfiguredLocalSyncServerUrl(value: string): string {
+  const trimmed = String(value ?? "").trim()
+  const rawValue = trimmed
+    ? trimmed.includes("://")
+      ? trimmed
+      : `http://${trimmed}`
+    : ""
+
+  if (!rawValue) {
+    return ""
+  }
+
+  try {
+    const parsed = new URL(rawValue)
+
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.host || parsed.username || parsed.password) {
+      return ""
+    }
+
+    parsed.pathname = parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "")
+    parsed.search = ""
+    parsed.hash = ""
+
+    return parsed.toString().replace(/\/$/, "")
+  } catch {
+    return ""
   }
 }
 
@@ -3239,9 +3282,15 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
         ? "pug-game-shop-production"
         : profile.id
     const routeConnectedPushReady = true
-    const localSyncServerUrl = normalizeLocalSyncServerUrl(
-      profile.localSync?.serverUrl ?? "http://127.0.0.1:8787",
+    const storedLocalSyncServerUrl = normalizeLocalSyncServerUrl(
+      profile.localSync?.serverUrl ?? DEFAULT_LOCAL_SYNC_SERVER_URL,
     )
+    const localSyncServerUrl =
+      isPugProductionHost &&
+      DEFAULT_LOCAL_SYNC_SERVER_URL !== FALLBACK_LOCAL_SYNC_SERVER_URL &&
+      isLocalhostLocalSyncServerUrl(storedLocalSyncServerUrl)
+        ? DEFAULT_LOCAL_SYNC_SERVER_URL
+        : storedLocalSyncServerUrl
     const canonicalInventoryWritesEnabled =
       environment !== "production" &&
       routeConnectedPushReady &&
@@ -3292,6 +3341,16 @@ function sanitizeConnectorProfiles(profiles: StoreConnectorProfile[]): StoreConn
 
 function isLegacyManagedWordPressPreviewHost(host: string): boolean {
   return host.endsWith(".myftpupload.com")
+}
+
+function isLocalhostLocalSyncServerUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+
+    return ["127.0.0.1", "localhost", "[::1]"].includes(parsed.hostname)
+  } catch {
+    return false
+  }
 }
 
 function sanitizePreparedPairingRequests(
@@ -4168,7 +4227,7 @@ export function buildLocalInventoryIntakeSyncReceipts(
       receiptId: `intake-receipt-${item.publicId}`,
       profileId: options.profileId ?? "local-profile-preview",
       companyName: options.companyName ?? "Local store",
-      localSyncServerUrl: options.localSyncServerUrl ?? "http://127.0.0.1:8787",
+      localSyncServerUrl: options.localSyncServerUrl ?? DEFAULT_LOCAL_SYNC_SERVER_URL,
       localDatabase: "store-sync.sqlite",
       queueOperationType: "inventory_intake",
       inventoryPublicId: item.publicId,

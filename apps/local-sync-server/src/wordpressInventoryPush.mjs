@@ -300,6 +300,9 @@ export function inventoryIntakeBody(item = {}, options = {}) {
     online_visibility: onlineVisibility,
     kiosk_visibility: cleanVisibility(item.kiosk_visibility, options.defaultKioskVisibility ?? "visible"),
     pos_visibility: cleanVisibility(item.pos_visibility, options.defaultPosVisibility ?? "visible"),
+    square_catalog_item_id: cleanText(item.square_catalog_item_id),
+    square_catalog_variation_id: cleanText(item.square_catalog_variation_id),
+    square_location_id: cleanText(item.square_location_id),
     front_image_remote_url: cleanHttpUrl(item.image_url),
     back_image_remote_url: cleanHttpUrl(item.back_image_url),
     staff_notes: cleanText(`Queued from LAN sync server by ${actorLabel}; location: ${item.location ?? "Intake Queue"}`),
@@ -330,6 +333,9 @@ function inventoryCreateResponseData(body) {
     barcode: String(data.barcode ?? ""),
     status: String(data.status ?? ""),
     price_change_log_persisted: Boolean(data.price_change_log_persisted),
+    square_catalog_item_id: cleanText(data.square_catalog_item_id),
+    square_catalog_variation_id: cleanText(data.square_catalog_variation_id),
+    square_location_id: cleanText(data.square_location_id),
   }
 }
 
@@ -437,6 +443,9 @@ function inventoryUpdateBody(operation = {}, item = {}) {
     online_visibility: cleanVisibility(payload.online_visibility ?? item.online_visibility, "visible"),
     kiosk_visibility: cleanVisibility(payload.kiosk_visibility ?? item.kiosk_visibility, "visible"),
     pos_visibility: cleanVisibility(payload.pos_visibility ?? item.pos_visibility, "visible"),
+    square_catalog_item_id: cleanText(item.square_catalog_item_id),
+    square_catalog_variation_id: cleanText(item.square_catalog_variation_id),
+    square_location_id: cleanText(item.square_location_id),
     staff_notes: cleanText(
       `Updated from LAN sync server by ${payload.actor_name || item.updated_by_user_name || payload.actor_id || "Unknown staff"}; reason: ${payload.reason || "staff inventory update"}; location: ${payload.location || item.location || "Inventory"}`,
     ),
@@ -458,6 +467,9 @@ function inventoryUpdateResponseData(body) {
     row_version: positiveInt(data.row_version),
     sale_price: String(data.sale_price ?? ""),
     sale_currency: String(data.sale_currency ?? "USD"),
+    square_catalog_item_id: cleanText(data.square_catalog_item_id),
+    square_catalog_variation_id: cleanText(data.square_catalog_variation_id),
+    square_location_id: cleanText(data.square_location_id),
     price_change_log_persisted: Boolean(data.price_change_log_persisted),
   }
 }

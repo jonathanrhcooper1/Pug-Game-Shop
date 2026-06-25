@@ -4,6 +4,136 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Bumped the production package to `0.202.12` for the Square POS `Singles`
+  category layout seed and Square item category payload repair.
+- Added a Square POS layout seed that creates/reuses `Singles` with child
+  categories `MTG`, `Lorcana`, `Riftbound`, and `Pokemon`, and runs on
+  middleman startup when Square credentials are configured.
+- Fixed Square catalog item category assignment to send category IDs without
+  ordinal metadata, matching the live Square Catalog API behavior seen during
+  production verification.
+- Live-tested the Square POS layout seed at location `LB1B9Z4GVG1BH`; Square
+  now has `Singles / MTG`, `Singles / Lorcana`, `Singles / Riftbound`, and
+  `Singles / Pokemon`, plus one permanent MTG test card under `Singles / MTG`.
+- Updated the USB release copy step to prune older versioned Pug app installers
+  and deliverable zips/folders while preserving the USB-only credential handoff.
+- Bumped the production package to `0.202.11` for Square category/image sync
+  and manual inventory intake hardening.
+- Updated the standalone Square one-card probe so it finds or creates the
+  `Singles` category, assigns the test item to it, sets stock to `1`, and
+  writes a sanitized category-aware report without using the middleman server.
+- Updated the LAN server Square catalog/inventory syncer to assign new Square
+  items to `Singles` or `Graded` plus a game category such as `MTG`,
+  `Pokemon`, `Lorcana`, or `Riftbound`.
+- Added Square image upload for new LAN-created Square catalog items when the
+  local inventory row has a supported card image URL.
+- Hardened the Store App inventory intake screen so manual card-not-found
+  entries require an explicit game and can provide a product image URL for
+  website/Square image sync.
+- Added barcode editing to the Store App inventory update panel so staff can
+  correct the exact LP/NM/graded row barcode before syncing or printing labels.
+- Bumped the production package to `0.202.10` for middleman-owned Square
+  catalog/inventory sync.
+- Added a standalone Square one-card probe script that creates one production
+  Square catalog item variation, sets a physical inventory count, reads the
+  count back, and writes a sanitized report without touching WordPress or the
+  LAN server.
+- Added the LAN server Square catalog/inventory syncer so inventory intake and
+  inventory updates create/update Square POS item variations, preserve the same
+  barcode/SKU, and set absolute Square location counts from the middleman
+  server.
+- Added `square_location_id` to local SQLite and WordPress inventory mappings
+  so Square counts are tied to the correct store location.
+- Fixed Square inventory count reconciliation to compare quantities instead of
+  local row counts, so any Square stock count change can update the app and
+  website, not only zero-stock sales.
+- Bumped the production package to `0.202.9` for ScryDex catalog index
+  diagnostics.
+- Added sanitized provider diagnostics to the ScryDex catalog indexer, including
+  HTTP status, error code, provider message, request path, response message, and
+  a short non-JSON body excerpt when ScryDex or the host returns HTML/text.
+- Updated the WordPress ScryDex Catalog admin page so Pokemon/full-game index
+  failures show the specific expansion/card page request that failed instead of
+  only reporting a generic failed status.
+- Bumped the production package to `0.202.8` for the app heartbeat workstation
+  naming and LAN server install handoff update.
+- Added a `This workstation name` field to the pre-login server connection
+  screen and Settings connection form. The app still keeps its own generated
+  device ID, while the friendly name is sent as the heartbeat label shown in
+  the LAN server device list.
+- Added `LAN_SERVER_CODEX_INSTALL.md`, a shorter copy/paste Codex install
+  prompt with direct PowerShell steps for deploying the LAN server patch,
+  applying credentials, verifying `/devices/status`, and installing apps.
+- Bundled the new LAN server install prompt into the release package and USB
+  copy flow.
+- Bumped the production package to `0.202.7` for the remote workstation DYMO
+  XML repair and LAN quantity-sync hardening.
+- Fixed the Store/Kiosk app DYMO label XML by adding the required
+  `BorderColor` element before `BorderThickness`, matching the successful
+  remote DYMO diagnostic print.
+- Updated the DYMO diagnostic collector XML so future test prints use the same
+  accepted 30336 label structure as the app.
+- Preserved local LAN inventory quantities when a WordPress inventory pull
+  returns metadata without an explicit quantity field, preventing stock from
+  collapsing back to `1`.
+- Added a stable per-workstation fallback device ID for unpaired app sessions
+  so multiple PCs no longer overwrite the same `front-counter-install`
+  heartbeat row.
+- Refreshed inventory rows from the LAN server immediately after app inventory
+  saves so the UI shows the server's final quantity.
+- Bumped the production package to `0.202.6` and added
+  `Diagnose-Pug-Dymo-Printing.ps1`, a standalone DYMO troubleshooting collector
+  that writes a summary, JSON report, and ZIP without collecting connector
+  secrets.
+- Bundled the DYMO diagnostic collector into the USB root, Pug Store App
+  package, and LAN Server + Pug Store App package so any problem workstation can
+  produce a report for Codex.
+- Updated release packaging, USB copy, and middleman deployment instructions to
+  include the diagnostic collector and optional one-label `-TestPrint` mode.
+- Bumped the production package to `0.202.5` for the DYMO local-print routing
+  repair so workstation installers cannot be confused with the prior package.
+- Fixed local DYMO selection in the Store App and Kiosk App so a LabelWriter
+  listed by DYMO Connect is attempted on `127.0.0.1`/`localhost` even if DYMO
+  reports a stale `IsConnected=False` flag. LAN/server printing remains the
+  fallback only after the local print request fails or when explicitly selected.
+- Clarified the label printer target status text so staff can see that local
+  printing never uses the configured LAN server IP before fallback.
+- Bumped the production package to `0.202.4` so middleman/store app installs
+  have fresh filenames and cannot be mistaken for the prior `0.202.3` package.
+- Added `Apply-Pug-Middleman-Credentials.ps1` to the release handoff so Codex
+  on the middleman PC can merge USB-only Square connector credentials into the
+  LAN server config, restart the server, and verify Square status without
+  printing secrets.
+- Updated the middleman Codex prompt to require the `0.202.4` installers,
+  apply the Square credential patch, and verify Square inventory polling and
+  sales-report pulling are configured.
+- Changed graded-card trade-in valuation priority so PriceCharting is the
+  primary source of truth for graded cards, with ScryDex/reference pricing used
+  as the fallback. The trade-in UI now tells staff which source supplied the
+  current value.
+- Fixed the Store App inventory editor so the first manual quantity/price edit
+  is not overwritten by a background rehydrate before saving.
+- Hardened local DYMO printing for newer DYMO Connect installs where `/Check`
+  returns 404 but `StatusConnected`, `GetPrinters`, and `PrintLabel` are
+  available. The app now probes both `127.0.0.1` and `localhost` and falls back
+  from `PrintLabel` to `PrintLabel2`.
+- Added native local-first DYMO printing in the Windows Store/Kiosk app. The
+  app now tries the attached PC's DYMO Connect local service first, then falls
+  back to the LAN server printer only if the local printer/service is blocked.
+- Added a Tauri native DYMO print command for 30336 1" x 2 1/8" labels so the
+  installed app no longer depends only on browser fetch/certificate behavior.
+- Added a bundled, ignored production LAN server config path to the release
+  packer. `local-sync.env` can now be included in the LAN server installer
+  package for hands-off setup, while remaining outside git/source control.
+- Updated the LAN patch script to install a bundled `local-sync.env`
+  automatically on first install and to preserve existing server credentials
+  unless `-ReplaceLocalEnv` is used.
+- Expanded graded-card presets and pricing fallback labels for CGC Gem Mint 10,
+  CGC Pristine 10, Beckett/BGS 10, Beckett Perfect 10, and Beckett Black Label
+  10. Secondary provider matches now warn when a generic grade-10 bucket is
+  being used for a premium grade label.
+- Normalized bundled env file output to UTF-8 without BOM so LAN server env
+  parsing does not treat the first key as malformed on Windows.
 - Added WordPress migration 16 to repair production inventory quantity tracking
   by ensuring `quantity_on_hand` exists on `tcg_inventory_items`. This fixes LAN
   Store App quantity/price edits that reached WordPress but could not save.

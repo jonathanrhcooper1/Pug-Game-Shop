@@ -102,7 +102,8 @@ export type LocalSyncSetupStatusResult = LocalSyncResult<{
   scrydex_catalog_index_configured?: boolean
   scrydex_vision_configured?: boolean
   graded_pricing_provider_configured?: boolean
-  graded_pricing_primary_source?: "scrydex_reference_cache"
+  graded_pricing_primary_source?: "pricecharting" | "scrydex_reference_cache"
+  graded_pricing_fallback_source?: "scrydex_reference_cache"
   graded_pricing_credentials_synced_to_client?: false
   credentials_synced_to_client: false
   raw_credentials_returned: false
@@ -319,19 +320,19 @@ export type LocalSyncInventoryIntakeResult = LocalSyncResult<{
 }>
 
 export type LocalSyncInventoryUpdateResult = LocalSyncResult<{
-  action: "inventory_item_updated"
+  action: "inventory_item_updated" | "inventory_item_unchanged"
   item: LocalSyncInventoryItem
   operation: {
     operation_id: string
     operation_type: "inventory_update"
     entity_id: string
     sync_status: string
-  }
+  } | null
   previous_quantity_on_hand: number
   quantity_on_hand: number
   quantity_delta: number
   quantity_update_mode: "absolute" | "delta" | "unchanged"
-  wordpress_acceptance_required: true
+  wordpress_acceptance_required: boolean
   wordpress_auto_sync_performed: boolean
   wordpress_accepted_count: number
   wordpress_retry_count: number
@@ -434,10 +435,12 @@ export type LocalSyncScryDexCard = {
   variants: LocalSyncScryDexVariant[]
 }
 
+export type LocalSyncScryDexSearchGame = LocalSyncScryDexCard["game"] | "all" | ""
+
 export type LocalSyncScryDexSearchResult = LocalSyncResult<{
   cards: LocalSyncScryDexCard[]
   query: string
-  game: LocalSyncScryDexCard["game"]
+  game: LocalSyncScryDexSearchGame
   set_filter?: string
   result_limit?: number | "all"
   source: "wordpress_catalog_cache" | "local_reference_cache" | "wordpress_proxy" | "wordpress_catalog_cache+wordpress_proxy"
@@ -571,14 +574,17 @@ export type LocalSyncGradedValuationResult = LocalSyncResult<{
     finish: string
     grading_company: string
     grade: string
-    source_priority: "scrydex_primary_secondary_comps"
+    source_priority: "pricecharting_primary_scrydex_fallback" | "scrydex_primary_secondary_comps"
   }
   valuation: LocalSyncGradedValuation | null
   provider_statuses: LocalSyncGradedProviderStatus[]
   provider_request_performed: boolean
   cache_hit: boolean
   cache_expires_at_utc: string
-  primary_source: "scrydex_reference_cache"
+  primary_source: "pricecharting" | "scrydex_reference_cache"
+  fallback_source?: "scrydex_reference_cache"
+  pricecharting_source_used?: boolean
+  scrydex_fallback_used?: boolean
   secondary_source_used: boolean
   credentials_synced_to_client: false
   raw_credentials_returned: false
@@ -1210,7 +1216,8 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   scrydex_lookup_order: ("local_reference_cache" | "wordpress_catalog_proxy" | "scrydex_provider")[]
   scrydex_fallback_connected: boolean
   graded_pricing_provider_connected?: boolean
-  graded_pricing_primary_source?: "scrydex_reference_cache"
+  graded_pricing_primary_source?: "pricecharting" | "scrydex_reference_cache"
+  graded_pricing_fallback_source?: "scrydex_reference_cache"
   local_operations_preserved: true
 }>
 
@@ -1748,7 +1755,7 @@ export type LocalSyncServerClient = {
   searchScryDexCards: (
     sessionToken: string,
     query: string,
-    game?: LocalSyncScryDexCard["game"],
+    game?: LocalSyncScryDexSearchGame,
     options?: { limit?: number | "all"; setFilter?: string; rawOrGraded?: "raw" | "graded"; forceLive?: boolean },
   ) => Promise<LocalSyncScryDexSearchResult>
   indexScryDexCatalog: (
@@ -2116,12 +2123,24 @@ export function createLocalSyncServerClient(
   fetcher: LocalSyncFetch = fetch,
 ): LocalSyncServerClient {
   const baseUrl = normalizeLocalSyncServerUrl(serverUrl)
-  const searchScryDexCards: LocalSyncServerClient["searchScryDexCards"] = (sessionToken, query, game = "pokemon", options = {}) => {
+  const supportedScryDexSearchGames: LocalSyncScryDexCard["game"][] = [
+    "pokemon",
+    "magicthegathering",
+    "lorcana",
+    "onepiece",
+  ]
+  const searchSingleScryDexGame = (
+    sessionToken: string,
+    query: string,
+    game: LocalSyncScryDexCard["game"],
+    options: { limit?: number | "all"; setFilter?: string; rawOrGraded?: "raw" | "graded"; forceLive?: boolean } = {},
+  ) => {
     const params = new URLSearchParams({
       q: query,
-      game,
       limit: String(options.limit ?? "all"),
     })
+
+    params.set("game", game)
 
     if (options.setFilter) {
       params.set("set", options.setFilter)
@@ -2138,6 +2157,67 @@ export function createLocalSyncServerClient(
     return requestLocalSync(fetcher, baseUrl, `/scrydex/cards/search?${params.toString()}`, {
       sessionToken,
     }) as Promise<LocalSyncScryDexSearchResult>
+  }
+  const searchScryDexCards: LocalSyncServerClient["searchScryDexCards"] = async (
+    sessionToken,
+    query,
+    game = "",
+    options = {},
+  ) => {
+    if (game && game !== "all") {
+      return searchSingleScryDexGame(sessionToken, query, game, options)
+    }
+
+    const results = await Promise.all(
+      supportedScryDexSearchGames.map((currentGame) =>
+        searchSingleScryDexGame(sessionToken, query, currentGame, options),
+      ),
+    )
+    const okResults = results.filter(
+      (result): result is Extract<LocalSyncScryDexSearchResult, { status: "ok" }> => result.status === "ok",
+    )
+    const cards = sortScryDexCardsForQuery(uniqueScryDexCards(okResults.flatMap((result) => result.cards)), query)
+
+    if (cards.length === 0) {
+      const firstBlocked = results.find((result) => result.status !== "ok")
+
+      return firstBlocked ?? {
+        status: "ok",
+        cards: [],
+        query,
+        game: "all",
+        set_filter: options.setFilter ?? "",
+        result_limit: options.limit ?? "all",
+        source: "local_reference_cache",
+        lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+        local_reference_cache_hit: false,
+        wordpress_proxy_performed: false,
+        wordpress_proxy_required: true,
+        credential_storage: "wordpress_server_settings",
+        credentials_synced_to_client: false,
+        live_provider_request_performed: false,
+      }
+    }
+
+    return {
+      status: "ok",
+      cards,
+      query,
+      game: "all",
+      set_filter: options.setFilter ?? "",
+      result_limit: options.limit ?? "all",
+      source: okResults.some((result) => String(result.source ?? "").includes("wordpress_proxy"))
+        ? "wordpress_catalog_cache+wordpress_proxy"
+        : "wordpress_catalog_cache",
+      lookup_order: ["local_reference_cache", "wordpress_catalog_proxy", "scrydex_provider"],
+      local_reference_cache_hit: okResults.some((result) => result.local_reference_cache_hit === true),
+      wordpress_proxy_performed: okResults.some((result) => result.wordpress_proxy_performed === true),
+      wordpress_proxy_required: okResults.every((result) => result.wordpress_proxy_required === true),
+      credential_storage: "wordpress_server_settings",
+      credentials_synced_to_client: false,
+      live_provider_request_performed: okResults.some((result) => result.live_provider_request_performed === true),
+      force_live_refresh: options.forceLive === true,
+    }
   }
 
   const fallbackIndexScryDexCatalog = async (
@@ -2939,11 +3019,14 @@ export function createLocalSyncServerClient(
   }
 }
 
+const FALLBACK_LOCAL_SYNC_SERVER_URL = "http://127.0.0.1:8787"
+const DEFAULT_LOCAL_SYNC_SERVER_URL = defaultLocalSyncServerUrl()
+
 export function normalizeLocalSyncServerUrl(value: string) {
   const rawValue = String(value).trim()
 
   if (!rawValue) {
-    return "http://127.0.0.1:8787"
+    return DEFAULT_LOCAL_SYNC_SERVER_URL
   }
 
   try {
@@ -2951,7 +3034,7 @@ export function normalizeLocalSyncServerUrl(value: string) {
     const url = new URL(hasScheme ? rawValue : `http://${rawValue}`)
 
     if (!["http:", "https:"].includes(url.protocol)) {
-      return "http://127.0.0.1:8787"
+      return DEFAULT_LOCAL_SYNC_SERVER_URL
     }
 
     url.pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "")
@@ -2960,7 +3043,43 @@ export function normalizeLocalSyncServerUrl(value: string) {
 
     return url.toString().replace(/\/$/, "")
   } catch {
-    return "http://127.0.0.1:8787"
+    return DEFAULT_LOCAL_SYNC_SERVER_URL
+  }
+}
+
+function defaultLocalSyncServerUrl() {
+  const viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {}
+  const candidate =
+    viteEnv.VITE_PUG_DEFAULT_LOCAL_SYNC_SERVER_URL ??
+    viteEnv.VITE_PUG_LOCAL_SYNC_SERVER_URL ??
+    viteEnv.VITE_LOCAL_SYNC_SERVER_URL ??
+    ""
+
+  return cleanLocalSyncServerUrl(candidate) || FALLBACK_LOCAL_SYNC_SERVER_URL
+}
+
+function cleanLocalSyncServerUrl(value: string) {
+  const rawValue = String(value).trim()
+
+  if (!rawValue) {
+    return ""
+  }
+
+  try {
+    const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(rawValue)
+    const url = new URL(hasScheme ? rawValue : `http://${rawValue}`)
+
+    if (!["http:", "https:"].includes(url.protocol) || !url.host || url.username || url.password) {
+      return ""
+    }
+
+    url.pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "")
+    url.search = ""
+    url.hash = ""
+
+    return url.toString().replace(/\/$/, "")
+  } catch {
+    return ""
   }
 }
 
@@ -2986,6 +3105,65 @@ function uniqueScryDexCards(cards: LocalSyncScryDexCard[]) {
   }
 
   return uniqueCards
+}
+
+function sortScryDexCardsForQuery(cards: LocalSyncScryDexCard[], query: string) {
+  const normalizedQuery = normalizeScryDexClientSearchText(query)
+
+  return [...cards].sort((left, right) => {
+    const leftScore = scryDexClientSearchScore(left, normalizedQuery)
+    const rightScore = scryDexClientSearchScore(right, normalizedQuery)
+
+    if (leftScore !== rightScore) {
+      return rightScore - leftScore
+    }
+
+    return String(left.card_name ?? "").localeCompare(String(right.card_name ?? ""))
+  })
+}
+
+function scryDexClientSearchScore(card: LocalSyncScryDexCard, normalizedQuery: string) {
+  const cardName = normalizeScryDexClientSearchText(card.card_name)
+  const setName = normalizeScryDexClientSearchText(card.set_name)
+  const identifiers = normalizeScryDexClientSearchText([
+    card.card_number,
+    card.printed_number,
+    card.set_code,
+  ].join(" "))
+
+  if (!normalizedQuery) {
+    return 0
+  }
+
+  let score = 0
+
+  if (cardName === normalizedQuery) {
+    score += 1000
+  } else if (cardName.startsWith(normalizedQuery)) {
+    score += 800
+  } else if (cardName.includes(normalizedQuery)) {
+    score += 650
+  }
+
+  if (setName === normalizedQuery) {
+    score += 180
+  } else if (setName.includes(normalizedQuery)) {
+    score += 90
+  }
+
+  if (identifiers.includes(normalizedQuery)) {
+    score += 60
+  }
+
+  if (Number(card.market_price_minor_units ?? 0) > 0) {
+    score += 10
+  }
+
+  return score
+}
+
+function normalizeScryDexClientSearchText(value: string) {
+  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ")
 }
 
 async function requestLocalSync(

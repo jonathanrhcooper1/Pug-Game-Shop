@@ -9,6 +9,8 @@ const releaseScript = readFileSync(resolve(root, "scripts/package-production-rel
 const copyUsbScript = readFileSync(resolve(root, "scripts/copy-production-release-to-usb.mjs"), "utf8")
 const syncScript = readFileSync(resolve(root, "scripts/production-verify-active-syncs.mjs"), "utf8")
 const dymoLocalServiceScript = readFileSync(resolve(root, "scripts/Start-Pug-Dymo-Local-Service.ps1"), "utf8")
+const dymoDiagnosticScript = readFileSync(resolve(root, "scripts/Diagnose-Pug-Dymo-Printing.ps1"), "utf8")
+const lanServerInstallPrompt = readFileSync(resolve(root, "docs/runbooks/LAN_SERVER_CODEX_INSTALL.md"), "utf8")
 
 assert.equal(packageJson.scripts["package:production-release"], "node scripts/package-production-release.mjs")
 assert.equal(packageJson.scripts["release:copy-usb"], "node scripts/copy-production-release-to-usb.mjs")
@@ -27,7 +29,10 @@ for (const marker of [
   "Install-Pug-LAN-Server-Startup-Task.ps1",
   "Deploy-Pug-LAN-Server-Patch.ps1",
   "Start-Pug-Dymo-Local-Service.ps1",
+  "Diagnose-Pug-Dymo-Printing.ps1",
+  "LAN_SERVER_CODEX_INSTALL.md",
   "dymo_local_service_helper",
+  "dymo_diagnostic_helper",
   "https://127.0.0.1:41951/DYMO/DLS/Printing/GetPrinters",
   "patch_deploy_helper",
   "deliverables.manifest.json",
@@ -68,6 +73,8 @@ for (const marker of [
   "copied_production_release_to_usb",
   "PUG_USB_INSTALLER_DIR",
   "Deploy-Pug-LAN-Server-Patch.ps1",
+  "Diagnose-Pug-Dymo-Printing.ps1",
+  "LAN_SERVER_CODEX_INSTALL.md",
   "Install order:",
   "Start-Pug-LAN-Server.ps1",
 ]) {
@@ -105,6 +112,37 @@ for (const marker of [
   "Next steps:",
 ]) {
   assert.ok(dymoLocalServiceScript.includes(marker), `Missing DYMO local helper marker: ${marker}`)
+}
+
+for (const marker of [
+  "pug-dymo-diagnostic-report",
+  "StatusConnected",
+  "GetPrinters",
+  "PrintLabel",
+  "PrintLabel2",
+  "BorderColor",
+  "IsConnected=False",
+  "pug-label-printer-target",
+  "No connector secrets are collected.",
+]) {
+  assert.ok(dymoDiagnosticScript.includes(marker), `Missing DYMO diagnostic marker: ${marker}`)
+}
+
+assert.ok(
+  dymoDiagnosticScript.indexOf("<BorderThickness>0</BorderThickness>") > dymoDiagnosticScript.indexOf("<BorderColor>"),
+  "DYMO diagnostic label XML must place BorderColor before BorderThickness.",
+)
+
+for (const marker of [
+  "LAN Server Codex Install Prompt",
+  "Deploy-Pug-LAN-Server-Patch.ps1",
+  "Pug Store App-0.202.12.exe",
+  "Pug Kiosk App-0.202.12.exe",
+  "This workstation name",
+  "/devices/status",
+  "stable generated device ID",
+]) {
+  assert.ok(lanServerInstallPrompt.includes(marker), `Missing LAN server install prompt marker: ${marker}`)
 }
 
 console.log("PASS production release package contract")
