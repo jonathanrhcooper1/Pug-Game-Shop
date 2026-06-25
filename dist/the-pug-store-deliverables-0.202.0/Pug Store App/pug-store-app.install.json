@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "deliverable": "Pug Store App",
+  "version": "0.202.0",
+  "installer": "Pug Store App-0.202.0.exe",
+  "launch_mode": "staff",
+  "build_mode": "pug_store_app",
+  "fullscreen": true,
+  "decorations": false,
+  "command_prompt_window_required": false,
+  "launch_url_hint": "/",
+  "sync_topology": "wordpress_woocommerce_plugin <-https-> local_middleman <-lan/offline-> app",
+  "auto_discovery": {
+    "protocol": "pug-local-sync-discovery-v1",
+    "transport": "udp",
+    "port": 8788,
+    "credentials_returned": false
+  },
+  "manual_fallback": {
+    "supported": true,
+    "example_url": "http://SERVER-IP:8787"
+  },
+  "source_of_truth": "wordpress",
+  "offline_behavior": "local cache and durable queue until middleman/website reconnects"
+}

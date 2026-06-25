@@ -1,0 +1,151 @@
+[
+  {
+    "name": "app-dev-desktop",
+    "url": "http://127.0.0.1:1420/",
+    "width": 1366,
+    "height": 900,
+    "status": 200,
+    "state": {
+      "title": "TCG Store Local",
+      "bodyText": "The Pug Store AppWebsite-connected local appEnter PIN4-digit employee, manager, or owner PINSession timeout30 minutesManagers can adjust this in Users & Access.----Use your assigned store PIN.Connected serverhttp://127.0.0.1:8787Change Server123456789Del0GoUnlock AppClear PIN",
+      "localStorageKeys": [
+        "tcg-store-offline-connector-profiles-v1",
+        "pug-employee-order-notification-sound:v1",
+        "pug-label-printer-target:v1",
+        "tcg-store-offline-prepared-pairings-v1"
+      ],
+      "rootClasses": "",
+      "scrollHeight": 900,
+      "clientHeight": 900,
+      "hasHorizontalOverflow": false
+    },
+    "logs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "info",
+        "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+      }
+    ]
+  },
+  {
+    "name": "app-dev-small",
+    "url": "http://127.0.0.1:1420/",
+    "width": 760,
+    "height": 640,
+    "status": 200,
+    "state": {
+      "title": "TCG Store Local",
+      "bodyText": "The Pug Store AppWebsite-connected local appEnter PIN4-digit employee, manager, or owner PINSession timeout30 minutesManagers can adjust this in Users & Access.----Use your assigned store PIN.Connected serverhttp://127.0.0.1:8787Change Server123456789Del0GoUnlock AppClear PIN",
+      "localStorageKeys": [
+        "tcg-store-offline-connector-profiles-v1",
+        "pug-employee-order-notification-sound:v1",
+        "pug-label-printer-target:v1",
+        "tcg-store-offline-prepared-pairings-v1"
+      ],
+      "rootClasses": "",
+      "scrollHeight": 1043,
+      "clientHeight": 640,
+      "hasHorizontalOverflow": false
+    },
+    "logs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "info",
+        "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+      }
+    ]
+  },
+  {
+    "name": "app-preview-desktop",
+    "url": "http://127.0.0.1:4173/",
+    "width": 1366,
+    "height": 900,
+    "status": 200,
+    "state": {
+      "title": "TCG Store Local",
+      "bodyText": "The PugCustomer pickup kioskInventory statusLive inventory connectedFind cards in stockSearch the same live singles inventory available on The Pug website, then send your list to the counter.Your pickup list0 cards$0.00SearchGameAll gamesMTGPokemonSet / ExpansionAll sets15125th Anniversary Collection30th Anniversary EditionAdventures in the Forgotten RealmsAether RevoltAlara RebornAlliancesAmonkhetAquapolisArabian NightsArchenemyAscended HeroesAssassin's CreedAstral RadianceAvacyn RestoredAvatar: The Last AirbenderAvatar: The Last Airbender EternalBFZ Standard SeriesBREAKpointBREAKthroughBaseBase Set 2Battle for Baldur's Gate PromosBattle for ZendikarBattlebondBetrayers of KamigawaBlack & WhiteBlack & White PromosBloomburrowBloomburrow CommanderBorn of the GodsBreaking NewsBrilliant StarsCelebrations: Classic CollectionChampion's PathChampions of KamigawaChilling ReignColdsnapCommander 2011Commander 2013Commander 2014Commander 2015Commander 2016Commander 2017Commander 2018Commander 2019Commander 2020Commander 2021Commander AnthologyCommander LegendsCommander Legends: Battle for Baldur's GateCommander MastersConfluxConspiracyConspiracy: Take the CrownCore Set 2021Cosmic EclipseCrimson Vow CommanderCrown ZenithCrown Zenith Galarian GalleryCrystal GuardiansDark AscensionDarkness AblazeDarksteelDestined RivalsDissensionDominariaDominaria RemasteredDominaria UnitedDominaria United CommanderDouble CrisisDouble MastersDouble Masters 2022Dragon's MazeDragons of TarkirDuel Decks: Elsp",
+      "localStorageKeys": [
+        "tcg-store-offline-connector-profiles-v1",
+        "pug-employee-order-notification-sound:v1",
+        "pug-label-printer-target:v1",
+        "tcg-store-offline-prepared-pairings-v1"
+      ],
+      "rootClasses": "",
+      "scrollHeight": 1016,
+      "clientHeight": 900,
+      "hasHorizontalOverflow": false
+    },
+    "logs": []
+  },
+  {
+    "name": "kiosk-dev-mobile",
+    "url": "http://127.0.0.1:1420/?mode=kiosk",
+    "width": 390,
+    "height": 844,
+    "status": 200,
+    "state": {
+      "title": "TCG Store Local",
+      "bodyText": "The PugCustomer pickup kioskInventory statusLive inventory connectedFind cards in stockSearch the same live singles inventory available on The Pug website, then send your list to the counter.Your pickup list0 cards$0.00SearchGameAll gamesMTGPokemonSet / ExpansionAll sets15125th Anniversary Collection30th Anniversary EditionAdventures in the Forgotten RealmsAether RevoltAlara RebornAlliancesAmonkhetAquapolisArabian NightsArchenemyAscended HeroesAssassin's CreedAstral RadianceAvacyn RestoredAvatar: The Last AirbenderAvatar: The Last Airbender EternalBFZ Standard SeriesBREAKpointBREAKthroughBaseBase Set 2Battle for Baldur's Gate PromosBattle for ZendikarBattlebondBetrayers of KamigawaBlack & WhiteBlack & White PromosBloomburrowBloomburrow CommanderBorn of the GodsBreaking NewsBrilliant StarsCelebrations: Classic CollectionChampion's PathChampions of KamigawaChilling ReignColdsnapCommander 2011Commander 2013Commander 2014Commander 2015Commander 2016Commander 2017Commander 2018Commander 2019Commander 2020Commander 2021Commander AnthologyCommander LegendsCommander Legends: Battle for Baldur's GateCommander MastersConfluxConspiracyConspiracy: Take the CrownCore Set 2021Cosmic EclipseCrimson Vow CommanderCrown ZenithCrown Zenith Galarian GalleryCrystal GuardiansDark AscensionDarkness AblazeDarksteelDestined RivalsDissensionDominariaDominaria RemasteredDominaria UnitedDominaria United CommanderDouble CrisisDouble MastersDouble Masters 2022Dragon's MazeDragons of TarkirDuel Decks: Elsp",
+      "localStorageKeys": [
+        "tcg-store-offline-connector-profiles-v1",
+        "pug-employee-order-notification-sound:v1",
+        "pug-label-printer-target:v1",
+        "tcg-store-offline-prepared-pairings-v1"
+      ],
+      "rootClasses": "",
+      "scrollHeight": 1796,
+      "clientHeight": 844,
+      "hasHorizontalOverflow": false
+    },
+    "logs": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "info",
+        "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+      }
+    ]
+  },
+  {
+    "name": "kiosk-preview-mobile",
+    "url": "http://127.0.0.1:4173/?mode=kiosk",
+    "width": 390,
+    "height": 844,
+    "status": 200,
+    "state": {
+      "title": "TCG Store Local",
+      "bodyText": "The PugCustomer pickup kioskInventory statusLive inventory connectedFind cards in stockSearch the same live singles inventory available on The Pug website, then send your list to the counter.Your pickup list0 cards$0.00SearchGameAll gamesMTGPokemonSet / ExpansionAll sets15125th Anniversary Collection30th Anniversary EditionAdventures in the Forgotten RealmsAether RevoltAlara RebornAlliancesAmonkhetAquapolisArabian NightsArchenemyAscended HeroesAssassin's CreedAstral RadianceAvacyn RestoredAvatar: The Last AirbenderAvatar: The Last Airbender EternalBFZ Standard SeriesBREAKpointBREAKthroughBaseBase Set 2Battle for Baldur's Gate PromosBattle for ZendikarBattlebondBetrayers of KamigawaBlack & WhiteBlack & White PromosBloomburrowBloomburrow CommanderBorn of the GodsBreaking NewsBrilliant StarsCelebrations: Classic CollectionChampion's PathChampions of KamigawaChilling ReignColdsnapCommander 2011Commander 2013Commander 2014Commander 2015Commander 2016Commander 2017Commander 2018Commander 2019Commander 2020Commander 2021Commander AnthologyCommander LegendsCommander Legends: Battle for Baldur's GateCommander MastersConfluxConspiracyConspiracy: Take the CrownCore Set 2021Cosmic EclipseCrimson Vow CommanderCrown ZenithCrown Zenith Galarian GalleryCrystal GuardiansDark AscensionDarkness AblazeDarksteelDestined RivalsDissensionDominariaDominaria RemasteredDominaria UnitedDominaria United CommanderDouble CrisisDouble MastersDouble Masters 2022Dragon's MazeDragons of TarkirDuel Decks: Elsp",
+      "localStorageKeys": [
+        "tcg-store-offline-connector-profiles-v1",
+        "pug-employee-order-notification-sound:v1",
+        "pug-label-printer-target:v1",
+        "tcg-store-offline-prepared-pairings-v1"
+      ],
+      "rootClasses": "",
+      "scrollHeight": 1796,
+      "clientHeight": 844,
+      "hasHorizontalOverflow": false
+    },
+    "logs": []
+  }
+]

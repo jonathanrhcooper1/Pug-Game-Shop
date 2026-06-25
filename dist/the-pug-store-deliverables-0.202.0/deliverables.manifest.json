@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "version": "0.202.0",
+  "deliverables": [
+    "Pug Store App",
+    "LAN Server + Pug Store App",
+    "Kiosk Page"
+  ],
+  "deliverable_count": 3,
+  "package_names_are_customer_facing": true
+}

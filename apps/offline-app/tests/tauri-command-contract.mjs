@@ -1,0 +1,251 @@
+import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const appRoot = path.resolve(__dirname, "..")
+
+const cargoToml = await readFile(path.join(appRoot, "src-tauri/Cargo.toml"), "utf8")
+const libSource = await readFile(path.join(appRoot, "src-tauri/src/lib.rs"), "utf8")
+const adapterSource = await readFile(path.join(appRoot, "src/data/tauriQueueAdapter.ts"), "utf8")
+const secureStoreAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriSecureStoreAdapter.ts"),
+  "utf8",
+)
+const devicePairingAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriDevicePairingAdapter.ts"),
+  "utf8",
+)
+const offlineSyncAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriOfflineSyncAdapter.ts"),
+  "utf8",
+)
+const localSyncDiscoveryAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriLocalSyncDiscoveryAdapter.ts"),
+  "utf8",
+)
+const dymoPrinterAdapterSource = await readFile(
+  path.join(appRoot, "src/data/tauriDymoPrinterAdapter.ts"),
+  "utf8",
+)
+
+for (const dependency of [
+  "keyring = { version = \"3\", features = [\"windows-native\"] }",
+  "reqwest = { version = \"0.12\", default-features = false, features = [\"json\", \"rustls-tls\"] }",
+  "rusqlite = { version = \"0.32\", features = [\"bundled\"] }",
+  "serde = { version = \"1\", features = [\"derive\"] }",
+  "serde_json = \"1\"",
+]) {
+  assert.ok(cargoToml.includes(dependency), `Missing Rust dependency: ${dependency}`)
+}
+
+for (const marker of [
+  "#[tauri::command]",
+  "queue_offline_operation",
+  "list_offline_operations",
+  "mark_offline_operations_synced",
+  "void_offline_operations",
+  "tauri::generate_handler![",
+  "persisted_to_local_queue",
+  "already_queued_local_queue",
+  "loaded_local_queue",
+  "marked_local_queue_synced",
+  "voided_local_queue_operations",
+  "sqlite",
+  "Connection::open",
+  "CREATE TABLE IF NOT EXISTS operation_queue",
+  "SELECT client_operation_id",
+  "SQLITE_QUEUE_INSERT_SQL",
+  "SQLITE_QUEUE_SELECT_PENDING_SQL",
+  "SQLITE_QUEUE_MARK_SYNCED_SQL",
+  "SQLITE_QUEUE_VOID_SQL",
+  "sqlite_database_file",
+  "sqlite_rows_affected",
+  "operation_count",
+  "accepted_operation_ids",
+  "conflict_operation_ids",
+  "rejected_operation_ids",
+  "sqlite_persistence_deferred",
+  "queue_replay_deferred",
+  "queue_replay_applied",
+  "queue_void_applied",
+  "canonical_mutations_deferred",
+  "inventory_update",
+  "inventory_reservation",
+  "event_reservation",
+  "event_checkin",
+  "credit_redemption",
+  "direct_mysql_access: false",
+  "network_write: false",
+  "invalid_payload_json",
+  "invalid_authorization_context_json",
+  "unsupported_operation",
+  "offline_queue_row_invalid",
+  "store_device_token",
+  "get_device_token_status",
+  "delete_device_token",
+  "discover_local_sync_servers",
+  "print_dymo_label",
+  "local_dymo_label_printed",
+  "local_dymo_service_unavailable",
+  "local_dymo_printer_not_found",
+  "DYMO_30336_LABEL_NAME",
+  "LOCAL_DYMO_PRINTING_URL",
+  "danger_accept_invalid_certs(true)",
+  "local_sync_discovery_completed",
+  "pug-local-sync-discovery-v1",
+  "LOCAL_SYNC_DISCOVERY_PORT",
+  "UdpSocket::bind",
+  "set_broadcast(true)",
+  "manual_fallback_supported",
+  "LocalSyncDiscoveredServer",
+  "pair_offline_device",
+  "run_offline_sync_request",
+  "offline_sync_request_completed",
+  "offline_sync_request_rejected",
+  "offline_sync_device_token_missing",
+  "offline_sync_endpoint_https_required",
+  "offline_sync_push_idempotency_key_required",
+  "offline_sync_conflict_resolution_idempotency_key_required",
+  "offline_sync_conflict_resolution_action_unsupported",
+  "conflict_resolution",
+  "/offline/conflicts/",
+  "/resolve",
+  "authorization_header_attached",
+  "pull_inventory_records",
+  "pull_customer_credit_records",
+  "pull_event_records",
+  "pull_conflict_records",
+  "sanitized_pull_inventory_records",
+  "sanitized_pull_customer_credit_records",
+  "sanitized_pull_event_records",
+  "sanitized_pull_conflict_records",
+  "sale_price_minor_units",
+  "available_minor_units",
+  "registered_count",
+  "conflict_id",
+  "resolution_id",
+  "location_label",
+  "raw_response_returned: false",
+  "paired_and_stored_in_desktop_secure_store",
+  "offline_device_pairing_endpoint_https_required",
+  "offline_device_pairing_request_failed",
+  "offline_device_pairing_response_invalid",
+  "offline_device_registered",
+  "DEVICE_TOKEN_KEYRING_SERVICE",
+  "desktop_secure_store",
+  "stored_in_desktop_secure_store",
+  "device_token_available",
+  "device_token_missing",
+  "device_token_deleted",
+  "token_persisted",
+  "raw_token_returned: false",
+  "credentials_synced_to_app: false",
+  "keyring_account",
+  "device_token_too_short",
+  "device_token_scopes_incomplete",
+  "device_token_secure_store_write_failed",
+]) {
+  assert.ok(libSource.includes(marker), `Missing Tauri command marker: ${marker}`)
+}
+
+for (const marker of [
+  "@tauri-apps/api/core",
+  "__TAURI_INTERNALS__",
+  "createTauriQueueAdapter",
+  "OfflineQueueCommandAdapter",
+]) {
+  assert.ok(adapterSource.includes(marker), `Missing Tauri adapter marker: ${marker}`)
+}
+
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriSecureStoreAdapter",
+  "store_device_token",
+  "get_device_token_status",
+  "delete_device_token",
+  "desktop_secure_store",
+  "raw_token_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(secureStoreAdapterSource.includes(marker), `Missing secure-store adapter marker: ${marker}`)
+}
+
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriDevicePairingAdapter",
+  "pair_offline_device",
+  "paired_and_stored_in_desktop_secure_store",
+  "raw_token_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(devicePairingAdapterSource.includes(marker), `Missing device pairing adapter marker: ${marker}`)
+}
+
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriOfflineSyncAdapter",
+  "run_offline_sync_request",
+  "offline_sync_request_completed",
+  "offline_sync_request_rejected",
+  "conflict_resolution",
+  "authorization_header_attached",
+  "pull_inventory_records",
+  "pull_customer_credit_records",
+  "pull_event_records",
+  "pull_conflict_records",
+  "accepted_operation_ids",
+  "conflict_operation_ids",
+  "rejected_operation_ids",
+  "raw_token_returned: false",
+  "raw_response_returned: false",
+  "credentials_synced_to_app: false",
+  "direct_mysql_access: false",
+]) {
+  assert.ok(offlineSyncAdapterSource.includes(marker), `Missing offline sync adapter marker: ${marker}`)
+}
+
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriLocalSyncDiscoveryAdapter",
+  "discover_local_sync_servers",
+  "local_sync_discovery_completed",
+  "pug-local-sync-discovery-v1",
+  "manual_fallback_supported: true",
+  "raw_credentials_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(localSyncDiscoveryAdapterSource.includes(marker), `Missing discovery adapter marker: ${marker}`)
+}
+
+for (const marker of [
+  "@tauri-apps/api/core",
+  "createTauriDymoPrinterAdapter",
+  "print_dymo_label",
+  "local_dymo_label_printed",
+  "30336 Small Multipurpose Labels",
+  "1 in x 2 1/8 in",
+  "Code128Auto",
+  "raw_credentials_returned: false",
+  "credentials_synced_to_app: false",
+]) {
+  assert.ok(dymoPrinterAdapterSource.includes(marker), `Missing DYMO adapter marker: ${marker}`)
+}
+
+const nativeDymoBorderColorIndex = libSource.indexOf("<BorderColor>")
+const nativeDymoBorderThicknessIndex = libSource.indexOf("<BorderThickness>0</BorderThickness>")
+assert.ok(nativeDymoBorderColorIndex > 0, "Native DYMO XML must include BorderColor.")
+assert.ok(nativeDymoBorderThicknessIndex > nativeDymoBorderColorIndex, "Native DYMO BorderColor must precede BorderThickness.")
+
+for (const forbidden of ["fetch(", "XMLHttpRequest", "localStorage", "sessionStorage"]) {
+  assert.equal(adapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(secureStoreAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(devicePairingAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(offlineSyncAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(localSyncDiscoveryAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(dymoPrinterAdapterSource.includes(forbidden), false, `Forbidden adapter marker: ${forbidden}`)
+  assert.equal(libSource.includes(forbidden), false, `Forbidden command marker: ${forbidden}`)
+}
+
+console.log("PASS offline app Tauri command contract")
